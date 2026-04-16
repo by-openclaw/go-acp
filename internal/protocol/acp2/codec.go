@@ -50,14 +50,15 @@ func EncodeACP2Message(m *ACP2Message) ([]byte, error) {
 		return buf, nil
 
 	case ACP2FuncGetObject:
-		// get_object request: header + obj-id(4) + idx(4)
-		buf := make([]byte, ACP2HeaderSize+8)
+		// get_object request: header + obj-id(4). No idx field — get_object
+		// retrieves ALL properties; idx is only meaningful for
+		// get_property/set_property (preset depth selection).
+		buf := make([]byte, ACP2HeaderSize+4)
 		buf[0] = byte(m.Type)
 		buf[1] = m.MTID
 		buf[2] = byte(m.Func)
 		buf[3] = m.PID
 		binary.BigEndian.PutUint32(buf[4:8], m.ObjID)
-		binary.BigEndian.PutUint32(buf[8:12], m.Idx)
 		return buf, nil
 
 	case ACP2FuncGetProperty:

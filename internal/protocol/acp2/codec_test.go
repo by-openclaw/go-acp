@@ -55,18 +55,14 @@ func TestEncodeDecodeACP2Message_GetObject(t *testing.T) {
 		t.Fatalf("Encode: %v", err)
 	}
 
-	if len(data) != ACP2HeaderSize+8 {
-		t.Fatalf("expected %d bytes, got %d", ACP2HeaderSize+8, len(data))
+	// get_object: header(4) + obj-id(4) = 8 bytes, no idx
+	if len(data) != ACP2HeaderSize+4 {
+		t.Fatalf("expected %d bytes, got %d", ACP2HeaderSize+4, len(data))
 	}
 
 	objID := binary.BigEndian.Uint32(data[4:8])
 	if objID != 42 {
 		t.Errorf("obj-id: got %d, want 42", objID)
-	}
-
-	idx := binary.BigEndian.Uint32(data[8:12])
-	if idx != 0 {
-		t.Errorf("idx: got %d, want 0", idx)
 	}
 }
 

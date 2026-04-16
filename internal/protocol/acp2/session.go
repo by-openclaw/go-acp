@@ -276,7 +276,8 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *ACP2Message) (*AC
 
 	s.logger.Debug("acp2: sending request",
 		"slot", slot, "mtid", mtid, "func", req.Func,
-		"obj_id", req.ObjID, "idx", req.Idx)
+		"obj_id", req.ObjID, "idx", req.Idx,
+		"payload_hex", fmt.Sprintf("%x", payload))
 
 	if err := s.sendFrame(ctx, frame); err != nil {
 		return nil, err
@@ -338,7 +339,7 @@ func (s *Session) readLoop() {
 			if err == io.EOF || isClosedErr(err) {
 				s.logger.Debug("acp2: reader: connection closed")
 			} else {
-				s.logger.Warn("acp2: reader: read error", "err", err)
+				s.logger.Debug("acp2: reader: connection closed", "err", err)
 			}
 			s.closeErr = err
 			return
