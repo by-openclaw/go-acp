@@ -1207,27 +1207,18 @@ func runWatch(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	// If the user passed a label, walk the slot first so the plugin can
-	// resolve it and give us a typed Event on each callback.
-	if *label != "" {
-		if *slot < 0 {
-			return fmt.Errorf("--label requires --slot")
-		}
+	// Pre-walk to populate the tree for label resolution and typed decode.
+	// Same pattern as ACP1: walk before subscribe so callbacks get labels.
+	if *slot >= 0 {
+		// Specific slot: walk it.
 		walkCtx, cancel := withTimeout(ctx, cf.timeout)
 		if _, werr := plug.Walk(walkCtx, *slot); werr != nil {
 			cancel()
-			return fmt.Errorf("walk for label resolution: %w", werr)
+			fmt.Fprintf(os.Stderr, "warning: walk slot %d failed: %v\n", *slot, werr)
 		}
 		cancel()
-	}
-
-	// The walker for ALL slots lets Subscribe produce typed events for
-	// any object on any slot. Without this the listener still works but
-	// reports raw bytes because it can't look up the object's type.
-	// Best-effort: walk slot 0 + slot 1 since those are typically
-	// populated. User can extend via --slot N explicit walk.
-	// (A future improvement: walk lazily when the first event arrives.)
-	if *slot < 0 {
+	} else {
+		// No slot filter: walk all present slots.
 		info, ierr := plug.GetDeviceInfo(ctx)
 		if ierr == nil {
 			for s := 0; s < info.NumSlots; s++ {

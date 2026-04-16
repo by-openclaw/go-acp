@@ -308,10 +308,13 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		tree := p.trees[int(annSlot)]
 		p.mu.Unlock()
 
+		// Find object index in tree.
+		treeIdx := -1
 		if tree != nil {
-			for _, obj := range tree.Objects {
-				if obj.ID == int(msg.ObjID) {
-					ev.Label = obj.Label
+			for ti, tobj := range tree.Objects {
+				if tobj.ID == int(msg.ObjID) {
+					treeIdx = ti
+					ev.Label = tobj.Label
 					break
 				}
 			}
@@ -325,15 +328,10 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		for i := range msg.Properties {
 			prop := &msg.Properties[i]
 			if prop.PID == PIDValue || prop.PID == msg.PID {
-				if tree != nil {
-					for ti, tobj := range tree.Objects {
-						if tobj.ID == int(msg.ObjID) {
-							val, derr := decodePropertyValue(prop, tree.ObjTypes[ti], tree.NumTypes[ti], tree, msg.ObjID)
-							if derr == nil {
-								ev.Value = val
-							}
-							break
-						}
+				if treeIdx >= 0 {
+					val, derr := decodePropertyValue(prop, tree.ObjTypes[treeIdx], tree.NumTypes[treeIdx], tree, msg.ObjID)
+					if derr == nil {
+						ev.Value = val
 					}
 				}
 				// Fallback: use vtype from announce property to decode
