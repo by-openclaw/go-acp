@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"acp/internal/protocol"
+	"acp/internal/transport"
 )
 
 // Session manages an AN2/TCP connection to an ACP2 device. It handles:
@@ -52,10 +53,19 @@ type Session struct {
 
 	// Write serialisation.
 	writeMu sync.Mutex
+
+	// Optional traffic capture for unit test data generation.
+	recorder *transport.Recorder
 }
 
 // AnnounceFunc is the callback signature for ACP2 announce subscriptions.
 type AnnounceFunc func(slot uint8, msg *ACP2Message)
+
+// SetRecorder attaches a traffic recorder to this session.
+// Call before Connect. All sent and received AN2 frames are recorded.
+func (s *Session) SetRecorder(rec *transport.Recorder) {
+	s.recorder = rec
+}
 
 // NewSession creates an uninitialised Session. Call Connect to establish
 // the TCP connection and run the AN2 handshake.
@@ -329,6 +339,10 @@ func (s *Session) sendFrame(ctx context.Context, f *AN2Frame) error {
 		"proto", f.Proto, "slot", f.Slot, "mtid", f.MTID, "type", f.Type,
 		"frame_hex", fmt.Sprintf("%x", data))
 
+	if s.recorder != nil {
+		s.recorder.Record("acp2", "tx", data)
+	}
+
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 
@@ -363,6 +377,13 @@ func (s *Session) readLoop() {
 			}
 			s.closeErr = err
 			return
+		}
+
+		// Record raw frame for capture (includes announces — tests need them).
+		if s.recorder != nil {
+			if raw, encErr := EncodeAN2Frame(frame); encErr == nil {
+				s.recorder.Record("acp2", "rx", raw)
+			}
 		}
 
 		// Log full frame hex for requests/replies; skip for ACP2 announces

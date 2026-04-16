@@ -94,6 +94,17 @@ type Plugin struct {
 	tcpListenerHandles []int
 
 	subHandles map[subKey]SubHandle
+
+	// Optional traffic capture for unit test data generation.
+	recorder *transport.Recorder
+}
+
+// SetRecorder attaches a traffic recorder to this plugin.
+// Call before Connect. All sent and received frames are recorded.
+func (p *Plugin) SetRecorder(rec *transport.Recorder) {
+	p.mu.Lock()
+	p.recorder = rec
+	p.mu.Unlock()
 }
 
 // SetTransport selects UDP or TCP for subsequent Connect calls. Must be
@@ -166,7 +177,11 @@ func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 		return &protocol.TransportError{Op: "connect", Err: err}
 	}
 	p.udpConn = conn
-	p.client = NewClient(conn, p.logger, ClientConfig{})
+	var tr Transport = conn
+	if p.recorder != nil {
+		tr = p.recorder.WrapTransport(conn, "acp1")
+	}
+	p.client = NewClient(tr, p.logger, ClientConfig{})
 
 	if l, lerr := NewListener(p.logger, port); lerr != nil {
 		p.logger.Warn("acp1 listener unavailable — Subscribe will fail",
@@ -188,6 +203,8 @@ func (p *Plugin) connectTCP(ctx context.Context, ip string, port int) error {
 		return &protocol.TransportError{Op: "connect", Err: err}
 	}
 	p.tcpConn = conn
+	// Note: TCP recording not yet supported — TCPClient takes *TCPConn directly.
+	// Recorder wraps the UDP path where it is used and tested.
 	p.client = NewTCPClient(conn, p.logger, ClientConfig{})
 	return nil
 }

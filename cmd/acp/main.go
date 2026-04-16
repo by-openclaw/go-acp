@@ -33,6 +33,7 @@ import (
 	"acp/internal/protocol"
 	"acp/internal/protocol/acp1"
 	"acp/internal/protocol/acp2"
+	"acp/internal/transport"
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.
@@ -182,19 +183,63 @@ COMMANDS`)
 		fmt.Printf("  %-16s %s\n", c.name, c.short)
 	}
 	fmt.Println(`
-GLOBAL FLAGS (accepted by all commands)
-  --protocol NAME    protocol plugin name (default: acp1)
-  --port N           override the plugin's default port (0 = default)
-  --timeout DUR      per-operation timeout (default: 30s, e.g. 10s, 2m)
+GLOBAL FLAGS (accepted by all commands that connect to a device)
+  --protocol NAME    protocol plugin: acp1 (default) | acp2
+  --transport MODE   transport: udp (default) | tcp  (ACP1 only)
+  --port N           override default port (0 = plugin default: 2071/2072)
+  --timeout DUR      per-operation timeout (default: 30s, e.g. 10s, 2m, 90s)
   --verbose          debug log output to stderr
+  --capture FILE     record raw traffic to JSONL file (for unit tests / replay)
 
-EXAMPLES
-  acp info    10.6.239.113
-  acp walk    10.6.239.113 --slot 1
-  acp get     10.6.239.113 --slot 1 --label GainA
-  acp set     10.6.239.113 --slot 1 --label GainA --value 50.0
-  acp watch   10.6.239.113 --verbose
-  acp help    get
+COMMAND-SPECIFIC FLAGS
+  info   (no extra flags)
+  walk   --slot N            target slot (required, or use --all)
+         --all               walk every present slot
+  get    --slot N            target slot (required)
+         --label L           object label (preferred, stable across firmware)
+         --group G           object group: identity|control|status|alarm|frame
+         --id I              object id within group
+  set    --slot N            target slot (required)
+         --label L | --group G --id I     object addressing
+         --value V           typed value (int, float, enum name, string, IP)
+         --raw HEX           raw wire bytes (escape hatch, bypasses type codec)
+  watch  --slot N            filter by slot (default: any)
+         --group G           filter by group (default: any)
+         --label L           filter by label (requires --slot)
+         --id I              filter by object id
+  export --format F          json (default) | yaml | csv
+         --out FILE          output file (default: stdout)
+  import --file PATH         snapshot file (json only, required)
+         --dry-run           preview without writing
+  discover
+         --duration DUR      scan window (default: 5s)
+         --active            send broadcast probe (default: true)
+         --scan-port N       ACP port (default: 2071)
+  diag   --slot N            target slot (default: 0)
+  list-protocols             (no flags)
+
+EXAMPLES — ACP1 (emulator / real device, UDP)
+  acp info     10.6.239.113
+  acp walk     10.6.239.113 --slot 0
+  acp walk     10.6.239.113 --all
+  acp get      10.6.239.113 --slot 1 --label GainA
+  acp get      10.6.239.113 --slot 1 --group control --id 91
+  acp set      10.6.239.113 --slot 1 --label GainA --value 50.0
+  acp set      10.6.239.113 --slot 0 --label Broadcasts --value On
+  acp watch    10.6.239.113 --slot 1 --group control
+  acp export   10.6.239.113 --format json --out device.json
+  acp import   10.6.239.113 --file device.json --dry-run
+  acp discover --duration 10s
+
+EXAMPLES — ACP2 (real device, AN2/TCP)
+  acp info     10.41.40.195 --protocol acp2
+  acp walk     10.41.40.195 --protocol acp2 --slot 0
+  acp walk     10.41.40.195 --protocol acp2 --all
+  acp diag     10.41.40.195 --slot 0
+
+EXAMPLES — traffic capture (for unit test data)
+  acp walk     10.6.239.113 --slot 0 --capture acp1_slot0.jsonl
+  acp walk     10.41.40.195 --protocol acp2 --slot 0 --capture acp2_slot0.jsonl
 
 Environment:
   No environment variables are read. All configuration is via flags.
@@ -207,6 +252,7 @@ Exit codes:
   5  bad flags
 
 See docs/protocols/ for the authoritative wire-format specifications.
+Use 'acp help <command>' for detailed help on any command.
 
 Copyright (c) 2026 BY-SYSTEMS SRL — https://www.by-systems.be`)
 }
@@ -398,6 +444,7 @@ type commonFlags struct {
 	port      int
 	timeout   time.Duration
 	verbose   bool
+	capture   string
 }
 
 func addCommonFlags(fs *flag.FlagSet) *commonFlags {
@@ -409,6 +456,7 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 	fs.IntVar(&cf.port, "port", 0, "override default port (0 = plugin default)")
 	fs.DurationVar(&cf.timeout, "timeout", 30*time.Second, "per-operation timeout")
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output")
+	fs.StringVar(&cf.capture, "capture", "", "write raw traffic to JSONL file (for unit test data)")
 	return cf
 }
 
@@ -426,11 +474,31 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: lvl}))
 
+	// Optional traffic capture for test data generation.
+	var recorder *transport.Recorder
+	if cf.capture != "" {
+		var recErr error
+		recorder, recErr = transport.NewRecorder(cf.capture)
+		if recErr != nil {
+			return nil, nil, fmt.Errorf("capture: %w", recErr)
+		}
+	}
+
 	factory, err := protocol.Get(cf.protocol)
 	if err != nil {
+		if recorder != nil {
+			_ = recorder.Close()
+		}
 		return nil, nil, err
 	}
 	plug := factory.New(logger)
+
+	// Attach recorder if --capture was given.
+	if recorder != nil {
+		if p, ok := plug.(interface{ SetRecorder(*transport.Recorder) }); ok {
+			p.SetRecorder(recorder)
+		}
+	}
 
 	// Transport selection is plugin-specific; cast when possible and
 	// apply. Protocols that don't expose SetTransport just ignore it.
@@ -455,7 +523,12 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 	if err := plug.Connect(dialCtx, host, port); err != nil {
 		return nil, nil, err
 	}
-	cleanup := func() { _ = plug.Disconnect() }
+	cleanup := func() {
+		_ = plug.Disconnect()
+		if recorder != nil {
+			_ = recorder.Close()
+		}
+	}
 	return plug, cleanup, nil
 }
 
@@ -1666,8 +1739,29 @@ func truncate(s string, n int) string {
 //
 // instead of being forced to put flags before positional args.
 func popHost(args []string) (string, []string, error) {
+	// Skip flags AND their values. A flag like "--capture FILE" means
+	// the next arg is the flag's value, not the host. Flags that use
+	// "=" syntax (--capture=FILE) are handled by the HasPrefix check.
+	// Boolean flags (--verbose, --all, --dry-run, --active) have no
+	// separate value arg.
+	boolFlags := map[string]bool{
+		"-verbose": true, "--verbose": true,
+		"-all": true, "--all": true,
+		"-dry-run": true, "--dry-run": true,
+		"-active": true, "--active": true,
+	}
+	skipNext := false
 	for i, a := range args {
+		if skipNext {
+			skipNext = false
+			continue
+		}
 		if strings.HasPrefix(a, "-") {
+			// If it's not a boolean flag AND doesn't use = syntax,
+			// the next arg is the flag's value — skip it too.
+			if !boolFlags[a] && !strings.Contains(a, "=") {
+				skipNext = true
+			}
 			continue
 		}
 		rest := make([]string, 0, len(args)-1)

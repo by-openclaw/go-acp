@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"acp/internal/protocol"
+	"acp/internal/transport"
 )
 
 // init registers the ACP2 plugin with the global protocol registry.
@@ -47,6 +48,9 @@ type Plugin struct {
 
 	// Announce subscription tracking.
 	subHandles map[subKey]int // subKey → session announce subscription ID
+
+	// Optional traffic capture.
+	recorder *transport.Recorder
 }
 
 // subKey canonicalises a ValueRequest for map lookup.
@@ -60,6 +64,13 @@ func reqToSubKey(req protocol.ValueRequest) subKey {
 	return subKey{req.Slot, req.Label, req.ID}
 }
 
+// SetRecorder attaches a traffic recorder. Call before Connect.
+func (p *Plugin) SetRecorder(rec *transport.Recorder) {
+	p.mu.Lock()
+	p.recorder = rec
+	p.mu.Unlock()
+}
+
 // Connect establishes the AN2/TCP connection and runs the full handshake:
 // AN2 GetVersion, GetDeviceInfo, GetSlotInfo, EnableProtocolEvents, ACP2 GetVersion.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
@@ -71,6 +82,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	s := NewSession(p.logger)
+	if p.recorder != nil {
+		s.SetRecorder(p.recorder)
+	}
 	if err := s.Connect(ctx, ip, port); err != nil {
 		return err
 	}

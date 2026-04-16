@@ -138,7 +138,12 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 	var numType NumberType
 	var children []uint32
 	var optionsMap map[uint32]string
+	var valueProp *Property // deferred — options may come after value on the wire
 
+	// First pass: collect metadata, options, constraints, children.
+	// Value decode is deferred because pid=8 often arrives before pid=15
+	// (options) in the get_object reply, and enum label resolution needs
+	// the options map.
 	for i := range props {
 		p := &props[i]
 		switch p.PID {
@@ -174,8 +179,7 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 			}
 
 		case PIDValue:
-			// Decode the value based on object type and number type.
-			w.decodeValue(p, objType, numType, &obj, optionsMap)
+			valueProp = p // defer until options are collected
 
 		case PIDDefaultValue:
 			w.decodeConstraint(p, objType, numType, &obj, "default")
@@ -214,6 +218,11 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 		case PIDEventMessages:
 			obj.AlarmOnMsg, obj.AlarmOffMsg = PropertyEventMessages(p)
 		}
+	}
+
+	// Second pass: decode value now that options map is available.
+	if valueProp != nil {
+		w.decodeValue(valueProp, objType, numType, &obj, optionsMap)
 	}
 
 	// Build Path from parent path + this object's label.
