@@ -147,13 +147,17 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 	s.logger.Debug("acp2: device info", "slots", s.numSlots)
 
 	// 3. AN2 GetSlotInfo per slot
-	s.slotStatus = make([]protocol.SlotStatus, s.numSlots)
-	for slot := 0; slot < s.numSlots; slot++ {
+	// AN2 GetDeviceInfo returns the number of card slots in the frame.
+	// Card slots are numbered 1..N (slot 0 = rack controller, not a card).
+	// We query slots 0..N to cover the controller + all cards.
+	totalSlots := s.numSlots + 1 // include slot 0 (controller)
+	s.slotStatus = make([]protocol.SlotStatus, totalSlots)
+	for slot := 0; slot < totalSlots; slot++ {
 		s.logger.Debug("acp2: AN2 GetSlotInfo", "slot", slot)
 		payload := []byte{byte(slot)}
 		reply, err = s.an2Request(ctx, AN2FuncGetSlotInfo, byte(slot), payload)
 		if err != nil {
-			s.logger.Warn("acp2: GetSlotInfo failed", "slot", slot, "err", err)
+			s.logger.Debug("acp2: GetSlotInfo failed", "slot", slot, "err", err)
 			continue
 		}
 		if len(reply) >= 1 {
@@ -308,6 +312,9 @@ func (s *Session) sendFrame(ctx context.Context, f *AN2Frame) error {
 	if err != nil {
 		return err
 	}
+	s.logger.Debug("acp2: sendFrame",
+		"proto", f.Proto, "slot", f.Slot, "mtid", f.MTID, "type", f.Type,
+		"frame_hex", fmt.Sprintf("%x", data))
 
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -348,7 +355,8 @@ func (s *Session) readLoop() {
 		s.logger.Debug("acp2: reader: frame",
 			"proto", frame.Proto, "slot", frame.Slot,
 			"mtid", frame.MTID, "type", frame.Type,
-			"dlen", len(frame.Payload))
+			"dlen", len(frame.Payload),
+			"payload_hex", fmt.Sprintf("%x", frame.Payload))
 
 		switch frame.Proto {
 		case AN2ProtoInternal:
