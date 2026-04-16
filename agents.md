@@ -198,11 +198,24 @@ Typed encode/decode on the value codec. LRU+TTL tree cache with live
 event updates. Announcement listener with SO_REUSEADDR multi-instance.
 TCP direct transport code complete but untested (emulator is UDP-only).
 
+**ACP2 — walk + connect working against real hardware.** Verified against
+Axon SHPRM1 at `10.41.40.195` (AN2/TCP port 2072). Branch: `feat/acp2`.
+- AN2 handshake (GetVersion, GetDeviceInfo, GetSlotInfo, EnableProtocolEvents)
+- ACP2 GetVersion, GetObject (DFS tree walk via pid=14 children)
+- Root obj-id=1 (ROOT_NODE_V2), fallback to 0
+- Slot 0: 214 objects, ~800ms. Slot 1: 4190 objects (CONVERT Hybrid), ~4.5s
+- Announce log suppression (SDP payloads 668-888 bytes, skipped from --verbose)
+- Enum options: variable-length wire format u32(idx) + null-terminated string + 4-byte pad
+- Enum value: full u32, resolved via options map
+- Diag command for protocol probing
+- Known gap: slot 1 walk hits 5s timeout on last ~100 children
+- Known gap: some enum items may have label ordering edge cases on massive trees
+
 **CLI commands implemented**:
 
 ```
 acp info <host>                                   device metadata + slot status
-acp walk <host> --slot N                          walk one slot
+acp walk <host> --slot N                          walk one slot (acp1 + acp2)
 acp walk <host> --all                             walk every present slot
 acp get <host> --slot N --label L                 typed read (ranges, units)
 acp set <host> --slot N --label L --value V       typed write (clamp-safe)
@@ -210,15 +223,17 @@ acp watch <host> [filters]                        live UDP announcements
 acp discover [--duration DUR] [--active]          LAN scan (same subnet only)
 acp export <host> --format json|yaml|csv          dump walked device
 acp import <host> --file X.json [--dry-run]       apply values from snapshot
+acp diag <host> --slot N                          ACP2 protocol diagnostic probes
 acp list-protocols                                registered plugins
 acp help [command]                                per-command help pages
 ```
 
-**CLI global flags**: `--protocol acp1` (default) `--transport udp|tcp`
+**CLI global flags**: `--protocol acp1|acp2` (default acp1) `--transport udp|tcp`
 `--port N` `--timeout DUR` `--verbose`.
 
 **Pending for this repo**:
-- ACP2 plugin (AN2/TCP, separate codec + walker + pid-based alignment)
+- ACP2 getValue/setValue via get_property/set_property
+- Walk timeout configuration for large trees
 - `acp-srv` REST + WebSocket API (consumes `protocol.Object` directly)
 - File-backed device registry + per-slot cache on disk under `%APPDATA%\acp\`
 
