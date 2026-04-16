@@ -1,0 +1,36 @@
+# Binaries
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build cache
+*.test
+*.out
+*.prof
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets — never commit
+ci-github-rune.json
+*.pem
+*.key
+.env
+.env.*
+
+# Temp
+/tmp/

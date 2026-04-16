@@ -1,0 +1,93 @@
+name: Task
+description: Approved work item
+labels: ["task"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - feat — new feature
+        - fix — bug fix
+        - docs — documentation
+        - chore — maintenance / refactor
+        - security — hardening
+        - test — test only
+    validations:
+      required: true
+
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: Protocol / area
+      options:
+        - acp1 — ACP v1.4
+        - acp2 — ACP v2
+        - transport — UDP/TCP/AN2
+        - export — JSON/YAML/CSV
+        - cli — command-line interface
+        - api — REST/WebSocket server
+        - core — protocol registry, shared types
+        - ci — CI/CD, workflows
+        - cross-cutting — multiple areas
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - critical — blocks release
+        - high — needed this sprint
+        - medium — needed this phase
+        - low — backlog
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope of work
+      description: |
+        What exactly needs to be done? Include:
+        - Package name and functions
+        - Expected files (full paths)
+        - What's IN scope and what's OUT
+      placeholder: |
+        Package: internal/protocol/acp2/
+        Functions: Decode, Encode, DecodeProperty
+        Files:
+          - internal/protocol/acp2/codec.go
+          - internal/protocol/acp2/property_codec.go
+          - tests/unit/acp2/codec_spec_test.go
+        IN: ACP2 message + property codec
+        OUT: walker, plugin wiring (separate task)
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of Done
+      placeholder: |
+        - [ ] Code with all functions
+        - [ ] Unit tests in tests/unit/{proto}/ (black-box, exported API)
+        - [ ] Internal tests in internal/protocol/{proto}/ (white-box)
+        - [ ] go vet clean
+        - [ ] golangci-lint clean
+        - [ ] go test -count=1 ./... passes (no regression)
+        - [ ] Verified against live device or emulator
+    validations:
+      required: true
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Files affected (full paths)
+      placeholder: |
+        - internal/protocol/acp2/codec.go (new)
+        - tests/unit/acp2/codec_spec_test.go (new)
+        - CHANGELOG.md (update)
+    validations:
+      required: true

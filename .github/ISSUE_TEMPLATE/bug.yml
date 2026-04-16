@@ -1,0 +1,66 @@
+name: Bug Report
+description: Something is broken or behaving unexpectedly
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - critical — service down or data loss
+        - high — feature broken, workaround exists
+        - medium — incorrect behavior, low impact
+        - low — cosmetic or edge case
+    validations:
+      required: true
+
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: Protocol
+      options:
+        - acp1 — ACP v1.4 (UDP/TCP direct)
+        - acp2 — ACP v2 (AN2/TCP)
+        - transport — UDP/TCP/AN2 framer
+        - export — JSON/YAML/CSV serialization
+        - cli — command-line interface
+        - core — protocol registry, shared types
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug. Include error messages and CLI output.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `acp walk 10.6.239.113 --slot 1`
+        2. See error: "..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        OS: Windows 11 / Ubuntu 24.04
+        Go: 1.26.2
+        Device: Synapse Simulator 10.6.239.113
+        acp version: v0.1.0 (commit abc1234)
+    validations:
+      required: false

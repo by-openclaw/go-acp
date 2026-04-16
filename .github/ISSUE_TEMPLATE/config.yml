@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Protocol spec question
+    url: https://github.com/by-openclaw/go-acp/tree/main/docs/protocols
+    about: Check the protocol docs before filing a spec question

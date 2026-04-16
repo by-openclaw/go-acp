@@ -1,0 +1,2284 @@
+{
+  "device": {
+    "ip": "10.6.239.113",
+    "port": 2071,
+    "protocol": "acp1",
+    "protocol_version": 1,
+    "num_slots": 31
+  },
+  "slots": [
+    {
+      "slot": 0,
+      "status": "present",
+      "walked_at": "2026-04-16T10:00:25.8963848Z",
+      "objects": [
+        {
+          "slot": 0,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 0,
+          "label": "Card name",
+          "kind": "string",
+          "access": 1,
+          "max_len": 8,
+          "value": {
+            "kind": "string",
+            "str": "RRS18"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 1,
+          "label": "User label",
+          "kind": "string",
+          "access": 3,
+          "max_len": 16,
+          "value": {
+            "kind": "string",
+            "str": "Synapse Simulator"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 2,
+          "label": "Card description",
+          "kind": "string",
+          "access": 1,
+          "max_len": 32,
+          "value": {
+            "kind": "string",
+            "str": "Virtual Rack Controller"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 3,
+          "label": "Software rev",
+          "kind": "string",
+          "access": 1,
+          "max_len": 4,
+          "value": {
+            "kind": "string",
+            "str": "1601"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 4,
+          "label": "Hardware rev",
+          "kind": "string",
+          "access": 1,
+          "max_len": 4,
+          "value": {
+            "kind": "string",
+            "str": "0100"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 5,
+          "label": "Product code",
+          "kind": "string",
+          "access": 1,
+          "max_len": 10,
+          "value": {
+            "kind": "string",
+            "str": "9410070001"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 6,
+          "label": "Serial number",
+          "kind": "string",
+          "access": 1,
+          "max_len": 6,
+          "value": {
+            "kind": "string",
+            "str": "001633"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 7,
+          "label": "Card ID",
+          "kind": "string",
+          "access": 1,
+          "max_len": 16,
+          "value": {
+            "kind": "string",
+            "str": "71ef060a00000000"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 0,
+          "label": "IP_Conf",
+          "kind": "enum",
+          "access": 3,
+          "default": 1,
+          "enum_items": [
+            "Manual",
+            "DHCP"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "DHCP",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 1,
+          "label": "mIP",
+          "kind": "ipaddr",
+          "access": 3,
+          "min": 0,
+          "max": 4294967295,
+          "default": 0,
+          "value": {
+            "kind": "ipaddr",
+            "ip": "10.5.4.125"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 2,
+          "label": "mNM",
+          "kind": "ipaddr",
+          "access": 3,
+          "min": 0,
+          "max": 4294967295,
+          "default": 0,
+          "value": {
+            "kind": "ipaddr",
+            "ip": "255.255.255.0"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 3,
+          "label": "mGW",
+          "kind": "ipaddr",
+          "access": 3,
+          "min": 0,
+          "max": 4294967295,
+          "default": 0,
+          "value": {
+            "kind": "ipaddr",
+            "ip": "0.0.0.0"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 4,
+          "label": "Broadcasts",
+          "kind": "enum",
+          "access": 3,
+          "default": 1,
+          "enum_items": [
+            "Off",
+            "On"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "On",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 5,
+          "label": "Forwarding",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "Off",
+            "On"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Off",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 6,
+          "label": "FW",
+          "kind": "ipaddr",
+          "access": 3,
+          "min": 0,
+          "max": 4294967295,
+          "default": 0,
+          "value": {
+            "kind": "ipaddr",
+            "ip": "0.0.0.0"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 7,
+          "label": "NetwPrefix",
+          "unit": "bits",
+          "kind": "uint",
+          "access": 3,
+          "min": 0,
+          "max": 32,
+          "step": 1,
+          "default": 0,
+          "value": {
+            "kind": "uint",
+            "uint": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 8,
+          "label": "ErrorThreshold",
+          "kind": "uint",
+          "access": 3,
+          "min": 0,
+          "max": 255,
+          "step": 1,
+          "default": 10,
+          "value": {
+            "kind": "uint",
+            "uint": 10
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 9,
+          "label": "Redund_Pwr_Test",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "Off",
+            "On"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "On",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 10,
+          "label": "Trap-Dest_0",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "Off",
+            "On"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "On",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 11,
+          "label": "TD_0",
+          "kind": "ipaddr",
+          "access": 3,
+          "min": 0,
+          "max": 4294967295,
+          "default": 0,
+          "value": {
+            "kind": "ipaddr",
+            "ip": "10.6.239.113"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 12,
+          "label": "Trap-Dest_1",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "Off",
+            "On"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "On",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 0,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 13,
+          "label": "TD_1",
+          "kind": "ipaddr",
+          "access": 3,
+          "min": 0,
+          "max": 4294967295,
+          "default": 0,
+          "value": {
+            "kind": "ipaddr",
+            "ip": "10.100.0.101"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 0,
+          "label": "IP_Addr",
+          "kind": "enum",
+          "access": 1,
+          "default": 1,
+          "enum_items": [
+            "Manual",
+            "DHCP-Asking",
+            "DHCP-Leased",
+            "DHCP-Infin."
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "DHCP-Asking",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 1,
+          "label": "IP",
+          "kind": "ipaddr",
+          "access": 1,
+          "min": 0,
+          "max": 4294967295,
+          "default": 0,
+          "value": {
+            "kind": "ipaddr",
+            "ip": "0.0.0.0"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 2,
+          "label": "NM",
+          "kind": "ipaddr",
+          "access": 1,
+          "min": 0,
+          "max": 4294967295,
+          "default": 0,
+          "value": {
+            "kind": "ipaddr",
+            "ip": "0.0.0.0"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 3,
+          "label": "GW",
+          "kind": "ipaddr",
+          "access": 1,
+          "min": 0,
+          "max": 4294967295,
+          "default": 0,
+          "value": {
+            "kind": "ipaddr",
+            "ip": "0.0.0.0"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 4,
+          "label": "PSU_Top",
+          "kind": "enum",
+          "access": 1,
+          "default": 1,
+          "enum_items": [
+            "NA",
+            "OK"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "OK",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 5,
+          "label": "PSU_Bottom",
+          "kind": "enum",
+          "access": 1,
+          "default": 1,
+          "enum_items": [
+            "NA",
+            "OK"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "OK",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 6,
+          "label": "Temp_Left",
+          "unit": "deg.C",
+          "kind": "int",
+          "access": 1,
+          "min": -128,
+          "max": 127,
+          "step": 1,
+          "default": 24,
+          "value": {
+            "kind": "int",
+            "int": 24
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 7,
+          "label": "Temp_Right",
+          "unit": "deg.C",
+          "kind": "int",
+          "access": 1,
+          "min": -128,
+          "max": 127,
+          "step": 1,
+          "default": 27,
+          "value": {
+            "kind": "int",
+            "int": 27
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 8,
+          "label": "SPF_Progress",
+          "unit": "%",
+          "kind": "float",
+          "access": 1,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "default": 0,
+          "value": {
+            "kind": "float",
+            "float": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 9,
+          "label": "SPF_Status",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "Idle",
+            "Busy",
+            "Done",
+            "Error"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Idle",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 10,
+          "label": "Rx_Packet_Loss",
+          "kind": "int",
+          "access": 1,
+          "min": 0,
+          "max": 32767,
+          "step": 1,
+          "default": 0,
+          "value": {
+            "kind": "int",
+            "int": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 11,
+          "label": "Redund_Ref_Pwr",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "OK"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 12,
+          "label": "MIB_S0",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "RRS18v16   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 13,
+          "label": "MIB_S1",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "CDV08v06   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 14,
+          "label": "MIB_S2",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "ASV10v12   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 15,
+          "label": "MIB_S3",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "ADC24v07   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 16,
+          "label": "MIB_S4",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "ADC24v07   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 17,
+          "label": "MIB_S5",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "ASM10v03   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 18,
+          "label": "MIB_S6",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "ADC24v07   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 19,
+          "label": "MIB_S7",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "ADC24v07   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 20,
+          "label": "MIB_S8",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "SDR08v05   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 21,
+          "label": "MIB_S9",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "SIM21v04   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 22,
+          "label": "MIB_S10",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "SAM08v07   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 23,
+          "label": "MIB_S11",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "DAC24v04   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 24,
+          "label": "MIB_S12",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "AAD08v02   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 25,
+          "label": "MIB_S13",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "AAD08v04   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 26,
+          "label": "MIB_S14",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "empty"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 27,
+          "label": "MIB_S15",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "empty"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 28,
+          "label": "MIB_S16",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "empty"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 29,
+          "label": "MIB_S17",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "empty"
+          }
+        },
+        {
+          "slot": 0,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 30,
+          "label": "MIB_S18",
+          "kind": "string",
+          "access": 1,
+          "max_len": 11,
+          "value": {
+            "kind": "string",
+            "str": "HQW09v22   "
+          }
+        },
+        {
+          "slot": 0,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 0,
+          "label": "Announcements",
+          "kind": "alarm",
+          "access": 3,
+          "alarm_priority": 1,
+          "value": {
+            "kind": "uint",
+            "uint": 1
+          }
+        },
+        {
+          "slot": 0,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 1,
+          "label": "PSU_T",
+          "kind": "alarm",
+          "access": 3,
+          "value": {
+            "kind": "uint",
+            "uint": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 2,
+          "label": "PSU_B",
+          "kind": "alarm",
+          "access": 3,
+          "value": {
+            "kind": "uint",
+            "uint": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 3,
+          "label": "Temperature",
+          "kind": "alarm",
+          "access": 3,
+          "value": {
+            "kind": "uint",
+            "uint": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 4,
+          "label": "Ref_Backup",
+          "kind": "alarm",
+          "access": 3,
+          "value": {
+            "kind": "uint",
+            "uint": 0
+          }
+        },
+        {
+          "slot": 0,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 5,
+          "label": "Card-Presence",
+          "kind": "alarm",
+          "access": 3,
+          "value": {
+            "kind": "uint",
+            "uint": 0
+          }
+        }
+      ]
+    },
+    {
+      "slot": 9,
+      "status": "present",
+      "walked_at": "2026-04-16T10:00:25.9058219Z",
+      "objects": [
+        {
+          "slot": 9,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 0,
+          "label": "Card name",
+          "kind": "string",
+          "access": 1,
+          "max_len": 8,
+          "value": {
+            "kind": "string",
+            "str": "SDB20"
+          }
+        },
+        {
+          "slot": 9,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 1,
+          "label": "User label",
+          "kind": "string",
+          "access": 3,
+          "max_len": 16,
+          "value": {
+            "kind": "string",
+            "str": "Audio De-embedder"
+          }
+        },
+        {
+          "slot": 9,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 2,
+          "label": "Card description",
+          "kind": "string",
+          "access": 1,
+          "max_len": 32,
+          "value": {
+            "kind": "string",
+            "str": "SDB20-0806.html"
+          }
+        },
+        {
+          "slot": 9,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 3,
+          "label": "Software rev",
+          "kind": "string",
+          "access": 1,
+          "max_len": 4,
+          "value": {
+            "kind": "string",
+            "str": "0806"
+          }
+        },
+        {
+          "slot": 9,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 4,
+          "label": "Hardware rev",
+          "kind": "string",
+          "access": 1,
+          "max_len": 4,
+          "value": {
+            "kind": "string",
+            "str": "0101"
+          }
+        },
+        {
+          "slot": 9,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 5,
+          "label": "Product code",
+          "kind": "string",
+          "access": 1,
+          "max_len": 10,
+          "value": {
+            "kind": "string",
+            "str": "9460020001"
+          }
+        },
+        {
+          "slot": 9,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 6,
+          "label": "Serial number",
+          "kind": "string",
+          "access": 1,
+          "max_len": 6,
+          "value": {
+            "kind": "string",
+            "str": "000604"
+          }
+        },
+        {
+          "slot": 9,
+          "group": "identity",
+          "path": [
+            "identity"
+          ],
+          "id": 7,
+          "label": "Card ID",
+          "kind": "string",
+          "access": 1,
+          "max_len": 16,
+          "value": {
+            "kind": "string",
+            "str": "71ef060a0000001f"
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 0,
+          "label": "Out_1",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_1",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 1,
+          "label": "Out_2",
+          "kind": "enum",
+          "access": 3,
+          "default": 1,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_2",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 2,
+          "label": "Out_3",
+          "kind": "enum",
+          "access": 3,
+          "default": 2,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_3",
+            "enum": 2
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 3,
+          "label": "Out_4",
+          "kind": "enum",
+          "access": 3,
+          "default": 3,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_4",
+            "enum": 3
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 4,
+          "label": "AddOn_A1",
+          "kind": "enum",
+          "access": 3,
+          "default": 4,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_5",
+            "enum": 4
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 5,
+          "label": "AddOn_A2",
+          "kind": "enum",
+          "access": 3,
+          "default": 5,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_6",
+            "enum": 5
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 6,
+          "label": "AddOn_A3",
+          "kind": "enum",
+          "access": 3,
+          "default": 6,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_7",
+            "enum": 6
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 7,
+          "label": "AddOn_A4",
+          "kind": "enum",
+          "access": 3,
+          "default": 7,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_8",
+            "enum": 7
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 8,
+          "label": "AddOn_B1",
+          "kind": "enum",
+          "access": 3,
+          "default": 8,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_9",
+            "enum": 8
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 9,
+          "label": "AddOn_B2",
+          "kind": "enum",
+          "access": 3,
+          "default": 9,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_10",
+            "enum": 9
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 10,
+          "label": "AddOn_B3",
+          "kind": "enum",
+          "access": 3,
+          "default": 10,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_11",
+            "enum": 10
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 11,
+          "label": "AddOn_B4",
+          "kind": "enum",
+          "access": 3,
+          "default": 11,
+          "enum_items": [
+            "Ch_1",
+            "Ch_2",
+            "Ch_3",
+            "Ch_4",
+            "Ch_5",
+            "Ch_6",
+            "Ch_7",
+            "Ch_8",
+            "Ch_9",
+            "Ch_10",
+            "Ch_11",
+            "Ch_12",
+            "Ch_13",
+            "Ch_14",
+            "Ch_15",
+            "Ch_16"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ch_12",
+            "enum": 11
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 12,
+          "label": "Gain-Ch_1",
+          "unit": "dB",
+          "kind": "float",
+          "access": 3,
+          "min": -999,
+          "max": 12,
+          "step": 1,
+          "default": 0,
+          "value": {
+            "kind": "float",
+            "float": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 13,
+          "label": "Gain-Ch_2",
+          "unit": "dB",
+          "kind": "float",
+          "access": 3,
+          "min": -999,
+          "max": 12,
+          "step": 1,
+          "default": 0,
+          "value": {
+            "kind": "float",
+            "float": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 14,
+          "label": "Gain-Ch_3",
+          "unit": "dB",
+          "kind": "float",
+          "access": 3,
+          "min": -999,
+          "max": 12,
+          "step": 1,
+          "default": 0,
+          "value": {
+            "kind": "float",
+            "float": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 15,
+          "label": "Gain-Ch_4",
+          "unit": "dB",
+          "kind": "float",
+          "access": 3,
+          "min": -999,
+          "max": 12,
+          "step": 1,
+          "default": 0,
+          "value": {
+            "kind": "float",
+            "float": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 16,
+          "label": "Phase-Ch_1",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "0 deg",
+            "180 deg"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "0 deg",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 17,
+          "label": "Phase-Ch_2",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "0 deg",
+            "180 deg"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "0 deg",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 18,
+          "label": "Phase-Ch_3",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "0 deg",
+            "180 deg"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "0 deg",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 19,
+          "label": "Phase-Ch_4",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "0 deg",
+            "180 deg"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "0 deg",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 20,
+          "label": "Out_1/2",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "Stereo",
+            "Mono"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Stereo",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 21,
+          "label": "Out_3/4",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "Stereo",
+            "Mono"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Stereo",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "control",
+          "path": [
+            "control"
+          ],
+          "id": 22,
+          "label": "EDH-Det",
+          "kind": "enum",
+          "access": 3,
+          "default": 0,
+          "enum_items": [
+            "Active-P",
+            "Full-F"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Active-P",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 0,
+          "label": "SDI-Input",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "Present"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 1,
+          "label": "GrpInUse",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "____",
+            "1___",
+            "_2__",
+            "12__",
+            "__3_",
+            "1_3_",
+            "_23_",
+            "123_",
+            "___4",
+            "1__4",
+            "_2_4",
+            "12_4",
+            "__34",
+            "1_34",
+            "_234",
+            "1234"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "____",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 2,
+          "label": "Audio-Ch_1",
+          "kind": "enum",
+          "access": 1,
+          "default": 1,
+          "enum_items": [
+            "NA",
+            "NA",
+            "Ok",
+            "Clipped"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 3,
+          "label": "Audio-Ch_2",
+          "kind": "enum",
+          "access": 1,
+          "default": 1,
+          "enum_items": [
+            "NA",
+            "NA",
+            "Ok",
+            "Clipped"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 4,
+          "label": "Audio-Ch_3",
+          "kind": "enum",
+          "access": 1,
+          "default": 1,
+          "enum_items": [
+            "NA",
+            "NA",
+            "Ok",
+            "Clipped"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 5,
+          "label": "Audio-Ch_4",
+          "kind": "enum",
+          "access": 1,
+          "default": 1,
+          "enum_items": [
+            "NA",
+            "NA",
+            "Ok",
+            "Clipped"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 6,
+          "label": "Audio_A1",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "Ok"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 7,
+          "label": "Audio_A2",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "Ok"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 8,
+          "label": "Audio_A3",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "Ok"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 9,
+          "label": "Audio_A4",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "Ok"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 10,
+          "label": "Audio_B1",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "Ok"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 11,
+          "label": "Audio_B2",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "Ok"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 12,
+          "label": "Audio_B3",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "Ok"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 13,
+          "label": "Audio_B4",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "NA",
+            "Ok"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 14,
+          "label": "ANC-Stat",
+          "kind": "enum",
+          "access": 1,
+          "default": 1,
+          "enum_items": [
+            "NA",
+            "NA",
+            "Ok",
+            "Error"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "NA",
+            "enum": 1
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 15,
+          "label": "EDH-Stat",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "Ok",
+            "UES",
+            "EDA",
+            "EDH"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ok",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "status",
+          "path": [
+            "status"
+          ],
+          "id": 16,
+          "label": "FPGA-Stat",
+          "kind": "enum",
+          "access": 1,
+          "default": 0,
+          "enum_items": [
+            "Ok",
+            "Error"
+          ],
+          "value": {
+            "kind": "enum",
+            "str": "Ok",
+            "enum": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 0,
+          "label": "Announcements",
+          "kind": "alarm",
+          "access": 3,
+          "alarm_priority": 1,
+          "value": {
+            "kind": "uint",
+            "uint": 1
+          }
+        },
+        {
+          "slot": 9,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 1,
+          "label": "Input",
+          "kind": "alarm",
+          "access": 3,
+          "value": {
+            "kind": "uint",
+            "uint": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 2,
+          "label": "EDH-Status",
+          "kind": "alarm",
+          "access": 3,
+          "value": {
+            "kind": "uint",
+            "uint": 0
+          }
+        },
+        {
+          "slot": 9,
+          "group": "alarm",
+          "path": [
+            "alarm"
+          ],
+          "id": 3,
+          "label": "ANC-Status",
+          "kind": "alarm",
+          "access": 3,
+          "value": {
+            "kind": "uint",
+            "uint": 0
+          }
+        }
+      ]
+    }
+  ],
+  "generator": "acp dev",
+  "created_at": "2026-04-16T10:00:25.8835906Z"
+}

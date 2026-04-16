@@ -1,0 +1,41 @@
+name: Feature Request
+description: Propose a new feature or enhancement
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - protocol — new protocol plugin or codec change
+        - transport — UDP/TCP/AN2 layer
+        - cli — new command or flag
+        - export — JSON/YAML/CSV format change
+        - api — REST/WebSocket server
+        - docs — documentation, examples
+        - ci — CI/CD, workflows, automation
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What problem does this solve? Why is it needed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How should this work? Include CLI examples if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false

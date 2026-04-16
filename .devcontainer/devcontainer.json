@@ -1,0 +1,52 @@
+{
+  "name": "acp",
+  "image": "mcr.microsoft.com/devcontainers/go:1.22-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "anthropic.claude-code"
+      ],
+      "settings": {
+        "go.useLanguageServer": true,
+        "go.lintTool": "golangci-lint",
+        "go.lintOnSave": "package",
+        "go.formatTool": "goimports",
+        "[go]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": { "source.organizeImports": "explicit" }
+        },
+        "editor.rulers": [100],
+        "files.eol": "\n"
+      }
+    }
+  },
+
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/acp",
+
+  // ACP UDP 2071, ACP2/AN2 TCP 2072, acp-srv HTTP 8080.
+  // Note: UDP forwarding from Windows host into the container is flaky;
+  // for real device traffic use --network=host on Linux, or connect the
+  // container directly to your Windows LAN with a published UDP port.
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": { "label": "acp-srv" }
+  }
+}
