@@ -262,6 +262,20 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		return protocol.Value{}, err
 	}
 
+	// If no tree → type unknown. Fetch object metadata via get_object
+	// (same pattern as GetValue).
+	if objType == 0 && tree == nil {
+		var miniTree *WalkedTree
+		objType, numType, miniTree, err = p.fetchObjectMeta(ctx, s, uint8(req.Slot), objID)
+		if err != nil {
+			return protocol.Value{}, err
+		}
+		tree = miniTree
+		if len(miniTree.Objects) > 0 {
+			obj = &miniTree.Objects[0]
+		}
+	}
+
 	// Build the value property for the set request.
 	prop, err := encodeSetProperty(objType, numType, obj, val)
 	if err != nil {
