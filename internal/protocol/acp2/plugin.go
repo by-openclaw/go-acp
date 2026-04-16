@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -412,18 +413,22 @@ func decodePropertyValue(p *Property, objType ACP2ObjType, numType NumberType, t
 
 	case ObjTypeEnum, ObjTypePreset:
 		if len(p.Data) >= 4 {
-			idx := p.Data[3]
+			fullIdx := binary.BigEndian.Uint32(p.Data[0:4])
 			ev := protocol.Value{
 				Kind: protocol.KindEnum,
-				Enum: idx,
-				Uint: uint64(idx),
+				Enum: uint8(fullIdx),
+				Uint: uint64(fullIdx),
 				Raw:  p.Data,
 			}
-			// Try to resolve enum name from tree.
+			// Try to resolve enum name from tree's options map.
 			if tree != nil {
-				for _, obj := range tree.Objects {
-					if obj.ID == int(objID) && int(idx) < len(obj.EnumItems) {
-						ev.Str = obj.EnumItems[idx]
+				for i, obj := range tree.Objects {
+					if obj.ID == int(objID) {
+						if tree.OptionsMaps[i] != nil {
+							if label, ok := tree.OptionsMaps[i][fullIdx]; ok {
+								ev.Str = label
+							}
+						}
 						break
 					}
 				}

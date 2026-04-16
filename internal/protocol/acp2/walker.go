@@ -19,6 +19,8 @@ type WalkedTree struct {
 	ObjTypes []ACP2ObjType
 	// NumTypes parallels Objects — the NumberType for numeric objects.
 	NumTypes []NumberType
+	// OptionsMaps parallels Objects — wire-index→label map for enum/preset objects.
+	OptionsMaps []map[uint32]string
 	// Labels maps label → index into Objects for label-based lookup.
 	Labels map[string]int
 }
@@ -99,7 +101,7 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 	}
 
 	// Parse properties from the reply.
-	obj, objType, numType, children := w.parseObjectProperties(msg.Properties, slot, objID, path)
+	obj, objType, numType, optMap, children := w.parseObjectProperties(msg.Properties, slot, objID, path)
 
 	// Add to tree (skip pure node containers from the flat list — they
 	// are structural only, not addressable objects with values).
@@ -108,6 +110,7 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 	tree.Objects = append(tree.Objects, obj)
 	tree.ObjTypes = append(tree.ObjTypes, objType)
 	tree.NumTypes = append(tree.NumTypes, numType)
+	tree.OptionsMaps = append(tree.OptionsMaps, optMap)
 	if obj.Label != "" {
 		tree.Labels[obj.Label] = idx
 	}
@@ -128,7 +131,7 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 }
 
 // parseObjectProperties extracts a protocol.Object from ACP2 property headers.
-func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32, parentPath []string) (protocol.Object, ACP2ObjType, NumberType, []uint32) {
+func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32, parentPath []string) (protocol.Object, ACP2ObjType, NumberType, map[uint32]string, []uint32) {
 	obj := protocol.Object{
 		Slot: slot,
 		ID:   int(objID),
@@ -225,6 +228,15 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 		w.decodeValue(valueProp, objType, numType, &obj, optionsMap)
 	}
 
+	// Resolve enum/preset default to label via optionsMap.
+	if (objType == ObjTypeEnum || objType == ObjTypePreset) && obj.Def != nil && optionsMap != nil {
+		if defIdx, ok := obj.Def.(uint64); ok {
+			if label, found := optionsMap[uint32(defIdx)]; found {
+				obj.Def = label
+			}
+		}
+	}
+
 	// Build Path from parent path + this object's label.
 	if obj.Label != "" {
 		obj.Path = append(parentPath, obj.Label)
@@ -248,7 +260,7 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 		obj.Kind = protocol.KindEnum // presets are enumeration-like
 	}
 
-	return obj, objType, numType, children
+	return obj, objType, numType, optionsMap, children
 }
 
 // decodeValue decodes a pid=8 (value) property into the Object's Value field.
@@ -318,6 +330,14 @@ func (w *Walker) decodeValue(p *Property, objType ACP2ObjType, numType NumberTyp
 
 // decodeConstraint decodes min/max/step/default properties.
 func (w *Walker) decodeConstraint(p *Property, objType ACP2ObjType, numType NumberType, obj *protocol.Object, which string) {
+	// Enum/preset: only default makes sense (u32 index).
+	if (objType == ObjTypeEnum || objType == ObjTypePreset) && which == "default" {
+		if len(p.Data) >= 4 {
+			obj.Def = uint64(binary.BigEndian.Uint32(p.Data[0:4]))
+		}
+		return
+	}
+
 	if objType != ObjTypeNumber {
 		return
 	}

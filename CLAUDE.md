@@ -29,11 +29,13 @@ any codec or framer code.
 
 ```
 docs/protocols/
-  AXON-ACP_v1_4.pdf        ACP v1 full specification (authoritative)
-  acp2_protocol.pdf         ACP v2 full specification (authoritative)
-  an2_protocol.pdf          AN2 (Axonnet2) transport specification (authoritative)
-  dissector_acpv1.lua       Wireshark dissector for ACP1 (byte-exact reference)
-  dissector_acp2.lua        Wireshark dissector for ACP2 (byte-exact reference)
+  acp1/
+    AXON-ACP_v1_4.pdf        ACP v1 full specification (authoritative)
+    dissector_acpv1.lua       Wireshark dissector for ACP1 (byte-exact reference)
+  acp2/
+    acp2_protocol.pdf         ACP v2 full specification (authoritative)
+    an2_protocol.pdf          AN2 (Axonnet2) transport specification (authoritative)
+    dissector_acp2.lua        Wireshark dissector for ACP2 (byte-exact reference)
 ```
 
 When any codec question arises: **spec first, dissector second, C# reference third**.

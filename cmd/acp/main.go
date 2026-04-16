@@ -195,6 +195,7 @@ COMMAND-SPECIFIC FLAGS
   info   (no extra flags)
   walk   --slot N            target slot (required, or use --all)
          --all               walk every present slot
+         --filter TEXT       case-insensitive filter on output (like grep -i)
   get    --slot N            target slot (required)
          --label L           object label (preferred, stable across firmware)
          --group G           object group: identity|control|status|alarm|frame
@@ -299,11 +300,14 @@ DESCRIPTION
 
 FLAGS
   --slot N           slot number (required)
+  --filter TEXT      case-insensitive filter on output lines (like findstr /i or grep -i)
 
 EXAMPLES
   acp walk 10.6.239.113 --slot 0        # rack controller
   acp walk 10.6.239.113 --slot 1        # first card
-  acp walk 10.6.239.113 --slot 1 --verbose`)
+  acp walk 10.6.239.113 --slot 1 --verbose
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --filter enum
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --filter "Fan Health"`)
 }
 
 func helpGet() {
@@ -584,6 +588,7 @@ func runWalk(ctx context.Context, args []string) error {
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", -1, "slot number (omit or pass -1 with --all to walk every present slot)")
 	all := fs.Bool("all", false, "walk every present slot on the device")
+	filter := fs.String("filter", "", "case-insensitive filter on output lines (like findstr /i or grep -i)")
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: acp walk <host> (--slot N | --all)")
@@ -630,7 +635,7 @@ func runWalk(ctx context.Context, args []string) error {
 				fmt.Printf("\nslot %d — walk error: %v\n", s, werr)
 				continue
 			}
-			printSlotTree(s, objs)
+			printSlotTree(s, objs, *filter)
 		}
 		fmt.Printf("\nwalked %d present slot(s)\n", walked)
 		return nil
@@ -640,27 +645,30 @@ func runWalk(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	printSlotTree(*slot, objs)
+	printSlotTree(*slot, objs, *filter)
 	return nil
 }
 
 // printSlotTree is the shared render helper used by `walk --slot N` and
 // `walk --all`. Moving it out of the runWalk body keeps the --all loop
 // readable.
-func printSlotTree(slot int, objs []protocol.Object) {
+func printSlotTree(slot int, objs []protocol.Object, filter string) {
 	fmt.Printf("\nslot %d — %d objects\n\n", slot, len(objs))
+	filterLower := strings.ToLower(filter)
 	// Group for a readable tree view. We rely on the walker returning
 	// objects in (identity, control, status, alarm) order.
 	var currentGroup string
 	for _, o := range objs {
-		if o.Group != currentGroup {
+		if o.Group != currentGroup && filter == "" {
 			fmt.Printf("\n[%s]\n", o.Group)
 			currentGroup = o.Group
 		}
 		if o.SubGroupMarker {
-			// Render section headers with visual separation and strip the
-			// leading-whitespace convention from the label.
-			fmt.Printf("\n  ── %s ──\n", strings.TrimSpace(o.Label))
+			if filter == "" {
+				// Render section headers with visual separation and strip the
+				// leading-whitespace convention from the label.
+				fmt.Printf("\n  ── %s ──\n", strings.TrimSpace(o.Label))
+			}
 			continue
 		}
 		// Format the current value captured during walk. For numeric
@@ -669,13 +677,21 @@ func printSlotTree(slot int, objs []protocol.Object) {
 		// is already type-aware.
 		valStr := walkValueColumn(o)
 		rngStr := walkRangeColumn(o)
-		fmt.Printf("  %3d  %-20s  %-6s  %-3s  %-18s  %s\n",
+		line := fmt.Sprintf("  %3d  %-20s  %-6s  %-3s  %-18s  %s",
 			o.ID,
 			truncate(o.Label, 20),
 			kindName(o.Kind),
 			accessStr(o.Access),
 			truncate(valStr, 18),
 			rngStr)
+		if filter != "" && !strings.Contains(strings.ToLower(line), filterLower) {
+			continue
+		}
+		if o.Group != currentGroup {
+			fmt.Printf("\n[%s]\n", o.Group)
+			currentGroup = o.Group
+		}
+		fmt.Println(line)
 	}
 }
 
@@ -944,8 +960,19 @@ func printObjectMeta(o protocol.Object) {
 		)
 
 	case protocol.KindEnum:
-		fmt.Printf("items = [%s]  (default idx %v)\n",
-			strings.Join(o.EnumItems, ", "), o.Def)
+		if o.Def != nil {
+			switch d := o.Def.(type) {
+			case string:
+				fmt.Printf("items = [%s]  (default %q)\n",
+					strings.Join(o.EnumItems, ", "), d)
+			default:
+				fmt.Printf("items = [%s]  (default idx %v)\n",
+					strings.Join(o.EnumItems, ", "), o.Def)
+			}
+		} else {
+			fmt.Printf("items = [%s]\n",
+				strings.Join(o.EnumItems, ", "))
+		}
 
 	case protocol.KindString:
 		fmt.Printf("max length = %d chars\n", o.MaxLen)
