@@ -304,10 +304,13 @@ func TestPropertyChildren(t *testing.T) {
 }
 
 func TestPropertyOptions(t *testing.T) {
-	// Build 2 options, each 72 bytes null-padded.
-	data := make([]byte, 144)
-	copy(data[0:], "Off\x00")
-	copy(data[72:], "On\x00")
+	// Real ACP2 wire format: u32_be(index) + null-terminated string + pad to 4-byte boundary.
+	// Option 0: idx=7, "Off\0" (4+4=8 bytes)
+	// Option 1: idx=8, "On\0\0" (4+4=8 bytes, "On\0" padded to 4)
+	data := []byte{
+		0x00, 0x00, 0x00, 0x07, 'O', 'f', 'f', 0x00,
+		0x00, 0x00, 0x00, 0x08, 'O', 'n', 0x00, 0x00,
+	}
 
 	p := &Property{PID: PIDOptions, Data: data}
 	opts := PropertyOptions(p)
@@ -316,6 +319,18 @@ func TestPropertyOptions(t *testing.T) {
 	}
 	if opts[0] != "Off" || opts[1] != "On" {
 		t.Errorf("options: got %v, want [Off, On]", opts)
+	}
+
+	// Also test the map variant.
+	m := PropertyOptionsMap(p)
+	if len(m) != 2 {
+		t.Fatalf("expected 2 map entries, got %d", len(m))
+	}
+	if m[7] != "Off" {
+		t.Errorf("map[7]: got %q, want %q", m[7], "Off")
+	}
+	if m[8] != "On" {
+		t.Errorf("map[8]: got %q, want %q", m[8], "On")
 	}
 }
 

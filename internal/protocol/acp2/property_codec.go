@@ -139,33 +139,65 @@ func PropertyChildren(p *Property) ([]uint32, error) {
 	return ids, nil
 }
 
-// PropertyOptions extracts enum option strings from a pid=15 property.
-// Each option is a fixed 72-byte record (null-padded string).
+// PropertyOptions extracts enum option labels (ordered) from a pid=15 property.
+// Wire format per option: u32_be(index) + null-terminated string + pad to 4-byte boundary.
 func PropertyOptions(p *Property) []string {
-	if len(p.Data) == 0 {
+	m := PropertyOptionsMap(p)
+	if len(m) == 0 {
 		return nil
 	}
-	const optionSize = 72
-	var opts []string
-	for i := 0; i+optionSize <= len(p.Data); i += optionSize {
-		s := string(p.Data[i : i+optionSize])
-		if idx := strings.IndexByte(s, 0); idx >= 0 {
-			s = s[:idx]
+	// Return labels in wire order. PropertyOptionsMap preserves insertion
+	// order only if we collect separately, so re-parse for ordered labels.
+	var labels []string
+	off := 0
+	for off+4 <= len(p.Data) {
+		// skip u32 index
+		off += 4
+		// find null terminator
+		end := off
+		for end < len(p.Data) && p.Data[end] != 0 {
+			end++
 		}
-		opts = append(opts, s)
+		label := string(p.Data[off:end])
+		labels = append(labels, label)
+		// advance past null
+		if end < len(p.Data) {
+			end++
+		}
+		// align to 4-byte boundary
+		end = (end + 3) &^ 3
+		off = end
 	}
-	// Handle trailing partial record (shouldn't happen per spec but be safe).
-	remaining := len(p.Data) % optionSize
-	if remaining > 0 && len(opts)*optionSize < len(p.Data) {
-		s := string(p.Data[len(opts)*optionSize:])
-		if idx := strings.IndexByte(s, 0); idx >= 0 {
-			s = s[:idx]
-		}
-		if s != "" {
-			opts = append(opts, s)
-		}
+	return labels
+}
+
+// PropertyOptionsMap extracts enum options from pid=15 as a map of index → label.
+// Wire format per option: u32_be(index) + null-terminated string + pad to 4-byte boundary.
+func PropertyOptionsMap(p *Property) map[uint32]string {
+	if len(p.Data) < 5 { // need at least u32 + 1 byte
+		return nil
 	}
-	return opts
+	m := make(map[uint32]string)
+	off := 0
+	for off+4 <= len(p.Data) {
+		idx := binary.BigEndian.Uint32(p.Data[off : off+4])
+		off += 4
+		// find null terminator
+		end := off
+		for end < len(p.Data) && p.Data[end] != 0 {
+			end++
+		}
+		label := string(p.Data[off:end])
+		m[idx] = label
+		// advance past null
+		if end < len(p.Data) {
+			end++
+		}
+		// align to 4-byte boundary
+		end = (end + 3) &^ 3
+		off = end
+	}
+	return m
 }
 
 // PropertyEventMessages extracts the two event message strings from pid=19.

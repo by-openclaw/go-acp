@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -46,8 +47,10 @@ func NewWalker(session *Session, logger *slog.Logger) *Walker {
 }
 
 // Walk performs a depth-first traversal of the ACP2 object tree on the
-// given slot. Starts from obj-id 0 (root), recursively follows children
-// (pid=14), and builds a flat list of protocol.Object.
+// given slot. The root obj-id varies by device firmware: the spec
+// implies 0, but real devices (e.g. Axon SHPRM1 / CONVERT Hybrid)
+// use obj-id 1 with label "ROOT_NODE_V2". We try 1 first, fall back
+// to 0, so both conventions work.
 func (w *Walker) Walk(ctx context.Context, slot int) (*WalkedTree, error) {
 	tree := &WalkedTree{
 		Slot:   slot,
@@ -56,8 +59,16 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*WalkedTree, error) {
 
 	w.logger.Debug("acp2: walker: starting DFS walk", "slot", slot)
 
-	if err := w.walkObject(ctx, slot, 0, nil, tree); err != nil {
-		return nil, fmt.Errorf("acp2 walk slot %d: %w", slot, err)
+	// Try obj-id 1 first (real devices), then obj-id 0 (spec default).
+	rootErr := w.walkObject(ctx, slot, 1, nil, tree)
+	if rootErr != nil {
+		w.logger.Debug("acp2: walker: obj-id 1 failed, trying obj-id 0", "err", rootErr)
+		tree.Objects = nil
+		tree.Labels = make(map[string]int)
+		rootErr = w.walkObject(ctx, slot, 0, nil, tree)
+	}
+	if rootErr != nil {
+		return nil, fmt.Errorf("acp2 walk slot %d: %w", slot, rootErr)
 	}
 
 	w.logger.Debug("acp2: walker: walk complete",
@@ -126,6 +137,7 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 	var objType ACP2ObjType
 	var numType NumberType
 	var children []uint32
+	var optionsMap map[uint32]string
 
 	for i := range props {
 		p := &props[i]
@@ -163,7 +175,7 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 
 		case PIDValue:
 			// Decode the value based on object type and number type.
-			w.decodeValue(p, objType, numType, &obj)
+			w.decodeValue(p, objType, numType, &obj, optionsMap)
 
 		case PIDDefaultValue:
 			w.decodeConstraint(p, objType, numType, &obj, "default")
@@ -187,6 +199,7 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 
 		case PIDOptions:
 			obj.EnumItems = PropertyOptions(p)
+			optionsMap = PropertyOptionsMap(p)
 
 		case PIDEventTag:
 			if len(p.Data) >= 2 {
@@ -230,7 +243,7 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 }
 
 // decodeValue decodes a pid=8 (value) property into the Object's Value field.
-func (w *Walker) decodeValue(p *Property, objType ACP2ObjType, numType NumberType, obj *protocol.Object) {
+func (w *Walker) decodeValue(p *Property, objType ACP2ObjType, numType NumberType, obj *protocol.Object, optMap map[uint32]string) {
 	switch objType {
 	case ObjTypeNumber:
 		nt := NumberType(p.VType)
@@ -254,15 +267,17 @@ func (w *Walker) decodeValue(p *Property, objType ACP2ObjType, numType NumberTyp
 
 	case ObjTypeEnum, ObjTypePreset:
 		if len(p.Data) >= 4 {
-			idx := p.Data[3] // u32 low byte
+			fullIdx := binary.BigEndian.Uint32(p.Data[0:4])
 			ev := protocol.Value{
 				Kind: protocol.KindEnum,
-				Enum: idx,
-				Uint: uint64(idx),
+				Enum: uint8(fullIdx),
+				Uint: uint64(fullIdx),
 				Raw:  p.Data,
 			}
-			if int(idx) < len(obj.EnumItems) {
-				ev.Str = obj.EnumItems[idx]
+			if optMap != nil {
+				if label, ok := optMap[fullIdx]; ok {
+					ev.Str = label
+				}
 			}
 			obj.Value = ev
 		}
