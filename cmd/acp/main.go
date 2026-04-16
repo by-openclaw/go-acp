@@ -1413,6 +1413,7 @@ func runExport(ctx context.Context, args []string) error {
 	cf := addCommonFlags(fs)
 	format := fs.String("format", "", "output format: json | yaml | csv (default: json or from --out extension)")
 	out := fs.String("out", "", "output file path (default: stdout)")
+	slot := fs.Int("slot", -1, "export only this slot (-1 = all present slots)")
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: acp export <host> [--format F] [--out FILE]")
@@ -1463,6 +1464,9 @@ func runExport(ctx context.Context, args []string) error {
 		CreatedAt: time.Now().UTC(),
 	}
 	for s := 0; s < info.NumSlots; s++ {
+		if *slot >= 0 && s != *slot {
+			continue
+		}
 		si, serr := plug.GetSlotInfo(opCtx, s)
 		if serr != nil {
 			continue
@@ -1470,9 +1474,7 @@ func runExport(ctx context.Context, args []string) error {
 		if si.Status != protocol.SlotPresent {
 			continue
 		}
-		slotCtx, slotCancel := withTimeout(ctx, cf.timeout)
-		objs, werr := plug.Walk(slotCtx, s)
-		slotCancel()
+		objs, werr := plug.Walk(ctx, s)
 		if werr != nil {
 			fmt.Fprintf(os.Stderr, "warning: slot %d walk failed: %v\n", s, werr)
 			continue
