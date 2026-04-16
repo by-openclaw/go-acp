@@ -32,6 +32,7 @@ import (
 	"acp/internal/export"
 	"acp/internal/protocol"
 	"acp/internal/protocol/acp1"
+	_ "acp/internal/protocol/acp2" // register ACP2 plugin
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.

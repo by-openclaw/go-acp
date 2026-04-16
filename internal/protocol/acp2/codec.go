@@ -1,0 +1,166 @@
+package acp2
+
+import (
+	"encoding/binary"
+	"fmt"
+)
+
+// ACP2Message is one decoded ACP2 message carried inside an AN2 data frame.
+//
+// Wire layout (4-byte header + body):
+//
+//	byte 0   Type    u8   0=request, 1=reply, 2=announce, 3=error
+//	byte 1   MTID    u8   0=announces, 1-255=req/reply
+//	byte 2   Func    u8   function id (req/reply) or stat (error)
+//	byte 3   PID     u8   property id or version number
+//
+// For funcs 1-3 (get_object, get_property, set_property), the body follows:
+//
+//	bytes 4-7    ObjID   u32 BE
+//	bytes 8-11   Idx     u32 BE   (0 = active index)
+//	bytes 12+    property headers (variable)
+type ACP2Message struct {
+	Type ACP2MsgType
+	MTID uint8
+	Func ACP2Func // or stat for errors
+	PID  uint8    // multipurpose: pid, padding, or version
+
+	// Body fields (for funcs 1-3):
+	ObjID      uint32
+	Idx        uint32
+	Properties []Property // decoded property headers
+	Body       []byte     // raw body bytes after the 4-byte header
+}
+
+// EncodeACP2Message serialises an ACP2 message into wire bytes suitable
+// for embedding in an AN2 data frame payload.
+func EncodeACP2Message(m *ACP2Message) ([]byte, error) {
+	if m == nil {
+		return nil, fmt.Errorf("acp2: encode nil message")
+	}
+
+	switch m.Func {
+	case ACP2FuncGetVersion:
+		// get_version: just the 4-byte header
+		buf := make([]byte, ACP2HeaderSize)
+		buf[0] = byte(m.Type)
+		buf[1] = m.MTID
+		buf[2] = byte(m.Func)
+		buf[3] = m.PID
+		return buf, nil
+
+	case ACP2FuncGetObject:
+		// get_object request: header + obj-id(4) + idx(4)
+		buf := make([]byte, ACP2HeaderSize+8)
+		buf[0] = byte(m.Type)
+		buf[1] = m.MTID
+		buf[2] = byte(m.Func)
+		buf[3] = m.PID
+		binary.BigEndian.PutUint32(buf[4:8], m.ObjID)
+		binary.BigEndian.PutUint32(buf[8:12], m.Idx)
+		return buf, nil
+
+	case ACP2FuncGetProperty:
+		// get_property request: header + obj-id(4) + idx(4) + property header(4)
+		buf := make([]byte, ACP2HeaderSize+8+4)
+		buf[0] = byte(m.Type)
+		buf[1] = m.MTID
+		buf[2] = byte(m.Func)
+		buf[3] = m.PID
+		binary.BigEndian.PutUint32(buf[4:8], m.ObjID)
+		binary.BigEndian.PutUint32(buf[8:12], m.Idx)
+		// Property header for the requested pid: pid, 0, plen=4
+		buf[12] = m.PID
+		buf[13] = 0
+		binary.BigEndian.PutUint16(buf[14:16], 4)
+		return buf, nil
+
+	case ACP2FuncSetProperty:
+		// set_property: header + obj-id(4) + idx(4) + encoded property
+		if len(m.Properties) == 0 {
+			return nil, fmt.Errorf("acp2: set_property with no properties")
+		}
+		propBytes, err := EncodeProperty(&m.Properties[0])
+		if err != nil {
+			return nil, fmt.Errorf("acp2: encode set property: %w", err)
+		}
+		buf := make([]byte, ACP2HeaderSize+8+len(propBytes))
+		buf[0] = byte(m.Type)
+		buf[1] = m.MTID
+		buf[2] = byte(m.Func)
+		buf[3] = m.PID
+		binary.BigEndian.PutUint32(buf[4:8], m.ObjID)
+		binary.BigEndian.PutUint32(buf[8:12], m.Idx)
+		copy(buf[ACP2HeaderSize+8:], propBytes)
+		return buf, nil
+
+	default:
+		// Generic: header + raw body
+		buf := make([]byte, ACP2HeaderSize+len(m.Body))
+		buf[0] = byte(m.Type)
+		buf[1] = m.MTID
+		buf[2] = byte(m.Func)
+		buf[3] = m.PID
+		copy(buf[ACP2HeaderSize:], m.Body)
+		return buf, nil
+	}
+}
+
+// DecodeACP2Message parses an ACP2 message from an AN2 data frame payload.
+func DecodeACP2Message(data []byte) (*ACP2Message, error) {
+	if len(data) < ACP2HeaderSize {
+		return nil, fmt.Errorf("acp2: message too short: %d < %d", len(data), ACP2HeaderSize)
+	}
+
+	m := &ACP2Message{
+		Type: ACP2MsgType(data[0]),
+		MTID: data[1],
+		Func: ACP2Func(data[2]),
+		PID:  data[3],
+	}
+
+	body := data[ACP2HeaderSize:]
+	m.Body = make([]byte, len(body))
+	copy(m.Body, body)
+
+	// For error messages, extract obj-id from body if present.
+	if m.Type == ACP2TypeError {
+		if len(body) >= 4 {
+			m.ObjID = binary.BigEndian.Uint32(body[0:4])
+		}
+		return m, nil
+	}
+
+	// For get_version replies, PID holds the version number. No body parsing.
+	if m.Func == ACP2FuncGetVersion {
+		return m, nil
+	}
+
+	// For funcs 1-3 replies, parse obj-id, idx, and properties.
+	if m.Type == ACP2TypeReply || m.Type == ACP2TypeAnnounce {
+		if len(body) >= 8 {
+			m.ObjID = binary.BigEndian.Uint32(body[0:4])
+			m.Idx = binary.BigEndian.Uint32(body[4:8])
+			if len(body) > 8 {
+				props, err := DecodeProperties(body[8:])
+				if err != nil {
+					return nil, fmt.Errorf("acp2: decode properties: %w", err)
+				}
+				m.Properties = props
+			}
+		}
+	}
+
+	return m, nil
+}
+
+// ToACP2Error converts an error-type ACP2Message into a typed error.
+func (m *ACP2Message) ToACP2Error() error {
+	if m.Type != ACP2TypeError {
+		return nil
+	}
+	return &ACP2Error{
+		Status: ACP2ErrStatus(m.Func), // func field holds stat on errors
+		ObjID:  m.ObjID,
+	}
+}
