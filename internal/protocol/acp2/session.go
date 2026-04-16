@@ -130,10 +130,14 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("an2 GetVersion: %w", err)
 	}
-	if len(reply) >= 1 {
+	// Reply: func_echo(u8) + major(u8) + minor(u8). Spec §3.3.1.
+	// Version is at reply[2] (minor), not reply[0].
+	if len(reply) >= 3 {
+		s.an2Version = reply[2]
+	} else if len(reply) >= 1 {
 		s.an2Version = reply[0]
 	}
-	s.logger.Debug("acp2: AN2 version", "version", s.an2Version)
+	s.logger.Debug("acp2: AN2 version", "version", s.an2Version, "raw", fmt.Sprintf("%x", reply))
 
 	// 2. AN2 GetDeviceInfo
 	s.logger.Debug("acp2: AN2 GetDeviceInfo")
@@ -141,10 +145,15 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("an2 GetDeviceInfo: %w", err)
 	}
-	if len(reply) >= 1 {
-		s.numSlots = int(reply[0])
+	// Reply payload: func_echo(u8) + info(u8). The func echo byte
+	// mirrors the function ID (spec §3.3.2 p. 8). Actual slot count
+	// is at reply[1], not reply[0].
+	if len(reply) >= 2 {
+		s.numSlots = int(reply[1])
+	} else if len(reply) >= 1 {
+		s.numSlots = int(reply[0]) // fallback for non-standard devices
 	}
-	s.logger.Debug("acp2: device info", "slots", s.numSlots)
+	s.logger.Debug("acp2: device info", "slots", s.numSlots, "raw", fmt.Sprintf("%x", reply))
 
 	// 3. AN2 GetSlotInfo per slot
 	// AN2 GetDeviceInfo returns the number of card slots in the frame.
@@ -160,8 +169,12 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 			s.logger.Debug("acp2: GetSlotInfo failed", "slot", slot, "err", err)
 			continue
 		}
-		if len(reply) >= 1 {
-			s.slotStatus[slot] = protocol.SlotStatus(reply[0])
+		// Reply: func_echo(u8) + stat(u8) + num_protos(u8) + protos(u8[])
+		// Spec §3.3.3 p. 9. Status is at reply[1], not reply[0].
+		if len(reply) >= 2 {
+			s.slotStatus[slot] = protocol.SlotStatus(reply[1])
+			s.logger.Debug("acp2: slot info", "slot", slot, "status", reply[1],
+				"raw", fmt.Sprintf("%x", reply))
 		}
 	}
 

@@ -1,0 +1,988 @@
+ACP2 protocol
+
+          Axon
+    August 1, 2018
+
+Document version 1.0
+Contents
+
+1 Introduction       2
+
+1.1 Requirements . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+
+1.2 Versions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+
+2 Transactions       5
+
+2.1 Request/Reply . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+2.2 Event . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+3 Constants          6
+
+3.1 ACP2 error status . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+3.2 ACP2 types . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+3.3 ACP2 functions . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+3.4 ACP2 object type . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+4 Message format     7
+
+4.1 Common header . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+
+4.2 Message header . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+
+4.3 Request/reply . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+
+4.4 Event . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+
+5 Properties         13
+
+5.1 Property fields . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+5.2 Property constants . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+5.3 Property header . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+5.4 Property header per field . . . . . . . . . . . . . . . . . . . . . 15
+
+5.5 Preset depth . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+
+5.6 Examples . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+
+6 Examples           18
+
+6.1 Get property (number u8 value) . . . . . . . . . . . . . . . . . 18
+
+6.2 Get object (number u8 value) . . . . . . . . . . . . . . . . . . 19
+
+                  1
+1 Introduction
+
+This document describes protocol version 2 of the ACP2 protocol.
+The ACP2 protocol can be used for monitoring and managing devices that
+are based on an Axon menu with a set of objects.
+
+                                                2
+1.1 Requirements
+
+-  A client should be able to get/set properties of a Card without a-priori knowledge
+   about the Card (or menu).
+
+- A client should be able to get/set the value of an Object (for value objects).
+
+-  Messages that do not comply to the protocol must be ignored and an error
+   message sent back.
+
+-  It should be possible to enumerate all objects of a Card (that are accessible via the
+   root object).
+
+- It should be possible to request all properties of an Object.
+
+-  A string type should support strings up to a 256 bytes, configurable in menu.
+   Always UTF-8 Encoded.
+
+-  When an object is read-only, only the value cannot be changed. The max event
+   rate and event prio may still be changed.
+
+- ACP2 should have a function to request Object info, given an object-id.
+
+-  ACP2 should have a function to get/set a property given an object-id, Index.
+   Which objects can be get/set are shown in the Network API table.
+
+   ACP2 should have a function to request the protocol-version (u8, starts at 1). This
+
+-  number specifies which object-types there are, which properties they have and
+   which ACP functions can be used. Rationale: this allows changing the ACP2
+
+   protocol transparently.
+
+-  An object of a certain type shall have all properties as indicated in the
+   properties-matrix and no other properties.
+
+- The set of properties for a certain type of object depends on the protocol version.
+
+-  Certain properties may be optional (eg. Alarm/Event options). This is shown in
+   the properties matrix.
+
+-  ACP2 should be be transportable over AxonNet2 and AxonHSBus (max message
+   size).
+
+-  Is stateless with regard to connections/etc: it just handles packets and sends
+   replies/events.
+
+- Should handle single request at a time
+
+-  Disabled parts of the menu are not visible to clients (not shown as children,
+   options, etc).
+
+- ACP2 has no concept of slot.
+
+- ACP2 has a concept of request/reply and events.
+
+- ACP2 has no concept of multiple-clients.
+
+- Object labels only may contain out of a-z, A-Z, 0-9, ' ' and '-'.
+
+1.2 Versions
+
+Protocol versions:
+
+                                3
+1 initial version
+
+2  remove preset.children property, added preset-parent property. Made v1  ;
+   unsupported.
+
+                   4
+2 Transactions
+
+2.1 Request/Reply
+
+The mtid of a request and the reply on this request need to match. The reply
+message can be an error message.
+
+Client                               Server
+
+                 request:
+
+        [type=0, mtid=x, func=n]
+
+                  reply:
+
+        [type=1, mtid=x, func=n]
+
+        OR
+
+                  error:
+
+        [type=3, mtid=x, func=n]
+
+2.2 Event
+
+The mtid and the func are always 0 for an event.
+
+Client                            Server
+
+                  event:
+
+        [type=2, mtid=0, func=0]
+
+                                  5
+3 Constants
+
+3.1 ACP2 error status
+
+0 protocol error sent on invalid type, function, invalid packet
+
+1 invalid obj-id sent on invalid object id
+
+2 invalid idx sent on invalid index id
+
+3 invalid pid sent on invalid property id or if object doesn't have requested property
+
+4 no access  sent when calling set property on read-only object
+
+5 invalid value sent when setting enum/preset to non-option value, etc
+
+3.2 ACP2 types
+
+ 0 request
+ 1 reply
+ 2 event
+ 3 error
+
+3.3 ACP2 functions
+
+ 0 get protocol version
+ 1 get object
+ 2 get property
+ 3 set property
+
+3.4 ACP2 object type
+
+ 0 node
+ 1 preset
+ 2 enum
+ 3 number
+ 4 ipv4
+ 5 string utf8
+
+                         6
+4 Message format
+
+Note: All values are in network byte order(MSB).
+
+4.1 Common header
+
+The ACP2 header describes what type of message it is, can be request, reply,
+event or error message. The header fields 3 and 4 are multi-functional, their
+meaning depends on the type of message. In most cases it's used for the pid
+number. But in some cases its padding, and in case of getting the version
+the version value field.
+
+type mtid         ACP2 header  pad0/pid/vers          payload
+ u8 u8          func/stat             u8                data
+                                                      data[ ]
+                    u8
+
+Type           Type of the message, see 3.2
+Mtid           Message transfer id, mtid in reply matches mtid in request.
+               ACP2 only uses the mtid to send a reply and does no other
+Func/stat      checks.
+Pad0/pid/vers  Function, see 3.3 or status, see 3.1, for an event message
+Data           always 0.
+               Multi-function, can be padding (pad0), property id(pid) or
+               version number
+               Depends on kind of message, can be request or reply header
+
+4.2 Message header
+
+There are 2 types of message headers: request header and reply header. Both
+headers can contain a property header when property values are involved. It's
+possible to have multiple properties in one message.
+
+4.2.1 Request/Reply header
+Common header part of all request and reply headers.
+
+                request/reply header
+
+obj-id     idx  prop(x)                                   prop(x+n)
+ u32                                                  multiple of 4bytes
+           u32  multiple of 4bytes
+
+                7
+obj-id      unique object id number
+idx         index number of the object when preset child, otherwise 0
+prop (x)    property x
+prop (x+n)  property x + n
+
+NOTE:
+- idx = 0 for get/set property announce rate or event prio.
+- idx 0 (=ACTIVE INDEX) may be used on any request, but the reply will
+use the actual active index value instead of 0).
+
+4.3 Request/reply
+
+The ACP2 protocol knows the following 4 functions: get version, get object,
+get property and set property. Each described below.
+
+4.3.1 Get version
+
+With this function you can get the version of the ACP2 protocol. This doc-
+ument describes version 1 of the protocol. If no error occurs the version will
+be replied. The mtid of the request and the reply will match. Else you will
+get an error message with the same mtid and an error status.
+
+Request
+
+ACP2 header
+
+type mtid func pad0
+
+type request             see 3.2
+
+mtid x
+
+func get protocol version see 3.3
+
+pad0 0                   padding
+
+Reply
+            ACP2 header
+
+  type mtid func vers
+
+type reply               see 3.2
+
+mtid x
+
+func get protocol version see 3.3
+
+vers version             version of the protocol
+
+                                   8
+4.3.2 Get object
+
+With the get object function you get all the properties of the requested object
+by id. Only the properties that the object contains will be sent, the order
+of properties is by property id, see 5.1. The mtid of the request and reply
+message will match. If a request is invalid by for example invalid object id,
+an error message will be replied with an error status.
+
+Request
+
+       ACP2 header            request data
+
+type mtid func pad0           obj-id   idx
+
+type request see 3.2
+
+mtid x
+
+func get object see 3.3
+
+pad0 0            padding
+
+obj-id object id
+
+idx 0
+
+Reply
+
+       ACP2 header                          reply data
+                                             prop (0) prop (1) prop (..)
+type mtid func pad0 obj-id             idx
+
+type     reply                see 3.2
+
+mtid x
+
+func     get object           see 3.3
+
+pad0 0                        padding
+
+obj-id object id
+
+idx      0
+
+prop (0) property 0
+
+prop (1) property 1
+
+prop (..) rest of properties
+
+4.3.3 Get property
+
+With the get property function you can get the property of the requested
+object by id and property by pid. You will only receive one single property.
+The mtid of the request and reply message will match. If a request is invalid
+by for example invalid object id or property id, an error message will be
+replied with an error status.
+
+Request
+
+                              9
+        ACP2 header                request data
+        mtid func
+type                     pid obj-id         idx
+        request
+type    x                see 3.2
+mtid    get property
+func    property id      see 3.3
+pid     object id
+obj-id  index of object
+idx
+
+Reply                                     reply data
+            ACP2 header
+
+type mtid func pid obj-id                   idx         prop
+                                                        (pid)
+
+type        reply                  see 3.2
+mtid        x                      see 3.3
+func        get property
+pid         property id            see 5.1
+obj-id      object id
+idx         index of object
+prop (pid)  property value of pid
+
+4.3.4 Set property
+
+With the set property function you can set a property value. You can select
+a property value by the property id of an object by id and index. The mtid
+of the request and reply message will match. If set property request is in-
+valid by for example invalid object id or property id, an error message will
+be replied with an error status. The pid value of the ACP2 header needs to
+match the pid value of the property header. The following propertie fields
+are settable: event delay, value, and event priority.
+
+Request                                   request data
+            ACP2 header
+                                  obj-id    idx         prop
+  type mtid func pid                                    (pid)
+
+                                   10
+type    request             see 3.2
+mtid    x                   see 3.3
+func    set property
+pid     property id
+obj-id  object id
+idx     index of object
+prop    new property value
+
+Reply                                  reply data
+            ACP2 header
+
+type mtid func pid obj-id                   idx    prop
+                                                   (pid)
+
+type        reply                  see 3.2
+mtid        x                      see 3.3
+func        set property
+pid         property id
+obj-id      object id
+idx         index of object
+prop (pid)  property value of pid
+
+4.3.5 Error
+
+This message will be sent when a request generates an error. See 3.1 for
+possible error status. The mtid will match the mtid of the request.
+
+        ACP2 header
+
+type mtid stat pid
+
+type error  see 3.2
+
+mtid x
+
+stat error status see 3.1
+
+pid 0
+
+4.4 Event
+
+This event will be sent for example when an object property changes from
+value. The message contains the object id and the property value. The mtid
+of an event is always 0. In the table Propterty fieds (see 5.1) you can see
+which properties are dynamic and can cause an event.
+
+         ACP2 header                   event data
+type mtid stat pid
+                            obj-id          idx    prop
+                                                   (pid)
+
+                                   11
+type        announce               see 3.2
+mtid        0                      see 3.3
+stat        0
+pid         property id
+obj-id      object id
+idx         index of object
+prop (pid)  property value of pid
+
+                                   12
+5 Properties
+
+Every ACP2 object type, see 3.4 for the different objects types, has their
+own set of property fields. In the table below you can see which property
+fields each object type has. The enabled fields are marked gray. Also you
+can see what the Access is of that property field and if it can be changed
+dynamically. An object of a type will always have all non optional properties,
+in order shown below.
+
+5.1 Property fields
+
+                     Access   Dy-   Node  Preset  Enum  Number                  Ipv4  String
+                             namic
+
+1 object type        R       -
+
+2 label              R       -
+
+3 access             R yes
+
+4 event delay        RW yes
+
+5 number type        R       -
+
+6 string max length R        -
+
+7 preset depth1      R       -                    op1   op1                     op1 op1
+
+8 value[depth]       R/RW yes
+
+9 default value [d]  R       -
+
+10 min value[d]      R yes
+
+11 max value [d]     R yes
+
+12 step size1        R       -                          op1
+
+13 unit1             R       -                          op1
+
+14 children          R       -
+
+15 options           R       -
+
+16 event tag1        R       -            op1     op1   op1                     op1 op1
+
+17 event priority1   RW yes               op1     op1   op1                     op1 op1
+
+18 event state1      R yes                op1     op1   op1                     op1 op1
+
+19 event message1    R       -            op1     op1   op1                     op1 op1
+
+20 preset parent1    R       -                    op1   op1                     op1 op1
+
+1 Optional
+
+                             13
+5.2 Property constants
+
+5.2.1 Property number type
+
+ 0 number s8
+ 1 number s16
+ 2 number s32
+ 3 number s64
+ 4 number u8
+ 5 number u16
+ 6 number u32
+ 7 number u64
+ 8 number float
+
+5.2.2 Property value type
+
+ 0 number s8
+ 1 number s16
+ 2 number s32
+ 3 number s64
+ 4 number u8
+ 5 number u16
+ 6 number u32
+ 7 number u64
+ 8 number float
+ 9 preset/enum
+ 10 ipv4
+ 11 string utf8
+
+5.3 Property header
+
+One property field will be sent by a property header shown as below. For
+example with the get object function, you will receive all the property fields
+by a seperate property header. Multiple property headers can be sent with
+in an ACP2 message.
+
+         property
+
+pid  pad0/data              plen  data
+                                  varies
+u8   u8                     u16
+
+                            14
+pid        property id      see 5.4
+pad0/data  padding or data  see 5.4
+                            Length of the entire property(including header
+plen       property length  and excluding padding). Each property is padded
+                            to a 4-byte multiple
+data       data value       see 5.4
+
+5.4 Property header per field
+
+In the next table you can see for every property field how the property header
+will be filled.
+
+                    pid     data               plen               data
+                                                 4
+     object type    1 obj type, see 3.4                 0-terminated string
+         label                              4+string
+        access      2       0                    4             u32 rate
+                                                 8
+     event delay    3       access               4      u16 len + u16 pad
+    number type                                              idx0, idx, ..
+     string max     4       0                    6               value
+                                                                 value
+        length      5 number type          4+4*depth
+   preset depth1                              varies2            value
+    value[depth]    6       0
+    default value                             varies2            value
+                    7       0                                    value
+       [depth]                                varies2   0-terminated string
+         min        8 vtype, see 5.2.2                     u32[] child id's
+                                              varies2   option0, option1, ..
+    value[depth]    9 vtype, see 5.2.2                   u16 tag, u16 pad
+     max value                                varies2
+                    10 vtype, see 5.2.2     4+string    0-terminated string,
+       [depth]                            4+(4*child)   0-terminated string
+      step size1    11 vtype, see 5.2.2  4+(72*option)
+                                                            u32 parent id
+         unit1      12 vtype, see 5.2.2          6
+       children                                  4
+       options      13      0                    4
+     event tag1
+   event priority1  14      0              4+2*string
+    event state1
+                    15 num option                8
+  event message1
+                    16      0
+   preset parent1
+1 Optional          17      prio
+
+                    18      state
+
+                    19      0
+
+                    20      0
+
+                                   15
+2 The plen by property value:              size                plen
+property value:                            u32                   8
+preset/enum                              u32/s32                 8
+number u8/u16/u32/s8/s16/s32/float       u64/s64                 12
+number u64/s64                            u8[4]                  8
+ip number
+                                          u8[], 0  4+strlen+pad0 (padded
+strings                                               to 4-byte multiple)
+
+5.5 Preset depth
+
+When an object is a preset child, than means that the object has an array
+of values of size preset depth. In the table 5.4 you see that the following
+property fields can have a depth of preset depth: value, default value, the
+mininmal and maximale value. For an object with depth x, the value property
+is transmitted x times and each time with his own property header. Also the
+preset depth property is present then.
+
+5.5.1 Example preset depth
+
+In the next example you see a part of the properties of a number of two
+different objects. The First one is not a preset child. The second one is a
+preset child, and has a preset depth of 2. The index number(idx) can't be
+0 for an object when it is a preset child, because idx 0 is reserved for the
+ACTIVE INDEX.
+
+Object u8 number without preset depth:
+
+        idx = 0
+
+values  125
+
+default value 0
+
+minimum 0
+
+maximum 300
+
+Object u8 number preset depth of 2:
+
+        idx = 100 idx = 200
+
+values  125      10
+
+default value 0  100
+
+minimum 0        10
+
+maximum 300      500
+
+Active index of preset is idx 200, also reachable by idx = 0.
+
+                                     16
+5.6 Examples
+
+5.6.1 Property length
+
+In the next examples you can see how the property length is determined per
+object type.
+
+Preset depth of 3:
+
+plen  id 0 id 1 id 2
+
+u32   u32 u32 u32
+
+16 (4 + 4 * 3) 0x10 0x20 0x30
+
+Number value of type u16, value is 515:
+    plen value
+    u32 u32
+
+ 8(4 + 4) 515
+
+Number value of type u64, value is 4294967296:
+
+plen  value
+
+u32   u64
+
+12(4 + 8) 4294967296
+
+IP number, value is 10.4.210.100
+
+plen  ip number
+
+u32 u8 u8 u8 u8
+
+8(4 + 4) 10 4 210 100
+
+5.6.2 Property length with padding
+
+In the next example you can see how the property length is determined for
+object type string. In some cases there is padding needed to get a multiple
+of 4 bytes. The plen is excluding padding.
+
+String value "hello":
+
+plen                   string
+
+plen u8 u8 u8 u8 u8 u8 u8 u8
+
+10 (4 + 6) 'h' 'e' 'l' 'l' 'o' '\0' 0 0
+
+                               17
+6 Examples
+
+6.1 Get property (number u8 value)
+
+In the next example we're going to get a property value of an object with
+
+the following parameters:
+
+- type         0 request, see 3.2
+
+- mtid         36
+
+- function     2 get property, see 3.3
+
+- pid          8 property field value, see 5.4
+
+- object id 123
+
+- object index 100
+
+Request
+
+        ACP2 header             request data
+
+type     mtid  func-       pid  obj-  idx
+               tion              id
+
+u8 u8 u8 u8 u32 u32
+
+0        36    2           8 123 100
+
+The reply message of the object(123) has the following parameters:
+
+- type         1 reply, see 3.2
+
+- mtid         36
+
+- function     2 get property, see 3.3
+
+- pid          8
+
+- object id 123
+
+- object index 100
+
+- pid          8
+
+- data(vtype) 4 number u8, see 5.2.2
+
+- plen         8
+
+- data         125 number u8 value
+
+Reply
+
+        ACP2 header             reply data      property
+
+type     mtid  func-       pid  obj-  idx     pid data plen data
+               tion              id
+
+u8 u8 u8 u8 u32 u32 u8 u8 u16 u32
+
+1        36    2           8 123 100 8          4         8 125
+
+NOTE: pid in ACP2 header matches the pid of the property
+
+                                18
+6.2 Get object (number u8 value)
+
+In the next example we're going to get all the properties of an object that is
+
+a preset child(preset depth = 2) with the following parameters:
+
+- type           0 request, see 3.2
+
+- mtid           25
+
+- function       1 get object, see 3.3
+
+- pid            0 pid always 0 for get object function
+
+- object id 123
+
+- object index 0 idx always 0 for get object function
+
+Request
+
+        ACP2 header           request data
+
+type     mtid    func-  pid   obj-   idx
+                 tion          id
+
+u8 u8 u8 u8 u32 u32
+
+0        25      1      0 123 0
+
+The reply message of the object(123) has the following parameters:
+
+- type           1 reply, see 3.2
+
+- mtid           25
+
+- function       1 get object, see 3.3
+
+- pid            0
+
+- object id 123
+
+- object index 0
+
+Reply
+
+        ACP2 header           reply data
+
+type     mtid    func-  pid   obj-   idx
+                 tion          id
+
+u8 u8 u8 u8                   u32 u32
+
+1        25      1      0     123 0
+
+property pid 1: object type number 4 (see 3.4)
+
+       property
+
+pid data plen
+
+u8 u8 u16
+
+1        3       4
+
+property pid 2: label "num1"
+
+                              19
+      property
+
+pid data plen data
+
+u8 u8 u16 u8[]
+
+2  0         8 "num1"
+
+property pid 3: access readable (1 readable, 2 writable)
+
+   property
+
+pid data plen
+
+u8 u8 u16
+
+3  1         4
+
+property pid 4: event delay 1
+
+      property
+
+pid data plen data
+
+u8 u8 u16 u32
+
+4  0         8         1
+
+property pid 7: preset depth 2
+
+             property
+
+pid data plen idx0              idx1
+
+u8 u8 u16 u32                   u32
+
+7  0         12        100      200
+
+property pid 8: value[idx=100] = 125, number type = 4 (see 5.2.1)
+
+      property
+
+pid data plen data
+
+u8 u8 u16 u32
+
+8  4         8         125
+
+property pid 8: value[idx=200] = 10, number type = 4 (see 5.2.1)
+
+      property
+
+pid data plen data
+
+u8 u8 u16 u32
+
+8  4         8         10
+
+property pid 9: default value[idx=100] = 0, number type = 4 (see 5.2.1)
+
+      property
+
+pid data plen data
+
+u8 u8 u16 u32
+
+9  4         8         0
+
+property pid 9: default value[idx=200] = 100, number type = 4 (see 5.2.1)
+
+                                20
+           property
+
+pid data plen data
+
+u8 u8 u16 u32
+
+9       4  8         100
+
+property pid 10: minimum value[idx=100] = 0, number type = 4 (see 5.2.1)
+
+           property
+
+pid data plen data
+
+u8 u8 u16 u32
+
+10      4  8         0
+
+property pid 8: minimum value[idx=200] = 10, number type = 4 (see 5.2.1)
+
+           property
+
+pid data plen data
+
+u8 u8 u16 u32
+
+10      4  8         10
+
+property pid 11: maximum value[idx=100] = 300, number type = 4 (see
+
+5.2.1)
+
+           property
+
+pid data plen data
+
+u8 u8 u16 u32
+
+11      4  8         300
+
+property pid 11: maximum value[idx=200] = 500, number type = 4 (see
+
+5.2.1)
+
+           property
+
+pid data plen data
+
+u8 u8 u16 u32
+
+11      4  8         500
+
+                          21
+

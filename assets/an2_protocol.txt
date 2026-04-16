@@ -1,0 +1,562 @@
+Axonnet2 protocol
+
+            Axon
+       May 28, 2018
+
+  Document version 1.1
+Contents
+
+1 Introduction       2
+
+1.1 Definitions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+
+1.2 Requirements . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+
+2 Transactions       4
+
+2.1 Request/Reply . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+
+2.2 Event . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+
+2.3 Send data . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+2.4 Receive data . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+3 Message format     6
+
+3.1 Common header . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+3.2 Constants . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+3.3 Request/Reply messages . . . . . . . . . . . . . . . . . . . . . 7
+
+3.4 Event . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+
+3.5 Data . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+
+3.6 Error . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+
+4 Examples           13
+
+4.1 Get slot info . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+5 Discovery          13
+
+                  1
+1 Introduction
+
+This document describes protocol version 1 of the Axonnet2 protocol.
+
+1.1 Definitions
+
+Endpoint             An entry on a Axonnet2 / AxonHSBus identified by a slot nr.
+                     EndPoints can appears/disappear dynamically. Note: if ACP is the
+Device               protocol, this is a card.
+Client               A device running an Axonnet2 server
+Slot                 Any TCP client connecting to an Axonnet2 port
+Direct connection    Id used to identify an Endpoint, starting from 0
+Indirect connection  The Endpoint is on the same device as the Axonnet2 server
+                     The Endpoint is on different device than the Axonnet2 server (eg. via
+Message
+Payload                the Rack Controller (RC))
+
+                     Complete set of information sent from client server or server client
+                     (eg. Not packet/frame/etc)
+                     All data after an Axonnet2 header.
+
+1.2 Requirements
+
+1.2.1 Goals
+
+-  Axonnet2 should use TCP/IP as base protocol. The Axonnet2 device is the
+   server, clients connect to the server.
+
+- An Axonnet2 device should support multiple client connections.
+
+-  Axonnet2 should handle communications from clients to/from slots. Not
+   between slots.
+
+-  A device should support a maximum number of connections. This maximum
+   is set in the library config (eg 10, 20).
+
+-  After MAX client connections has been reached, new connections should be
+   denied.
+
+  - On a protocol error, the connection should be closed.
+
+- Should support 2-way traffic (client server and server client).
+
+-  Should support message payloads up to 4096 bytes (same as HSBus
+   payloads).
+
+- Should use TCP port 2072 as server port (Axonnet1 is 2071).
+
+- Should use an internal version (via proto0). This allows protocol changes.
+
+- Should do discovery (over UDP).
+
+                                   2
+1.2.2 Slots
+
+- Should support 255 slots, starting from slot 0.
+
+-  Slot 255 is a special broadcast slot (message sent to all Endpoints that are
+   online).
+
+- Should signal all clients when an endpoint appears/disappears.
+
+-  The number of slots does not change throughout the device lifetime. The
+   EndPoints can appear/disappear dynamically.
+
+-  A device should return the actual number of slots (so an RC could return
+   5(=4+1),9(=8+1) or 19(=18+1), since slot0 is also counted.
+
+- Should return an error message when a client uses a non-existing slot.
+
+-  Should return an error message when a client uses an endpoint that is not
+   online.
+
+-  Clients should be able to query the total number of slots (of device) and the
+   status of each slot.
+
+- Endpoint status can be: (see 3.2.6)
+
+1.2.3 Protocol
+
+- Should be protocol agnostic other than knowing it's payload proto (number).
+
+- Should support at least 128 protocols, starting from 1.
+
+   Should support multiple protocols (eg ACP1/ACP2/..) mixed over a single
+
+- Axonnet2 connection. E.g. task to slot 1 over proto 1 and to slot 4 over
+
+   proto 2.
+
+-  If an Endpoint supports a certain protocol, the Axonnet2 layer should just
+   forward it to the Endpoint.
+
+-  Transparantly protocol support at RC / Axonnet2 level (eg. no special code
+   for protocol X needed).
+
+- Proto 0 is reserved as 'signalling' protocol for internal (Axonnet2) use.
+
+- Should only forward supported protocols to Endpoints.
+
+-  Should return an error message to client doing request when using a
+   non-supported protocol.
+
+-  Should return an error message to client doing request when using a protocol
+   that's not supported by that Endpoint.
+
+-  Messages for external (non-zero) protocols are stateless, they can be initiated
+   by any Client/Endpoint.
+
+- Mtid not necessary for data (only for internal protocol).
+
+                3
+2 Transactions
+
+2.1 Request/Reply
+
+The Mtid of a request and the reply on this request need to match. The
+reply message can be an error message. The request and reply messages are
+Axonnet2 internal, protocol number is always 0, see 3.2.1.
+
+Client                                Server
+
+                 request:
+
+        [proto=0, slot=n, mtid=x]
+
+                   reply:
+
+        [proto=0, slot=n, mtid=x]
+
+        OR
+
+                   error:
+
+        [proto=0, slot=n, mtid=x]
+
+2.2 Event
+
+An event is also an Axonnet2 internal message, protocol number is always 0,
+see 3.2.1.
+
+Client                             Server
+
+                  event:
+
+        [proto=0, slot=n, mtid=0]
+
+                                   4
+2.3 Send data
+
+Can be used for transport of higher protocol messages (eg. ACP2). The mtid
+is always 0. Unless an error occurs, Axonnet2 will not send a reply.
+
+Client                                    Server
+
+                     data:
+
+        [proto=proto, slot=n, mtid=0]
+
+        if error
+
+                     error:
+
+        [proto=proto, slot=n, mtid=0]
+
+2.4 Receive data
+
+Used for messages of higher protocol messages (eg. ACP2). An2 keeps no
+state for payload protocols, so data messages so can occur any time. Note:
+An AN2 server will only send payload events if the client has explicitly en-
+abled them with the protocol event enable function
+
+Client                                 Server
+
+                     data:
+
+        [proto=proto, slot=n, mtid=0]
+
+                                       5
+3 Message format
+
+Note: All values are in network byte order(MSB).
+
+3.1 Common header
+
+         Axonnet2 header                                 payload
+                                                           data
+magic proto slot mtid type                        dlen
+                                                        data[dlen]
+u16      u8 u8 u8 u8                              u16
+
+Magic    0xC635 (always this number)
+Proto    Supported protocols, see 3.2.1
+Slot     Number of the slot
+Mtid     Message transfer id, mtid in reply matches mtid in request
+Type     Message type of the header, see 3.2.2
+Dlen     Length of payload in bytes
+Payload  Data of the message.
+
+3.2 Constants
+
+3.2.1 Axonnet2 protocols
+
+ 0 Axonnet2 internal
+ 1 ACP1
+ 2 ACP2
+ 3 ACMP
+
+3.2.2 Axonnet2 message type
+
+ 0 request
+ 1 reply
+ 2 event
+ 3 error proto can be non-zero
+ 4 data proto must be non-zero
+
+3.2.3 Axonnet2 functions
+
+ 0 get version
+ 1 get device info
+ 2 get slot info
+ 3 enable protocol events
+
+                           6
+3.2.4 Axonnet2 event types
+
+ 0 reserved
+ 1 reserved
+ 2 slot info event
+
+3.2.5 Axonnet2 error status
+
+0 protocol error           sent when magic, protocol or type is invalid
+
+1 invalid slot             sent when slot is invalid
+
+2 slot not active          sent when sending data to slot that is not in state
+                           'present'
+
+3  slot unsupported proto  sent when sending data to slot with protocol
+                           that's not supported
+
+3.2.6 Axonnet2 slot status
+
+ 0 empty
+ 1 powerup
+ 2 present
+ 3 error
+ 4 removed
+ 5 boot
+
+3.3 Request/Reply messages
+
+The Axonnet2 protocol knows the following 3 request functions: get version,
+get device information and get slot information. Each described below.
+
+3.3.1 Get version
+
+With this function you can get the version of the Axonnet2 protocol. This
+document describes version 1 of the Axonnet2 protocol. If no error occurs
+the version will be replied. The mtid of the request and reply will match.
+Else you will get an error message with the same MTID and an error status.
+
+Request                               payload
+                     Axonnet2 header  func(u8)
+
+   magic proto slot mtid type dlen
+
+                             7
+proto  0            see 3.2.2
+slot   0            see 3.2.3
+mtid   x
+type   request
+dlen   1
+func   get version
+
+Reply                                                 payload
+                     Axonnet2 header         func(u8) ver(u16)
+
+   magic proto slot mtid type dlen
+
+proto  0            see 3.2.2
+slot   0
+mtid   x            see 3.2.3
+type   reply        version of the protocol
+dlen   3
+func   get version
+ver    version
+
+3.3.2 Get device info
+
+With this function you can get device information, in this case you will get
+the number of slots. The number of slots will not change during device life-
+time. The mtid of the request and reply will match. If no error occurs you
+will receive the reply message. Else you will get an error message with the
+same mtid and an error status.
+
+Request                                      payload
+                     Axonnet2 header         func(u8)
+
+   magic proto slot mtid type dlen
+
+proto  0                see 3.2.2
+slot   0                see 3.2.3
+mtid   x
+type   request
+dlen   1
+func   get device info
+
+Reply
+
+                               8
+             Axonnet2 header                    payload
+
+magic proto slot mtid type dlen func(u8) info(u8)
+
+proto  0                see 3.2.2
+slot   0
+mtid   x                see 3.2.3
+type   reply            number slots of device
+dlen   2
+func   get device info
+info   device info
+
+3.3.3 Get slot info
+
+With this function you can get the slot information. The information of the
+slot consists of the slot status, the number of supported protocols and which
+protocols those are. The mtid of the request and reply will match. If no error
+occurs you will receive the reply message. Else you will get an error message
+with the same mtid and an error status.
+
+Request                                         payload
+                     Axonnet2 header            func(u8)
+
+   magic proto slot mtid type dlen
+
+proto  0                see 3.2.2
+slot   number of slot   see 3.2.3
+mtid   x
+type   request
+dlen   1
+func   get slot info
+
+Reply
+
+       Axonnet2 header                                 payload
+                                                stat num protos
+magic proto  slot  mtid type dlen  func         (u8) (u8) (u8*num)
+                                   (u8)
+
+                              9
+proto    0                    see 3.2.2
+slot     slot
+mtid     x                    see 3.2.3
+type     reply                see 3.2.6
+         3 + number of        number of protocols supported by device
+dlen     supported protocols  array of supported protocols, see 3.2.1
+         get slot info
+func     slot status
+stat     number of protocols
+num      supported protocols
+protos
+
+3.3.4 Enable protocol events
+
+Client have to explicitly enable events for payload protocols. AN2 events will
+always be sent, regardless of this function. Also replies for payload-requests
+will also always be sent to clients. So clients only have to use this function if
+they want to receive events for payload protocols (Note that these messages
+are still Data in AN2 terms).
+
+Request
+
+         Axonnet2 header                           payload
+
+magic proto slot mtid type dlen func num protos
+
+proto    0                                see 3.2.2
+slot     0
+mtid     x                                see 3.2.3
+type     request                          number of protocols in message
+dlen     2 + number of enabled protocols  array of enabled protocols, see 3.2.1
+func     enable protocol events
+num      number of protocols
+protos   enabled protocols
+
+Reply                                     payload
+                 Axonnet2 header            func
+
+ magic proto slot mtid type dlen
+
+                              10
+proto   0                       see 3.2.2
+slot    slot                    see 3.2.3
+mtid    x
+type    reply
+dlen    1
+func    enable protocol events
+
+3.4 Event
+
+3.4.1 Slot event
+
+This slot event message will be sent on a slot event, eg. change of the slot
+status. The message contains the slot event type, slot status, number of
+supported protocols and which supported protocols.
+
+        Axonnet2 header                                 payload
+
+magic  proto  slot  mtid  type  dlen       etype  stat  num        protos
+                                           (u8)   (u8)  (u8)     (u8*num)
+
+proto   0                       see 3.2.2
+slot    slot
+mtid    x                       event type, see 3.2.4
+type    event                   see 3.2.6
+        3 + number of           number of protocols supported by device
+dlen    supported protocols     array of supported protocols, see 3.2.1
+        slot info event
+etype   slot status
+stat    number of protocols
+num     supported protocols
+protos
+
+3.5 Data
+
+The data messages request and reply are used for transporting higher proto-
+col messages, eg. ACP2 protocol. The payload is the message of the higher
+transport protocol message.
+
+NOTE: unless error, Axonnet2 will not send reply
+NOTE: mtid is always 0, data transport is stateless. Higher level protocols
+may implement their own mtid.
+
+                                11
+3.5.1 Data request                         payload
+                     Axonnet2 header         data
+
+   magic proto slot mtid type dlen        (u8*dlen)
+
+proto  protocol                see 3.2.1
+slot   number of slot          see 3.2.2
+mtid   0
+type   data
+dlen   length of payload data
+data   payload data
+
+3.5.2 Data reply                           payload
+                     Axonnet2 header         data
+
+   magic proto slot mtid type dlen        (u8*dlen)
+
+proto  protocol                see 3.2.1
+slot   number of slot          see 3.2.2
+mtid   0
+type   data
+dlen   length of payload data
+data   payload data
+
+3.6 Error
+
+This message will be sent when a request generates an error. see 3.2.5 for
+possible error status. The mtid will match the mtid of the request.
+
+       Axonnet2 header                    payload
+
+magic proto slot mtid type dlen stat (u8)
+
+                               12
+proto    protocol        see 3.2.1
+slot     number of slot
+mtid     x               see 3.2.2
+type     error           see 3.2.5
+dlen     1
+stat     error status
+
+4 Examples
+
+4.1 Get slot info
+
+In the next example we'are going to get slot information with the following
+parameters: slot of device = 5 and mtid of 0x36
+
+The device supportes 2 protocols, which are ACP2(2) and ACMP(3), and
+the slot status is 'present'
+
+Request
+
+          Axonnet2 header                 payload
+                                          func(u8)
+magic proto slot mtid type dlen
+                                              2
+0xC635 0    5 0x36 0                1
+
+Reply                                            payload
+                  Axonnet2 header         stat num prot1 prot2
+
+  magic proto slot mtid type dlen func
+
+0xC635 0  5 0x36 1 5                   2  2         2  2                      3
+
+5 Discovery
+
+In Axonnet2 it is possible to have discovery over UDP. The UDP port is
+2072. When discovery is enabled an UDP broadcast message is sent with
+a configurable interval (default a period of 2 seconds). The message is sent
+to the local network broadcast address, eg 192.168.1.255. In de table below
+you can see the data of an UDP broadcast message. It contains the protocol
+name(AN2) with the MAC adress and the ip address, with spaces between
+them. The string is ASCII encoded and has a null terminator.
+
+            UDP message data
+ AN2 00:aa:11:bb:22:cc 192.168.1.10
+
+                                               13
+
