@@ -365,11 +365,18 @@ func (s *Session) readLoop() {
 			return
 		}
 
-		s.logger.Debug("acp2: reader: frame",
-			"proto", frame.Proto, "slot", frame.Slot,
-			"mtid", frame.MTID, "type", frame.Type,
-			"dlen", len(frame.Payload),
-			"payload_hex", fmt.Sprintf("%x", frame.Payload))
+		// Log full frame hex for requests/replies; skip for ACP2 announces
+		// (they flood the log with large SDP payloads every ~2s).
+		isAnnounce := frame.Proto == AN2ProtoACP2 &&
+			len(frame.Payload) >= 1 &&
+			frame.Payload[0] == byte(ACP2TypeAnnounce)
+		if !isAnnounce {
+			s.logger.Debug("acp2: reader: frame",
+				"proto", frame.Proto, "slot", frame.Slot,
+				"mtid", frame.MTID, "type", frame.Type,
+				"dlen", len(frame.Payload),
+				"payload_hex", fmt.Sprintf("%x", frame.Payload))
+		}
 
 		switch frame.Proto {
 		case AN2ProtoInternal:
@@ -437,12 +444,11 @@ func (s *Session) handleACP2Frame(f *AN2Frame) {
 		return
 	}
 
-	s.logger.Debug("acp2: ACP2 message",
-		"type", msg.Type, "mtid", msg.MTID, "func", msg.Func,
-		"obj_id", msg.ObjID)
-
 	if msg.Type == ACP2TypeAnnounce {
-		// Announces have mtid=0; fan out to all subscribers.
+		// Announces: short summary only (no payload dump), same as ACP1.
+		s.logger.Debug("acp2: skipping announce",
+			"slot", f.Slot, "obj_id", msg.ObjID, "pid", msg.PID, "dlen", len(f.Payload))
+		// Fan out to all subscribers.
 		s.annMu.Lock()
 		subs := make([]AnnounceFunc, 0, len(s.annSubs))
 		for _, fn := range s.annSubs {
@@ -454,6 +460,11 @@ func (s *Session) handleACP2Frame(f *AN2Frame) {
 		}
 		return
 	}
+
+	// Non-announce: log full details.
+	s.logger.Debug("acp2: ACP2 message",
+		"type", msg.Type, "mtid", msg.MTID, "func", msg.Func,
+		"obj_id", msg.ObjID)
 
 	// Route replies and errors by ACP2 mtid.
 	if msg.MTID != 0 {
