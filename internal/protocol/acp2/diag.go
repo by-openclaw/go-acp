@@ -27,7 +27,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	if err := sess.Connect(ctx, host, port); err != nil {
 		return nil, err
 	}
-	defer sess.Disconnect()
+	defer func() { _ = sess.Disconnect() }()
 
 	var results []DiagResult
 

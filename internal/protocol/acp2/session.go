@@ -2,7 +2,6 @@ package acp2
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"log/slog"
@@ -660,49 +659,7 @@ func (s *Session) Port() int {
 	return s.port
 }
 
-// GetSlotInfoFromAN2Reply parses slot info from the AN2 reply. For the
-// EnableProtocolEvents call, the payload includes the protocol event config.
-// This is a helper for consistent slot-info reading.
-func parseSlotInfoReply(data []byte) protocol.SlotStatus {
-	if len(data) < 1 {
-		return protocol.SlotNoCard
-	}
-	// The AN2 GetSlotInfo reply payload: first byte after funcID echo
-	// is the slot status. In our an2Request, Body already has the funcID
-	// stripped since we use it as raw bytes.
-	//
-	// Actually, the AN2 reply payload format varies. Some firmware echoes
-	// the funcID, some don't. We read the first byte that looks like a
-	// valid status.
-	for _, b := range data {
-		if b <= 5 {
-			return protocol.SlotStatus(b)
-		}
-	}
-	return protocol.SlotNoCard
-}
-
 // Done returns a channel that is closed when the session is disconnected.
 func (s *Session) Done() <-chan struct{} {
 	return s.done
-}
-
-// ---- Helpers for building AN2 internal request payloads ----
-
-// encodeEnableProtocolEvents builds the payload for AN2 EnableProtocolEvents.
-// Format: count(u8) + proto_id(u8)...
-func encodeEnableProtocolEvents(protos ...AN2Proto) []byte {
-	buf := make([]byte, 1+len(protos))
-	buf[0] = byte(len(protos))
-	for i, p := range protos {
-		buf[1+i] = byte(p)
-	}
-	return buf
-}
-
-// encodeU32BE is a tiny helper for encoding u32 big-endian.
-func encodeU32BE(v uint32) []byte {
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, v)
-	return buf
 }
