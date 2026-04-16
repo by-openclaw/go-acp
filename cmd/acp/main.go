@@ -1246,25 +1246,27 @@ func runWatch(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	// Pre-walk to populate the tree for label resolution and typed decode.
-	// Same pattern as ACP1: walk before subscribe so callbacks get labels.
-	// No timeout — walk takes as long as it takes (Ctrl-C to abort).
-	if *slot >= 0 {
-		if _, werr := plug.Walk(ctx, *slot); werr != nil {
-			fmt.Fprintf(os.Stderr, "warning: walk slot %d failed: %v\n", *slot, werr)
-		}
-	} else {
-		info, ierr := plug.GetDeviceInfo(ctx)
-		if ierr == nil {
-			for s := 0; s < info.NumSlots; s++ {
-				si, err := plug.GetSlotInfo(ctx, s)
-				if err != nil || si.Status != protocol.SlotPresent {
-					continue
+	// Walk in background to populate label/type cache. Announces start
+	// immediately — labels resolve as the tree fills. ACP1 walks are fast
+	// enough to block; ACP2 slot 1 has 44k objects so must be async.
+	go func() {
+		if *slot >= 0 {
+			if _, werr := plug.Walk(ctx, *slot); werr != nil {
+				fmt.Fprintf(os.Stderr, "warning: walk slot %d failed: %v\n", *slot, werr)
+			}
+		} else {
+			info, ierr := plug.GetDeviceInfo(ctx)
+			if ierr == nil {
+				for s := 0; s < info.NumSlots; s++ {
+					si, serr := plug.GetSlotInfo(ctx, s)
+					if serr != nil || si.Status != protocol.SlotPresent {
+						continue
+					}
+					_, _ = plug.Walk(ctx, s)
 				}
-				_, _ = plug.Walk(ctx, s)
 			}
 		}
-	}
+	}()
 
 	req := protocol.ValueRequest{
 		Slot:  *slot,
