@@ -199,6 +199,17 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 		return protocol.Value{}, err
 	}
 
+	// If no tree → type unknown. Fetch object metadata via get_object
+	// to learn the type before reading the value (same pattern as ACP1).
+	if objType == 0 && tree == nil {
+		var miniTree *WalkedTree
+		objType, numType, miniTree, err = p.fetchObjectMeta(ctx, s, uint8(req.Slot), objID)
+		if err != nil {
+			return protocol.Value{}, err
+		}
+		tree = miniTree
+	}
+
 	msg, err := s.DoACP2(ctx, uint8(req.Slot), &ACP2Message{
 		Type:  ACP2TypeRequest,
 		Func:  ACP2FuncGetProperty,
@@ -504,4 +515,63 @@ func encodeSetProperty(objType ACP2ObjType, numType NumberType, obj *protocol.Ob
 		}
 		return Property{}, fmt.Errorf("acp2: cannot encode value for object type %d", objType)
 	}
+}
+
+// fetchObjectMeta issues a single get_object to learn the ACP2 object type,
+// number type, and options map for an obj-id. Builds a minimal single-object
+// WalkedTree so decodePropertyValue can resolve enum labels.
+// Used when no walked tree is available (same pattern as ACP1's findObject fallback).
+func (p *Plugin) fetchObjectMeta(ctx context.Context, s *Session, slot uint8, objID uint32) (ACP2ObjType, NumberType, *WalkedTree, error) {
+	msg, err := s.DoACP2(ctx, slot, &ACP2Message{
+		Type:  ACP2TypeRequest,
+		Func:  ACP2FuncGetObject,
+		ObjID: objID,
+		Idx:   0,
+	})
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("get_object(%d): %w", objID, err)
+	}
+
+	var objType ACP2ObjType
+	var numType NumberType
+	var optMap map[uint32]string
+	var label string
+	for i := range msg.Properties {
+		prop := &msg.Properties[i]
+		switch prop.PID {
+		case PIDObjectType:
+			if len(prop.Data) >= 4 {
+				objType = ACP2ObjType(prop.Data[3])
+			} else {
+				objType = ACP2ObjType(prop.VType)
+			}
+		case PIDNumberType:
+			if len(prop.Data) >= 4 {
+				numType = NumberType(prop.Data[3])
+			} else {
+				numType = NumberType(prop.VType)
+			}
+		case PIDOptions:
+			optMap = PropertyOptionsMap(prop)
+		case PIDLabel:
+			label = PropertyString(prop)
+		}
+	}
+
+	// Build a minimal single-object tree for decodePropertyValue.
+	miniTree := &WalkedTree{
+		Slot: int(slot),
+		Objects: []protocol.Object{
+			{Slot: int(slot), ID: int(objID), Label: label},
+		},
+		ObjTypes:    []ACP2ObjType{objType},
+		NumTypes:    []NumberType{numType},
+		OptionsMaps: []map[uint32]string{optMap},
+		Labels:      map[string]int{},
+	}
+	if label != "" {
+		miniTree.Labels[label] = 0
+	}
+
+	return objType, numType, miniTree, nil
 }
