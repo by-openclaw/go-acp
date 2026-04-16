@@ -604,6 +604,10 @@ func runWalk(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
+	// Walk uses the signal-only context (no timeout). A tree walk takes
+	// as long as it takes — 214 objects on slot 0 is ~2s, 4190 objects
+	// on slot 1 can be minutes. Ctrl-C is the only interrupt.
+	// Short-timeout opCtx is only for device info / slot info queries.
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
@@ -628,9 +632,7 @@ func runWalk(ctx context.Context, args []string) error {
 				continue
 			}
 			walked++
-			slotCtx, slotCancel := withTimeout(ctx, cf.timeout)
-			objs, werr := plug.Walk(slotCtx, s)
-			slotCancel()
+			objs, werr := plug.Walk(ctx, s)
 			if werr != nil {
 				fmt.Printf("\nslot %d — walk error: %v\n", s, werr)
 				continue
@@ -641,7 +643,7 @@ func runWalk(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	objs, err := plug.Walk(opCtx, *slot)
+	objs, err := plug.Walk(ctx, *slot)
 	if err != nil {
 		return err
 	}
@@ -1209,16 +1211,12 @@ func runWatch(ctx context.Context, args []string) error {
 
 	// Pre-walk to populate the tree for label resolution and typed decode.
 	// Same pattern as ACP1: walk before subscribe so callbacks get labels.
+	// No timeout — walk takes as long as it takes (Ctrl-C to abort).
 	if *slot >= 0 {
-		// Specific slot: walk it.
-		walkCtx, cancel := withTimeout(ctx, cf.timeout)
-		if _, werr := plug.Walk(walkCtx, *slot); werr != nil {
-			cancel()
+		if _, werr := plug.Walk(ctx, *slot); werr != nil {
 			fmt.Fprintf(os.Stderr, "warning: walk slot %d failed: %v\n", *slot, werr)
 		}
-		cancel()
 	} else {
-		// No slot filter: walk all present slots.
 		info, ierr := plug.GetDeviceInfo(ctx)
 		if ierr == nil {
 			for s := 0; s < info.NumSlots; s++ {
@@ -1226,9 +1224,7 @@ func runWatch(ctx context.Context, args []string) error {
 				if err != nil || si.Status != protocol.SlotPresent {
 					continue
 				}
-				walkCtx, cancel := withTimeout(ctx, cf.timeout)
-				_, _ = plug.Walk(walkCtx, s)
-				cancel()
+				_, _ = plug.Walk(ctx, s)
 			}
 		}
 	}
