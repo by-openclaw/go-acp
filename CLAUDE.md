@@ -24,11 +24,11 @@ This repo has zero frontend code.
 
 ## Protocol Reference Documents
 
-All protocol documents live in `docs/protocols/`. Read them before modifying
+All protocol documents live in `assets/` per protocol. Read them before modifying
 any codec or framer code.
 
 ```
-docs/protocols/
+assets/
   acp1/
     AXON-ACP_v1_4.pdf        ACP v1 full specification (authoritative)
     dissector_acpv1.lua       Wireshark dissector for ACP1 (byte-exact reference)
