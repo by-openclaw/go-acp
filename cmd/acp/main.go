@@ -604,6 +604,30 @@ func runWalk(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
+	// Stream objects as they're discovered during walk — don't wait for
+	// the full tree before printing. Essential for large slots (4190+ objects).
+	filterLower := strings.ToLower(*filter)
+	if p, ok := plug.(interface{ SetWalkProgress(acp2.WalkProgressFunc) }); ok {
+		p.SetWalkProgress(func(count int, obj *protocol.Object) {
+			if obj.Kind == protocol.KindRaw && obj.Label == "" {
+				return // skip node containers
+			}
+			valStr := walkValueColumn(*obj)
+			rngStr := walkRangeColumn(*obj)
+			line := fmt.Sprintf("  %3d  %-20s  %-6s  %-3s  %-18s  %s",
+				obj.ID,
+				truncate(obj.Label, 20),
+				kindName(obj.Kind),
+				accessStr(obj.Access),
+				truncate(valStr, 18),
+				rngStr)
+			if *filter != "" && !strings.Contains(strings.ToLower(line), filterLower) {
+				return
+			}
+			fmt.Println(line)
+		})
+	}
+
 	// Walk uses the signal-only context (no timeout). A tree walk takes
 	// as long as it takes — 214 objects on slot 0 is ~2s, 4190 objects
 	// on slot 1 can be minutes. Ctrl-C is the only interrupt.
@@ -632,22 +656,24 @@ func runWalk(ctx context.Context, args []string) error {
 				continue
 			}
 			walked++
+			fmt.Printf("\nslot %d:\n", s)
 			objs, werr := plug.Walk(ctx, s)
 			if werr != nil {
 				fmt.Printf("\nslot %d — walk error: %v\n", s, werr)
 				continue
 			}
-			printSlotTree(s, objs, *filter)
+			fmt.Printf("\nslot %d — %d objects\n", s, len(objs))
 		}
 		fmt.Printf("\nwalked %d present slot(s)\n", walked)
 		return nil
 	}
 
+	fmt.Printf("\nslot %d:\n", *slot)
 	objs, err := plug.Walk(ctx, *slot)
 	if err != nil {
 		return err
 	}
-	printSlotTree(*slot, objs, *filter)
+	fmt.Printf("\nslot %d — %d objects\n", *slot, len(objs))
 	return nil
 }
 

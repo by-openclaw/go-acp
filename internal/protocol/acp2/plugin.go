@@ -52,6 +52,9 @@ type Plugin struct {
 
 	// Optional traffic capture.
 	recorder *transport.Recorder
+
+	// Optional walk progress callback.
+	walkProgress WalkProgressFunc
 }
 
 // subKey canonicalises a ValueRequest for map lookup.
@@ -69,6 +72,17 @@ func reqToSubKey(req protocol.ValueRequest) subKey {
 func (p *Plugin) SetRecorder(rec *transport.Recorder) {
 	p.mu.Lock()
 	p.recorder = rec
+	p.mu.Unlock()
+}
+
+// SetWalkProgress sets a callback invoked for each object during Walk.
+// Allows the CLI to print objects as they're discovered (streaming output).
+func (p *Plugin) SetWalkProgress(fn WalkProgressFunc) {
+	p.mu.Lock()
+	if p.walker != nil {
+		p.walker.OnProgress = fn
+	}
+	p.walkProgress = fn
 	p.mu.Unlock()
 }
 
@@ -92,6 +106,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	p.session = s
 	p.walker = NewWalker(s, p.logger)
+	p.walker.OnProgress = p.walkProgress
 	p.trees = make(map[int]*WalkedTree)
 	p.subHandles = make(map[subKey]int)
 	return nil

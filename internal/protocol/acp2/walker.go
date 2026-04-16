@@ -37,10 +37,14 @@ func (t *WalkedTree) Lookup(label string) int {
 	return idx
 }
 
+// WalkProgressFunc is called after each object is added to the tree during walk.
+type WalkProgressFunc func(count int, obj *protocol.Object)
+
 // Walker performs a DFS walk of the ACP2 object tree starting from the root.
 type Walker struct {
-	session *Session
-	logger  *slog.Logger
+	session    *Session
+	logger     *slog.Logger
+	OnProgress WalkProgressFunc
 }
 
 // NewWalker creates a walker that uses the given session for ACP2 requests.
@@ -113,6 +117,9 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 	tree.OptionsMaps = append(tree.OptionsMaps, optMap)
 	if obj.Label != "" {
 		tree.Labels[obj.Label] = idx
+	}
+	if w.OnProgress != nil {
+		w.OnProgress(idx+1, &tree.Objects[idx])
 	}
 
 	// Recurse into children.
