@@ -606,8 +606,11 @@ func runWalk(ctx context.Context, args []string) error {
 
 	// Stream objects as they're discovered during walk — don't wait for
 	// the full tree before printing. Essential for large slots (4190+ objects).
+	// ACP1 doesn't support streaming, so we fall back to printSlotTree after.
+	streaming := false
 	filterLower := strings.ToLower(*filter)
 	if p, ok := plug.(interface{ SetWalkProgress(acp2.WalkProgressFunc) }); ok {
+		streaming = true
 		p.SetWalkProgress(func(count int, obj *protocol.Object) {
 			if obj.Kind == protocol.KindRaw && obj.Label == "" {
 				return // skip node containers
@@ -662,7 +665,11 @@ func runWalk(ctx context.Context, args []string) error {
 				fmt.Printf("\nslot %d — walk error: %v\n", s, werr)
 				continue
 			}
-			fmt.Printf("\nslot %d — %d objects\n", s, len(objs))
+			if !streaming {
+				printSlotTree(s, objs, *filter)
+			} else {
+				fmt.Printf("\nslot %d — %d objects\n", s, len(objs))
+			}
 		}
 		fmt.Printf("\nwalked %d present slot(s)\n", walked)
 		return nil
@@ -673,7 +680,11 @@ func runWalk(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\nslot %d — %d objects\n", *slot, len(objs))
+	if !streaming {
+		printSlotTree(*slot, objs, *filter)
+	} else {
+		fmt.Printf("\nslot %d — %d objects\n", *slot, len(objs))
+	}
 	return nil
 }
 
