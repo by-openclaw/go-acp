@@ -336,8 +336,19 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 						}
 					}
 				}
+				// Fallback: use vtype from announce property to decode
+				// when tree doesn't contain this object.
 				if ev.Value.Kind == protocol.KindUnknown && prop.Data != nil {
-					ev.Value = protocol.Value{Kind: protocol.KindRaw, Raw: prop.Data}
+					nt := NumberType(prop.VType)
+					if nt > 0 {
+						val, derr := decodePropertyValue(prop, ObjTypeNumber, nt, nil, msg.ObjID)
+						if derr == nil {
+							ev.Value = val
+						}
+					}
+					if ev.Value.Kind == protocol.KindUnknown {
+						ev.Value = protocol.Value{Kind: protocol.KindRaw, Raw: prop.Data}
+					}
 				}
 				break
 			}

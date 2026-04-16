@@ -466,9 +466,14 @@ func (s *Session) handleACP2Frame(f *AN2Frame) {
 	}
 
 	if msg.Type == ACP2TypeAnnounce {
-		// Announces: short summary only (no payload dump), same as ACP1.
-		s.logger.Debug("acp2: skipping announce",
-			"slot", f.Slot, "obj_id", msg.ObjID, "pid", msg.PID, "dlen", len(f.Payload))
+		// Announce debug: include first 20 bytes hex for diagnosis.
+		hexDump := fmt.Sprintf("%x", f.Payload)
+		if len(hexDump) > 40 {
+			hexDump = hexDump[:40] + "..."
+		}
+		s.logger.Debug("acp2: announce",
+			"slot", f.Slot, "obj_id", msg.ObjID, "pid", msg.PID,
+			"props", len(msg.Properties), "dlen", len(f.Payload), "hex", hexDump)
 		// Fan out to all subscribers.
 		s.annMu.Lock()
 		subs := make([]AnnounceFunc, 0, len(s.annSubs))

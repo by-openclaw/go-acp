@@ -134,7 +134,9 @@ func DecodeACP2Message(data []byte) (*ACP2Message, error) {
 	}
 
 	// For get_version replies, PID holds the version number. No body parsing.
-	if m.Func == ACP2FuncGetVersion {
+	// Only applies to actual replies — announces have stat=0 in the func
+	// field which collides with ACP2FuncGetVersion(0).
+	if m.Type == ACP2TypeReply && m.Func == ACP2FuncGetVersion {
 		return m, nil
 	}
 
