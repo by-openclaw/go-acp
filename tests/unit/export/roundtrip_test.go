@@ -110,9 +110,9 @@ func TestAllFormats_SameObjectCount(t *testing.T) {
 	snap := sampleSnapshot()
 
 	var jBuf, yBuf, cBuf bytes.Buffer
-	export.WriteJSON(&jBuf, snap)
-	export.WriteYAML(&yBuf, snap)
-	export.WriteCSV(&cBuf, snap)
+	_ = export.WriteJSON(&jBuf, snap)
+	_ = export.WriteYAML(&yBuf, snap)
+	_ = export.WriteCSV(&cBuf, snap)
 
 	jSnap, _ := export.ReadJSON(&jBuf)
 	ySnap, _ := export.ReadYAML(&yBuf)

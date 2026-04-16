@@ -214,7 +214,7 @@ func parseCSVValue(kind protocol.ValueKind, val, name string, items []string) pr
 		v.Str = val
 	case protocol.KindIPAddr:
 		var a, b, c, d uint8
-		fmt.Sscanf(val, "%d.%d.%d.%d", &a, &b, &c, &d)
+		_, _ = fmt.Sscanf(val, "%d.%d.%d.%d", &a, &b, &c, &d)
 		v.IPAddr = [4]byte{a, b, c, d}
 	}
 	return v

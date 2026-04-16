@@ -216,7 +216,7 @@ func applyValue(o *protocol.Object, val string) {
 		o.Value.Str = s
 	case protocol.KindIPAddr:
 		var a, b, c, d uint8
-		fmt.Sscanf(s, "%d.%d.%d.%d", &a, &b, &c, &d)
+		_, _ = fmt.Sscanf(s, "%d.%d.%d.%d", &a, &b, &c, &d)
 		o.Value.IPAddr = [4]byte{a, b, c, d}
 	}
 }

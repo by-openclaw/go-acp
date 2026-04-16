@@ -316,13 +316,6 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, 
 	// standard identity set.
 	if tree != nil {
 		info.Identity = map[string]string{}
-		if _, idGroup := tree.Labels["identity"]; idGroup {
-			// We don't have the raw string values in protocol.Object (the
-			// walker stores type/range metadata, not live values). Adding
-			// live identity strings is a follow-up refinement; for now
-			// we leave Identity empty but non-nil so callers can detect
-			// "walked" vs "not walked".
-		}
 	}
 	return info, nil
 }
