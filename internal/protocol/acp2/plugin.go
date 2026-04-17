@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -540,8 +542,21 @@ func encodeSetProperty(objType ACP2ObjType, numType NumberType, obj *protocol.Ob
 		return MakeValueProperty(PIDValue, NumTypePreset, data), nil
 
 	case ObjTypeIPv4:
+		ip := val.IPAddr
+		// Parse from string if IPAddr is zero (CLI passes --value "x.x.x.x" as Str).
+		if ip == [4]byte{} && val.Str != "" {
+			parts := strings.Split(val.Str, ".")
+			if len(parts) == 4 {
+				for i, p := range parts {
+					v, err := strconv.Atoi(p)
+					if err == nil && v >= 0 && v <= 255 {
+						ip[i] = byte(v)
+					}
+				}
+			}
+		}
 		data := make([]byte, 4)
-		copy(data, val.IPAddr[:])
+		copy(data, ip[:])
 		return MakeValueProperty(PIDValue, NumTypeIPv4, data), nil
 
 	case ObjTypeString:

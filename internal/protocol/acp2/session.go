@@ -367,7 +367,11 @@ func (s *Session) readLoop() {
 	defer close(s.done)
 
 	for {
-		frame, err := ReadAN2Frame(s.conn)
+		conn := s.conn
+		if conn == nil {
+			return
+		}
+		frame, err := ReadAN2Frame(conn)
 		if err != nil {
 			if err == io.EOF || isClosedErr(err) {
 				s.logger.Debug("acp2: reader: connection closed")
