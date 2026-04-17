@@ -45,31 +45,11 @@ func WriteYAML(w io.Writer, s *Snapshot) error {
 		}
 		writeKV(&sb, 4, "walked_at", slot.WalkedAt.UTC().Format("2006-01-02T15:04:05Z"))
 
-		// Check if any object has path depth > 2 (ACP2 hierarchical).
-		hierarchical := false
-		for _, o := range slot.Objects {
-			if len(o.Path) > 2 {
-				hierarchical = true
-				break
-			}
-		}
-
-		if hierarchical {
-			// ACP2: build nested tree from Path and render hierarchically.
-			root := buildObjectTree(slot.Objects)
-			writeTreeNode(&sb, 4, root)
-		} else {
-			// ACP1: flat group → list of objects.
-			groups := groupByPath(slot.Objects)
-			for _, gname := range groups.order {
-				sb.WriteString("    ")
-				sb.WriteString(gname)
-				sb.WriteString(":\n")
-				for _, o := range groups.items[gname] {
-					writeObject(&sb, 6, o)
-				}
-			}
-		}
+		// Both ACP1 and ACP2 use nested tree format.
+		// ACP2: deep hierarchy (BOARD > Card Name > {id, kind}).
+		// ACP1: two levels (identity > Card name > {id, kind}).
+		root := buildObjectTree(slot.Objects)
+		writeTreeNode(&sb, 4, root)
 	}
 
 	if _, err := io.WriteString(w, sb.String()); err != nil {
@@ -92,31 +72,76 @@ type objectTreeNode struct {
 // Path[0] is always ROOT_NODE_V2 for ACP2 — we skip it and start from
 // Path[1] (BOARD, PSU, etc.) so the tree matches Cerebrum's view.
 func buildObjectTree(objs []protocol.Object) *objectTreeNode {
+	// Detect ACP2 by ROOT_NODE_V2 prefix.
+	acp2 := false
+	for _, o := range objs {
+		if len(o.Path) > 0 && strings.EqualFold(o.Path[0], "ROOT_NODE_V2") {
+			acp2 = true
+			break
+		}
+	}
+
 	root := &objectTreeNode{name: "root", childIdx: map[string]int{}}
 	for i := range objs {
 		o := &objs[i]
-		// Skip the root node object itself (path = ["ROOT_NODE_V2"]).
-		if len(o.Path) <= 1 {
-			continue
-		}
-		// Walk from path[1] onward, creating container nodes as needed.
-		cur := root
-		for _, seg := range o.Path[1:] {
-			idx, exists := cur.childIdx[seg]
+
+		if acp2 {
+			// ACP2: skip ROOT_NODE_V2 root object itself.
+			if len(o.Path) <= 1 {
+				continue
+			}
+			// Walk from path[1] onward.
+			cur := root
+			for _, seg := range o.Path[1:] {
+				idx, exists := cur.childIdx[seg]
+				if !exists {
+					idx = len(cur.children)
+					cur.childIdx[seg] = idx
+					cur.children = append(cur.children, &objectTreeNode{
+						name:     seg,
+						childIdx: map[string]int{},
+					})
+				}
+				cur = cur.children[idx]
+			}
+			if o.Kind != protocol.KindRaw {
+				cur.obj = o
+			}
+		} else {
+			// ACP1: Path = [group], nest under group > label.
+			group := o.Group
+			if group == "" && len(o.Path) > 0 {
+				group = o.Path[0]
+			}
+			if group == "" {
+				group = "other"
+			}
+			// Ensure group node exists.
+			gIdx, exists := root.childIdx[group]
 			if !exists {
-				idx = len(cur.children)
-				cur.childIdx[seg] = idx
-				cur.children = append(cur.children, &objectTreeNode{
-					name:     seg,
+				gIdx = len(root.children)
+				root.childIdx[group] = gIdx
+				root.children = append(root.children, &objectTreeNode{
+					name:     group,
 					childIdx: map[string]int{},
 				})
 			}
-			cur = cur.children[idx]
-		}
-		// If this is a leaf (has a value kind), attach the object.
-		// Node/container objects (kind=raw) just create the tree structure.
-		if o.Kind != protocol.KindRaw {
-			cur.obj = o
+			groupNode := root.children[gIdx]
+			// Add leaf under group.
+			label := o.Label
+			if label == "" {
+				label = fmt.Sprintf("obj_%d", o.ID)
+			}
+			lIdx, exists := groupNode.childIdx[label]
+			if !exists {
+				lIdx = len(groupNode.children)
+				groupNode.childIdx[label] = lIdx
+				groupNode.children = append(groupNode.children, &objectTreeNode{
+					name:     label,
+					childIdx: map[string]int{},
+				})
+			}
+			groupNode.children[lIdx].obj = o
 		}
 	}
 	return root
@@ -199,56 +224,6 @@ func groupByPath(objs []protocol.Object) orderedGroups {
 		g.items[name] = append(g.items[name], o)
 	}
 	return g
-}
-
-// writeObject renders one protocol.Object as a YAML list item.
-// Each list item starts with "- " at indent-2 and continues with
-// key:value pairs at indent (the `- ` and subsequent keys are aligned
-// so the overall indentation is indent+2 for child fields).
-func writeObject(sb *strings.Builder, indent int, o protocol.Object) {
-	pad := strings.Repeat(" ", indent)
-	sb.WriteString(pad)
-	sb.WriteString("- label: ")
-	sb.WriteString(yamlString(o.Label))
-	sb.WriteByte('\n')
-
-	childPad := strings.Repeat(" ", indent+2)
-
-	writeKVPad(sb, childPad, "id", o.ID)
-	writeKVPad(sb, childPad, "kind", kindName(o.Kind))
-	writeKVPad(sb, childPad, "access", accessStr(o.Access))
-	if o.SubGroupMarker {
-		writeKVPad(sb, childPad, "sub_group_marker", true)
-	}
-	if o.Unit != "" {
-		writeKVPad(sb, childPad, "unit", o.Unit)
-	}
-
-	switch o.Kind {
-	case protocol.KindInt, protocol.KindUint, protocol.KindFloat:
-		writeKVPad(sb, childPad, "min", o.Min)
-		writeKVPad(sb, childPad, "max", o.Max)
-		writeKVPad(sb, childPad, "step", o.Step)
-		writeKVPad(sb, childPad, "default", o.Def)
-	case protocol.KindEnum:
-		writeKVPad(sb, childPad, "enum_items", o.EnumItems)
-		writeKVPad(sb, childPad, "default", o.Def)
-	case protocol.KindString:
-		if o.MaxLen > 0 {
-			writeKVPad(sb, childPad, "max_len", o.MaxLen)
-		}
-	case protocol.KindAlarm:
-		writeKVPad(sb, childPad, "alarm_priority", o.AlarmPriority)
-		writeKVPad(sb, childPad, "alarm_tag", fmt.Sprintf("0x%02X", o.AlarmTag))
-		if o.AlarmOnMsg != "" {
-			writeKVPad(sb, childPad, "alarm_on", o.AlarmOnMsg)
-		}
-		if o.AlarmOffMsg != "" {
-			writeKVPad(sb, childPad, "alarm_off", o.AlarmOffMsg)
-		}
-	}
-
-	writeValue(sb, childPad, o)
 }
 
 // writeValue renders the current value of an Object — the one field

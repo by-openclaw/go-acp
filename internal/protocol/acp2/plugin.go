@@ -274,8 +274,22 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		}
 	}
 
+	// Build reverse enum map (label → wire index) for enum resolution.
+	var reverseEnum map[string]uint32
+	if tree != nil && obj != nil {
+		for i, tobj := range tree.Objects {
+			if tobj.ID == obj.ID && tree.OptionsMaps[i] != nil {
+				reverseEnum = make(map[string]uint32, len(tree.OptionsMaps[i]))
+				for wireIdx, label := range tree.OptionsMaps[i] {
+					reverseEnum[label] = wireIdx
+				}
+				break
+			}
+		}
+	}
+
 	// Build the value property for the set request.
-	prop, err := encodeSetProperty(objType, numType, obj, val)
+	prop, err := encodeSetProperty(objType, numType, obj, val, reverseEnum)
 	if err != nil {
 		return protocol.Value{}, err
 	}
@@ -504,7 +518,7 @@ func decodePropertyValue(p *Property, objType ACP2ObjType, numType NumberType, t
 }
 
 // encodeSetProperty builds the value Property for a set_property request.
-func encodeSetProperty(objType ACP2ObjType, numType NumberType, obj *protocol.Object, val protocol.Value) (Property, error) {
+func encodeSetProperty(objType ACP2ObjType, numType NumberType, obj *protocol.Object, val protocol.Value, reverseEnum map[string]uint32) (Property, error) {
 	// If raw bytes are provided, use them directly.
 	if len(val.Raw) > 0 && val.Str == "" && val.Int == 0 && val.Float == 0 && val.Uint == 0 {
 		return MakeValueProperty(PIDValue, numType, val.Raw), nil
@@ -519,14 +533,11 @@ func encodeSetProperty(objType ACP2ObjType, numType NumberType, obj *protocol.Ob
 		return MakeValueProperty(PIDValue, numType, data), nil
 
 	case ObjTypeEnum, ObjTypePreset:
-		// Accept enum index from Enum field or parse from Str.
-		enumIdx := val.Enum
-		if val.Str != "" && obj != nil {
-			for i, item := range obj.EnumItems {
-				if item == val.Str {
-					enumIdx = uint8(i)
-					break
-				}
+		// Accept enum index from Enum field or resolve label via reverse map.
+		enumIdx := uint32(val.Enum)
+		if val.Str != "" && reverseEnum != nil {
+			if wireIdx, ok := reverseEnum[val.Str]; ok {
+				enumIdx = wireIdx
 			}
 		}
 		data, err := EncodeNumericValue(NumTypeU32, 0, uint64(enumIdx), 0)

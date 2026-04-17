@@ -246,7 +246,7 @@ type Object struct {
 	SubGroupMarker bool `json:"sub_group_marker,omitempty"`
 
 	// Value is the current object value as captured during Walk.
-	Value Value `json:"value"`
+	Value Value `json:"value,omitempty"`
 }
 
 // HasRead reports whether the object permits getValue/getObject.
@@ -344,7 +344,16 @@ func (v *Value) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON emits a clean payload with only the fields relevant to
 // the Value's Kind. This keeps JSON / YAML output readable and small.
+// IsZero reports whether the Value is empty (no kind set).
+func (v Value) IsZero() bool {
+	return v.Kind == KindUnknown && v.Raw == nil
+}
+
 func (v Value) MarshalJSON() ([]byte, error) {
+	// Omit zero values entirely — used by cache files where values are stripped.
+	if v.IsZero() {
+		return []byte("null"), nil
+	}
 	type envelope struct {
 		Kind       string       `json:"kind"`
 		Raw        []byte       `json:"raw,omitempty"`

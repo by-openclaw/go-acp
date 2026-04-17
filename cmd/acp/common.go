@@ -4,11 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
-	"os"
 	"strings"
 	"time"
 
+	"acp/internal/logging"
 	"acp/internal/protocol"
 	"acp/internal/protocol/acp1"
 	"acp/internal/storage"
@@ -34,6 +33,7 @@ type commonFlags struct {
 	port      int
 	timeout   time.Duration
 	verbose   bool
+	logLevel  string
 	capture   string
 }
 
@@ -45,7 +45,8 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 			"(ACP1 v1.4 TCP direct, crosses VLANs)")
 	fs.IntVar(&cf.port, "port", 0, "override default port (0 = plugin default)")
 	fs.DurationVar(&cf.timeout, "timeout", 30*time.Second, "per-operation timeout")
-	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output")
+	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
+	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
 	fs.StringVar(&cf.capture, "capture", "", "write raw traffic to JSONL file (for unit test data)")
 	return cf
 }
@@ -58,11 +59,11 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 		return nil, nil, fmt.Errorf("host argument is required")
 	}
 
-	lvl := slog.LevelInfo
-	if cf.verbose {
-		lvl = slog.LevelDebug
+	lvl := logging.ParseLevel(cf.logLevel)
+	if cf.verbose && lvl > logging.LevelDebug {
+		lvl = logging.LevelDebug // --verbose is shortcut for --log-level debug
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: lvl}))
+	logger := logging.NewTextLogger(lvl)
 
 	// Optional traffic capture for test data generation.
 	var recorder *transport.Recorder
