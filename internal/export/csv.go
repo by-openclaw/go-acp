@@ -53,11 +53,13 @@ func WriteCSV(w io.Writer, s *Snapshot) error {
 		// easier to navigate.
 		groups := groupByPath(slot.Objects)
 		for _, gname := range groups.order {
-			// Optional: insert a blank row as a visual separator
-			// between groups? No — that breaks machine parsing. The
-			// "group" column provides the same info for filtering.
 			_ = gname
 			for _, o := range groups.items[gname] {
+				// Skip container nodes (kind=raw) — they have no
+				// value and exist only as tree structure in ACP2.
+				if o.Kind == protocol.KindRaw {
+					continue
+				}
 				row := buildCSVRow(s.Device, slot, o)
 				if err := cw.Write(row); err != nil {
 					return fmt.Errorf("csv row slot=%d id=%d: %w", slot.Slot, o.ID, err)

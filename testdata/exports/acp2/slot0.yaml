@@ -6,81 +6,73 @@ device:
   protocol_version: 2
   num_slots: 2
 generator: acp dev
-created_at: "2026-04-16T23:50:22Z"
+created_at: "2026-04-17T13:20:40Z"
 slots:
   - slot: 0
     status: present
-    walked_at: "2026-04-16T23:50:23Z"
-    ROOT_NODE_V2:
-      - label: ROOT_NODE_V2
-        id: 1
-        kind: raw
-        access: ---
-      - label: BOARD
-        id: 15237
-        kind: raw
-        access: ---
-      - label: Card Name
+    walked_at: "2026-04-17T13:20:41Z"
+    BOARD:
+      Card Name:
         id: 2
         kind: string
         access: R--
         max_len: 17
         value: SHPRM1
-      - label: Card ID
+      Card ID:
         id: 9
         kind: string
         access: R--
         max_len: 17
         value: 01ad36371f0000e8
-      - label: Product Version
+      Product Version:
         id: 13673
         kind: string
         access: R--
         max_len: 129
         value: 5.3.5
-      - label: Product Code
+      Product Code:
         id: 7
         kind: string
         access: R--
         max_len: 14
         value: NEU9520020010
-      - label: Serial Number
+      Serial Number:
         id: 8
         kind: string
         access: R--
         max_len: 17
         value: PR113951
-      - label: Hardware UFP
+      Hardware UFP:
         id: 15524
         kind: string
         access: R--
         max_len: 16
         value: 0.6.0
-      - label: Hardware Version
+      Hardware Version:
         id: 6
         kind: string
         access: R--
         max_len: 16
         value: 0.7
-      - label: Uboot Version
+      Uboot Version:
         id: 15525
         kind: string
         access: R--
         max_len: 16
         value: 1.1.1
-      - label: Recovery Version
+      Recovery Version:
         id: 15526
         kind: string
         access: R--
         max_len: 16
         value: 2.0.13
-      - label: EEPROM Version
+      EEPROM Version:
         id: 15527
         kind: string
         access: R--
         max_len: 16
         value: 1
-      - label: Position
+      Position:
         id: 15238
         kind: enum
         access: R--
@@ -88,40 +80,40 @@ slots:
         default: 0
         value: 138
         value_name: 2
-      - label: Mode
+      Mode:
         id: 15531
         kind: string
         access: R--
         max_len: 16
         value: Application
-      - label: NPF Status
+      NPF Status:
         id: 15530
         kind: string
         access: R--
         max_len: 64
         value: ""
-      - label: Subcomponent Version
+      Subcomponent Version:
         id: 2996
         kind: string
         access: RW-
         max_len: 65
         value: ""
-      - label: Neighbor IP
+      Neighbor IP:
         id: 15828
         kind: ipaddr
         access: R--
         value: 10.41.40.2
-      - label: Neighbor Netmask
+      Neighbor Netmask:
         id: 47493
         kind: ipaddr
         access: R--
         value: 255.255.255.0
-      - label: Neighbor Gateway
+      Neighbor Gateway:
         id: 47494
         kind: ipaddr
         access: R--
         value: 10.41.40.1
-      - label: Announcement Rate
+      Announcement Rate:
         id: 17382
         kind: enum
         access: RW-
@@ -129,7 +121,7 @@ slots:
         default: 60 s
         value: 198
         value_name: "Off"
-      - label: IO Board
+      IO Board:
         id: 17671
         kind: enum
         access: R--
@@ -137,7 +129,7 @@ slots:
         default: NA
         value: 120
         value_name: Present
-      - label: Find my Neuron
+      Find my Neuron:
         id: 21137
         kind: enum
         access: RW-
@@ -145,7 +137,7 @@ slots:
         default: "Off"
         value: 7
         value_name: "Off"
-      - label: Front Panel LED
+      Front Panel LED:
         id: 47427
         kind: enum
         access: RW-
@@ -153,13 +145,13 @@ slots:
         default: Normal
         value: 150
         value_name: Normal
-      - label: eMMC Status
+      eMMC Status:
         id: 47428
         kind: string
         access: R--
         max_len: 51
         value: Ok
-      - label: Debug Mode
+      Debug Mode:
         id: 47429
         kind: enum
         access: RW-
@@ -167,7 +159,7 @@ slots:
         default: "Off"
         value: 7
         value_name: "Off"
-      - label: Download Log
+      Download Log:
         id: 47430
         kind: enum
         access: RW-
@@ -175,13 +167,13 @@ slots:
         default: "Off"
         value: 7
         value_name: "Off"
-      - label: Download Log Status
+      Download Log Status:
         id: 47432
         kind: string
         access: R--
         max_len: 32
         value: Idle
-      - label: ACP Trace
+      ACP Trace:
         id: 47431
         kind: enum
         access: RW-
@@ -189,35 +181,32 @@ slots:
         default: "Off"
         value: 7
         value_name: "Off"
-      - label: IO BOARD
-        id: 19742
-        kind: raw
-        access: ---
-      - label: Card Name
+    IO BOARD:
+      Card Name:
         id: 10189
         kind: string
         access: R--
         max_len: 17
         value: SHPIO
-      - label: Type
+      Type:
         id: 19747
         kind: string
         access: R--
         max_len: 8
         value: SDI
-      - label: Version
+      Version:
         id: 19746
         kind: string
         access: R--
         max_len: 6
         value: 0.0.1
-      - label: Serial Number
+      Serial Number:
         id: 10181
         kind: string
         access: R--
         max_len: 32
         value: NEU9510040010-HA044639
-      - label: Number of Inputs
+      Number of Inputs:
         id: 19743
         kind: uint
         access: R--
@@ -226,7 +215,7 @@ slots:
         step: null
         default: 0
         value: 8
-      - label: Number of Outputs
+      Number of Outputs:
         id: 19744
         kind: uint
         access: R--
@@ -235,7 +224,7 @@ slots:
         step: null
         default: 0
         value: 8
-      - label: Number of Bi-directionals
+      Number of Bi-directionals:
         id: 19745
         kind: uint
         access: R--
@@ -244,11 +233,8 @@ slots:
         step: null
         default: 0
         value: 24
-      - label: PSU
-        id: 10258
-        kind: raw
-        access: ---
-      - label: Fan Control
+    PSU:
+      Fan Control:
         id: 21127
         kind: enum
         access: RW-
@@ -256,251 +242,239 @@ slots:
         default: Automatic
         value: 18
         value_name: Automatic
-      - label: 1
-        id: 15362
-        kind: raw
-        access: ---
-      - label: Present
-        id: 15239
-        kind: enum
-        access: R--
-        enum_items: [NA, OK]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Status
-        id: 47495
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Warning, Error]
-        default: NA
-        value: 18
-        value_name: Error
-      - label: Type
-        id: 15208
-        kind: string
-        access: R--
-        max_len: 64
-        value: PSU - NPU0500-B
-      - label: Version
-        id: 15210
-        kind: string
-        access: R--
-        max_len: 16
-        value: 1.1.1
-      - label: Power
-        id: 15849
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error]
-        default: NA
-        value: 18
-        value_name: Error
-      - label: Operation Mode
-        id: 47490
-        kind: enum
-        access: R--
-        enum_items: [Standalone, Controlled, NA]
-        default: Standalone
-        value: 154
-        value_name: Controlled
-      - label: Fan Speed
-        id: 15211
-        kind: uint
-        access: R--
-        unit: "%"
-        min: 0
-        max: 100
-        step: 1
-        default: 0
-        value: 10
-      - label: Temperature
-        id: 15212
-        kind: int
-        access: R--
-        unit: C
-        min: -40
-        max: 140
-        step: null
-        default: 0
-        value: 21
-      - label: Temperature Measurement Mode
-        id: 47489
-        kind: enum
-        access: R--
-        enum_items: [Intake, Exhaust, NA]
-        default: Intake
-        value: 156
-        value_name: Intake
-      - label: Fan Health 1
-        id: 21502
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error, Warning]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Fan Health 2
-        id: 21503
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error, Warning]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Fan Health 3
-        id: 21504
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error, Warning]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Fan Health 4
-        id: 21505
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error, Warning]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: 2
-        id: 15363
-        kind: raw
-        access: ---
-      - label: Present
-        id: 15240
-        kind: enum
-        access: R--
-        enum_items: [NA, OK]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Status
-        id: 47496
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Warning, Error]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Type
-        id: 15216
-        kind: string
-        access: R--
-        max_len: 64
-        value: PSU - NPU0500-B
-      - label: Version
-        id: 15218
-        kind: string
-        access: R--
-        max_len: 16
-        value: 1.1.1
-      - label: Power
-        id: 15850
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Operation Mode
-        id: 47492
-        kind: enum
-        access: R--
-        enum_items: [Standalone, Controlled, NA]
-        default: Standalone
-        value: 154
-        value_name: Controlled
-      - label: Fan Speed
-        id: 15219
-        kind: uint
-        access: R--
-        unit: "%"
-        min: 0
-        max: 100
-        step: null
-        default: 0
-        value: 11
-      - label: Temperature
-        id: 15220
-        kind: int
-        access: R--
-        unit: C
-        min: -40
-        max: 140
-        step: 1
-        default: 0
-        value: 20
-      - label: Temperature Measurement Mode
-        id: 47491
-        kind: enum
-        access: R--
-        enum_items: [Intake, Exhaust, NA]
-        default: Intake
-        value: 156
-        value_name: Intake
-      - label: Fan Health 1
-        id: 21506
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error, Warning]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Fan Health 2
-        id: 21507
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error, Warning]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Fan Health 3
-        id: 21508
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error, Warning]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: Fan Health 4
-        id: 21509
-        kind: enum
-        access: R--
-        enum_items: [NA, OK, Error, Warning]
-        default: NA
-        value: 17
-        value_name: OK
-      - label: BOARD
-        id: 15528
-        kind: raw
-        access: ---
-      - label: Power Consumption
-        id: 11911
-        kind: uint
-        access: R--
-        unit: W
-        min: 0
-        max: 250
-        step: null
-        default: 0
-        value: 0
-      - label: Temperature
-        id: 15529
-        kind: int
-        access: R--
-        unit: C
-        min: -40
-        max: 140
-        step: 1
-        default: 0
-        value: 0
-      - label: TEMPERATURE
-        id: 15223
-        kind: raw
-        access: ---
-      - label: USP
+      1:
+        Present:
+          id: 15239
+          kind: enum
+          access: R--
+          enum_items: [NA, OK]
+          default: NA
+          value: 17
+          value_name: OK
+        Status:
+          id: 47495
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Warning, Error]
+          default: NA
+          value: 18
+          value_name: Error
+        Type:
+          id: 15208
+          kind: string
+          access: R--
+          max_len: 64
+          value: PSU - NPU0500-B
+        Version:
+          id: 15210
+          kind: string
+          access: R--
+          max_len: 16
+          value: 1.1.1
+        Power:
+          id: 15849
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error]
+          default: NA
+          value: 18
+          value_name: Error
+        Operation Mode:
+          id: 47490
+          kind: enum
+          access: R--
+          enum_items: [Standalone, Controlled, NA]
+          default: Standalone
+          value: 154
+          value_name: Controlled
+        Fan Speed:
+          id: 15211
+          kind: uint
+          access: R--
+          unit: "%"
+          min: 0
+          max: 100
+          step: 1
+          default: 0
+          value: 10
+        Temperature:
+          id: 15212
+          kind: int
+          access: R--
+          unit: C
+          min: -40
+          max: 140
+          step: null
+          default: 0
+          value: 20
+        Temperature Measurement Mode:
+          id: 47489
+          kind: enum
+          access: R--
+          enum_items: [Intake, Exhaust, NA]
+          default: Intake
+          value: 156
+          value_name: Intake
+        Fan Health 1:
+          id: 21502
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error, Warning]
+          default: NA
+          value: 17
+          value_name: OK
+        Fan Health 2:
+          id: 21503
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error, Warning]
+          default: NA
+          value: 17
+          value_name: OK
+        Fan Health 3:
+          id: 21504
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error, Warning]
+          default: NA
+          value: 17
+          value_name: OK
+        Fan Health 4:
+          id: 21505
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error, Warning]
+          default: NA
+          value: 17
+          value_name: OK
+      2:
+        Present:
+          id: 15240
+          kind: enum
+          access: R--
+          enum_items: [NA, OK]
+          default: NA
+          value: 17
+          value_name: OK
+        Status:
+          id: 47496
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Warning, Error]
+          default: NA
+          value: 17
+          value_name: OK
+        Type:
+          id: 15216
+          kind: string
+          access: R--
+          max_len: 64
+          value: PSU - NPU0500-B
+        Version:
+          id: 15218
+          kind: string
+          access: R--
+          max_len: 16
+          value: 1.1.1
+        Power:
+          id: 15850
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error]
+          default: NA
+          value: 17
+          value_name: OK
+        Operation Mode:
+          id: 47492
+          kind: enum
+          access: R--
+          enum_items: [Standalone, Controlled, NA]
+          default: Standalone
+          value: 154
+          value_name: Controlled
+        Fan Speed:
+          id: 15219
+          kind: uint
+          access: R--
+          unit: "%"
+          min: 0
+          max: 100
+          step: null
+          default: 0
+          value: 10
+        Temperature:
+          id: 15220
+          kind: int
+          access: R--
+          unit: C
+          min: -40
+          max: 140
+          step: 1
+          default: 0
+          value: 19
+        Temperature Measurement Mode:
+          id: 47491
+          kind: enum
+          access: R--
+          enum_items: [Intake, Exhaust, NA]
+          default: Intake
+          value: 156
+          value_name: Intake
+        Fan Health 1:
+          id: 21506
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error, Warning]
+          default: NA
+          value: 17
+          value_name: OK
+        Fan Health 2:
+          id: 21507
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error, Warning]
+          default: NA
+          value: 17
+          value_name: OK
+        Fan Health 3:
+          id: 21508
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error, Warning]
+          default: NA
+          value: 17
+          value_name: OK
+        Fan Health 4:
+          id: 21509
+          kind: enum
+          access: R--
+          enum_items: [NA, OK, Error, Warning]
+          default: NA
+          value: 17
+          value_name: OK
+      BOARD:
+        Power Consumption:
+          id: 11911
+          kind: uint
+          access: R--
+          unit: W
+          min: 0
+          max: 250
+          step: null
+          default: 0
+          value: 0
+        Temperature:
+          id: 15529
+          kind: int
+          access: R--
+          unit: C
+          min: -40
+          max: 140
+          step: 1
+          default: 0
+          value: 0
+    TEMPERATURE:
+      USP:
         id: 15224
         kind: int
         access: R--
@@ -510,7 +484,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: ZYNQ
+      ZYNQ:
         id: 15225
         kind: int
         access: R--
@@ -520,11 +494,8 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: MANAGEMENT PORT
-        id: 15364
-        kind: raw
-        access: ---
-      - label: Take
+    MANAGEMENT PORT:
+      Take:
         id: 19378
         kind: enum
         access: RW-
@@ -532,7 +503,7 @@ slots:
         default: "Off"
         value: 7
         value_name: "Off"
-      - label: Ethernet Configuration
+      Ethernet Configuration:
         id: 15252
         kind: enum
         access: RW-
@@ -540,38 +511,38 @@ slots:
         default: Manual
         value: 1
         value_name: Manual
-      - label: Ethernet IP Address
+      Ethernet IP Address:
         id: 15246
         kind: ipaddr
         access: RW-
         value: 10.41.40.195
-      - label: Ethernet IP Mask
+      Ethernet IP Mask:
         id: 15248
         kind: ipaddr
         access: RW-
         value: 255.255.255.0
-      - label: Ethernet IP Gateway
+      Ethernet IP Gateway:
         id: 15250
         kind: ipaddr
         access: RW-
         value: 10.41.40.1
-      - label: DNS Primary Server
+      DNS Primary Server:
         id: 10023
         kind: ipaddr
         access: RW-
         value: 0.0.0.0
-      - label: DNS Secondary Server
+      DNS Secondary Server:
         id: 10024
         kind: ipaddr
         access: RW-
         value: 0.0.0.0
-      - label: DNS Domain
+      DNS Domain:
         id: 23714
         kind: string
         access: RW-
         max_len: 255
         value: ""
-      - label: Ethernet Configuration Status
+      Ethernet Configuration Status:
         id: 15253
         kind: enum
         access: R--
@@ -579,187 +550,166 @@ slots:
         default: DHCP Asking
         value: 1
         value_name: Manual
-      - label: Ethernet IP Address Status
+      Ethernet IP Address Status:
         id: 15247
         kind: ipaddr
         access: R--
         value: 10.41.40.195
-      - label: Ethernet IP Mask Status
+      Ethernet IP Mask Status:
         id: 15249
         kind: ipaddr
         access: R--
         value: 255.255.255.0
-      - label: Ethernet IP Gateway Status
+      Ethernet IP Gateway Status:
         id: 15251
         kind: ipaddr
         access: R--
         value: 10.41.40.1
-      - label: Ethernet MAC Address
+      Ethernet MAC Address:
         id: 15365
         kind: string
         access: R--
         max_len: 18
         value: "00:03:41:20:9a:f0"
-      - label: DNS Primary Server Status
+      DNS Primary Server Status:
         id: 10025
         kind: ipaddr
         access: R--
         value: 0.0.0.0
-      - label: DNS Secondary Server Status
+      DNS Secondary Server Status:
         id: 10026
         kind: ipaddr
         access: R--
         value: 0.0.0.0
-      - label: DNS Domain Status
+      DNS Domain Status:
         id: 23716
         kind: string
         access: R--
         max_len: 255
         value: ""
-      - label: ROUTES
-        id: 47433
-        kind: raw
-        access: ---
-      - label: ROUTE 1
-        id: 47434
-        kind: raw
-        access: ---
-      - label: Enable
-        id: 47435
-        kind: enum
-        access: RW-
-        enum_items: ["Off", "On"]
-        default: "Off"
-        value: 7
-        value_name: "Off"
-      - label: IP Address
-        id: 47436
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Mask
-        id: 47437
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Gateway
-        id: 47454
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: ROUTE 2
-        id: 47438
-        kind: raw
-        access: ---
-      - label: Enable
-        id: 47439
-        kind: enum
-        access: RW-
-        enum_items: ["Off", "On"]
-        default: "Off"
-        value: 7
-        value_name: "Off"
-      - label: IP Address
-        id: 47440
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Mask
-        id: 47441
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Gateway
-        id: 47455
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: ROUTE 3
-        id: 47442
-        kind: raw
-        access: ---
-      - label: Enable
-        id: 47443
-        kind: enum
-        access: RW-
-        enum_items: ["Off", "On"]
-        default: "Off"
-        value: 7
-        value_name: "Off"
-      - label: IP Address
-        id: 47444
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Mask
-        id: 47445
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Gateway
-        id: 47456
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: ROUTE 4
-        id: 47446
-        kind: raw
-        access: ---
-      - label: Enable
-        id: 47447
-        kind: enum
-        access: RW-
-        enum_items: ["Off", "On"]
-        default: "Off"
-        value: 7
-        value_name: "Off"
-      - label: IP Address
-        id: 47448
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Mask
-        id: 47449
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Gateway
-        id: 47457
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: ROUTE 5
-        id: 47450
-        kind: raw
-        access: ---
-      - label: Enable
-        id: 47451
-        kind: enum
-        access: RW-
-        enum_items: ["Off", "On"]
-        default: "Off"
-        value: 7
-        value_name: "Off"
-      - label: IP Address
-        id: 47452
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Mask
-        id: 47453
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: IP Gateway
-        id: 47458
-        kind: ipaddr
-        access: RW-
-        value: 0.0.0.0
-      - label: QSFP 1
-        id: 15605
-        kind: raw
-        access: ---
-      - label: Announcement Rate
+      ROUTES:
+        ROUTE 1:
+          Enable:
+            id: 47435
+            kind: enum
+            access: RW-
+            enum_items: ["Off", "On"]
+            default: "Off"
+            value: 7
+            value_name: "Off"
+          IP Address:
+            id: 47436
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Mask:
+            id: 47437
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Gateway:
+            id: 47454
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+        ROUTE 2:
+          Enable:
+            id: 47439
+            kind: enum
+            access: RW-
+            enum_items: ["Off", "On"]
+            default: "Off"
+            value: 7
+            value_name: "Off"
+          IP Address:
+            id: 47440
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Mask:
+            id: 47441
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Gateway:
+            id: 47455
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+        ROUTE 3:
+          Enable:
+            id: 47443
+            kind: enum
+            access: RW-
+            enum_items: ["Off", "On"]
+            default: "Off"
+            value: 7
+            value_name: "Off"
+          IP Address:
+            id: 47444
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Mask:
+            id: 47445
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Gateway:
+            id: 47456
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+        ROUTE 4:
+          Enable:
+            id: 47447
+            kind: enum
+            access: RW-
+            enum_items: ["Off", "On"]
+            default: "Off"
+            value: 7
+            value_name: "Off"
+          IP Address:
+            id: 47448
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Mask:
+            id: 47449
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Gateway:
+            id: 47457
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+        ROUTE 5:
+          Enable:
+            id: 47451
+            kind: enum
+            access: RW-
+            enum_items: ["Off", "On"]
+            default: "Off"
+            value: 7
+            value_name: "Off"
+          IP Address:
+            id: 47452
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Mask:
+            id: 47453
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+          IP Gateway:
+            id: 47458
+            kind: ipaddr
+            access: RW-
+            value: 0.0.0.0
+    QSFP 1:
+      Announcement Rate:
         id: 47421
         kind: enum
         access: RW-
@@ -767,7 +717,7 @@ slots:
         default: 60 s
         value: 203
         value_name: 60 s
-      - label: Present
+      Present:
         id: 17568
         kind: enum
         access: R--
@@ -775,25 +725,25 @@ slots:
         default: NA
         value: 17
         value_name: OK
-      - label: Vendor Name
+      Vendor Name:
         id: 17565
         kind: string
         access: R--
         max_len: 32
         value: CISCOSOLIDOPTICS
-      - label: Vendor Part Number
+      Vendor Part Number:
         id: 17566
         kind: string
         access: R--
         max_len: 32
         value: CIS-QSFP100G-DR1
-      - label: Vendor Serial Number
+      Vendor Serial Number:
         id: 17567
         kind: string
         access: R--
         max_len: 16
         value: SOZ131GG0807
-      - label: Temperature
+      Temperature:
         id: 17564
         kind: int
         access: R--
@@ -803,7 +753,7 @@ slots:
         step: 1
         default: 0
         value: 62
-      - label: Power Rx 1
+      Power Rx 1:
         id: 47397
         kind: float
         access: R--
@@ -812,8 +762,8 @@ slots:
         max: 6.553500175476074
         step: null
         default: 0
-        value: 0.984000027179718
-      - label: Power Rx 2
+        value: 0.9810000061988831
+      Power Rx 2:
         id: 47409
         kind: float
         access: R--
@@ -823,7 +773,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 3
+      Power Rx 3:
         id: 47410
         kind: float
         access: R--
@@ -833,7 +783,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 4
+      Power Rx 4:
         id: 47411
         kind: float
         access: R--
@@ -843,7 +793,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 1
+      Power Tx 1:
         id: 47403
         kind: float
         access: R--
@@ -852,8 +802,8 @@ slots:
         max: 6.553500175476074
         step: null
         default: 0
-        value: 1.7020000219345093
-      - label: Power Tx 2
+        value: 1.6990000009536743
+      Power Tx 2:
         id: 47412
         kind: float
         access: R--
@@ -863,7 +813,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 3
+      Power Tx 3:
         id: 47413
         kind: float
         access: R--
@@ -873,7 +823,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 4
+      Power Tx 4:
         id: 47414
         kind: float
         access: R--
@@ -883,11 +833,8 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: QSFP 2
-        id: 15606
-        kind: raw
-        access: ---
-      - label: Announcement Rate
+    QSFP 2:
+      Announcement Rate:
         id: 47422
         kind: enum
         access: RW-
@@ -895,7 +842,7 @@ slots:
         default: 60 s
         value: 203
         value_name: 60 s
-      - label: Present
+      Present:
         id: 19754
         kind: enum
         access: R--
@@ -903,25 +850,25 @@ slots:
         default: NA
         value: 17
         value_name: OK
-      - label: Vendor Name
+      Vendor Name:
         id: 19758
         kind: string
         access: R--
         max_len: 32
         value: CISCOSOLIDOPTICS
-      - label: Vendor Part Number
+      Vendor Part Number:
         id: 19766
         kind: string
         access: R--
         max_len: 32
         value: CIS-QSFP100G-DR1
-      - label: Vendor Serial Number
+      Vendor Serial Number:
         id: 19762
         kind: string
         access: R--
         max_len: 16
         value: SOZ131GG0806
-      - label: Temperature
+      Temperature:
         id: 19770
         kind: int
         access: R--
@@ -931,7 +878,7 @@ slots:
         step: 1
         default: 0
         value: 60
-      - label: Power Rx 1
+      Power Rx 1:
         id: 47398
         kind: float
         access: R--
@@ -940,8 +887,8 @@ slots:
         max: 6.553500175476074
         step: null
         default: 0
-        value: 0.968999981880188
-      - label: Power Rx 2
+        value: 0.9549999833106995
+      Power Rx 2:
         id: 47415
         kind: float
         access: R--
@@ -951,7 +898,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 3
+      Power Rx 3:
         id: 47416
         kind: float
         access: R--
@@ -961,7 +908,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 4
+      Power Rx 4:
         id: 47417
         kind: float
         access: R--
@@ -971,7 +918,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 1
+      Power Tx 1:
         id: 47404
         kind: float
         access: R--
@@ -980,8 +927,8 @@ slots:
         max: 6.553500175476074
         step: null
         default: 0
-        value: 1.6460000276565552
-      - label: Power Tx 2
+        value: 1.6430000066757202
+      Power Tx 2:
         id: 47418
         kind: float
         access: R--
@@ -991,7 +938,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 3
+      Power Tx 3:
         id: 47419
         kind: float
         access: R--
@@ -1001,7 +948,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 4
+      Power Tx 4:
         id: 47420
         kind: float
         access: R--
@@ -1011,11 +958,8 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: QSFP 3
-        id: 47459
-        kind: raw
-        access: ---
-      - label: Announcement Rate
+    QSFP 3:
+      Announcement Rate:
         id: 47460
         kind: enum
         access: RW-
@@ -1023,7 +967,7 @@ slots:
         default: 60 s
         value: 203
         value_name: 60 s
-      - label: Present
+      Present:
         id: 47461
         kind: enum
         access: R--
@@ -1031,25 +975,25 @@ slots:
         default: NA
         value: 16
         value_name: NA
-      - label: Vendor Name
+      Vendor Name:
         id: 47462
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Part Number
+      Vendor Part Number:
         id: 47463
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Serial Number
+      Vendor Serial Number:
         id: 47464
         kind: string
         access: R--
         max_len: 16
         value: NA
-      - label: Temperature
+      Temperature:
         id: 47465
         kind: int
         access: R--
@@ -1059,7 +1003,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: Power Rx 1
+      Power Rx 1:
         id: 47466
         kind: float
         access: R--
@@ -1069,7 +1013,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 2
+      Power Rx 2:
         id: 47467
         kind: float
         access: R--
@@ -1079,7 +1023,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 3
+      Power Rx 3:
         id: 47468
         kind: float
         access: R--
@@ -1089,7 +1033,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 4
+      Power Rx 4:
         id: 47469
         kind: float
         access: R--
@@ -1099,7 +1043,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 1
+      Power Tx 1:
         id: 47470
         kind: float
         access: R--
@@ -1109,7 +1053,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 2
+      Power Tx 2:
         id: 47471
         kind: float
         access: R--
@@ -1119,7 +1063,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 3
+      Power Tx 3:
         id: 47472
         kind: float
         access: R--
@@ -1129,7 +1073,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 4
+      Power Tx 4:
         id: 47473
         kind: float
         access: R--
@@ -1139,11 +1083,8 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: QSFP 4
-        id: 47474
-        kind: raw
-        access: ---
-      - label: Announcement Rate
+    QSFP 4:
+      Announcement Rate:
         id: 47475
         kind: enum
         access: RW-
@@ -1151,7 +1092,7 @@ slots:
         default: 60 s
         value: 203
         value_name: 60 s
-      - label: Present
+      Present:
         id: 47476
         kind: enum
         access: R--
@@ -1159,25 +1100,25 @@ slots:
         default: NA
         value: 16
         value_name: NA
-      - label: Vendor Name
+      Vendor Name:
         id: 47477
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Part Number
+      Vendor Part Number:
         id: 47478
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Serial Number
+      Vendor Serial Number:
         id: 47479
         kind: string
         access: R--
         max_len: 16
         value: NA
-      - label: Temperature
+      Temperature:
         id: 47480
         kind: int
         access: R--
@@ -1187,7 +1128,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: Power Rx 1
+      Power Rx 1:
         id: 47481
         kind: float
         access: R--
@@ -1197,7 +1138,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 2
+      Power Rx 2:
         id: 47482
         kind: float
         access: R--
@@ -1207,7 +1148,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 3
+      Power Rx 3:
         id: 47483
         kind: float
         access: R--
@@ -1217,7 +1158,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Rx 4
+      Power Rx 4:
         id: 47484
         kind: float
         access: R--
@@ -1227,7 +1168,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 1
+      Power Tx 1:
         id: 47485
         kind: float
         access: R--
@@ -1237,7 +1178,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 2
+      Power Tx 2:
         id: 47486
         kind: float
         access: R--
@@ -1247,7 +1188,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 3
+      Power Tx 3:
         id: 47487
         kind: float
         access: R--
@@ -1257,7 +1198,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx 4
+      Power Tx 4:
         id: 47488
         kind: float
         access: R--
@@ -1267,11 +1208,8 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: SFP 1
-        id: 19750
-        kind: raw
-        access: ---
-      - label: Announcement Rate
+    SFP 1:
+      Announcement Rate:
         id: 47423
         kind: enum
         access: RW-
@@ -1279,7 +1217,7 @@ slots:
         default: 60 s
         value: 203
         value_name: 60 s
-      - label: Present
+      Present:
         id: 19755
         kind: enum
         access: R--
@@ -1287,25 +1225,25 @@ slots:
         default: NA
         value: 16
         value_name: NA
-      - label: Vendor Name
+      Vendor Name:
         id: 19759
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Part Number
+      Vendor Part Number:
         id: 19767
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Serial Number
+      Vendor Serial Number:
         id: 19763
         kind: string
         access: R--
         max_len: 16
         value: NA
-      - label: Temperature
+      Temperature:
         id: 19771
         kind: int
         access: R--
@@ -1315,7 +1253,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: Power Rx
+      Power Rx:
         id: 47399
         kind: float
         access: R--
@@ -1325,7 +1263,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx
+      Power Tx:
         id: 47405
         kind: float
         access: R--
@@ -1335,11 +1273,8 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: SFP 2
-        id: 19751
-        kind: raw
-        access: ---
-      - label: Announcement Rate
+    SFP 2:
+      Announcement Rate:
         id: 47424
         kind: enum
         access: RW-
@@ -1347,7 +1282,7 @@ slots:
         default: 60 s
         value: 203
         value_name: 60 s
-      - label: Present
+      Present:
         id: 19756
         kind: enum
         access: R--
@@ -1355,25 +1290,25 @@ slots:
         default: NA
         value: 16
         value_name: NA
-      - label: Vendor Name
+      Vendor Name:
         id: 19760
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Part Number
+      Vendor Part Number:
         id: 19768
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Serial Number
+      Vendor Serial Number:
         id: 19764
         kind: string
         access: R--
         max_len: 16
         value: NA
-      - label: Temperature
+      Temperature:
         id: 19772
         kind: int
         access: R--
@@ -1383,7 +1318,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: Power Rx
+      Power Rx:
         id: 47400
         kind: float
         access: R--
@@ -1393,7 +1328,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx
+      Power Tx:
         id: 47406
         kind: float
         access: R--
@@ -1403,11 +1338,8 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: SFP 3
-        id: 19752
-        kind: raw
-        access: ---
-      - label: Announcement Rate
+    SFP 3:
+      Announcement Rate:
         id: 47425
         kind: enum
         access: RW-
@@ -1415,7 +1347,7 @@ slots:
         default: 60 s
         value: 203
         value_name: 60 s
-      - label: Present
+      Present:
         id: 19757
         kind: enum
         access: R--
@@ -1423,25 +1355,25 @@ slots:
         default: NA
         value: 16
         value_name: NA
-      - label: Vendor Name
+      Vendor Name:
         id: 19761
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Part Number
+      Vendor Part Number:
         id: 19769
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Serial Number
+      Vendor Serial Number:
         id: 19765
         kind: string
         access: R--
         max_len: 16
         value: NA
-      - label: Temperature
+      Temperature:
         id: 19773
         kind: int
         access: R--
@@ -1451,7 +1383,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: Power Rx
+      Power Rx:
         id: 47401
         kind: float
         access: R--
@@ -1461,7 +1393,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx
+      Power Tx:
         id: 47407
         kind: float
         access: R--
@@ -1471,11 +1403,8 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: SFP 4
-        id: 19753
-        kind: raw
-        access: ---
-      - label: Announcement Rate
+    SFP 4:
+      Announcement Rate:
         id: 47426
         kind: enum
         access: RW-
@@ -1483,7 +1412,7 @@ slots:
         default: 60 s
         value: 203
         value_name: 60 s
-      - label: Present
+      Present:
         id: 20779
         kind: enum
         access: R--
@@ -1491,25 +1420,25 @@ slots:
         default: NA
         value: 16
         value_name: NA
-      - label: Vendor Name
+      Vendor Name:
         id: 20780
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Part Number
+      Vendor Part Number:
         id: 20781
         kind: string
         access: R--
         max_len: 32
         value: NA
-      - label: Vendor Serial Number
+      Vendor Serial Number:
         id: 20778
         kind: string
         access: R--
         max_len: 16
         value: NA
-      - label: Temperature
+      Temperature:
         id: 20787
         kind: int
         access: R--
@@ -1519,7 +1448,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: Power Rx
+      Power Rx:
         id: 47402
         kind: float
         access: R--
@@ -1529,7 +1458,7 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: Power Tx
+      Power Tx:
         id: 47408
         kind: float
         access: R--
@@ -1539,11 +1468,8 @@ slots:
         step: null
         default: 0
         value: 0
-      - label: SMARC
-        id: 35910
-        kind: raw
-        access: ---
-      - label: Present
+    SMARC:
+      Present:
         id: 20783
         kind: enum
         access: R--
@@ -1551,7 +1477,7 @@ slots:
         default: NA
         value: 16
         value_name: NA
-      - label: Reboot Smarc
+      Reboot Smarc:
         id: 35911
         kind: enum
         access: RW-

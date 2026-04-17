@@ -104,7 +104,7 @@ func runExport(ctx context.Context, args []string) error {
 		if ferr != nil {
 			return fmt.Errorf("create %s: %w", *out, ferr)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		w = f
 	}
 

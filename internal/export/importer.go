@@ -40,7 +40,7 @@ func LoadSnapshot(path string) (*Snapshot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
@@ -94,9 +94,16 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 				continue
 			}
 
+			// ACP2 can have duplicate labels across sub-nodes (e.g.
+			// "Present" under PSU/1 and PSU/2). Use ID when available
+			// for unambiguous matching; fall back to label for ACP1.
 			req := protocol.ValueRequest{
-				Slot:  dump.Slot,
-				Label: obj.Label,
+				Slot: dump.Slot,
+			}
+			if obj.ID > 0 {
+				req.ID = obj.ID
+			} else {
+				req.Label = obj.Label
 			}
 			if dryRun {
 				rep.Applied++

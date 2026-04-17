@@ -61,10 +61,18 @@ func ReadCSV(r io.Reader) (*Snapshot, error) {
 		if groupStr == "" {
 			groupStr = col(row, idx, "path")
 		}
+		// Split slash-separated path back into segments for ACP2
+		// hierarchical import (e.g. "ROOT_NODE_V2/PSU/1/Present").
+		var pathSegs []string
+		if strings.Contains(groupStr, "/") {
+			pathSegs = strings.Split(groupStr, "/")
+		} else if groupStr != "" {
+			pathSegs = []string{groupStr}
+		}
 		obj := protocol.Object{
 			Slot:  slotNum,
 			Group: groupStr,
-			Path:  []string{groupStr},
+			Path:  pathSegs,
 			Label: col(row, idx, "label"),
 			Unit:  col(row, idx, "unit"),
 		}

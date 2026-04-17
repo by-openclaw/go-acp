@@ -154,6 +154,13 @@ run: build-cli
 run-srv: build-srv
 	./$(BIN_DIR)/acp-srv$(EXE) --addr :8080 --log-level debug
 
+# ---------------------------------------------------------------- Setup
+
+.PHONY: setup
+setup:
+	git config core.hooksPath .githooks
+	@echo "pre-commit hook enabled (go vet + golangci-lint)"
+
 # ---------------------------------------------------------------- Clean
 
 .PHONY: clean
@@ -176,4 +183,5 @@ help:
 	@echo "  lint / vet / fmt-check  static analysis"
 	@echo "  fmt / tidy              auto-format + go mod tidy"
 	@echo "  run / run-srv           build and run locally"
+	@echo "  setup                   enable pre-commit hook (go vet + lint)"
 	@echo "  clean                   remove bin/ and dist/"

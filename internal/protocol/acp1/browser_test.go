@@ -22,7 +22,7 @@ func TestWalker_HappyPath(t *testing.T) {
 		MaxRetries:     2,
 		ReceiveTimeout: 50 * time.Millisecond,
 	})
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Pre-seed MTID so allocMTID returns a predictable sequence starting
 	// at 1001. Walker will issue: root + 1 identity + 1 control + 1 status

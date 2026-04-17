@@ -39,22 +39,35 @@ func WriteYAML(w io.Writer, s *Snapshot) error {
 	sb.WriteString("slots:\n")
 	for _, slot := range s.Slots {
 		sb.WriteString("  - slot: ")
-		sb.WriteString(fmt.Sprintf("%d\n", slot.Slot))
+		fmt.Fprintf(&sb, "%d\n", slot.Slot)
 		if slot.Status != "" {
 			writeKV(&sb, 4, "status", slot.Status)
 		}
 		writeKV(&sb, 4, "walked_at", slot.WalkedAt.UTC().Format("2006-01-02T15:04:05Z"))
 
-		// Group objects by path so the YAML is readable without per-
-		// object path repetition. Each group becomes a named key under
-		// the slot.
-		groups := groupByPath(slot.Objects)
-		for _, gname := range groups.order {
-			sb.WriteString("    ")
-			sb.WriteString(gname)
-			sb.WriteString(":\n")
-			for _, o := range groups.items[gname] {
-				writeObject(&sb, 6, o)
+		// Check if any object has path depth > 2 (ACP2 hierarchical).
+		hierarchical := false
+		for _, o := range slot.Objects {
+			if len(o.Path) > 2 {
+				hierarchical = true
+				break
+			}
+		}
+
+		if hierarchical {
+			// ACP2: build nested tree from Path and render hierarchically.
+			root := buildObjectTree(slot.Objects)
+			writeTreeNode(&sb, 4, root)
+		} else {
+			// ACP1: flat group → list of objects.
+			groups := groupByPath(slot.Objects)
+			for _, gname := range groups.order {
+				sb.WriteString("    ")
+				sb.WriteString(gname)
+				sb.WriteString(":\n")
+				for _, o := range groups.items[gname] {
+					writeObject(&sb, 6, o)
+				}
 			}
 		}
 	}
@@ -63,6 +76,98 @@ func WriteYAML(w io.Writer, s *Snapshot) error {
 		return fmt.Errorf("yaml write: %w", err)
 	}
 	return nil
+}
+
+// objectTreeNode is a node in the hierarchical object tree built from
+// flat Path slices. Nodes with obj != nil are leaf/value objects;
+// nodes with only children are containers (rendered as YAML maps).
+type objectTreeNode struct {
+	name     string
+	obj      *protocol.Object // nil for pure container nodes
+	children []*objectTreeNode
+	childIdx map[string]int // name → index into children
+}
+
+// buildObjectTree constructs a tree from flat objects using their Path.
+// Path[0] is always ROOT_NODE_V2 for ACP2 — we skip it and start from
+// Path[1] (BOARD, PSU, etc.) so the tree matches Cerebrum's view.
+func buildObjectTree(objs []protocol.Object) *objectTreeNode {
+	root := &objectTreeNode{name: "root", childIdx: map[string]int{}}
+	for i := range objs {
+		o := &objs[i]
+		// Skip the root node object itself (path = ["ROOT_NODE_V2"]).
+		if len(o.Path) <= 1 {
+			continue
+		}
+		// Walk from path[1] onward, creating container nodes as needed.
+		cur := root
+		for _, seg := range o.Path[1:] {
+			idx, exists := cur.childIdx[seg]
+			if !exists {
+				idx = len(cur.children)
+				cur.childIdx[seg] = idx
+				cur.children = append(cur.children, &objectTreeNode{
+					name:     seg,
+					childIdx: map[string]int{},
+				})
+			}
+			cur = cur.children[idx]
+		}
+		// If this is a leaf (has a value kind), attach the object.
+		// Node/container objects (kind=raw) just create the tree structure.
+		if o.Kind != protocol.KindRaw {
+			cur.obj = o
+		}
+	}
+	return root
+}
+
+// writeTreeNode renders a tree node and its children as nested YAML.
+func writeTreeNode(sb *strings.Builder, indent int, node *objectTreeNode) {
+	pad := strings.Repeat(" ", indent)
+	for _, child := range node.children {
+		// Write the node name as a YAML map key.
+		sb.WriteString(pad)
+		sb.WriteString(yamlString(child.name))
+		sb.WriteString(":\n")
+
+		// Write this node's own properties (if it's a leaf with a value).
+		if child.obj != nil {
+			writeTreeLeaf(sb, indent+2, child.obj)
+		}
+
+		// Recurse into children.
+		writeTreeNode(sb, indent+2, child)
+	}
+}
+
+// writeTreeLeaf renders properties of a leaf object under its parent key.
+func writeTreeLeaf(sb *strings.Builder, indent int, o *protocol.Object) {
+	pad := strings.Repeat(" ", indent)
+
+	writeKVPad(sb, pad, "id", o.ID)
+	writeKVPad(sb, pad, "kind", kindName(o.Kind))
+	writeKVPad(sb, pad, "access", accessStr(o.Access))
+	if o.Unit != "" {
+		writeKVPad(sb, pad, "unit", o.Unit)
+	}
+
+	switch o.Kind {
+	case protocol.KindInt, protocol.KindUint, protocol.KindFloat:
+		writeKVPad(sb, pad, "min", o.Min)
+		writeKVPad(sb, pad, "max", o.Max)
+		writeKVPad(sb, pad, "step", o.Step)
+		writeKVPad(sb, pad, "default", o.Def)
+	case protocol.KindEnum:
+		writeKVPad(sb, pad, "enum_items", o.EnumItems)
+		writeKVPad(sb, pad, "default", o.Def)
+	case protocol.KindString:
+		if o.MaxLen > 0 {
+			writeKVPad(sb, pad, "max_len", o.MaxLen)
+		}
+	}
+
+	writeValue(sb, pad, *o)
 }
 
 // orderedGroups holds objects bucketed by path name, with insertion
@@ -177,7 +282,7 @@ func writeValue(sb *strings.Builder, pad string, o protocol.Object) {
 			for i, st := range v.SlotStatus {
 				sb.WriteString(inner)
 				sb.WriteString("- {slot: ")
-				sb.WriteString(fmt.Sprintf("%d", i))
+				fmt.Fprintf(sb, "%d", i)
 				sb.WriteString(", status: ")
 				sb.WriteString(yamlString(st.String()))
 				sb.WriteString("}\n")

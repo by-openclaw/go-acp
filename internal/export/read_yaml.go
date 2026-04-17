@@ -31,7 +31,24 @@ func ReadYAML(r io.Reader) (*Snapshot, error) {
 		curSlot  *SlotDump
 		curObj   *protocol.Object
 		curGroup string // current group name (identity, control, ...)
+
+		// Hierarchical (ACP2) state: track nested path by indent.
+		hierMode  bool     // true once we detect nested format
+		pathStack []string // label stack indexed by indent depth
 	)
+
+	// isObjectProperty returns true if key is a known object property
+	// name (id, kind, access, value, etc.) vs. a tree node name.
+	isObjProp := func(k string) bool {
+		switch k {
+		case "id", "kind", "access", "unit", "min", "max", "step",
+			"default", "enum_items", "max_len", "value", "value_name",
+			"alarm_priority", "alarm_tag", "alarm_on", "alarm_off",
+			"sub_group_marker", "label", "path":
+			return true
+		}
+		return false
+	}
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -84,6 +101,8 @@ func ReadYAML(r io.Reader) (*Snapshot, error) {
 			}
 			curSlot = &SlotDump{}
 			curGroup = ""
+			hierMode = false
+			pathStack = nil
 			inner := strings.TrimPrefix(trimmed, "- ")
 			k, v := splitKV(inner)
 			if k == "slot" {
@@ -104,19 +123,17 @@ func ReadYAML(r io.Reader) (*Snapshot, error) {
 				// Legacy flat-list format — treat as ungrouped.
 				curGroup = ""
 			default:
-				// Any other indent-4 key with an empty val (ends with ":")
-				// is a group name: identity, control, status, alarm, etc.
-				if val == "" || val == ":" {
-					curGroup = key
-				} else {
-					curGroup = key
-				}
+				// Group name (BOARD, PSU, identity, control, ...).
+				curGroup = key
+				// Check if this is a hierarchical format (no "- " list
+				// items at indent 6). We'll detect on the next line.
+				pathStack = []string{key}
 			}
 			continue
 		}
 
-		// Object list entry (indent 6, starts with "- ").
-		if section == "slots" && indent == 6 && strings.HasPrefix(trimmed, "- ") {
+		// --- Flat format: object list entry (indent 6, starts with "- "). ---
+		if section == "slots" && indent == 6 && strings.HasPrefix(trimmed, "- ") && !hierMode {
 			flushObj(&curSlot.Objects, curObj)
 			curObj = &protocol.Object{
 				Slot:  curSlot.Slot,
@@ -129,10 +146,52 @@ func ReadYAML(r io.Reader) (*Snapshot, error) {
 			continue
 		}
 
-		// Object fields (indent 8).
-		if section == "slots" && indent == 8 && curObj != nil {
+		// Flat format: object fields (indent 8).
+		if section == "slots" && indent == 8 && curObj != nil && !hierMode {
 			applyObjectField(curObj, key, val)
 			continue
+		}
+
+		// --- Hierarchical format detection and parsing. ---
+		if section == "slots" && curSlot != nil && indent >= 6 {
+			if !hierMode {
+				// First line at indent >= 6 — if it's not "- label:"
+				// then this is hierarchical format.
+				hierMode = true
+			}
+
+			// Determine depth relative to group (indent 4 = depth 0).
+			depth := (indent - 4) / 2 // 6→1, 8→2, 10→3, ...
+
+			if isObjProp(key) {
+				// Property of the current object.
+				if curObj != nil {
+					applyObjectField(curObj, key, val)
+				}
+			} else {
+				// New node or leaf name — flush previous object.
+				flushObj(&curSlot.Objects, curObj)
+				curObj = nil
+
+				// Trim path stack to current depth.
+				if depth <= len(pathStack) {
+					pathStack = pathStack[:depth]
+				}
+				pathStack = append(pathStack, unquote(key))
+
+				// Create object — will be filled by subsequent
+				// property lines. Label is the key itself.
+				curObj = &protocol.Object{
+					Slot:  curSlot.Slot,
+					Label: unquote(key),
+					Group: curGroup,
+					Path:  make([]string, len(pathStack)),
+				}
+				copy(curObj.Path, pathStack)
+
+				// If val is non-empty, this is an inline leaf — but
+				// our format always has properties on subsequent lines.
+			}
 		}
 	}
 
