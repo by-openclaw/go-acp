@@ -19,6 +19,8 @@ jobs:
         go: ["1.22"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: actions/setup-go@v5
         with:
@@ -64,6 +66,8 @@ jobs:
         run: dnf install -y git
 
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -86,6 +90,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: actions/setup-go@v5
         with:
@@ -102,6 +108,8 @@ jobs:
     needs: [test, test-rhel, lint]
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: actions/setup-go@v5
         with:
