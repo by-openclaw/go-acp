@@ -11,8 +11,20 @@ import (
 
 	"acp/internal/protocol"
 	"acp/internal/protocol/acp1"
+	"acp/internal/storage"
 	"acp/internal/transport"
 )
+
+// treeStore is the global file-backed tree store, initialized once.
+// Placed next to the binary: devices/{ip}/slot_{n}.json
+var treeStore *storage.TreeStore
+
+func init() {
+	store, err := storage.NewTreeStoreNextToBinary()
+	if err == nil {
+		treeStore = store
+	}
+}
 
 // commonFlags holds the flags every subcommand accepts. Parsed per
 // subcommand so positional args (the host) stay in position 1.
