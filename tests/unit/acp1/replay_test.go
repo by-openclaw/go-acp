@@ -36,8 +36,13 @@ func loadCapture(t *testing.T, name string) []captureRecord {
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
 	for sc.Scan() {
+		line := sc.Bytes()
+		// Skip LFS pointer files (CI without git-lfs installed).
+		if len(line) > 0 && line[0] != '{' {
+			t.Skip("testdata file is a Git LFS pointer, not actual content — skipping (install git-lfs or run `git lfs pull`)")
+		}
 		var r captureRecord
-		if err := json.Unmarshal(sc.Bytes(), &r); err != nil {
+		if err := json.Unmarshal(line, &r); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
 		recs = append(recs, r)

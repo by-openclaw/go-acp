@@ -62,8 +62,8 @@ jobs:
     container:
       image: ${{ matrix.image }}
     steps:
-      - name: Install git
-        run: dnf install -y git
+      - name: Install git + git-lfs
+        run: dnf install -y git git-lfs
 
       - uses: actions/checkout@v4
         with:
