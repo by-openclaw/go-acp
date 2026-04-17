@@ -56,9 +56,15 @@ func runSet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	if *label != "" {
-		if _, err := plug.Walk(opCtx, *slot); err != nil {
-			return fmt.Errorf("walk for label resolution: %w", err)
+	// If addressing by label, try disk cache first to resolve label → ID.
+	// Falls back to full walk only if cache miss.
+	if *label != "" && *id < 0 {
+		if cachedID := resolveLabelFromCache(host, *slot, *group, *label); cachedID >= 0 {
+			*id = cachedID
+		} else {
+			if _, err := plug.Walk(opCtx, *slot); err != nil {
+				return fmt.Errorf("walk for label resolution: %w", err)
+			}
 		}
 	}
 

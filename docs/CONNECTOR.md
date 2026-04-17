@@ -87,11 +87,30 @@ to the Neuron controller, not the individual device cards.
 ### Lifecycle
 
 ```
-1. First time seeing card+fw combo → full walk → save to library
-2. Next time → load from library → instant (no walk)
+1. First time seeing card+fw combo → full walk → save DM + values to library
+2. Next time → load from library → instant (values marked stale)
 3. Firmware upgrade → new key → full walk → new model in library
-4. Never invalidated — firmware version is immutable
+4. DM never invalidated — firmware version is immutable
+5. Values always stale on load — confirmed by announcement or get
 ```
+
+### Value Cache Strategy
+
+Values are persisted to disk for fast startup but NEVER trusted on load.
+
+**Startup refresh order (priority-first):**
+1. Load DM + stale values from disk (instant, zero network)
+2. Subscribe to client-view objects → announcements arrive → [stale] → [live]
+3. Background walk refreshes remaining objects → [stale] → [live]
+4. Walk completes → everything [live]
+
+Subscribed objects always refresh before walked objects. Announcement
+always wins over walk result for the same object (more recent).
+
+> **WARNING — Smart scheduling needed at scale:**
+> With 100–1000 devices, naive approach (walk all devices simultaneously)
+> floods the network. Need: staggered starts, priority queues,
+> rate limiting, subscription-first ordering. Not implemented yet.
 
 ---
 

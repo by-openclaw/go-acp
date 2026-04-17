@@ -706,8 +706,37 @@ exports/                          default export output dir
 **Write rules:**
 - `devices.yaml` → only on add/remove device
 - `slot_{n}.yaml` → only after successful walk
-- property values → NEVER written to disk
 - log entries → NEVER written to disk (in-memory circular buffer, 1000 entries)
+
+### Value Cache
+
+Property values ARE written to disk as a **stale cache** for fast startup.
+Values on disk are NEVER trusted — they are marked [stale] on load and must
+be confirmed by a live source (announcement or get) before being treated as
+current.
+
+**Value freshness states:**
+- `stale`   — loaded from disk, not confirmed (gray/italic in UI)
+- `live`    — confirmed by announcement, get, or walk (normal display)
+- `updated` — just changed by announcement (bold/flash in UI)
+
+**Startup refresh priority:**
+1. Load DM + stale values from disk (instant, zero network)
+2. Subscribe to objects the client/view uses → announcements update
+   subscribed values to [live] within seconds
+3. Background walk refreshes remaining objects → [stale] → [live]
+4. Walk completes → everything [live]
+
+**Key rule:** subscribed objects are ALWAYS prioritized over background walk.
+If an announcement and a walk result arrive for the same object, the
+announcement wins (more recent).
+
+> **WARNING — Performance at scale:** With 100–1000 devices and 44k objects
+> per slot, the startup refresh strategy needs a smart scheduling algorithm
+> to avoid flooding the network with simultaneous walks. Consider:
+> staggered walk start, priority queues per device/slot, rate limiting,
+> and subscription-first / walk-later ordering. This is NOT implemented
+> yet — revisit when acp-srv handles multiple devices concurrently.
 
 ---
 

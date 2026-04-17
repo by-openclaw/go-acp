@@ -6,73 +6,73 @@ device:
   protocol_version: 1
   num_slots: 31
 generator: acp dev
-created_at: "2026-04-16T23:53:40Z"
+created_at: "2026-04-17T21:30:38Z"
 slots:
   - slot: 2
     status: present
-    walked_at: "2026-04-16T23:53:40Z"
+    walked_at: "2026-04-17T21:30:38Z"
     identity:
-      - label: Card name
+      Card name:
         id: 0
         kind: string
         access: R--
         max_len: 8
         value: 2HF110
-      - label: User label
+      User label:
         id: 1
         kind: string
         access: RW-
         max_len: 16
         value: Full HD format c
-      - label: Card description
+      Card description:
         id: 2
         kind: string
         access: R--
         max_len: 16
         value: 2HF110-4326.html
-      - label: Software rev
+      Software rev:
         id: 3
         kind: string
         access: R--
         max_len: 4
         value: 4326
-      - label: Hardware rev
+      Hardware rev:
         id: 4
         kind: string
         access: R--
         max_len: 4
         value: 0200
-      - label: Product code
+      Product code:
         id: 5
         kind: string
         access: R--
         max_len: 10
         value: 9490590010
-      - label: Serial number
+      Serial number:
         id: 6
         kind: string
         access: R--
         max_len: 16
         value: PR013274
-      - label: Card ID
+      Card ID:
         id: 7
         kind: string
         access: R--
         max_len: 16
         value: 71ef060a0000001f
-      - label: Key
+      Key:
         id: 8
         kind: string
         access: RW-
         max_len: 15
         value: 774W-A8X8Q-VF3P
-      - label: Features
+      Features:
         id: 9
         kind: string
         access: R--
         max_len: 8
         value: 400F7C15
-      - label: HD
+      HD:
         id: 10
         kind: enum
         access: RW-
@@ -80,7 +80,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: 3G
+      3G:
         id: 11
         kind: enum
         access: RW-
@@ -88,7 +88,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: Audio Shuffler
+      Audio Shuffler:
         id: 12
         kind: enum
         access: RW-
@@ -96,7 +96,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: ARC
+      ARC:
         id: 13
         kind: enum
         access: RW-
@@ -104,7 +104,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: Up
+      Up:
         id: 14
         kind: enum
         access: RW-
@@ -112,7 +112,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: Down
+      Down:
         id: 15
         kind: enum
         access: RW-
@@ -120,7 +120,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: Cross
+      Cross:
         id: 16
         kind: enum
         access: RW-
@@ -128,7 +128,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: Side Curtains
+      Side Curtains:
         id: 17
         kind: enum
         access: RW-
@@ -136,7 +136,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: Frame Delay
+      Frame Delay:
         id: 18
         kind: enum
         access: RW-
@@ -144,7 +144,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: CVBS In
+      CVBS In:
         id: 19
         kind: enum
         access: RW-
@@ -152,7 +152,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: SDI In 2
+      SDI In 2:
         id: 20
         kind: enum
         access: RW-
@@ -160,7 +160,7 @@ slots:
         default: 0
         value: 0
         value_name: Option
-      - label: TWINS
+      TWINS:
         id: 21
         kind: enum
         access: RW-
@@ -169,7 +169,7 @@ slots:
         value: 0
         value_name: Option
     control:
-      - label: IO-Ctrl
+      IO-Ctrl:
         id: 0
         kind: enum
         access: RW-
@@ -177,7 +177,7 @@ slots:
         default: 0
         value: 0
         value_name: Manual
-      - label: IO-Prst_Act
+      IO-Prst_Act:
         id: 1
         kind: enum
         access: RW-
@@ -185,7 +185,7 @@ slots:
         default: 0
         value: 0
         value_name: 1
-      - label: IO-Prst_Edit
+      IO-Prst_Edit:
         id: 2
         kind: enum
         access: RW-
@@ -193,7 +193,7 @@ slots:
         default: 0
         value: 0
         value_name: 1
-      - label: "#Inp_SelA"
+      "#Inp_SelA":
         id: 3
         kind: enum
         access: RW-
@@ -201,7 +201,7 @@ slots:
         default: 0
         value: 0
         value_name: SDI-1
-      - label: "#Inp_SelB"
+      "#Inp_SelB":
         id: 4
         kind: enum
         access: RW-
@@ -209,7 +209,7 @@ slots:
         default: 1
         value: 1
         value_name: SDI-2
-      - label: "#CVBS-Frmt"
+      "#CVBS-Frmt":
         id: 5
         kind: enum
         access: RW-
@@ -217,7 +217,7 @@ slots:
         default: 0
         value: 0
         value_name: Auto
-      - label: "#Out-Frmt"
+      "#Out-Frmt":
         id: 6
         kind: enum
         access: RW-
@@ -225,7 +225,7 @@ slots:
         default: 0
         value: 0
         value_name: 1080i60
-      - label: "#Out-Mode"
+      "#Out-Mode":
         id: 7
         kind: enum
         access: RW-
@@ -233,7 +233,7 @@ slots:
         default: 0
         value: 0
         value_name: Straight
-      - label: "#Switch-Back"
+      "#Switch-Back":
         id: 8
         kind: enum
         access: RW-
@@ -241,7 +241,7 @@ slots:
         default: 0
         value: 0
         value_name: "On"
-      - label: "#F_delay"
+      "#F_delay":
         id: 9
         kind: uint
         access: RW-
@@ -251,7 +251,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#V_delay"
+      "#V_delay":
         id: 10
         kind: int
         access: RW-
@@ -261,7 +261,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#H_delay"
+      "#H_delay":
         id: 11
         kind: int
         access: RW-
@@ -271,7 +271,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#Freeze_A"
+      "#Freeze_A":
         id: 12
         kind: enum
         access: RW-
@@ -279,7 +279,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#Freeze_B"
+      "#Freeze_B":
         id: 13
         kind: enum
         access: RW-
@@ -287,7 +287,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: Delay-Status
+      Delay-Status:
         id: 14
         kind: enum
         access: RW-
@@ -295,7 +295,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: Lock-Mode
+      Lock-Mode:
         id: 15
         kind: enum
         access: RW-
@@ -303,7 +303,7 @@ slots:
         default: 0
         value: 0
         value_name: Ref1
-      - label: Ref-Type
+      Ref-Type:
         id: 16
         kind: enum
         access: RW-
@@ -311,7 +311,7 @@ slots:
         default: 0
         value: 0
         value_name: Bi-Level
-      - label: P60-P50_Sync
+      P60-P50_Sync:
         id: 17
         kind: enum
         access: RW-
@@ -319,7 +319,7 @@ slots:
         default: 0
         value: 0
         value_name: One Frame
-      - label: ANC_BlankA
+      ANC_BlankA:
         id: 18
         kind: enum
         access: RW-
@@ -327,7 +327,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: ANC_BlankB
+      ANC_BlankB:
         id: 19
         kind: enum
         access: RW-
@@ -335,7 +335,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: Freeze_Mode
+      Freeze_Mode:
         id: 20
         kind: enum
         access: RW-
@@ -343,7 +343,7 @@ slots:
         default: 0
         value: 0
         value_name: Field
-      - label: PrstEditView
+      PrstEditView:
         id: 21
         kind: enum
         access: RW-
@@ -351,7 +351,7 @@ slots:
         default: 0
         value: 0
         value_name: Follow Active
-      - label: PatternSpeed
+      PatternSpeed:
         id: 22
         kind: uint
         access: RW-
@@ -360,7 +360,7 @@ slots:
         step: 1
         default: 1
         value: 1
-      - label: Input_Loss_A
+      Input_Loss_A:
         id: 23
         kind: enum
         access: RW-
@@ -368,7 +368,7 @@ slots:
         default: 0
         value: 0
         value_name: Freeze
-      - label: Input_Loss_B
+      Input_Loss_B:
         id: 24
         kind: enum
         access: RW-
@@ -376,14 +376,13 @@ slots:
         default: 0
         value: 0
         value_name: Freeze
-      - label: "  INSERTER"
+      "  INSERTER":
         id: 25
         kind: string
         access: RW-
-        sub_group_marker: true
         max_len: 1
         value: ""
-      - label: Timecode_ins
+      Timecode_ins:
         id: 26
         kind: enum
         access: RW-
@@ -391,7 +390,7 @@ slots:
         default: 1
         value: 1
         value_name: "On"
-      - label: VITC_Ln_In
+      VITC_Ln_In:
         id: 27
         kind: int
         access: RW-
@@ -401,7 +400,7 @@ slots:
         step: 1
         default: 19
         value: 19
-      - label: VITC_Ln_Ctrl
+      VITC_Ln_Ctrl:
         id: 28
         kind: enum
         access: RW-
@@ -409,7 +408,7 @@ slots:
         default: 0
         value: 0
         value_name: Manual
-      - label: VITC_Ln_625
+      VITC_Ln_625:
         id: 29
         kind: int
         access: RW-
@@ -418,7 +417,7 @@ slots:
         step: 1
         default: 19
         value: 19
-      - label: VITC_Ln_525
+      VITC_Ln_525:
         id: 30
         kind: int
         access: RW-
@@ -427,7 +426,7 @@ slots:
         step: 1
         default: 10
         value: 10
-      - label: VITC_Ln_Dup
+      VITC_Ln_Dup:
         id: 31
         kind: enum
         access: RW-
@@ -435,7 +434,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: Ins_CtrlA
+      Ins_CtrlA:
         id: 32
         kind: enum
         access: RW-
@@ -443,7 +442,7 @@ slots:
         default: 0
         value: 0
         value_name: Manual
-      - label: Ins_Prst_ActA
+      Ins_Prst_ActA:
         id: 33
         kind: enum
         access: RW-
@@ -451,7 +450,7 @@ slots:
         default: 0
         value: 0
         value_name: 1
-      - label: Ins_Prst_EditA
+      Ins_Prst_EditA:
         id: 34
         kind: enum
         access: RW-
@@ -459,7 +458,7 @@ slots:
         default: 0
         value: 0
         value_name: 1
-      - label: "#VI-InsertA"
+      "#VI-InsertA":
         id: 35
         kind: enum
         access: RW-
@@ -467,7 +466,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#VI-DataA"
+      "#VI-DataA":
         id: 36
         kind: enum
         access: RW-
@@ -475,7 +474,7 @@ slots:
         default: 0
         value: 0
         value_name: "4:3_0"
-      - label: "#WSS-InsertA"
+      "#WSS-InsertA":
         id: 37
         kind: enum
         access: RW-
@@ -483,7 +482,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#WSS-StndA"
+      "#WSS-StndA":
         id: 38
         kind: enum
         access: RW-
@@ -491,7 +490,7 @@ slots:
         default: 0
         value: 0
         value_name: 1_vid
-      - label: "#WSS-ExtndA"
+      "#WSS-ExtndA":
         id: 39
         kind: enum
         access: RW-
@@ -499,7 +498,7 @@ slots:
         default: 0
         value: 0
         value_name: "4:3_0"
-      - label: "#S2016-InsertA"
+      "#S2016-InsertA":
         id: 40
         kind: enum
         access: RW-
@@ -507,7 +506,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#S2016-DataA"
+      "#S2016-DataA":
         id: 41
         kind: enum
         access: RW-
@@ -515,7 +514,7 @@ slots:
         default: 0
         value: 0
         value_name: AFD0
-      - label: "#OSD-StyleA"
+      "#OSD-StyleA":
         id: 42
         kind: enum
         access: RW-
@@ -523,13 +522,13 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#OSD-TextA"
+      "#OSD-TextA":
         id: 43
         kind: string
         access: RW-
         max_len: 10
         value: empty string
-      - label: Ins_CtrlB
+      Ins_CtrlB:
         id: 44
         kind: enum
         access: RW-
@@ -537,7 +536,7 @@ slots:
         default: 0
         value: 0
         value_name: Manual
-      - label: Ins_Prst_ActB
+      Ins_Prst_ActB:
         id: 45
         kind: enum
         access: RW-
@@ -545,7 +544,7 @@ slots:
         default: 0
         value: 0
         value_name: 1
-      - label: Ins_Prst_EditB
+      Ins_Prst_EditB:
         id: 46
         kind: enum
         access: RW-
@@ -553,7 +552,7 @@ slots:
         default: 0
         value: 0
         value_name: 1
-      - label: "#VI-InsertB"
+      "#VI-InsertB":
         id: 47
         kind: enum
         access: RW-
@@ -561,7 +560,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#VI-DataB"
+      "#VI-DataB":
         id: 48
         kind: enum
         access: RW-
@@ -569,7 +568,7 @@ slots:
         default: 0
         value: 0
         value_name: "4:3_0"
-      - label: "#WSS-InsertB"
+      "#WSS-InsertB":
         id: 49
         kind: enum
         access: RW-
@@ -577,7 +576,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#WSS-StndB"
+      "#WSS-StndB":
         id: 50
         kind: enum
         access: RW-
@@ -585,7 +584,7 @@ slots:
         default: 0
         value: 0
         value_name: 1_vid
-      - label: "#WSS-ExtndB"
+      "#WSS-ExtndB":
         id: 51
         kind: enum
         access: RW-
@@ -593,7 +592,7 @@ slots:
         default: 0
         value: 0
         value_name: "4:3_0"
-      - label: "#S2016-InsertB"
+      "#S2016-InsertB":
         id: 52
         kind: enum
         access: RW-
@@ -601,7 +600,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#S2016-DataB"
+      "#S2016-DataB":
         id: 53
         kind: enum
         access: RW-
@@ -609,7 +608,7 @@ slots:
         default: 0
         value: 0
         value_name: AFD0
-      - label: "#OSD-StyleB"
+      "#OSD-StyleB":
         id: 54
         kind: enum
         access: RW-
@@ -617,20 +616,19 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#OSD-TextB"
+      "#OSD-TextB":
         id: 55
         kind: string
         access: RW-
         max_len: 10
         value: empty string
-      - label: "  VIDEO PROC"
+      "  VIDEO PROC":
         id: 56
         kind: string
         access: RW-
-        sub_group_marker: true
         max_len: 1
         value: ""
-      - label: Y_Gain
+      Y_Gain:
         id: 57
         kind: float
         access: RW-
@@ -640,7 +638,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: C-Gain
+      C-Gain:
         id: 58
         kind: float
         access: RW-
@@ -650,7 +648,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: GainA
+      GainA:
         id: 59
         kind: float
         access: RW-
@@ -660,7 +658,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: R-GainA
+      R-GainA:
         id: 60
         kind: float
         access: RW-
@@ -670,7 +668,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: G-GainA
+      G-GainA:
         id: 61
         kind: float
         access: RW-
@@ -680,7 +678,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: B-GainA
+      B-GainA:
         id: 62
         kind: float
         access: RW-
@@ -690,7 +688,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: GainB
+      GainB:
         id: 63
         kind: float
         access: RW-
@@ -700,7 +698,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: R-GainB
+      R-GainB:
         id: 64
         kind: float
         access: RW-
@@ -710,7 +708,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: G-GainB
+      G-GainB:
         id: 65
         kind: float
         access: RW-
@@ -720,7 +718,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: B-GainB
+      B-GainB:
         id: 66
         kind: float
         access: RW-
@@ -730,7 +728,7 @@ slots:
         step: 1
         default: 100
         value: 100
-      - label: BlackA
+      BlackA:
         id: 67
         kind: int
         access: RW-
@@ -740,7 +738,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: R-BlackA
+      R-BlackA:
         id: 68
         kind: int
         access: RW-
@@ -750,7 +748,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: G-BlackA
+      G-BlackA:
         id: 69
         kind: int
         access: RW-
@@ -760,7 +758,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: B-BlackA
+      B-BlackA:
         id: 70
         kind: int
         access: RW-
@@ -770,7 +768,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: BlackB
+      BlackB:
         id: 71
         kind: int
         access: RW-
@@ -780,7 +778,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: R-BlackB
+      R-BlackB:
         id: 72
         kind: int
         access: RW-
@@ -790,7 +788,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: G-BlackB
+      G-BlackB:
         id: 73
         kind: int
         access: RW-
@@ -800,7 +798,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: B-BlackB
+      B-BlackB:
         id: 74
         kind: int
         access: RW-
@@ -810,7 +808,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: CVBS-Hue
+      CVBS-Hue:
         id: 75
         kind: int
         access: RW-
@@ -819,14 +817,13 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "  AUDIO PROC AMP"
+      "  AUDIO PROC AMP":
         id: 76
         kind: string
         access: RW-
-        sub_group_marker: true
         max_len: 1
         value: ""
-      - label: Audio-Phase
+      Audio-Phase:
         id: 77
         kind: enum
         access: RW-
@@ -834,7 +831,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: Audio_Ctrl
+      Audio_Ctrl:
         id: 78
         kind: enum
         access: RW-
@@ -842,7 +839,7 @@ slots:
         default: 0
         value: 0
         value_name: Manual
-      - label: Audio_Prst_Act
+      Audio_Prst_Act:
         id: 79
         kind: enum
         access: RW-
@@ -850,7 +847,7 @@ slots:
         default: 0
         value: 0
         value_name: 1
-      - label: Audio_Prst_Edit
+      Audio_Prst_Edit:
         id: 80
         kind: enum
         access: RW-
@@ -858,7 +855,7 @@ slots:
         default: 0
         value: 0
         value_name: 1
-      - label: "#Audio_Delay"
+      "#Audio_Delay":
         id: 81
         kind: int
         access: RW-
@@ -868,14 +865,13 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "  EMBEDDER"
+      "  EMBEDDER":
         id: 82
         kind: string
         access: RW-
-        sub_group_marker: true
         max_len: 1
         value: ""
-      - label: "#Emb-AB-Mode"
+      "#Emb-AB-Mode":
         id: 83
         kind: enum
         access: RW-
@@ -883,7 +879,7 @@ slots:
         default: 0
         value: 0
         value_name: Overwrite
-      - label: "#EmbA_Grp"
+      "#EmbA_Grp":
         id: 84
         kind: enum
         access: RW-
@@ -891,7 +887,7 @@ slots:
         default: 0
         value: 0
         value_name: Group1
-      - label: "#EmbA1_Inp"
+      "#EmbA1_Inp":
         id: 85
         kind: enum
         access: RW-
@@ -899,7 +895,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbA1_Inp_Ch"
+      "#EmbA1_Inp_Ch":
         id: 86
         kind: enum
         access: RW-
@@ -907,7 +903,7 @@ slots:
         default: 0
         value: 0
         value_name: Ch_1
-      - label: "#EmbA2_Inp"
+      "#EmbA2_Inp":
         id: 87
         kind: enum
         access: RW-
@@ -915,7 +911,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbA2_Inp_Ch"
+      "#EmbA2_Inp_Ch":
         id: 88
         kind: enum
         access: RW-
@@ -923,7 +919,7 @@ slots:
         default: 1
         value: 1
         value_name: Ch_2
-      - label: "#EmbA3_Inp"
+      "#EmbA3_Inp":
         id: 89
         kind: enum
         access: RW-
@@ -931,7 +927,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbA3_Inp_Ch"
+      "#EmbA3_Inp_Ch":
         id: 90
         kind: enum
         access: RW-
@@ -939,7 +935,7 @@ slots:
         default: 2
         value: 2
         value_name: Ch_3
-      - label: "#EmbA4_Inp"
+      "#EmbA4_Inp":
         id: 91
         kind: enum
         access: RW-
@@ -947,7 +943,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbA4_Inp_Ch"
+      "#EmbA4_Inp_Ch":
         id: 92
         kind: enum
         access: RW-
@@ -955,7 +951,7 @@ slots:
         default: 3
         value: 3
         value_name: Ch_4
-      - label: "#EmbB_Grp"
+      "#EmbB_Grp":
         id: 93
         kind: enum
         access: RW-
@@ -963,7 +959,7 @@ slots:
         default: 1
         value: 1
         value_name: Group2
-      - label: "#EmbB1_Inp"
+      "#EmbB1_Inp":
         id: 94
         kind: enum
         access: RW-
@@ -971,7 +967,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbB1_Inp_Ch"
+      "#EmbB1_Inp_Ch":
         id: 95
         kind: enum
         access: RW-
@@ -979,7 +975,7 @@ slots:
         default: 4
         value: 4
         value_name: Ch_5
-      - label: "#EmbB2_Inp"
+      "#EmbB2_Inp":
         id: 96
         kind: enum
         access: RW-
@@ -987,7 +983,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbB2_Inp_Ch"
+      "#EmbB2_Inp_Ch":
         id: 97
         kind: enum
         access: RW-
@@ -995,7 +991,7 @@ slots:
         default: 5
         value: 5
         value_name: Ch_6
-      - label: "#EmbB3_Inp"
+      "#EmbB3_Inp":
         id: 98
         kind: enum
         access: RW-
@@ -1003,7 +999,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbB3_Inp_Ch"
+      "#EmbB3_Inp_Ch":
         id: 99
         kind: enum
         access: RW-
@@ -1011,7 +1007,7 @@ slots:
         default: 6
         value: 6
         value_name: Ch_7
-      - label: "#EmbB4_Inp"
+      "#EmbB4_Inp":
         id: 100
         kind: enum
         access: RW-
@@ -1019,7 +1015,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbB4_Inp_Ch"
+      "#EmbB4_Inp_Ch":
         id: 101
         kind: enum
         access: RW-
@@ -1027,7 +1023,7 @@ slots:
         default: 7
         value: 7
         value_name: Ch_8
-      - label: "#Emb-CD-Mode"
+      "#Emb-CD-Mode":
         id: 102
         kind: enum
         access: RW-
@@ -1035,7 +1031,7 @@ slots:
         default: 0
         value: 0
         value_name: Overwrite
-      - label: "#EmbC_Grp"
+      "#EmbC_Grp":
         id: 103
         kind: enum
         access: RW-
@@ -1043,7 +1039,7 @@ slots:
         default: 2
         value: 2
         value_name: Group3
-      - label: "#EmbC1_Inp"
+      "#EmbC1_Inp":
         id: 104
         kind: enum
         access: RW-
@@ -1051,7 +1047,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbC1_Inp_Ch"
+      "#EmbC1_Inp_Ch":
         id: 105
         kind: enum
         access: RW-
@@ -1059,7 +1055,7 @@ slots:
         default: 8
         value: 8
         value_name: Ch_9
-      - label: "#EmbC2_Inp"
+      "#EmbC2_Inp":
         id: 106
         kind: enum
         access: RW-
@@ -1067,7 +1063,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbC2_Inp_Ch"
+      "#EmbC2_Inp_Ch":
         id: 107
         kind: enum
         access: RW-
@@ -1075,7 +1071,7 @@ slots:
         default: 9
         value: 9
         value_name: Ch_10
-      - label: "#EmbC3_Inp"
+      "#EmbC3_Inp":
         id: 108
         kind: enum
         access: RW-
@@ -1083,7 +1079,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbC3_Inp_Ch"
+      "#EmbC3_Inp_Ch":
         id: 109
         kind: enum
         access: RW-
@@ -1091,7 +1087,7 @@ slots:
         default: 10
         value: 10
         value_name: Ch_11
-      - label: "#EmbC4_Inp"
+      "#EmbC4_Inp":
         id: 110
         kind: enum
         access: RW-
@@ -1099,7 +1095,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbC4_Inp_Ch"
+      "#EmbC4_Inp_Ch":
         id: 111
         kind: enum
         access: RW-
@@ -1107,7 +1103,7 @@ slots:
         default: 11
         value: 11
         value_name: Ch_12
-      - label: "#EmbD_Grp"
+      "#EmbD_Grp":
         id: 112
         kind: enum
         access: RW-
@@ -1115,7 +1111,7 @@ slots:
         default: 3
         value: 3
         value_name: Group4
-      - label: "#EmbD1_Inp"
+      "#EmbD1_Inp":
         id: 113
         kind: enum
         access: RW-
@@ -1123,7 +1119,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbD1_Inp_Ch"
+      "#EmbD1_Inp_Ch":
         id: 114
         kind: enum
         access: RW-
@@ -1131,7 +1127,7 @@ slots:
         default: 12
         value: 12
         value_name: Ch_13
-      - label: "#EmbD2_Inp"
+      "#EmbD2_Inp":
         id: 115
         kind: enum
         access: RW-
@@ -1139,7 +1135,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbD2_Inp_Ch"
+      "#EmbD2_Inp_Ch":
         id: 116
         kind: enum
         access: RW-
@@ -1147,7 +1143,7 @@ slots:
         default: 13
         value: 13
         value_name: Ch_14
-      - label: "#EmbD3_Inp"
+      "#EmbD3_Inp":
         id: 117
         kind: enum
         access: RW-
@@ -1155,7 +1151,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbD3_Inp_Ch"
+      "#EmbD3_Inp_Ch":
         id: 118
         kind: enum
         access: RW-
@@ -1163,7 +1159,7 @@ slots:
         default: 14
         value: 14
         value_name: Ch_15
-      - label: "#EmbD4_Inp"
+      "#EmbD4_Inp":
         id: 119
         kind: enum
         access: RW-
@@ -1171,7 +1167,7 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: "#EmbD4_Inp_Ch"
+      "#EmbD4_Inp_Ch":
         id: 120
         kind: enum
         access: RW-
@@ -1179,7 +1175,7 @@ slots:
         default: 15
         value: 15
         value_name: Ch_16
-      - label: "#EmbA1_Gain"
+      "#EmbA1_Gain":
         id: 121
         kind: float
         access: RW-
@@ -1189,7 +1185,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbA1_Phase"
+      "#EmbA1_Phase":
         id: 122
         kind: enum
         access: RW-
@@ -1197,7 +1193,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbA2_Gain"
+      "#EmbA2_Gain":
         id: 123
         kind: float
         access: RW-
@@ -1207,7 +1203,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbA2_Phase"
+      "#EmbA2_Phase":
         id: 124
         kind: enum
         access: RW-
@@ -1215,7 +1211,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbA3_Gain"
+      "#EmbA3_Gain":
         id: 125
         kind: float
         access: RW-
@@ -1225,7 +1221,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbA3_Phase"
+      "#EmbA3_Phase":
         id: 126
         kind: enum
         access: RW-
@@ -1233,7 +1229,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbA4_Gain"
+      "#EmbA4_Gain":
         id: 127
         kind: float
         access: RW-
@@ -1243,7 +1239,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbA4_Phase"
+      "#EmbA4_Phase":
         id: 128
         kind: enum
         access: RW-
@@ -1251,7 +1247,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbB1_Gain"
+      "#EmbB1_Gain":
         id: 129
         kind: float
         access: RW-
@@ -1261,7 +1257,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbB1_Phase"
+      "#EmbB1_Phase":
         id: 130
         kind: enum
         access: RW-
@@ -1269,7 +1265,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbB2_Gain"
+      "#EmbB2_Gain":
         id: 131
         kind: float
         access: RW-
@@ -1279,7 +1275,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbB2_Phase"
+      "#EmbB2_Phase":
         id: 132
         kind: enum
         access: RW-
@@ -1287,7 +1283,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbB3_Gain"
+      "#EmbB3_Gain":
         id: 133
         kind: float
         access: RW-
@@ -1297,7 +1293,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbB3_Phase"
+      "#EmbB3_Phase":
         id: 134
         kind: enum
         access: RW-
@@ -1305,7 +1301,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbB4_Gain"
+      "#EmbB4_Gain":
         id: 135
         kind: float
         access: RW-
@@ -1315,7 +1311,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbB4_Phase"
+      "#EmbB4_Phase":
         id: 136
         kind: enum
         access: RW-
@@ -1323,7 +1319,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbC1_Gain"
+      "#EmbC1_Gain":
         id: 137
         kind: float
         access: RW-
@@ -1333,7 +1329,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbC1_Phase"
+      "#EmbC1_Phase":
         id: 138
         kind: enum
         access: RW-
@@ -1341,7 +1337,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbC2_Gain"
+      "#EmbC2_Gain":
         id: 139
         kind: float
         access: RW-
@@ -1351,7 +1347,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbC2_Phase"
+      "#EmbC2_Phase":
         id: 140
         kind: enum
         access: RW-
@@ -1359,7 +1355,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbC3_Gain"
+      "#EmbC3_Gain":
         id: 141
         kind: float
         access: RW-
@@ -1369,7 +1365,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbC3_Phase"
+      "#EmbC3_Phase":
         id: 142
         kind: enum
         access: RW-
@@ -1377,7 +1373,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbC4_Gain"
+      "#EmbC4_Gain":
         id: 143
         kind: float
         access: RW-
@@ -1387,7 +1383,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbC4_Phase"
+      "#EmbC4_Phase":
         id: 144
         kind: enum
         access: RW-
@@ -1395,7 +1391,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbD1_Gain"
+      "#EmbD1_Gain":
         id: 145
         kind: float
         access: RW-
@@ -1405,7 +1401,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbD1_Phase"
+      "#EmbD1_Phase":
         id: 146
         kind: enum
         access: RW-
@@ -1413,7 +1409,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbD2_Gain"
+      "#EmbD2_Gain":
         id: 147
         kind: float
         access: RW-
@@ -1423,7 +1419,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbD2_Phase"
+      "#EmbD2_Phase":
         id: 148
         kind: enum
         access: RW-
@@ -1431,7 +1427,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbD3_Gain"
+      "#EmbD3_Gain":
         id: 149
         kind: float
         access: RW-
@@ -1441,7 +1437,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbD3_Phase"
+      "#EmbD3_Phase":
         id: 150
         kind: enum
         access: RW-
@@ -1449,7 +1445,7 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "#EmbD4_Gain"
+      "#EmbD4_Gain":
         id: 151
         kind: float
         access: RW-
@@ -1459,7 +1455,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "#EmbD4_Phase"
+      "#EmbD4_Phase":
         id: 152
         kind: enum
         access: RW-
@@ -1467,14 +1463,13 @@ slots:
         default: 0
         value: 0
         value_name: 0 deg
-      - label: "  GPI MODE"
+      "  GPI MODE":
         id: 153
         kind: string
         access: RW-
-        sub_group_marker: true
         max_len: 1
         value: ""
-      - label: GPI-Ctrl
+      GPI-Ctrl:
         id: 154
         kind: enum
         access: RW-
@@ -1482,7 +1477,7 @@ slots:
         default: 0
         value: 0
         value_name: Latch
-      - label: GPI_1
+      GPI_1:
         id: 155
         kind: enum
         access: RW-
@@ -1490,7 +1485,7 @@ slots:
         default: 5
         value: 5
         value_name: Take B
-      - label: GPI_2
+      GPI_2:
         id: 156
         kind: enum
         access: RW-
@@ -1498,7 +1493,7 @@ slots:
         default: 5
         value: 5
         value_name: Take B
-      - label: GPI_3
+      GPI_3:
         id: 157
         kind: enum
         access: RW-
@@ -1506,7 +1501,7 @@ slots:
         default: 5
         value: 5
         value_name: Take B
-      - label: GPI_4
+      GPI_4:
         id: 158
         kind: enum
         access: RW-
@@ -1514,7 +1509,7 @@ slots:
         default: 5
         value: 5
         value_name: Take B
-      - label: GPI_5
+      GPI_5:
         id: 159
         kind: enum
         access: RW-
@@ -1522,14 +1517,13 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: " NETWORK"
+      " NETWORK":
         id: 160
         kind: string
         access: RW-
-        sub_group_marker: true
         max_len: 1
         value: ""
-      - label: IP_Conf0
+      IP_Conf0:
         id: 161
         kind: enum
         access: RW-
@@ -1537,22 +1531,22 @@ slots:
         default: 1
         value: 1
         value_name: DHCP
-      - label: mIP0
+      mIP0:
         id: 162
         kind: ipaddr
         access: RW-
         value: 0.0.0.0
-      - label: mNM0
+      mNM0:
         id: 163
         kind: ipaddr
         access: RW-
         value: 0.0.0.0
-      - label: mGW0
+      mGW0:
         id: 164
         kind: ipaddr
         access: RW-
         value: 0.0.0.0
-      - label: NetwPrefix0
+      NetwPrefix0:
         id: 165
         kind: int
         access: RW-
@@ -1563,7 +1557,7 @@ slots:
         default: 0
         value: 0
     status:
-      - label: ActiveA
+      ActiveA:
         id: 0
         kind: enum
         access: R--
@@ -1571,7 +1565,7 @@ slots:
         default: 0
         value: 0
         value_name: SDI-1
-      - label: ActiveB
+      ActiveB:
         id: 1
         kind: enum
         access: R--
@@ -1579,7 +1573,7 @@ slots:
         default: 1
         value: 1
         value_name: SDI-2
-      - label: sInp1
+      sInp1:
         id: 2
         kind: enum
         access: R--
@@ -1587,7 +1581,7 @@ slots:
         default: 15
         value: 15
         value_name: NA
-      - label: sInp1_VI
+      sInp1_VI:
         id: 3
         kind: enum
         access: R--
@@ -1595,7 +1589,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInp1_WSS-Stnd
+      sInp1_WSS-Stnd:
         id: 4
         kind: enum
         access: R--
@@ -1603,7 +1597,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInp1_WSS-Extd
+      sInp1_WSS-Extd:
         id: 5
         kind: enum
         access: R--
@@ -1611,7 +1605,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInp1_s2016
+      sInp1_s2016:
         id: 6
         kind: enum
         access: R--
@@ -1619,7 +1613,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInp2
+      sInp2:
         id: 7
         kind: enum
         access: R--
@@ -1627,7 +1621,7 @@ slots:
         default: 15
         value: 15
         value_name: NA
-      - label: sInp2_VI
+      sInp2_VI:
         id: 8
         kind: enum
         access: R--
@@ -1635,7 +1629,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInp2_WSS-Stnd
+      sInp2_WSS-Stnd:
         id: 9
         kind: enum
         access: R--
@@ -1643,7 +1637,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInp2_WSS-Extd
+      sInp2_WSS-Extd:
         id: 10
         kind: enum
         access: R--
@@ -1651,7 +1645,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInp2_s2016
+      sInp2_s2016:
         id: 11
         kind: enum
         access: R--
@@ -1659,7 +1653,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInp3
+      sInp3:
         id: 12
         kind: enum
         access: R--
@@ -1667,7 +1661,7 @@ slots:
         default: 15
         value: 15
         value_name: NA
-      - label: sInp3_WSS-Stnd
+      sInp3_WSS-Stnd:
         id: 13
         kind: enum
         access: R--
@@ -1675,7 +1669,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInp3_WSS-Extd
+      sInp3_WSS-Extd:
         id: 14
         kind: enum
         access: R--
@@ -1683,7 +1677,7 @@ slots:
         default: 16
         value: 16
         value_name: NA
-      - label: sInpCVBS
+      sInpCVBS:
         id: 15
         kind: enum
         access: R--
@@ -1691,7 +1685,7 @@ slots:
         default: 9
         value: 9
         value_name: NA
-      - label: IODelayA
+      IODelayA:
         id: 16
         kind: int
         access: R--
@@ -1701,7 +1695,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: SwitchLnA
+      SwitchLnA:
         id: 17
         kind: int
         access: R--
@@ -1710,7 +1704,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: SwitchLn_LenA
+      SwitchLn_LenA:
         id: 18
         kind: int
         access: R--
@@ -1720,7 +1714,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: SwitchLn_PosA
+      SwitchLn_PosA:
         id: 19
         kind: int
         access: R--
@@ -1730,7 +1724,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: IODelayB
+      IODelayB:
         id: 20
         kind: int
         access: R--
@@ -1740,7 +1734,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: SwitchLnB
+      SwitchLnB:
         id: 21
         kind: int
         access: R--
@@ -1749,7 +1743,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: SwitchLn_LenB
+      SwitchLn_LenB:
         id: 22
         kind: int
         access: R--
@@ -1759,7 +1753,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: SwitchLn_PosB
+      SwitchLn_PosB:
         id: 23
         kind: int
         access: R--
@@ -1769,7 +1763,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: FunctionA
+      FunctionA:
         id: 24
         kind: enum
         access: R--
@@ -1777,7 +1771,7 @@ slots:
         default: 0
         value: 0
         value_name: Up
-      - label: FunctionB
+      FunctionB:
         id: 25
         kind: enum
         access: R--
@@ -1785,7 +1779,7 @@ slots:
         default: 0
         value: 0
         value_name: Up
-      - label: Ref
+      Ref:
         id: 26
         kind: enum
         access: R--
@@ -1793,7 +1787,7 @@ slots:
         default: 0
         value: 0
         value_name: NA
-      - label: GPI
+      GPI:
         id: 27
         kind: enum
         access: R--
@@ -1801,7 +1795,7 @@ slots:
         default: 0
         value: 0
         value_name: ____
-      - label: GPIA
+      GPIA:
         id: 28
         kind: uint
         access: R--
@@ -1810,7 +1804,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: GPIB
+      GPIB:
         id: 29
         kind: uint
         access: R--
@@ -1819,7 +1813,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: GPIC
+      GPIC:
         id: 30
         kind: uint
         access: R--
@@ -1828,14 +1822,13 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: "  NET STATUS"
+      "  NET STATUS":
         id: 31
         kind: string
         access: R--
-        sub_group_marker: true
         max_len: 1
         value: ""
-      - label: IP_Addr0
+      IP_Addr0:
         id: 32
         kind: enum
         access: R--
@@ -1843,79 +1836,55 @@ slots:
         default: 1
         value: 1
         value_name: DHCP Asking
-      - label: MAC0
+      MAC0:
         id: 33
         kind: string
         access: R--
         max_len: 17
         value: "00:03:41:10:0f:e3"
-      - label: IP0
+      IP0:
         id: 34
         kind: ipaddr
         access: R--
         value: 0.0.0.0
-      - label: NM0
+      NM0:
         id: 35
         kind: ipaddr
         access: R--
         value: 0.0.0.0
-      - label: GW0
+      GW0:
         id: 36
         kind: ipaddr
         access: R--
         value: 0.0.0.0
     alarm:
-      - label: Announcements
+      Announcements:
         id: 0
         kind: alarm
         access: RW-
-        alarm_priority: 1
-        alarm_tag: 0x01
-        alarm_on: Announcements on
-        alarm_off: Announcements off
         value: 1
-      - label: Input_A
+      Input_A:
         id: 1
         kind: alarm
         access: RW-
-        alarm_priority: 1
-        alarm_tag: 0x01
-        alarm_on: INP_A_LOSS
-        alarm_off: INP_A_RETURN
         value: 1
-      - label: Input_B
+      Input_B:
         id: 2
         kind: alarm
         access: RW-
-        alarm_priority: 1
-        alarm_tag: 0x41
-        alarm_on: INP_B_LOSS
-        alarm_off: INP_B_RETURN
         value: 1
-      - label: Ref-Status
+      Ref-Status:
         id: 3
         kind: alarm
         access: RW-
-        alarm_priority: 0
-        alarm_tag: 0x02
-        alarm_on: REF_LOSS
-        alarm_off: REF_RETURN
         value: 0
-      - label: Active_Out_A
+      Active_Out_A:
         id: 4
         kind: alarm
         access: RW-
-        alarm_priority: 1
-        alarm_tag: 0x19
-        alarm_on: "IN_B-\u0026gt;OUT_A"
-        alarm_off: "IN_A-\u0026gt;OUT_A"
         value: 1
-      - label: Active_Out_B
+      Active_Out_B:
         id: 5
         kind: alarm
         access: RW-
-        alarm_priority: 1
-        alarm_tag: 0x1A
-        alarm_on: "IN_A-\u0026gt;OUT_B"
-        alarm_off: "IN_B-\u0026gt;OUT_B"
         value: 1
