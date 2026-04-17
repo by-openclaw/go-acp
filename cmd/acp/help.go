@@ -44,14 +44,17 @@ DESCRIPTION
 
 FLAGS
   --slot N           slot number (required)
+  --all              walk every present slot
+  --path PATH        filter by tree path prefix (e.g. BOARD, PSU/1)
   --filter TEXT      case-insensitive filter on output lines (like findstr /i or grep -i)
 
 EXAMPLES
-  acp walk 10.6.239.113 --slot 0        # rack controller
-  acp walk 10.6.239.113 --slot 1        # first card
-  acp walk 10.6.239.113 --slot 1 --verbose
-  acp walk 10.41.40.195 --protocol acp2 --slot 0 --filter enum
-  acp walk 10.41.40.195 --protocol acp2 --slot 0 --filter "Fan Health"`)
+  acp walk 10.6.239.113 --slot 0                                       # rack controller
+  acp walk 10.6.239.113 --slot 1                                       # first card
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --path BOARD          # only BOARD subtree
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --path PSU/1          # only PSU unit 1
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --path PSU --filter Temperature  # combine
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --filter QSFP         # text search all`)
 }
 
 func helpGet() {
@@ -202,11 +205,15 @@ DESCRIPTION
 FLAGS
   --format F         json | yaml | csv   (default: json or from extension)
   --out FILE         output file path    (default: stdout)
+  --slot N           export only this slot (-1 = all present)
+  --path PATH        filter by tree path prefix (e.g. BOARD, PSU/1)
 
 EXAMPLES
   acp export 10.6.239.113 --format json --out device.json
   acp export 10.6.239.113 --format yaml --out device.yaml
   acp export 10.6.239.113 --format csv  --out device.csv
+  acp export 10.41.40.195 --protocol acp2 --slot 0 --path BOARD --format yaml   # subtree only
+  acp export 10.41.40.195 --protocol acp2 --slot 0 --path PSU/1 --format csv    # single PSU unit
   acp export 10.6.239.113 > device.json`)
 }
 
