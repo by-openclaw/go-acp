@@ -1,8 +1,23 @@
-## Summary
+## What
 
-<!-- One sentence: what changed and why. -->
+<!-- One sentence: what changed. -->
+
+## Why
+
+<!-- Motivation: what problem does this solve? Link to issue. -->
 
 Closes #
+
+## Scope
+
+- [ ] acp1
+- [ ] acp2
+- [ ] transport
+- [ ] export
+- [ ] cli
+- [ ] api
+- [ ] core
+- [ ] ci / chore
 
 ## Type
 
@@ -12,41 +27,25 @@ Closes #
 - [ ] chore — maintenance, refactor, CI
 - [ ] security — security fix or hardening
 
-## Protocol / area
-
-- [ ] acp1
-- [ ] acp2
-- [ ] transport
-- [ ] export
-- [ ] cli
-- [ ] api
-- [ ] core
-
 ## Files changed
 
-| File | Type | Change |
-|------|------|--------|
-| `internal/protocol/acp1/example.go` | new | ExampleFunc (N lines) |
-| `tests/unit/acp1/example_test.go` | new | N tests |
+| File | New / Modified | Description |
+|------|---------------|-------------|
+| `path/to/file.go` | new | short description |
 
 ## Test results
 
-| Suite | Scope | File | Passed | Failed |
-|-------|-------|------|--------|--------|
-| Unit (black-box) | acp1 | `tests/unit/acp1/` | 0 | 0 |
-| Unit (white-box) | acp1 | `internal/protocol/acp1/` | 0 | 0 |
-| Integration | acp1 | `tests/integration/acp1/` | 0 | 0 |
-| **Full suite** | **All** | `go test ./...` | **0** | **0** |
-| Lint | golangci-lint | `./...` | clean | — |
-| Vet | go vet | `./...` | clean | — |
+| Suite | Passed | Failed |
+|-------|--------|--------|
+| `go test ./...` | 0 | 0 |
+| `go vet ./...` | clean | — |
+| `golangci-lint run` | clean | — |
 
 ## Device tested
 
-<!-- Which device / emulator did you verify against? -->
-
-- [ ] Synapse Simulator 10.6.239.113 (UDP)
-- [ ] Real ACP1 device (specify IP + firmware)
-- [ ] Real ACP2 device (specify IP + firmware)
+- [ ] ACP1 emulator 10.6.239.113
+- [ ] ACP2 real device 10.41.40.195
+- [ ] Other (specify)
 - [ ] No device needed (pure codec / doc change)
 
 ## Checklist
@@ -54,7 +53,9 @@ Closes #
 - [ ] `go test -count=1 ./...` passes
 - [ ] `go vet ./...` clean
 - [ ] `golangci-lint run ./...` clean
-- [ ] No new external dependencies (or justified + approved)
-- [ ] CHANGELOG.md updated
-- [ ] Per-protocol docs updated if behavior changed
-- [ ] Export example files regenerated if format changed
+- [ ] No new external dependencies
+- [ ] Integration tested on VM before PR
+
+## Approval
+
+@yboujraf — requesting review
