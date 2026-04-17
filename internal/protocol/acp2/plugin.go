@@ -46,8 +46,8 @@ type Plugin struct {
 	session *Session
 	walker  *Walker
 
-	// trees caches the walked object tree per slot.
-	trees map[int]*WalkedTree
+	// trees caches the walked object tree per slot (LRU + TTL).
+	trees *walkedTreeCache
 
 	// Announce subscription tracking.
 	subHandles map[subKey]int // subKey → session announce subscription ID
@@ -109,7 +109,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.session = s
 	p.walker = NewWalker(s, p.logger)
 	p.walker.OnProgress = p.walkProgress
-	p.trees = make(map[int]*WalkedTree)
+	p.trees = newWalkedTreeCache(32, 10*time.Minute)
 	p.subHandles = make(map[subKey]int)
 	return nil
 }
@@ -125,7 +125,9 @@ func (p *Plugin) Disconnect() error {
 	err := p.session.Disconnect()
 	p.session = nil
 	p.walker = nil
-	p.trees = nil
+	if p.trees != nil {
+		p.trees.Clear()
+	}
 	p.subHandles = nil
 	return err
 }
@@ -159,9 +161,7 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, 
 	si := s.SlotInfoFromAN2(slot)
 
 	// If the slot has been walked, add identity from the tree.
-	p.mu.Lock()
-	tree := p.trees[slot]
-	p.mu.Unlock()
+	tree, _ := p.trees.Get(slot)
 	if tree != nil {
 		si.Identity = make(map[string]string)
 		for _, obj := range tree.Objects {
@@ -177,14 +177,13 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, 
 // Walk enumerates every object on the given slot using DFS traversal.
 // Results are cached; subsequent calls return the cached tree.
 func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) {
-	p.mu.Lock()
-	w := p.walker
-	if tree, ok := p.trees[slot]; ok {
-		p.mu.Unlock()
+	if tree, ok := p.trees.Get(slot); ok {
 		return tree.Objects, nil
 	}
-	p.mu.Unlock()
 
+	p.mu.Lock()
+	w := p.walker
+	p.mu.Unlock()
 	if w == nil {
 		return nil, protocol.ErrNotConnected
 	}
@@ -194,10 +193,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 		return nil, err
 	}
 
-	p.mu.Lock()
-	p.trees[slot] = tree
-	p.mu.Unlock()
-
+	p.trees.Put(slot, tree)
 	return tree.Objects, nil
 }
 
@@ -205,11 +201,11 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
 	p.mu.Lock()
 	s := p.session
-	tree := p.trees[req.Slot]
 	p.mu.Unlock()
 	if s == nil {
 		return protocol.Value{}, protocol.ErrNotConnected
 	}
+	tree, _ := p.trees.Get(req.Slot)
 
 	objID, objType, numType, _, err := p.resolveRequest(req, tree)
 	if err != nil {
@@ -253,11 +249,11 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
 	p.mu.Lock()
 	s := p.session
-	tree := p.trees[req.Slot]
 	p.mu.Unlock()
 	if s == nil {
 		return protocol.Value{}, protocol.ErrNotConnected
 	}
+	tree, _ := p.trees.Get(req.Slot)
 
 	objID, objType, numType, obj, err := p.resolveRequest(req, tree)
 	if err != nil {
@@ -335,9 +331,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		}
 
 		// Try to resolve label and decode value from cached tree.
-		p.mu.Lock()
-		tree := p.trees[int(annSlot)]
-		p.mu.Unlock()
+		tree, _ := p.trees.Get(int(annSlot))
 
 		// Find object index in tree.
 		treeIdx := -1
