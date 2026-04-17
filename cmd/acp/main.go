@@ -25,6 +25,7 @@ import (
 
 	_ "acp/internal/protocol/acp1"
 	_ "acp/internal/protocol/acp2"
+	_ "acp/internal/protocol/emberplus"
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.
