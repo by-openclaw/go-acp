@@ -6,62 +6,62 @@ device:
   protocol_version: 1
   num_slots: 31
 generator: acp dev
-created_at: "2026-04-16T23:53:40Z"
+created_at: "2026-04-17T21:30:23Z"
 slots:
   - slot: 0
     status: present
-    walked_at: "2026-04-16T23:53:40Z"
+    walked_at: "2026-04-17T21:30:23Z"
     identity:
-      - label: Card name
+      Card name:
         id: 0
         kind: string
         access: R--
         max_len: 8
         value: RRS18
-      - label: User label
+      User label:
         id: 1
         kind: string
         access: RW-
         max_len: 16
         value: Synapse Simulator
-      - label: Card description
+      Card description:
         id: 2
         kind: string
         access: R--
         max_len: 32
         value: Virtual Rack Controller
-      - label: Software rev
+      Software rev:
         id: 3
         kind: string
         access: R--
         max_len: 4
         value: 1601
-      - label: Hardware rev
+      Hardware rev:
         id: 4
         kind: string
         access: R--
         max_len: 4
         value: 0100
-      - label: Product code
+      Product code:
         id: 5
         kind: string
         access: R--
         max_len: 10
         value: 9410070001
-      - label: Serial number
+      Serial number:
         id: 6
         kind: string
         access: R--
         max_len: 6
         value: 001633
-      - label: Card ID
+      Card ID:
         id: 7
         kind: string
         access: R--
         max_len: 16
         value: 71ef060a00000000
     control:
-      - label: IP_Conf
+      IP_Conf:
         id: 0
         kind: enum
         access: RW-
@@ -69,22 +69,22 @@ slots:
         default: 1
         value: 1
         value_name: DHCP
-      - label: mIP
+      mIP:
         id: 1
         kind: ipaddr
         access: RW-
         value: 10.5.4.125
-      - label: mNM
+      mNM:
         id: 2
         kind: ipaddr
         access: RW-
         value: 255.255.255.0
-      - label: mGW
+      mGW:
         id: 3
         kind: ipaddr
         access: RW-
         value: 0.0.0.0
-      - label: Broadcasts
+      Broadcasts:
         id: 4
         kind: enum
         access: RW-
@@ -92,7 +92,7 @@ slots:
         default: 1
         value: 1
         value_name: "On"
-      - label: Forwarding
+      Forwarding:
         id: 5
         kind: enum
         access: RW-
@@ -100,12 +100,12 @@ slots:
         default: 0
         value: 0
         value_name: "Off"
-      - label: FW
+      FW:
         id: 6
         kind: ipaddr
         access: RW-
         value: 0.0.0.0
-      - label: NetwPrefix
+      NetwPrefix:
         id: 7
         kind: uint
         access: RW-
@@ -115,7 +115,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: ErrorThreshold
+      ErrorThreshold:
         id: 8
         kind: uint
         access: RW-
@@ -124,7 +124,7 @@ slots:
         step: 1
         default: 10
         value: 10
-      - label: Redund_Pwr_Test
+      Redund_Pwr_Test:
         id: 9
         kind: enum
         access: RW-
@@ -132,7 +132,7 @@ slots:
         default: 0
         value: 1
         value_name: "On"
-      - label: Trap-Dest_0
+      Trap-Dest_0:
         id: 10
         kind: enum
         access: RW-
@@ -140,12 +140,12 @@ slots:
         default: 0
         value: 1
         value_name: "On"
-      - label: TD_0
+      TD_0:
         id: 11
         kind: ipaddr
         access: RW-
         value: 10.6.239.113
-      - label: Trap-Dest_1
+      Trap-Dest_1:
         id: 12
         kind: enum
         access: RW-
@@ -153,13 +153,13 @@ slots:
         default: 0
         value: 1
         value_name: "On"
-      - label: TD_1
+      TD_1:
         id: 13
         kind: ipaddr
         access: RW-
         value: 10.100.0.101
     status:
-      - label: IP_Addr
+      IP_Addr:
         id: 0
         kind: enum
         access: R--
@@ -167,22 +167,22 @@ slots:
         default: 1
         value: 1
         value_name: DHCP-Asking
-      - label: IP
+      IP:
         id: 1
         kind: ipaddr
         access: R--
         value: 0.0.0.0
-      - label: NM
+      NM:
         id: 2
         kind: ipaddr
         access: R--
         value: 0.0.0.0
-      - label: GW
+      GW:
         id: 3
         kind: ipaddr
         access: R--
         value: 0.0.0.0
-      - label: PSU_Top
+      PSU_Top:
         id: 4
         kind: enum
         access: R--
@@ -190,7 +190,7 @@ slots:
         default: 1
         value: 1
         value_name: OK
-      - label: PSU_Bottom
+      PSU_Bottom:
         id: 5
         kind: enum
         access: R--
@@ -198,7 +198,7 @@ slots:
         default: 1
         value: 1
         value_name: OK
-      - label: Temp_Left
+      Temp_Left:
         id: 6
         kind: int
         access: R--
@@ -208,7 +208,7 @@ slots:
         step: 1
         default: 24
         value: 24
-      - label: Temp_Right
+      Temp_Right:
         id: 7
         kind: int
         access: R--
@@ -218,7 +218,7 @@ slots:
         step: 1
         default: 27
         value: 27
-      - label: SPF_Progress
+      SPF_Progress:
         id: 8
         kind: float
         access: R--
@@ -228,7 +228,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: SPF_Status
+      SPF_Status:
         id: 9
         kind: enum
         access: R--
@@ -236,7 +236,7 @@ slots:
         default: 0
         value: 0
         value_name: Idle
-      - label: Rx_Packet_Loss
+      Rx_Packet_Loss:
         id: 10
         kind: int
         access: R--
@@ -245,7 +245,7 @@ slots:
         step: 1
         default: 0
         value: 0
-      - label: Redund_Ref_Pwr
+      Redund_Ref_Pwr:
         id: 11
         kind: enum
         access: R--
@@ -253,160 +253,148 @@ slots:
         default: 0
         value: 0
         value_name: NA
-      - label: MIB_S0
+      MIB_S0:
         id: 12
         kind: string
         access: R--
         max_len: 11
         value: "RRS18v16   "
-      - label: MIB_S1
+      MIB_S1:
         id: 13
         kind: string
         access: R--
         max_len: 11
         value: "CDV08v06   "
-      - label: MIB_S2
+      MIB_S2:
         id: 14
         kind: string
         access: R--
         max_len: 11
         value: "ASV10v12   "
-      - label: MIB_S3
+      MIB_S3:
         id: 15
         kind: string
         access: R--
         max_len: 11
         value: "ADC24v07   "
-      - label: MIB_S4
+      MIB_S4:
         id: 16
         kind: string
         access: R--
         max_len: 11
         value: "ADC24v07   "
-      - label: MIB_S5
+      MIB_S5:
         id: 17
         kind: string
         access: R--
         max_len: 11
         value: "ASM10v03   "
-      - label: MIB_S6
+      MIB_S6:
         id: 18
         kind: string
         access: R--
         max_len: 11
         value: "ADC24v07   "
-      - label: MIB_S7
+      MIB_S7:
         id: 19
         kind: string
         access: R--
         max_len: 11
         value: "ADC24v07   "
-      - label: MIB_S8
+      MIB_S8:
         id: 20
         kind: string
         access: R--
         max_len: 11
         value: "SDR08v05   "
-      - label: MIB_S9
+      MIB_S9:
         id: 21
         kind: string
         access: R--
         max_len: 11
         value: "SIM21v04   "
-      - label: MIB_S10
+      MIB_S10:
         id: 22
         kind: string
         access: R--
         max_len: 11
         value: "SAM08v07   "
-      - label: MIB_S11
+      MIB_S11:
         id: 23
         kind: string
         access: R--
         max_len: 11
         value: "DAC24v04   "
-      - label: MIB_S12
+      MIB_S12:
         id: 24
         kind: string
         access: R--
         max_len: 11
         value: "AAD08v02   "
-      - label: MIB_S13
+      MIB_S13:
         id: 25
         kind: string
         access: R--
         max_len: 11
         value: "AAD08v04   "
-      - label: MIB_S14
+      MIB_S14:
         id: 26
         kind: string
         access: R--
         max_len: 11
         value: empty
-      - label: MIB_S15
+      MIB_S15:
         id: 27
         kind: string
         access: R--
         max_len: 11
         value: empty
-      - label: MIB_S16
+      MIB_S16:
         id: 28
         kind: string
         access: R--
         max_len: 11
         value: empty
-      - label: MIB_S17
+      MIB_S17:
         id: 29
         kind: string
         access: R--
         max_len: 11
         value: empty
-      - label: MIB_S18
+      MIB_S18:
         id: 30
         kind: string
         access: R--
         max_len: 11
         value: "HQW09v22   "
     alarm:
-      - label: Announcements
+      Announcements:
         id: 0
         kind: alarm
         access: RW-
-        alarm_priority: 1
-        alarm_tag: 0x00
         value: 1
-      - label: PSU_T
+      PSU_T:
         id: 1
         kind: alarm
         access: RW-
-        alarm_priority: 0
-        alarm_tag: 0x00
         value: 0
-      - label: PSU_B
+      PSU_B:
         id: 2
         kind: alarm
         access: RW-
-        alarm_priority: 0
-        alarm_tag: 0x00
         value: 0
-      - label: Temperature
+      Temperature:
         id: 3
         kind: alarm
         access: RW-
-        alarm_priority: 0
-        alarm_tag: 0x00
         value: 0
-      - label: Ref_Backup
+      Ref_Backup:
         id: 4
         kind: alarm
         access: RW-
-        alarm_priority: 0
-        alarm_tag: 0x00
         value: 0
-      - label: Card-Presence
+      Card-Presence:
         id: 5
         kind: alarm
         access: RW-
-        alarm_priority: 0
-        alarm_tag: 0x00
         value: 0

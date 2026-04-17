@@ -123,6 +123,29 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 	return plug, cleanup, nil
 }
 
+// resolveLabelFromCache tries to find an object ID from the disk cache
+// for label-based addressing. Returns the ID if found, -1 otherwise.
+// This avoids a full walk when the label is in the disk cache.
+func resolveLabelFromCache(host string, slot int, group, label string) int {
+	if treeStore == nil || label == "" {
+		return -1
+	}
+	snap, err := treeStore.Load(host, slot)
+	if err != nil || snap == nil {
+		return -1
+	}
+	for _, sd := range snap.Slots {
+		for _, o := range sd.Objects {
+			if o.Label == label {
+				if group == "" || o.Group == group {
+					return o.ID
+				}
+			}
+		}
+	}
+	return -1
+}
+
 // withTimeout wraps ctx with the subcommand's --timeout.
 func withTimeout(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(ctx, d)
