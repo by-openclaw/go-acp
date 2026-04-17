@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"acp/internal/protocol"
@@ -102,6 +103,12 @@ func runWalk(ctx context.Context, args []string) error {
 				fmt.Printf("\nslot %d — walk error: %v\n", s, werr)
 				continue
 			}
+			// Save walked tree to disk for instant label resolution next time.
+			if treeStore != nil {
+				if serr := treeStore.Save(host, cf.protocol, s, objs); serr != nil {
+					fmt.Fprintf(os.Stderr, "warning: cache save slot %d: %v\n", s, serr)
+				}
+			}
 			objs = filterByPath(objs, pathSegs)
 			if !streaming {
 				printSlotTree(s, objs, *filter)
@@ -117,6 +124,12 @@ func runWalk(ctx context.Context, args []string) error {
 	objs, err := plug.Walk(ctx, *slot)
 	if err != nil {
 		return err
+	}
+	// Save walked tree to disk for instant label resolution next time.
+	if treeStore != nil {
+		if serr := treeStore.Save(host, cf.protocol, *slot, objs); serr != nil {
+			fmt.Fprintf(os.Stderr, "warning: cache save slot %d: %v\n", *slot, serr)
+		}
 	}
 	objs = filterByPath(objs, pathSegs)
 	if !streaming {
