@@ -251,6 +251,12 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 		obj.Path = append(parentPath, fmt.Sprintf("obj_%d", objID))
 	}
 
+	// Set Group from second path element (first child of root).
+	// ACP2 path: [ROOT_NODE_V2, BOARD, Card Name] → group = "BOARD"
+	if len(obj.Path) > 1 {
+		obj.Group = obj.Path[1]
+	}
+
 	// Map ACP2 object type to protocol.ValueKind.
 	switch objType {
 	case ObjTypeNode:

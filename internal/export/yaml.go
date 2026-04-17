@@ -72,14 +72,17 @@ type orderedGroups struct {
 	items map[string][]protocol.Object
 }
 
-// groupByPath partitions objects by their first Path element (or Group
-// fallback). Preserves the order in which each group first appears so
-// identity → control → status → alarm matches the walker's output.
+// groupByPath partitions objects by their group name. For ACP1 this is
+// the Group field (identity/control/status/alarm). For ACP2 the Group
+// field is empty — we use the second Path element (BOARD, PSU, etc.)
+// since Path[0] is always ROOT_NODE_V2.
 func groupByPath(objs []protocol.Object) orderedGroups {
 	g := orderedGroups{items: map[string][]protocol.Object{}}
 	for _, o := range objs {
 		name := o.Group
-		if len(o.Path) > 0 {
+		if name == "" && len(o.Path) > 1 {
+			name = o.Path[1] // ACP2: skip ROOT_NODE_V2, use BOARD/PSU/etc.
+		} else if name == "" && len(o.Path) > 0 {
 			name = o.Path[0]
 		}
 		if name == "" {
