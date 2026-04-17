@@ -81,12 +81,6 @@ func jsonHierarchicalSnapshot(s *Snapshot) map[string]any {
 // buildJSONTree creates nested maps from flat objects using their Path.
 func buildJSONTree(objs []protocol.Object) map[string]any {
 	root := make(map[string]any)
-	// Track insertion order per level using ordered keys.
-	type orderedMap struct {
-		keys []string
-		m    map[string]any
-	}
-	// We use a simple approach: walk each object's path and nest.
 	for _, o := range objs {
 		if len(o.Path) <= 1 {
 			continue // skip ROOT_NODE_V2 itself
