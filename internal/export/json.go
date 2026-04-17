@@ -17,30 +17,9 @@ import (
 // object trees matching the device structure. For ACP1 (flat), the
 // original grouped format is preserved.
 func WriteJSON(w io.Writer, s *Snapshot) error {
-	// Check if any slot has hierarchical objects.
-	hierarchical := false
-	for _, slot := range s.Slots {
-		for _, o := range slot.Objects {
-			if len(o.Path) > 2 {
-				hierarchical = true
-				break
-			}
-		}
-		if hierarchical {
-			break
-		}
-	}
-
-	if !hierarchical {
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(s); err != nil {
-			return fmt.Errorf("json encode: %w", err)
-		}
-		return nil
-	}
-
-	// ACP2: build hierarchical JSON.
+	// Always use hierarchical JSON — ACP1 groups (identity, control,
+	// status, alarm) and ACP2 tree (BOARD, PSU, etc.) both render as
+	// nested object trees.
 	out := jsonHierarchicalSnapshot(s)
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
@@ -79,16 +58,41 @@ func jsonHierarchicalSnapshot(s *Snapshot) map[string]any {
 }
 
 // buildJSONTree creates nested maps from flat objects using their Path.
+// ACP2: Path = [ROOT_NODE_V2, BOARD, Card Name] → skip ROOT_NODE_V2.
+// ACP1: Path = [identity] + Label → group objects under identity/control/etc.
 func buildJSONTree(objs []protocol.Object) map[string]any {
+	// Detect ACP2 by checking for ROOT_NODE_V2 prefix.
+	acp2 := false
+	for _, o := range objs {
+		if len(o.Path) > 0 && strings.EqualFold(o.Path[0], "ROOT_NODE_V2") {
+			acp2 = true
+			break
+		}
+	}
+
 	root := make(map[string]any)
 	for _, o := range objs {
-		if len(o.Path) <= 1 {
-			continue // skip ROOT_NODE_V2 itself
-		}
-		if o.Kind == protocol.KindRaw {
-			// Container node — ensure map exists but don't add leaf data.
+		if acp2 {
+			// ACP2: skip ROOT_NODE_V2 root object itself.
+			if len(o.Path) <= 1 {
+				continue
+			}
+			if o.Kind == protocol.KindRaw {
+				// Container node — ensure map exists.
+				cur := root
+				for _, seg := range o.Path[1:] {
+					if _, exists := cur[seg]; !exists {
+						cur[seg] = make(map[string]any)
+					}
+					if sub, ok := cur[seg].(map[string]any); ok {
+						cur = sub
+					}
+				}
+				continue
+			}
+			// Leaf node — walk path[1:] and nest.
 			cur := root
-			for _, seg := range o.Path[1:] {
+			for _, seg := range o.Path[1 : len(o.Path)-1] {
 				if _, exists := cur[seg]; !exists {
 					cur[seg] = make(map[string]any)
 				}
@@ -96,21 +100,23 @@ func buildJSONTree(objs []protocol.Object) map[string]any {
 					cur = sub
 				}
 			}
-			continue
-		}
-		// Leaf node — walk path and insert object properties.
-		cur := root
-		for _, seg := range o.Path[1 : len(o.Path)-1] {
-			if _, exists := cur[seg]; !exists {
-				cur[seg] = make(map[string]any)
+			cur[o.Path[len(o.Path)-1]] = jsonLeaf(o)
+		} else {
+			// ACP1: Path = [group], group objects under identity/control/etc.
+			group := o.Group
+			if group == "" && len(o.Path) > 0 {
+				group = o.Path[0]
 			}
-			if sub, ok := cur[seg].(map[string]any); ok {
-				cur = sub
+			if group == "" {
+				group = "other"
+			}
+			if _, exists := root[group]; !exists {
+				root[group] = make(map[string]any)
+			}
+			if gmap, ok := root[group].(map[string]any); ok {
+				gmap[o.Label] = jsonLeaf(o)
 			}
 		}
-		// Last path element is the leaf label.
-		leaf := jsonLeaf(o)
-		cur[o.Path[len(o.Path)-1]] = leaf
 	}
 	return root
 }

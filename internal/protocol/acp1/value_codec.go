@@ -321,13 +321,15 @@ func coerceIP(v protocol.Value) (uint32, error) {
 func coerceEnum(items []string, v protocol.Value) (byte, error) {
 	if v.Str != "" {
 		s := strings.TrimSpace(v.Str)
+		// Map lookup: label → index. ACP1 enums are 0-based sequential.
+		enumMap := make(map[string]byte, len(items))
 		for i, item := range items {
-			if item == s {
-				if i > 255 {
-					return 0, fmt.Errorf("enum index %d too large", i)
-				}
-				return byte(i), nil
+			if i <= 255 {
+				enumMap[item] = byte(i)
 			}
+		}
+		if idx, ok := enumMap[s]; ok {
+			return idx, nil
 		}
 		// Numeric fallback: "--value 2" on an enum still works.
 		if n, err := strconv.ParseUint(s, 0, 8); err == nil && int(n) < len(items) {

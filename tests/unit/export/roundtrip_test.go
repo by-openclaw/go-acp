@@ -62,9 +62,19 @@ func TestJSON_RoundTrip(t *testing.T) {
 	if len(got.Slots) != 1 || len(got.Slots[0].Objects) != 3 {
 		t.Fatalf("objects: got %d, want 3", len(got.Slots[0].Objects))
 	}
-	o := got.Slots[0].Objects[0]
-	if o.Label != "GainA" || o.Value.Float != 50.8 {
-		t.Errorf("GainA: label=%q float=%v", o.Label, o.Value.Float)
+	// Lookup by label — hierarchical JSON uses maps (unordered).
+	var gainA *protocol.Object
+	for i := range got.Slots[0].Objects {
+		if got.Slots[0].Objects[i].Label == "GainA" {
+			gainA = &got.Slots[0].Objects[i]
+			break
+		}
+	}
+	if gainA == nil {
+		t.Fatal("GainA not found in round-trip")
+	}
+	if gainA.Value.Float != 50.8 {
+		t.Errorf("GainA: float=%v, want 50.8", gainA.Value.Float)
 	}
 }
 
