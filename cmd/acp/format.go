@@ -493,3 +493,48 @@ func findObjectByLabel(plug protocol.Protocol, slot int, group, label string) *p
 	}
 	return nil
 }
+
+// matchPathPrefix returns true if the object's Path contains the given
+// prefix segments. The match skips ROOT_NODE_V2 (path[0] for ACP2).
+// An empty prefix matches everything.
+//
+// Examples:
+//
+//	matchPathPrefix(["ROOT_NODE_V2","BOARD","Card Name"], ["BOARD"])       → true
+//	matchPathPrefix(["ROOT_NODE_V2","PSU","1","Present"], ["PSU","1"])     → true
+//	matchPathPrefix(["ROOT_NODE_V2","PSU","1","Present"], ["BOARD"])       → false
+//	matchPathPrefix(["identity"], ["identity"])                            → true (ACP1)
+func matchPathPrefix(objPath, prefix []string) bool {
+	if len(prefix) == 0 {
+		return true
+	}
+	// For ACP2: skip ROOT_NODE_V2 (path[0]) when matching.
+	// For ACP1: path has 1 element (group name), match directly.
+	p := objPath
+	if len(p) > 1 && strings.EqualFold(p[0], "ROOT_NODE_V2") {
+		p = p[1:]
+	}
+	if len(p) < len(prefix) {
+		return false
+	}
+	for i, seg := range prefix {
+		if !strings.EqualFold(p[i], seg) {
+			return false
+		}
+	}
+	return true
+}
+
+// filterByPath returns only objects whose path matches the given prefix.
+func filterByPath(objs []protocol.Object, prefix []string) []protocol.Object {
+	if len(prefix) == 0 {
+		return objs
+	}
+	var out []protocol.Object
+	for _, o := range objs {
+		if matchPathPrefix(o.Path, prefix) {
+			out = append(out, o)
+		}
+	}
+	return out
+}

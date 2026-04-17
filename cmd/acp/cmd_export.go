@@ -24,6 +24,7 @@ func runExport(ctx context.Context, args []string) error {
 	format := fs.String("format", "", "output format: json | yaml | csv (default: json or from --out extension)")
 	out := fs.String("out", "", "output file path (default: stdout)")
 	slot := fs.Int("slot", -1, "export only this slot (-1 = all present slots)")
+	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: acp export <host> [--format F] [--out FILE]")
@@ -88,6 +89,11 @@ func runExport(ctx context.Context, args []string) error {
 		if werr != nil {
 			fmt.Fprintf(os.Stderr, "warning: slot %d walk failed: %v\n", s, werr)
 			continue
+		}
+		// Apply --path filter if set.
+		if *pathFlag != "" {
+			pathSegs := strings.Split(*pathFlag, "/")
+			objs = filterByPath(objs, pathSegs)
 		}
 		snap.Slots = append(snap.Slots, export.SlotDump{
 			Slot:     s,

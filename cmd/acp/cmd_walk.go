@@ -16,6 +16,7 @@ func runWalk(ctx context.Context, args []string) error {
 	slot := fs.Int("slot", -1, "slot number (omit or pass -1 with --all to walk every present slot)")
 	all := fs.Bool("all", false, "walk every present slot on the device")
 	filter := fs.String("filter", "", "case-insensitive filter on output lines (like findstr /i or grep -i)")
+	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: acp walk <host> (--slot N | --all)")
@@ -23,6 +24,12 @@ func runWalk(ctx context.Context, args []string) error {
 	_ = fs.Parse(rest)
 	if !*all && *slot < 0 {
 		return fmt.Errorf("--slot N or --all is required")
+	}
+
+	// Parse --path into segments for prefix matching.
+	var pathSegs []string
+	if *pathFlag != "" {
+		pathSegs = strings.Split(*pathFlag, "/")
 	}
 
 	plug, cleanup, err := connect(ctx, host, cf)
@@ -41,6 +48,9 @@ func runWalk(ctx context.Context, args []string) error {
 		p.SetWalkProgress(func(count int, obj *protocol.Object) {
 			if obj.Kind == protocol.KindRaw && obj.Label == "" {
 				return // skip node containers
+			}
+			if !matchPathPrefix(obj.Path, pathSegs) {
+				return
 			}
 			valStr := walkValueColumn(*obj)
 			rngStr := walkRangeColumn(*obj)
@@ -92,6 +102,7 @@ func runWalk(ctx context.Context, args []string) error {
 				fmt.Printf("\nslot %d — walk error: %v\n", s, werr)
 				continue
 			}
+			objs = filterByPath(objs, pathSegs)
 			if !streaming {
 				printSlotTree(s, objs, *filter)
 			} else {
@@ -107,6 +118,7 @@ func runWalk(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	objs = filterByPath(objs, pathSegs)
 	if !streaming {
 		printSlotTree(*slot, objs, *filter)
 	} else {
