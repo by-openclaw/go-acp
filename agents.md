@@ -74,12 +74,14 @@ EnableProtocolEvents([2]) MUST be called before ACP2 announces arrive
 ## Protocol Reference Documents
 
 ```
-acp/docs/protocols/
-  AXON-ACP_v1_4.pdf        ACP v1 authoritative spec
-  acp2_protocol.pdf         ACP v2 authoritative spec
-  an2_protocol.pdf          AN2 transport authoritative spec
-  dissector_acpv1.lua       Wireshark ACP1 dissector (byte-exact)
-  dissector_acp2.lua        Wireshark ACP2 dissector (byte-exact)
+acp/assets/
+  acp1/
+    AXON-ACP_v1_4.pdf        ACP v1 authoritative spec
+    dissector_acpv1.lua       Wireshark ACP1 dissector (byte-exact)
+  acp2/
+    acp2_protocol.pdf         ACP v2 authoritative spec
+    an2_protocol.pdf          AN2 transport authoritative spec
+    dissector_acp2.lua        Wireshark ACP2 dissector (byte-exact)
 ```
 
 **Rule**: before modifying any codec, read the relevant spec section.
@@ -198,33 +200,58 @@ Typed encode/decode on the value codec. LRU+TTL tree cache with live
 event updates. Announcement listener with SO_REUSEADDR multi-instance.
 TCP direct transport code complete but untested (emulator is UDP-only).
 
+**ACP2 — feature complete for interactive CLI use.** Verified against
+Axon CONVERT Hybrid at `10.41.40.195` (AN2/TCP port 2072). Branch: `feat/acp2`.
+- AN2 handshake (GetVersion, GetDeviceInfo, GetSlotInfo, EnableProtocolEvents)
+- ACP2 GetVersion, GetObject (DFS tree walk via pid=14 children)
+- GetValue (get_property), SetValue (set_property) — all value types
+- Root obj-id=1 (ROOT_NODE_V2), fallback to 0
+- Slot 0: 214 objects, slot 1: 44k+ objects (CONVERT Hybrid)
+- All value types: int, uint, float, enum (full u32 + optionsMap), string, ipaddr
+- Streaming walk output (no timeout on tree traversal)
+- Background walk for watch command (pre-walks slot for labels + typed announces)
+- LRU+TTL cache (same pattern as ACP1)
+- Announce decode fixed (stat=0 collision with GetVersion resolved)
+- Announce log suppression (SDP payloads 668-888 bytes, skipped from --verbose)
+- Enum options: variable-length wire format u32(idx) + null-terminated string + 4-byte pad
+- Enum value: full u32, resolved via options map
+- Diag command for protocol probing
+- Traffic capture (JSONL) for both protocols
+- Export with --slot and --filter support
+- Import with dry-run support
+- CI lint passing (golangci-lint)
+
+**CLI architecture**: `cmd/acp/main.go` split into 14 files per command.
+Git LFS enabled for PDFs, images, large testdata.
+Wireshark dissectors for both protocols in `assets/`.
+
 **CLI commands implemented**:
 
 ```
 acp info <host>                                   device metadata + slot status
-acp walk <host> --slot N                          walk one slot
+acp walk <host> --slot N [--filter F]             walk one slot (acp1 + acp2)
 acp walk <host> --all                             walk every present slot
 acp get <host> --slot N --label L                 typed read (ranges, units)
 acp set <host> --slot N --label L --value V       typed write (clamp-safe)
-acp watch <host> [filters]                        live UDP announcements
+acp watch <host> [filters]                        live announces (bg walk for labels)
 acp discover [--duration DUR] [--active]          LAN scan (same subnet only)
-acp export <host> --format json|yaml|csv          dump walked device
+acp export <host> --slot N --format json|yaml|csv dump walked device (grouped by path)
 acp import <host> --file X.json [--dry-run]       apply values from snapshot
+acp diag <host> --slot N                          ACP2 protocol diagnostic probes
 acp list-protocols                                registered plugins
 acp help [command]                                per-command help pages
 ```
 
-**CLI global flags**: `--protocol acp1` (default) `--transport udp|tcp`
+**CLI global flags**: `--protocol acp1|acp2` (default acp1) `--transport udp|tcp`
 `--port N` `--timeout DUR` `--verbose`.
 
 **Pending for this repo**:
-- ACP2 plugin (AN2/TCP, separate codec + walker + pid-based alignment)
 - `acp-srv` REST + WebSocket API (consumes `protocol.Object` directly)
 - File-backed device registry + per-slot cache on disk under `%APPDATA%\acp\`
 
 **Verified formats**: YAML / JSON / CSV export and JSON import round-trip
-against the emulator. 49 writable objects, 62 read-only, 0 failures on
-dry-run of slot 0 snapshot.
+against both emulator (ACP1) and real hardware (ACP2). Export groups objects
+by path (BOARD, PSU, etc.).
 
 ## Out of Scope — v1
 

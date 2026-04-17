@@ -24,16 +24,18 @@ This repo has zero frontend code.
 
 ## Protocol Reference Documents
 
-All protocol documents live in `docs/protocols/`. Read them before modifying
+All protocol documents live in `assets/` per protocol. Read them before modifying
 any codec or framer code.
 
 ```
-docs/protocols/
-  AXON-ACP_v1_4.pdf        ACP v1 full specification (authoritative)
-  acp2_protocol.pdf         ACP v2 full specification (authoritative)
-  an2_protocol.pdf          AN2 (Axonnet2) transport specification (authoritative)
-  dissector_acpv1.lua       Wireshark dissector for ACP1 (byte-exact reference)
-  dissector_acp2.lua        Wireshark dissector for ACP2 (byte-exact reference)
+assets/
+  acp1/
+    AXON-ACP_v1_4.pdf        ACP v1 full specification (authoritative)
+    dissector_acpv1.lua       Wireshark dissector for ACP1 (byte-exact reference)
+  acp2/
+    acp2_protocol.pdf         ACP v2 full specification (authoritative)
+    an2_protocol.pdf          AN2 (Axonnet2) transport specification (authoritative)
+    dissector_acp2.lua        Wireshark dissector for ACP2 (byte-exact reference)
 ```
 
 When any codec question arises: **spec first, dissector second, C# reference third**.
@@ -507,14 +509,26 @@ AN2 proto=0 slot events are always received regardless.
 ```
 acp/
 ├── cmd/
-│   ├── acp/
-│   │   └── main.go              CLI entrypoint — imports protocol plugins
-│   └── acp-srv/
-│       └── main.go              API server entrypoint — imports protocol plugins
+│   ├── acp/                     CLI — 14 files (split from monolithic main.go)
+│   │   ├── main.go              entrypoint — imports protocol plugins
+│   │   ├── cmd_info.go          info command
+│   │   ├── cmd_walk.go          walk command
+│   │   ├── cmd_get.go           get command
+│   │   ├── cmd_set.go           set command
+│   │   ├── cmd_watch.go         watch command
+│   │   ├── cmd_discover.go      discover command
+│   │   ├── cmd_export.go        export command
+│   │   ├── cmd_import.go        import command
+│   │   ├── cmd_diag.go          diag command (ACP2)
+│   │   ├── cmd_list.go          list-protocols command
+│   │   ├── common.go            shared CLI helpers (connect, flags)
+│   │   ├── format.go            output formatting
+│   │   └── help.go              per-command help pages
+│   └── acp-srv/                 (planned) API server entrypoint
 │
 ├── internal/
 │   ├── protocol/
-│   │   ├── iface.go             IProtocol, ProtocolFactory, ProtocolMeta
+│   │   ├── errors.go            ACPError hierarchy
 │   │   ├── registry.go          register + lookup by name
 │   │   ├── types.go             DeviceInfo, SlotInfo, Object, Value,
 │   │   │                        ValueRequest, EventFunc — shared
@@ -523,9 +537,13 @@ acp/
 │   │   │   ├── types.go         ACP1 constants, enums, error types
 │   │   │   ├── message.go       encode/decode ACP1 header + MDATA
 │   │   │   ├── property.go      decode all 11 object type layouts
-│   │   │   ├── client.go        UDP/TCP send+receive, retry loop
+│   │   │   ├── value_codec.go   typed value encode/decode
+│   │   │   ├── client.go        UDP send+receive, retry loop
+│   │   │   ├── tcp_client.go    TCP direct transport
 │   │   │   ├── listener.go      UDP broadcast receiver goroutine
-│   │   │   └── browser.go       walker, getValue, setValue, getObject
+│   │   │   ├── discover.go      LAN device discovery
+│   │   │   ├── browser.go       walker, getValue, setValue, getObject
+│   │   │   └── cache.go         LRU+TTL tree cache
 │   │   ├── acp2/
 │   │   │   ├── plugin.go        ACP2Factory, init() — registers self
 │   │   │   ├── types.go         ACP2 constants, enums, error types
@@ -533,68 +551,65 @@ acp/
 │   │   │   ├── property_codec.go property header encode/decode + alignment
 │   │   │   ├── session.go       AN2 TCP session, mtid pool, goroutines
 │   │   │   ├── framer.go        AN2 frame encode/decode (magic, dlen)
-│   │   │   └── walker.go        DFS tree walk via get_object + children
+│   │   │   ├── walker.go        DFS tree walk via get_object + children
+│   │   │   ├── cache.go         LRU+TTL tree cache
+│   │   │   └── diag.go          protocol diagnostic probes
 │   │   └── _template/
-│   │       ├── plugin.go        copy this to add a new protocol
-│   │       └── README.md        checklist for new protocol authors
+│   │       └── plugin.go        copy this to add a new protocol
 │   │
 │   ├── transport/
 │   │   ├── udp.go               UDP send/receive primitives
-│   │   └── tcp.go               TCP read/write with context + timeout
-│   │
-│   ├── device/
-│   │   ├── device.go            unified Device model (protocol-agnostic)
-│   │   └── registry.go          DeviceRegistry — thread-safe, file-backed
-│   │
-│   ├── validator/
-│   │   └── validator.go         validate Value against Object constraints
+│   │   ├── tcp.go               TCP read/write with context + timeout
+│   │   └── capture.go           traffic capture (JSONL)
 │   │
 │   ├── export/
-│   │   ├── json.go
-│   │   ├── csv.go
-│   │   ├── yaml.go
-│   │   └── importer.go          parse → dry-run → apply
+│   │   ├── export.go            export orchestrator
+│   │   ├── json.go              JSON export
+│   │   ├── csv.go               CSV export
+│   │   ├── yaml.go              YAML export
+│   │   ├── importer.go          parse → dry-run → apply
+│   │   ├── read_csv.go          CSV import reader
+│   │   └── read_yaml.go         YAML import reader
 │   │
-│   ├── storage/
-│   │   ├── paths.go             OS-aware data dir (Linux/macOS/Windows)
-│   │   ├── config.go            config.yaml read/write
-│   │   ├── devices_file.go      devices.yaml read/write
-│   │   └── slot_file.go         devices/{mac}/slot_{n}.yaml read/write
-│   │
-│   └── logging/
-│       └── loki.go              slog.Handler, Loki-format JSON
+│   ├── device/                  (planned) unified Device model
+│   ├── validator/               (planned) Value constraint validation
+│   ├── storage/                 (planned) file-backed persistence
+│   └── logging/                 (planned) slog.Handler
 │
-├── api/
-│   ├── server.go                net/http router
-│   ├── handlers/
-│   │   ├── system.go
-│   │   ├── devices.go
-│   │   ├── slots.go
-│   │   ├── objects.go
-│   │   ├── properties.go
-│   │   ├── export.go
-│   │   └── import.go
-│   ├── ws/
-│   │   ├── hub.go               WebSocket fan-out hub
-│   │   └── bridge.go            protocol announces → WS messages
-│   └── openapi.yaml             OpenAPI 3.1 spec (source of truth)
+├── api/                         (planned) REST + WebSocket API
+│
+├── assets/
+│   ├── acp1/
+│   │   ├── AXON-ACP_v1_4.pdf   ACP v1 full specification
+│   │   └── dissector_acpv1.lua  Wireshark dissector for ACP1
+│   └── acp2/
+│       ├── acp2_protocol.pdf    ACP v2 full specification
+│       ├── an2_protocol.pdf     AN2 transport specification
+│       └── dissector_acp2.lua   Wireshark dissector for ACP2
+│
+├── testdata/
+│   ├── acp1/                    ACP1 walk/export test captures
+│   └── acp2/                    ACP2 walk/export test captures
 │
 ├── tests/
+│   ├── fixtures/                test fixture data
 │   ├── unit/
 │   │   ├── acp1/                table-driven byte-exact tests
-│   │   └── acp2/                table-driven byte-exact tests
+│   │   ├── acp2/                table-driven byte-exact tests
+│   │   ├── export/              export round-trip tests
+│   │   └── transport/           TCP framer tests
 │   └── integration/             //go:build integration
 │       ├── acp1/                ACP1_TEST_HOST env var
 │       └── acp2/                ACP2_TEST_HOST env var
 │
 ├── docs/
-│   └── protocols/               protocol reference (PDFs + Lua dissectors)
+│   ├── ARCHITECTURE.md          system architecture documentation
+│   ├── references/              protocol analysis notes
+│   └── ...                      deployment, examples, links
 │
 ├── go.mod
 ├── go.sum
 ├── Makefile
-├── Dockerfile
-├── docker-compose.yml
 ├── CLAUDE.md                    ← this file
 ├── agents.md
 └── README.md
