@@ -40,13 +40,39 @@ func runWatch(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
+	// Load disk cache for instant label/unit resolution while walk runs.
+	labelCache := map[int]string{} // objID → label
+	unitCache := map[int]string{}  // objID → unit
+	if treeStore != nil && *slot >= 0 {
+		if snap, lerr := treeStore.Load(host, *slot); lerr == nil && snap != nil {
+			for _, sd := range snap.Slots {
+				for _, o := range sd.Objects {
+					if o.Label != "" {
+						labelCache[o.ID] = o.Label
+					}
+					if o.Unit != "" {
+						unitCache[o.ID] = o.Unit
+					}
+				}
+			}
+			if len(labelCache) > 0 {
+				fmt.Fprintf(os.Stderr, "loaded %d labels from cache\n", len(labelCache))
+			}
+		}
+	}
+
 	// Walk in background to populate label/type cache. Announces start
 	// immediately — labels resolve as the tree fills. ACP1 walks are fast
 	// enough to block; ACP2 slot 1 has 44k objects so must be async.
 	go func() {
 		if *slot >= 0 {
-			if _, werr := plug.Walk(ctx, *slot); werr != nil {
+			objs, werr := plug.Walk(ctx, *slot)
+			if werr != nil {
 				fmt.Fprintf(os.Stderr, "warning: walk slot %d failed: %v\n", *slot, werr)
+			} else if treeStore != nil {
+				if serr := treeStore.Save(host, cf.protocol, *slot, objs); serr != nil {
+					fmt.Fprintf(os.Stderr, "warning: cache save slot %d: %v\n", *slot, serr)
+				}
 			}
 		} else {
 			info, ierr := plug.GetDeviceInfo(ctx)
@@ -56,7 +82,10 @@ func runWatch(ctx context.Context, args []string) error {
 					if serr != nil || si.Status != protocol.SlotPresent {
 						continue
 					}
-					_, _ = plug.Walk(ctx, s)
+					objs, werr := plug.Walk(ctx, s)
+					if werr == nil && treeStore != nil {
+						_ = treeStore.Save(host, cf.protocol, s, objs)
+					}
 				}
 			}
 		}
@@ -86,20 +115,35 @@ func runWatch(ctx context.Context, args []string) error {
 	defer func() { _ = plug.Unsubscribe(req) }()
 
 	fmt.Println("watching — Ctrl-C to stop")
-	fmt.Printf("%-8s  %-10s  %-4s  %-20s  value\n", "time", "group", "id", "label")
-	fmt.Println(strings.Repeat("-", 72))
+	fmt.Printf("%-8s  %-10s  %-4s  %-20s  %-7s  value\n", "time", "group", "id", "label", "source")
+	fmt.Println(strings.Repeat("-", 80))
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case ev := <-events:
-			fmt.Printf("%s  s%-2d %-7s  %-4d  %-20s  %s\n",
+			// Use disk cache label if plugin hasn't resolved it yet.
+			label := ev.Label
+			src := "live"
+			if label == "" {
+				if cached, ok := labelCache[ev.ID]; ok {
+					label = cached
+					src = "cache"
+				}
+			}
+			// Append unit if available.
+			valStr := formatValueInline(ev.Value)
+			if unit, ok := unitCache[ev.ID]; ok && unit != "" {
+				valStr += " " + unit
+			}
+			fmt.Printf("%s  s%-2d %-7s  %-4d  %-20s  [%-5s]  %s\n",
 				ev.Timestamp.Format("15:04:05"),
 				ev.Slot,
 				ev.Group,
 				ev.ID,
-				truncate(ev.Label, 20),
-				formatValueInline(ev.Value),
+				truncate(label, 20),
+				src,
+				valStr,
 			)
 		}
 	}
