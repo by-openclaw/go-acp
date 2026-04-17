@@ -74,7 +74,7 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error)
 	if err != nil {
 		return nil, fmt.Errorf("discover bind :%d: %w", cfg.Port, err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	// seen maps source IP → collecting result.
 	var mu sync.Mutex
@@ -139,7 +139,7 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error)
 	if cfg.Active {
 		if perr := probeActive(cfg.Port); perr != nil {
 			// Non-fatal: passive scan may still find devices.
-			fmt.Fprintf(nullWriter{}, "active probe failed: %v\n", perr)
+			_, _ = fmt.Fprintf(nullWriter{}, "active probe failed: %v\n", perr)
 		}
 	}
 
@@ -180,7 +180,7 @@ func probeActive(port int) error {
 	if err != nil {
 		return fmt.Errorf("dial broadcast: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Build a getValue(FrameStatus, 0) request. Per spec p. 8 this is
 	// "the only broadcast message clients are allowed to invoke".

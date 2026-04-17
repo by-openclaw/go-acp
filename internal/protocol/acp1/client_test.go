@@ -71,7 +71,7 @@ func TestClient_Do_HappyPath(t *testing.T) {
 		MaxRetries:     3,
 		ReceiveTimeout: 100 * time.Millisecond,
 	})
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Seed a matching reply. We don't know the MTID yet (client allocates),
 	// so we queue nothing and rebuild after we see what the client sent.
@@ -112,7 +112,7 @@ func TestClient_Do_SkipsAnnouncement(t *testing.T) {
 		MaxRetries:     2,
 		ReceiveTimeout: 100 * time.Millisecond,
 	})
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	c.nextMTID = 0xAA
 	// First: an announcement (MTID=0, MType=0, ObjGroup=frame) → skipped.
@@ -146,7 +146,7 @@ func TestClient_Do_SkipsMTIDMismatch(t *testing.T) {
 		MaxRetries:     2,
 		ReceiveTimeout: 100 * time.Millisecond,
 	})
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	c.nextMTID = 99
 	stale := buildReply(t, 7, MTypeReply, byte(MethodGetValue), GroupFrame, 0, []byte{0xDE})
@@ -178,7 +178,7 @@ func TestClient_Do_RetryOnTimeout(t *testing.T) {
 		InitialBackoff: 1 * time.Millisecond,
 		MaxBackoff:     1 * time.Millisecond,
 	})
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	c.nextMTID = 0xDEADBEE0
 	// nil = simulated timeout on the first attempt
@@ -224,7 +224,7 @@ func TestClient_Do_MaxRetriesExceeded(t *testing.T) {
 		InitialBackoff: 1 * time.Millisecond,
 		MaxBackoff:     1 * time.Millisecond,
 	})
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	req := &Message{MType: MTypeRequest, MCode: byte(MethodGetValue), ObjGroup: GroupFrame}
 	_, err := c.Do(context.Background(), req)
@@ -246,7 +246,7 @@ func TestClient_Do_CtxCancelDuringBackoff(t *testing.T) {
 		InitialBackoff: 200 * time.Millisecond,
 		MaxBackoff:     1 * time.Second,
 	})
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -267,7 +267,7 @@ func TestClient_Do_ErrorReplyPropagates(t *testing.T) {
 		MaxRetries:     3,
 		ReceiveTimeout: 50 * time.Millisecond,
 	})
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	c.nextMTID = 10
 	// Hand-build an error reply with MTID=11. An error reply MDATA can
@@ -321,7 +321,7 @@ func TestClient_Do_Serialisation(t *testing.T) {
 		MaxRetries:     2,
 		ReceiveTimeout: 50 * time.Millisecond,
 	})
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	c.nextMTID = 100
 	r1 := buildReply(t, 101, MTypeReply, byte(MethodGetValue), GroupFrame, 0, []byte{0x02})

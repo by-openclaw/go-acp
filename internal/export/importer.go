@@ -40,7 +40,7 @@ func LoadSnapshot(path string) (*Snapshot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {

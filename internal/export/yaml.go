@@ -39,7 +39,7 @@ func WriteYAML(w io.Writer, s *Snapshot) error {
 	sb.WriteString("slots:\n")
 	for _, slot := range s.Slots {
 		sb.WriteString("  - slot: ")
-		sb.WriteString(fmt.Sprintf("%d\n", slot.Slot))
+		fmt.Fprintf(&sb, "%d\n", slot.Slot)
 		if slot.Status != "" {
 			writeKV(&sb, 4, "status", slot.Status)
 		}
@@ -282,7 +282,7 @@ func writeValue(sb *strings.Builder, pad string, o protocol.Object) {
 			for i, st := range v.SlotStatus {
 				sb.WriteString(inner)
 				sb.WriteString("- {slot: ")
-				sb.WriteString(fmt.Sprintf("%d", i))
+				fmt.Fprintf(sb, "%d", i)
 				sb.WriteString(", status: ")
 				sb.WriteString(yamlString(st.String()))
 				sb.WriteString("}\n")
