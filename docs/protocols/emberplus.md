@@ -79,7 +79,7 @@ Paths use `.` separator (e.g. `router.oneToN.matrix`).
 | S101 framing (variant 1) + CRC-16 + byte stuffing | ✓ |
 | S101 multi-frame reassembly (First/Last/Single) | ✓ |
 | BER reader/writer | ✓ |
-| Glow tag constants | ✓ partial (needs correction vs DTD) |
+| Glow tag constants | ✓ corrected in A1 (was: `TupleItemDescription=18` wrong — spec p.91 = 21; missing `Root APP[0]`, `Label APP[18]`, `StreamDescription APP[12]`, `QualifiedTemplate APP[25]`) |
 | Numeric path ↔ identifier map | ✓ |
 | GetDirectory (walk) | ✓ 4494 objs on TinyEmber+ |
 | GetValue / SetValue (path) | ✓ |
