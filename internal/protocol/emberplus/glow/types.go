@@ -108,13 +108,14 @@ type Command struct {
 }
 
 // Element is a union type — a tree element is one of Node, Parameter,
-// Matrix, or Function. Exactly one field is non-nil.
+// Matrix, Function, Command, or InvocationResult. Exactly one field is non-nil.
 type Element struct {
-	Node      *Node
-	Parameter *Parameter
-	Matrix    *Matrix
-	Function  *Function
-	Command   *Command
+	Node             *Node
+	Parameter        *Parameter
+	Matrix           *Matrix
+	Function         *Function
+	Command          *Command
+	InvocationResult *InvocationResult
 }
 
 // StreamEntry represents a streamed parameter value.

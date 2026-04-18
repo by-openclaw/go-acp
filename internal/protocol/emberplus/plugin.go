@@ -420,6 +420,64 @@ func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target in
 	return s.SendMatrixConnect(numPath, target, sources, operation)
 }
 
+// InvokeFunction calls an Ember+ function by path with typed arguments.
+// Returns the InvocationResult (invocation ID, success, result tuple).
+// Per spec: invocationId is optional (fire-and-forget for void functions).
+func (p *Plugin) InvokeFunction(ctx context.Context, funcPath string, args []interface{}) (*glow.InvocationResult, error) {
+	p.mu.Lock()
+	s := p.session
+	p.mu.Unlock()
+	if s == nil {
+		return nil, protocol.ErrNotConnected
+	}
+
+	// Walk if tree empty to resolve paths.
+	p.treeMu.RLock()
+	empty := len(p.tree) == 0
+	p.treeMu.RUnlock()
+	if empty {
+		if _, err := p.Walk(ctx, 0); err != nil {
+			return nil, fmt.Errorf("emberplus: walk for invoke: %w", err)
+		}
+	}
+
+	// Find the function entry to get its numeric path.
+	p.treeMu.RLock()
+	var numPath []int32
+	if entry, ok := p.tree[funcPath]; ok && entry.glowFunc != nil {
+		numPath = entry.glowFunc.Path
+	}
+	p.treeMu.RUnlock()
+
+	if len(numPath) == 0 {
+		return nil, fmt.Errorf("emberplus: function not found at path %q", funcPath)
+	}
+
+	// Allocate invocation ID and set up result channel.
+	invID := s.NextInvocationID()
+	resultCh := make(chan *glow.InvocationResult, 1)
+	s.RegisterInvocation(invID, resultCh)
+	defer s.UnregisterInvocation(invID)
+
+	p.logger.Debug("emberplus: InvokeFunction",
+		"path", funcPath,
+		"numeric_path", numPath,
+		"invocation_id", invID,
+		"args", args)
+
+	if err := s.SendInvoke(numPath, invID, args); err != nil {
+		return nil, err
+	}
+
+	// Wait for result with timeout.
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case result := <-resultCh:
+		return result, nil
+	}
+}
+
 // handleElements processes incoming Glow elements from the provider.
 func (p *Plugin) handleElements(elements []glow.Element) {
 	for _, el := range elements {
@@ -439,6 +497,14 @@ func (p *Plugin) processElement(el glow.Element, parentPath []string) {
 	}
 	if el.Function != nil {
 		p.processFunction(el.Function, parentPath)
+	}
+	if el.InvocationResult != nil {
+		p.mu.Lock()
+		s := p.session
+		p.mu.Unlock()
+		if s != nil {
+			s.deliverInvocationResult(el.InvocationResult)
+		}
 	}
 }
 

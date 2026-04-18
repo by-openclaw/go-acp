@@ -24,6 +24,11 @@ type Session struct {
 	// Callbacks for received elements.
 	onElement func([]glow.Element)
 
+	// Callbacks for invocation results (function invoke).
+	invocations   map[int32]chan *glow.InvocationResult
+	invocationsMu sync.Mutex
+	nextInvID     int32
+
 	// Keep-alive.
 	keepAliveInterval time.Duration
 	keepAliveDone     chan struct{}
@@ -34,6 +39,42 @@ func NewSession(logger *slog.Logger) *Session {
 	return &Session{
 		logger:            logger,
 		keepAliveInterval: 10 * time.Second,
+		invocations:       make(map[int32]chan *glow.InvocationResult),
+	}
+}
+
+// NextInvocationID returns a unique invocation ID for function calls.
+func (s *Session) NextInvocationID() int32 {
+	s.invocationsMu.Lock()
+	defer s.invocationsMu.Unlock()
+	s.nextInvID++
+	return s.nextInvID
+}
+
+// RegisterInvocation registers a channel to receive the result for an invocation ID.
+func (s *Session) RegisterInvocation(id int32, ch chan *glow.InvocationResult) {
+	s.invocationsMu.Lock()
+	s.invocations[id] = ch
+	s.invocationsMu.Unlock()
+}
+
+// UnregisterInvocation removes an invocation result channel.
+func (s *Session) UnregisterInvocation(id int32) {
+	s.invocationsMu.Lock()
+	delete(s.invocations, id)
+	s.invocationsMu.Unlock()
+}
+
+// deliverInvocationResult dispatches an InvocationResult to the waiting caller.
+func (s *Session) deliverInvocationResult(result *glow.InvocationResult) {
+	s.invocationsMu.Lock()
+	ch, ok := s.invocations[result.InvocationID]
+	s.invocationsMu.Unlock()
+	if ok {
+		select {
+		case ch <- result:
+		default:
+		}
 	}
 }
 
@@ -145,6 +186,12 @@ func (s *Session) SendMatrixConnect(matrixPath []int32, target int32, sources []
 // SendInvoke sends a function invocation.
 func (s *Session) SendInvoke(funcPath []int32, invocationID int32, args []interface{}) error {
 	payload := glow.EncodeInvoke(funcPath, invocationID, args)
+	s.logger.Debug("emberplus: SendInvoke",
+		"path", funcPath,
+		"invocation_id", invocationID,
+		"args", args,
+		"payload_len", len(payload),
+		"payload_hex", fmt.Sprintf("%x", payload))
 	return s.sendEmBER(payload)
 }
 
@@ -233,7 +280,8 @@ func (s *Session) readLoop() {
 		s.logger.Debug("emberplus: received EmBER frame",
 			"payload_len", len(payload),
 			"dtd", frame.DTD,
-			"version", frame.Version)
+			"version", frame.Version,
+			"hex", fmt.Sprintf("%x", payload))
 		elements, err := glow.DecodeRoot(payload)
 		if err != nil {
 			s.logger.Debug("emberplus: glow decode error",

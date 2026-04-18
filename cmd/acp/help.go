@@ -277,6 +277,21 @@ EXAMPLES
   acp discover --active=false          # passive-only scan`)
 }
 
+func helpInvoke() {
+	fmt.Println(`acp invoke — invoke an Ember+ function (RPC)
+
+USAGE
+  acp invoke <host> --path <func.path> [--args val1,val2,...]
+
+FLAGS
+  --path PATH        dot-separated path to the function (e.g. router.functions.add)
+  --args ARGS        comma-separated arguments (e.g. 3,5)
+
+EXAMPLES
+  acp invoke 10.6.239.113 --protocol emberplus --port 9092 --path router.functions.add --args 3,5
+  acp invoke 10.6.239.113 --protocol emberplus --port 9092 --path router.functions.doNothing`)
+}
+
 func helpMatrix() {
 	fmt.Println(`acp matrix — set matrix crosspoint connections (Ember+ only)
 

@@ -112,6 +112,8 @@ func decodeElement(tlv ber.TLV) (*Element, error) {
 			return decodeCommand(tlv)
 		case TagElementCollection:
 			return decodeRootCollection(tlv) // same structure
+		case TagInvocationResult:
+			return decodeInvocationResult(tlv)
 		}
 	}
 	return nil, nil // skip unknown elements
@@ -428,7 +430,15 @@ func decodeQualifiedFunction(tlv ber.TLV) (*Element, error) {
 }
 
 func decodeFuncContents(f *Function, tlv ber.TLV) {
-	for _, child := range tlv.Children {
+	// Unwrap SET if present inside CONTEXT wrapper.
+	children := tlv.Children
+	for _, c := range tlv.Children {
+		if c.Tag.Class == ber.ClassUniversal && c.Tag.Number == ber.TagSet {
+			children = c.Children
+			break
+		}
+	}
+	for _, child := range children {
 		if child.Tag.Class != ber.ClassContext {
 			continue
 		}
@@ -462,6 +472,36 @@ func decodeCommand(tlv ber.TLV) (*Element, error) {
 		}
 	}
 	return &Element{Command: c}, nil
+}
+
+// decodeInvocationResult decodes an APPLICATION[23] InvocationResult.
+// Per spec: invocationId[0], success[1], result[2] (Tuple).
+func decodeInvocationResult(tlv ber.TLV) (*Element, error) {
+	r := &InvocationResult{
+		Success: true, // Per spec: "True or omitted if no errors"
+	}
+	for _, child := range tlv.Children {
+		if child.Tag.Class != ber.ClassContext {
+			continue
+		}
+		switch child.Tag.Number {
+		case InvResInvocationID:
+			v, _ := ber.DecodeInteger(unwrapPrimitive(child))
+			r.InvocationID = int32(v)
+		case InvResSuccess:
+			r.Success = decodeBoolValue(child)
+		case InvResResult:
+			// Result is a Tuple = SEQUENCE of values, each in CONTEXT[0].
+			for _, seq := range child.Children {
+				if seq.Tag.Class == ber.ClassUniversal && seq.Tag.Number == ber.TagSequence {
+					for _, item := range seq.Children {
+						r.Result = append(r.Result, decodeAnyValue(item))
+					}
+				}
+			}
+		}
+	}
+	return &Element{InvocationResult: r}, nil
 }
 
 // --- helpers ---

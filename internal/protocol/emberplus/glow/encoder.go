@@ -6,10 +6,11 @@ import (
 
 // EncodeGetDirectory builds the BER payload for a GetDirectory command
 // at the root level. This is the first message a consumer sends.
+// Per spec: dirFieldMask is optional. Omitting it = Default (all properties).
+// Some older providers don't support dirFieldMask (Glow < 2.50).
 func EncodeGetDirectory() []byte {
 	cmd := ber.AppConstructed(TagCommand,
 		ber.ContextConstructed(CmdNumber, ber.Integer(CmdGetDirectory)),
-		ber.ContextConstructed(CmdDirMask, ber.Integer(-1)), // all fields
 	)
 	root := ber.AppConstructed(TagRootElementCollection, cmd)
 	return ber.EncodeTLV(root)
@@ -103,20 +104,29 @@ func EncodeMatrixConnect(matrixPath []int32, target int32, sources []int32, oper
 }
 
 // EncodeInvoke builds a function invocation message.
+// Per spec (p50): QualifiedFunction → children → Command(33) → Invocation.
+// Arguments: CONTEXT[1] → SEQUENCE → CONTEXT[0] per argument value.
 func EncodeInvoke(funcPath []int32, invocationID int32, args []interface{}) []byte {
+	// Each argument wrapped in CONTEXT[0] per Dufour ContentParameter.Encode.
 	var argTLVs []ber.TLV
 	for _, arg := range args {
-		argTLVs = append(argTLVs, encodeAnyValue(arg))
+		argTLVs = append(argTLVs, ber.ContextConstructed(0, encodeAnyValue(arg)))
 	}
 
 	inv := ber.AppConstructed(TagInvocation,
 		ber.ContextConstructed(InvInvocationID, ber.Integer(int64(invocationID))),
 		ber.ContextConstructed(InvArguments, ber.Sequence(argTLVs...)),
 	)
+	cmd := ber.AppConstructed(TagCommand,
+		ber.ContextConstructed(CmdNumber, ber.Integer(CmdInvoke)),
+		ber.ContextConstructed(CmdInvID, inv),
+	)
 	fn := ber.AppConstructed(TagQualifiedFunction,
-		ber.ContextPrimitive(0, encodeRelativeOID(funcPath)),
+		ber.ContextConstructed(0, ber.RelOID(encodeRelativeOID(funcPath))),
 		ber.ContextConstructed(2, // children
-			ber.AppConstructed(TagElementCollection, inv),
+			ber.AppConstructed(TagElementCollection,
+				ber.ContextConstructed(0, cmd), // per-element wrapper
+			),
 		),
 	)
 	root := ber.AppConstructed(TagRootElementCollection, fn)
