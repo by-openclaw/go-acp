@@ -213,6 +213,134 @@ func TestDecodeCommand(t *testing.T) {
 	}
 }
 
+func TestDecodeInvocationResult_SuccessDefaultsTrue(t *testing.T) {
+	// Spec p.92: "success [1] BOOLEAN OPTIONAL — True or omitted if no errors."
+	// Provider emits only invocationId (0) + result (2); success absent.
+	res := ber.AppConstructed(TagInvocationResult,
+		ber.ContextConstructed(InvResInvocationID, ber.Integer(7)),
+		ber.ContextConstructed(InvResResult,
+			ber.Sequence(
+				ber.ContextConstructed(0, ber.Integer(42)),
+			),
+		),
+	)
+	data := ber.EncodeTLV(res)
+
+	tlv, _, err := ber.DecodeTLV(data)
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeInvocationResult(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	r := el.InvocationResult
+	if r.InvocationID != 7 {
+		t.Errorf("id: got %d, want 7", r.InvocationID)
+	}
+	if !r.Success {
+		t.Error("success should default to true when field omitted (spec p.92)")
+	}
+	if len(r.Result) != 1 || r.Result[0] != int64(42) {
+		t.Errorf("result tuple: got %v", r.Result)
+	}
+}
+
+func TestDecodeInvocationResult_SuccessFalseExplicit(t *testing.T) {
+	res := ber.AppConstructed(TagInvocationResult,
+		ber.ContextConstructed(InvResInvocationID, ber.Integer(3)),
+		ber.ContextConstructed(InvResSuccess, ber.Boolean(false)),
+	)
+	data := ber.EncodeTLV(res)
+
+	tlv, _, err := ber.DecodeTLV(data)
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeInvocationResult(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	if el.InvocationResult.Success {
+		t.Error("explicit success=false should decode as false")
+	}
+	if len(el.InvocationResult.Result) != 0 {
+		t.Errorf("result should be empty when omitted, got %v", el.InvocationResult.Result)
+	}
+}
+
+func TestDecodeInvocationResult_MultiValueTuple(t *testing.T) {
+	res := ber.AppConstructed(TagInvocationResult,
+		ber.ContextConstructed(InvResInvocationID, ber.Integer(1)),
+		ber.ContextConstructed(InvResResult,
+			ber.Sequence(
+				ber.ContextConstructed(0, ber.Integer(8)),
+				ber.ContextConstructed(0, ber.UTF8("ok")),
+				ber.ContextConstructed(0, ber.Real(1.5)),
+			),
+		),
+	)
+	tlv, _, err := ber.DecodeTLV(ber.EncodeTLV(res))
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeInvocationResult(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	got := el.InvocationResult.Result
+	if len(got) != 3 {
+		t.Fatalf("expected 3 tuple values, got %d: %v", len(got), got)
+	}
+	if n, ok := got[0].(int64); !ok || n != 8 {
+		t.Errorf("tuple[0]: got %v", got[0])
+	}
+	if s, ok := got[1].(string); !ok || s != "ok" {
+		t.Errorf("tuple[1]: got %v", got[1])
+	}
+	if f, ok := got[2].(float64); !ok || f != 1.5 {
+		t.Errorf("tuple[2]: got %v", got[2])
+	}
+}
+
+func TestEncodeInvoke_RoundTripArgumentTypes(t *testing.T) {
+	data := EncodeInvoke([]int32{1, 5}, 42, []any{int64(3), int64(5), "label", true, 1.25})
+	if len(data) == 0 {
+		t.Fatal("empty Invoke")
+	}
+	elements, err := DecodeRoot(data)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// Find the Command inside the nested QualifiedFunction/ElementCollection.
+	var cmd *Command
+	var walk func([]Element)
+	walk = func(els []Element) {
+		for _, e := range els {
+			if e.Command != nil && cmd == nil {
+				cmd = e.Command
+				return
+			}
+			if e.Node != nil {
+				walk(e.Node.Children)
+			}
+			if e.Function != nil {
+				walk(e.Function.Children)
+			}
+		}
+	}
+	walk(elements)
+	if cmd == nil || cmd.Invocation == nil {
+		t.Fatalf("expected Invocation in root tree, got %d elements", len(elements))
+	}
+	if cmd.Invocation.InvocationID != 42 {
+		t.Errorf("invocationID: got %d", cmd.Invocation.InvocationID)
+	}
+	if len(cmd.Invocation.Arguments) != 5 {
+		t.Fatalf("expected 5 args, got %d: %v", len(cmd.Invocation.Arguments), cmd.Invocation.Arguments)
+	}
+}
+
 func TestRelativeOID_RoundTrip(t *testing.T) {
 	cases := [][]int32{
 		{1},
