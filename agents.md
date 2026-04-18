@@ -82,6 +82,9 @@ acp/assets/
     acp2_protocol.pdf         ACP v2 authoritative spec
     an2_protocol.pdf          AN2 transport authoritative spec
     dissector_acp2.lua        Wireshark ACP2 dissector (byte-exact)
+  emberplus/
+    Ember+ Documentation.pdf  Ember+ v2.50 full spec (Lawo GmbH)
+    Ember+ Formulas.pdf       Ember+ formula expressions
 ```
 
 **Rule**: before modifying any codec, read the relevant spec section.
@@ -191,79 +194,57 @@ log entries         NEVER to disk
 
 ---
 
-## Implementation status (as of 2026-04-16)
+## Implementation status (as of 2026-04-18)
 
-**ACP1 — feature complete for interactive CLI use.** Verified against
-the Synapse Simulator at `10.6.239.113` (UDP only) on both Windows 11
-(native) and Ubuntu 24 (cross-compiled). All 11 object types decode.
-Typed encode/decode on the value codec. LRU+TTL tree cache with live
-event updates. Announcement listener with SO_REUSEADDR multi-instance.
-TCP direct transport code complete but untested (emulator is UDP-only).
+**ACP1 — feature complete.** Verified against Synapse Simulator at
+`10.6.239.113`. All 11 object types, LRU+TTL cache, announcements,
+export/import round-trip.
 
-**ACP2 — feature complete for interactive CLI use.** Verified against
-Axon CONVERT Hybrid at `10.41.40.195` (AN2/TCP port 2072). Branch: `feat/acp2`.
-- AN2 handshake (GetVersion, GetDeviceInfo, GetSlotInfo, EnableProtocolEvents)
-- ACP2 GetVersion, GetObject (DFS tree walk via pid=14 children)
-- GetValue (get_property), SetValue (set_property) — all value types
-- Root obj-id=1 (ROOT_NODE_V2), fallback to 0
-- Slot 0: 214 objects, slot 1: 44k+ objects (CONVERT Hybrid)
-- All value types: int, uint, float, enum (full u32 + optionsMap), string, ipaddr
-- Streaming walk output (no timeout on tree traversal)
-- Background walk for watch command (pre-walks slot for labels + typed announces)
-- LRU+TTL cache (same pattern as ACP1)
-- Announce decode fixed (stat=0 collision with GetVersion resolved)
-- Announce log suppression (SDP payloads 668-888 bytes, skipped from --verbose)
-- Enum options: variable-length wire format u32(idx) + null-terminated string + 4-byte pad
-- Enum value: full u32, resolved via options map
-- Diag command for protocol probing
-- Traffic capture (JSONL) for both protocols
-- Export with --slot and --filter support
-- Import with dry-run support
-- CI lint passing (golangci-lint)
+**ACP2 — feature complete.** Verified against Axon CONVERT Hybrid at
+`10.41.40.195`. 214 objects (slot 0), 44k+ objects (slot 1). Full DFS
+walker, streaming, enum u32 optionsMap, background walk for watch.
 
-**CLI architecture**: `cmd/acp/main.go` split into 14 files per command.
-Git LFS enabled for PDFs, images, large testdata.
-Wireshark dissectors for both protocols in `assets/`.
+**Ember+ — consumer working.** BER codec + S101 framing + Glow DTD.
+Full tree walk on TinyEmber+ Router (51 objects, port 9092).
+QualifiedNode spec-compliant. Set/subscribe/matrix/function coded,
+not wire-tested yet. Port 9000 (DHD) needs debugging.
 
-**CLI commands implemented**:
+**Cross-protocol features**:
+- Hierarchical export (JSON/YAML/CSV) — same tree format for all protocols
+- --path subtree filter + --filter text search
+- File-backed tree store (devices/{ip}/slot_{n}.json)
+- Disk cache with labels/units for instant watch startup
+- [cache]/[live] source tag in watch output
+- Pre-commit hook (go vet + golangci-lint)
+- --log-level trace/debug/info/warn/error/critical
+- Enum map lookup O(1) for both ACP1 and ACP2
+- Replay unit tests from real device captures
+- Protocol-aware cache (prevents cross-protocol collisions)
 
-```
-acp info <host>                                   device metadata + slot status
-acp walk <host> --slot N [--filter F]             walk one slot (acp1 + acp2)
-acp walk <host> --all                             walk every present slot
-acp get <host> --slot N --label L                 typed read (ranges, units)
-acp set <host> --slot N --label L --value V       typed write (clamp-safe)
-acp watch <host> [filters]                        live announces (bg walk for labels)
-acp discover [--duration DUR] [--active]          LAN scan (same subnet only)
-acp export <host> --slot N --format json|yaml|csv dump walked device (grouped by path)
-acp import <host> --file X.json [--dry-run]       apply values from snapshot
-acp diag <host> --slot N                          ACP2 protocol diagnostic probes
-acp list-protocols                                registered plugins
-acp help [command]                                per-command help pages
-```
+**CLI commands**: info, walk, get, set, watch, discover, export, import,
+diag, list-protocols, help.
 
-**CLI global flags**: `--protocol acp1|acp2` (default acp1) `--transport udp|tcp`
-`--port N` `--timeout DUR` `--verbose`.
+**CLI global flags**: `--protocol acp1|acp2|emberplus` `--port N`
+`--transport udp|tcp` `--timeout DUR` `--log-level LEVEL` `--verbose`
+`--capture FILE`.
 
-**Pending for this repo**:
-- `acp-srv` REST + WebSocket API (consumes `protocol.Object` directly)
-- File-backed device registry + per-slot cache on disk under `%APPDATA%\acp\`
-
-**Verified formats**: YAML / JSON / CSV export and JSON import round-trip
-against both emulator (ACP1) and real hardware (ACP2). Export groups objects
-by path (BOARD, PSU, etc.).
+**Pending**:
+- Ember+ set/subscribe/matrix/function wire testing
+- Ember+ port 9000 (DHD provider) debugging
+- `acp-srv` REST + WebSocket API
+- Data model library (card_name + fw_version key)
+- Browse command (search DM + live values)
+- Provider mode (REST/WS, Ember+)
 
 ## Out of Scope — v1
 
 ```
 ACP1 methods 6-9    (getPresetIdx, setPresetIdx, getPrp, setPrp)
-                    stubs only, format unknown — discover on emulator
 ACMP protocol       (AN2 proto=3)
-Any protocol beyond ACP1 and ACP2
 Authentication / TLS
 Historical data / retention
 Multi-user sessions
-ACP1 File objects   (firmware reprogramming — needs dedicated Axon tools)
+ACP1 File objects   (firmware reprogramming)
 Apple notarization
 ARM Linux packages
 ```
