@@ -1,6 +1,6 @@
 // Package compliance tracks per-session deviations from the strict
 // Ember+ specification. Each tolerance measure in our decoder/plugin
-// (see docs/protocols/emberplus.md §A9) bumps a named counter when it
+// (see docs/protocols/emberplus/consumer.md §A9) bumps a named counter when it
 // fires. The resulting profile lets the user build a compatibility
 // matrix per provider: which ones are strict, which are lax, which
 // emit unexpected shapes.
@@ -15,7 +15,7 @@ import (
 )
 
 // Event labels. Keep this list short and stable — documented in
-// docs/protocols/emberplus.md §A9. Adding a new event label is an
+// docs/protocols/emberplus/consumer.md §A9. Adding a new event label is an
 // API change: downstream tooling may aggregate by key.
 const (
 	// NonQualifiedElement fires when a provider delivers a Node /

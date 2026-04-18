@@ -8,12 +8,12 @@ Consumer connector for the Ember+ protocol (Lawo Glow DTD over S101/TCP).
 
 | Document | Path | Description |
 |---|---|---|
-| Spec (authoritative) | [assets/emberplus/Ember+ Documentation.pdf](../../assets/emberplus/Ember+%20Documentation.pdf) | Ember+ Protocol Specification v2.50 rev.15 (2017-11-09), Lawo GmbH |
-| Formulas | [assets/emberplus/Ember+ Formulas.pdf](../../assets/emberplus/Ember+%20Formulas.pdf) | Parameter formula syntax reference |
-| Protocol reference | [CLAUDE.md](../../CLAUDE.md) — section "Ember+" | Wire format, methods, object types |
-| Source code | [internal/protocol/emberplus/](../../internal/protocol/emberplus/) | Plugin implementation |
-| Unit tests | [internal/protocol/emberplus/glow/glow_test.go](../../internal/protocol/emberplus/glow/glow_test.go) | BER + element decode tests |
-| Matrix tests | [internal/protocol/emberplus/matrix/state_test.go](../../internal/protocol/emberplus/matrix/state_test.go) | canConnect rule coverage |
+| Spec (authoritative) | [assets/emberplus/Ember+ Documentation.pdf](../../../assets/emberplus/Ember+%20Documentation.pdf) | Ember+ Protocol Specification v2.50 rev.15 (2017-11-09), Lawo GmbH |
+| Formulas | [assets/emberplus/Ember+ Formulas.pdf](../../../assets/emberplus/Ember+%20Formulas.pdf) | Parameter formula syntax reference |
+| Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "Ember+" | Wire format, methods, object types |
+| Source code | [internal/protocol/emberplus/](../../../internal/protocol/emberplus/) | Plugin implementation |
+| Unit tests | [internal/protocol/emberplus/glow/glow_test.go](../../../internal/protocol/emberplus/glow/glow_test.go) | BER + element decode tests |
+| Matrix tests | [internal/protocol/emberplus/matrix/state_test.go](../../../internal/protocol/emberplus/matrix/state_test.go) | canConnect rule coverage |
 
 ### Spec page index (for debugging — Ctrl+F in PDF)
 
@@ -61,8 +61,330 @@ TCP 9092  outbound      (TinyEmberPlus Router variant)
 ### CLI transport selection
 
 ```
-acp walk 127.0.0.1 --protocol emberplus --port 9000 --slot 0
-acp walk 127.0.0.1 --protocol emberplus --port 9092 --slot 0
+acp walk 127.0.0.1 --protocol emberplus --port 9000
+acp walk 127.0.0.1 --protocol emberplus --port 9092
+```
+
+`--slot` is optional for Ember+ (the plugin defaults to 0 — Ember+ has
+no slot concept). Pass `--protocol emberplus` on every call; it is
+**not** the default.
+
+---
+
+## CLI Commands Reference
+
+Every subcommand usable against an Ember+ provider, with a runnable
+example and a decoded wire capture. Captures shown are real frames
+from `127.0.0.1:9092` (TinyEmberPlusRouter).
+
+For each TX/RX line below the full wire bytes include:
+
+```
+fe                BOF
+00 0e 00 01       slot + msgType(0x0E=EmBER) + cmd(0x00=EmBER) + version(0x01)
+c0                flags (0xC0 = single packet: FlagFirst|FlagLast)
+01 02 1f 02       DTD(0x01=Glow), appBytesLen(2), minor(0x1F=31), major(0x02)
+…                 BER payload (APP[0] Root envelope)
+xx xx             CRC-16 (little-endian)
+ff                EOF
+```
+
+### `acp walk` — enumerate the provider tree
+
+```
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --timeout 10s
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --path router.oneToN
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --capture walk.jsonl
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --filter gain
+```
+
+Flags: `--path P` (subtree only), `--filter TEXT` (case-insensitive
+line filter), `--capture FILE` (JSONL raw frames), `--all` (all slots,
+no-op for Ember+), `--slot N` (default 0).
+
+Output begins with the tree structure, grouped by parent path:
+
+```
+slot 0:
+
+slot 0 — 4494 objects
+
+
+[router]
+    1  router                raw     R--
+      1  oneToN                raw     R--
+
+[router.oneToN]
+      1  labels                raw     R--
+      2  matrix                raw     RW-
+
+[router.oneToN.labels.targets]
+      1  t-1                   string  RW-  "SDI-T-1"
+      2  t-2                   string  RW-  "SDI-T-2"
+```
+
+Wire trace — root GetDirectory TX (32 bytes):
+
+```
+fe 00 0e 00 01 c0 01 02 1f 02
+60 10                          APP[0] Root, len 16
+  6b 0e                        APP[11] RootElementCollection, len 14
+    a0 0c                      CTX[0] wrapping one RootElement, len 12
+      62 0a                    APP[2] Command, len 10
+        a0 03 02 01 20         CTX[0] number = INTEGER 32 (GetDirectory)
+        a1 03 02 01 ff         CTX[1] dirFieldMask = INTEGER -1 (All)
+df 94 8f                       CRC(LE)... actually crc = 0x94df
+ff
+```
+
+First RX — the root Node reply (40 bytes):
+
+```
+fe 00 0e 00 01 c0 01 02 1f 02
+60 19 6b 17 a0 15                  APP[0]{APP[11]{CTX[0]}}
+  6a 13                             APP[10] QualifiedNode, len 19
+    a0 03 0d 01 01                  CTX[0] path = RelOID "1"
+    a1 0c 31 0a                     CTX[1] NodeContents (UNIVERSAL SET)
+      a0 08 0c 06 72 6f 75 74 65 72   CTX[0] identifier = "router"
+6b f3 ff                           CRC + EOF
+```
+
+### `acp get` — read a parameter value
+
+```
+acp get 127.0.0.1 --protocol emberplus --port 9092 --path router.oneToN.labels.targets.t-1
+acp get 127.0.0.1 --protocol emberplus --port 9092 --path 1.1.1.1.1           # numeric
+acp get 127.0.0.1 --protocol emberplus --port 9092 --label t-1                # first match
+```
+
+Flags: `--path P` (dot-separated, numeric or identifier), `--label L`
+(first-match, may warn on ambiguity), `--id N` (least-specific).
+
+Output:
+
+```
+value = "SDI-T-1"
+```
+
+Values come from the walk cache; `get` is a local lookup unless the
+tree is empty (in which case a walk is auto-triggered). No wire traffic
+is generated by `get` itself after the initial walk.
+
+### `acp set` — write a parameter value
+
+```
+acp set 127.0.0.1 --protocol emberplus --port 9092 --path router.oneToN.labels.targets.t-1 --value "DEMO-T-1"
+acp set 127.0.0.1 --protocol emberplus --port 9092 --path router.oneToN.parameters.sourceGain --value -10.0
+acp set 127.0.0.1 --protocol emberplus --port 9000 --path 1.2.3 --value true
+acp set 127.0.0.1 --protocol emberplus --port 9092 --path router.enumParam --value 2   # enum index
+```
+
+`--value` is auto-coerced to the parameter's declared type (int / real
+/ string / boolean / enum). `--raw HEX` bypasses typed encoding for
+escape hatches.
+
+Output:
+
+```
+confirmed value = "DEMO-T-1"
+```
+
+Wire trace — SetValue TX for a string (46 bytes):
+
+```
+fe 00 0e 00 01 c0 01 02 1f 02
+60 1f 6b 1d a0 1b                         APP[0]{APP[11]{CTX[0]}}
+  69 19                                    APP[9] QualifiedParameter, len 25
+    a0 07 0d 05 01 01 01 01 01              CTX[0] path = "1.1.1.1.1.1"  (some providers split further)
+    a1 0e 31 0c                             CTX[1] ParameterContents (SET)
+      a2 0a 0c 08 44 45 4d 4f 2d 54 2d 31   CTX[2] value = UTF8 "DEMO-T-1"
+03 79 ff                                   CRC + EOF
+```
+
+The provider echoes the confirmed value back as a normal announcement,
+which `session.readLoop` decodes into the tree.
+
+### `acp watch` — follow value-change announcements
+
+```
+acp watch 127.0.0.1 --protocol emberplus --port 9092
+acp watch 127.0.0.1 --protocol emberplus --port 9092 --label t-1
+acp watch 127.0.0.1 --protocol emberplus --port 9092 --id 1
+```
+
+Flags: `--path P` / `--label L` / `--id N` (filter; empty = watch all).
+Blocks until Ctrl-C. No separate subscribe frame is emitted for
+regular parameters — the implicit subscribe-via-GetDirectory (spec
+p.30) is sufficient. Stream parameters are handled by `acp stream`.
+
+### `acp stream` — subscribe to stream parameters
+
+```
+acp stream 127.0.0.1 --protocol emberplus --port 9092
+acp stream 127.0.0.1 --protocol emberplus --port 9092 --id 45     # one streamIdentifier
+```
+
+Walks first, then sends `Command 30 (Subscribe)` for every parameter
+that carries a `streamIdentifier` (spec p.30). Prints every received
+`StreamEntry` with `HH:MM:SS.mmm path = value`. Blocks until Ctrl-C;
+sends `Command 31` on exit.
+
+### `acp matrix` — set matrix crosspoints
+
+```
+# absolute (replace all sources for target 1 with source 5)
+acp matrix 127.0.0.1 --protocol emberplus --port 9092 \
+    --path router.oneToN.matrix --target 1 --sources 5 --op absolute
+
+# nToN connect (add source 7 to target 3's set)
+acp matrix 127.0.0.1 --protocol emberplus --port 9092 \
+    --path router.nToN.matrix --target 3 --sources 7 --op connect
+
+# disconnect
+acp matrix 127.0.0.1 --protocol emberplus --port 9092 \
+    --path router.nToN.matrix --target 3 --sources 7 --op disconnect
+```
+
+Flags: `--path P`, `--target N`, `--sources N,N,N`,
+`--op absolute|connect|disconnect` (spec p.89 ConnectionOperation).
+Validation fires locally before any wire traffic:
+
+```
+error: emberplus: matrix validation:
+       oneToN matrix: target 1 would have 2 sources (max 1) [spec p.33]
+```
+
+Output on success:
+
+```
+matrix connect: target 1 ← sources [5] (op=absolute)
+```
+
+Wire trace — oneToN connect TX (40 bytes):
+
+```
+fe 00 0e 00 01 c0 01 02 1f 02
+60 24 6b 22 a0 20                                  APP[0]{APP[11]{CTX[0]}}
+  71 1e                                             APP[17] QualifiedMatrix, len 30
+    a0 05 0d 03 01 01 02                            CTX[0] path = "1.1.2"
+    a5 15 30 13                                     CTX[5] connections, UNIVERSAL SEQ
+      a0 11 70 0f                                   CTX[0] inner, APP[16] Connection
+        a0 03 02 01 01                              CTX[0] target = 1
+        a1 03 0d 01 05                              CTX[1] sources = RelOID "5"
+        a2 03 02 01 00                              CTX[2] operation = 0 (absolute)
+38 e6 ff                                           CRC + EOF
+```
+
+### `acp invoke` — call a function
+
+```
+acp invoke 127.0.0.1 --protocol emberplus --port 9092 --path router.functions.add --args 3,5
+acp invoke 127.0.0.1 --protocol emberplus --port 9092 --path router.functions.doNothing --args ""
+```
+
+Args are comma-separated; each is auto-typed (int → float → bool →
+string). The plugin allocates a fresh `invocationId` per call
+(monotonic u16, 1..255). A 10 s timeout guards the response.
+
+Output:
+
+```
+invocation 1: success=true
+result: [8]
+```
+
+Wire trace — invoke add(3,5) TX (51 bytes):
+
+```
+fe 00 0e 00 01 c0 01 02 1f 02
+60 31 6b 2f a0 2d                               APP[0]{APP[11]{CTX[0]}}
+  74 2b                                          APP[20] QualifiedFunction, len 43
+    a0 05 0d 03 01 04 01                         CTX[0] path = "1.3.1"
+    a2 22 64 20                                  CTX[2] children → APP[4] ElementCollection
+      a0 1e 62 1c                                CTX[0] inner, APP[2] Command, len 28
+        a0 03 02 01 21                           CTX[0] number = 33 (Invoke)
+        a2 15 76 13                              CTX[2] invocation → APP[22]
+          a0 03 02 01 01                         CTX[0] invocationId = 1
+          a1 0c 30 0a                            CTX[1] arguments (Tuple = SEQ)
+            a0 03 02 01 03                       CTX[0] Value INTEGER 3
+            a0 03 02 01 05                       CTX[0] Value INTEGER 5
+49 d0 ff                                        CRC + EOF
+```
+
+Wire trace — InvocationResult RX (22 bytes):
+
+```
+fe 00 0e 00 01 c0 01 02 1f 02
+60 10                                         APP[0] Root, len 16
+  77 0e                                        APP[23] InvocationResult, len 14
+    a0 03 02 01 01                              CTX[0] invocationId = 1
+    a2 07 30 05 a0 03 02 01 08                  CTX[2] result = Tuple[INTEGER 8]
+42 c6 ff                                      CRC + EOF
+```
+
+(`success` field omitted → defaults to `true` per spec p.92.)
+
+### `acp profile` — compliance classification
+
+```
+acp profile 127.0.0.1 --protocol emberplus --port 9092
+acp profile 127.0.0.1 --protocol emberplus --port 9000
+```
+
+Runs a walk, prints object count + classification + every tolerance
+event that fired with its hit count:
+
+```
+host             127.0.0.1:9000
+objects walked   1860
+classification   partial
+
+tolerance events
+  multi_frame_reassembly           3
+  non_qualified_element            2619
+```
+
+Use this to build a compatibility matrix for a device fleet. Every
+compliance event label is documented in the
+[Compliance & Tolerance](#compliance--tolerance) section.
+
+### `acp export` — dump the walked tree
+
+```
+acp export 127.0.0.1 --protocol emberplus --port 9092 --format json --out tree.json
+acp export 127.0.0.1 --protocol emberplus --port 9092 --format yaml --out tree.yaml
+acp export 127.0.0.1 --protocol emberplus --port 9092 --format csv  --out tree.csv
+```
+
+Produces a hierarchical snapshot identical to the ACP1/ACP2 export
+shape, with the Ember+ identifier path under each element.
+
+### `acp import` — replay a snapshot
+
+```
+acp import 127.0.0.1 --protocol emberplus --port 9092 --file tree.json --dry-run
+acp import 127.0.0.1 --protocol emberplus --port 9092 --file tree.json
+```
+
+Reads a JSON/YAML/CSV snapshot and issues a `set` for every parameter
+whose declared value differs from the live one.
+
+### `--capture FILE` (global flag)
+
+Attached to any command, `--capture FILE.jsonl` writes every raw S101
+frame to `FILE.jsonl` (tx + rx, including BOF/EOF/CRC) so a unit test
+can replay the exact wire bytes:
+
+```
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --capture walk.jsonl
+```
+
+Record format:
+
+```json
+{"ts":"2026-04-18T15:56:07.126Z","proto":"emberplus","dir":"tx",
+ "hex":"fe000e0001c001021f0260106b0ea00c620aa003020120a1030201fddf948fff",
+ "len":32}
 ```
 
 ---
@@ -572,7 +894,7 @@ Names follow the Ember+ spec and the smh TypeScript reference lib.
 | `InvalidFunctionCall` | Argument count / type mismatch vs `TupleDescription` |
 | `UnsupportedValue` | Go value cannot be encoded to any Glow scalar |
 
-CLI exit codes follow the top-level [README](../../README.md):
+CLI exit codes follow the top-level [README](../../../README.md):
 0 success, 1 protocol error, 2 validation / usage, 3 transport, 5 bad flags.
 
 ---

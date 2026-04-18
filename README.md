@@ -22,9 +22,9 @@ and CLI examples.
 
 | Protocol | Transport | Port | Status | Documentation |
 |---|---|---|---|---|
-| ACP1 | UDP / TCP direct | 2071 | done | [docs/protocols/acp1.md](docs/protocols/acp1.md) |
-| ACP2 | AN2/TCP | 2072 | done | [docs/protocols/acp2.md](docs/protocols/acp2.md) |
-| Ember+ | S101/TCP | 9000-9092 | working | [docs/protocols/emberplus.md](docs/protocols/emberplus.md) (planned) |
+| ACP1 | UDP / TCP direct | 2071 | done | [docs/protocols/acp1/consumer.md](docs/protocols/acp1/consumer.md) |
+| ACP2 | AN2/TCP | 2072 | done | [docs/protocols/acp2/consumer.md](docs/protocols/acp2/consumer.md) |
+| Ember+ | S101/TCP | 9000-9092 | working | [docs/protocols/emberplus/consumer.md](docs/protocols/emberplus/consumer.md) (planned) |
 
 ---
 

@@ -8,13 +8,13 @@ Consumer connector for ACP v1.4 (Axon Synapse protocol).
 
 | Document | Path | Description |
 |---|---|---|
-| Spec (authoritative) | [assets/acp1/AXON-ACP_v1_4.pdf](../../assets/acp1/AXON-ACP_v1_4.pdf) | ACP v1.4 full specification |
-| Wireshark dissector | [assets/acp1/dissector_acpv1.lua](../../assets/acp1/dissector_acpv1.lua) | Byte-exact reference |
+| Spec (authoritative) | [assets/acp1/AXON-ACP_v1_4.pdf](../../../assets/acp1/AXON-ACP_v1_4.pdf) | ACP v1.4 full specification |
+| Wireshark dissector | [assets/acp1/dissector_acpv1.lua](../../../assets/acp1/dissector_acpv1.lua) | Byte-exact reference |
 | C# reference driver | external (ByResearch.DHS.AxonACP.DeviceDriver) | ACP1 only, not ACP2 |
-| Protocol reference | [CLAUDE.md](../../CLAUDE.md) — section "ACP1" | Wire format, methods, object types |
+| Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "ACP1" | Wire format, methods, object types |
 | Testdata captures | [testdata/acp1/](../../testdata/acp1/) | Raw JSONL captures from emulator |
 | Export fixtures | [testdata/exports/acp1/](../../testdata/exports/acp1/) | JSON/YAML/CSV per slot |
-| Source code | [internal/protocol/acp1/](../../internal/protocol/acp1/) | Plugin implementation |
+| Source code | [internal/protocol/acp1/](../../../internal/protocol/acp1/) | Plugin implementation |
 | Unit tests | [tests/unit/acp1/](../../tests/unit/acp1/) | Replay + spec tests |
 
 ---
