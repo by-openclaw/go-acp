@@ -28,6 +28,7 @@ import (
 	"acp/internal/protocol/emberplus/compliance"
 	"acp/internal/protocol/emberplus/glow"
 	"acp/internal/protocol/emberplus/matrix"
+	"acp/internal/transport"
 )
 
 func init() {
@@ -109,6 +110,11 @@ type Plugin struct {
 	// and docs/protocols/emberplus.md §A9.
 	profile *compliance.Profile
 
+	// recorder captures raw S101 frames (tx + rx) to a JSONL file
+	// when the CLI passed --capture. Shared with the Session so the
+	// reader/writer taps fire on every frame.
+	recorder *transport.Recorder
+
 	// connIP / connPort are captured at Connect time for log context.
 	connIP   string
 	connPort int
@@ -119,6 +125,17 @@ type Plugin struct {
 // vs partial) and to drive a compatibility matrix.
 func (p *Plugin) ComplianceProfile() *compliance.Profile {
 	return p.profile
+}
+
+// SetRecorder attaches a raw-traffic recorder to this plugin. When set,
+// every S101 frame (both TX and RX) is written to the recorder with
+// proto="emberplus" and the raw bytes include BOF/EOF/CRC, so the
+// capture file is sufficient input for replay-based unit tests.
+// Call before Connect.
+func (p *Plugin) SetRecorder(r *transport.Recorder) {
+	p.mu.Lock()
+	p.recorder = r
+	p.mu.Unlock()
 }
 
 // treeEntry is the in-RAM record per decoded element. It keeps both the
@@ -174,6 +191,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	s.SetOnElement(p.handleElements)
 	s.SetProfile(p.profile)
+	if p.recorder != nil {
+		s.SetRecorder(p.recorder)
+	}
 	return s.Connect(ctx, ip, port)
 }
 
@@ -355,7 +375,7 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 		p.treeMu.RLock()
 		size := len(p.numIndex)
 		p.treeMu.RUnlock()
-		return protocol.Value{}, fmt.Errorf("emberplus: object not found (tree has %d entries)", size)
+		return protocol.Value{}, WrapProto(fmt.Sprintf("object not found (tree has %d entries)", size), nil)
 	}
 	p.logger.Debug("emberplus: GetValue",
 		"key", key, "label", entry.obj.Label, "freshness", entry.freshness)
@@ -377,11 +397,11 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 
 	_, entry := p.findEntry(req)
 	if entry == nil || entry.glowParam == nil {
-		return protocol.Value{}, fmt.Errorf("emberplus: parameter not found")
+		return protocol.Value{}, WrapProto("parameter not found", nil)
 	}
 	path := entry.glowParam.Path
 	if len(path) == 0 {
-		return protocol.Value{}, fmt.Errorf("emberplus: parameter has no path")
+		return protocol.Value{}, WrapProto("parameter has no path", nil)
 	}
 
 	if val.Kind == protocol.KindUnknown {
@@ -431,7 +451,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 
 	key, entry := p.findEntry(req)
 	if entry == nil || entry.glowParam == nil || len(entry.glowParam.Path) == 0 {
-		return fmt.Errorf("emberplus: parameter not found for subscribe")
+		return WrapProto("parameter not found for subscribe", nil)
 	}
 
 	p.subsMu.Lock()
@@ -528,12 +548,12 @@ func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target in
 
 	_, entry := p.findEntry(protocol.ValueRequest{Path: matrixPath, ID: -1})
 	if entry == nil || entry.glowMatrix == nil {
-		return fmt.Errorf("emberplus: matrix not found at path %q", matrixPath)
+		return WrapProto(fmt.Sprintf("matrix not found at path %q", matrixPath), nil)
 	}
 
 	if entry.matrixState != nil {
 		if err := entry.matrixState.CanConnect(target, sources, operation); err != nil {
-			return fmt.Errorf("emberplus: matrix validation: %w", err)
+			return WrapProto("matrix validation", err)
 		}
 	}
 
@@ -596,7 +616,7 @@ func (p *Plugin) InvokeFunction(ctx context.Context, funcPath string, args []any
 
 	_, entry := p.findEntry(protocol.ValueRequest{Path: funcPath, ID: -1})
 	if entry == nil || entry.glowFunc == nil {
-		return nil, fmt.Errorf("emberplus: function not found at path %q", funcPath)
+		return nil, WrapProto(fmt.Sprintf("function not found at path %q", funcPath), nil)
 	}
 
 	invID := s.NextInvocationID()

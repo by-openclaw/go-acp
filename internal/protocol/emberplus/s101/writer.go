@@ -7,7 +7,8 @@ import (
 
 // Writer writes S101 frames to a TCP stream.
 type Writer struct {
-	w io.Writer
+	w   io.Writer
+	tap func([]byte) // optional; receives every frame exactly as it goes on the wire
 }
 
 // NewWriter creates an S101 stream writer.
@@ -15,9 +16,20 @@ func NewWriter(w io.Writer) *Writer {
 	return &Writer{w: w}
 }
 
+// SetTap installs a callback that receives the raw bytes of every
+// outgoing frame (post-Encode, including BOF/EOF/CRC). Use it for
+// traffic capture, not for transformation — the bytes are already
+// being written when the tap fires.
+func (w *Writer) SetTap(fn func([]byte)) {
+	w.tap = fn
+}
+
 // WriteFrame encodes and writes an S101 frame to the stream.
 func (w *Writer) WriteFrame(f *Frame) error {
 	data := Encode(f)
+	if w.tap != nil {
+		w.tap(data)
+	}
 	_, err := w.w.Write(data)
 	if err != nil {
 		return fmt.Errorf("s101 write: %w", err)

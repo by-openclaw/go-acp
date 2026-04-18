@@ -9,12 +9,20 @@ import (
 // Reader reads S101 frames from a TCP stream. It scans for BOF markers
 // and collects bytes until EOF marker, then decodes the frame.
 type Reader struct {
-	r *bufio.Reader
+	r   *bufio.Reader
+	tap func([]byte) // optional; receives every frame exactly as read off the wire
 }
 
 // NewReader creates an S101 stream reader.
 func NewReader(r io.Reader) *Reader {
 	return &Reader{r: bufio.NewReaderSize(r, 65536)}
+}
+
+// SetTap installs a callback that receives the raw bytes of every
+// incoming frame (pre-Decode, including BOF/EOF/CRC). Use it for
+// traffic capture.
+func (r *Reader) SetTap(fn func([]byte)) {
+	r.tap = fn
 }
 
 // ReadFrame reads the next complete S101 frame from the stream.
@@ -49,6 +57,9 @@ func (r *Reader) ReadFrame() (*Frame, error) {
 		}
 	}
 
+	if r.tap != nil {
+		r.tap(buf)
+	}
 	f, err := Decode(buf)
 	if err != nil {
 		// Include frame hex for debugging.

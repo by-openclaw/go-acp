@@ -4,40 +4,57 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	"acp/internal/protocol"
 )
 
+// sectionHeader returns the container-path string under which an
+// object should be grouped. For single-segment paths (ACP1's flat
+// groups) that's the group name; for deep paths (Ember+) it's the
+// parent path joined with `.`. Nodes with no path fall back to Group.
+func sectionHeader(o protocol.Object) string {
+	if len(o.Path) > 1 {
+		return strings.Join(o.Path[:len(o.Path)-1], ".")
+	}
+	if len(o.Path) == 1 {
+		return o.Path[0]
+	}
+	return o.Group
+}
+
 // printSlotTree is the shared render helper used by `walk --slot N` and
-// `walk --all`. Moving it out of the runWalk body keeps the --all loop
-// readable.
+// `walk --all`. ACP1's flat groups stay flat; Ember+'s deep trees are
+// rendered as a readable tree with siblings grouped under their parent
+// path and depth-based indentation.
 func printSlotTree(slot int, objs []protocol.Object, filter string) {
 	fmt.Printf("\nslot %d — %d objects\n\n", slot, len(objs))
 	filterLower := strings.ToLower(filter)
-	// Group for a readable tree view. We rely on the walker returning
-	// objects in (identity, control, status, alarm) order.
-	var currentGroup string
-	for _, o := range objs {
-		if o.Group != currentGroup && filter == "" {
-			fmt.Printf("\n[%s]\n", o.Group)
-			currentGroup = o.Group
-		}
+
+	sorted := make([]protocol.Object, len(objs))
+	copy(sorted, objs)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return strings.Join(sorted[i].Path, ".") < strings.Join(sorted[j].Path, ".")
+	})
+
+	var currentSection string
+	for _, o := range sorted {
 		if o.SubGroupMarker {
 			if filter == "" {
-				// Render section headers with visual separation and strip the
-				// leading-whitespace convention from the label.
 				fmt.Printf("\n  ── %s ──\n", strings.TrimSpace(o.Label))
 			}
 			continue
 		}
-		// Format the current value captured during walk. For numeric
-		// kinds we apply step-based precision so "50.8%" doesn't show
-		// up as "50%". For strings/enums/ipaddr the inline formatter
-		// is already type-aware.
 		valStr := walkValueColumn(o)
 		rngStr := walkRangeColumn(o)
-		line := fmt.Sprintf("  %3d  %-20s  %-6s  %-3s  %-18s  %s",
+		depth := len(o.Path)
+		if depth < 1 {
+			depth = 1
+		}
+		indent := strings.Repeat("  ", depth-1)
+		line := fmt.Sprintf("%s  %3d  %-20s  %-6s  %-3s  %-18s  %s",
+			indent,
 			o.ID,
 			truncate(o.Label, 20),
 			kindName(o.Kind),
@@ -47,9 +64,12 @@ func printSlotTree(slot int, objs []protocol.Object, filter string) {
 		if filter != "" && !strings.Contains(strings.ToLower(line), filterLower) {
 			continue
 		}
-		if o.Group != currentGroup {
-			fmt.Printf("\n[%s]\n", o.Group)
-			currentGroup = o.Group
+		section := sectionHeader(o)
+		if section != currentSection {
+			if filter == "" {
+				fmt.Printf("\n[%s]\n", section)
+			}
+			currentSection = section
 		}
 		fmt.Println(line)
 	}

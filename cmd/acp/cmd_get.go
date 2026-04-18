@@ -22,6 +22,10 @@ func runGet(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: acp get <host> --slot N (--path P | --label L | --id I)")
 	}
 	_ = fs.Parse(rest)
+	// Ember+ has no slot concept; default to 0 so users don't have to pass it.
+	if cf.protocol == "emberplus" && *slot < 0 {
+		*slot = 0
+	}
 	if *slot < 0 {
 		return fmt.Errorf("--slot is required")
 	}

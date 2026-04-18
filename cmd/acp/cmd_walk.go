@@ -23,6 +23,11 @@ func runWalk(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: acp walk <host> (--slot N | --all)")
 	}
 	_ = fs.Parse(rest)
+	// Ember+ has no slot concept (spec: single flat tree per provider);
+	// default --slot 0 so the user doesn't have to remember this quirk.
+	if cf.protocol == "emberplus" && *slot < 0 && !*all {
+		*slot = 0
+	}
 	if !*all && *slot < 0 {
 		return fmt.Errorf("--slot N or --all is required")
 	}

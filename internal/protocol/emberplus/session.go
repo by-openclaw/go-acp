@@ -11,6 +11,7 @@ import (
 	"acp/internal/protocol/emberplus/compliance"
 	"acp/internal/protocol/emberplus/glow"
 	"acp/internal/protocol/emberplus/s101"
+	"acp/internal/transport"
 )
 
 // Session manages a single TCP connection to an Ember+ provider.
@@ -37,6 +38,20 @@ type Session struct {
 	// profile records tolerance events (spec deviations absorbed on
 	// the fly) per connection. Set by the Plugin via SetProfile.
 	profile *compliance.Profile
+
+	// recorder captures every raw S101 frame (including BOF/EOF/CRC)
+	// into JSONL when the caller passed --capture. Plugin sets it
+	// before Connect via SetRecorder.
+	recorder *transport.Recorder
+}
+
+// SetRecorder attaches a traffic recorder. Call before Connect.
+// After connection, every S101 frame (tx + rx) is written to the
+// recorder, tagged proto="emberplus" and dir="tx" / "rx".
+func (s *Session) SetRecorder(r *transport.Recorder) {
+	s.mu.Lock()
+	s.recorder = r
+	s.mu.Unlock()
 }
 
 // SetProfile attaches a compliance profile for this session. Events
@@ -108,7 +123,7 @@ func (s *Session) Connect(ctx context.Context, host string, port int) error {
 	d := net.Dialer{Timeout: 10 * time.Second}
 	conn, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
-		return fmt.Errorf("emberplus: connect %s: %w", addr, err)
+		return WrapS101(fmt.Sprintf("connect %s", addr), err)
 	}
 
 	s.mu.Lock()
@@ -117,6 +132,11 @@ func (s *Session) Connect(ctx context.Context, host string, port int) error {
 	s.writer = s101.NewWriter(conn)
 	s.closed = false
 	s.keepAliveDone = make(chan struct{})
+	rec := s.recorder
+	if rec != nil {
+		s.writer.SetTap(func(b []byte) { rec.Record("emberplus", "tx", b) })
+		s.reader.SetTap(func(b []byte) { rec.Record("emberplus", "rx", b) })
+	}
 	s.mu.Unlock()
 
 	// Start read loop.
