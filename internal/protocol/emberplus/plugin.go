@@ -25,6 +25,7 @@ import (
 
 	"acp/internal/protocol"
 	"acp/internal/protocol/emberplus/glow"
+	"acp/internal/protocol/emberplus/matrix"
 )
 
 func init() {
@@ -108,6 +109,10 @@ type treeEntry struct {
 	// the primary numIndex map key. Stored explicitly so callers don't
 	// have to re-read the Glow pointer to obtain it.
 	numericPath []int32
+
+	// matrixState is the derived RAM-only state attached to matrix
+	// entries (A4). Nil for non-matrix entries. See matrix.State.
+	matrixState *matrix.State
 
 	// freshness is updated whenever the entry is refreshed from the
 	// provider. Disk-loaded entries start at FreshnessStale and flip to
@@ -455,6 +460,11 @@ func (p *Plugin) unsubscribeAll() {
 //
 // operation: 0=absolute, 1=connect (nToN add), 2=disconnect (nToN remove).
 // See Glow DTD p.89 ConnectionOperation.
+//
+// Before sending, validates via matrix.State.CanConnect so bad requests
+// (oneToN overload, oneToOne source collision, nToN cap breach, locked
+// target) fail locally with a spec-cited error. On success, the provider
+// will announce the new tally which processMatrix merges into state.
 func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target int32, sources []int32, operation int64) error {
 	s := p.currentSession()
 	if s == nil {
@@ -469,11 +479,40 @@ func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target in
 		return fmt.Errorf("emberplus: matrix not found at path %q", matrixPath)
 	}
 
+	if entry.matrixState != nil {
+		if err := entry.matrixState.CanConnect(target, sources, operation); err != nil {
+			return fmt.Errorf("emberplus: matrix validation: %w", err)
+		}
+	}
+
 	p.logger.Debug("emberplus: MatrixConnect",
 		"matrix_path", matrixPath,
 		"numeric_path", entry.glowMatrix.Path,
 		"target", target, "sources", sources, "operation", operation)
-	return s.SendMatrixConnect(entry.glowMatrix.Path, target, sources, operation)
+
+	if err := s.SendMatrixConnect(entry.glowMatrix.Path, target, sources, operation); err != nil {
+		return err
+	}
+
+	if entry.matrixState != nil {
+		entry.matrixState.ApplyConnection(glow.Connection{
+			Target:      target,
+			Sources:     sources,
+			Operation:   operation,
+			Disposition: glow.ConnDispPending,
+		}, matrix.ChangeUser)
+	}
+	return nil
+}
+
+// MatrixSnapshot returns the derived matrix state for the matrix at
+// matrixPath, or nil if not a matrix. Useful for UIs rendering a tally.
+func (p *Plugin) MatrixSnapshot(matrixPath string) []matrix.TargetState {
+	_, entry := p.findEntry(protocol.ValueRequest{Path: matrixPath, ID: -1})
+	if entry == nil || entry.matrixState == nil {
+		return nil
+	}
+	return entry.matrixState.Snapshot()
 }
 
 // InvokeFunction calls a function by path and waits for InvocationResult.
@@ -651,17 +690,37 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string) {
 }
 
 // processMatrix stores a Matrix with all raw contents + targets/sources/
-// connections. A4 attaches the derived state (canConnect cache, label
-// resolution, gain param resolution) alongside.
+// connections and attaches derived state (matrix.State) for canConnect
+// pre-flight validation and announce merging (A4).
+//
+// A subsequent processMatrix for the same path merges announced
+// connections into the existing State so lastChanged and ChangedBy stay
+// accurate — providers emit delta announcements, not full rewrites.
 func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string) {
 	if len(m.Path) > 0 {
 		p.registerNumericPath(m.Path, m.Identifier)
 	}
 	stringPath := p.pathForElement(m.Path, m.Identifier, m.Number, parentPath)
+	numKey := numericKey(m.Path)
+
+	p.treeMu.RLock()
+	existing := p.numIndex[numKey]
+	p.treeMu.RUnlock()
+
+	var state *matrix.State
+	if existing != nil && existing.matrixState != nil {
+		state = existing.matrixState
+		for _, c := range m.Connections {
+			state.ApplyConnection(c, matrix.ChangeAnnounce)
+		}
+	} else {
+		state = matrix.NewStateFromGlow(m)
+	}
 
 	entry := &treeEntry{
 		glowMatrix:  m,
 		numericPath: cloneInt32Slice(m.Path),
+		matrixState: state,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
 		obj: protocol.Object{
