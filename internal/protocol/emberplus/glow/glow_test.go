@@ -20,9 +20,15 @@ func TestEncodeDecodeGetDirectory(t *testing.T) {
 	if len(tlvs) != 1 {
 		t.Fatalf("expected 1 TLV, got %d", len(tlvs))
 	}
+	// Outer envelope is [APPLICATION 0] Root CHOICE (spec p.93).
 	root := tlvs[0]
-	if root.Tag.Class != ber.ClassApplication || root.Tag.Number != TagRootElementCollection {
-		t.Errorf("root tag: got %+v", root.Tag)
+	if root.Tag.Class != ber.ClassApplication || root.Tag.Number != TagRoot {
+		t.Errorf("root tag: got %+v, want APPLICATION[0]", root.Tag)
+	}
+	if len(root.Children) != 1 ||
+		root.Children[0].Tag.Class != ber.ClassApplication ||
+		root.Children[0].Tag.Number != TagRootElementCollection {
+		t.Errorf("expected APPLICATION[11] inside root, got %+v", root.Children)
 	}
 }
 

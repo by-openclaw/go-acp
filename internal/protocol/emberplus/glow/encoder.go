@@ -18,8 +18,10 @@ import (
 // DHD) refuse it. wrapRoot centralises the correct encoding.
 
 func wrapRoot(child ber.TLV) ber.TLV {
-	return ber.AppConstructed(TagRootElementCollection,
-		ber.ContextConstructed(0, child),
+	return ber.AppConstructed(TagRoot,
+		ber.AppConstructed(TagRootElementCollection,
+			ber.ContextConstructed(0, child),
+		),
 	)
 }
 

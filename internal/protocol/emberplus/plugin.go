@@ -590,23 +590,24 @@ func (p *Plugin) currentSession() *Session {
 // handleElements is the session callback for every decoded Glow message.
 func (p *Plugin) handleElements(elements []glow.Element) {
 	for _, el := range elements {
-		p.processElement(el, nil)
+		p.processElement(el, nil, nil)
 	}
 }
 
 // processElement dispatches one Glow element to the right handler.
-// Inherited parentPath is used when the provider sends non-qualified
-// elements (their numeric path is implicit from the parent node).
-func (p *Plugin) processElement(el glow.Element, parentPath []string) {
+// Inherited parentPath / parentNumPath are used when the provider sends
+// non-qualified elements (their numeric path is implicit from the
+// parent node, per spec p.87: Node ::= SEQUENCE { number [0] ... }).
+func (p *Plugin) processElement(el glow.Element, parentPath []string, parentNumPath []int32) {
 	switch {
 	case el.Node != nil:
-		p.processNode(el.Node, parentPath)
+		p.processNode(el.Node, parentPath, parentNumPath)
 	case el.Parameter != nil:
-		p.processParameter(el.Parameter, parentPath)
+		p.processParameter(el.Parameter, parentPath, parentNumPath)
 	case el.Matrix != nil:
-		p.processMatrix(el.Matrix, parentPath)
+		p.processMatrix(el.Matrix, parentPath, parentNumPath)
 	case el.Function != nil:
-		p.processFunction(el.Function, parentPath)
+		p.processFunction(el.Function, parentPath, parentNumPath)
 	case el.InvocationResult != nil:
 		if s := p.currentSession(); s != nil {
 			s.deliverInvocationResult(el.InvocationResult)
@@ -616,6 +617,20 @@ func (p *Plugin) processElement(el glow.Element, parentPath []string) {
 	case len(el.Streams) > 0:
 		p.dispatchStreams(el.Streams)
 	}
+}
+
+// resolveNumPath returns the canonical numeric RelOID for an element.
+// Qualified elements carry their full path explicitly; non-qualified
+// elements compose it from the parent path plus their own number.
+// Spec p.87/p.85: non-qualified Node/Parameter hold only [0] number.
+func resolveNumPath(explicit []int32, parent []int32, number int32) []int32 {
+	if len(explicit) > 0 {
+		return cloneInt32Slice(explicit)
+	}
+	out := make([]int32, 0, len(parent)+1)
+	out = append(out, parent...)
+	out = append(out, number)
+	return out
 }
 
 // processTemplate stores the Template keyed by its numeric RelOID
@@ -807,15 +822,16 @@ func assignToValue(v *protocol.Value, kind protocol.ValueKind, value any) {
 // processNode stores a Node in the tree and recurses into its children.
 // If the node arrives with no children, issues a lazy GetDirectory so we
 // can fetch the subtree on demand.
-func (p *Plugin) processNode(n *glow.Node, parentPath []string) {
-	if len(n.Path) > 0 {
-		p.registerNumericPath(n.Path, n.Identifier)
+func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []int32) {
+	numPath := resolveNumPath(n.Path, parentNumPath, n.Number)
+	if len(numPath) > 0 {
+		p.registerNumericPath(numPath, n.Identifier)
 	}
-	stringPath := p.pathForElement(n.Path, n.Identifier, n.Number, parentPath)
+	stringPath := p.pathForElement(numPath, n.Identifier, n.Number, parentPath)
 
 	entry := &treeEntry{
 		glowNode:    n,
-		numericPath: cloneInt32Slice(n.Path),
+		numericPath: numPath,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
 		obj: protocol.Object{
@@ -833,16 +849,16 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string) {
 	p.storeEntry(entry, stringPath)
 
 	for _, child := range n.Children {
-		p.processElement(child, stringPath)
+		p.processElement(child, stringPath, numPath)
 	}
 
-	if len(n.Children) == 0 && len(n.Path) > 0 {
+	if len(n.Children) == 0 && len(numPath) > 0 {
 		if s := p.currentSession(); s != nil {
-			numPath := cloneInt32Slice(n.Path)
+			numCopy := cloneInt32Slice(numPath)
 			go func() {
 				p.logger.Debug("emberplus: requesting children",
-					"path", numPath, "identifier", n.Identifier)
-				_ = s.SendGetDirectoryFor(numPath)
+					"path", numCopy, "identifier", n.Identifier)
+				_ = s.SendGetDirectoryFor(numCopy)
 			}()
 		}
 	}
@@ -850,11 +866,12 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string) {
 
 // processParameter stores a Parameter with full ParameterContents metadata
 // carried in obj constraints + glowParam pointer for lossless access.
-func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string) {
-	if len(param.Path) > 0 {
-		p.registerNumericPath(param.Path, param.Identifier)
+func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, parentNumPath []int32) {
+	numPath := resolveNumPath(param.Path, parentNumPath, param.Number)
+	if len(numPath) > 0 {
+		p.registerNumericPath(numPath, param.Identifier)
 	}
-	stringPath := p.pathForElement(param.Path, param.Identifier, param.Number, parentPath)
+	stringPath := p.pathForElement(numPath, param.Identifier, param.Number, parentPath)
 
 	obj := protocol.Object{
 		Slot:   0,
@@ -897,7 +914,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string) {
 
 	entry := &treeEntry{
 		glowParam:   param,
-		numericPath: cloneInt32Slice(param.Path),
+		numericPath: numPath,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
 		obj:         obj,
@@ -919,12 +936,13 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string) {
 // A subsequent processMatrix for the same path merges announced
 // connections into the existing State so lastChanged and ChangedBy stay
 // accurate — providers emit delta announcements, not full rewrites.
-func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string) {
-	if len(m.Path) > 0 {
-		p.registerNumericPath(m.Path, m.Identifier)
+func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPath []int32) {
+	numPath := resolveNumPath(m.Path, parentNumPath, m.Number)
+	if len(numPath) > 0 {
+		p.registerNumericPath(numPath, m.Identifier)
 	}
-	stringPath := p.pathForElement(m.Path, m.Identifier, m.Number, parentPath)
-	numKey := numericKey(m.Path)
+	stringPath := p.pathForElement(numPath, m.Identifier, m.Number, parentPath)
+	numKey := numericKey(numPath)
 
 	p.treeMu.RLock()
 	existing := p.numIndex[numKey]
@@ -942,7 +960,7 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string) {
 
 	entry := &treeEntry{
 		glowMatrix:  m,
-		numericPath: cloneInt32Slice(m.Path),
+		numericPath: numPath,
 		matrixState: state,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
@@ -961,21 +979,22 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string) {
 	p.storeEntry(entry, stringPath)
 
 	for _, child := range m.Children {
-		p.processElement(child, stringPath)
+		p.processElement(child, stringPath, numPath)
 	}
 }
 
 // processFunction stores a Function record; invocation plumbing lives in
 // session.go.
-func (p *Plugin) processFunction(f *glow.Function, parentPath []string) {
-	if len(f.Path) > 0 {
-		p.registerNumericPath(f.Path, f.Identifier)
+func (p *Plugin) processFunction(f *glow.Function, parentPath []string, parentNumPath []int32) {
+	numPath := resolveNumPath(f.Path, parentNumPath, f.Number)
+	if len(numPath) > 0 {
+		p.registerNumericPath(numPath, f.Identifier)
 	}
-	stringPath := p.pathForElement(f.Path, f.Identifier, f.Number, parentPath)
+	stringPath := p.pathForElement(numPath, f.Identifier, f.Number, parentPath)
 
 	entry := &treeEntry{
 		glowFunc:    f,
-		numericPath: cloneInt32Slice(f.Path),
+		numericPath: numPath,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
 		obj: protocol.Object{
@@ -993,7 +1012,7 @@ func (p *Plugin) processFunction(f *glow.Function, parentPath []string) {
 	p.storeEntry(entry, stringPath)
 
 	for _, child := range f.Children {
-		p.processElement(child, stringPath)
+		p.processElement(child, stringPath, numPath)
 	}
 }
 
