@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"acp/internal/protocol"
+	"acp/internal/protocol/emberplus/compliance"
 	"acp/internal/protocol/emberplus/glow"
 	"acp/internal/protocol/emberplus/matrix"
 )
@@ -101,6 +102,23 @@ type Plugin struct {
 	// Spec p.54–58 (Ember+ 1.4 Templates).
 	templates   map[string]*glow.Template
 	templatesMu sync.RWMutex
+
+	// profile tracks tolerance events (spec deviations absorbed
+	// during this session). Exposed via ComplianceProfile(); a
+	// summary line is logged on Disconnect. See compliance/profile.go
+	// and docs/protocols/emberplus.md §A9.
+	profile *compliance.Profile
+
+	// connIP / connPort are captured at Connect time for log context.
+	connIP   string
+	connPort int
+}
+
+// ComplianceProfile returns the live compliance profile for this
+// connection. Callers use it to classify the peer provider (strict
+// vs partial) and to drive a compatibility matrix.
+func (p *Plugin) ComplianceProfile() *compliance.Profile {
+	return p.profile
 }
 
 // treeEntry is the in-RAM record per decoded element. It keeps both the
@@ -149,17 +167,38 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.streamSubs = make(map[string][]int32)
 	p.streamIndex = make(map[int64][]string)
 	p.templates = make(map[string]*glow.Template)
+	p.profile = &compliance.Profile{}
+	p.connIP = ip
+	p.connPort = port
 	p.mu.Unlock()
 
 	s.SetOnElement(p.handleElements)
+	s.SetProfile(p.profile)
 	return s.Connect(ctx, ip, port)
 }
 
-// Disconnect releases every explicit stream subscription (Command 31)
-// then tears the session down. Safe to call on an already-disconnected
-// Plugin.
+// Disconnect releases every explicit stream subscription (Command 31),
+// logs the compliance profile summary (so each session leaves a
+// per-provider tolerance footprint in the log), then tears the session
+// down. Safe to call on an already-disconnected Plugin.
 func (p *Plugin) Disconnect() error {
 	p.unsubscribeAll()
+
+	if p.profile != nil {
+		summary := p.profile.SummaryLine()
+		class := p.profile.Classification()
+		if summary == "" {
+			p.logger.Info("emberplus: compliance profile",
+				"host", p.connIP, "port", p.connPort,
+				"classification", class)
+		} else {
+			p.logger.Info("emberplus: compliance profile",
+				"host", p.connIP, "port", p.connPort,
+				"classification", class,
+				"deviations", summary)
+		}
+	}
+
 	p.mu.Lock()
 	s := p.session
 	p.session = nil
@@ -623,10 +662,14 @@ func (p *Plugin) processElement(el glow.Element, parentPath []string, parentNumP
 // Qualified elements carry their full path explicitly; non-qualified
 // elements compose it from the parent path plus their own number.
 // Spec p.87/p.85: non-qualified Node/Parameter hold only [0] number.
-func resolveNumPath(explicit []int32, parent []int32, number int32) []int32 {
+//
+// When we take the derive branch we note the tolerance event on the
+// plugin's profile so the compatibility matrix can attribute it.
+func (p *Plugin) resolveNumPath(explicit []int32, parent []int32, number int32) []int32 {
 	if len(explicit) > 0 {
 		return cloneInt32Slice(explicit)
 	}
+	p.profile.Note(compliance.NonQualifiedElement)
 	out := make([]int32, 0, len(parent)+1)
 	out = append(out, parent...)
 	out = append(out, number)
@@ -823,7 +866,7 @@ func assignToValue(v *protocol.Value, kind protocol.ValueKind, value any) {
 // If the node arrives with no children, issues a lazy GetDirectory so we
 // can fetch the subtree on demand.
 func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []int32) {
-	numPath := resolveNumPath(n.Path, parentNumPath, n.Number)
+	numPath := p.resolveNumPath(n.Path, parentNumPath, n.Number)
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, n.Identifier)
 	}
@@ -867,7 +910,7 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []
 // processParameter stores a Parameter with full ParameterContents metadata
 // carried in obj constraints + glowParam pointer for lossless access.
 func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, parentNumPath []int32) {
-	numPath := resolveNumPath(param.Path, parentNumPath, param.Number)
+	numPath := p.resolveNumPath(param.Path, parentNumPath, param.Number)
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, param.Identifier)
 	}
@@ -937,7 +980,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 // connections into the existing State so lastChanged and ChangedBy stay
 // accurate — providers emit delta announcements, not full rewrites.
 func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPath []int32) {
-	numPath := resolveNumPath(m.Path, parentNumPath, m.Number)
+	numPath := p.resolveNumPath(m.Path, parentNumPath, m.Number)
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, m.Identifier)
 	}
@@ -986,7 +1029,7 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 // processFunction stores a Function record; invocation plumbing lives in
 // session.go.
 func (p *Plugin) processFunction(f *glow.Function, parentPath []string, parentNumPath []int32) {
-	numPath := resolveNumPath(f.Path, parentNumPath, f.Number)
+	numPath := p.resolveNumPath(f.Path, parentNumPath, f.Number)
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, f.Identifier)
 	}

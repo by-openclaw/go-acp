@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"acp/internal/protocol/emberplus/compliance"
 	"acp/internal/protocol/emberplus/glow"
 	"acp/internal/protocol/emberplus/s101"
 )
@@ -32,6 +33,29 @@ type Session struct {
 	// Keep-alive.
 	keepAliveInterval time.Duration
 	keepAliveDone     chan struct{}
+
+	// profile records tolerance events (spec deviations absorbed on
+	// the fly) per connection. Set by the Plugin via SetProfile.
+	profile *compliance.Profile
+}
+
+// SetProfile attaches a compliance profile for this session. Events
+// observed in the read loop (e.g. multi-frame reassembly) are noted
+// into it. Safe to call once before Connect.
+func (s *Session) SetProfile(p *compliance.Profile) {
+	s.mu.Lock()
+	s.profile = p
+	s.mu.Unlock()
+}
+
+// noteCompliance records a tolerance event in the session's profile,
+// if one is attached. Safe to call under any lock state — Profile.Note
+// is self-synchronised.
+func (s *Session) noteCompliance(event string) {
+	s.mu.Lock()
+	p := s.profile
+	s.mu.Unlock()
+	p.Note(event)
 }
 
 // NewSession creates a session (not yet connected).
@@ -263,6 +287,7 @@ func (s *Session) readLoop() {
 			// First fragment of a multi-packet message.
 			multiframeBuf = append([]byte{}, frame.Payload...)
 			s.logger.Debug("emberplus: multi-frame start", "len", len(frame.Payload))
+			s.noteCompliance(compliance.MultiFrameReassembly)
 			continue
 		case frame.Flags&s101.FlagLast != 0:
 			// Last fragment — assemble and decode.
