@@ -1,16 +1,21 @@
-# Ember+ — Scope of Work
+# Ember+ Connector
 
-Spec: **Ember+ Protocol Specification v2.50 rev.15 (2017-11-09)**, Lawo GmbH.
-Source PDF: [assets/emberplus/Ember+ Documentation.pdf](../../assets/emberplus/Ember+%20Documentation.pdf).
-Authoritative type definitions: **Glow DTD ASN.1 Notation (p.83–93)**.
-Reference implementation studied: `assets/smh/` (consumer + provider TypeScript).
-
-All Go identifiers mirror Ember+ spec names exactly. No third-party library terms.
-Paths use `.` separator (e.g. `router.oneToN.matrix`).
+Consumer connector for the Ember+ protocol (Lawo Glow DTD over S101/TCP).
 
 ---
 
-## Spec page index
+## References
+
+| Document | Path | Description |
+|---|---|---|
+| Spec (authoritative) | [assets/emberplus/Ember+ Documentation.pdf](../../assets/emberplus/Ember+%20Documentation.pdf) | Ember+ Protocol Specification v2.50 rev.15 (2017-11-09), Lawo GmbH |
+| Formulas | [assets/emberplus/Ember+ Formulas.pdf](../../assets/emberplus/Ember+%20Formulas.pdf) | Parameter formula syntax reference |
+| Protocol reference | [CLAUDE.md](../../CLAUDE.md) — section "Ember+" | Wire format, methods, object types |
+| Source code | [internal/protocol/emberplus/](../../internal/protocol/emberplus/) | Plugin implementation |
+| Unit tests | [internal/protocol/emberplus/glow/glow_test.go](../../internal/protocol/emberplus/glow/glow_test.go) | BER + element decode tests |
+| Matrix tests | [internal/protocol/emberplus/matrix/state_test.go](../../internal/protocol/emberplus/matrix/state_test.go) | canConnect rule coverage |
+
+### Spec page index (for debugging — Ctrl+F in PDF)
 
 | Topic | Section | Page |
 |---|---|---|
@@ -24,108 +29,126 @@ Paths use `.` separator (e.g. `router.oneToN.matrix`).
 | Schema extensions | Ember+ 1.3 | 51–53 |
 | Template extensions | Ember+ 1.4 | 54–58 |
 | Keep-Alive mechanism | Behaviour rules | 74 |
-| Notifications (value change announce) | Behaviour rules | 74–75 |
+| Notifications (value-change announce) | Behaviour rules | 74–75 |
 | S101 framing — escaping (variant 1) | Message Framing | 78 |
 | S101 framing — non-escaping (variant 2) | Message Framing | 79–80 |
 | S101 Messages (types, commands) | S101 Messages | 81–82 |
 | Glow DTD ASN.1 Notation (authoritative) | Glow DTD | 83–93 |
 | CRC-16 lookup table | Appendix | 94 |
 
-## Application-defined tags (from DTD, p.83–93, verified)
+---
 
-| Type | Tag | Page |
+## Transport
+
+S101 over TCP. One framing layer (variant 1 — escaping) is implemented;
+variant 2 (non-escaping) is not needed by any tested provider.
+
+| Field | Value | Notes |
 |---|---|---|
-| RootElementCollection | APPLICATION[0] | 93 |
-| Parameter | APPLICATION[1] | 85 |
-| Command | APPLICATION[2] | 86 |
-| Node | APPLICATION[3] | 87 |
-| ElementCollection | APPLICATION[4] | 92 |
-| StreamEntry | APPLICATION[5] | 93 |
-| StreamCollection | APPLICATION[6] | 93 |
-| StringIntegerPair | APPLICATION[7] | 86 |
-| StringIntegerCollection | APPLICATION[8] | 86 |
-| QualifiedParameter | APPLICATION[9] | 85 |
-| QualifiedNode | APPLICATION[10] | 87 |
-| StreamDescription | APPLICATION[12] | 86 |
-| Matrix | APPLICATION[13] | 88 |
-| Target | APPLICATION[14] | 89 |
-| Source | APPLICATION[15] | 89 |
-| Connection | APPLICATION[16] | 89 |
-| QualifiedMatrix | APPLICATION[17] | 89 |
-| Label | APPLICATION[18] | 89 |
-| Function | APPLICATION[19] | 91 |
-| QualifiedFunction | APPLICATION[20] | 91 |
-| TupleItemDescription | APPLICATION[21] | 91 |
-| Invocation | APPLICATION[22] | 91 |
-| InvocationResult | APPLICATION[23] | 92 |
-| Template | APPLICATION[24] | 84 |
-| QualifiedTemplate | APPLICATION[25] | 84 |
+| TCP port (typical) | 9000 | Some provider builds use 9092 (TinyEmberPlusRouter) |
+| Framing | S101 variant 1 | BOF 0xFE, EOF 0xFF, byte-stuff ≥ 0xF8 with 0xFD prefix |
+| CRC | CRC-CCITT16, polynomial 0x8408, init 0xFFFF, inverted | Validated on every frame |
+| Keep-alive | Bidirectional | Each side sends Cmd 1 (req), the other replies Cmd 2 (resp); ~10s interval |
+| Multi-frame | `FlagFirst` (0x80), `FlagLast` (0x40), `FlagSingle` (0xC0) | Payloads > ~1 KB are reassembled |
 
-## Command numbers (p.31, DTD CommandType)
+### Firewall rules
 
-| Action | Number | Extra field |
-|---|---|---|
-| Subscribe | 30 | — |
-| Unsubscribe | 31 | — |
-| GetDirectory | 32 | dirFieldMask (context 1) |
-| Invoke | 33 | invocation (context 2) |
+```
+TCP 9000  outbound      (default Ember+ port)
+TCP 9092  outbound      (TinyEmberPlus Router variant)
+```
+
+### CLI transport selection
+
+```
+acp walk 127.0.0.1 --protocol emberplus --port 9000 --slot 0
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --slot 0
+```
 
 ---
 
-## Phase 0 — Baseline (shipped on `main`)
+## Data Model Layers
 
-| Area | Status |
-|---|---|
-| S101 framing (variant 1) + CRC-16 + byte stuffing | ✓ |
-| S101 multi-frame reassembly (First/Last/Single) | ✓ |
-| BER reader/writer | ✓ |
-| Glow tag constants | ✓ corrected in A1 (was: `TupleItemDescription=18` wrong — spec p.91 = 21; missing `Root APP[0]`, `Label APP[18]`, `StreamDescription APP[12]`, `QualifiedTemplate APP[25]`) |
-| Numeric path ↔ identifier map | ✓ |
-| GetDirectory (walk) | ✓ 4494 objs on TinyEmber+ |
-| GetValue / SetValue (path) | ✓ |
-| Subscribe / Unsubscribe (path + wildcard) | ✓ |
-| Matrix connect (absolute/connect/disconnect) | ✓ |
-| Function invoke + InvocationResult decode | ✓ |
-| CLI: walk, get, set, watch, matrix, invoke | ✓ |
+```
+S101 frame (BOF … CRC … EOF)
+  → BER payload (ASN.1 encoding)
+    → Glow Root envelope [APPLICATION 0] (spec p.93)
+      → one of:
+          RootElementCollection  [APPLICATION 11]
+          StreamCollection       [APPLICATION  6]
+          InvocationResult       [APPLICATION 23]
+```
 
-Port 9000 provider: connects + keep-alive OK, GetDirectory reply missing. Tracked separately.
+Every consumer request we emit is wrapped with the full
+`[APP 0] { [APP 11] { CTX[0] { element } } }` envelope. Some providers
+accept bare `[APP 11]` (lax); strict providers reject it.
 
 ---
 
-# PART A — Consumer (priority)
+## Glow Element Types
 
-## A1. Glow decoder — spec-complete rebuild
+All types verified against the **Glow DTD ASN.1 Notation (pp. 83–93)**.
 
-Audit every tag and CTX against the DTD. Apply SET unwrap on every `contents` container. BER TLVs self-delimit — advance by length only (no padding).
+### Application-defined tags
 
-### NodeContents — SET, p.87
+| Type | Tag | Page | Supported |
+|---|---|---|---|
+| Root envelope | APPLICATION[0] | 93 | ✓ encode + decode |
+| Parameter | APPLICATION[1] | 85 | ✓ |
+| Command | APPLICATION[2] | 86 | ✓ |
+| Node | APPLICATION[3] | 87 | ✓ |
+| ElementCollection | APPLICATION[4] | 92 | ✓ |
+| StreamEntry | APPLICATION[5] | 93 | ✓ |
+| StreamCollection | APPLICATION[6] | 93 | ✓ |
+| StringIntegerPair | APPLICATION[7] | 86 | ✓ |
+| StringIntegerCollection | APPLICATION[8] | 86 | ✓ |
+| QualifiedParameter | APPLICATION[9] | 85 | ✓ |
+| QualifiedNode | APPLICATION[10] | 87 | ✓ |
+| RootElementCollection | APPLICATION[11] | 93 | ✓ |
+| StreamDescription | APPLICATION[12] | 86 | ✓ |
+| Matrix | APPLICATION[13] | 88 | ✓ |
+| Target | APPLICATION[14] | 89 | ✓ |
+| Source | APPLICATION[15] | 89 | ✓ |
+| Connection | APPLICATION[16] | 89 | ✓ |
+| QualifiedMatrix | APPLICATION[17] | 89 | ✓ |
+| Label | APPLICATION[18] | 89 | ✓ |
+| Function | APPLICATION[19] | 91 | ✓ |
+| QualifiedFunction | APPLICATION[20] | 91 | ✓ |
+| TupleItemDescription | APPLICATION[21] | 91 | ✓ |
+| Invocation | APPLICATION[22] | 91 | ✓ encode + decode |
+| InvocationResult | APPLICATION[23] | 92 | ✓ decode (success default true when omitted) |
+| Template | APPLICATION[24] | 84 | ✓ decode (instantiation = provider; out of consumer scope) |
+| QualifiedTemplate | APPLICATION[25] | 84 | ✓ decode |
+
+### Node — NodeContents SET (p.87)
 
 | CTX | Field | Type | Notes |
 |---|---|---|---|
 | 0 | identifier | EmberString | |
 | 1 | description | EmberString | |
-| 2 | **isRoot** | BOOLEAN | ← spec CTX 2, not isOnline |
+| 2 | isRoot | BOOLEAN | — |
 | 3 | isOnline | BOOLEAN | default true |
 | 4 | schemaIdentifiers | EmberString | newline-separated |
 | 5 | templateReference | RelOID | |
 
-Node wrapper APPLICATION[3]: `{ 0:number, 1:contents, 2:children }`.
+Node wrapper APPLICATION[3] / QualifiedNode APPLICATION[10]:
+`{ 0:number|path, 1:contents, 2:children }`.
 
-### ParameterContents — SET, p.85
+### Parameter — ParameterContents SET (p.85)
 
 | CTX | Field | Type |
 |---|---|---|
 | 0 | identifier | EmberString |
 | 1 | description | EmberString |
-| 2 | value | Value (CHOICE int/real/string/bool/octets/null) |
+| 2 | value | Value CHOICE (int/real/string/bool/octets/null) |
 | 3 | minimum | MinMax |
 | 4 | maximum | MinMax |
-| 5 | access | ParameterAccess (0 none, 1 read, 2 write, 3 readWrite) |
-| 6 | format | EmberString |
+| 5 | access | ParameterAccess (0 none / 1 read / 2 write / 3 readWrite) |
+| 6 | format | EmberString (printf-style; `°` introduces unit) |
 | 7 | enumeration | EmberString (legacy newline list) |
 | 8 | factor | Integer32 |
 | 9 | isOnline | BOOLEAN |
-| 10 | formula | EmberString (provider\|consumer split) |
+| 10 | formula | EmberString (`provider\|consumer` split) |
 | 11 | step | Integer32 |
 | 12 | default | Value |
 | 13 | type | ParameterType (null/integer/real/string/boolean/trigger/enum/octets) |
@@ -135,14 +158,14 @@ Node wrapper APPLICATION[3]: `{ 0:number, 1:contents, 2:children }`.
 | 17 | schemaIdentifiers | EmberString |
 | 18 | templateReference | RelOID |
 
-### MatrixContents — SET, p.88
+### Matrix — MatrixContents SET (p.88)
 
 | CTX | Field | Type |
 |---|---|---|
 | 0 | identifier | EmberString |
 | 1 | description | EmberString |
-| 2 | type | MatrixType (0 oneToN, 1 oneToOne, 2 nToN) |
-| 3 | addressingMode | MatrixAddressingMode (0 linear, 1 nonLinear) |
+| 2 | type | MatrixType (0 oneToN / 1 oneToOne / 2 nToN) |
+| 3 | addressingMode | MatrixAddressingMode (0 linear / 1 nonLinear) |
 | 4 | targetCount | Integer32 |
 | 5 | sourceCount | Integer32 |
 | 6 | maximumTotalConnects | Integer32 (nToN) |
@@ -153,25 +176,26 @@ Node wrapper APPLICATION[3]: `{ 0:number, 1:contents, 2:children }`.
 | 11 | schemaIdentifiers | EmberString |
 | 12 | templateReference | RelOID |
 
-Matrix wrapper APPLICATION[13]: `{ 0:number, 1:contents, 2:children, 3:targets, 4:sources, 5:connections }`.
+Matrix wrapper APPLICATION[13] / QualifiedMatrix APPLICATION[17]:
+`{ 0:number|path, 1:contents, 2:children, 3:targets, 4:sources, 5:connections }`.
 
-### Connection — APPLICATION[16], p.89
+### Connection — APPLICATION[16] (p.89)
 
-| CTX | Field | Type |
-|---|---|---|
-| 0 | target | Integer32 |
-| 1 | sources | PackedNumbers (RelOID of source numbers) |
-| 2 | operation | ConnectionOperation (0 absolute, 1 connect, 2 disconnect) |
-| 3 | disposition | ConnectionDisposition (0 tally, 1 modified, 2 pending, 3 locked) |
+| CTX | Field | Type | Default |
+|---|---|---|---|
+| 0 | target | Integer32 | — |
+| 1 | sources | PackedNumbers RelOID | empty = none |
+| 2 | operation | ConnectionOperation (0 absolute / 1 connect / 2 disconnect) | absolute |
+| 3 | disposition | ConnectionDisposition (0 tally / 1 modified / 2 pending / 3 locked) | tally |
 
-### Label — APPLICATION[18], p.89
+### Label — APPLICATION[18] (p.89)
 
 | CTX | Field | Type |
 |---|---|---|
 | 0 | basePath | RelOID |
 | 1 | description | EmberString |
 
-### FunctionContents — SET, p.91
+### Function — FunctionContents SET (p.91)
 
 | CTX | Field | Type |
 |---|---|---|
@@ -183,332 +207,381 @@ Matrix wrapper APPLICATION[13]: `{ 0:number, 1:contents, 2:children, 3:targets, 
 
 TupleItemDescription APPLICATION[21]: `{ 0:type ParameterType, 1:name EmberString }`.
 
-### Invocation — APPLICATION[22], p.91
+### Invocation — APPLICATION[22] (p.91)
 
 | CTX | Field | Type |
 |---|---|---|
-| 0 | invocationId | Integer32 |
+| 0 | invocationId | Integer32 (consumer-allocated, 1..255) |
 | 1 | arguments | Tuple (SEQ OF CTX[0] Value) |
 
-### InvocationResult — APPLICATION[23], p.92
+### InvocationResult — APPLICATION[23] (p.92)
 
 | CTX | Field | Type | Notes |
 |---|---|---|---|
-| 0 | invocationId | Integer32 | |
-| 1 | success | BOOLEAN | **default true when omitted** |
-| 2 | result | Tuple | SEQ OF CTX[0] Value |
+| 0 | invocationId | Integer32 | echoed by provider |
+| 1 | success | BOOLEAN | **default true when omitted** (spec p.92) |
+| 2 | result | Tuple (SEQ OF CTX[0] Value) | empty when void |
 
-### StreamEntry — APPLICATION[5], p.93
+### StreamEntry — APPLICATION[5] (p.93)
 
 | CTX | Field | Type |
 |---|---|---|
 | 0 | streamIdentifier | Integer32 |
-| 1 | streamValue | Value |
+| 1 | streamValue | Value CHOICE |
 
-### StreamDescription — APPLICATION[12], p.86
+### StreamDescription — APPLICATION[12] (p.86)
+
+Describes how to decode a shared stream blob at a given byte offset:
 
 | CTX | Field | Type |
 |---|---|---|
-| 0 | format | StreamFormat (unsignedInt8..IEEE754 float/double BE+LE) |
+| 0 | format | StreamFormat enum |
 | 1 | offset | Integer32 |
 
-### Template / QualifiedTemplate — APPLICATION[24/25], p.84
+`StreamFormat` values implemented (all 14 per DTD p.86):
 
-Template SET: `{ 0:number, 1:element TemplateElement, 2:description }`.
-QualifiedTemplate SET: `{ 0:path RelOID, 1:element, 2:description }`.
-TemplateElement CHOICE over Parameter/Node/Matrix/Function.
+```
+unsignedInt8             0
+unsignedInt16BE          2
+unsignedInt16LE          3
+unsignedInt32BE          4
+unsignedInt32LE          5
+unsignedInt64BE          6
+unsignedInt64LE          7
+signedInt8               8
+signedInt16BE           10
+signedInt16LE           11
+signedInt32BE           12
+signedInt32LE           13
+signedInt64BE           14
+signedInt64LE           15
+float32BE               20
+float32LE               21
+float64BE               22
+float64LE               23
+```
 
-### Collections
+### Template / QualifiedTemplate — APPLICATION[24] / [25] (p.84)
 
-- Root envelope APPLICATION[0] (p.93) — outer CHOICE wrapping one of: RootElementCollection | StreamCollection | InvocationResult.
-- RootElementCollection APPLICATION[11] (p.93) — SEQ OF CTX[0] RootElement.
-- ElementCollection APPLICATION[4] — SEQ OF CTX[0] Element (Element CHOICE of Parameter/Node/Command/Matrix/Function/Template).
-- StreamCollection APPLICATION[6] — SEQ OF CTX[0] StreamEntry.
+```
+Template SET          { 0:number,  1:element TemplateElement, 2:description }
+QualifiedTemplate SET { 0:path,    1:element TemplateElement, 2:description }
+TemplateElement CHOICE over Parameter / Node / Matrix / Function
+```
 
-### Command — APPLICATION[2], p.86
+### Command — APPLICATION[2] (p.86)
 
-`{ 0:number CommandType, options CHOICE { [1] dirFieldMask FieldFlags, [2] invocation Invocation } }`.
+```
+Command ::= SEQUENCE {
+  number   [0] CommandType,                        -- 30 subscribe, 31 unsubscribe,
+                                                   -- 32 getDirectory, 33 invoke
+  options  CHOICE {
+    dirFieldMask [1] FieldFlags,                   -- valid only when number = 32
+    invocation   [2] Invocation                    -- valid only when number = 33
+  } OPTIONAL
+}
+```
+
+Mask values sent by our consumer: `dirFieldMask = All (-1)` — asks the
+provider to return every property. Other documented values: Default (0),
+Identifier (1), Description (2), Tree (3), Value (4), Sparse (-2, Glow
+2.50+).
 
 ---
 
-## A2. Plugin tree model (spec-accurate)
+## Paths
 
-| Responsibility | Implementation |
-|---|---|
-| Element store | `map[pathKey]*Entry`, O(1) lookup |
-| Canonical path key | numeric RelOID joined by `.` |
-| String-path → numeric | walker fills `numPath` map per Node/Parameter/Matrix/Function |
-| Lookup order | numeric path → string path → identifier label → numeric ID |
-| Startup | tree empty ⇒ auto-walk on first GetValue/SetValue/Subscribe |
-| Value freshness | `stale` (disk) / `live` (confirmed) / `updated` (recent announce) |
+Ember+ identifies every element by a RELATIVE-OID. We index the tree
+three ways after walk:
 
-Per-element metadata (all spec fields above) held in RAM. Stale cache respects CLAUDE.md rules.
-
----
-
-## A3. Subscribe + announces (p.74–75, p.31)
-
-| Parameter kind | Mechanism | Spec ref |
+| Key | Example | Use |
 |---|---|---|
-| Regular (no streamIdentifier) | Implicit: provider announces on change after GetDirectory | p.74 Notifications |
-| Streamed (streamIdentifier set) | Explicit `Command 30` required; dispatch via StreamCollection | p.30 StreamIdentifier; p.31 Subscribe |
-| Wildcard watch-all | Session-local `"*"` callback; every processed parameter notified | our ext |
+| Numeric path (primary) | `1.1.2.190` | Unambiguous, O(1) |
+| Identifier path | `router.oneToN.labels.targets.t-190` | Human-readable, O(1) |
+| Bare label | `t-190` | May collide — warned on ambiguity |
 
-Unsubscribe on session close: iterate registered subscriptions, send `Command 31` per path.
+Separator is `.` everywhere. Non-qualified Nodes/Parameters that omit
+the RELATIVE-OID get their numeric path synthesised from the walk
+ancestry (see Compliance — `non_qualified_element`).
 
 ---
 
-## A4. Matrix — full feature set (p.33–46)
+## Discovery (Walk)
 
-### Raw wire state (decoded verbatim)
+Walk sends `Root[Command(GetDirectory, dirFieldMask=All)]` at the top
+level, then follows each Node's children using a `QualifiedNode(path) →
+Command(GetDirectory)` request. A settle timer ends the walk after 2 s
+of silence (bounded at 15 s).
 
-`connections: map[target]*Connection` mirrors wire. Fields: target, sources[], operation, disposition.
+```
+acp walk 127.0.0.1 --protocol emberplus --port 9000 --slot 0
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --slot 0 --path router.oneToN
+```
 
-### parametersLocation resolution (p.38)
+Typical scales:
 
-- CHOICE basePath RelOID = absolute path to params node.
-- CHOICE inline Integer32 = subidentifier below matrix's own node.
-- Addressing under the params node (p.38):
-  - `targets.<n>` → per-target params
-  - `sources.<n>` → per-source params
-  - `connections.<t>.<s>` → per-connection params (gain lives here)
-
-### canConnect validation (pre-flight on client)
-
-| Type | Rule | Spec ref |
+| Provider | Objects | Walk time |
 |---|---|---|
-| oneToN | 1 source per target; connect replaces | p.33 |
-| oneToOne | 1 source per target AND source used once globally | p.33 |
-| nToN | `len(sources[t]) <= maxConnectsPerTarget`; `sum <= maxTotalConnects` | p.33–34 |
-| any | reject if target's disposition == `locked` | p.89 |
+| TinyEmberPlusRouter (9092) | 4494 | 2–3 s |
+| TinyEmberPlus DTD 2.31 (9000) | 1860 | ~2 s |
 
-### MatrixConnection — our enhancement vs spec
+### Value freshness
 
-Wire Connection stays spec-pure. We hold a derived record alongside for the UI:
+Each entry carries a freshness state:
 
-| Field | Source | Note |
+| State | Trigger | UI hint |
 |---|---|---|
-| target, sources[], operation, disposition | spec Connection | verbatim |
-| `lastChangedUnixMs` | us | audit timestamp |
-| `changeSource` (user/walk/announce) | us | attribution |
-| `resolvedGainDb` | follow gainParameterNumber path, GET value | convenience |
-| `labelSource`, `labelTarget` | resolve labels basePath | convenience |
-
-These are derived — never serialized onto the wire.
+| `live` | Observed in walk, get, or announcement | Normal |
+| `updated` | Value-change announcement just arrived | Flash |
+| `stale` | Loaded from disk cache (not yet implemented) | Gray/italic |
 
 ---
 
-## A5. Function invocation (p.47–50)
+## Get / Set
 
-| Step | Detail |
-|---|---|
-| ID allocation | monotonic Integer32 per session; skip 0 |
-| Encode args | Invocation APP[22] with Tuple (SEQ of CTX[0] Value) |
-| Correlate | `map[invocationId]chan *InvocationResult`, 10s timeout |
-| Decode result | APP[23]; `success` defaults **true** when field absent; `result` = Tuple |
+Values are cached in-RAM from the walk and updated by announcements.
+`get` reads the cached value; `set` sends a SetValue request.
 
----
+```
+acp get 127.0.0.1 --protocol emberplus --port 9000 --path router.oneToN.labels.targets.t-1
+acp set 127.0.0.1 --protocol emberplus --port 9000 --path router.oneToN.labels.targets.t-1 --value "A1-TEST"
+```
 
-## A6. Stream handling (p.22 + p.30 + p.86 + p.93)
-
-| Task | Detail |
-|---|---|
-| Build index | on walk, if Parameter has streamIdentifier → add `map[streamIdentifier]path` |
-| Explicit subscribe | for each streamed param: send `Command 30` |
-| Receive | StreamCollection APP[6] at top level; dispatch each StreamEntry |
-| StreamDescription | if present on param, slice payload at `offset` and decode per `format` endianness |
-| Deliver | fire subscribed callbacks with decoded value |
+`--value` is parsed according to the parameter's declared type
+(integer/real/string/boolean/enum). An unknown type falls back to
+string.
 
 ---
 
-## A7. Template support — read-only consumer (p.54–58)
+## Subscriptions (Announcements)
 
-| Task | Detail |
-|---|---|
-| Template APP[24] / QualifiedTemplate APP[25] | decode via TemplateElement CHOICE |
-| templateReference RelOID on Node/Parameter/Matrix/Function | resolve lazily to template path |
-| GetDirectory on template | normal walk; don't instantiate (consumer) |
+Spec p.30–31. Two mechanisms:
 
----
-
-## A8. CLI surface
-
-| Command | Flags |
-|---|---|
-| `acp ember walk` | `--path a.b.c` |
-| `acp ember get` | `--path a.b.c` |
-| `acp ember set` | `--path a.b.c --value X` (typed from tree metadata) |
-| `acp ember watch` | `--path a.b.c` or `*` |
-| `acp ember matrix` | `--path a.b.c --target N --sources N,N --op absolute\|connect\|disconnect` |
-| `acp ember invoke` | `--path a.b.c --args v1,v2,...` (types from FunctionContents.arguments) |
-| `acp ember stream` | `--id N` (subscribe to a streamIdentifier) |
-
----
-
-## A9. Compliance audit & provider tolerance
-
-Every Part A item audited against the Glow DTD (pp. 83–93) after
-wire-testing on multiple providers. "Status" column:
-
-- **strict** — wire layout matches DTD byte-for-byte
-- **strict + ext** — DTD-compliant plus additive RAM-only metadata
-- **lenient** — decoder accepts non-compliant shapes observed in
-  the field (we never emit them)
-- **gap** — field decoded but downstream feature not yet wired
-
-### Compliance status per Part A item
-
-| Item | Status | Evidence |
+| Parameter kind | Mechanism | Wire traffic |
 |---|---|---|
-| A1 NodeContents 0..5 | strict | decoder.go decodeNodeContents, CTX 2 = isRoot not isOnline |
-| A1 ParameterContents 0..18 | strict | decoder.go decodeParamContents covers every field |
-| A1 MatrixContents 0..12 | strict | decoder.go decodeMatrixContents incl. parametersLocation CHOICE |
-| A1 Connection APP[16] | strict | default Operation=absolute, Disposition=tally per p.89 |
-| A1 Label APP[18] | strict | decoder.go decodeLabel |
-| A1 FunctionContents 0..4 | strict | decoder.go decodeFuncContents |
-| A1 Invocation APP[22] | strict | decodeInvocation |
-| A1 InvocationResult APP[23] | strict | Success defaults true when field omitted (spec p.92) |
-| A1 StreamEntry APP[5] | strict | decodeStreamCollection |
-| A1 StreamDescription APP[12] | strict | decodeStreamDescription |
-| A1 Template APP[24] / QualifiedTemplate APP[25] | strict | decodeTemplate with qualified flag |
-| A1 Root envelope APP[0] | strict | wrapRoot emits APP[0]{APP[11]{CTX[0]{child}}} |
-| A2 path-first tree model | strict + ext | numIndex / pathIndex / labelIndex + Freshness |
-| A2 value freshness | gap | states defined, disk-cache load not yet implemented |
-| A3 regular subscribe (implicit) | strict | no Command 30 sent for StreamIdentifier==0 |
-| A3 streamed subscribe (explicit) | strict | Command 30 sent for StreamIdentifier!=0 |
-| A4 canConnect oneToN/oneToOne/nToN | strict | matrix/state.go CanConnect with spec-cited errors |
-| A4 disposition locked reject | strict | CanConnect rejects on ConnDispLocked |
-| A4 derived gain/labels | gap | fields declared, resolution via parametersLocation TBD |
-| A5 invocation ID 1..255 | strict | session.go NextInvocationID skips 0 |
-| A5 Tuple unwrap | strict + lenient | decodeTuple handles both SEQUENCE-wrapped and bare CTX[0] |
-| A6 StreamCollection dispatch | strict | plugin.go dispatchStreams |
-| A6 StreamDescription format+offset | strict | decodeStreamBytes covers all 14 StreamFormat values |
-| A7 Template decode | strict | APP[24]+APP[25] with TemplateElement CHOICE |
-| A7 templateReference resolve | strict | ResolveTemplate(path) |
-| A7 template instantiation | **not in scope** | consumer-side only; provider work in Part B |
-| A8 CLI surface | strict | walk / get / set / watch / matrix / invoke / stream |
+| Regular (streamIdentifier = 0 or absent) | Implicit — provider announces on change after GetDirectory | None beyond Walk |
+| Streamed (streamIdentifier ≠ 0) | Explicit `Command 30` per path | Subscribe per param + StreamCollection per tick |
 
-### Observed provider quirks (non-compliance from real devices)
+On Disconnect the plugin sends `Command 31` for every streamed sub.
 
-Each row = a deviation from spec that our consumer transparently
-handles. No behaviour change is required from the user.
+```
+acp watch  127.0.0.1 --protocol emberplus --port 9000
+acp watch  127.0.0.1 --protocol emberplus --port 9000 --path router.oneToN.labels.targets.t-1
+acp stream 127.0.0.1 --protocol emberplus --port 9000 --id 45
+```
 
-| # | Provider | Quirk | Our mitigation |
+---
+
+## Matrix Operations
+
+Raw wire state (per provider tally) kept under each Matrix entry as a
+`matrix.State`. CLI sends a Connection; plugin validates locally
+(`canConnect`) before putting it on the wire.
+
+```
+acp matrix 127.0.0.1 --protocol emberplus --port 9092 \
+    --path router.oneToN.matrix --target 1 --sources 5 --op absolute
+```
+
+### canConnect rules (pre-flight validation, spec p.33–34 + p.89)
+
+| Type | Rule |
+|---|---|
+| oneToN | Max 1 source per target; connect replaces |
+| oneToOne | Max 1 source per target AND source used ≤ 1× globally |
+| nToN | `len(sources[t]) ≤ MaxConnectsPerTarget`; `sum(all tgts) ≤ MaxTotalConnects` |
+| any | Reject if target's disposition == `locked` |
+
+Rejection on invalid op returns a spec-cited error:
+
+```
+error: emberplus: matrix validation:
+       oneToN matrix: target 1 would have 2 sources (max 1) [spec p.33]
+```
+
+### Derived state (our extension over spec)
+
+Wire Connection stays spec-pure; we hold a richer record alongside for UIs:
+
+| Field | Source |
+|---|---|
+| `Target, Sources[], Operation, Disposition` | spec Connection verbatim |
+| `LastChanged` | audit timestamp |
+| `ChangedBy` (walk / announce / user) | attribution |
+| `LabelTarget / LabelSources[]` | resolved from `MatrixContents.labels.basePath` |
+| `ResolvedGainDb` | follows `gainParameterNumber` under `parametersLocation` |
+
+Derived fields are RAM-only; never serialized onto the wire.
+
+### parametersLocation addressing (spec p.38)
+
+```
+parametersLocation is CHOICE { basePath RelOID, inline Integer32 }
+
+Under that node:
+  targets.<n>                     → per-target params
+  sources.<n>                     → per-source params
+  connections.<t>.<s>             → per-connection params (gain lives here)
+```
+
+---
+
+## Function Invocation
+
+Spec p.47–50. Session-local monotonic `invocationId` (range 1..255,
+0 reserved for announcements).
+
+```
+acp invoke 127.0.0.1 --protocol emberplus --port 9092 \
+    --path router.functions.add --args 3,5
+→ invocation 1: success=true
+  result: [8]
+```
+
+Args are auto-typed (integer first, then float, then string, then bool).
+A 10 s timeout guards the response channel.
+
+---
+
+## Streams
+
+Spec p.22, p.30–31, p.86, p.93.
+
+1. Walk indexes every Parameter with a non-zero `streamIdentifier`.
+2. On subscribe, the plugin sends `Command 30` for every streamed path.
+3. The provider transmits `StreamCollection { StreamEntry+ }` frames.
+4. For each entry, the plugin:
+   - looks up every parameter sharing that `streamIdentifier`
+   - if `streamDescriptor` is present, slices the blob at `offset` and
+     decodes per `format` (all 14 StreamFormat values implemented)
+   - delivers the decoded value via the registered callback and flips
+     the entry's freshness to `updated`
+
+---
+
+## Templates
+
+Spec p.54–58 (Ember+ 1.4).
+
+Consumer-side: Template APPLICATION[24] and QualifiedTemplate
+APPLICATION[25] are decoded and stored. `templateReference` (RelOID) on
+any Node/Parameter/Matrix/Function can be resolved to its prototype via
+`Plugin.ResolveTemplate(path)`.
+
+Instantiation (merging template properties into referencing elements)
+is **not in the consumer**; that's provider-side work (Part B, future).
+
+---
+
+## Compliance & Tolerance
+
+Every provider we tested deviates from the spec somewhere. Our plugin
+tolerates each deviation silently and counts it into a per-session
+`compliance.Profile`. The `acp profile` CLI surfaces the profile so you
+can build a compatibility matrix per device.
+
+### Design principle
+
+**Fail-open, not fail-hard.** Unless the frame is outright corrupt (bad
+BER structure, wrong CRC), decode what we can and keep going. Users
+should be able to read values from a non-compliant provider without
+touching their code.
+
+### Tolerance features
+
+| Feature | Decoder entry point |
+|---|---|
+| Accept bare `[APP 11]` without outer `[APP 0]` Root envelope | `decodeElements` dispatches both |
+| Accept contents without the UNIVERSAL SET envelope | `unwrapSet` falls back to CTX children |
+| Accept Tuple as direct CTX[0] values (no SEQUENCE) | `decodeTuple` second pass |
+| Accept ElementCollection inlined without APP[4] wrapper | `decodeElementCollection` walks both |
+| Accept Label / StringIntegerPair at variable nesting | `flattenForApp` recurses |
+| Accept primitive-form scalars inside contents | `unwrapPrimitive` + `decodeAnyValue` |
+| Synthesise numeric path for non-qualified elements | `Plugin.resolveNumPath` |
+| Reassemble S101 `FlagFirst / FlagLast` chains | `session.readLoop` |
+| Default `Operation=absolute`, `Disposition=tally` on Connection | spec p.89 |
+| Default `Success=true` on InvocationResult | spec p.92 |
+| Skip unknown APP / CTX tags silently | decoder switch default |
+| Auto-walk on first `get / set / subscribe` | `Plugin.ensureWalked` |
+
+### compliance.Profile event labels
+
+| Event | Meaning |
+|---|---|
+| `non_qualified_element` | Node / Parameter / Matrix / Function delivered without RelOID path |
+| `multi_frame_reassembly` | S101 FlagFirst/FlagLast chain observed |
+| `invocation_success_default` | InvocationResult omitted the `success` field |
+| `connection_operation_default` | Connection omitted the `operation` field |
+| `connection_disposition_default` | Connection omitted the `disposition` field |
+| `contents_set_omitted` | Contents arrived without UNIVERSAL SET envelope |
+| `tuple_direct_ctx` | Tuple arrived as bare CTX[0] items |
+| `element_collection_bare` | ElementCollection inlined without APP[4] wrapper |
+| `unknown_tag_skipped` | Vendor-private APP / CTX tag observed |
+
+A provider is classified **strict** if zero events fire, **partial** if
+any event fires.
+
+### Provider matrix (from this machine)
+
+Run `acp profile <host>` to regenerate.
+
+| Host:Port | Provider | Objects | Classification | Deviations |
+|---|---|---|---|---|
+| 127.0.0.1:9092 | TinyEmberPlusRouter | 4494 | partial | `multi_frame_reassembly=4` |
+| 127.0.0.1:9000 | TinyEmberPlus DTD 2.31 | 1860 | partial | `multi_frame_reassembly=3`, `non_qualified_element=2619` |
+
+Disconnect log line (structured, ready for Loki / any aggregator):
+
+```
+emberplus: compliance profile host=127.0.0.1 port=9000 classification=partial
+  deviations="multi_frame_reassembly=3 non_qualified_element=2619"
+```
+
+### CLI
+
+```
+acp profile 127.0.0.1 --protocol emberplus --port 9000
+```
+
+---
+
+## Raw Capture
+
+```
+acp walk 127.0.0.1 --protocol emberplus --port 9000 --slot 0 --capture walk9000.jsonl
+```
+
+Format: JSONL, one line per wire message. Used for unit-test replay
+and protocol analysis.
+
+---
+
+## Errors
+
+Names follow the Ember+ spec and the smh TypeScript reference lib.
+
+| Error | When |
+|---|---|
+| `S101SocketError` | TCP connect / read / write failure |
+| `InvalidBERFormat` | Frame passes CRC but BER parse fails |
+| `MissingElementNumber` | Element wire-sent without `[0] number` |
+| `MissingElementContents` | Contents CTX[1] absent where required |
+| `UnknownElement` | Consumer asked for a path that never appeared in the walk |
+| `InvalidMatrixSignal` | Target / source number out of `targetCount / sourceCount` |
+| `PathDiscoveryFailure` | Walk could not resolve a RelOID prefix |
+| `InvalidFunctionCall` | Argument count / type mismatch vs `TupleDescription` |
+| `UnsupportedValue` | Go value cannot be encoded to any Glow scalar |
+
+CLI exit codes follow the top-level [README](../../README.md):
+0 success, 1 protocol error, 2 validation / usage, 3 transport, 5 bad flags.
+
+---
+
+## Test Devices
+
+| Device | IP | Port | Notes |
 |---|---|---|---|
-| 1 | TinyEmberPlusRouter 9092 | Accepts bare `[APP 11]` without the `[APP 0]` Root envelope (spec p.93 requires APP 0) | We always emit the spec-correct `[APP 0]` wrapper — accepted by both lax and strict providers |
-| 2 | TinyEmberPlus DTD 2.31 (9000) | Sends non-qualified Node/Parameter/Matrix/Function (only `[0] number`, no RELATIVE-OID path) | `resolveNumPath(explicit, parent, number)` derives the canonical numeric RelOID from the walk ancestry |
-| 3 | Several | Wrap ElementCollection inside APP[4] **or** emit CTX[0] children directly | `decodeElementCollection` walks both |
-| 4 | Several | Tuple arguments sent as bare CTX[0] values **or** wrapped in UNIVERSAL SEQUENCE | `decodeTuple` accepts both shapes |
-| 5 | Several | ParameterContents value CTX[2] emitted as a primitive-form INTEGER/UTF8 directly, instead of the usual constructed wrapper | `decodeAnyValue` handles both constructed and primitive shapes |
-| 6 | Several | `success` CTX[1] omitted on InvocationResult | Decoder defaults to `true` per spec p.92 |
-| 7 | Several | Deliver large walks across many S101 frames with `FlagFirst/FlagLast` | `session.go` reassembles FlagFirst→FlagLast into a single BER payload before decode |
-| 8 | Several | Emit Connection with no explicit `operation` / `disposition` field | Decoder defaults Operation=absolute, Disposition=tally per DTD p.89 |
-| 9 | Several | Label and StringIntegerPair collections nested at variable depth below the CTX wrapper | `flattenForApp(tlv, TagLabel)` walks down whatever structure the provider chose |
-| 10 | Several | Emit contents with or without an inner UNIVERSAL SET envelope | `unwrapSet(tlv)` returns the SET children if present, otherwise the CTX children directly |
+| TinyEmberPlusRouter | 127.0.0.1 | 9092 | Router variant, DTD 2.31, 4494 objects |
+| TinyEmberPlus | 127.0.0.1 | 9000 | Plain DTD 2.31, 1860 objects, strict spec |
 
-### Tolerance features already in the code
-
-| Feature | Reason |
-|---|---|
-| `flattenForApp(tlv, appTag)` | Provider styles nest APP tags at variable depth |
-| `unwrapSet(tlv)` | Some providers omit the UNIVERSAL SET envelope inside contents |
-| `unwrapPrimitive(tlv)` | Accepts both primitive and constructed BER encodings of scalar values |
-| `resolveNumPath(explicit, parent, number)` | Non-qualified elements get a synthesised numeric path |
-| `decodeAnyValue(tlv)` fallback to raw bytes | Unknown inner tags don't crash — returns raw buffer |
-| Unknown CTX / APP tags silently skipped | Vendor-private extensions don't break walk |
-| `decodeTuple` accepts SEQUENCE-or-direct | Handles at least two provider families |
-| S101 `FlagFirst / FlagLast` reassembly | Unlocks multi-frame provider responses |
-| InvocationResult success default `true` | Accepts the valid omission path per spec p.92 |
-| Connection Operation/Disposition defaults | DTD-blessed defaults when fields are absent |
-| Tree-empty auto-walk on get/set/subscribe | CLI / API callers don't need to know about Walk semantics |
-
-### Known gaps (not yet tolerant)
-
-| # | Gap | Impact | Planned fix |
-|---|---|---|---|
-| G1 | Disk-cache loading of parameter values is not implemented — `FreshnessStale` is never actually set | Cold-start UI needs a live walk before it can show values | Storage integration (out of Part A scope) |
-| G2 | Matrix `parametersLocation` CHOICE is decoded but not resolved — we do not yet follow the path to populate `resolvedGainDb` or per-target/source labels | `--matrix` output shows signal numbers only, not labels or gain values | Part A follow-up |
-| G3 | Template references decoded but properties from the template are not merged into referencing elements | Parameters that rely on a template for min/max/format show those fields empty | Part A follow-up |
-| G4 | CRC-CCITT16 mismatches cause the frame to be dropped silently | A miscomputing provider (rare) would appear as no-reply | Log warning + optional lenient mode |
-| G5 | DTD minor/major version bytes are hard-coded (31, 2) | A provider that strictly rejects version mismatches would refuse our S101 | Negotiation handshake when we move to B6 |
-| G6 | Keep-alive reply timing is immediate | A provider that polls for inactivity might disconnect if its keep-alive expects a quiet period | Add a configurable delay if observed in the field |
-
-### Design principle: fail-open, not fail-hard
-
-Unless a frame is outright corrupt (bad BER structure, wrong CRC), the
-decoder must not drop it — it extracts whatever it can recognise and
-reports the rest via debug logs. This keeps the CLI and API working
-against partial-compliance devices. Errors are reported only at the
-boundary where the consumer asks for something the provider did not
-send (e.g. `get` on a path that never appeared in the walk).
-
----
-
-# PART B — Provider (after Part A is green)
-
-## B1. Tree construction
-
-| Source | Format |
-|---|---|
-| JSON file (primary) | spec-named keys |
-| Go API | programmatic builder |
-
-## B2. S101 server (variant 1 + variant 2)
-
-Listener TCP :9000. Per-connection: keep-alive, fragmentation buffer, subscriber set.
-
-## B3. Request handlers
-
-| Command | Handler |
-|---|---|
-| 32 GetDirectory | walk, return ElementCollection of direct children |
-| 30 Subscribe | register connection (streamed params; implicit for regular) |
-| 31 Unsubscribe | deregister |
-| 33 Invoke | dispatch to Go function, return InvocationResult |
-| SetValue | resolve, validate, mutate, announce |
-| Matrix SetConnection | resolve, canConnect, apply, announce tally |
-
-## B4. Announce engine
-
-| Trigger | Emits |
-|---|---|
-| SetValue applied | Parameter announce to subscribers |
-| Matrix op applied | Connection announce, disposition = tally |
-| Stream tick | StreamCollection frame |
-
-## B5. Errors
-
-Use Ember+ names. Transport = `S101SocketError`. Codec = `InvalidBERFormat`, `MissingElementNumber`, `MissingElementContents`, `UnknownElement`, `InvalidMatrixSignal`, `PathDiscoveryFailure`, `InvalidFunctionCall`, `UnsupportedValue`.
-
-## B6. Embedded test provider
-
-Small tree (router matrix + gain params + labels + one function) exercising consumer and provider end-to-end.
-
----
-
-# Delivery order
-
-1. A1 decoder rebuild (all types + SET unwrap + tag corrections)
-2. A2 plugin tree model (path-first, metadata, freshness)
-3. A3 subscribe (explicit for stream params)
-4. A4 matrix full state + canConnect + enhancements
-5. A5 function (regression test)
-6. A6 stream handling
-7. A7 template read-only
-8. All of A integration-tested on TinyEmber+ 9092
-9. Open PR
-10. B1–B6 provider (next milestone)
-
-Each step: `go build ./...` → unit tests → integration (emulator) → commit.
-
----
-
-# Non-negotiables
-
-- Spec-first. Dufour / smh consulted only after spec + capture.
-- No partial types. All ParameterType / MatrixType / StreamFormat / ConnectionOperation / ConnectionDisposition values decoded before testing.
-- Path separator `.` everywhere.
-- No new runtime plugins. Compile-time registry only.
-- Values never trusted from disk (stale until confirmed).
-- Ember+ announce logs suppressed (direction-tagged per project_logging).
-- Detailed docstrings on every exported Glow type + encoder/decoder func, each citing spec page and CTX tag.
+Both are available in the `Ember+Tools` bundle from Lawo's portal.
