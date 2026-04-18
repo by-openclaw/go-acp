@@ -518,6 +518,22 @@ func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target in
 	return nil
 }
 
+// StreamParameterPaths returns the numeric paths of every parameter
+// that carries a streamIdentifier. If filter >= 0 the result is limited
+// to that one streamIdentifier. Used by cmd stream (A8).
+func (p *Plugin) StreamParameterPaths(filter int64) []string {
+	p.subsMu.RLock()
+	defer p.subsMu.RUnlock()
+	var out []string
+	for id, paths := range p.streamIndex {
+		if filter >= 0 && id != filter {
+			continue
+		}
+		out = append(out, paths...)
+	}
+	return out
+}
+
 // MatrixSnapshot returns the derived matrix state for the matrix at
 // matrixPath, or nil if not a matrix. Useful for UIs rendering a tally.
 func (p *Plugin) MatrixSnapshot(matrixPath string) []matrix.TargetState {
