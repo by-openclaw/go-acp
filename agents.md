@@ -204,14 +204,23 @@ export/import round-trip.
 `10.41.40.195`. 214 objects (slot 0), 44k+ objects (slot 1). Full DFS
 walker, streaming, enum u32 optionsMap, background walk for watch.
 
-**Ember+ — consumer working.** BER codec + S101 framing + Glow DTD.
-Full tree walk on TinyEmber+ Router (51 objects, port 9092).
-QualifiedNode spec-compliant. Set/subscribe/matrix/function coded,
-not wire-tested yet. Port 9000 (DHD) needs debugging.
+**Ember+ — consumer wire-tested.** BER codec + S101 framing (multi-frame
+reassembly) + Glow DTD. Full tree walk on TinyEmber+ Router (4494 objects,
+port 9092). Wire-tested: set labels (confirmed on Viewer), set gain,
+matrix crosspoint connect (confirmed on Viewer), function invoke
+add(3,5)=8. Types rebuilt from spec v2.50. Dot separator for paths.
+Port 9000 (DHD) connects but doesn't respond to GetDirectory.
+
+**Ember+ pending**:
+- Decoder rebuild: systematic SET unwrap, all 18 Parameter fields, all 12 Matrix fields, StreamDescriptor
+- Plugin tree model: full metadata, matrix state (parametersLocation, labels, connections), subscribe per spec
+- StreamCollection/StreamEntry handling
+- Template/TemplateReference
+- Port 9000 debugging (needs Wireshark capture)
 
 **Cross-protocol features**:
 - Hierarchical export (JSON/YAML/CSV) — same tree format for all protocols
-- --path subtree filter + --filter text search
+- --path subtree filter (dot separator) + --filter text search
 - File-backed tree store (devices/{ip}/slot_{n}.json)
 - Disk cache with labels/units for instant watch startup
 - [cache]/[live] source tag in watch output
@@ -220,17 +229,18 @@ not wire-tested yet. Port 9000 (DHD) needs debugging.
 - Enum map lookup O(1) for both ACP1 and ACP2
 - Replay unit tests from real device captures
 - Protocol-aware cache (prevents cross-protocol collisions)
+- Path-based addressing with dot separator (all protocols)
 
 **CLI commands**: info, walk, get, set, watch, discover, export, import,
-diag, list-protocols, help.
+diag, matrix, invoke, list-protocols, help.
 
 **CLI global flags**: `--protocol acp1|acp2|emberplus` `--port N`
 `--transport udp|tcp` `--timeout DUR` `--log-level LEVEL` `--verbose`
 `--capture FILE`.
 
 **Pending**:
-- Ember+ set/subscribe/matrix/function wire testing
-- Ember+ port 9000 (DHD provider) debugging
+- Ember+ full spec compliance (decoder + plugin tree model + stream)
+- Ember+ port 9000 debugging
 - `acp-srv` REST + WebSocket API
 - Data model library (card_name + fw_version key)
 - Browse command (search DM + live values)
