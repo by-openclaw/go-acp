@@ -229,11 +229,18 @@ func (p *Plugin) Disconnect() error {
 	return nil
 }
 
-// GetDeviceInfo returns a minimal DeviceInfo. Ember+ doesn't model slots,
-// so NumSlots stays 0 and the protocol version is hardcoded to v1 of the
-// Glow DTD (spec v2.50 covers Glow 2.40 extensions).
+// GetDeviceInfo reports a single virtual slot (Ember+ has no slot
+// concept; the whole tree lives under slot 0) and the connected
+// host/port. The single-slot report lets generic code — `acp export`,
+// `acp import`, `--all` — iterate once instead of skipping the
+// provider entirely.
 func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
-	return protocol.DeviceInfo{ProtocolVersion: 1}, nil
+	return protocol.DeviceInfo{
+		IP:              p.connIP,
+		Port:            p.connPort,
+		ProtocolVersion: 1,
+		NumSlots:        1,
+	}, nil
 }
 
 // GetSlotInfo pretends the whole Ember+ tree is slot 0. Any other slot is
