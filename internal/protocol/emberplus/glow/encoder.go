@@ -1,31 +1,32 @@
+// Glow encoder — builds BER payloads for all Ember+ Glow messages.
+// Encoding pattern per Ember+ spec v2.50 (Lawo GmbH):
+//   ApplicationTag → Context(0)=number/path → Context(1)=contents(SET) → Context(2)=children
+//
+// Reference: assets/emberplus/Ember+ Documentation.pdf
 package glow
 
 import (
 	"acp/internal/protocol/emberplus/ber"
 )
 
-// EncodeGetDirectory builds the BER payload for a GetDirectory command
-// at the root level. This is the first message a consumer sends.
-// Per spec: dirFieldMask is optional. Omitting it = Default (all properties).
-// Some older providers don't support dirFieldMask (Glow < 2.50).
+// --- Root messages ---
+
+// EncodeGetDirectory builds a root-level GetDirectory command.
+// Spec p31: Command(32), optionally with dirFieldMask.
 func EncodeGetDirectory() []byte {
 	cmd := ber.AppConstructed(TagCommand,
-		ber.ContextConstructed(CmdNumber, ber.Integer(CmdGetDirectory)),
+		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
 	)
 	root := ber.AppConstructed(TagRootElementCollection, cmd)
 	return ber.EncodeTLV(root)
 }
 
-// EncodeGetDirectoryFor builds a GetDirectory command for a specific
-// node path. Used for lazy tree discovery.
+// EncodeGetDirectoryFor builds a GetDirectory for a specific node path.
+// Pattern: QualifiedNode(path) → children → ElementCollection → Context(0) → Command(32)
 func EncodeGetDirectoryFor(path []int32) []byte {
 	cmd := ber.AppConstructed(TagCommand,
-		ber.ContextConstructed(CmdNumber, ber.Integer(CmdGetDirectory)),
-		ber.ContextConstructed(CmdDirMask, ber.Integer(-1)),
+		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
 	)
-
-	// Use QualifiedNode with RELATIVE-OID path for all depths.
-	// This is what the Go emberlib uses: path as RELATIVE-OID inside Context(0).
 	node := ber.AppConstructed(TagQualifiedNode,
 		ber.ContextConstructed(QNodePath, ber.RelOID(encodeRelativeOID(path))),
 		ber.ContextConstructed(QNodeChildren,
@@ -38,39 +39,10 @@ func EncodeGetDirectoryFor(path []int32) []byte {
 	return ber.EncodeTLV(root)
 }
 
-// EncodeSubscribe builds a Subscribe command for a parameter path.
-func EncodeSubscribe(path []int32) []byte {
-	cmd := ber.AppConstructed(TagCommand,
-		ber.ContextConstructed(CmdNumber, ber.Integer(CmdSubscribe)),
-	)
-	param := ber.AppConstructed(TagQualifiedParameter,
-		ber.ContextConstructed(QParamPath, ber.RelOID(encodeRelativeOID(path))),
-		ber.ContextConstructed(QParamChildren,
-			ber.AppConstructed(TagElementCollection, cmd),
-		),
-	)
-	root := ber.AppConstructed(TagRootElementCollection, param)
-	return ber.EncodeTLV(root)
-}
+// --- Parameter operations ---
 
-// EncodeUnsubscribe builds an Unsubscribe command for a parameter path.
-func EncodeUnsubscribe(path []int32) []byte {
-	cmd := ber.AppConstructed(TagCommand,
-		ber.ContextConstructed(CmdNumber, ber.Integer(CmdUnsubscribe)),
-	)
-	param := ber.AppConstructed(TagQualifiedParameter,
-		ber.ContextConstructed(QParamPath, ber.RelOID(encodeRelativeOID(path))),
-		ber.ContextConstructed(QParamChildren,
-			ber.AppConstructed(TagElementCollection, cmd),
-		),
-	)
-	root := ber.AppConstructed(TagRootElementCollection, param)
-	return ber.EncodeTLV(root)
-}
-
-// EncodeSetValue builds a set-value message for a parameter.
-// Per Glow DTD, contents is a SET wrapping the value context tag.
-// Path must be CONTEXT[0] CONSTRUCTED wrapping RELATIVE-OID (same as QualifiedNode).
+// EncodeSetValue builds a set-value for a parameter.
+// Pattern: QualifiedParameter(path) → contents(SET(value))
 func EncodeSetValue(path []int32, value interface{}) []byte {
 	valTLV := encodeAnyValue(value)
 	param := ber.AppConstructed(TagQualifiedParameter,
@@ -83,8 +55,46 @@ func EncodeSetValue(path []int32, value interface{}) []byte {
 	return ber.EncodeTLV(root)
 }
 
+// EncodeSubscribe builds a Subscribe command for a parameter path.
+// Pattern: QualifiedParameter(path) → children → ElementCollection → Context(0) → Command(30)
+func EncodeSubscribe(path []int32) []byte {
+	cmd := ber.AppConstructed(TagCommand,
+		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdSubscribe)),
+	)
+	param := ber.AppConstructed(TagQualifiedParameter,
+		ber.ContextConstructed(QParamPath, ber.RelOID(encodeRelativeOID(path))),
+		ber.ContextConstructed(QParamChildren,
+			ber.AppConstructed(TagElementCollection,
+				ber.ContextConstructed(0, cmd),
+			),
+		),
+	)
+	root := ber.AppConstructed(TagRootElementCollection, param)
+	return ber.EncodeTLV(root)
+}
+
+// EncodeUnsubscribe builds an Unsubscribe command for a parameter path.
+func EncodeUnsubscribe(path []int32) []byte {
+	cmd := ber.AppConstructed(TagCommand,
+		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdUnsubscribe)),
+	)
+	param := ber.AppConstructed(TagQualifiedParameter,
+		ber.ContextConstructed(QParamPath, ber.RelOID(encodeRelativeOID(path))),
+		ber.ContextConstructed(QParamChildren,
+			ber.AppConstructed(TagElementCollection,
+				ber.ContextConstructed(0, cmd),
+			),
+		),
+	)
+	root := ber.AppConstructed(TagRootElementCollection, param)
+	return ber.EncodeTLV(root)
+}
+
+// --- Matrix operations ---
+
 // EncodeMatrixConnect builds a matrix connection command.
-// Per Glow DTD: CONTEXT(5) → SEQUENCE → CONTEXT(0) → CONNECTION.
+// Pattern: QualifiedMatrix(path) → connections(SEQUENCE(Context(0)(Connection)))
+// Spec p42: Connection inside ConnectionCollection.
 func EncodeMatrixConnect(matrixPath []int32, target int32, sources []int32, operation int64) []byte {
 	conn := ber.AppConstructed(TagConnection,
 		ber.ContextConstructed(ConnTarget, ber.Integer(int64(target))),
@@ -94,8 +104,8 @@ func EncodeMatrixConnect(matrixPath []int32, target int32, sources []int32, oper
 	matrix := ber.AppConstructed(TagQualifiedMatrix,
 		ber.ContextConstructed(0, ber.RelOID(encodeRelativeOID(matrixPath))),
 		ber.ContextConstructed(5, // connections
-			ber.Sequence(             // EMBER_SEQUENCE wrapper
-				ber.ContextConstructed(0, conn), // per-connection CONTEXT(0) wrapper
+			ber.Sequence(
+				ber.ContextConstructed(0, conn),
 			),
 		),
 	)
@@ -103,11 +113,32 @@ func EncodeMatrixConnect(matrixPath []int32, target int32, sources []int32, oper
 	return ber.EncodeTLV(root)
 }
 
+// EncodeMatrixGetDirectory builds a GetDirectory on a matrix to fetch connections.
+// Spec p42: "As soon as a consumer issues a GetDirectory on a matrix, it implicitly
+// subscribes to matrix connection changes."
+func EncodeMatrixGetDirectory(matrixPath []int32) []byte {
+	cmd := ber.AppConstructed(TagCommand,
+		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
+	)
+	matrix := ber.AppConstructed(TagQualifiedMatrix,
+		ber.ContextConstructed(0, ber.RelOID(encodeRelativeOID(matrixPath))),
+		ber.ContextConstructed(2, // children
+			ber.AppConstructed(TagElementCollection,
+				ber.ContextConstructed(0, cmd),
+			),
+		),
+	)
+	root := ber.AppConstructed(TagRootElementCollection, matrix)
+	return ber.EncodeTLV(root)
+}
+
+// --- Function operations ---
+
 // EncodeInvoke builds a function invocation message.
-// Per spec (p50): QualifiedFunction → children → Command(33) → Invocation.
-// Arguments: CONTEXT[1] → SEQUENCE → CONTEXT[0] per argument value.
+// Pattern: QualifiedFunction(path) → children → ElementCollection → Context(0) → Command(33) → Invocation
+// Spec p50: Command(33) contains Invocation at Context(2).
 func EncodeInvoke(funcPath []int32, invocationID int32, args []interface{}) []byte {
-	// Each argument wrapped in CONTEXT[0] per Dufour ContentParameter.Encode.
+	// Each argument wrapped in Context(0) per Dufour ContentParameter.Encode(0, writer).
 	var argTLVs []ber.TLV
 	for _, arg := range args {
 		argTLVs = append(argTLVs, ber.ContextConstructed(0, encodeAnyValue(arg)))
@@ -118,14 +149,14 @@ func EncodeInvoke(funcPath []int32, invocationID int32, args []interface{}) []by
 		ber.ContextConstructed(InvArguments, ber.Sequence(argTLVs...)),
 	)
 	cmd := ber.AppConstructed(TagCommand,
-		ber.ContextConstructed(CmdNumber, ber.Integer(CmdInvoke)),
-		ber.ContextConstructed(CmdInvID, inv),
+		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdInvoke)),
+		ber.ContextConstructed(CmdCtxInvocation, inv),
 	)
 	fn := ber.AppConstructed(TagQualifiedFunction,
 		ber.ContextConstructed(0, ber.RelOID(encodeRelativeOID(funcPath))),
 		ber.ContextConstructed(2, // children
 			ber.AppConstructed(TagElementCollection,
-				ber.ContextConstructed(0, cmd), // per-element wrapper
+				ber.ContextConstructed(0, cmd),
 			),
 		),
 	)
@@ -133,13 +164,7 @@ func EncodeInvoke(funcPath []int32, invocationID int32, args []interface{}) []by
 	return ber.EncodeTLV(root)
 }
 
-// EncodeKeepAliveRequest builds a Glow-level keep-alive (just an empty root).
-func EncodeKeepAliveRequest() []byte {
-	root := ber.AppConstructed(TagRootElementCollection)
-	return ber.EncodeTLV(root)
-}
-
-// --- helpers ---
+// --- Helpers ---
 
 // encodeRelativeOID encodes a path as RELATIVE-OID (base-128 per element).
 func encodeRelativeOID(path []int32) []byte {
@@ -169,7 +194,7 @@ func encodeBase128Int32(v int32) []byte {
 	return parts
 }
 
-// encodeAnyValue encodes a Go value to a BER TLV.
+// encodeAnyValue encodes a Go value to a BER TLV using the correct universal tag.
 func encodeAnyValue(v interface{}) ber.TLV {
 	switch t := v.(type) {
 	case int:

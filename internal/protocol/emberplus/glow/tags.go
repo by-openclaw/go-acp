@@ -98,9 +98,9 @@ const (
 
 // Context tags for GlowCommand.
 const (
-	CmdNumber  uint32 = 0 // INTEGER — command type
-	CmdDirMask uint32 = 1 // INTEGER — field mask for GetDirectory
-	CmdInvID   uint32 = 2 // INTEGER — invocation ID
+	CmdCtxNumber     uint32 = 0 // INTEGER — command type
+	CmdCtxDirMask    uint32 = 1 // INTEGER — field mask for GetDirectory
+	CmdCtxInvocation uint32 = 2 // Invocation object (for Invoke command)
 )
 
 // Command numbers.

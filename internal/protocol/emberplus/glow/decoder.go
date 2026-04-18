@@ -462,16 +462,48 @@ func decodeCommand(tlv ber.TLV) (*Element, error) {
 			continue
 		}
 		switch child.Tag.Number {
-		case CmdNumber:
+		case CmdCtxNumber:
 			c.Number = decodeIntValue(child)
-		case CmdDirMask:
+		case CmdCtxDirMask:
 			c.DirMask = decodeIntValue(child)
-		case CmdInvID:
-			v, _ := ber.DecodeInteger(unwrapPrimitive(child))
-			c.InvID = int32(v)
+		case CmdCtxInvocation:
+			c.Invocation = decodeInvocation(child)
 		}
 	}
 	return &Element{Command: c}, nil
+}
+
+// decodeInvocation decodes an Invocation from CONTEXT[2] of a Command.
+// Spec p48: invocationId[0], arguments[1] (Tuple).
+func decodeInvocation(tlv ber.TLV) *Invocation {
+	inv := &Invocation{}
+	// Unwrap: CONTEXT[2] may contain APPLICATION[22] directly or inline fields.
+	children := tlv.Children
+	for _, c := range tlv.Children {
+		if c.Tag.Class == ber.ClassApplication && c.Tag.Number == TagInvocation {
+			children = c.Children
+			break
+		}
+	}
+	for _, child := range children {
+		if child.Tag.Class != ber.ClassContext {
+			continue
+		}
+		switch child.Tag.Number {
+		case InvInvocationID:
+			v, _ := ber.DecodeInteger(unwrapPrimitive(child))
+			inv.InvocationID = int32(v)
+		case InvArguments:
+			for _, seq := range child.Children {
+				if seq.Tag.Class == ber.ClassUniversal && seq.Tag.Number == ber.TagSequence {
+					for _, item := range seq.Children {
+						inv.Arguments = append(inv.Arguments, decodeAnyValue(item))
+					}
+				}
+			}
+		}
+	}
+	return inv
 }
 
 // decodeInvocationResult decodes an APPLICATION[23] InvocationResult.

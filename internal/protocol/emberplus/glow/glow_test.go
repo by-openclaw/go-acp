@@ -193,7 +193,7 @@ func TestDecodeParameter(t *testing.T) {
 
 func TestDecodeCommand(t *testing.T) {
 	cmd := ber.AppConstructed(TagCommand,
-		ber.ContextConstructed(CmdNumber, ber.Integer(CmdGetDirectory)),
+		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
 	)
 	data := ber.EncodeTLV(cmd)
 
