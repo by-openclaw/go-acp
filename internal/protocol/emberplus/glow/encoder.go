@@ -10,22 +10,40 @@ import (
 )
 
 // --- Root messages ---
+//
+// Spec p.93: RootElementCollection ::= [APPLICATION 11] IMPLICIT
+// SEQUENCE OF [0] RootElement. Every child of the root collection must
+// sit inside a CONTEXT[0] wrapper. Lax providers (TinyEmber+ Router)
+// accept the wrapper-free form; strict providers (smh, dufour-based,
+// DHD) refuse it. wrapRoot centralises the correct encoding.
 
-// EncodeGetDirectory builds a root-level GetDirectory command.
-// Spec p31: Command(32), optionally with dirFieldMask.
+func wrapRoot(child ber.TLV) ber.TLV {
+	return ber.AppConstructed(TagRootElementCollection,
+		ber.ContextConstructed(0, child),
+	)
+}
+
+// EncodeGetDirectory builds a root-level GetDirectory command with the
+// optional dirFieldMask set to All (-1). Spec p.31: mask values are
+// Default(0), Identifier(1), Description(2), Tree(3), Value(4), All(-1),
+// Sparse(-2, Glow 2.50+). All is the most common consumer choice — it
+// asks the provider to return every property. Older providers
+// (TinyEmber+ DTD 2.31) ignore the field; strict providers require it.
 func EncodeGetDirectory() []byte {
 	cmd := ber.AppConstructed(TagCommand,
 		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
+		ber.ContextConstructed(CmdCtxDirMask, ber.Integer(-1)),
 	)
-	root := ber.AppConstructed(TagRootElementCollection, cmd)
-	return ber.EncodeTLV(root)
+	return ber.EncodeTLV(wrapRoot(cmd))
 }
 
 // EncodeGetDirectoryFor builds a GetDirectory for a specific node path.
 // Pattern: QualifiedNode(path) → children → ElementCollection → Context(0) → Command(32)
+// dirFieldMask=All (-1) per spec p.31.
 func EncodeGetDirectoryFor(path []int32) []byte {
 	cmd := ber.AppConstructed(TagCommand,
 		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
+		ber.ContextConstructed(CmdCtxDirMask, ber.Integer(-1)),
 	)
 	node := ber.AppConstructed(TagQualifiedNode,
 		ber.ContextConstructed(QNodePath, ber.RelOID(encodeRelativeOID(path))),
@@ -35,8 +53,7 @@ func EncodeGetDirectoryFor(path []int32) []byte {
 			),
 		),
 	)
-	root := ber.AppConstructed(TagRootElementCollection, node)
-	return ber.EncodeTLV(root)
+	return ber.EncodeTLV(wrapRoot(node))
 }
 
 // --- Parameter operations ---
@@ -51,8 +68,7 @@ func EncodeSetValue(path []int32, value interface{}) []byte {
 			ber.Set(ber.ContextConstructed(ParamContentValue, valTLV)),
 		),
 	)
-	root := ber.AppConstructed(TagRootElementCollection, param)
-	return ber.EncodeTLV(root)
+	return ber.EncodeTLV(wrapRoot(param))
 }
 
 // EncodeSubscribe builds a Subscribe command for a parameter path.
@@ -69,8 +85,7 @@ func EncodeSubscribe(path []int32) []byte {
 			),
 		),
 	)
-	root := ber.AppConstructed(TagRootElementCollection, param)
-	return ber.EncodeTLV(root)
+	return ber.EncodeTLV(wrapRoot(param))
 }
 
 // EncodeUnsubscribe builds an Unsubscribe command for a parameter path.
@@ -86,8 +101,7 @@ func EncodeUnsubscribe(path []int32) []byte {
 			),
 		),
 	)
-	root := ber.AppConstructed(TagRootElementCollection, param)
-	return ber.EncodeTLV(root)
+	return ber.EncodeTLV(wrapRoot(param))
 }
 
 // --- Matrix operations ---
@@ -109,8 +123,7 @@ func EncodeMatrixConnect(matrixPath []int32, target int32, sources []int32, oper
 			),
 		),
 	)
-	root := ber.AppConstructed(TagRootElementCollection, matrix)
-	return ber.EncodeTLV(root)
+	return ber.EncodeTLV(wrapRoot(matrix))
 }
 
 // EncodeMatrixGetDirectory builds a GetDirectory on a matrix to fetch connections.
@@ -128,8 +141,7 @@ func EncodeMatrixGetDirectory(matrixPath []int32) []byte {
 			),
 		),
 	)
-	root := ber.AppConstructed(TagRootElementCollection, matrix)
-	return ber.EncodeTLV(root)
+	return ber.EncodeTLV(wrapRoot(matrix))
 }
 
 // --- Function operations ---
@@ -160,8 +172,7 @@ func EncodeInvoke(funcPath []int32, invocationID int32, args []interface{}) []by
 			),
 		),
 	)
-	root := ber.AppConstructed(TagRootElementCollection, fn)
-	return ber.EncodeTLV(root)
+	return ber.EncodeTLV(wrapRoot(fn))
 }
 
 // --- Helpers ---
