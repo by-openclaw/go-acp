@@ -421,6 +421,96 @@ func TestDecodeStreamDescriptorOnParameter(t *testing.T) {
 	}
 }
 
+func TestDecodeTemplate(t *testing.T) {
+	// Spec p.84. Template ::= [APPLICATION 24] IMPLICIT SET {
+	//   number [0] Integer32, element [1] TemplateElement OPTIONAL,
+	//   description [2] EmberString OPTIONAL }
+	inner := ber.AppConstructed(TagParameter,
+		ber.ContextConstructed(ParamNumber, ber.Integer(1)),
+		ber.ContextConstructed(ParamContents,
+			ber.ContextConstructed(ParamContentIdentifier, ber.UTF8("gain_proto")),
+			ber.ContextConstructed(ParamContentType, ber.Integer(ParamTypeReal)),
+		),
+	)
+	tmpl := ber.AppConstructed(TagTemplate,
+		ber.ContextConstructed(TemplateNumber, ber.Integer(42)),
+		ber.ContextConstructed(TemplateElementCtx, inner),
+		ber.ContextConstructed(TemplateDescription, ber.UTF8("audio gain template")),
+	)
+	elements, err := DecodeRoot(ber.EncodeTLV(tmpl))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(elements) != 1 || elements[0].Template == nil {
+		t.Fatalf("expected Template element, got %+v", elements)
+	}
+	got := elements[0].Template
+	if got.Number != 42 {
+		t.Errorf("number: got %d", got.Number)
+	}
+	if got.Description != "audio gain template" {
+		t.Errorf("description: got %q", got.Description)
+	}
+	if got.Element == nil || got.Element.Parameter == nil {
+		t.Fatalf("expected wrapped Parameter, got %+v", got.Element)
+	}
+	if got.Element.Parameter.Identifier != "gain_proto" {
+		t.Errorf("wrapped param identifier: got %q", got.Element.Parameter.Identifier)
+	}
+}
+
+func TestDecodeQualifiedTemplate(t *testing.T) {
+	tmpl := ber.AppConstructed(TagQualifiedTemplate,
+		ber.ContextConstructed(TemplatePath, ber.RelOID(encodeRelativeOID([]int32{0, 5, 2}))),
+		ber.ContextConstructed(TemplateElementCtx,
+			ber.AppConstructed(TagNode,
+				ber.ContextConstructed(NodeNumber, ber.Integer(1)),
+			),
+		),
+	)
+	elements, err := DecodeRoot(ber.EncodeTLV(tmpl))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(elements) != 1 || elements[0].Template == nil {
+		t.Fatalf("expected Template, got %+v", elements)
+	}
+	got := elements[0].Template
+	if !got.Qualified {
+		t.Error("expected Qualified=true")
+	}
+	if len(got.Path) != 3 || got.Path[0] != 0 || got.Path[1] != 5 || got.Path[2] != 2 {
+		t.Errorf("path: got %v, want [0 5 2]", got.Path)
+	}
+	if got.Element == nil || got.Element.Node == nil {
+		t.Fatalf("expected wrapped Node, got %+v", got.Element)
+	}
+}
+
+func TestDecodeParameter_TemplateReference(t *testing.T) {
+	// Parameter CTX 18 carries templateReference as RELATIVE-OID.
+	param := ber.AppConstructed(TagParameter,
+		ber.ContextConstructed(ParamNumber, ber.Integer(1)),
+		ber.ContextConstructed(ParamContents,
+			ber.ContextConstructed(ParamContentIdentifier, ber.UTF8("p1")),
+			ber.ContextConstructed(ParamContentTemplateReference,
+				ber.RelOID(encodeRelativeOID([]int32{0, 5, 2}))),
+		),
+	)
+	tlv, _, err := ber.DecodeTLV(ber.EncodeTLV(param))
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeElement(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	p := el.Parameter
+	if len(p.TemplateReference) != 3 || p.TemplateReference[2] != 2 {
+		t.Errorf("templateReference: got %v", p.TemplateReference)
+	}
+}
+
 func TestRelativeOID_RoundTrip(t *testing.T) {
 	cases := [][]int32{
 		{1},

@@ -95,6 +95,12 @@ type Plugin struct {
 	streamSubs  map[string][]int32
 	streamIndex map[int64][]string
 	subsMu      sync.RWMutex
+
+	// templates is keyed by the canonical numeric RelOID of the
+	// template; used by ResolveTemplate and TemplateFor callers.
+	// Spec p.54–58 (Ember+ 1.4 Templates).
+	templates   map[string]*glow.Template
+	templatesMu sync.RWMutex
 }
 
 // treeEntry is the in-RAM record per decoded element. It keeps both the
@@ -142,6 +148,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.subs = make(map[string]protocol.EventFunc)
 	p.streamSubs = make(map[string][]int32)
 	p.streamIndex = make(map[int64][]string)
+	p.templates = make(map[string]*glow.Template)
 	p.mu.Unlock()
 
 	s.SetOnElement(p.handleElements)
@@ -588,9 +595,46 @@ func (p *Plugin) processElement(el glow.Element, parentPath []string) {
 		if s := p.currentSession(); s != nil {
 			s.deliverInvocationResult(el.InvocationResult)
 		}
+	case el.Template != nil:
+		p.processTemplate(el.Template)
 	case len(el.Streams) > 0:
 		p.dispatchStreams(el.Streams)
 	}
+}
+
+// processTemplate stores the Template keyed by its numeric RelOID
+// (qualified) or its number as a synthetic single-element path
+// (non-qualified). Consumers may then resolve templateReference fields
+// on Parameter/Node/Matrix/Function via ResolveTemplate.
+//
+// Spec p.54-58 (Ember+ 1.4).
+func (p *Plugin) processTemplate(t *glow.Template) {
+	var key string
+	if t.Qualified {
+		key = numericKey(t.Path)
+	} else {
+		key = strconv.FormatInt(int64(t.Number), 10)
+	}
+	if key == "" {
+		return
+	}
+	p.templatesMu.Lock()
+	p.templates[key] = t
+	p.templatesMu.Unlock()
+	p.logger.Debug("emberplus: template stored", "key", key, "qualified", t.Qualified)
+}
+
+// ResolveTemplate returns the Template stored at the given numeric path
+// (dot-separated, e.g. "0.5.2"), or nil if none known. Safe for
+// concurrent reads. Use it to resolve a Parameter.TemplateReference /
+// Node.TemplateReference / Matrix.TemplateReference / Function.TemplateReference.
+func (p *Plugin) ResolveTemplate(path []int32) *glow.Template {
+	if len(path) == 0 {
+		return nil
+	}
+	p.templatesMu.RLock()
+	defer p.templatesMu.RUnlock()
+	return p.templates[numericKey(path)]
 }
 
 // dispatchStreams fires callbacks for every StreamEntry that maps to a
