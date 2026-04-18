@@ -109,7 +109,7 @@ Audit every tag and CTX against the DTD. Apply SET unwrap on every `contents` co
 | 4 | schemaIdentifiers | EmberString | newline-separated |
 | 5 | templateReference | RelOID | |
 
-Node wrapper (APPLICATION[13] — wait, [3]): `{ 0:number, 1:contents, 2:children }`.
+Node wrapper APPLICATION[3]: `{ 0:number, 1:contents, 2:children }`.
 
 ### ParameterContents — SET, p.85
 
@@ -220,7 +220,8 @@ TemplateElement CHOICE over Parameter/Node/Matrix/Function.
 
 ### Collections
 
-- RootElementCollection APPLICATION[0] (p.93) — top-level reply container.
+- Root envelope APPLICATION[0] (p.93) — outer CHOICE wrapping one of: RootElementCollection | StreamCollection | InvocationResult.
+- RootElementCollection APPLICATION[11] (p.93) — SEQ OF CTX[0] RootElement.
 - ElementCollection APPLICATION[4] — SEQ OF CTX[0] Element (Element CHOICE of Parameter/Node/Command/Matrix/Function/Template).
 - StreamCollection APPLICATION[6] — SEQ OF CTX[0] StreamEntry.
 
@@ -341,6 +342,105 @@ These are derived — never serialized onto the wire.
 | `acp ember matrix` | `--path a.b.c --target N --sources N,N --op absolute\|connect\|disconnect` |
 | `acp ember invoke` | `--path a.b.c --args v1,v2,...` (types from FunctionContents.arguments) |
 | `acp ember stream` | `--id N` (subscribe to a streamIdentifier) |
+
+---
+
+## A9. Compliance audit & provider tolerance
+
+Every Part A item audited against the Glow DTD (pp. 83–93) after
+wire-testing on multiple providers. "Status" column:
+
+- **strict** — wire layout matches DTD byte-for-byte
+- **strict + ext** — DTD-compliant plus additive RAM-only metadata
+- **lenient** — decoder accepts non-compliant shapes observed in
+  the field (we never emit them)
+- **gap** — field decoded but downstream feature not yet wired
+
+### Compliance status per Part A item
+
+| Item | Status | Evidence |
+|---|---|---|
+| A1 NodeContents 0..5 | strict | decoder.go decodeNodeContents, CTX 2 = isRoot not isOnline |
+| A1 ParameterContents 0..18 | strict | decoder.go decodeParamContents covers every field |
+| A1 MatrixContents 0..12 | strict | decoder.go decodeMatrixContents incl. parametersLocation CHOICE |
+| A1 Connection APP[16] | strict | default Operation=absolute, Disposition=tally per p.89 |
+| A1 Label APP[18] | strict | decoder.go decodeLabel |
+| A1 FunctionContents 0..4 | strict | decoder.go decodeFuncContents |
+| A1 Invocation APP[22] | strict | decodeInvocation |
+| A1 InvocationResult APP[23] | strict | Success defaults true when field omitted (spec p.92) |
+| A1 StreamEntry APP[5] | strict | decodeStreamCollection |
+| A1 StreamDescription APP[12] | strict | decodeStreamDescription |
+| A1 Template APP[24] / QualifiedTemplate APP[25] | strict | decodeTemplate with qualified flag |
+| A1 Root envelope APP[0] | strict | wrapRoot emits APP[0]{APP[11]{CTX[0]{child}}} |
+| A2 path-first tree model | strict + ext | numIndex / pathIndex / labelIndex + Freshness |
+| A2 value freshness | gap | states defined, disk-cache load not yet implemented |
+| A3 regular subscribe (implicit) | strict | no Command 30 sent for StreamIdentifier==0 |
+| A3 streamed subscribe (explicit) | strict | Command 30 sent for StreamIdentifier!=0 |
+| A4 canConnect oneToN/oneToOne/nToN | strict | matrix/state.go CanConnect with spec-cited errors |
+| A4 disposition locked reject | strict | CanConnect rejects on ConnDispLocked |
+| A4 derived gain/labels | gap | fields declared, resolution via parametersLocation TBD |
+| A5 invocation ID 1..255 | strict | session.go NextInvocationID skips 0 |
+| A5 Tuple unwrap | strict + lenient | decodeTuple handles both SEQUENCE-wrapped and bare CTX[0] |
+| A6 StreamCollection dispatch | strict | plugin.go dispatchStreams |
+| A6 StreamDescription format+offset | strict | decodeStreamBytes covers all 14 StreamFormat values |
+| A7 Template decode | strict | APP[24]+APP[25] with TemplateElement CHOICE |
+| A7 templateReference resolve | strict | ResolveTemplate(path) |
+| A7 template instantiation | **not in scope** | consumer-side only; provider work in Part B |
+| A8 CLI surface | strict | walk / get / set / watch / matrix / invoke / stream |
+
+### Observed provider quirks (non-compliance from real devices)
+
+Each row = a deviation from spec that our consumer transparently
+handles. No behaviour change is required from the user.
+
+| # | Provider | Quirk | Our mitigation |
+|---|---|---|---|
+| 1 | TinyEmberPlusRouter 9092 | Accepts bare `[APP 11]` without the `[APP 0]` Root envelope (spec p.93 requires APP 0) | We always emit the spec-correct `[APP 0]` wrapper — accepted by both lax and strict providers |
+| 2 | TinyEmberPlus DTD 2.31 (9000) | Sends non-qualified Node/Parameter/Matrix/Function (only `[0] number`, no RELATIVE-OID path) | `resolveNumPath(explicit, parent, number)` derives the canonical numeric RelOID from the walk ancestry |
+| 3 | Several | Wrap ElementCollection inside APP[4] **or** emit CTX[0] children directly | `decodeElementCollection` walks both |
+| 4 | Several | Tuple arguments sent as bare CTX[0] values **or** wrapped in UNIVERSAL SEQUENCE | `decodeTuple` accepts both shapes |
+| 5 | Several | ParameterContents value CTX[2] emitted as a primitive-form INTEGER/UTF8 directly, instead of the usual constructed wrapper | `decodeAnyValue` handles both constructed and primitive shapes |
+| 6 | Several | `success` CTX[1] omitted on InvocationResult | Decoder defaults to `true` per spec p.92 |
+| 7 | Several | Deliver large walks across many S101 frames with `FlagFirst/FlagLast` | `session.go` reassembles FlagFirst→FlagLast into a single BER payload before decode |
+| 8 | Several | Emit Connection with no explicit `operation` / `disposition` field | Decoder defaults Operation=absolute, Disposition=tally per DTD p.89 |
+| 9 | Several | Label and StringIntegerPair collections nested at variable depth below the CTX wrapper | `flattenForApp(tlv, TagLabel)` walks down whatever structure the provider chose |
+| 10 | Several | Emit contents with or without an inner UNIVERSAL SET envelope | `unwrapSet(tlv)` returns the SET children if present, otherwise the CTX children directly |
+
+### Tolerance features already in the code
+
+| Feature | Reason |
+|---|---|
+| `flattenForApp(tlv, appTag)` | Provider styles nest APP tags at variable depth |
+| `unwrapSet(tlv)` | Some providers omit the UNIVERSAL SET envelope inside contents |
+| `unwrapPrimitive(tlv)` | Accepts both primitive and constructed BER encodings of scalar values |
+| `resolveNumPath(explicit, parent, number)` | Non-qualified elements get a synthesised numeric path |
+| `decodeAnyValue(tlv)` fallback to raw bytes | Unknown inner tags don't crash — returns raw buffer |
+| Unknown CTX / APP tags silently skipped | Vendor-private extensions don't break walk |
+| `decodeTuple` accepts SEQUENCE-or-direct | Handles at least two provider families |
+| S101 `FlagFirst / FlagLast` reassembly | Unlocks multi-frame provider responses |
+| InvocationResult success default `true` | Accepts the valid omission path per spec p.92 |
+| Connection Operation/Disposition defaults | DTD-blessed defaults when fields are absent |
+| Tree-empty auto-walk on get/set/subscribe | CLI / API callers don't need to know about Walk semantics |
+
+### Known gaps (not yet tolerant)
+
+| # | Gap | Impact | Planned fix |
+|---|---|---|---|
+| G1 | Disk-cache loading of parameter values is not implemented — `FreshnessStale` is never actually set | Cold-start UI needs a live walk before it can show values | Storage integration (out of Part A scope) |
+| G2 | Matrix `parametersLocation` CHOICE is decoded but not resolved — we do not yet follow the path to populate `resolvedGainDb` or per-target/source labels | `--matrix` output shows signal numbers only, not labels or gain values | Part A follow-up |
+| G3 | Template references decoded but properties from the template are not merged into referencing elements | Parameters that rely on a template for min/max/format show those fields empty | Part A follow-up |
+| G4 | CRC-CCITT16 mismatches cause the frame to be dropped silently | A miscomputing provider (rare) would appear as no-reply | Log warning + optional lenient mode |
+| G5 | DTD minor/major version bytes are hard-coded (31, 2) | A provider that strictly rejects version mismatches would refuse our S101 | Negotiation handshake when we move to B6 |
+| G6 | Keep-alive reply timing is immediate | A provider that polls for inactivity might disconnect if its keep-alive expects a quiet period | Add a configurable delay if observed in the field |
+
+### Design principle: fail-open, not fail-hard
+
+Unless a frame is outright corrupt (bad BER structure, wrong CRC), the
+decoder must not drop it — it extracts whatever it can recognise and
+reports the rest via debug logs. This keeps the CLI and API working
+against partial-compliance devices. Errors are reported only at the
+boundary where the consumer asks for something the provider did not
+send (e.g. `get` on a path that never appeared in the walk).
 
 ---
 
