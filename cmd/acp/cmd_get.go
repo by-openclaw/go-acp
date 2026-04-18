@@ -37,15 +37,15 @@ func runGet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	// If addressing by label, try disk cache first to resolve label → ID.
-	// Falls back to full walk only if cache miss.
-	if *label != "" && *id < 0 {
-		if cachedID := resolveLabelFromCache(host, *slot, *group, *label); cachedID >= 0 {
+	// If addressing by label, walk to populate the tree for label resolution.
+	// Disk cache provides the ID but the plugin tree must be populated for
+	// protocols like Ember+ where GetValue reads from the walked tree.
+	if *label != "" {
+		if cachedID := resolveLabelFromCache(host, cf.protocol, *slot, *group, *label); cachedID >= 0 && *id < 0 {
 			*id = cachedID
-		} else {
-			if _, err := plug.Walk(opCtx, *slot); err != nil {
-				return fmt.Errorf("walk for label resolution: %w", err)
-			}
+		}
+		if _, err := plug.Walk(opCtx, *slot); err != nil {
+			return fmt.Errorf("walk for label resolution: %w", err)
 		}
 	}
 

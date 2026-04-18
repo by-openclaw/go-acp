@@ -41,9 +41,12 @@ func NewTreeStoreNextToBinary() (*TreeStore, error) {
 }
 
 // slotPath returns the file path for a cached slot.
+// Keyed by {ip}_{protocol} to avoid collisions when multiple protocols
+// serve on the same host (e.g. ACP1 on :2071, Ember+ on :9092).
 func (s *TreeStore) slotPath(ip string, slot int) string {
 	return filepath.Join(s.baseDir, "devices", ip, fmt.Sprintf("slot_%d.json", slot))
 }
+
 
 // Save writes a walked tree to disk using the same hierarchical JSON
 // format as `acp export --format json`. Values are stripped before

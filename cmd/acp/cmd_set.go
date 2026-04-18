@@ -59,7 +59,7 @@ func runSet(ctx context.Context, args []string) error {
 	// If addressing by label, try disk cache first to resolve label → ID.
 	// Falls back to full walk only if cache miss.
 	if *label != "" && *id < 0 {
-		if cachedID := resolveLabelFromCache(host, *slot, *group, *label); cachedID >= 0 {
+		if cachedID := resolveLabelFromCache(host, cf.protocol, *slot, *group, *label); cachedID >= 0 {
 			*id = cachedID
 		} else {
 			if _, err := plug.Walk(opCtx, *slot); err != nil {

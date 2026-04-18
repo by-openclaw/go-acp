@@ -126,12 +126,17 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 // resolveLabelFromCache tries to find an object ID from the disk cache
 // for label-based addressing. Returns the ID if found, -1 otherwise.
 // This avoids a full walk when the label is in the disk cache.
-func resolveLabelFromCache(host string, slot int, group, label string) int {
+func resolveLabelFromCache(host, proto string, slot int, group, label string) int {
 	if treeStore == nil || label == "" {
 		return -1
 	}
 	snap, err := treeStore.Load(host, slot)
 	if err != nil || snap == nil {
+		return -1
+	}
+	// Verify protocol matches to avoid cross-protocol collisions
+	// (e.g. ACP1 and Ember+ on same host).
+	if snap.Device.Protocol != "" && snap.Device.Protocol != proto {
 		return -1
 	}
 	for _, sd := range snap.Slots {
