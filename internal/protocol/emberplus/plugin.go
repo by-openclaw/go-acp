@@ -907,10 +907,12 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []
 		obj: protocol.Object{
 			Slot:   0,
 			ID:     int(n.Number),
+			OID:    numericKey(numPath),
 			Label:  n.Identifier,
 			Kind:   protocol.KindRaw,
 			Path:   stringPath,
 			Access: 1,
+			Meta:   nodeMeta(n),
 		},
 	}
 	if len(stringPath) > 1 {
@@ -934,6 +936,318 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []
 	}
 }
 
+// nodeMeta exposes the Ember+ Node properties (spec p.87 NodeContents)
+// the generic tree view should render: description, isOnline flag,
+// schemaIdentifiers, templateReference. Returns nil when nothing
+// worth surfacing was set.
+func nodeMeta(n *glow.Node) map[string]any {
+	m := map[string]any{"element": "node"}
+	if n.Description != "" {
+		m["description"] = n.Description
+	}
+	if n.IsRoot {
+		m["isRoot"] = true
+	}
+	// isOnline defaults to true when absent (spec p.87). Only emit it
+	// when the provider explicitly set false — absence in the JSON
+	// then means the spec default.
+	if !n.IsOnline {
+		// Field was never set or set false; we cannot disambiguate,
+		// so omit it. The consumer must apply the spec default true.
+	} else {
+		m["isOnline"] = true
+	}
+	if n.SchemaIdentifiers != "" {
+		m["schemaIdentifiers"] = n.SchemaIdentifiers
+	}
+	if len(n.TemplateReference) > 0 {
+		m["templateReference"] = numericKey(n.TemplateReference)
+	}
+	return m
+}
+
+// parameterMeta surfaces every ParameterContents field (spec p.85) that
+// the standard Object constraint columns don't already cover. The
+// "type" string uses the spec vocabulary (integer/real/string/boolean/
+// trigger/enum/octets) so downstream tools can round-trip it.
+func parameterMeta(p *glow.Parameter) map[string]any {
+	m := map[string]any{"element": "parameter"}
+	// Type comes from CTX 13 when the provider sets it (spec p.85).
+	// When absent we infer from the decoded value (spec allows this —
+	// the consumer sees the Value CHOICE branch that was filled in).
+	if typeName := paramTypeName(p.Type); typeName != "" && typeName != "null" {
+		m["type"] = typeName
+	} else if inferred := inferParamType(p.Value); inferred != "" {
+		m["type"] = inferred
+	}
+	if p.Description != "" {
+		m["description"] = p.Description
+	}
+	if p.Format != "" {
+		m["format"] = p.Format
+	}
+	if p.Formula != "" {
+		m["formula"] = p.Formula
+	}
+	if p.Factor != 0 {
+		m["factor"] = p.Factor
+	}
+	if p.Enumeration != "" {
+		m["enumeration"] = p.Enumeration
+	}
+	if len(p.EnumMap) > 0 {
+		entries := make([]map[string]any, 0, len(p.EnumMap))
+		for k, v := range p.EnumMap {
+			entries = append(entries, map[string]any{"key": k, "value": v})
+		}
+		m["enumMap"] = entries
+	}
+	if p.StreamIdentifier != 0 {
+		m["streamIdentifier"] = p.StreamIdentifier
+	}
+	if p.StreamDescriptor != nil {
+		m["streamDescriptor"] = map[string]any{
+			"format": streamFormatName(p.StreamDescriptor.Format),
+			"offset": p.StreamDescriptor.Offset,
+		}
+	}
+	if p.SchemaIdentifiers != "" {
+		m["schemaIdentifiers"] = p.SchemaIdentifiers
+	}
+	if len(p.TemplateReference) > 0 {
+		m["templateReference"] = numericKey(p.TemplateReference)
+	}
+	return m
+}
+
+// matrixMeta surfaces every MatrixContents field (spec p.88) plus the
+// observed connections tally — this is what providers consume when we
+// round-trip the JSON tree back into a live matrix.
+func matrixMeta(m *glow.Matrix) map[string]any {
+	out := map[string]any{
+		"element":     "matrix",
+		"type":        matrixTypeName(m.MatrixType),
+		"mode":        matrixAddrName(m.AddressingMode),
+		"targetCount": m.TargetCount,
+		"sourceCount": m.SourceCount,
+	}
+	if m.Description != "" {
+		out["description"] = m.Description
+	}
+	if m.MatrixType == glow.MatrixTypeNToN {
+		if m.MaxTotalConnects != 0 {
+			out["maximumTotalConnects"] = m.MaxTotalConnects
+		}
+		if m.MaxConnectsPerTarget != 0 {
+			out["maximumConnectsPerTarget"] = m.MaxConnectsPerTarget
+		}
+	}
+	if m.ParametersLocation != nil {
+		switch v := m.ParametersLocation.(type) {
+		case []int32:
+			out["parametersLocation"] = numericKey(v)
+		case int32:
+			out["parametersLocation"] = v
+		}
+	}
+	if m.GainParameterNumber != 0 {
+		out["gainParameterNumber"] = m.GainParameterNumber
+	}
+	if len(m.Labels) > 0 {
+		labels := make([]map[string]any, 0, len(m.Labels))
+		for _, l := range m.Labels {
+			labels = append(labels, map[string]any{
+				"basePath":    numericKey(l.BasePath),
+				"description": l.Description,
+			})
+		}
+		out["labels"] = labels
+	}
+	if m.SchemaIdentifiers != "" {
+		out["schemaIdentifiers"] = m.SchemaIdentifiers
+	}
+	if len(m.TemplateReference) > 0 {
+		out["templateReference"] = numericKey(m.TemplateReference)
+	}
+	if len(m.Targets) > 0 {
+		out["targets"] = m.Targets
+	}
+	if len(m.Sources) > 0 {
+		out["sources"] = m.Sources
+	}
+	if len(m.Connections) > 0 {
+		conns := make(map[string]any, len(m.Connections))
+		for _, c := range m.Connections {
+			conns[strconv.Itoa(int(c.Target))] = map[string]any{
+				"target":      c.Target,
+				"sources":     c.Sources,
+				"operation":   connOpName(c.Operation),
+				"disposition": connDispName(c.Disposition),
+			}
+		}
+		out["connections"] = conns
+	}
+	return out
+}
+
+// functionMeta surfaces the Function signature (spec p.91) — the
+// arguments and result tuples are the only reason anyone exports a
+// function definition in the first place.
+func functionMeta(f *glow.Function) map[string]any {
+	out := map[string]any{"element": "function"}
+	if f.Description != "" {
+		out["description"] = f.Description
+	}
+	if len(f.Arguments) > 0 {
+		out["arguments"] = tupleItemsToJSON(f.Arguments)
+	}
+	if len(f.Result) > 0 {
+		out["result"] = tupleItemsToJSON(f.Result)
+	}
+	if len(f.TemplateReference) > 0 {
+		out["templateReference"] = numericKey(f.TemplateReference)
+	}
+	return out
+}
+
+func tupleItemsToJSON(items []glow.TupleItem) []map[string]any {
+	out := make([]map[string]any, 0, len(items))
+	for _, it := range items {
+		entry := map[string]any{"type": paramTypeName(it.Type)}
+		if it.Name != "" {
+			entry["name"] = it.Name
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+// --- enum → string helpers (spec vocabulary) ---
+
+// inferParamType returns the spec type name for a decoded Value when
+// CTX 13 (ParameterContents.type) was not sent. The decoded Go type
+// identifies which Value CHOICE branch the provider used.
+func inferParamType(v any) string {
+	switch v.(type) {
+	case int64:
+		return "integer"
+	case float64:
+		return "real"
+	case string:
+		return "string"
+	case bool:
+		return "boolean"
+	case []byte:
+		return "octets"
+	}
+	return ""
+}
+
+func paramTypeName(t int64) string {
+	switch t {
+	case glow.ParamTypeNull:
+		return "null"
+	case glow.ParamTypeInteger:
+		return "integer"
+	case glow.ParamTypeReal:
+		return "real"
+	case glow.ParamTypeString:
+		return "string"
+	case glow.ParamTypeBoolean:
+		return "boolean"
+	case glow.ParamTypeTrigger:
+		return "trigger"
+	case glow.ParamTypeEnum:
+		return "enum"
+	case glow.ParamTypeOctets:
+		return "octets"
+	}
+	return ""
+}
+
+func matrixTypeName(t int64) string {
+	switch t {
+	case glow.MatrixTypeOneToN:
+		return "oneToN"
+	case glow.MatrixTypeOneToOne:
+		return "oneToOne"
+	case glow.MatrixTypeNToN:
+		return "nToN"
+	}
+	return "oneToN"
+}
+
+func matrixAddrName(a int64) string {
+	if a == glow.MatrixAddrNonLinear {
+		return "nonLinear"
+	}
+	return "linear"
+}
+
+func connOpName(op int64) string {
+	switch op {
+	case glow.ConnOpConnect:
+		return "connect"
+	case glow.ConnOpDisconnect:
+		return "disconnect"
+	}
+	return "absolute"
+}
+
+func connDispName(d int64) string {
+	switch d {
+	case glow.ConnDispModified:
+		return "modified"
+	case glow.ConnDispPending:
+		return "pending"
+	case glow.ConnDispLocked:
+		return "locked"
+	}
+	return "tally"
+}
+
+func streamFormatName(f int64) string {
+	switch f {
+	case glow.StreamFmtUnsignedInt8:
+		return "unsignedInt8"
+	case glow.StreamFmtUnsignedInt16BigEndian:
+		return "unsignedInt16BigEndian"
+	case glow.StreamFmtUnsignedInt16LittleEndian:
+		return "unsignedInt16LittleEndian"
+	case glow.StreamFmtUnsignedInt32BigEndian:
+		return "unsignedInt32BigEndian"
+	case glow.StreamFmtUnsignedInt32LittleEndian:
+		return "unsignedInt32LittleEndian"
+	case glow.StreamFmtUnsignedInt64BigEndian:
+		return "unsignedInt64BigEndian"
+	case glow.StreamFmtUnsignedInt64LittleEndian:
+		return "unsignedInt64LittleEndian"
+	case glow.StreamFmtSignedInt8:
+		return "signedInt8"
+	case glow.StreamFmtSignedInt16BigEndian:
+		return "signedInt16BigEndian"
+	case glow.StreamFmtSignedInt16LittleEndian:
+		return "signedInt16LittleEndian"
+	case glow.StreamFmtSignedInt32BigEndian:
+		return "signedInt32BigEndian"
+	case glow.StreamFmtSignedInt32LittleEndian:
+		return "signedInt32LittleEndian"
+	case glow.StreamFmtSignedInt64BigEndian:
+		return "signedInt64BigEndian"
+	case glow.StreamFmtSignedInt64LittleEndian:
+		return "signedInt64LittleEndian"
+	case glow.StreamFmtFloat32BigEndian:
+		return "float32BigEndian"
+	case glow.StreamFmtFloat32LittleEndian:
+		return "float32LittleEndian"
+	case glow.StreamFmtFloat64BigEndian:
+		return "float64BigEndian"
+	case glow.StreamFmtFloat64LittleEndian:
+		return "float64LittleEndian"
+	}
+	return ""
+}
+
 // processParameter stores a Parameter with full ParameterContents metadata
 // carried in obj constraints + glowParam pointer for lossless access.
 func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, parentNumPath []int32) {
@@ -946,12 +1260,14 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	obj := protocol.Object{
 		Slot:   0,
 		ID:     int(param.Number),
+		OID:    numericKey(numPath),
 		Label:  param.Identifier,
 		Path:   stringPath,
 		Min:    param.Minimum,
 		Max:    param.Maximum,
 		Step:   param.Step,
 		Def:    param.Default,
+		Meta:   parameterMeta(param),
 	}
 	if len(stringPath) > 1 {
 		obj.Group = stringPath[0]
@@ -1037,10 +1353,12 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 		obj: protocol.Object{
 			Slot:   0,
 			ID:     int(m.Number),
+			OID:    numericKey(numPath),
 			Label:  m.Identifier,
 			Kind:   protocol.KindRaw,
 			Path:   stringPath,
 			Access: 3,
+			Meta:   matrixMeta(m),
 		},
 	}
 	if len(stringPath) > 1 {
@@ -1050,6 +1368,22 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 
 	for _, child := range m.Children {
 		p.processElement(child, stringPath, numPath)
+	}
+
+	// Spec p.42: issuing GetDirectory on a matrix node implicitly
+	// subscribes the consumer to connection changes AND asks the
+	// provider to emit the current tally. Many providers (incl.
+	// TinyEmberPlus) only send `connections` on demand, so without
+	// this call the matrix._meta.connections field stays empty.
+	if len(m.Connections) == 0 && len(numPath) > 0 {
+		if s := p.currentSession(); s != nil {
+			numCopy := cloneInt32Slice(numPath)
+			go func() {
+				p.logger.Debug("emberplus: matrix GetDirectory",
+					"path", numCopy, "identifier", m.Identifier)
+				_ = s.SendMatrixGetDirectory(numCopy)
+			}()
+		}
 	}
 }
 
@@ -1070,10 +1404,12 @@ func (p *Plugin) processFunction(f *glow.Function, parentPath []string, parentNu
 		obj: protocol.Object{
 			Slot:   0,
 			ID:     int(f.Number),
+			OID:    numericKey(numPath),
 			Label:  f.Identifier,
 			Kind:   protocol.KindRaw,
 			Path:   stringPath,
 			Access: 2,
+			Meta:   functionMeta(f),
 		},
 	}
 	if len(stringPath) > 1 {

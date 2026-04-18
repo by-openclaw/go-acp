@@ -192,6 +192,19 @@ func (s *Session) SendGetDirectoryFor(path []int32) error {
 	return s.sendEmBER(payload)
 }
 
+// SendMatrixGetDirectory sends a GetDirectory command addressed at a
+// matrix node. Per spec p.42, this implicitly subscribes the consumer
+// to matrix-connection changes — the provider responds with the full
+// targets / sources / connections collection and then streams
+// disposition updates on further changes.
+func (s *Session) SendMatrixGetDirectory(matrixPath []int32) error {
+	payload := glow.EncodeMatrixGetDirectory(matrixPath)
+	s.logger.Debug("emberplus: SendMatrixGetDirectory",
+		"matrix_path", matrixPath,
+		"payload_len", len(payload))
+	return s.sendEmBER(payload)
+}
+
 // SendSubscribe sends a Subscribe command for a parameter path.
 func (s *Session) SendSubscribe(path []int32) error {
 	payload := glow.EncodeSubscribe(path)

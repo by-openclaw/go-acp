@@ -76,12 +76,17 @@ func buildJSONTree(objs []protocol.Object) map[string]any {
 	for _, o := range objs {
 		path := stripRootNodeSentinel(o.Path)
 
-		// Container nodes (Kind=Raw) only exist to anchor their
-		// children — emit just the sub-map, no {id,kind,access}
-		// siblings. Writing those would pollute the parent's key
-		// space and risk collisions with child names.
+		// Container nodes (Kind=Raw): create the sub-map so
+		// children have a place to nest, and record the
+		// container's own metadata under a reserved "_meta" key.
+		// We cannot flatten container props alongside children —
+		// they'd clash with child identifiers (e.g. a matrix's
+		// "labels" metadata field vs its "labels" child node).
 		if o.Kind == protocol.KindRaw {
-			ensureMapChain(root, path)
+			sub := ensureMapChain(root, path)
+			if meta := containerMeta(o); meta != nil {
+				sub["_meta"] = meta
+			}
 			continue
 		}
 
@@ -118,6 +123,31 @@ func stripRootNodeSentinel(path []string) []string {
 	return path
 }
 
+// containerMeta builds the `_meta` payload attached to every container
+// (Kind=Raw) node: numeric OID, local element number, access bits, and
+// every protocol-specific property the plugin placed in Object.Meta
+// (matrix type/connections/labels, function arguments/result, node
+// description/isOnline, etc). Returns nil when there is nothing
+// informative to emit.
+func containerMeta(o protocol.Object) map[string]any {
+	m := map[string]any{}
+	if o.OID != "" {
+		m["oid"] = o.OID
+	}
+	m["number"] = o.ID
+	if o.Label != "" {
+		m["identifier"] = o.Label
+	}
+	m["access"] = accessStr(o.Access)
+	for k, v := range o.Meta {
+		m[k] = v
+	}
+	if len(m) == 0 {
+		return nil
+	}
+	return m
+}
+
 // ensureMapChain walks segs from root, creating empty sub-maps where
 // segments are missing, and returns the deepest map reached. When a
 // non-map value already occupies a segment name we skip past it —
@@ -136,12 +166,18 @@ func ensureMapChain(root map[string]any, segs []string) map[string]any {
 	return cur
 }
 
-// jsonLeaf builds the property map for a single leaf object.
+// jsonLeaf builds the property map for a single leaf object. For
+// Ember+ this also merges the plugin-supplied Meta (parameter
+// description/format/formula/factor/streamDescriptor/enumMap/...)
+// flat so the exported JSON can be fed back to a provider.
 func jsonLeaf(o protocol.Object) map[string]any {
 	m := map[string]any{
 		"id":     o.ID,
 		"kind":   kindName(o.Kind),
 		"access": accessStr(o.Access),
+	}
+	if o.OID != "" {
+		m["oid"] = o.OID
 	}
 	if o.Unit != "" {
 		m["unit"] = o.Unit
@@ -179,6 +215,14 @@ func jsonLeaf(o protocol.Object) map[string]any {
 	case protocol.KindIPAddr:
 		m["value"] = fmt.Sprintf("%d.%d.%d.%d",
 			v.IPAddr[0], v.IPAddr[1], v.IPAddr[2], v.IPAddr[3])
+	}
+	// Merge plugin-supplied metadata last so the leaf carries
+	// description/format/formula/streamDescriptor/etc. Existing
+	// standard keys win on collision.
+	for k, val := range o.Meta {
+		if _, exists := m[k]; !exists {
+			m[k] = val
+		}
 	}
 	return m
 }

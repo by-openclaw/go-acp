@@ -219,6 +219,22 @@ type Object struct {
 	Path []string `json:"path,omitempty"`
 	ID   int      `json:"id"` // ACP1 ObjectID byte; ACP2 obj-id u32
 
+	// OID is the numeric RelOID path as a dot-separated string
+	// ("1.1.2.4"). Ember+ providers emit this as the unique
+	// identifier of every element (spec p.85/p.87 QualifiedNode/
+	// QualifiedParameter path). For ACP1/ACP2 where paths are
+	// already identifier-based, OID is optional and may be empty.
+	OID string `json:"oid,omitempty"`
+
+	// Meta carries protocol-specific element metadata that does
+	// not fit Object's fixed fields — Matrix properties
+	// (type/mode/targetCount/sourceCount/connections/labels for
+	// Ember+), Function signatures (arguments/result tuple), and
+	// Parameter extras (streamDescriptor, enumMap, formula) per
+	// the Ember+ DTD pp.85-93. Plugins populate it; export
+	// surfaces it alongside the standard fields.
+	Meta map[string]any `json:"meta,omitempty"`
+
 	Label string    `json:"label"`
 	Unit  string    `json:"unit,omitempty"`
 	Kind  ValueKind `json:"kind"`
