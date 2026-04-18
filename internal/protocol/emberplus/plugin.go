@@ -83,8 +83,12 @@ type Plugin struct {
 	numPath    map[string]string       // numeric prefix → identifier (for string-path resolution)
 
 	// subs is keyed by numeric path; "*" is the wildcard watch-all key.
-	subs   map[string]protocol.EventFunc
-	subsMu sync.RWMutex
+	// streamSubs tracks the subset of subs that were established with an
+	// explicit Command 30 (spec p.30–31) — we must send a matching
+	// Command 31 to release them on Disconnect or Unsubscribe.
+	subs       map[string]protocol.EventFunc
+	streamSubs map[string][]int32
+	subsMu     sync.RWMutex
 }
 
 // treeEntry is the in-RAM record per decoded element. It keeps both the
@@ -126,15 +130,18 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.numPath = make(map[string]string)
 	p.treeMu.Unlock()
 	p.subs = make(map[string]protocol.EventFunc)
+	p.streamSubs = make(map[string][]int32)
 	p.mu.Unlock()
 
 	s.SetOnElement(p.handleElements)
 	return s.Connect(ctx, ip, port)
 }
 
-// Disconnect tears the session down; calling it on an already-disconnected
-// Plugin is a no-op.
+// Disconnect releases every explicit stream subscription (Command 31)
+// then tears the session down. Safe to call on an already-disconnected
+// Plugin.
 func (p *Plugin) Disconnect() error {
+	p.unsubscribeAll()
 	p.mu.Lock()
 	s := p.session
 	p.session = nil
@@ -332,9 +339,22 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	return val, nil
 }
 
-// Subscribe registers a callback for one parameter path, or "*" for all
-// parameters. A3 refines this to distinguish regular vs streamed parameters
-// per spec p.30.
+// Subscribe registers a callback for one parameter path. Behaviour per
+// spec v2.50 pp. 30–31:
+//
+//   - Regular parameter (no streamIdentifier set): the provider reports
+//     value changes automatically once GetDirectory has been issued on
+//     the containing node. We register the callback locally; no Command
+//     30 is sent.
+//   - Streamed parameter (streamIdentifier != 0): the provider only
+//     transmits updates after an explicit Subscribe. We register the
+//     callback and send Command 30 (Subscribe). A6 wires the matching
+//     StreamCollection dispatch.
+//   - Empty Path/Label/ID: wildcard "*" watch-all. Every future value
+//     notification invokes this callback in addition to any specific one.
+//
+// Returns an error only when the session is dead or the path is not a
+// Parameter.
 func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
 	s := p.currentSession()
 	if s == nil {
@@ -359,11 +379,22 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 
 	p.subsMu.Lock()
 	p.subs[key] = fn
+	if entry.glowParam.StreamIdentifier != 0 {
+		p.streamSubs[key] = entry.glowParam.Path
+	}
 	p.subsMu.Unlock()
-	return s.SendSubscribe(entry.glowParam.Path)
+
+	if entry.glowParam.StreamIdentifier != 0 {
+		p.logger.Debug("emberplus: explicit stream subscribe",
+			"path", key, "stream_identifier", entry.glowParam.StreamIdentifier)
+		return s.SendSubscribe(entry.glowParam.Path)
+	}
+	p.logger.Debug("emberplus: implicit subscribe via GetDirectory", "path", key)
+	return nil
 }
 
-// Unsubscribe removes a callback and sends Command 31 to the provider.
+// Unsubscribe removes a callback. Sends Command 31 only if the original
+// subscription was explicit (streamed parameter per spec p.31).
 func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
 	s := p.currentSession()
 	if s == nil {
@@ -372,17 +403,50 @@ func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
 
 	key, entry := p.findEntry(req)
 	if entry == nil {
+		// Wildcard or unknown — just clear any matching callback entry.
+		if req.Path == "" && req.Label == "" && req.ID < 0 {
+			p.subsMu.Lock()
+			delete(p.subs, "*")
+			p.subsMu.Unlock()
+		}
 		return nil
 	}
 
 	p.subsMu.Lock()
 	delete(p.subs, key)
+	wasStream := false
+	if _, ok := p.streamSubs[key]; ok {
+		delete(p.streamSubs, key)
+		wasStream = true
+	}
 	p.subsMu.Unlock()
 
-	if entry.glowParam != nil && len(entry.glowParam.Path) > 0 {
+	if wasStream && entry.glowParam != nil && len(entry.glowParam.Path) > 0 {
 		return s.SendUnsubscribe(entry.glowParam.Path)
 	}
 	return nil
+}
+
+// unsubscribeAll sends Command 31 for every remaining streamed subscription.
+// Called from Disconnect to keep the provider's internal subscriber list
+// clean — polite but not required by spec.
+func (p *Plugin) unsubscribeAll() {
+	p.subsMu.Lock()
+	paths := make([][]int32, 0, len(p.streamSubs))
+	for _, path := range p.streamSubs {
+		paths = append(paths, path)
+	}
+	p.streamSubs = make(map[string][]int32)
+	p.subs = make(map[string]protocol.EventFunc)
+	p.subsMu.Unlock()
+
+	s := p.currentSession()
+	if s == nil {
+		return
+	}
+	for _, path := range paths {
+		_ = s.SendUnsubscribe(path)
+	}
 }
 
 // MatrixConnect sends a Connection command to the provider. Path may be
