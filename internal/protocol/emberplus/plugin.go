@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -87,9 +88,13 @@ type Plugin struct {
 	// streamSubs tracks the subset of subs that were established with an
 	// explicit Command 30 (spec p.30–31) — we must send a matching
 	// Command 31 to release them on Disconnect or Unsubscribe.
-	subs       map[string]protocol.EventFunc
-	streamSubs map[string][]int32
-	subsMu     sync.RWMutex
+	// streamIndex maps a streamIdentifier (spec p.93 StreamEntry) to the
+	// set of parameter paths that share it. A single stream identifier
+	// may fan out across several parameters via StreamDescription offset.
+	subs        map[string]protocol.EventFunc
+	streamSubs  map[string][]int32
+	streamIndex map[int64][]string
+	subsMu      sync.RWMutex
 }
 
 // treeEntry is the in-RAM record per decoded element. It keeps both the
@@ -136,6 +141,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.treeMu.Unlock()
 	p.subs = make(map[string]protocol.EventFunc)
 	p.streamSubs = make(map[string][]int32)
+	p.streamIndex = make(map[int64][]string)
 	p.mu.Unlock()
 
 	s.SetOnElement(p.handleElements)
@@ -583,7 +589,158 @@ func (p *Plugin) processElement(el glow.Element, parentPath []string) {
 			s.deliverInvocationResult(el.InvocationResult)
 		}
 	case len(el.Streams) > 0:
-		// StreamCollection dispatch lands in A6.
+		p.dispatchStreams(el.Streams)
+	}
+}
+
+// dispatchStreams fires callbacks for every StreamEntry that maps to a
+// subscribed parameter path (spec p.29-30, p.93). When the parameter has
+// a StreamDescription (format + offset) the raw stream value is decoded
+// accordingly; otherwise the value is passed through as-is.
+func (p *Plugin) dispatchStreams(entries []glow.StreamEntry) {
+	for _, e := range entries {
+		p.subsMu.RLock()
+		paths := p.streamIndex[e.StreamIdentifier]
+		p.subsMu.RUnlock()
+		if len(paths) == 0 {
+			continue
+		}
+		for _, key := range paths {
+			p.treeMu.RLock()
+			entry := p.numIndex[key]
+			p.treeMu.RUnlock()
+			if entry == nil || entry.glowParam == nil {
+				continue
+			}
+			val := resolveStreamValue(entry.glowParam, e.Value)
+			p.deliverStreamValue(entry, val)
+		}
+	}
+}
+
+// deliverStreamValue updates the entry's cached value to FreshnessUpdated
+// and invokes any registered callback (specific or wildcard).
+func (p *Plugin) deliverStreamValue(entry *treeEntry, value any) {
+	if entry.glowParam == nil {
+		return
+	}
+	entry.freshness = FreshnessUpdated
+	entry.updatedAt = time.Now()
+	assignToValue(&entry.obj.Value, entry.obj.Kind, value)
+	p.notifySubscribers(entry)
+}
+
+// resolveStreamValue decodes a StreamEntry.Value according to the
+// parameter's StreamDescription (spec p.86). If no description is set
+// or the value is already native-typed, returns it unchanged.
+//
+// StreamDescription format bits (DTD p.86):
+//
+//	bit 4-5 unused, bit 3..2 byte width, bit 1 endianness, bit 0 sign/float
+//
+// We decode from an octet string payload when present; native Go values
+// from decodeAnyValue are forwarded as-is.
+func resolveStreamValue(param *glow.Parameter, raw any) any {
+	if param.StreamDescriptor == nil {
+		return raw
+	}
+	payload, ok := raw.([]byte)
+	if !ok {
+		return raw
+	}
+	off := int(param.StreamDescriptor.Offset)
+	if off < 0 || off >= len(payload) {
+		return raw
+	}
+	return decodeStreamBytes(param.StreamDescriptor.Format, payload[off:])
+}
+
+// decodeStreamBytes interprets a StreamFormat-encoded slice. Returns nil
+// when there is not enough data for the requested format.
+func decodeStreamBytes(format int64, buf []byte) any {
+	need := streamFormatSize(format)
+	if need == 0 || len(buf) < need {
+		return nil
+	}
+	switch format {
+	case glow.StreamFmtUnsignedInt8:
+		return int64(buf[0])
+	case glow.StreamFmtSignedInt8:
+		return int64(int8(buf[0]))
+	case glow.StreamFmtUnsignedInt16BigEndian:
+		return int64(uint16(buf[0])<<8 | uint16(buf[1]))
+	case glow.StreamFmtUnsignedInt16LittleEndian:
+		return int64(uint16(buf[1])<<8 | uint16(buf[0]))
+	case glow.StreamFmtSignedInt16BigEndian:
+		return int64(int16(uint16(buf[0])<<8 | uint16(buf[1])))
+	case glow.StreamFmtSignedInt16LittleEndian:
+		return int64(int16(uint16(buf[1])<<8 | uint16(buf[0])))
+	case glow.StreamFmtUnsignedInt32BigEndian:
+		return int64(uint32(buf[0])<<24 | uint32(buf[1])<<16 | uint32(buf[2])<<8 | uint32(buf[3]))
+	case glow.StreamFmtUnsignedInt32LittleEndian:
+		return int64(uint32(buf[3])<<24 | uint32(buf[2])<<16 | uint32(buf[1])<<8 | uint32(buf[0]))
+	case glow.StreamFmtSignedInt32BigEndian:
+		return int64(int32(uint32(buf[0])<<24 | uint32(buf[1])<<16 | uint32(buf[2])<<8 | uint32(buf[3])))
+	case glow.StreamFmtSignedInt32LittleEndian:
+		return int64(int32(uint32(buf[3])<<24 | uint32(buf[2])<<16 | uint32(buf[1])<<8 | uint32(buf[0])))
+	case glow.StreamFmtFloat32BigEndian:
+		bits := uint32(buf[0])<<24 | uint32(buf[1])<<16 | uint32(buf[2])<<8 | uint32(buf[3])
+		return float64(math.Float32frombits(bits))
+	case glow.StreamFmtFloat32LittleEndian:
+		bits := uint32(buf[3])<<24 | uint32(buf[2])<<16 | uint32(buf[1])<<8 | uint32(buf[0])
+		return float64(math.Float32frombits(bits))
+	case glow.StreamFmtFloat64BigEndian:
+		var bits uint64
+		for i := 0; i < 8; i++ {
+			bits = bits<<8 | uint64(buf[i])
+		}
+		return math.Float64frombits(bits)
+	case glow.StreamFmtFloat64LittleEndian:
+		var bits uint64
+		for i := 7; i >= 0; i-- {
+			bits = bits<<8 | uint64(buf[i])
+		}
+		return math.Float64frombits(bits)
+	}
+	return nil
+}
+
+// streamFormatSize returns the byte width implied by a StreamFormat.
+func streamFormatSize(format int64) int {
+	switch format {
+	case glow.StreamFmtUnsignedInt8, glow.StreamFmtSignedInt8:
+		return 1
+	case glow.StreamFmtUnsignedInt16BigEndian, glow.StreamFmtUnsignedInt16LittleEndian,
+		glow.StreamFmtSignedInt16BigEndian, glow.StreamFmtSignedInt16LittleEndian:
+		return 2
+	case glow.StreamFmtUnsignedInt32BigEndian, glow.StreamFmtUnsignedInt32LittleEndian,
+		glow.StreamFmtSignedInt32BigEndian, glow.StreamFmtSignedInt32LittleEndian,
+		glow.StreamFmtFloat32BigEndian, glow.StreamFmtFloat32LittleEndian:
+		return 4
+	case glow.StreamFmtUnsignedInt64BigEndian, glow.StreamFmtUnsignedInt64LittleEndian,
+		glow.StreamFmtSignedInt64BigEndian, glow.StreamFmtSignedInt64LittleEndian,
+		glow.StreamFmtFloat64BigEndian, glow.StreamFmtFloat64LittleEndian:
+		return 8
+	}
+	return 0
+}
+
+// assignToValue writes value into v using the kind classification.
+func assignToValue(v *protocol.Value, kind protocol.ValueKind, value any) {
+	v.Kind = kind
+	switch t := value.(type) {
+	case int64:
+		v.Int = t
+		v.Float = float64(t)
+	case float64:
+		v.Float = t
+		v.Int = int64(t)
+	case string:
+		v.Str = t
+	case bool:
+		v.Bool = t
+	case []byte:
+		v.Raw = append(v.Raw[:0], t...)
 	}
 }
 
@@ -686,6 +843,12 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string) {
 		obj:         obj,
 	}
 	p.storeEntry(entry, stringPath)
+	if param.StreamIdentifier != 0 {
+		key := numericKey(entry.numericPath)
+		p.subsMu.Lock()
+		p.streamIndex[param.StreamIdentifier] = appendUnique(p.streamIndex[param.StreamIdentifier], key)
+		p.subsMu.Unlock()
+	}
 	p.notifySubscribers(entry)
 }
 
@@ -961,6 +1124,18 @@ func populateValue(obj *protocol.Object, param *glow.Parameter) {
 	case []byte:
 		obj.Value.Raw = append([]byte(nil), v...)
 	}
+}
+
+// appendUnique adds s to slice if not already present. Used for the
+// streamIndex where the same parameter path can be encountered twice
+// when the provider re-announces a node (walk refresh, reconnect).
+func appendUnique(slice []string, s string) []string {
+	for _, existing := range slice {
+		if existing == s {
+			return slice
+		}
+	}
+	return append(slice, s)
 }
 
 // appendEnumMap flattens an EnumMap into the obj.EnumItems slice. EnumMap

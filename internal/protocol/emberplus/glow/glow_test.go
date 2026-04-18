@@ -341,6 +341,86 @@ func TestEncodeInvoke_RoundTripArgumentTypes(t *testing.T) {
 	}
 }
 
+func TestDecodeStreamCollection(t *testing.T) {
+	// Spec p.93 StreamCollection = SEQUENCE OF CTX[0] StreamEntry.
+	// Each StreamEntry APP[5] carries streamIdentifier (CTX 0) + value (CTX 1).
+	stream := ber.AppConstructed(TagStreamCollection,
+		ber.ContextConstructed(0,
+			ber.AppConstructed(TagStreamEntry,
+				ber.ContextConstructed(StreamEntryIdentifier, ber.Integer(45)),
+				ber.ContextConstructed(StreamEntryValue, ber.Integer(-18)),
+			),
+		),
+		ber.ContextConstructed(0,
+			ber.AppConstructed(TagStreamEntry,
+				ber.ContextConstructed(StreamEntryIdentifier, ber.Integer(46)),
+				ber.ContextConstructed(StreamEntryValue, ber.Real(1.25)),
+			),
+		),
+	)
+	data := ber.EncodeTLV(stream)
+	elements, err := DecodeRoot(data)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(elements) != 1 {
+		t.Fatalf("expected 1 element, got %d", len(elements))
+	}
+	entries := elements[0].Streams
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 StreamEntry, got %d", len(entries))
+	}
+	if entries[0].StreamIdentifier != 45 {
+		t.Errorf("entry[0].id: got %d", entries[0].StreamIdentifier)
+	}
+	if v, ok := entries[0].Value.(int64); !ok || v != -18 {
+		t.Errorf("entry[0].value: got %v", entries[0].Value)
+	}
+	if entries[1].StreamIdentifier != 46 {
+		t.Errorf("entry[1].id: got %d", entries[1].StreamIdentifier)
+	}
+	if v, ok := entries[1].Value.(float64); !ok || v != 1.25 {
+		t.Errorf("entry[1].value: got %v", entries[1].Value)
+	}
+}
+
+func TestDecodeStreamDescriptorOnParameter(t *testing.T) {
+	// StreamDescription APP[12] carried as Parameter CTX 16.
+	desc := ber.AppConstructed(TagStreamDescription,
+		ber.ContextConstructed(StreamDescFormat, ber.Integer(StreamFmtSignedInt16BigEndian)),
+		ber.ContextConstructed(StreamDescOffset, ber.Integer(4)),
+	)
+	param := ber.AppConstructed(TagParameter,
+		ber.ContextConstructed(ParamNumber, ber.Integer(1)),
+		ber.ContextConstructed(ParamContents,
+			ber.ContextConstructed(ParamContentIdentifier, ber.UTF8("level")),
+			ber.ContextConstructed(ParamContentStreamIdentifier, ber.Integer(99)),
+			ber.ContextConstructed(ParamContentStreamDescriptor, desc),
+		),
+	)
+	tlv, _, err := ber.DecodeTLV(ber.EncodeTLV(param))
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeElement(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	p := el.Parameter
+	if p.StreamIdentifier != 99 {
+		t.Errorf("streamIdentifier: got %d", p.StreamIdentifier)
+	}
+	if p.StreamDescriptor == nil {
+		t.Fatal("expected StreamDescriptor")
+	}
+	if p.StreamDescriptor.Format != StreamFmtSignedInt16BigEndian {
+		t.Errorf("format: got %d", p.StreamDescriptor.Format)
+	}
+	if p.StreamDescriptor.Offset != 4 {
+		t.Errorf("offset: got %d", p.StreamDescriptor.Offset)
+	}
+}
+
 func TestRelativeOID_RoundTrip(t *testing.T) {
 	cases := [][]int32{
 		{1},
