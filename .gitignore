@@ -34,3 +34,10 @@ desktop.ini
 
 # Temp
 /tmp/
+
+# Ember+ reference material (user's TypeScript lib with nested git repos)
+assets/smh/
+
+# Local capture files produced by --capture
+*.jsonl
+!testdata/**/*.jsonl
