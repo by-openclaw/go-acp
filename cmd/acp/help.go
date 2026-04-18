@@ -45,14 +45,14 @@ DESCRIPTION
 FLAGS
   --slot N           slot number (required)
   --all              walk every present slot
-  --path PATH        filter by tree path prefix (e.g. BOARD, PSU/1)
+  --path PATH        filter by tree path prefix (e.g. BOARD, PSU.1)
   --filter TEXT      case-insensitive filter on output lines (like findstr /i or grep -i)
 
 EXAMPLES
   acp walk 10.6.239.113 --slot 0                                       # rack controller
   acp walk 10.6.239.113 --slot 1                                       # first card
   acp walk 10.41.40.195 --protocol acp2 --slot 0 --path BOARD          # only BOARD subtree
-  acp walk 10.41.40.195 --protocol acp2 --slot 0 --path PSU/1          # only PSU unit 1
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --path PSU.1          # only PSU unit 1
   acp walk 10.41.40.195 --protocol acp2 --slot 0 --path PSU --filter Temperature  # combine
   acp walk 10.41.40.195 --protocol acp2 --slot 0 --filter QSFP         # text search all`)
 }
@@ -206,14 +206,14 @@ FLAGS
   --format F         json | yaml | csv   (default: json or from extension)
   --out FILE         output file path    (default: stdout)
   --slot N           export only this slot (-1 = all present)
-  --path PATH        filter by tree path prefix (e.g. BOARD, PSU/1)
+  --path PATH        filter by tree path prefix (e.g. BOARD, PSU.1)
 
 EXAMPLES
   acp export 10.6.239.113 --format json --out device.json
   acp export 10.6.239.113 --format yaml --out device.yaml
   acp export 10.6.239.113 --format csv  --out device.csv
   acp export 10.41.40.195 --protocol acp2 --slot 0 --path BOARD --format yaml   # subtree only
-  acp export 10.41.40.195 --protocol acp2 --slot 0 --path PSU/1 --format csv    # single PSU unit
+  acp export 10.41.40.195 --protocol acp2 --slot 0 --path PSU.1 --format csv    # single PSU unit
   acp export 10.6.239.113 > device.json`)
 }
 
@@ -275,6 +275,24 @@ EXAMPLES
   acp discover
   acp discover --duration 15s
   acp discover --active=false          # passive-only scan`)
+}
+
+func helpMatrix() {
+	fmt.Println(`acp matrix — set matrix crosspoint connections (Ember+ only)
+
+USAGE
+  acp matrix <host> --path <matrix.path> --target N --sources N[,N,...] [--op absolute|connect|disconnect]
+
+FLAGS
+  --path PATH        dot-separated path to the matrix (e.g. router.oneToN.matrix)
+  --target N         target number
+  --sources N[,N]    comma-separated source numbers
+  --op OP            operation: absolute (default, replace all), connect (add), disconnect (remove)
+
+EXAMPLES
+  acp matrix 10.6.239.113 --protocol emberplus --port 9092 --path router.oneToN.matrix --target 1 --sources 1
+  acp matrix 10.6.239.113 --protocol emberplus --port 9092 --path router.oneToN.matrix --target 1 --sources 1,2,3
+  acp matrix 10.6.239.113 --protocol emberplus --port 9092 --path router.oneToN.matrix --target 2 --sources 5 --op connect`)
 }
 
 func helpDiag() {

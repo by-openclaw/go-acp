@@ -30,7 +30,7 @@ func runWalk(ctx context.Context, args []string) error {
 	// Parse --path into segments for prefix matching.
 	var pathSegs []string
 	if *pathFlag != "" {
-		pathSegs = strings.Split(*pathFlag, "/")
+		pathSegs = strings.Split(*pathFlag, ".")
 	}
 
 	plug, cleanup, err := connect(ctx, host, cf)

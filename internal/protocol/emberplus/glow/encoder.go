@@ -43,7 +43,7 @@ func EncodeSubscribe(path []int32) []byte {
 		ber.ContextConstructed(CmdNumber, ber.Integer(CmdSubscribe)),
 	)
 	param := ber.AppConstructed(TagQualifiedParameter,
-		ber.ContextPrimitive(QParamPath, encodeRelativeOID(path)),
+		ber.ContextConstructed(QParamPath, ber.RelOID(encodeRelativeOID(path))),
 		ber.ContextConstructed(QParamChildren,
 			ber.AppConstructed(TagElementCollection, cmd),
 		),
@@ -58,7 +58,7 @@ func EncodeUnsubscribe(path []int32) []byte {
 		ber.ContextConstructed(CmdNumber, ber.Integer(CmdUnsubscribe)),
 	)
 	param := ber.AppConstructed(TagQualifiedParameter,
-		ber.ContextPrimitive(QParamPath, encodeRelativeOID(path)),
+		ber.ContextConstructed(QParamPath, ber.RelOID(encodeRelativeOID(path))),
 		ber.ContextConstructed(QParamChildren,
 			ber.AppConstructed(TagElementCollection, cmd),
 		),
@@ -68,12 +68,14 @@ func EncodeUnsubscribe(path []int32) []byte {
 }
 
 // EncodeSetValue builds a set-value message for a parameter.
+// Per Glow DTD, contents is a SET wrapping the value context tag.
+// Path must be CONTEXT[0] CONSTRUCTED wrapping RELATIVE-OID (same as QualifiedNode).
 func EncodeSetValue(path []int32, value interface{}) []byte {
 	valTLV := encodeAnyValue(value)
 	param := ber.AppConstructed(TagQualifiedParameter,
-		ber.ContextPrimitive(QParamPath, encodeRelativeOID(path)),
+		ber.ContextConstructed(QParamPath, ber.RelOID(encodeRelativeOID(path))),
 		ber.ContextConstructed(QParamContents,
-			ber.ContextConstructed(ParamContentValue, valTLV),
+			ber.Set(ber.ContextConstructed(ParamContentValue, valTLV)),
 		),
 	)
 	root := ber.AppConstructed(TagRootElementCollection, param)
@@ -81,15 +83,20 @@ func EncodeSetValue(path []int32, value interface{}) []byte {
 }
 
 // EncodeMatrixConnect builds a matrix connection command.
+// Per Glow DTD: CONTEXT(5) → SEQUENCE → CONTEXT(0) → CONNECTION.
 func EncodeMatrixConnect(matrixPath []int32, target int32, sources []int32, operation int64) []byte {
 	conn := ber.AppConstructed(TagConnection,
 		ber.ContextConstructed(ConnTarget, ber.Integer(int64(target))),
-		ber.ContextPrimitive(ConnSources, encodeRelativeOID(sources)),
+		ber.ContextConstructed(ConnSources, ber.RelOID(encodeRelativeOID(sources))),
 		ber.ContextConstructed(ConnOperation, ber.Integer(operation)),
 	)
 	matrix := ber.AppConstructed(TagQualifiedMatrix,
-		ber.ContextPrimitive(0, encodeRelativeOID(matrixPath)),
-		ber.ContextConstructed(5, conn), // connections
+		ber.ContextConstructed(0, ber.RelOID(encodeRelativeOID(matrixPath))),
+		ber.ContextConstructed(5, // connections
+			ber.Sequence(             // EMBER_SEQUENCE wrapper
+				ber.ContextConstructed(0, conn), // per-connection CONTEXT(0) wrapper
+			),
+		),
 	)
 	root := ber.AppConstructed(TagRootElementCollection, matrix)
 	return ber.EncodeTLV(root)

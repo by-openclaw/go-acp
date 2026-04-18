@@ -69,7 +69,7 @@ Export/import rules:
 
 | Flag | Description | Example |
 |---|---|---|
-| `--path` | Subtree prefix filter | `--path BOARD`, `--path PSU/1` |
+| `--path` | Subtree prefix filter (`.` separator) | `--path BOARD`, `--path PSU.1`, `--path router.oneToN` |
 | `--filter` | Text search on output | `--filter Temperature` |
 | `--path + --filter` | Combine both | `--path PSU --filter Temperature` |
 

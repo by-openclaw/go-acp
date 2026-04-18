@@ -17,11 +17,12 @@ func runSet(ctx context.Context, args []string) error {
 	group := fs.String("group", "", "object group name")
 	label := fs.String("label", "", "object label")
 	id := fs.Int("id", -1, "object id within group")
+	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
 	valueStr := fs.String("value", "", "typed value (e.g. -3.0, \"On\", \"192.168.1.5\", \"CH1\")")
 	valueHex := fs.String("raw", "", "raw wire bytes as hex — escape hatch bypassing typed encoding")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp set <host> --slot N --group G (--label L | --id I) --value <v>")
+		return fmt.Errorf("usage: acp set <host> --slot N (--path P | --label L | --id I) --value <v>")
 	}
 	_ = fs.Parse(rest)
 	if *slot < 0 {
@@ -30,8 +31,8 @@ func runSet(ctx context.Context, args []string) error {
 	if *valueStr == "" && *valueHex == "" {
 		return fmt.Errorf("either --value or --raw is required")
 	}
-	if *label == "" && *id < 0 {
-		return fmt.Errorf("either --label or --id is required")
+	if *pathFlag == "" && *label == "" && *id < 0 {
+		return fmt.Errorf("either --path, --label, or --id is required")
 	}
 
 	var val protocol.Value
@@ -56,20 +57,20 @@ func runSet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	// If addressing by label, try disk cache first to resolve label → ID.
-	// Falls back to full walk only if cache miss.
-	if *label != "" && *id < 0 {
+	// Path or label addressing: walk to populate tree.
+	if *pathFlag != "" || *label != "" {
+		if _, err := plug.Walk(opCtx, *slot); err != nil {
+			return fmt.Errorf("walk for resolution: %w", err)
+		}
+	} else if *label != "" && *id < 0 {
 		if cachedID := resolveLabelFromCache(host, cf.protocol, *slot, *group, *label); cachedID >= 0 {
 			*id = cachedID
-		} else {
-			if _, err := plug.Walk(opCtx, *slot); err != nil {
-				return fmt.Errorf("walk for label resolution: %w", err)
-			}
 		}
 	}
 
 	req := protocol.ValueRequest{
 		Slot:  *slot,
+		Path:  *pathFlag,
 		Group: *group,
 		Label: *label,
 		ID:    *id,

@@ -122,12 +122,23 @@ func (s *Session) SendUnsubscribe(path []int32) error {
 // SendSetValue sends a set-value command for a parameter.
 func (s *Session) SendSetValue(path []int32, value interface{}) error {
 	payload := glow.EncodeSetValue(path, value)
+	s.logger.Debug("emberplus: SendSetValue",
+		"path", path,
+		"value", value,
+		"payload_len", len(payload),
+		"payload_hex", fmt.Sprintf("%x", payload))
 	return s.sendEmBER(payload)
 }
 
 // SendMatrixConnect sends a matrix connection command.
 func (s *Session) SendMatrixConnect(matrixPath []int32, target int32, sources []int32, operation int64) error {
 	payload := glow.EncodeMatrixConnect(matrixPath, target, sources, operation)
+	s.logger.Debug("emberplus: SendMatrixConnect",
+		"matrix_path", matrixPath,
+		"target", target,
+		"sources", sources,
+		"payload_len", len(payload),
+		"payload_hex", fmt.Sprintf("%x", payload))
 	return s.sendEmBER(payload)
 }
 
@@ -149,6 +160,10 @@ func (s *Session) sendEmBER(payload []byte) error {
 }
 
 func (s *Session) readLoop() {
+	// Multi-frame reassembly buffer. Large Glow messages may be split
+	// across multiple S101 frames using FlagFirst/FlagLast.
+	var multiframeBuf []byte
+
 	for {
 		s.mu.Lock()
 		r := s.reader
@@ -164,7 +179,6 @@ func (s *Session) readLoop() {
 			closed = s.closed
 			s.mu.Unlock()
 			if !closed {
-				s.logger.Debug("emberplus: raw read error detail", "err", err.Error())
 				s.logger.Debug("emberplus: read error", "err", err)
 			}
 			return
@@ -188,26 +202,51 @@ func (s *Session) readLoop() {
 			continue
 		}
 
-		if frame.IsEmBER() && len(frame.Payload) > 0 {
-			s.logger.Debug("emberplus: received EmBER frame",
-				"payload_len", len(frame.Payload),
-				"dtd", frame.DTD,
-				"version", frame.Version,
-				"hex", fmt.Sprintf("%x", frame.Payload))
-			elements, err := glow.DecodeRoot(frame.Payload)
-			if err != nil {
-				s.logger.Debug("emberplus: glow decode error",
-					"err", err,
-					"payload_len", len(frame.Payload))
-				continue
-			}
-			s.logger.Debug("emberplus: decoded glow elements", "count", len(elements))
-			s.mu.Lock()
-			fn := s.onElement
-			s.mu.Unlock()
-			if fn != nil && len(elements) > 0 {
-				fn(elements)
-			}
+		if !frame.IsEmBER() || len(frame.Payload) == 0 {
+			continue
+		}
+
+		// Multi-frame reassembly per S101 spec.
+		var payload []byte
+		switch {
+		case frame.Flags == s101.FlagSingle:
+			// Single-packet message — decode directly.
+			payload = frame.Payload
+		case frame.Flags&s101.FlagFirst != 0:
+			// First fragment of a multi-packet message.
+			multiframeBuf = append([]byte{}, frame.Payload...)
+			s.logger.Debug("emberplus: multi-frame start", "len", len(frame.Payload))
+			continue
+		case frame.Flags&s101.FlagLast != 0:
+			// Last fragment — assemble and decode.
+			multiframeBuf = append(multiframeBuf, frame.Payload...)
+			payload = multiframeBuf
+			s.logger.Debug("emberplus: multi-frame complete", "total_len", len(payload))
+			multiframeBuf = nil
+		default:
+			// Middle fragment — accumulate.
+			multiframeBuf = append(multiframeBuf, frame.Payload...)
+			s.logger.Debug("emberplus: multi-frame continue", "buf_len", len(multiframeBuf))
+			continue
+		}
+
+		s.logger.Debug("emberplus: received EmBER frame",
+			"payload_len", len(payload),
+			"dtd", frame.DTD,
+			"version", frame.Version)
+		elements, err := glow.DecodeRoot(payload)
+		if err != nil {
+			s.logger.Debug("emberplus: glow decode error",
+				"err", err,
+				"payload_len", len(payload))
+			continue
+		}
+		s.logger.Debug("emberplus: decoded glow elements", "count", len(elements))
+		s.mu.Lock()
+		fn := s.onElement
+		s.mu.Unlock()
+		if fn != nil && len(elements) > 0 {
+			fn(elements)
 		}
 	}
 }

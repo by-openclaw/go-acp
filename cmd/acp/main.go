@@ -56,6 +56,7 @@ var commands = []command{
 	{"export", "dump a walked device to json / yaml / csv", helpExport, runExport},
 	{"import", "apply values from a json snapshot file", helpImport, runImport},
 	{"discover", "passive + active scan for devices on the local subnet", helpDiscover, runDiscover},
+	{"matrix", "set matrix crosspoint connections (Ember+ only)", helpMatrix, runMatrix},
 	{"diag", "run ACP2 diagnostic probes against a device", helpDiag, runDiag},
 	{"list-protocols", "list available protocol plugins", helpListProtocols, func(_ context.Context, _ []string) error { return runListProtocols() }},
 }

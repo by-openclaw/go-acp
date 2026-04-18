@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +45,12 @@ type Plugin struct {
 	treeMu   sync.RWMutex
 	treeReady chan struct{} // closed when initial GetDirectory completes
 
+	// Numeric path → identifier mapping for reconstructing string paths
+	// from QualifiedNode/QualifiedParameter responses.
+	// Key: numeric path like "1.1.2", Value: identifier string.
+	numPath  map[string]string
+	numPathMu sync.RWMutex
+
 	// Subscription callbacks.
 	subs   map[string]protocol.EventFunc // path string → callback
 	subsMu sync.RWMutex
@@ -62,6 +69,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.mu.Lock()
 	p.session = s
 	p.tree = make(map[string]*treeEntry)
+	p.numPath = make(map[string]string)
 	p.treeReady = make(chan struct{})
 	p.subs = make(map[string]protocol.EventFunc)
 	p.mu.Unlock()
@@ -160,20 +168,46 @@ done:
 	return objs, nil
 }
 
-func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
-	// Look up from tree.
+// findEntry looks up a tree entry by path (preferred), label, or ID.
+// Path is the dot-separated tree key — unambiguous.
+func (p *Plugin) findEntry(req protocol.ValueRequest) (string, *treeEntry) {
 	p.treeMu.RLock()
 	defer p.treeMu.RUnlock()
 
-	p.logger.Debug("emberplus: GetValue lookup", "label", req.Label, "id", req.ID, "tree_size", len(p.tree))
+	// 1. Path — direct map lookup, O(1), unambiguous.
+	if req.Path != "" {
+		if entry, ok := p.tree[req.Path]; ok {
+			return req.Path, entry
+		}
+	}
+
+	// 2. Label or ID — linear scan, first match (may be ambiguous).
 	for key, entry := range p.tree {
 		if (req.Label != "" && entry.obj.Label == req.Label) ||
 			(req.ID >= 0 && entry.obj.ID == req.ID) {
-			p.logger.Debug("emberplus: GetValue found", "key", key, "label", entry.obj.Label)
-			return entry.obj.Value, nil
+			return key, entry
 		}
 	}
-	return protocol.Value{}, fmt.Errorf("emberplus: object not found (tree has %d entries)", len(p.tree))
+	return "", nil
+}
+
+func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
+	// Ember+ needs the tree populated. Walk if empty.
+	p.treeMu.RLock()
+	empty := len(p.tree) == 0
+	p.treeMu.RUnlock()
+	if empty {
+		if _, err := p.Walk(ctx, 0); err != nil {
+			return protocol.Value{}, fmt.Errorf("emberplus: walk for value lookup: %w", err)
+		}
+	}
+
+	key, entry := p.findEntry(req)
+	if entry == nil {
+		return protocol.Value{}, fmt.Errorf("emberplus: object not found (tree has %d entries)", len(p.tree))
+	}
+	p.logger.Debug("emberplus: GetValue found", "key", key, "label", entry.obj.Label)
+	return entry.obj.Value, nil
 }
 
 func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
@@ -184,22 +218,62 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		return protocol.Value{}, protocol.ErrNotConnected
 	}
 
-	// Find the parameter path.
+	// Ember+ needs the tree populated to get the Glow path.
 	p.treeMu.RLock()
-	var path []int32
-	for _, entry := range p.tree {
-		if (req.Label != "" && entry.obj.Label == req.Label) ||
-			(req.ID >= 0 && entry.obj.ID == req.ID) {
-			if entry.glowParam != nil {
-				path = entry.glowParam.Path
-			}
-			break
+	empty := len(p.tree) == 0
+	p.treeMu.RUnlock()
+	if empty {
+		if _, err := p.Walk(ctx, 0); err != nil {
+			return protocol.Value{}, fmt.Errorf("emberplus: walk for path resolution: %w", err)
 		}
 	}
-	p.treeMu.RUnlock()
+
+	// Find the parameter by path (preferred), label, or ID.
+	_, entry := p.findEntry(req)
+	if entry == nil || entry.glowParam == nil {
+		return protocol.Value{}, fmt.Errorf("emberplus: parameter not found")
+	}
+	path := entry.glowParam.Path
+	paramKind := entry.obj.Kind
 
 	if len(path) == 0 {
-		return protocol.Value{}, fmt.Errorf("emberplus: parameter not found")
+		return protocol.Value{}, fmt.Errorf("emberplus: parameter has no path")
+	}
+
+	// If caller didn't set Kind, use the parameter's known Kind.
+	if val.Kind == protocol.KindUnknown {
+		val.Kind = paramKind
+	}
+
+	// If the value was passed as a string (from CLI --value flag),
+	// parse it into the correct typed field based on Kind.
+	if val.Str != "" && val.Kind != protocol.KindString {
+		switch val.Kind {
+		case protocol.KindInt:
+			if n, err := strconv.ParseInt(val.Str, 10, 64); err == nil {
+				val.Int = n
+				val.Str = "" // clear so display shows typed value
+			}
+		case protocol.KindUint:
+			if n, err := strconv.ParseUint(val.Str, 10, 64); err == nil {
+				val.Uint = n
+				val.Str = ""
+			}
+		case protocol.KindFloat:
+			if f, err := strconv.ParseFloat(val.Str, 64); err == nil {
+				val.Float = f
+				val.Str = ""
+			}
+		case protocol.KindBool:
+			val.Bool = val.Str == "true" || val.Str == "1" || val.Str == "yes"
+			val.Str = ""
+		case protocol.KindEnum:
+			if n, err := strconv.ParseUint(val.Str, 10, 8); err == nil {
+				val.Enum = uint8(n)
+				val.Uint = n
+				val.Str = ""
+			}
+		}
 	}
 
 	// Convert protocol.Value to Glow value.
@@ -239,23 +313,26 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		return protocol.ErrNotConnected
 	}
 
-	// Find the parameter path.
+	// "Subscribe all" — register a wildcard callback.
+	if req.Path == "" && req.Label == "" && req.ID < 0 {
+		p.subsMu.Lock()
+		p.subs["*"] = fn
+		p.subsMu.Unlock()
+		return nil
+	}
+
+	// Ember+ needs the tree for path resolution. Walk if empty.
 	p.treeMu.RLock()
-	var path []int32
-	var key string
-	for k, entry := range p.tree {
-		if (req.Label != "" && entry.obj.Label == req.Label) ||
-			(req.ID >= 0 && entry.obj.ID == req.ID) {
-			if entry.glowParam != nil {
-				path = entry.glowParam.Path
-				key = k
-			}
-			break
+	empty := len(p.tree) == 0
+	p.treeMu.RUnlock()
+	if empty {
+		if _, err := p.Walk(context.Background(), 0); err != nil {
+			return fmt.Errorf("emberplus: walk for subscribe: %w", err)
 		}
 	}
-	p.treeMu.RUnlock()
 
-	if len(path) == 0 {
+	key, entry := p.findEntry(req)
+	if entry == nil || entry.glowParam == nil || len(entry.glowParam.Path) == 0 {
 		return fmt.Errorf("emberplus: parameter not found for subscribe")
 	}
 
@@ -263,7 +340,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 	p.subs[key] = fn
 	p.subsMu.Unlock()
 
-	return s.SendSubscribe(path)
+	return s.SendSubscribe(entry.glowParam.Path)
 }
 
 func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
@@ -299,6 +376,50 @@ func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
 	return nil
 }
 
+// MatrixConnect sends a matrix crosspoint connection command.
+// matrixPath is the dot-separated path to the matrix (e.g. "router.oneToN.matrix").
+// target is the target number, sources is the list of source numbers.
+// operation: 0=absolute (replace all), 1=connect (add), 2=disconnect (remove).
+func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target int32, sources []int32, operation int64) error {
+	p.mu.Lock()
+	s := p.session
+	p.mu.Unlock()
+	if s == nil {
+		return protocol.ErrNotConnected
+	}
+
+	// Walk if tree empty to resolve paths.
+	p.treeMu.RLock()
+	empty := len(p.tree) == 0
+	p.treeMu.RUnlock()
+	if empty {
+		if _, err := p.Walk(ctx, 0); err != nil {
+			return fmt.Errorf("emberplus: walk for matrix: %w", err)
+		}
+	}
+
+	// Find the matrix entry to get its numeric path.
+	p.treeMu.RLock()
+	var numPath []int32
+	if entry, ok := p.tree[matrixPath]; ok && entry.glowMatrix != nil {
+		numPath = entry.glowMatrix.Path
+	}
+	p.treeMu.RUnlock()
+
+	if len(numPath) == 0 {
+		return fmt.Errorf("emberplus: matrix not found at path %q", matrixPath)
+	}
+
+	p.logger.Debug("emberplus: MatrixConnect",
+		"matrix_path", matrixPath,
+		"numeric_path", numPath,
+		"target", target,
+		"sources", sources,
+		"operation", operation)
+
+	return s.SendMatrixConnect(numPath, target, sources, operation)
+}
+
 // handleElements processes incoming Glow elements from the provider.
 func (p *Plugin) handleElements(elements []glow.Element) {
 	for _, el := range elements {
@@ -322,7 +443,19 @@ func (p *Plugin) processElement(el glow.Element, parentPath []string) {
 }
 
 func (p *Plugin) processNode(n *glow.Node, parentPath []string) {
-	path := buildPath(parentPath, n.Identifier, n.Number)
+	// Register numeric path → identifier mapping for QualifiedNode resolution.
+	if len(n.Path) > 0 {
+		p.registerNumericPath(n.Path, n.Identifier)
+	}
+
+	// Build string path: prefer numeric path resolution (full hierarchy),
+	// fall back to parent+identifier for non-qualified nodes.
+	var path []string
+	if len(n.Path) > 0 {
+		path = p.resolveStringPath(n.Path, n.Identifier)
+	} else {
+		path = buildPath(parentPath, n.Identifier, n.Number)
+	}
 	key := pathKey(path)
 
 	entry := &treeEntry{
@@ -366,7 +499,16 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string) {
 }
 
 func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string) {
-	path := buildPath(parentPath, param.Identifier, param.Number)
+	if len(param.Path) > 0 {
+		p.registerNumericPath(param.Path, param.Identifier)
+	}
+
+	var path []string
+	if len(param.Path) > 0 {
+		path = p.resolveStringPath(param.Path, param.Identifier)
+	} else {
+		path = buildPath(parentPath, param.Identifier, param.Number)
+	}
 	key := pathKey(path)
 
 	obj := protocol.Object{
@@ -392,58 +534,77 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string) {
 		obj.Access = 3
 	}
 
-	// Map type and value.
+	// Map type and value. Always set both obj.Kind AND obj.Value.Kind
+	// so GetValue returns a properly typed Value even when the provider
+	// doesn't send the value field in the initial response.
 	switch param.Type {
 	case glow.ParamTypeInteger:
 		obj.Kind = protocol.KindInt
-		if v, ok := param.Value.(int64); ok {
-			obj.Value = protocol.Value{Kind: protocol.KindInt, Int: v}
-		}
+		obj.Value.Kind = protocol.KindInt
 	case glow.ParamTypeReal:
 		obj.Kind = protocol.KindFloat
-		if v, ok := param.Value.(float64); ok {
-			obj.Value = protocol.Value{Kind: protocol.KindFloat, Float: v}
-		}
+		obj.Value.Kind = protocol.KindFloat
 	case glow.ParamTypeString:
 		obj.Kind = protocol.KindString
-		if v, ok := param.Value.(string); ok {
-			obj.Value = protocol.Value{Kind: protocol.KindString, Str: v}
-		}
+		obj.Value.Kind = protocol.KindString
 	case glow.ParamTypeBoolean:
 		obj.Kind = protocol.KindBool
-		if v, ok := param.Value.(bool); ok {
-			obj.Value = protocol.Value{Kind: protocol.KindBool, Bool: v}
-		}
+		obj.Value.Kind = protocol.KindBool
 	case glow.ParamTypeEnum:
 		obj.Kind = protocol.KindEnum
-		if v, ok := param.Value.(int64); ok {
-			obj.Value = protocol.Value{Kind: protocol.KindEnum, Enum: uint8(v), Uint: uint64(v)}
+		obj.Value.Kind = protocol.KindEnum
+	}
+
+	// Populate value from whatever the provider sent.
+	if param.Value != nil {
+		switch v := param.Value.(type) {
+		case int64:
+			if obj.Kind == protocol.KindUnknown {
+				obj.Kind = protocol.KindInt
+			}
+			obj.Value.Kind = obj.Kind
+			switch obj.Kind {
+			case protocol.KindInt:
+				obj.Value.Int = v
+			case protocol.KindUint:
+				obj.Value.Uint = uint64(v)
+			case protocol.KindEnum:
+				obj.Value.Enum = uint8(v)
+				obj.Value.Uint = uint64(v)
+			case protocol.KindFloat:
+				obj.Value.Float = float64(v)
+			default:
+				obj.Value.Int = v
+			}
+		case float64:
+			if obj.Kind == protocol.KindUnknown {
+				obj.Kind = protocol.KindFloat
+			}
+			obj.Value.Kind = obj.Kind
+			obj.Value.Float = v
+		case string:
+			if obj.Kind == protocol.KindUnknown {
+				obj.Kind = protocol.KindString
+			}
+			obj.Value.Kind = obj.Kind
+			obj.Value.Str = v
+		case bool:
+			if obj.Kind == protocol.KindUnknown {
+				obj.Kind = protocol.KindBool
+			}
+			obj.Value.Kind = obj.Kind
+			obj.Value.Bool = v
 		}
-		// Parse enum items from enumeration string.
+	}
+
+	// Enum items from enumeration string or map.
+	if param.Type == glow.ParamTypeEnum || obj.Kind == protocol.KindEnum {
 		if param.Enumeration != "" {
 			obj.EnumItems = strings.Split(param.Enumeration, "\n")
 		}
 		if param.EnumMap != nil {
 			for _, label := range param.EnumMap {
 				obj.EnumItems = append(obj.EnumItems, label)
-			}
-		}
-	default:
-		// Infer from value type if Type is not set.
-		if param.Value != nil {
-			switch param.Value.(type) {
-			case int64:
-				obj.Kind = protocol.KindInt
-				obj.Value = protocol.Value{Kind: protocol.KindInt, Int: param.Value.(int64)}
-			case float64:
-				obj.Kind = protocol.KindFloat
-				obj.Value = protocol.Value{Kind: protocol.KindFloat, Float: param.Value.(float64)}
-			case string:
-				obj.Kind = protocol.KindString
-				obj.Value = protocol.Value{Kind: protocol.KindString, Str: param.Value.(string)}
-			case bool:
-				obj.Kind = protocol.KindBool
-				obj.Value = protocol.Value{Kind: protocol.KindBool, Bool: param.Value.(bool)}
 			}
 		}
 	}
@@ -463,10 +624,14 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string) {
 	p.tree[key] = entry
 	p.treeMu.Unlock()
 
-	// Notify subscribers.
+	// Notify subscribers (specific key or wildcard).
 	p.subsMu.RLock()
 	fn := p.subs[key]
+	wildcard := p.subs["*"]
 	p.subsMu.RUnlock()
+	if fn == nil {
+		fn = wildcard
+	}
 	if fn != nil {
 		fn(protocol.Event{
 			Slot:      0,
@@ -480,7 +645,15 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string) {
 }
 
 func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string) {
-	path := buildPath(parentPath, m.Identifier, m.Number)
+	if len(m.Path) > 0 {
+		p.registerNumericPath(m.Path, m.Identifier)
+	}
+	var path []string
+	if len(m.Path) > 0 {
+		path = p.resolveStringPath(m.Path, m.Identifier)
+	} else {
+		path = buildPath(parentPath, m.Identifier, m.Number)
+	}
 	key := pathKey(path)
 
 	entry := &treeEntry{
@@ -508,7 +681,15 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string) {
 }
 
 func (p *Plugin) processFunction(f *glow.Function, parentPath []string) {
-	path := buildPath(parentPath, f.Identifier, f.Number)
+	if len(f.Path) > 0 {
+		p.registerNumericPath(f.Path, f.Identifier)
+	}
+	var path []string
+	if len(f.Path) > 0 {
+		path = p.resolveStringPath(f.Path, f.Identifier)
+	} else {
+		path = buildPath(parentPath, f.Identifier, f.Number)
+	}
 	key := pathKey(path)
 
 	entry := &treeEntry{
@@ -548,6 +729,54 @@ func buildPath(parent []string, identifier string, number int32) []string {
 	return path
 }
 
+// numericPathKey converts a numeric path []int32 to a dot-separated string
+// for use as a map key: [1,2,3] → "1.2.3"
+func numericPathKey(nums []int32) string {
+	parts := make([]string, len(nums))
+	for i, n := range nums {
+		parts[i] = fmt.Sprintf("%d", n)
+	}
+	return strings.Join(parts, ".")
+}
+
+// resolveStringPath reconstructs the full string path from a numeric path
+// by looking up each ancestor's identifier in the numPath map.
+// For path [1,1,2,190]: looks up "1"→"router", "1.1"→"oneToN",
+// "1.1.2"→"parameters", "1.1.2.190"→"t-190" → ["router","oneToN","parameters","t-190"]
+func (p *Plugin) resolveStringPath(nums []int32, identifier string) []string {
+	path := make([]string, len(nums))
+	p.numPathMu.RLock()
+	for i := range nums {
+		prefix := numericPathKey(nums[:i+1])
+		if name, ok := p.numPath[prefix]; ok {
+			path[i] = name
+		} else {
+			path[i] = fmt.Sprintf("%d", nums[i])
+		}
+	}
+	p.numPathMu.RUnlock()
+	// Override the last element with the current identifier if available.
+	if identifier != "" && len(path) > 0 {
+		path[len(path)-1] = identifier
+	}
+	return path
+}
+
+// registerNumericPath records a numeric path → identifier mapping.
+func (p *Plugin) registerNumericPath(nums []int32, identifier string) {
+	if len(nums) == 0 {
+		return
+	}
+	key := numericPathKey(nums)
+	name := identifier
+	if name == "" {
+		name = fmt.Sprintf("%d", nums[len(nums)-1])
+	}
+	p.numPathMu.Lock()
+	p.numPath[key] = name
+	p.numPathMu.Unlock()
+}
+
 func pathKey(path []string) string {
-	return strings.Join(path, "/")
+	return strings.Join(path, ".")
 }

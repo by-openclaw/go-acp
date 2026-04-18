@@ -500,10 +500,11 @@ func findObjectByLabel(plug protocol.Protocol, slot int, group, label string) *p
 //
 // Examples:
 //
-//	matchPathPrefix(["ROOT_NODE_V2","BOARD","Card Name"], ["BOARD"])       → true
-//	matchPathPrefix(["ROOT_NODE_V2","PSU","1","Present"], ["PSU","1"])     → true
+//	matchPathPrefix(["ROOT_NODE_V2","BOARD","Card Name"], ["BOARD"])       → true  (--path BOARD)
+//	matchPathPrefix(["ROOT_NODE_V2","PSU","1","Present"], ["PSU","1"])     → true  (--path PSU.1)
 //	matchPathPrefix(["ROOT_NODE_V2","PSU","1","Present"], ["BOARD"])       → false
-//	matchPathPrefix(["identity"], ["identity"])                            → true (ACP1)
+//	matchPathPrefix(["identity"], ["identity"])                            → true  (ACP1)
+//	matchPathPrefix(["router","oneToN","parameters"], ["router","oneToN"]) → true  (Ember+, --path router.oneToN)
 func matchPathPrefix(objPath, prefix []string) bool {
 	if len(prefix) == 0 {
 		return true

@@ -92,7 +92,7 @@ func runExport(ctx context.Context, args []string) error {
 		}
 		// Apply --path filter if set.
 		if *pathFlag != "" {
-			pathSegs := strings.Split(*pathFlag, "/")
+			pathSegs := strings.Split(*pathFlag, ".")
 			objs = filterByPath(objs, pathSegs)
 		}
 		snap.Slots = append(snap.Slots, export.SlotDump{

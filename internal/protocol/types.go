@@ -259,16 +259,25 @@ func (o Object) HasWrite() bool { return o.Access&0x02 != 0 }
 func (o Object) HasSetDef() bool { return o.Access&0x04 != 0 }
 
 // ValueRequest addresses a single object on a single slot for a read or
-// write operation. Plugins accept Label OR (Group+ID/ObjectID), per the
-// spec appendix recommendation that label be the primary identifier.
+// write operation. Plugins accept Path OR Label OR (Group+ID/ObjectID).
+//
+// Resolution priority:
+//  1. Path — dot-separated tree path (e.g. "router.oneToN.parameters.sourceGain")
+//     Unambiguous for all protocols. Required for Ember+ (labels collide).
+//  2. Label — object label string. ACP1/ACP2 labels are unique within group/tree.
+//  3. Group + ID — ACP1 wire address (group byte + object byte).
 type ValueRequest struct {
 	Slot int
 
-	// Label is the preferred identifier. If non-empty the plugin resolves
-	// it through the walker's label map. Empty means address by ID.
+	// Path is the dot-separated tree path. Preferred for Ember+.
+	// For ACP1: "control.labelname". For ACP2: "BOARD.Card Name".
+	// For Ember+: "router.oneToN.parameters.sourceGain".
+	Path string
+
+	// Label is the object label. Used by ACP1/ACP2 when Path is empty.
 	Label string
 
-	// Group + ID address an ACP1 object when Label is empty.
+	// Group + ID address an ACP1 object when Label and Path are empty.
 	Group string
 	ID    int
 }

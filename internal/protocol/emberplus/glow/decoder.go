@@ -350,7 +350,15 @@ func decodeQualifiedMatrix(tlv ber.TLV) (*Element, error) {
 }
 
 func decodeMatrixContents(m *Matrix, tlv ber.TLV) {
-	for _, child := range tlv.Children {
+	// Unwrap SET if present inside CONTEXT wrapper (same as Node/Parameter).
+	children := tlv.Children
+	for _, c := range tlv.Children {
+		if c.Tag.Class == ber.ClassUniversal && c.Tag.Number == ber.TagSet {
+			children = c.Children
+			break
+		}
+	}
+	for _, child := range children {
 		if child.Tag.Class != ber.ClassContext {
 			continue
 		}

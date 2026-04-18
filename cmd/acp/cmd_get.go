@@ -16,16 +16,17 @@ func runGet(ctx context.Context, args []string) error {
 	group := fs.String("group", "", "object group (optional when --label is unique across groups)")
 	label := fs.String("label", "", "object label (preferred over --id, requires prior walk context)")
 	id := fs.Int("id", -1, "object id within group (alternative to --label)")
+	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp get <host> --slot N --group G (--label L | --id I)")
+		return fmt.Errorf("usage: acp get <host> --slot N (--path P | --label L | --id I)")
 	}
 	_ = fs.Parse(rest)
 	if *slot < 0 {
 		return fmt.Errorf("--slot is required")
 	}
-	if *label == "" && *id < 0 {
-		return fmt.Errorf("either --label or --id is required")
+	if *pathFlag == "" && *label == "" && *id < 0 {
+		return fmt.Errorf("either --path, --label, or --id is required")
 	}
 
 	plug, cleanup, err := connect(ctx, host, cf)
@@ -37,20 +38,22 @@ func runGet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	// If addressing by label, walk to populate the tree for label resolution.
-	// Disk cache provides the ID but the plugin tree must be populated for
-	// protocols like Ember+ where GetValue reads from the walked tree.
-	if *label != "" {
-		if cachedID := resolveLabelFromCache(host, cf.protocol, *slot, *group, *label); cachedID >= 0 && *id < 0 {
-			*id = cachedID
-		}
+	// Path-based addressing: walk first, then lookup by path key.
+	// Label-based: resolve from cache or walk.
+	if *pathFlag != "" || *label != "" {
 		if _, err := plug.Walk(opCtx, *slot); err != nil {
-			return fmt.Errorf("walk for label resolution: %w", err)
+			return fmt.Errorf("walk for resolution: %w", err)
+		}
+	}
+	if *label != "" && *id < 0 {
+		if cachedID := resolveLabelFromCache(host, cf.protocol, *slot, *group, *label); cachedID >= 0 {
+			*id = cachedID
 		}
 	}
 
 	req := protocol.ValueRequest{
 		Slot:  *slot,
+		Path:  *pathFlag,
 		Group: *group,
 		Label: *label,
 		ID:    *id,
