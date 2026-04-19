@@ -40,18 +40,29 @@ Per-type element docs with realistic samples: [docs/protocols/elements/](docs/pr
 |---|---|---|---|
 | `acp export --format json` | Hierarchical tree + values to JSON | done | done |
 | `acp export --format yaml` | Hierarchical tree + values to YAML | done | done |
-| `acp export --format csv` | Flat rows, path in group column | done | done |
+| `acp export --format csv` | Flat rows with `oid`, `path`, `id`, `label` columns — **lossless round-trip** for writable objects | done | done |
 | `acp import --file X.json` | Apply values from JSON file | done | done |
 | `acp import --file X.yaml` | Apply values from YAML file | done | done |
 | `acp import --file X.csv` | Apply values from CSV file | done | done |
 | `acp import --dry-run` | Validate without writing | done | done |
 
 Export/import rules:
-- Object ID is the primary key (unambiguous)
+- Resolver key per protocol: **Ember+ = `oid`** (numeric dotted path), **ACP1 = `group` + `id`**, **ACP2 = `id`** (globally-unique u32)
 - Read-only objects are skipped on import
 - Values in export are live (from walk)
-- Round-trip: export → edit → import works for all 3 formats
+- Round-trip: export → edit → import works for all 3 formats. CSV carries `oid` + `path` + `id` + `label` columns so duplicate labels (Ember+ `gain` per channel, ACP2 `Present` per PSU) round-trip unambiguously
 - Hierarchical tree format: identity > Card name > {id, kind, value}
+
+### CSV column contract (issue #38)
+
+| Column | Purpose | Used by importer |
+|---|---|---|
+| `oid` | Ember+ numeric dotted path (`1.2.1.3`). Empty for ACP1/ACP2. | Ember+ resolver (preferred) |
+| `path` | Slash-joined tree path (`router/inputs/ch1/gain`). | Ember+ fallback; hierarchical identity for humans |
+| `id` | ACP1 ObjectID (byte), ACP2 obj-id (u32), Ember+ sibling Number. | ACP1 + ACP2 resolvers (primary) |
+| `label` | Human-readable identifier. | ACP1 resolver (with `group`); last-resort elsewhere |
+
+`acp convert --in device.json --out device.csv` followed by `acp import device.csv --dry-run` prints `applied N, skipped M, failed 0` on an unchanged device — the **zero-failed contract** is what guarantees CSV round-trip works.
 
 ### Import summary line
 

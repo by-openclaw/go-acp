@@ -428,6 +428,21 @@ acp import 127.0.0.1 --protocol emberplus --port 9092 --file tree.json
 Reads a JSON/YAML/CSV snapshot and issues a `set` for every parameter
 whose declared value differs from the live one.
 
+### CSV columns (lossless round-trip, issue #38)
+
+Ember+ labels are not unique — the same `gain` appears under every
+channel. CSV round-trip uses the numeric dotted OID (e.g. `1.2.1.3`)
+from the `oid` column as the importer's primary resolution key. The
+`path` column (e.g. `router/inputs/ch1/gain`) mirrors it for humans.
+
+```
+acp convert --in tree.json --out tree.csv
+acp import  127.0.0.1 --protocol emberplus --port 9092 --file tree.csv --dry-run   # applied N, failed 0
+```
+
+`failed 0` on an unchanged device confirms duplicate-label elements
+(per-channel `gain`, `mute`, `meter`) round-trip unambiguously.
+
 ### `--capture` (global flag, two modes)
 
 **File mode** — `--capture FILE.jsonl` writes every raw S101 frame

@@ -56,22 +56,32 @@ func ReadCSV(r io.Reader) (*Snapshot, error) {
 			slotMap[key] = dump
 		}
 
-		// "group" column (new) or "path" column (legacy) — accept both.
-		groupStr := col(row, idx, "group")
-		if groupStr == "" {
-			groupStr = col(row, idx, "path")
+		// "path" column (current) or "group" column (legacy ≤0.2.0) —
+		// accept both so CSVs from older exports still import cleanly.
+		pathStr := col(row, idx, "path")
+		if pathStr == "" {
+			pathStr = col(row, idx, "group")
 		}
 		// Split slash-separated path back into segments for ACP2
 		// hierarchical import (e.g. "ROOT_NODE_V2/PSU/1/Present").
 		var pathSegs []string
-		if strings.Contains(groupStr, "/") {
-			pathSegs = strings.Split(groupStr, "/")
-		} else if groupStr != "" {
-			pathSegs = []string{groupStr}
+		if strings.Contains(pathStr, "/") {
+			pathSegs = strings.Split(pathStr, "/")
+		} else if pathStr != "" {
+			pathSegs = []string{pathStr}
+		}
+		// ACP1 resolver still matches by (Group, ID) / (Group, Label).
+		// For single-element paths (ACP1's flat group model) populate
+		// Group so that resolver path keeps working; other plugins
+		// ignore Group.
+		group := ""
+		if len(pathSegs) == 1 {
+			group = pathSegs[0]
 		}
 		obj := protocol.Object{
 			Slot:  slotNum,
-			Group: groupStr,
+			OID:   col(row, idx, "oid"),
+			Group: group,
 			Path:  pathSegs,
 			Label: col(row, idx, "label"),
 			Unit:  col(row, idx, "unit"),

@@ -434,6 +434,7 @@ testability, pluggability.
 
 **Cross-protocol features**:
 - Hierarchical export (JSON/YAML/CSV) — same tree format for all protocols
+- **CSV lossless round-trip (#38)** — `oid` + `path` + `id` + `label` columns so duplicate labels (Ember+ `gain` per channel, ACP2 `Present` per PSU) can be re-addressed by the importer. Contract: `convert json→csv` then `import csv --dry-run` returns `failed 0` on unchanged device.
 - --path subtree filter (dot separator) + --filter text search
 - File-backed tree store (devices/{ip}/slot_{n}.json)
 - Disk cache with labels/units for instant watch startup

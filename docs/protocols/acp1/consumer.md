@@ -353,6 +353,21 @@ acp import 10.6.239.113 --file slot0.yaml --dry-run
 acp import 10.6.239.113 --file slot0.yaml              # apply
 ```
 
+### CSV columns (lossless round-trip, issue #38)
+
+CSV carries `oid`, `path`, `id`, `label` so the importer can match
+every writable object. ACP1 populates `path` with the single-level
+group name (e.g. `control`) and leaves `oid` empty — resolution uses
+the ACP1-native `group + id` or `group + label` pair.
+
+```
+acp convert --in slot0.json --out slot0.csv
+acp import  10.6.239.113 --file slot0.csv --dry-run    # applied N, failed 0
+```
+
+`failed 0` on an unchanged device confirms CSV round-trip is lossless
+for writable objects.
+
 ---
 
 ## Raw Capture
