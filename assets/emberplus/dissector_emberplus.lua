@@ -907,10 +907,44 @@ for _, p in ipairs(DEFAULT_TCP_PORTS) do
     tcp_port_table:add(p, s101_proto)
 end
 
--- Heuristic fallback: any TCP stream whose first byte is BoF 0xFE.
+-- Heuristic fallback so the dissector fires on any TCP port, not only the
+-- three defaults. To avoid claiming unrelated TCP streams we validate the
+-- S101 header fields (msgType / command / version) after unescaping the
+-- first frame.
 local function heuristic(tvbuf, pktinfo, root)
-    if tvbuf:reported_length_remaining() < 2 then return false end
+    local len = tvbuf:reported_length_remaining()
+    if len < 6 then return false end
     if tvbuf:range(0, 1):uint() ~= S101_BOF then return false end
+
+    -- Bounded EoF scan, skipping escape sequences.
+    local scan_limit = math.min(len, 4096)
+    local eof_at
+    local i = 1
+    while i < scan_limit do
+        local b = tvbuf:range(i, 1):uint()
+        if b == S101_ESC then
+            i = i + 2
+        elseif b == S101_EOF then
+            eof_at = i
+            break
+        else
+            i = i + 1
+        end
+    end
+    if not eof_at then return false end
+
+    -- Validate S101 header after unescape.
+    local unesc = unescape_s101(tvbuf, 1, eof_at)
+    if unesc:len() < 6 then return false end
+    local msg_type = unesc:get_index(1)
+    local command  = unesc:get_index(2)
+    local version  = unesc:get_index(3)
+    if msg_type ~= 0x0E then return false end
+    if command ~= 0x00 and command ~= 0x01 and command ~= 0x02 and command ~= 0x0E then
+        return false
+    end
+    if version ~= 0x01 then return false end
+
     s101_proto.dissector(tvbuf, pktinfo, root)
     return true
 end

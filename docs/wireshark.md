@@ -110,12 +110,16 @@ up the default ports automatically.
 | Ember+ keep-alive only       | `emberplus.s101.command == 0x01 or emberplus.s101.command == 0x02` |
 | Ember+ Glow elements         | `emberplus_glow`              |
 
-### Decode As… (non-default ports)
+### Non-default ports
 
-If your provider runs on a port we don't register by default, right-click a
-packet → **Decode As…** → pick the appropriate protocol (`emberplus`,
-`acp2_msg`, `acp1`) → OK. The rule is saved for the session; tick **Save**
-to make it persistent.
+Ember+ auto-detects on **any TCP port** via a heuristic that checks BoF +
+S101 header shape. No configuration needed — if your provider speaks S101
+on, say, port 12345, Wireshark will still pick it up.
+
+ACP1 / ACP2 don't have a heuristic (the wire format is less distinctive).
+For those, if your device uses a non-default port, right-click a packet →
+**Decode As…** → pick the appropriate protocol (`acp2_msg`, `acp1`) → OK.
+The rule is saved for the session; tick **Save** to make it persistent.
 
 ---
 
