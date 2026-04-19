@@ -55,6 +55,7 @@ var commands = []command{
 	{"watch", "subscribe to live announcements", helpWatch, runWatch},
 	{"export", "dump a walked device to json / yaml / csv", helpExport, runExport},
 	{"import", "apply values from a json snapshot file", helpImport, runImport},
+	{"convert", "translate a snapshot file between json / yaml / csv (offline)", helpConvert, runConvert},
 	{"discover", "passive + active scan for devices on the local subnet", helpDiscover, runDiscover},
 	{"matrix", "set matrix crosspoint connections (Ember+ only)", helpMatrix, runMatrix},
 	{"invoke", "invoke an Ember+ function (RPC)", helpInvoke, runInvoke},

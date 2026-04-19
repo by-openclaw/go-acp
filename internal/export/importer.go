@@ -26,6 +26,24 @@ type ImportReport struct {
 	Failed   int
 	DryRun   bool
 	Failures []string
+	// Skips lists every object that the importer deliberately did not
+	// attempt, each with a one-word reason: "read_only", "container"
+	// (node with no scalar value), "marker" (sub-group header), or
+	// "unknown_kind" (compound type with no writer path). Populated so
+	// dry-run can show the operator exactly what will not be applied
+	// and why. A single line per skip, slot-qualified.
+	Skips []SkipRecord
+}
+
+// SkipRecord is one rejected-at-client row. Small and printable.
+type SkipRecord struct {
+	Slot   int
+	ID     int
+	Label  string
+	Path   string
+	Kind   string
+	Access string
+	Reason string
 }
 
 // LoadSnapshot reads a snapshot file from disk and returns the parsed
@@ -76,6 +94,7 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 		for _, obj := range dump.Objects {
 			if !obj.HasWrite() {
 				rep.Skipped++
+				rep.Skips = append(rep.Skips, skipFrom(dump.Slot, obj, "read_only"))
 				continue
 			}
 			// Skip compound types that need dedicated paths rather
@@ -85,12 +104,14 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 			if obj.Kind == protocol.KindUnknown ||
 				obj.Kind == protocol.KindFrame {
 				rep.Skipped++
+				rep.Skips = append(rep.Skips, skipFrom(dump.Slot, obj, "unknown_kind"))
 				continue
 			}
 			// Also skip sub-group markers — they're section headers,
 			// not real values.
 			if obj.SubGroupMarker {
 				rep.Skipped++
+				rep.Skips = append(rep.Skips, skipFrom(dump.Slot, obj, "marker"))
 				continue
 			}
 
@@ -119,4 +140,31 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 		}
 	}
 	return rep, nil
+}
+
+// skipFrom builds a SkipRecord describing one row the importer chose
+// not to attempt. Reason is a short one-word code ("read_only" /
+// "unknown_kind" / "marker") so the CLI can group the report by cause.
+func skipFrom(slot int, obj protocol.Object, reason string) SkipRecord {
+	path := obj.Label
+	if len(obj.Path) > 0 {
+		path = strings.Join(obj.Path, ".")
+	}
+	kind := "unknown"
+	if obj.Kind != protocol.KindUnknown {
+		kind = obj.Kind.String()
+	}
+	access := "R--"
+	if obj.HasWrite() {
+		access = "RW-"
+	}
+	return SkipRecord{
+		Slot:   slot,
+		ID:     obj.ID,
+		Label:  obj.Label,
+		Path:   path,
+		Kind:   kind,
+		Access: access,
+		Reason: reason,
+	}
 }
