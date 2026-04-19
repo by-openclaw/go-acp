@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"acp/internal/protocol"
+	"acp/internal/protocol/compliance"
 )
 
 // walkerClient is the minimum contract the Walker needs from whatever
@@ -31,7 +32,8 @@ type walkerClient interface {
 //     accessed via getValue(frame, 0), not getObject — handled by
 //     GetDeviceInfo in the Plugin.
 type Walker struct {
-	client walkerClient
+	client  walkerClient
+	profile *compliance.Profile
 }
 
 // NewWalker wraps a client for object-tree traversal. Accepts any type
@@ -39,6 +41,14 @@ type Walker struct {
 // test fake.
 func NewWalker(client walkerClient) *Walker {
 	return &Walker{client: client}
+}
+
+// SetProfile attaches a compliance profile so getObject-level
+// deviations (error replies, short MDATA, unknown MCODE) can be
+// counted as tolerance events. Safe to set more than once; nil
+// disables event recording.
+func (w *Walker) SetProfile(p *compliance.Profile) {
+	w.profile = p
 }
 
 // SlotTree is the full decoded state of one slot's object tree plus a
@@ -159,6 +169,19 @@ func (w *Walker) getObject(ctx context.Context, slot int, group ObjGroup, id uin
 		return nil, err
 	}
 	if reply.IsError() {
+		// Record the class of error per spec p.11 + p.29. Transport
+		// errors (MCODE<16) typically reflect device-internal failures
+		// we can't diagnose from this side; object errors (MCODE>=16)
+		// usually mean the walked tree went stale or the caller asked
+		// for something that doesn't exist. Both are absorbed — the
+		// caller receives the typed error — and counted for auditing.
+		if w.profile != nil {
+			if reply.MCode < 16 {
+				w.profile.Note(TransportErrorReceived)
+			} else {
+				w.profile.Note(ObjectErrorReceived)
+			}
+		}
 		return nil, reply.ErrCode()
 	}
 	return DecodeObject(reply.Value)

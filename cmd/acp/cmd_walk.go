@@ -11,6 +11,7 @@ import (
 
 	"acp/internal/export"
 	"acp/internal/protocol"
+	"acp/internal/protocol/acp1"
 	"acp/internal/protocol/acp2"
 	"acp/internal/protocol/emberplus"
 )
@@ -147,15 +148,51 @@ func runWalk(ctx context.Context, args []string) error {
 		fmt.Printf("\nslot %d — %d objects\n", *slot, len(objs))
 	}
 
-	// Capture-dir mode: additionally write glow.json + tree.json
-	// alongside the raw.s101.jsonl the recorder already produced.
-	// Today this is Ember+-only — other plugins don't expose a
-	// Glow tree or a canonical translator.
+	// Capture-dir mode: write tree.json (canonical export) alongside
+	// the raw.jsonl frame log the recorder produced. Ember+ adds a
+	// glow.json intermediate; ACP1/ACP2 don't need one (they have no
+	// Glow-equivalent lossless decoded representation).
 	if cf.captureDir != "" {
-		if err := writeEmberplusCapture(ctx, cf.captureDir, plug, cf); err != nil {
+		if err := writeCanonicalCapture(ctx, cf.captureDir, plug, cf); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: capture dir: %v\n", err)
 		}
 	}
+	return nil
+}
+
+// writeCanonicalCapture dispatches to the right per-plugin capture
+// writer based on the concrete plugin type. Each plugin produces a
+// canonical `tree.json` in the same schema; Ember+ additionally
+// writes `glow.json` for wire-level cross-checking.
+func writeCanonicalCapture(ctx context.Context, dir string, plug protocol.Protocol, cf *commonFlags) error {
+	switch p := plug.(type) {
+	case *emberplus.Plugin:
+		return writeEmberplusCapture(ctx, dir, p, cf)
+	case *acp1.Plugin:
+		return writeACP1Capture(ctx, dir, p)
+	}
+	// ACP2 canonical capture lands under #32.
+	return nil
+}
+
+// writeACP1Capture writes `tree.json` in canonical shape for an ACP1
+// device. The raw frame log (recorder) is already appended alongside
+// by the transport layer; this function covers only the decoded
+// canonical export.
+func writeACP1Capture(ctx context.Context, dir string, p *acp1.Plugin) error {
+	tree, err := p.Canonicalize(ctx)
+	if err != nil {
+		return fmt.Errorf("canonicalize: %w", err)
+	}
+	f, err := os.Create(filepath.Join(dir, "tree.json"))
+	if err != nil {
+		return fmt.Errorf("create tree.json: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+	if err := export.WriteCanonicalJSON(ctx, f, tree); err != nil {
+		return fmt.Errorf("write tree.json: %w", err)
+	}
+	fmt.Printf("capture: wrote tree.json to %s\n", dir)
 	return nil
 }
 
