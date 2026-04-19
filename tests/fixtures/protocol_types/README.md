@@ -21,11 +21,11 @@ regression causes the parity test to fail.
 
 ## Supported protocols
 
-| Protocol | Fixture count | Status                   |
-|----------|---------------|--------------------------|
-| Ember+   | 14            | ✅ done (#60)             |
-| ACP1     | —             | queued (see agents.md)   |
-| ACP2     | —             | queued (see agents.md)   |
+| Protocol | Fixture count | Status                                  |
+|----------|---------------|-----------------------------------------|
+| Ember+   | 14            | ✅ done (#60 / #61). 5-type gap in #62. |
+| ACP1     | 13            | ✅ done. 2-type gap (file, announcement) |
+| ACP2     | —             | queued                                  |
 
 ## Re-generating
 
@@ -36,6 +36,10 @@ scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng \
 
 # All Ember+ fixtures
 make fixtures-emberplus
+# All ACP1 fixtures
+make fixtures-acp1
+# Everything
+make fixtures
 ```
 
 Wireshark / tshark ≥ 4.x required. The dissector under

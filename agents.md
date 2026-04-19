@@ -498,7 +498,7 @@ Ember+ stubs pending fixtures.
 | Protocol | #types shipped | Gap (capture needed) |
 |---|---|---|
 | Ember+ | 14 | 5 types under #62 — StreamDescription/QualifiedFunction/TupleItemDescription/Template/QualifiedTemplate. Re-capture from a Lawo/DHD/Riedel provider. |
-| ACP1 | — | #63 — per-type pass against Synapse emulator 10.6.239.113 |
+| ACP1 | 13 | 2 gaps — File (type 8) + Announcement (MTID=0). Synapse emulator exposes neither; need real rack hardware. |
 | ACP2 | — | #64 — per-type pass against VM 10.41.40.195 |
 
 **Dissector + fixture backlog**:
@@ -507,8 +507,8 @@ Ember+ stubs pending fixtures.
 - #59 — Ember+ watch-parity (dotted identifier, matrix labels, value diff)
 - #60 → PR #61 — ✅ Ember+ per-type fixtures shipped (14 types under `tests/fixtures/protocol_types/emberplus/`)
 - #62 — Missing 5 Glow types (TinyEmber+ / Router do not expose)
-- #63 — ACP1 per-type fixtures (waits on user VM captures)
-- #64 — ACP2 per-type fixtures (waits on user VM captures)
+- #63 — ✅ ACP1 per-type fixtures shipped (13 types under `tests/fixtures/protocol_types/acp1/`); 2 gaps remain (File / Announcement)
+- #64 — ACP2 per-type fixtures (user will capture from VM 10.41.40.195 when free)
 
 **Tshark self-verification loop**: developer can iterate on Ember+ autonomously against loopback TinyEmber+ (ports 9000/9092) without user-in-the-loop. ACP1 (emulator 10.6.239.113) + ACP2 (VM 10.41.40.195) require user-side execution for captures.
 

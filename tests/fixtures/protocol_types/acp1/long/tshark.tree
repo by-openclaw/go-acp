@@ -1,0 +1,75 @@
+Frame 1: Packet, 81 bytes on wire (648 bits), 81 bytes captured (648 bits) on interface \Device\NPF_Loopback, id 0
+    Section number: 1
+    Interface id: 0 (\Device\NPF_Loopback)
+        Interface name: \Device\NPF_Loopback
+        Interface description: Adapter for loopback traffic capture
+    Encapsulation type: NULL/Loopback (15)
+    Arrival Time: [frozen]
+    UTC Arrival Time: [frozen]
+    Epoch Arrival Time: [frozen]
+    [Time shift for this packet: [frozen]
+    [Time since ref: [frozen]
+    Frame Number: 1
+    Frame Length: 81 bytes (648 bits)
+    Capture Length: 81 bytes (648 bits)
+    [Frame is marked: False]
+    [Frame is ignored: False]
+    [Protocols in frame: null:ip:udp:acpv1_full]
+    Character encoding: ASCII (0)
+Null/Loopback
+    Family: IP (2)
+Internet Protocol Version 4, Src: 10.6.239.113, Dst: 10.6.239.113
+    0100 .... = Version: 4
+    .... 0101 = Header Length: 20 bytes (5)
+    Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)
+        0000 00.. = Differentiated Services Codepoint: Default (0)
+        .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
+    Total Length: 77
+    Identification: 0x6219 (25113)
+    000. .... = Flags: 0x0
+        0... .... = Reserved bit: Not set
+        .0.. .... = Don't fragment: Not set
+        ..0. .... = More fragments: Not set
+    ...0 0000 0000 0000 = Fragment Offset: 0
+    Time to Live: 128
+    Protocol: UDP (17)
+    Header Checksum: 0xe597 [validation disabled]
+    [Header checksum status: Unverified]
+    Source Address: 10.6.239.113
+    Destination Address: 10.6.239.113
+    [Stream index: 0]
+User Datagram Protocol, Src Port: 2071, Dst Port: 62225
+    Source Port: 2071
+    Destination Port: 62225
+    Length: 57
+    Checksum: 0x29c0 [unverified]
+    [Checksum Status: Unverified]
+    [Stream index: 0]
+    [Stream Packet Number: 1]
+    [Timestamps]
+        [Time since first frame: 0.000000000 seconds]
+        [Time since previous frame: 0.000000000 seconds]
+    UDP payload (49 bytes)
+Axon Control Protocol V1
+    Transaction ID: 0x6323b63b
+    Protocol Version: ACP1 (1)
+    Message Type: Reply (2)
+    Slot Address: 1
+    Method/Error Code: 5
+    Object Group: control (2)
+    Object ID: 113
+    Object Properties [long, 10 props, access=R+W]
+        Object Type: long (9)
+        Num Properties: 10
+        Access: 0x03
+            .... ...1 = Read: True
+            .... ..1. = Write: True
+            .... .0.. = SetDefault: False
+        Value: 0
+        Default Value: 0
+        Step Size: 1
+        Min Value: 0
+        Max Value: 10000
+        Label: #Audio_Delay
+        Unit: ms
+
