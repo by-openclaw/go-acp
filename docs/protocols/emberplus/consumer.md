@@ -71,6 +71,61 @@ no slot concept). Pass `--protocol emberplus` on every call; it is
 
 ---
 
+## Capabilities & Compliance Status
+
+| Capability | Spec § | Status | Notes |
+|---|---|---|---|
+| BER codec (integer, real, boolean, UTF8, RelOID, SET, SEQUENCE, OctetString) | EmBER 11–15 | ✅ fully compliant | Table-driven tests in `glow/glow_test.go` |
+| S101 framing variant 1 (escaping, CRC-CCITT16) | Framing 78 | ✅ fully compliant | Wire-verified on both test providers |
+| S101 framing variant 2 (non-escaping) | Framing 79–80 | ⛔ not implemented | No tested provider uses it |
+| Multi-frame reassembly (`FlagFirst / FlagLast`) | Framing 78–80 | ✅ fully compliant | Auto-handled in `session.readLoop` |
+| Keep-alive (bidirectional Cmd 1 / Cmd 2) | Rules 74 | ✅ fully compliant | ~10 s interval, 30 s dead-man timer |
+| GetDirectory — root + per-subtree | Cmd 31 | ✅ fully compliant | Qualified + non-qualified fallback |
+| Subscribe / Unsubscribe (explicit streams) | Cmd 30/31 | ✅ fully compliant | Wildcard auto-subscribe on discovery |
+| Implicit subscribe-via-GetDirectory (regular params) | p.30 | ✅ fully compliant | Announces flow without extra Cmd 30 |
+| SetValue with confirming-announce + timeout + coerce detection | Rules 74–75 | ✅ fully compliant | `ErrWriteTimeout` / `ErrWriteCoerced` / `ErrWriteRejected` |
+| Matrix GetDirectory with implicit subscribe | p.42 | ✅ fully compliant | `SendMatrixGetDirectory` |
+| Matrix crosspoint connect / disconnect (nToN/oneToN/oneToOne) | p.33–34 | ✅ fully compliant | Pre-flight rejects illegal disconnect on oneToN/oneToOne |
+| Matrix labels (multi-level `labels[]` SEQUENCE) | p.41 | ✅ fully compliant | N=1 wire-verified on 9092; N≥2 covered by synthetic fixture |
+| Matrix `parametersLocation` (targets/sources/connections, gain) | p.38 | ✅ fully compliant | Two-deep connections with `"target.source"` composite key wire-verified |
+| Function invocation + decoded `InvocationResult` | p.47–50 | ✅ fully compliant | `acp invoke` with typed args |
+| Template decode (`Template` / `QualifiedTemplate`) | p.54–58 | ✅ decode only | Inflation supported on Node + Parameter; Matrix-template / Function-template inflation pending |
+| StreamCollection dispatch (single-value and CollectionAggregate) | p.92–93 | ✅ fully compliant | Shared `streamIdentifier` handled; collision w/o descriptor raises compliance event |
+| Announces as partial deltas (merge-on-announce) | p.85 | ✅ fully compliant | `mergeAnnouncedParameter` preserves walked metadata |
+| Session dead-man + root `isOnline` cascade | p.74 | ✅ fully compliant | Synthetic root event on dead-man trip |
+| Auto-reconnect with tree clear + re-walk + re-subscribe | — (our extension) | ✅ fully compliant | 2 s → 30 s back-off |
+| Canonical JSON export (pointer mode) | — (our schema) | ✅ fully compliant | Wire-faithful |
+| Canonical JSON export (inline / both modes — absorb references) | — (our schema) | ✅ fully compliant | `--templates` / `--labels` / `--gain` |
+| Probel `parkSource`, `protect`, `Salvo` element | — (other protocols) | 🕐 parked | Not applicable to Ember+; documented in `project_probel_extensions.md` |
+| TSL v5 positional tally | — (other protocols) | 🕐 parked | Not applicable to Ember+; documented in `project_tsl_extensions.md` |
+| Bus bridge (NATS / Redis Stream / ES) | — (orchestrator) | 🕐 parked | Plugin stays bus-free by design |
+
+Legend: ✅ fully compliant · ⚠ partial · ⛔ not implemented · 🕐 parked (scope extension) · ⏳ pending (in progress).
+
+---
+
+## Timeouts
+
+All timeouts are deterministic, user-overridable via `--timeout`, and
+structured so every wait has a bounded worst case. No silent hangs.
+
+| Timer | Default | Where | Override |
+|---|---|---|---|
+| Per-command operation (connect, device info, slot info) | 30 s | `--timeout` global flag | `acp ... --timeout 10s` |
+| TCP dial (session `Connect`) | 10 s | `reconnect.go`, fresh sessions | not user-tunable; spec rule-of-thumb for LAN Ember+ |
+| Keep-alive dead-man (session considered dead if no RX) | 30 s (3× keep-alive) | `session.deadManThreshold` | not tunable via CLI; internal constant |
+| Keep-alive RX interval (expected from provider) | ~10 s | spec p.74 | n/a (provider-side) |
+| SetValue confirming-announce wait | 3 s | `set_pending.go` → `ErrWriteTimeout` | none yet (constant) |
+| Walk (full GetDirectory + deferred subtrees) | signal-only (no timeout) | `Plugin.Walk` | Ctrl-C is the only interrupt |
+| Reconnect back-off | 2 s → 30 s exponential | `defaultReconnectPolicy` | not tunable |
+| Reconnect attempt cap | 0 (unlimited) | `defaultReconnectPolicy.MaxAttempts` | not tunable; `Disconnect()` cancels |
+
+**Rule:** the walk is unbounded because tree size varies from a few
+hundred to 20 000+ objects — a fixed timeout would break large
+providers. Every other network wait is bounded.
+
+---
+
 ## CLI Commands Reference
 
 Every subcommand usable against an Ember+ provider, with a runnable
@@ -94,13 +149,17 @@ ff                EOF
 ```
 acp walk 127.0.0.1 --protocol emberplus --port 9092 --timeout 10s
 acp walk 127.0.0.1 --protocol emberplus --port 9092 --path router.oneToN
-acp walk 127.0.0.1 --protocol emberplus --port 9092 --capture walk.jsonl
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --capture walk.jsonl          # single-file raw trace
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --capture cap/                # dir mode — also emits tree.json + glow.json
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --capture cap/ --labels inline --gain inline
 acp walk 127.0.0.1 --protocol emberplus --port 9092 --filter gain
 ```
 
 Flags: `--path P` (subtree only), `--filter TEXT` (case-insensitive
-line filter), `--capture FILE` (JSONL raw frames), `--all` (all slots,
-no-op for Ember+), `--slot N` (default 0).
+line filter), `--capture` (JSONL file or directory — see
+[Canonical Export Modes](#canonical-export-modes)), `--all` (all
+slots, no-op for Ember+), `--slot N` (default 0), `--templates`,
+`--labels`, `--gain` (canonical output modes; default `pointer`).
 
 Output begins with the tree structure, grouped by parent path:
 
@@ -369,11 +428,11 @@ acp import 127.0.0.1 --protocol emberplus --port 9092 --file tree.json
 Reads a JSON/YAML/CSV snapshot and issues a `set` for every parameter
 whose declared value differs from the live one.
 
-### `--capture FILE` (global flag)
+### `--capture` (global flag, two modes)
 
-Attached to any command, `--capture FILE.jsonl` writes every raw S101
-frame to `FILE.jsonl` (tx + rx, including BOF/EOF/CRC) so a unit test
-can replay the exact wire bytes:
+**File mode** — `--capture FILE.jsonl` writes every raw S101 frame
+(tx + rx, including BOF/EOF/CRC) to one append-only JSONL file. Used
+by unit-test replay (`tests/unit/emberplus/*_replay_test.go`).
 
 ```
 acp walk 127.0.0.1 --protocol emberplus --port 9092 --capture walk.jsonl
@@ -386,6 +445,101 @@ Record format:
  "hex":"fe000e0001c001021f0260106b0ea00c620aa003020120a1030201fddf948fff",
  "len":32}
 ```
+
+**Directory mode** — any `--capture` value that is a directory (or a
+path without a `.jsonl` / `.json` extension) triggers a three-file
+dump:
+
+```
+acp walk 127.0.0.1 --protocol emberplus --port 9092 --capture cap/
+→ cap/raw.s101.jsonl   append-only wire trace (same as file mode)
+  cap/glow.json        decoded Glow tree (lossless, numeric-sorted)
+  cap/tree.json        canonical Export (schema.md shape)
+```
+
+The three files let replay tests cross-check at every layer: bytes on
+the wire (`raw.s101.jsonl`), decoded elements (`glow.json`), and the
+canonical user-facing shape (`tree.json`).
+
+---
+
+## Canonical Export Modes
+
+The `tree.json` output is controlled by three mode flags. Defaults are
+all `pointer` — wire-faithful, zero inflation, smallest memory
+footprint. `inline` absorbs referenced subtrees into the referring
+element. `both` keeps both forms.
+
+| flag | spec § | pointer (default) | inline | both |
+|---|---|---|---|---|
+| `--templates` | §8 (Templates) | Parameter / Node carry `templateReference` OID only | Template fields (shape, children) copied into referring element; pointer dropped | pointer kept **and** shape inlined |
+| `--labels` | §5.1.1 (Matrix Labels) | Matrix `labels[]` array of `{basePath, description}` preserved; label subtrees walked as regular Nodes | label subtree(s) absorbed into Matrix as `targetLabels` / `sourceLabels` keyed by level description; label Nodes removed from tree | pointer + absorbed maps; label Nodes kept |
+| `--gain` | §5.1.2 (parametersLocation) | Matrix `parametersLocation` OID preserved; params subtree walked as regular Node | params subtree absorbed into Matrix as `targetParams` / `sourceParams` / `connectionParams`; params Node removed from tree | pointer + absorbed maps; params Node kept |
+
+### Multi-level labels (spec §5.1.1)
+
+A matrix can declare **multiple label levels** (e.g. "Primary",
+"Long", "Engineering"). Each level is one entry in `labels[]` with
+its own `basePath` and `description`. The canonical shape preserves
+this in all modes:
+
+**Pointer mode** (wire-faithful):
+
+```json
+"labels": [
+  {"basePath": "1.2.3.1", "description": "Primary"},
+  {"basePath": "1.2.3.2", "description": "Long"}
+]
+```
+
+**Inline mode** (absorbed, keyed by description):
+
+```json
+"labels": [ … same as pointer … ],
+"targetLabels": {
+  "Primary": {"0": "OUT 1",  "1": "OUT 2",  …},
+  "Long":    {"0": "Output Main Video", "1": "Output Backup", …}
+},
+"sourceLabels": {
+  "Primary": {"0": "MIC 1", "1": "MIC 2", …},
+  "Long":    {"0": "Microphone 1 long", …}
+}
+```
+
+If a `labels[i].description` is empty on the wire, the resolver keys
+by `basePath` instead and raises `matrix_label_description_empty`.
+
+### Connection params (two-deep structure)
+
+Matrix `parametersLocation` may include a `connections` subtree
+containing per-crosspoint Parameters (typically `gain`). The wire
+shape is two-deep: `connections/<target>/<source>/<param>`. The
+canonical inline form flattens this to a composite key:
+
+```json
+"connectionParams": {
+  "3.3": {"gain": 10},
+  "6.3": {"gain": 5}
+}
+```
+
+Split the key on `.` to recover `target` and `source` indices.
+
+### Size impact — wire example (9092 TinyEmberPlus router, 3 matrices × 100 targets × 100 sources)
+
+| mode combo | tree.json size |
+|---|---|
+| `--labels pointer --gain pointer` (defaults) | 5.1 MB |
+| `--labels inline --gain pointer` | 1.4 MB (-73%) |
+| `--labels inline --gain inline` | 768 KB (-85%) |
+| `--labels both --gain both` | 5.9 MB (+15% for debug/round-trip) |
+
+`inline` eliminates the Parameter envelope overhead per label
+(identifier, path, oid, description, isOnline, access, children,
+type, value, default, minimum, maximum, step, unit, format, factor,
+formula, enumeration, enumMap, streamIdentifier, streamDescriptor,
+templateReference, schemaIdentifiers) — replaced by a single
+`"0": "SDI-T-0"` pair.
 
 ---
 
@@ -828,20 +982,58 @@ touching their code.
 
 ### compliance.Profile event labels
 
+Every event is a named counter — atomic int64, zero allocations on the
+hot path. The full catalog lives in
+`internal/protocol/emberplus/compliance/profile.go`. Grouped by
+source:
+
+**Wire-level deviations (decoder tolerance)**
+
 | Event | Meaning |
 |---|---|
 | `non_qualified_element` | Node / Parameter / Matrix / Function delivered without RelOID path |
 | `multi_frame_reassembly` | S101 FlagFirst/FlagLast chain observed |
-| `invocation_success_default` | InvocationResult omitted the `success` field |
-| `connection_operation_default` | Connection omitted the `operation` field |
-| `connection_disposition_default` | Connection omitted the `disposition` field |
-| `contents_set_omitted` | Contents arrived without UNIVERSAL SET envelope |
-| `tuple_direct_ctx` | Tuple arrived as bare CTX[0] items |
+| `invocation_success_default` | InvocationResult omitted the `success` field (spec p.92) |
+| `connection_operation_default` | Connection omitted the `operation` field (default `absolute`, p.89) |
+| `connection_disposition_default` | Connection omitted the `disposition` field (default `tally`, p.89) |
+| `contents_set_omitted` | Contents arrived without UNIVERSAL SET envelope (p.85) |
+| `tuple_direct_ctx` | Tuple arrived as bare CTX[0] items (p.92) |
 | `element_collection_bare` | ElementCollection inlined without APP[4] wrapper |
 | `unknown_tag_skipped` | Vendor-private APP / CTX tag observed |
 
+**Enum / field handling**
+
+| Event | Meaning |
+|---|---|
+| `enum_masked_item` | Enum option carries smh `~` mask prefix (stripped, flagged non-selectable) |
+| `enum_double_source` | Parameter carries both native `EnumMap` AND legacy `Enumeration` with differing count |
+| `enum_map_derived` | Canonical `EnumMap` synthesised from legacy `Enumeration` (no native map on wire) |
+| `field_inferred` | Canonical field synthesised from a protocol-specific source (e.g. `type` inferred from `Value` CHOICE) |
+
+**Resolver (--templates / --labels / --gain)**
+
+| Event | Meaning |
+|---|---|
+| `matrix_label_basepath_unresolved` | `matrix.labels[i].basePath` does not point to a walked Node |
+| `matrix_label_none` | Matrix ships no `labels[]` array or an empty one |
+| `matrix_label_description_empty` | `labels[i].description` blank — resolver keys by basePath |
+| `matrix_label_level_mismatch` | Two label levels expose different target/source counts |
+| `matrix_parameters_location_unresolved` | `parametersLocation` does not point to a walked Node |
+| `template_reference_unresolved` | `templateReference` points to unknown Template path |
+| `labels_absorbed` | `--labels=inline` succeeded — label subtree(s) removed from tree, content on matrix |
+| `gain_absorbed` | `--gain=inline` succeeded — params subtree removed, content on matrix |
+| `template_absorbed` | `--templates=inline` succeeded — template content inflated into referring element |
+
+**Stream dispatch**
+
+| Event | Meaning |
+|---|---|
+| `stream_id_collision_no_descriptor` | Two Parameters share a `streamIdentifier` with at least one missing `streamDescriptor` (spec §7 forbids — provider bug) |
+
 A provider is classified **strict** if zero events fire, **partial** if
-any event fires.
+any event fires. Info-only events (`multi_frame_reassembly`,
+`enum_masked_item`, `matrix_label_none`, `labels_absorbed`, etc.) do
+not imply a problem — they document what happened.
 
 ### Provider matrix (from this machine)
 
@@ -878,24 +1070,58 @@ and protocol analysis.
 
 ---
 
-## Errors
+## Error Reference
 
-Names follow the Ember+ spec and the smh TypeScript reference lib.
+Every error surfaced by the consumer has a stable name, a source
+layer, and a recovery path. Errors are classified so operators know
+whether to retry, reconfigure, or escalate.
 
-| Error | When |
+### Transport layer (TCP / S101)
+
+| Name | When | Wire evidence | Recovery |
+|---|---|---|---|
+| `protocol: not connected` | Any op (`get`/`set`/`watch`/…) called after session dropped | no session alive | auto-reconnect goroutine retries 2 s → 30 s back-off; user's `acp watch` keeps showing last known values until tree clears |
+| `S101SocketError` | TCP connect / read / write failure | OS syscall error | Reconnect goroutine covers transient; persistent = firewall / device down |
+| `context deadline exceeded` | Per-op timeout (`--timeout`) trips | any unanswered request | Raise `--timeout`; walks on large trees (20 k+ objects) can take minutes |
+| CRC mismatch (no named error — frame silently dropped, logged at `debug`) | Frame byte-corrupt on wire | `emberplus: crc mismatch` debug log | Line-quality issue; check switch / cable |
+
+### Decode layer (BER + Glow)
+
+| Name | When | Recovery |
+|---|---|---|
+| `InvalidBERFormat` | Frame passes CRC but BER parse fails | Provider bug; open capture, inspect frame, file bug |
+| `MissingElementNumber` | Element arrived without `[0] number` | Same — decoder can't place it in the tree |
+| `MissingElementContents` | Contents `CTX[1]` absent where spec requires | Same |
+| Unknown APP/CTX tag | Vendor-private extension encountered | Silent — fires `unknown_tag_skipped` compliance event; no user-visible error |
+
+### Addressing / tree layer
+
+| Name | When | Recovery |
+|---|---|---|
+| `UnknownElement` | User referenced a path / label / OID not in the walk | Check `acp walk --path <prefix>` output; path may be under a subtree that hasn't been GetDirectory'd yet |
+| `PathDiscoveryFailure` | Walk couldn't resolve a RelOID prefix | Usually partial GetDirectory response; retry walk after reconnect |
+| `InvalidMatrixSignal` | Target / source number outside `[0, targetCount)` or `[0, sourceCount)` | User input error — check matrix dimensions via `acp walk --path <matrix>` |
+
+### Write / invoke layer
+
+| Name | When | Wire evidence | Recovery |
+|---|---|---|---|
+| `protocol: write confirmation timeout` (`ErrWriteTimeout`) | `acp set` sent but provider didn't echo back within 3 s | SetValue frame TX, no confirming announce RX | Value state unknown; do a `get` to check, then retry if still off |
+| `protocol: write accepted but value coerced: expected=X actual=Y` (`ErrWriteCoerced`) | Provider clamped / rounded / rejected precision | confirming announce carries different value | Reissue with the coerced value OR accept provider's limits |
+| `protocol: write rejected by provider` (`ErrWriteRejected`) | Provider echoed unchanged | confirming announce with unchanged value | Target likely locked, offline, or user lacks permission |
+| `oneToN/oneToOne matrices reject disconnect; reroute to a silence source instead, or use op=absolute` | `acp matrix --op disconnect` on oneToN/oneToOne matrix | pre-flight rejects before wire TX | Per spec p.33 invariant; use `--op absolute` with a silence source |
+| `InvalidFunctionCall` | Arg count / type mismatch vs function's `TupleDescription` | none (pre-flight) | Match args to `TupleDescription` (see `acp walk` on the function path) |
+| `UnsupportedValue` | Go value can't be encoded to any Glow scalar | none (pre-flight) | Coerce to one of: integer / real / string / boolean / enum index / octets |
+
+### CLI exit codes
+
+| Code | Meaning |
 |---|---|
-| `S101SocketError` | TCP connect / read / write failure |
-| `InvalidBERFormat` | Frame passes CRC but BER parse fails |
-| `MissingElementNumber` | Element wire-sent without `[0] number` |
-| `MissingElementContents` | Contents CTX[1] absent where required |
-| `UnknownElement` | Consumer asked for a path that never appeared in the walk |
-| `InvalidMatrixSignal` | Target / source number out of `targetCount / sourceCount` |
-| `PathDiscoveryFailure` | Walk could not resolve a RelOID prefix |
-| `InvalidFunctionCall` | Argument count / type mismatch vs `TupleDescription` |
-| `UnsupportedValue` | Go value cannot be encoded to any Glow scalar |
-
-CLI exit codes follow the top-level [README](../../../README.md):
-0 success, 1 protocol error, 2 validation / usage, 3 transport, 5 bad flags.
+| 0 | Success |
+| 1 | Protocol error (reply from device = failure, or decode error) |
+| 2 | Validation / usage error |
+| 3 | Transport error (can't reach device) |
+| 5 | Bad CLI flags |
 
 ---
 

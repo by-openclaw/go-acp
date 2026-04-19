@@ -587,20 +587,26 @@ acp/
 │       ├── an2_protocol.pdf     AN2 transport specification
 │       └── dissector_acp2.lua   Wireshark dissector for ACP2
 │
-├── testdata/
-│   ├── acp1/                    ACP1 walk/export test captures
-│   └── acp2/                    ACP2 walk/export test captures
-│
 ├── tests/
-│   ├── fixtures/                test fixture data
+│   ├── fixtures/                version-controlled test input
+│   │   ├── acp1/                ACP1 walk captures (LFS-managed)
+│   │   ├── acp2/                ACP2 walk captures (LFS-managed)
+│   │   ├── emberplus/           Ember+ captures per provider port (9000/9090/9092)
+│   │   └── exports/             golden JSON/YAML/CSV export files
 │   ├── unit/
 │   │   ├── acp1/                table-driven byte-exact tests
 │   │   ├── acp2/                table-driven byte-exact tests
+│   │   ├── emberplus/           replay + golden tests (pending)
 │   │   ├── export/              export round-trip tests
 │   │   └── transport/           TCP framer tests
-│   └── integration/             //go:build integration
-│       ├── acp1/                ACP1_TEST_HOST env var
-│       └── acp2/                ACP2_TEST_HOST env var
+│   ├── integration/             //go:build integration — real device
+│   │   ├── acp1/                ACP1_TEST_HOST env var
+│   │   ├── acp2/                ACP2_TEST_HOST env var (VM only)
+│   │   └── emberplus/           EMBERPLUS_TEST_HOST env var (pending)
+│   └── smoke/                   simple-path sanity per protocol
+│       ├── acp1/
+│       ├── acp2/
+│       └── emberplus/           (pending)
 │
 ├── docs/
 │   ├── ARCHITECTURE.md          system architecture documentation

@@ -194,7 +194,7 @@ log entries         NEVER to disk
 
 ---
 
-## Implementation status (as of 2026-04-18)
+## Implementation status (as of 2026-04-19)
 
 **ACP1 — feature complete.** Verified against Synapse Simulator at
 `10.6.239.113`. All 11 object types, LRU+TTL cache, announcements,
@@ -204,19 +204,191 @@ export/import round-trip.
 `10.41.40.195`. 214 objects (slot 0), 44k+ objects (slot 1). Full DFS
 walker, streaming, enum u32 optionsMap, background walk for watch.
 
-**Ember+ — consumer wire-tested.** BER codec + S101 framing (multi-frame
-reassembly) + Glow DTD. Full tree walk on TinyEmber+ Router (4494 objects,
-port 9092). Wire-tested: set labels (confirmed on Viewer), set gain,
-matrix crosspoint connect (confirmed on Viewer), function invoke
-add(3,5)=8. Types rebuilt from spec v2.50. Dot separator for paths.
-Port 9000 (DHD) connects but doesn't respond to GetDirectory.
+**Ember+ — consumer feature-complete.** BER codec, S101 framing,
+Glow DTD, non-qualified fallback, full tree walk against TinyEmberPlus
+:9092 (4494 objects) AND :9000 (~20000 objects, DHD tree). Types
+rebuilt from spec v2.50. Resolver + mode flags landed 2026-04-19;
+wire-verified on 9092.
 
-**Ember+ pending**:
-- Decoder rebuild: systematic SET unwrap, all 18 Parameter fields, all 12 Matrix fields, StreamDescriptor
-- Plugin tree model: full metadata, matrix state (parametersLocation, labels, connections), subscribe per spec
-- StreamCollection/StreamEntry handling
-- Template/TemplateReference
-- Port 9000 debugging (needs Wireshark capture)
+Working:
+- Canonical JSON export per `docs/protocols/schema.md` + `elements/*.md`
+  via `internal/export/canonical/` Go structs + `WriteCanonicalJSON`
+- Glow→canonical translator in-plugin (`Plugin.Canonicalize`) with
+  resolver pass (`internal/protocol/emberplus/resolver.go`)
+- CLI mode flags `--templates` / `--labels` / `--gain` (each
+  `pointer|inline|both`, default `pointer`). Inline absorbs referenced
+  subtrees into the referring element and removes them from the tree;
+  both preserves both. Multi-level labels supported throughout
+  (`targetLabels`/`sourceLabels` keyed by `labels[i].description`).
+  Connection params keyed by composite `"target.source"`.
+- Capture pipeline `--capture <dir>` → `raw.s101.jsonl` + `glow.json` +
+  `tree.json`, three-file mode auto-detected
+- Watch with field-diff `changes[]`, description, access, freshness
+  (live/updated/stale), matrix crosspoint events
+- Wildcard stream auto-subscribe (Command 30 on discovery, uses
+  canonical numericPath for non-qualified providers)
+- Shared `streamIdentifier` / CollectionAggregate support; collision
+  without `streamDescriptor` fires `stream_id_collision_no_descriptor`
+- Merge-on-announce: walked metadata preserved when announces carry
+  only the changed field; last-known value preserved across
+  description-only announces. Announce re-delivery of a parent Node
+  with empty `children[]` no longer triggers spurious GetDirectory
+  (processNode first-sighting guard, fixed 2026-04-19)
+- SetValue with confirming-announce wait, timeout + coerce classification
+  (`ErrWriteTimeout`, `ErrWriteCoerced`, `ErrWriteRejected`)
+- Session dead-man timer (30s default); on disconnect: all entries
+  `freshness=stale`, values preserved, synthetic root event
+  `isOnline y→n + reason`; auto-reconnect goroutine (2s→30s backoff)
+  re-walks + re-subscribes streams on return
+- Matrix state machine with spec invariants:
+  - oneToN/oneToOne disconnect pre-flight rejected (spec p.33)
+  - nToN bounded by `maximumConnectsPerTarget` / `maximumTotalConnects`
+  - Locked targets refuse writes
+- Function invoke + InvocationResult decode
+- Matrix-scoped compliance events: `matrix_label_basepath_unresolved`,
+  `matrix_label_none`, `matrix_label_description_empty`,
+  `matrix_label_level_mismatch`, `matrix_parameters_location_unresolved`,
+  `template_reference_unresolved`, `labels_absorbed`, `gain_absorbed`,
+  `template_absorbed`
+
+**Ember+ pending** (order locked in `memory/project_scope_sequencing.md`):
+
+1. Doc conformance test (`tests/unit/export/conformance_test.go`):
+   read fenced JSON blocks from `docs/protocols/elements/*.md`,
+   parse through canonical Go structs, fail on key drift.
+2. Synthetic Glow tree → golden canonical JSON test (covers N≥2
+   multi-level labels case not present on wire captures).
+3. Replay tests (s101_replay, ber_roundtrip, glow_decode,
+   export_shape, encoder_compliance) against captured fixtures
+   in `tests/fixtures/emberplus/{9000,9090,9092}/`.
+4. Matrix-template / Function-template inflation (current resolver
+   covers Node + Parameter inflation; Matrix / Function are
+   pointer-only until a real provider ships one).
+5. VM integration run, then PR.
+
+---
+
+## Canonical schema — union across all protocols (locked 2026-04-18)
+
+Ember+ templates are the richest per-type shape. ACP1 / ACP2 / Ember+ all
+export into the same JSON shape; fields absent on the wire are emitted as
+`null` (stable key set). smh reference: `assets/smh/emulator/ember-server/src/data-model-new.ts`.
+
+### Per-type keys (always present)
+
+```
+common        number, identifier, path, oid, description, isOnline, access, children[]
+Node          + templateReference, schemaIdentifiers
+Parameter     + type, value, default, minimum, maximum, step, unit, format,
+                factor, formula, enumeration, enumMap,
+                streamIdentifier, streamDescriptor{format, offset},
+                templateReference, schemaIdentifiers
+Matrix        + type (oneToN|oneToOne|nToN), mode (linear|nonLinear),
+                targetCount, sourceCount, maximumTotalConnects,
+                maximumConnectsPerTarget, parametersLocation (OID string),
+                gainParameterNumber,
+                labels[{basePath, description}], targets[{number}],
+                sources[{number}],
+                connections[{target, sources[], operation, disposition, locked}],
+                targetLabels{} / sourceLabels{}                  (inline mode)
+                targetParams{} / sourceParams{} / connectionParams{}  (inline mode)
+Function      + arguments[{name, type}], result[{name, type}]
+Stream        inside Parameter only (streamIdentifier + streamDescriptor);
+              StreamCollection merged back onto owning Parameters, no section
+Template      top-level templates[] = [{number, oid, identifier, description,
+              template: {full element shape}}]
+```
+
+### Mode flags (default `inline` each)
+
+```
+--templates=<inline|separate|both>
+   inline   : templateReference resolved + fields inflated onto element,
+              templates[] section dropped
+   separate : templates[] kept, templateReference kept, no inflation
+   both     : templates[] kept AND inflation applied
+
+--labels=<inline|pointer|both>
+   inline   : targetLabels{} / sourceLabels{} resolved (from basePath
+              or in-matrix subtree), labels[] dropped
+   pointer  : labels[{basePath, description}] only
+   both     : both representations kept
+
+--gain=<inline|pointer|both>
+   inline   : targetParams / sourceParams / connectionParams resolved
+              from parametersLocation
+   pointer  : parametersLocation + gainParameterNumber only
+   both     : both representations kept
+```
+
+All pointers emit as numeric OID strings (e.g. `"3.0.3000"`), never bare ints.
+
+### enumMap — universal label↔id resolver
+
+Every enum Parameter carries BOTH `enumeration` (LF-joined) AND
+`enumMap` ([{key, value, masked?}]) across all protocols:
+- ACP1 — enumMap derived from `item_list` (sequential, position = value)
+- ACP2 — enumMap from pid 15 `options` (non-sequential capable)
+- Ember+ — native enumMap if provided, else derived from enumeration
+- Masked items (smh `~Label`) strip tilde, expose `masked: true`
+
+### Compliance events
+
+```
+template_inlined, template_unresolved,
+label_basepath_only, label_inline_only, label_duplicate, label_missing,
+gain_pointer_only, gain_inline_only, gain_duplicate, gain_missing,
+enum_double_source, enum_masked_item, enum_duplicate_label,
+field_lossy_down, field_inferred, proto_cross_empty,
+auto_pointer_downgrade,
+multi_frame_reassembly, non_qualified_element,
+invocation_success_default, connection_*_default,
+contents_set_omitted, tuple_direct_ctx, element_collection_bare,
+unknown_tag_skipped
+```
+
+### Capture pipeline
+
+```
+acp walk <host> --protocol emberplus --capture tests/fixtures/emberplus/<provider>/
+   writes raw.s101.jsonl   (every tx/rx S101 frame, CRC + flags + DTD)
+          glow.json         (decoded element tree, internal repr)
+          tree.json         (canonical export, smh-aligned)
+
+Replay tests under tests/unit/emberplus/:
+   s101_replay       re-frame raw.s101.jsonl → same bytes
+   ber_roundtrip     decode/encode BER → identical
+   glow_decode       decode ber.hex → matches glow.json
+   export_shape      glow.json → export == tree.json golden
+   encoder_compliance  encode glow.json → BER matches wire capture
+```
+
+---
+
+## Scope sequencing (locked 2026-04-18)
+
+Order: **Ember+ consumer → Ember+ provider → bus / extra protocols**.
+No next phase until previous ships with VM integration passing.
+
+### Parked — TODO / SOW (do not start now)
+
+| item | phase | notes |
+|---|---|---|
+| Ember+ provider | Part B | after consumer closed |
+| Bus bridge (`acp-srv --bus=none\|nats\|es\|redis-stream`) | Part C | orchestrator-level; plugins stay bus-free |
+| Probel SW-P-02 consumer+provider | later | canonical Matrix shape, no walkable tree |
+| Probel SW-P-08 Plus consumer+provider | later | canonical Matrix with level multiplex |
+| TSL UMD v3.1 / v5 consumer+provider | later | canonical Node with per-address tally |
+| `internal/crossmap/` cross-protocol translator | later | needs ≥2 provider-capable plugins |
+| Auto inline→pointer size-threshold downgrade | later | measure real captures first |
+| ACP1 / ACP2 migration to canonical shape | later | after Ember+ consumer proves shape |
+
+### Architecture lock — plugins stay bus-free
+
+Plugins translate wire ↔ canonical element shapes only. Events bubble up
+via `EventFunc`. `cmd/acp-srv` owns the bus bridge; `internal/protocol/**`
+never imports NATS / ES / Kafka clients. Preserves CLI usability, unit
+testability, pluggability.
 
 **Cross-protocol features**:
 - Hierarchical export (JSON/YAML/CSV) — same tree format for all protocols

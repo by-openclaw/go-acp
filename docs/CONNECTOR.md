@@ -270,7 +270,7 @@ Direction: `tx` = outbound (consumer → provider), `rx` = inbound (provider →
 These captures are:
 - Replayed in unit tests (codec regression)
 - Used to discover new object types or protocol variants
-- Stored in `testdata/{protocol}/`
+- Stored in `tests/fixtures/{protocol}/`
 
 ---
 
