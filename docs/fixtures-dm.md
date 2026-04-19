@@ -41,7 +41,6 @@ Locked schema. Extra keys allowed but not required.
   "version_kind": "firmware",
   "discovered_at": "2026-04-19T13:20:00Z",
   "device_ip": "10.41.40.195",
-  "slot": 0,
   "description": "ACP2 Audio Processor card",
   "serial_number": "A12345",
   "dm_fingerprint": "sha256:abc123…",
@@ -64,7 +63,6 @@ Locked schema. Extra keys allowed but not required.
 | `version_kind` | yes | `firmware` for hardware devices, `software` for Ember+/soft providers, `release` for named releases. |
 | `discovered_at` | yes | UTC ISO-8601 with second precision. |
 | `device_ip` | no | Source device IP at discovery time. Not stable; for provenance only. |
-| `slot` | conditional | Required for ACP1/ACP2; omit for Ember+. |
 | `description` | no | Free text from the device's identity block. |
 | `serial_number` | no | If the device reports one. |
 | `dm_fingerprint` | yes | `sha256:` prefix + hex digest over canonical `tree.json` content — the DM's content-address. Two captures of the same firmware produce identical fingerprints. |
