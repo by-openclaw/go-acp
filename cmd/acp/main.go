@@ -63,6 +63,7 @@ var commands = []command{
 	{"export", "dump a walked device to json / yaml / csv", helpExport, runExport},
 	{"import", "apply values from a json snapshot file", helpImport, runImport},
 	{"extract", "capture a per-product DM triple (meta + wire + tree) into the fixture layout", helpExtract, runExtract},
+	{"diff", "compare two canonical tree.json files; emit text or a CHANGELOG section", helpDiff, runDiff},
 	{"convert", "translate a snapshot file between json / yaml / csv (offline)", helpConvert, runConvert},
 	{"discover", "passive + active scan for devices on the local subnet", helpDiscover, runDiscover},
 	{"matrix", "set matrix crosspoint connections (Ember+ only)", helpMatrix, runMatrix},
@@ -204,6 +205,8 @@ IN / OUT — one-line contract per command (see "acp help <cmd>" for full detail
                     OUT snapshot file (json/yaml lossless, csv flat)
   extract           IN  acp extract <host> --protocol P --manufacturer M --product X --direction D --version V --out DIR
                     OUT writes meta.json + wire.jsonl + tree.json; prints fingerprint
+  diff              IN  acp diff <before-tree.json> <after-tree.json> [--format text|changelog]
+                    OUT text report or Keep-a-Changelog markdown block; --into PATH prepends to a CHANGELOG.md
   import            IN  acp import <host> --file SNAPSHOT [--dry-run]
                     OUT applied/skipped/failed counts; dry-run prints skip table
   convert           IN  acp convert --in FILE --out FILE            (offline)
