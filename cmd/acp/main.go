@@ -29,10 +29,17 @@ import (
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.
+// Consumed by buildCaptureToolInfo (cmd_extract.go) + --version flag.
+//
+//	-X main.version=0.3.0  -X main.commit=7bfc8ab  -X main.gitTag=v0.3.0
+//
+// `commit` and `gitTag` have sensible fall-backs derived from
+// runtime/debug.BuildInfo when the ldflags are absent.
 var (
 	version = "dev"
-	commit  = "unknown"
+	commit  = ""
 	date    = "unknown"
+	gitTag  = ""
 )
 
 // command is one dispatch entry. short is for the top-level index; help
@@ -55,6 +62,7 @@ var commands = []command{
 	{"watch", "subscribe to live announcements", helpWatch, runWatch},
 	{"export", "dump a walked device to json / yaml / csv", helpExport, runExport},
 	{"import", "apply values from a json snapshot file", helpImport, runImport},
+	{"extract", "capture a per-product DM triple (meta + wire + tree) into the fixture layout", helpExtract, runExtract},
 	{"convert", "translate a snapshot file between json / yaml / csv (offline)", helpConvert, runConvert},
 	{"discover", "passive + active scan for devices on the local subnet", helpDiscover, runDiscover},
 	{"matrix", "set matrix crosspoint connections (Ember+ only)", helpMatrix, runMatrix},
@@ -194,6 +202,8 @@ IN / OUT — one-line contract per command (see "acp help <cmd>" for full detail
                     OUT stream of announcements until Ctrl-C
   export            IN  acp export <host> --format json|yaml|csv --out FILE
                     OUT snapshot file (json/yaml lossless, csv flat)
+  extract           IN  acp extract <host> --protocol P --manufacturer M --product X --version V --out DIR
+                    OUT writes meta.json + wire.jsonl + tree.json; prints fingerprint
   import            IN  acp import <host> --file SNAPSHOT [--dry-run]
                     OUT applied/skipped/failed counts; dry-run prints skip table
   convert           IN  acp convert --in FILE --out FILE            (offline)

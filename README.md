@@ -46,6 +46,7 @@ Per-type element docs with realistic samples: [docs/protocols/elements/](docs/pr
 | `acp import --file X.csv` | Apply values from CSV file | done | done |
 | `acp import --dry-run` | Validate without writing | done | done |
 | `acp import --id N` / `--path P` | **Selective import** — narrow apply set to specific object(s). Mutually exclusive flags; both repeat. No `--label` (labels collide thousands of times) | done | done |
+| `acp extract` | Walk a device and emit the DM fixture triple (`meta.json` + `wire.jsonl` + `tree.json`) into `tests/fixtures/products/<manufacturer>/<product>/<protocol>/<version>/`. `meta.json` carries the SHA-256 fingerprint + `capture_tool` build provenance (version + git_tag + git_commit). | done | done |
 
 Export/import rules:
 - Resolver key per protocol: **Ember+ = `oid`** (numeric dotted path), **ACP1 = `group` + `id`**, **ACP2 = `id`** (globally-unique u32)

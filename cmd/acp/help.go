@@ -262,6 +262,61 @@ EXAMPLES
   acp export 10.6.239.113 > device.json`)
 }
 
+func helpExtract() {
+	fmt.Println(`acp extract — capture a per-product DM triple into the fixture layout
+
+IN   acp extract 10.41.40.195 --protocol acp2 --slot 0 \
+       --manufacturer Axon --product DDB08 --version 2.3 \
+       --out tests/fixtures/products/axon/DDB08/acp2/v2.3/
+OUT  walked 214 objects on slot 0
+     capture: wrote tree.json to tests/fixtures/products/axon/DDB08/acp2/v2.3/
+     extract complete: tests/fixtures/products/axon/DDB08/acp2/v2.3/{meta.json, wire.jsonl, tree.json}
+       fingerprint: sha256:3fa1c4e8abcd...
+
+USAGE
+  acp extract <host> --protocol P --manufacturer M --product X --version V --out DIR [--slot N] [flags]
+
+DESCRIPTION
+  Walks the target device (all protocols) and produces the three-file
+  DM fixture triple at --out:
+
+    meta.json    locked schema — identity, fingerprint, capture_tool
+    wire.jsonl   raw frames captured during the walk (renamed from
+                 raw.<transport>.jsonl so the fixture layout stays
+                 protocol-agnostic)
+    tree.json    canonical export (post-resolution)
+
+  capture_tool carries the name + version + git_tag + git_commit of
+  the acp binary that did the capture. git_commit comes from
+  runtime/debug.BuildInfo (default -buildvcs=true); version + git_tag
+  come from ldflags on release builds, fall back to "devel" / a
+  commit-derived string otherwise. A dirty worktree flags git_tag
+  with "-dirty" — such captures should not be committed.
+
+  dm_fingerprint is the SHA-256 of tree.json. Byte-identical firmware
+  produces identical fingerprints across captures; a drift means
+  either the firmware changed or the canonical encoder moved.
+
+FLAGS
+  --manufacturer M    vendor display name (preserve casing)      (required)
+  --product P         product identifier as vendor writes it     (required)
+  --version V         version as reported by the device          (required)
+  --version-kind K    firmware | software | release (default firmware)
+  --description S     free text from the identity block          (optional)
+  --notes S           free text for the engineer                 (optional)
+  --out DIR           destination directory                      (required)
+  --slot N            slot to walk (Ember+ defaults to 0)
+
+EXAMPLES
+  acp extract 10.6.239.113 --protocol acp1 --slot 1 \
+    --manufacturer Axon --product CDV08v06 --version 2.1 \
+    --out tests/fixtures/products/axon/CDV08v06/acp1/v2.1/
+
+  acp extract 127.0.0.1 --protocol emberplus --port 9092 \
+    --manufacturer L-S-B --product TinyEmberPlus --version 1.0 \
+    --out tests/fixtures/products/l-s-b/TinyEmberPlus/emberplus/v1.0/`)
+}
+
 func helpImport() {
 	fmt.Println(`acp import — apply values from a snapshot file
 
