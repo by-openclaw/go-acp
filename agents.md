@@ -497,15 +497,18 @@ Ember+ stubs pending fixtures.
 
 | Protocol | #types shipped | Gap (capture needed) |
 |---|---|---|
-| Ember+ | 14 | StreamDescription (APP 12), QualifiedFunction (20), TupleItemDescription (21), Template (24), QualifiedTemplate (25) — TinyEmber+ / TinyEmberPlusRouter don't publish these. Re-capture from a Lawo / DHD / Riedel provider. |
-| ACP1 | — | queued: per-type fixture pass against Synapse emulator 10.6.239.113 |
-| ACP2 | — | queued: per-type fixture pass against VM 10.41.40.195 |
+| Ember+ | 14 | 5 types under #62 — StreamDescription/QualifiedFunction/TupleItemDescription/Template/QualifiedTemplate. Re-capture from a Lawo/DHD/Riedel provider. |
+| ACP1 | — | #63 — per-type pass against Synapse emulator 10.6.239.113 |
+| ACP2 | — | #64 — per-type pass against VM 10.41.40.195 |
 
-**Dissector enhancement backlog**:
+**Dissector + fixture backlog**:
 - #57 — ACP1 Info column watch-style summary + full `slot.group.id` path
 - #58 — ACP2 Info column watch-style summary + full `slot.obj_id` path
-- #59 — Ember+ watch-parity (dotted identifier, matrix labels, value diff) — needs per-conversation state
-- #60 — ✅ Ember+ per-type fixtures shipped (14 types). Layout: `tests/fixtures/protocol_types/emberplus/<type>/{capture.pcapng,tshark.tree,README.md}`. Follow-up issue tracks the 5 missing Glow types.
+- #59 — Ember+ watch-parity (dotted identifier, matrix labels, value diff)
+- #60 → PR #61 — ✅ Ember+ per-type fixtures shipped (14 types under `tests/fixtures/protocol_types/emberplus/`)
+- #62 — Missing 5 Glow types (TinyEmber+ / Router do not expose)
+- #63 — ACP1 per-type fixtures (waits on user VM captures)
+- #64 — ACP2 per-type fixtures (waits on user VM captures)
 
 **Tshark self-verification loop**: developer can iterate on Ember+ autonomously against loopback TinyEmber+ (ports 9000/9092) without user-in-the-loop. ACP1 (emulator 10.6.239.113) + ACP2 (VM 10.41.40.195) require user-side execution for captures.
 
