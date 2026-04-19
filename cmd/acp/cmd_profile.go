@@ -87,6 +87,13 @@ func runProfile(ctx context.Context, args []string) error {
 func helpProfile() {
 	fmt.Println(`acp profile — Ember+ compliance classification
 
+IN   acp profile 127.0.0.1 --protocol emberplus --port 9000
+OUT  classification : partial
+     objects walked : 20127
+     events:
+       multi_frame_reassembly     : 3
+       non_qualified_element      : 2619
+
 USAGE
   acp profile <host> [--port 9000] [--timeout DUR]
 

@@ -90,6 +90,9 @@ func helpConvert() {
 	fmt.Println(`acp convert — translate a snapshot file between json / yaml / csv
 (offline — no device connection needed)
 
+IN   acp convert --in device.json --out device.csv
+OUT  converted device.json → device.csv (csv)
+
 USAGE
   acp convert --in FILE --out FILE [--format json|yaml|csv]
   acp convert --in FILE --format csv              (writes to stdout)

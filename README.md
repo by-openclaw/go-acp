@@ -57,19 +57,26 @@ Export/import rules:
 
 ## 3. CLI — commands
 
-| Command | Description | Example |
+Every command has a fixed **IN / OUT** contract. Run `acp help <cmd>` for the full detail; the summary below is the one-line form.
+
+| Command | IN | OUT |
 |---|---|---|
-| `info` | Device info + slot status | `acp info 10.41.40.195 --protocol acp2` |
-| `walk` | Enumerate all objects on a slot | `acp walk 10.41.40.195 --protocol acp2 --slot 0` |
-| `get` | Read one value by ID or label | `acp get 10.41.40.195 --protocol acp2 --slot 0 --id 15239` |
-| `set` | Write one value by ID or label | `acp set 10.41.40.195 --protocol acp2 --slot 0 --id 15239 --value "OK"` |
-| `watch` | Live announcements (Ctrl-C to stop) | `acp watch 10.41.40.195 --protocol acp2 --slot 0` |
-| `export` | Dump tree + values to file | `acp export 10.41.40.195 --format yaml --out device.yaml` |
-| `import` | Apply values from file | `acp import 10.41.40.195 --file device.yaml --dry-run` |
-| `discover` | LAN device discovery (ACP1 only) | `acp discover` |
-| `diag` | Protocol diagnostic probes (ACP2) | `acp diag 10.41.40.195 --protocol acp2` |
-| `list-protocols` | Show registered protocols | `acp list-protocols` |
-| `help` | Per-command help | `acp help walk` |
+| `info` | `acp info <host>` | device info + per-slot status |
+| `walk` | `acp walk <host> --slot N` | one line per object (+ `raw.s101.jsonl` / `tree.json` under `--capture <dir>`) |
+| `get` | `acp get <host> --slot N --label L \| --id I` | decoded value + metadata (range, step, unit, enum) |
+| `set` | `acp set <host> --slot N --id I --value V` | confirmed value echoed by device (or typed error) |
+| `watch` | `acp watch <host> [filters]` | stream of live announcements until Ctrl-C |
+| `export` | `acp export <host> --format json\|yaml\|csv --out FILE` | snapshot file (json/yaml lossless, csv flat) |
+| `import` | `acp import <host> --file SNAPSHOT [--dry-run]` | `applied N, skipped M, failed X`; dry-run also prints per-reason skip table |
+| `convert` | `acp convert --in FILE --out FILE` **(offline)** | same snapshot in the requested format, no device needed |
+| `discover` | `acp discover` | list of ACP1 devices on the local subnet (ACP1 only) |
+| `matrix` | `acp matrix <host> --path P --target N --sources N,N,...` | confirmed crosspoint connections (Ember+ only) |
+| `invoke` | `acp invoke <host> --path P [--args v1,v2,...]` | function return value(s) (Ember+ only) |
+| `stream` | `acp stream <host> [--id N]` | live stream parameter values until Ctrl-C (Ember+ only) |
+| `profile` | `acp profile <host>` | compliance classification + event counts |
+| `diag` | `acp diag <host> --slot N` | per-probe success/failure table (ACP2 only) |
+| `list-protocols` | `acp list-protocols` | table of registered plugins |
+| `help` | `acp help <cmd>` | detailed IN/OUT + flags + examples for one command |
 
 ### Filtering
 

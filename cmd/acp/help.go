@@ -7,6 +7,15 @@ import "fmt"
 func helpInfo() {
 	fmt.Println(`acp info — read device info
 
+IN   acp info 10.6.239.113
+OUT  device       10.6.239.113:2071
+     protocol     acp1 v1
+     slots        31
+     per-slot status:
+       slot  0   present
+       slot  1   present
+       …
+
 USAGE
   acp info <host> [flags]
 
@@ -28,6 +37,15 @@ EXAMPLES
 
 func helpWalk() {
 	fmt.Println(`acp walk — enumerate every object on a slot
+
+IN   acp walk 10.6.239.113 --slot 0
+OUT  slot 0:
+        0  Card name       string   R--  "RRS18"
+        1  User label      string   RW-  "Synapse Simulator"
+        2  Card description string  R--  "Virtual Rack Controller"
+        …
+     (with --capture <dir> also writes raw.s101.jsonl + tree.json,
+      plus glow.json for Ember+)
 
 USAGE
   acp walk <host> --slot N [flags]
@@ -59,6 +77,12 @@ EXAMPLES
 
 func helpGet() {
 	fmt.Println(`acp get — read one object value
+
+IN   acp get 10.6.239.113 --slot 1 --label "Card name"
+OUT  value = "CDV08v06   "
+     raw  = 434456303876303620202000
+     kind = string  access = R--
+     max length = 11 chars
 
 USAGE
   acp get <host> --slot N (--label L | --group G --id I) [flags]
@@ -92,6 +116,11 @@ EXAMPLES
 
 func helpSet() {
 	fmt.Println(`acp set — write one object value
+
+IN   acp set 10.41.40.195 --protocol acp2 --slot 1 --id 3 --value "ACP2-OK"
+OUT  confirmed value = "ACP2-OK"
+     raw       = 414350322d4f4b00
+     (non-zero exit on access / value / timeout errors)
 
 USAGE
   acp set <host> --slot N (--label L | --group G --id I) --value V [flags]
@@ -135,6 +164,11 @@ EXAMPLES
 func helpWatch() {
 	fmt.Println(`acp watch — subscribe to live announcements
 
+IN   acp watch 10.6.239.113 --slot 1
+OUT  12:34:56.789  slot=1 group=control id=91 GainA        = 50.0
+     12:34:57.102  slot=1 group=status  id=9  SPF_Status   = Online
+     …  (runs until Ctrl-C; --capture FILE also writes every frame to JSONL)
+
 USAGE
   acp watch <host> [filters] [flags]
 
@@ -172,6 +206,12 @@ EXAMPLES
 func helpListProtocols() {
 	fmt.Println(`acp list-protocols — list available protocol plugins
 
+IN   acp list-protocols
+OUT  name        port   description
+     acp1        2071   Axon Control Protocol v1
+     acp2        2072   Axon Control Protocol v2 (AN2/TCP)
+     emberplus   9000   Ember+ v2.50 (S101/TCP)
+
 USAGE
   acp list-protocols
 
@@ -187,6 +227,10 @@ EXAMPLES
 
 func helpExport() {
 	fmt.Println(`acp export — dump a walked device to json / yaml / csv
+
+IN   acp export 10.6.239.113 --format json --out device.json
+OUT  exported 1 slots to device.json (json)
+     (json/yaml lossless; csv flat one-row-per-object)
 
 USAGE
   acp export <host> [--format F] [--out FILE] [flags]
@@ -220,29 +264,49 @@ EXAMPLES
 func helpImport() {
 	fmt.Println(`acp import — apply values from a snapshot file
 
+IN   acp import 10.6.239.113 --file device.json --dry-run
+OUT  would apply 21, skipped 38, failed 0
+     skipped rows (dry-run detail):
+       read_only (38):
+         slot=0 id=7  kind=int    access=R-- path="status.Temp_Right"
+         slot=0 id=28 kind=string access=R-- path="status.MIB_S16"
+         …
+
 USAGE
   acp import <host> --file SNAPSHOT [--dry-run] [flags]
 
 DESCRIPTION
-  Reads a snapshot produced by 'acp export' and writes every writable
-  object's value back to the device. Read-only objects are skipped;
-  alarm priorities and frame status are also skipped (they have
-  dedicated paths). YAML and CSV import are not supported — use JSON.
+  Reads a snapshot produced by 'acp export' (json / yaml / csv — format
+  auto-detected from extension) and writes every writable object's
+  value back to the device. Read-only objects are skipped; alarm
+  priorities and frame status are also skipped.
 
-  --dry-run lists what WOULD be written without touching the device.
-  Run it first to preview the effect.
+  --dry-run lists what WOULD be written without touching the device,
+  followed by a grouped-by-reason table of every row the importer
+  chose not to attempt ("read_only" / "marker" / "unknown_kind") with
+  slot, id, kind, access, and path printed so you know exactly which
+  rows in your edited file will be ignored.
+
+  Partial import: hand-edit the file to keep only the rows you want
+  applied — the importer acts on whatever rows survive. Selective
+  addressing via --id / --label is tracked in #36 (not yet implemented).
 
 FLAGS
-  --file PATH        snapshot file (json only)             (required)
-  --dry-run          validate without writing
+  --file PATH        snapshot file (json / yaml / csv)        (required)
+  --dry-run          validate without writing; prints skip report
 
 EXAMPLES
   acp import 10.6.239.113 --file device.json --dry-run
-  acp import 10.6.239.113 --file device.json`)
+  acp import 10.6.239.113 --file device.json
+  acp import 10.6.239.113 --file edited.csv                     # partial setup`)
 }
 
 func helpDiscover() {
 	fmt.Println(`acp discover — passive + active LAN scan for ACP1 devices
+
+IN   acp discover --duration 5s
+OUT  found 1 device(s) in 5s:
+       10.6.239.113   00:08:f4:3c:12:ab   Synapse Simulator
 
 USAGE
   acp discover [--duration 5s] [--active] [--scan-port 2071]
@@ -280,6 +344,10 @@ EXAMPLES
 func helpInvoke() {
 	fmt.Println(`acp invoke — invoke an Ember+ function (RPC)
 
+IN   acp invoke 127.0.0.1 --protocol emberplus --port 9092 --path router.functions.add --args 3,5
+OUT  invocation: success
+     result[0] = 8
+
 USAGE
   acp invoke <host> --path <func.path> [--args val1,val2,...]
 
@@ -294,6 +362,10 @@ EXAMPLES
 
 func helpMatrix() {
 	fmt.Println(`acp matrix — set matrix crosspoint connections (Ember+ only)
+
+IN   acp matrix 127.0.0.1 --protocol emberplus --port 9092 \
+         --path router.oneToN.matrix --target 1 --sources 1
+OUT  matrix connected: t=1 ← [1] op=absolute disp=tally
 
 USAGE
   acp matrix <host> --path <matrix.path> --target N --sources N[,N,...] [--op absolute|connect|disconnect]
@@ -312,6 +384,13 @@ EXAMPLES
 
 func helpDiag() {
 	fmt.Println(`acp diag — run ACP2 diagnostic probes
+
+IN   acp diag 10.41.40.195 --slot 0
+OUT  probe: AN2 GetVersion           → ok (proto 1)
+     probe: AN2 GetDeviceInfo        → ok (2 slots)
+     probe: AN2 EnableProtocolEvents → ok
+     probe: ACP2 GetVersion          → ok (proto 2)
+     probe: ACP2 GetObject(slot,0)   → ok (children: 4)
 
 USAGE
   acp diag <host> [--slot N]
