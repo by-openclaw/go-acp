@@ -514,6 +514,112 @@ end
 -- scope:    table [ctx-number]->name for context-tagged children, or nil
 -------------------------------------------------------------------------------
 
+-------------------------------------------------------------------------------
+-- summarize_glow: quick-scan the top-level Glow structure and produce a
+-- human-readable hint for the Info column (e.g. "Root { 3 Parameter, 1 Matrix }",
+-- "Root { StreamCollection [5] }", "Root { InvocationResult }").
+-- No tree side-effects. Returns a short string or nil.
+-------------------------------------------------------------------------------
+
+local function peek_app_tag(ba, off, endpos)
+    if off >= endpos then return nil end
+    local first, class, cons, tag_num, t_consumed = read_tag(ba, off)
+    if not first then return nil end
+    local len, l_consumed = read_length(ba, off + t_consumed)
+    if len == nil then return nil end
+    return class, cons, tag_num, t_consumed + l_consumed, len
+end
+
+-- Recursively count interesting leaf types in a Glow subtree so the
+-- Info column identifies Matrix / Function / Parameter content even when
+-- it's nested below Node wrappers. Container types (Node, ElementCollection)
+-- are walked through, not counted.
+local LEAF_TAGS = {
+    [1] = "Parameter", [9]  = "QParameter",
+    [13] = "Matrix",   [17] = "QMatrix",
+    [19] = "Function", [20] = "QFunction",
+    [24] = "Template", [25] = "QTemplate",
+    [23] = "InvocationResult",
+}
+
+local function count_leaves(ba, off, endpos, counts, depth)
+    if depth > 12 then return end
+    while off < endpos do
+        local c, _cn, t, h, l = peek_app_tag(ba, off, endpos)
+        if not c or l == nil then return end
+        local val_off = off + h
+        local val_end = (l < 0) and endpos or math.min(val_off + l, endpos)
+        if c == 1 and LEAF_TAGS[t] then
+            local name = LEAF_TAGS[t]
+            counts[name] = (counts[name] or 0) + 1
+            -- Do NOT recurse into leaves — the tree below is contents/children
+            -- of this element, not additional siblings worth counting.
+        else
+            -- Recurse into containers: Root (0), ElementCollection (4/11),
+            -- Node (3/10), CONTEXT wrappers ([0], [1], [2]), universal
+            -- SET/SEQUENCE. StreamCollection (6) handled by caller.
+            count_leaves(ba, val_off, val_end, counts, depth + 1)
+        end
+        if l < 0 then return end
+        off = val_off + l
+    end
+end
+
+local function summarize_glow(ba, off, avail)
+    local endpos = off + avail
+    -- Expect [APP 0] Root wrapper first.
+    local class, cons, tag_num, hdr, len = peek_app_tag(ba, off, endpos)
+    if not class then return nil end
+    if class ~= 1 or tag_num ~= 0 then
+        local n = glow_app_valstr[tag_num] or ("APP " .. tostring(tag_num))
+        return n
+    end
+    local inner_off = off + hdr
+    local inner_end = (len < 0) and endpos or math.min(inner_off + len, endpos)
+    local c2, cn2, t2, h2 = peek_app_tag(ba, inner_off, inner_end)
+    if c2 == 0 and cn2 then
+        -- skip universal "Ember container" wrapper if present
+        inner_off = inner_off + h2
+    end
+
+    -- Peek the first child of Root to pick the summary shape.
+    local c3, cn3, t3, h3, l3 = peek_app_tag(ba, inner_off, inner_end)
+    if not c3 then return "Root { empty }" end
+
+    if c3 == 1 then
+        local top = glow_app_valstr[t3] or ("APP " .. t3)
+        if t3 == 11 or t3 == 4 then
+            -- ElementCollection: recursively count leaves (Matrix, Function,
+            -- Parameter, Q* variants) across all nested Node wrappers.
+            local child_end = inner_off + h3 + (l3 < 0 and (inner_end - inner_off - h3) or l3)
+            local counts = {}
+            count_leaves(ba, inner_off + h3, child_end, counts, 0)
+            local parts = {}
+            for name, n in pairs(counts) do
+                table.insert(parts, (n > 1 and (n .. " ") or "") .. name)
+            end
+            if #parts == 0 then return "Root { " .. top .. " [Node only] }" end
+            return "Root { " .. top .. " [" .. table.concat(parts, ", ") .. "] }"
+        elseif t3 == 6 then
+            -- StreamCollection: count entries.
+            local child_end = inner_off + h3 + (l3 < 0 and (inner_end - inner_off - h3) or l3)
+            local walk = inner_off + h3
+            local n = 0
+            while walk < child_end do
+                local cc, _cn, ct, ch, cl = peek_app_tag(ba, walk, child_end)
+                if not cc then break end
+                if cc == 2 or (cc == 1 and ct == 5) then n = n + 1 end
+                if cl == nil or cl < 0 then break end
+                walk = walk + ch + cl
+            end
+            return "Root { StreamCollection [" .. n .. "] }"
+        else
+            return "Root { " .. top .. " }"
+        end
+    end
+    return "Root"
+end
+
 local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
     if depth > 20 then
         tree:add_expert_info(PI_MALFORMED, PI_WARN, "Glow tree recursion limit")
@@ -804,14 +910,18 @@ local function dissect_s101_frame(tvbuf, pktinfo, root, frame_start, frame_end)
 
             local payload_off = 7 + appblen
             local payload_len = clen - 2 - payload_off
+            local summary
             if payload_len > 0 then
+                summary = summarize_glow(unesc_bytes, payload_off, payload_len)
                 local glow_tree = tree:add(glow_proto, unesc_tvb:range(payload_off, payload_len),
-                                           "Glow Payload (" .. payload_len .. " bytes)")
+                                           "Glow Payload (" .. payload_len .. " bytes)" ..
+                                           (summary and " — " .. summary or ""))
                 walk_ber(unesc_bytes, unesc_tvb, payload_off, payload_len, glow_tree, nil, 0)
             end
 
             local flag_name = s101_flags_valstr[flags] or string.format("flags=0x%02X", flags)
-            info = "Ember+ " .. flag_name .. " payload=" .. payload_len .. "B"
+            info = "Ember+ " .. flag_name .. (summary and " " .. summary or "") ..
+                   " payload=" .. payload_len .. "B"
         end
     else
         info = "S101 cmd=0x" .. string.format("%02X", command)
@@ -826,7 +936,7 @@ end
 -- Also sets pktinfo.desegment_len when reassembly is needed.
 -------------------------------------------------------------------------------
 
-local function find_next_frame(tvbuf, offset, pktinfo)
+local function find_next_frame(tvbuf, offset)
     local pktlen = tvbuf:reported_length_remaining()
     -- find BoF
     while offset < pktlen do
@@ -849,43 +959,52 @@ local function find_next_frame(tvbuf, offset, pktinfo)
         end
     end
 
-    -- Not found: need more bytes.
-    pktinfo.desegment_offset = start
-    pktinfo.desegment_len    = DESEGMENT_ONE_MORE_SEGMENT
-    return nil
+    -- Not found. Caller handles reassembly (we don't set desegment fields
+    -- here — doing so from a helper breaks the TCP layer's save/compare
+    -- invariant when multiple frames live in the same segment).
+    return start, nil
 end
 
 -------------------------------------------------------------------------------
--- Main dissector entry point
+-- Main dissector entry point with TCP reassembly.
+--
+-- The dissector must either fully consume the buffer OR set BOTH
+-- desegment_offset and desegment_len atomically, exactly once per call.
+-- Setting those fields more than once across nested helpers violates
+-- the TCP dissector's invariant ("save_desegment_*" assertion at
+-- packet-tcp.c:8139) and causes Wireshark to abort with a dissector bug.
 -------------------------------------------------------------------------------
 
 function s101_proto.dissector(tvbuf, pktinfo, root)
     local pktlen = tvbuf:reported_length_remaining()
     if pktlen == 0 then return 0 end
 
-    pktinfo.cols.protocol:set("Ember+")
-
     local offset = 0
     local frames = 0
     local info_parts = {}
     while offset < pktlen do
-        local start, endpos = find_next_frame(tvbuf, offset, pktinfo)
+        local start, endpos = find_next_frame(tvbuf, offset)
         if not start then
             if frames == 0 then
-                -- No BoF at all — not our protocol (or mid-stream).
-                return 0
+                return 0  -- no BoF, not our protocol (or mid-stream garbage)
             end
             break
         end
         if not endpos then
-            -- reassembly requested
-            return offset
+            -- Partial frame at tail — ask TCP layer for more data.
+            -- Only set these once, here, at the true reassembly boundary.
+            pktinfo.desegment_offset = start
+            pktinfo.desegment_len    = DESEGMENT_ONE_MORE_SEGMENT
+            return pktlen
         end
         local info = dissect_s101_frame(tvbuf, pktinfo, root, start, endpos)
         table.insert(info_parts, info)
         offset = endpos + 1
         frames = frames + 1
     end
+
+    -- Only set protocol column after we've confirmed at least one valid frame.
+    pktinfo.cols.protocol:set("Ember+")
 
     if #info_parts > 0 then
         if frames > 1 then
