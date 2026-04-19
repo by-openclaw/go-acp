@@ -20,9 +20,15 @@ func TestEncodeDecodeGetDirectory(t *testing.T) {
 	if len(tlvs) != 1 {
 		t.Fatalf("expected 1 TLV, got %d", len(tlvs))
 	}
+	// Outer envelope is [APPLICATION 0] Root CHOICE (spec p.93).
 	root := tlvs[0]
-	if root.Tag.Class != ber.ClassApplication || root.Tag.Number != TagRootElementCollection {
-		t.Errorf("root tag: got %+v", root.Tag)
+	if root.Tag.Class != ber.ClassApplication || root.Tag.Number != TagRoot {
+		t.Errorf("root tag: got %+v, want APPLICATION[0]", root.Tag)
+	}
+	if len(root.Children) != 1 ||
+		root.Children[0].Tag.Class != ber.ClassApplication ||
+		root.Children[0].Tag.Number != TagRootElementCollection {
+		t.Errorf("expected APPLICATION[11] inside root, got %+v", root.Children)
 	}
 }
 
@@ -210,6 +216,304 @@ func TestDecodeCommand(t *testing.T) {
 	}
 	if el.Command.Number != CmdGetDirectory {
 		t.Errorf("command: got %d, want %d", el.Command.Number, CmdGetDirectory)
+	}
+}
+
+func TestDecodeInvocationResult_SuccessDefaultsTrue(t *testing.T) {
+	// Spec p.92: "success [1] BOOLEAN OPTIONAL — True or omitted if no errors."
+	// Provider emits only invocationId (0) + result (2); success absent.
+	res := ber.AppConstructed(TagInvocationResult,
+		ber.ContextConstructed(InvResInvocationID, ber.Integer(7)),
+		ber.ContextConstructed(InvResResult,
+			ber.Sequence(
+				ber.ContextConstructed(0, ber.Integer(42)),
+			),
+		),
+	)
+	data := ber.EncodeTLV(res)
+
+	tlv, _, err := ber.DecodeTLV(data)
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeInvocationResult(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	r := el.InvocationResult
+	if r.InvocationID != 7 {
+		t.Errorf("id: got %d, want 7", r.InvocationID)
+	}
+	if !r.Success {
+		t.Error("success should default to true when field omitted (spec p.92)")
+	}
+	if len(r.Result) != 1 || r.Result[0] != int64(42) {
+		t.Errorf("result tuple: got %v", r.Result)
+	}
+}
+
+func TestDecodeInvocationResult_SuccessFalseExplicit(t *testing.T) {
+	res := ber.AppConstructed(TagInvocationResult,
+		ber.ContextConstructed(InvResInvocationID, ber.Integer(3)),
+		ber.ContextConstructed(InvResSuccess, ber.Boolean(false)),
+	)
+	data := ber.EncodeTLV(res)
+
+	tlv, _, err := ber.DecodeTLV(data)
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeInvocationResult(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	if el.InvocationResult.Success {
+		t.Error("explicit success=false should decode as false")
+	}
+	if len(el.InvocationResult.Result) != 0 {
+		t.Errorf("result should be empty when omitted, got %v", el.InvocationResult.Result)
+	}
+}
+
+func TestDecodeInvocationResult_MultiValueTuple(t *testing.T) {
+	res := ber.AppConstructed(TagInvocationResult,
+		ber.ContextConstructed(InvResInvocationID, ber.Integer(1)),
+		ber.ContextConstructed(InvResResult,
+			ber.Sequence(
+				ber.ContextConstructed(0, ber.Integer(8)),
+				ber.ContextConstructed(0, ber.UTF8("ok")),
+				ber.ContextConstructed(0, ber.Real(1.5)),
+			),
+		),
+	)
+	tlv, _, err := ber.DecodeTLV(ber.EncodeTLV(res))
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeInvocationResult(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	got := el.InvocationResult.Result
+	if len(got) != 3 {
+		t.Fatalf("expected 3 tuple values, got %d: %v", len(got), got)
+	}
+	if n, ok := got[0].(int64); !ok || n != 8 {
+		t.Errorf("tuple[0]: got %v", got[0])
+	}
+	if s, ok := got[1].(string); !ok || s != "ok" {
+		t.Errorf("tuple[1]: got %v", got[1])
+	}
+	if f, ok := got[2].(float64); !ok || f != 1.5 {
+		t.Errorf("tuple[2]: got %v", got[2])
+	}
+}
+
+func TestEncodeInvoke_RoundTripArgumentTypes(t *testing.T) {
+	data := EncodeInvoke([]int32{1, 5}, 42, []any{int64(3), int64(5), "label", true, 1.25})
+	if len(data) == 0 {
+		t.Fatal("empty Invoke")
+	}
+	elements, err := DecodeRoot(data)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// Find the Command inside the nested QualifiedFunction/ElementCollection.
+	var cmd *Command
+	var walk func([]Element)
+	walk = func(els []Element) {
+		for _, e := range els {
+			if e.Command != nil && cmd == nil {
+				cmd = e.Command
+				return
+			}
+			if e.Node != nil {
+				walk(e.Node.Children)
+			}
+			if e.Function != nil {
+				walk(e.Function.Children)
+			}
+		}
+	}
+	walk(elements)
+	if cmd == nil || cmd.Invocation == nil {
+		t.Fatalf("expected Invocation in root tree, got %d elements", len(elements))
+	}
+	if cmd.Invocation.InvocationID != 42 {
+		t.Errorf("invocationID: got %d", cmd.Invocation.InvocationID)
+	}
+	if len(cmd.Invocation.Arguments) != 5 {
+		t.Fatalf("expected 5 args, got %d: %v", len(cmd.Invocation.Arguments), cmd.Invocation.Arguments)
+	}
+}
+
+func TestDecodeStreamCollection(t *testing.T) {
+	// Spec p.93 StreamCollection = SEQUENCE OF CTX[0] StreamEntry.
+	// Each StreamEntry APP[5] carries streamIdentifier (CTX 0) + value (CTX 1).
+	stream := ber.AppConstructed(TagStreamCollection,
+		ber.ContextConstructed(0,
+			ber.AppConstructed(TagStreamEntry,
+				ber.ContextConstructed(StreamEntryIdentifier, ber.Integer(45)),
+				ber.ContextConstructed(StreamEntryValue, ber.Integer(-18)),
+			),
+		),
+		ber.ContextConstructed(0,
+			ber.AppConstructed(TagStreamEntry,
+				ber.ContextConstructed(StreamEntryIdentifier, ber.Integer(46)),
+				ber.ContextConstructed(StreamEntryValue, ber.Real(1.25)),
+			),
+		),
+	)
+	data := ber.EncodeTLV(stream)
+	elements, err := DecodeRoot(data)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(elements) != 1 {
+		t.Fatalf("expected 1 element, got %d", len(elements))
+	}
+	entries := elements[0].Streams
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 StreamEntry, got %d", len(entries))
+	}
+	if entries[0].StreamIdentifier != 45 {
+		t.Errorf("entry[0].id: got %d", entries[0].StreamIdentifier)
+	}
+	if v, ok := entries[0].Value.(int64); !ok || v != -18 {
+		t.Errorf("entry[0].value: got %v", entries[0].Value)
+	}
+	if entries[1].StreamIdentifier != 46 {
+		t.Errorf("entry[1].id: got %d", entries[1].StreamIdentifier)
+	}
+	if v, ok := entries[1].Value.(float64); !ok || v != 1.25 {
+		t.Errorf("entry[1].value: got %v", entries[1].Value)
+	}
+}
+
+func TestDecodeStreamDescriptorOnParameter(t *testing.T) {
+	// StreamDescription APP[12] carried as Parameter CTX 16.
+	desc := ber.AppConstructed(TagStreamDescription,
+		ber.ContextConstructed(StreamDescFormat, ber.Integer(StreamFmtSignedInt16BigEndian)),
+		ber.ContextConstructed(StreamDescOffset, ber.Integer(4)),
+	)
+	param := ber.AppConstructed(TagParameter,
+		ber.ContextConstructed(ParamNumber, ber.Integer(1)),
+		ber.ContextConstructed(ParamContents,
+			ber.ContextConstructed(ParamContentIdentifier, ber.UTF8("level")),
+			ber.ContextConstructed(ParamContentStreamIdentifier, ber.Integer(99)),
+			ber.ContextConstructed(ParamContentStreamDescriptor, desc),
+		),
+	)
+	tlv, _, err := ber.DecodeTLV(ber.EncodeTLV(param))
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeElement(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	p := el.Parameter
+	if p.StreamIdentifier != 99 {
+		t.Errorf("streamIdentifier: got %d", p.StreamIdentifier)
+	}
+	if p.StreamDescriptor == nil {
+		t.Fatal("expected StreamDescriptor")
+	}
+	if p.StreamDescriptor.Format != StreamFmtSignedInt16BigEndian {
+		t.Errorf("format: got %d", p.StreamDescriptor.Format)
+	}
+	if p.StreamDescriptor.Offset != 4 {
+		t.Errorf("offset: got %d", p.StreamDescriptor.Offset)
+	}
+}
+
+func TestDecodeTemplate(t *testing.T) {
+	// Spec p.84. Template ::= [APPLICATION 24] IMPLICIT SET {
+	//   number [0] Integer32, element [1] TemplateElement OPTIONAL,
+	//   description [2] EmberString OPTIONAL }
+	inner := ber.AppConstructed(TagParameter,
+		ber.ContextConstructed(ParamNumber, ber.Integer(1)),
+		ber.ContextConstructed(ParamContents,
+			ber.ContextConstructed(ParamContentIdentifier, ber.UTF8("gain_proto")),
+			ber.ContextConstructed(ParamContentType, ber.Integer(ParamTypeReal)),
+		),
+	)
+	tmpl := ber.AppConstructed(TagTemplate,
+		ber.ContextConstructed(TemplateNumber, ber.Integer(42)),
+		ber.ContextConstructed(TemplateElementCtx, inner),
+		ber.ContextConstructed(TemplateDescription, ber.UTF8("audio gain template")),
+	)
+	elements, err := DecodeRoot(ber.EncodeTLV(tmpl))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(elements) != 1 || elements[0].Template == nil {
+		t.Fatalf("expected Template element, got %+v", elements)
+	}
+	got := elements[0].Template
+	if got.Number != 42 {
+		t.Errorf("number: got %d", got.Number)
+	}
+	if got.Description != "audio gain template" {
+		t.Errorf("description: got %q", got.Description)
+	}
+	if got.Element == nil || got.Element.Parameter == nil {
+		t.Fatalf("expected wrapped Parameter, got %+v", got.Element)
+	}
+	if got.Element.Parameter.Identifier != "gain_proto" {
+		t.Errorf("wrapped param identifier: got %q", got.Element.Parameter.Identifier)
+	}
+}
+
+func TestDecodeQualifiedTemplate(t *testing.T) {
+	tmpl := ber.AppConstructed(TagQualifiedTemplate,
+		ber.ContextConstructed(TemplatePath, ber.RelOID(encodeRelativeOID([]int32{0, 5, 2}))),
+		ber.ContextConstructed(TemplateElementCtx,
+			ber.AppConstructed(TagNode,
+				ber.ContextConstructed(NodeNumber, ber.Integer(1)),
+			),
+		),
+	)
+	elements, err := DecodeRoot(ber.EncodeTLV(tmpl))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(elements) != 1 || elements[0].Template == nil {
+		t.Fatalf("expected Template, got %+v", elements)
+	}
+	got := elements[0].Template
+	if !got.Qualified {
+		t.Error("expected Qualified=true")
+	}
+	if len(got.Path) != 3 || got.Path[0] != 0 || got.Path[1] != 5 || got.Path[2] != 2 {
+		t.Errorf("path: got %v, want [0 5 2]", got.Path)
+	}
+	if got.Element == nil || got.Element.Node == nil {
+		t.Fatalf("expected wrapped Node, got %+v", got.Element)
+	}
+}
+
+func TestDecodeParameter_TemplateReference(t *testing.T) {
+	// Parameter CTX 18 carries templateReference as RELATIVE-OID.
+	param := ber.AppConstructed(TagParameter,
+		ber.ContextConstructed(ParamNumber, ber.Integer(1)),
+		ber.ContextConstructed(ParamContents,
+			ber.ContextConstructed(ParamContentIdentifier, ber.UTF8("p1")),
+			ber.ContextConstructed(ParamContentTemplateReference,
+				ber.RelOID(encodeRelativeOID([]int32{0, 5, 2}))),
+		),
+	)
+	tlv, _, err := ber.DecodeTLV(ber.EncodeTLV(param))
+	if err != nil {
+		t.Fatalf("BER decode: %v", err)
+	}
+	el, err := decodeElement(tlv)
+	if err != nil {
+		t.Fatalf("glow decode: %v", err)
+	}
+	p := el.Parameter
+	if len(p.TemplateReference) != 3 || p.TemplateReference[2] != 2 {
+		t.Errorf("templateReference: got %v", p.TemplateReference)
 	}
 }
 

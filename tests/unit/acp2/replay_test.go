@@ -29,7 +29,7 @@ type captureRecord struct {
 // loadCapture reads a JSONL capture file and returns all records.
 func loadCapture(t *testing.T, name string) []captureRecord {
 	t.Helper()
-	path := filepath.Join("..", "..", "..", "testdata", "acp2", name)
+	path := filepath.Join("..", "..", "fixtures", "acp2", name)
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)

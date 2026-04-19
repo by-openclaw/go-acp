@@ -8,14 +8,14 @@ Consumer connector for ACP v2 (Axon Neuron protocol) over AN2 transport.
 
 | Document | Path | Description |
 |---|---|---|
-| ACP2 spec (authoritative) | [assets/acp2/acp2_protocol.pdf](../../assets/acp2/acp2_protocol.pdf) | ACP v2 full specification |
-| AN2 spec (authoritative) | [assets/acp2/an2_protocol.pdf](../../assets/acp2/an2_protocol.pdf) | AN2 transport specification |
-| Wireshark dissector | [assets/acp2/dissector_acp2.lua](../../assets/acp2/dissector_acp2.lua) | AN2 + ACP2 byte-exact reference |
-| Protocol reference | [CLAUDE.md](../../CLAUDE.md) — section "ACP2" | Wire format, functions, properties |
-| Testdata captures | [testdata/acp2/](../../testdata/acp2/) | Raw JSONL captures from real device |
-| Export fixtures | [testdata/exports/acp2/](../../testdata/exports/acp2/) | JSON/YAML/CSV per slot |
-| Source code | [internal/protocol/acp2/](../../internal/protocol/acp2/) | Plugin implementation |
-| Unit tests | [tests/unit/acp2/](../../tests/unit/acp2/) | Replay + spec tests |
+| ACP2 spec (authoritative) | [assets/acp2/acp2_protocol.pdf](../../../assets/acp2/acp2_protocol.pdf) | ACP v2 full specification |
+| AN2 spec (authoritative) | [assets/acp2/an2_protocol.pdf](../../../assets/acp2/an2_protocol.pdf) | AN2 transport specification |
+| Wireshark dissector | [assets/acp2/dissector_acp2.lua](../../../assets/acp2/dissector_acp2.lua) | AN2 + ACP2 byte-exact reference |
+| Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "ACP2" | Wire format, functions, properties |
+| Testdata captures | [tests/fixtures/acp2/](../../../tests/fixtures/acp2/) | Raw JSONL captures from real device |
+| Export fixtures | [tests/fixtures/exports/acp2/](../../../tests/fixtures/exports/acp2/) | JSON/YAML/CSV per slot |
+| Source code | [internal/protocol/acp2/](../../../internal/protocol/acp2/) | Plugin implementation |
+| Unit tests | [tests/unit/acp2/](../../../tests/unit/acp2/) | Replay + spec tests |
 
 ---
 

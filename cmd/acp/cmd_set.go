@@ -25,6 +25,10 @@ func runSet(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: acp set <host> --slot N (--path P | --label L | --id I) --value <v>")
 	}
 	_ = fs.Parse(rest)
+	// Ember+ has no slot concept; default to 0.
+	if cf.protocol == "emberplus" && *slot < 0 {
+		*slot = 0
+	}
 	if *slot < 0 {
 		return fmt.Errorf("--slot is required")
 	}

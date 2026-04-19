@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"acp/internal/export"
 	"acp/internal/protocol"
 	"acp/internal/protocol/acp2"
+	"acp/internal/protocol/emberplus"
 )
 
 func runWalk(ctx context.Context, args []string) error {
@@ -23,6 +27,11 @@ func runWalk(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: acp walk <host> (--slot N | --all)")
 	}
 	_ = fs.Parse(rest)
+	// Ember+ has no slot concept (spec: single flat tree per provider);
+	// default --slot 0 so the user doesn't have to remember this quirk.
+	if cf.protocol == "emberplus" && *slot < 0 && !*all {
+		*slot = 0
+	}
 	if !*all && *slot < 0 {
 		return fmt.Errorf("--slot N or --all is required")
 	}
@@ -137,5 +146,75 @@ func runWalk(ctx context.Context, args []string) error {
 	} else {
 		fmt.Printf("\nslot %d — %d objects\n", *slot, len(objs))
 	}
+
+	// Capture-dir mode: additionally write glow.json + tree.json
+	// alongside the raw.s101.jsonl the recorder already produced.
+	// Today this is Ember+-only — other plugins don't expose a
+	// Glow tree or a canonical translator.
+	if cf.captureDir != "" {
+		if err := writeEmberplusCapture(ctx, cf.captureDir, plug, cf); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: capture dir: %v\n", err)
+		}
+	}
 	return nil
 }
+
+// writeEmberplusCapture dumps glow.json (lossless decoded Glow tree)
+// and tree.json (canonical Export) into dir alongside the raw frame
+// log. No-op when plug isn't the Ember+ plugin. Mode flags on cf
+// select the canonical resolver contract: pointer (default, wire-
+// faithful), inline (absorb referenced subtrees), or both.
+func writeEmberplusCapture(ctx context.Context, dir string, plug protocol.Protocol, cf *commonFlags) error {
+	ep, ok := plug.(*emberplus.Plugin)
+	if !ok {
+		return nil
+	}
+
+	dump, err := ep.GlowSnapshot(ctx)
+	if err != nil {
+		return fmt.Errorf("glow snapshot: %w", err)
+	}
+	if err := writeJSONFile(filepath.Join(dir, "glow.json"), dump); err != nil {
+		return fmt.Errorf("write glow.json: %w", err)
+	}
+
+	tree, err := ep.Canonicalize(ctx, emberplus.CanonicalOptions{
+		Templates: cf.canonTemplates,
+		Labels:    cf.canonLabels,
+		Gain:      cf.canonGain,
+	})
+	if err != nil {
+		return fmt.Errorf("canonicalize: %w", err)
+	}
+	f, err := os.Create(filepath.Join(dir, "tree.json"))
+	if err != nil {
+		return fmt.Errorf("create tree.json: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+	if err := export.WriteCanonicalJSON(ctx, f, tree); err != nil {
+		return fmt.Errorf("write tree.json: %w", err)
+	}
+	fmt.Printf("capture: wrote glow.json + tree.json to %s\n", dir)
+	return nil
+}
+
+// writeJSONFile marshals v as indented JSON to path, atomically-ish
+// (write-then-rename would be safer but Windows locking makes that
+// tricky; plain create+close is fine for capture files).
+func writeJSONFile(path string, v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	data = append(data, '\n')
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+	if _, err := f.Write(data); err != nil {
+		return fmt.Errorf("write: %w", err)
+	}
+	return nil
+}
+

@@ -22,9 +22,15 @@ and CLI examples.
 
 | Protocol | Transport | Port | Status | Documentation |
 |---|---|---|---|---|
-| ACP1 | UDP / TCP direct | 2071 | done | [docs/protocols/acp1.md](docs/protocols/acp1.md) |
-| ACP2 | AN2/TCP | 2072 | done | [docs/protocols/acp2.md](docs/protocols/acp2.md) |
-| Ember+ | S101/TCP | 9000-9092 | working | [docs/protocols/emberplus.md](docs/protocols/emberplus.md) (planned) |
+| ACP1 | UDP / TCP direct | 2071 | done | [docs/protocols/acp1/consumer.md](docs/protocols/acp1/consumer.md) |
+| ACP2 | AN2/TCP | 2072 | done | [docs/protocols/acp2/consumer.md](docs/protocols/acp2/consumer.md) |
+| Ember+ | S101/TCP | 9000-9092 | consumer done (resolver + multi-level labels) | [docs/protocols/emberplus/consumer.md](docs/protocols/emberplus/consumer.md) |
+| Probel SW-P-02 | TCP | — | planned (audit YELLOW) | [memory: project_probel_extensions.md] |
+| Probel SW-P-08+ | TCP | — | planned (audit YELLOW) | [memory: project_probel_extensions.md] |
+| TSL UMD v3.1/v4/v5 | UDP push | — | planned (audit GREEN) | [memory: project_tsl_extensions.md] |
+
+Canonical JSON schema shared across all protocols: [docs/protocols/schema.md](docs/protocols/schema.md).
+Per-type element docs with realistic samples: [docs/protocols/elements/](docs/protocols/elements/).
 
 ---
 
@@ -82,8 +88,32 @@ Export/import rules:
 | `--timeout` | Per-operation timeout | `30s` |
 | `--log-level` | trace/debug/info/warn/error/critical | `info` |
 | `--verbose` | Shortcut for `--log-level debug` | false |
-| `--capture` | Write raw traffic to JSONL file | — |
+| `--capture` | Traffic capture. If value is a directory or has no `.jsonl` ext, writes `raw.s101.jsonl` + `glow.json` + `tree.json` (Ember+ only, canonical shape). Single file (`.jsonl`) keeps legacy single-stream log for ACP1/ACP2. | — |
+| `--templates` | Canonical export mode for `templateReference` (Ember+). `pointer` = wire-faithful, `inline` = absorb template shape into referring element, `both` = keep ref + absorbed shape. | `pointer` |
+| `--labels` | Canonical export mode for matrix labels (Ember+). `pointer` = wire-faithful (multi-level `labels[]` preserved), `inline` = absorb label subtree(s) into matrix (populates `targetLabels`/`sourceLabels` keyed by level description), `both` = keep pointer + absorbed maps. | `pointer` |
+| `--gain` | Canonical export mode for `parametersLocation` (Ember+). `pointer` = wire-faithful, `inline` = absorb params subtree (populates `targetParams`/`sourceParams`/`connectionParams`), `both` = both. | `pointer` |
 | `--transport` | ACP1: `udp` or `tcp` | `udp` |
+
+### Ember+ watch output columns
+
+`time | oid | path | label | acc | fr | value | desc="..." | changed: name old→new, ...`
+
+- `acc`: R / W / RW (access bitmask).
+- `fr`: `live` / `updated` (stream tick) / `stale` (cached, session dead or awaiting refresh) / `cache` (loaded from disk, not confirmed).
+- `changed:` appears only when a field moved since the last notification; includes value, description, access, min/max/step/default, format, factor, formula, enumeration, streamIdentifier, isOnline.
+- Matrix crosspoint changes render as `t=N ← [sources] op=<o> disp=<d>` instead of the value column.
+- Session disconnect fires a synthetic event on the root with `changed: isOnline y→n, reason <...>`. Auto-reconnect (2s→30s backoff) re-walks + re-subscribes on return.
+
+### Ember+ write confirmation
+
+`acp set` waits for the provider's confirming announce. Possible outcomes:
+
+| Error | Meaning |
+|---|---|
+| `protocol: not connected` | Session down; no wire traffic sent. |
+| `protocol: write confirmation timeout` | Sent but provider didn't echo within 3s. Tree value unchanged. |
+| `protocol: write accepted but value coerced: expected=X actual=Y` | Provider clamped/rounded. Returned value is what the provider applied. |
+| `protocol: write rejected by provider` | Provider echoed unchanged — likely lock / offline. |
 
 ---
 
@@ -140,9 +170,10 @@ internal/
 assets/
   acp1/               ACP1 spec PDF + Wireshark dissector
   acp2/               ACP2 spec PDF + Wireshark dissector
-testdata/             Raw captures + export fixtures
 tests/unit/           Table-driven + replay tests
 tests/integration/    Real-device tests (build tag)
+tests/smoke/          Simple-path sanity per protocol
+tests/fixtures/       Version-controlled test input (walk captures + export fixtures)
 docs/                 Architecture, connector design, references
 ```
 

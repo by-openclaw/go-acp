@@ -58,75 +58,126 @@ func jsonHierarchicalSnapshot(s *Snapshot) map[string]any {
 }
 
 // buildJSONTree creates nested maps from flat objects using their Path.
-// ACP2: Path = [ROOT_NODE_V2, BOARD, Card Name] → skip ROOT_NODE_V2.
-// ACP1: Path = [identity] + Label → group objects under identity/control/etc.
+//
+// Unified logic across all protocols:
+//
+//	ACP1    Path = ["identity"]                    depth 1 → group key
+//	        Label = "Card name"                    leaf key at depth 2
+//	ACP2    Path = ["ROOT_NODE_V2","BOARD","Card"] depth 3 → strip ROOT, nest
+//	Ember+  Path = ["router","oneToN","labels",    depth N → nest at every
+//	               "targets","t-1"]                          level
+//
+// The ROOT_NODE_V2 sentinel is dropped. Container nodes (Kind=Raw,
+// typical for Ember+ internal nodes) are materialised as empty maps
+// so their children have a place to nest, but they do not produce a
+// leaf entry of their own.
 func buildJSONTree(objs []protocol.Object) map[string]any {
-	// Detect ACP2 by checking for ROOT_NODE_V2 prefix.
-	acp2 := false
-	for _, o := range objs {
-		if len(o.Path) > 0 && strings.EqualFold(o.Path[0], "ROOT_NODE_V2") {
-			acp2 = true
-			break
-		}
-	}
-
 	root := make(map[string]any)
 	for _, o := range objs {
-		if acp2 {
-			// ACP2: skip ROOT_NODE_V2 root object itself.
-			if len(o.Path) <= 1 {
-				continue
+		path := stripRootNodeSentinel(o.Path)
+
+		// Container nodes (Kind=Raw): create the sub-map so
+		// children have a place to nest, and record the
+		// container's own metadata under a reserved "_meta" key.
+		// We cannot flatten container props alongside children —
+		// they'd clash with child identifiers (e.g. a matrix's
+		// "labels" metadata field vs its "labels" child node).
+		if o.Kind == protocol.KindRaw {
+			sub := ensureMapChain(root, path)
+			if meta := containerMeta(o); meta != nil {
+				sub["_meta"] = meta
 			}
-			if o.Kind == protocol.KindRaw {
-				// Container node — ensure map exists.
-				cur := root
-				for _, seg := range o.Path[1:] {
-					if _, exists := cur[seg]; !exists {
-						cur[seg] = make(map[string]any)
-					}
-					if sub, ok := cur[seg].(map[string]any); ok {
-						cur = sub
-					}
-				}
-				continue
-			}
-			// Leaf node — walk path[1:] and nest.
-			cur := root
-			for _, seg := range o.Path[1 : len(o.Path)-1] {
-				if _, exists := cur[seg]; !exists {
-					cur[seg] = make(map[string]any)
-				}
-				if sub, ok := cur[seg].(map[string]any); ok {
-					cur = sub
-				}
-			}
-			cur[o.Path[len(o.Path)-1]] = jsonLeaf(o)
-		} else {
-			// ACP1: Path = [group], group objects under identity/control/etc.
+			continue
+		}
+
+		// Build the keying path: when Path has > 1 element the last
+		// element is already the object's own key; for ACP1 (Path=[group])
+		// we append Label so objects group under their section.
+		keyPath := path
+		if len(keyPath) == 1 {
+			keyPath = append([]string(nil), path...)
+			keyPath = append(keyPath, o.Label)
+		}
+		if len(keyPath) == 0 {
+			// No path info at all — fall back to Group+Label.
 			group := o.Group
-			if group == "" && len(o.Path) > 0 {
-				group = o.Path[0]
-			}
 			if group == "" {
 				group = "other"
 			}
-			if _, exists := root[group]; !exists {
-				root[group] = make(map[string]any)
-			}
-			if gmap, ok := root[group].(map[string]any); ok {
-				gmap[o.Label] = jsonLeaf(o)
-			}
+			keyPath = []string{group, o.Label}
 		}
+
+		// Walk every segment except the last, creating maps as needed.
+		cur := ensureMapChain(root, keyPath[:len(keyPath)-1])
+		cur[keyPath[len(keyPath)-1]] = jsonLeaf(o)
 	}
 	return root
 }
 
-// jsonLeaf builds the property map for a single leaf object.
+// stripRootNodeSentinel removes the ACP2 synthetic root prefix if present.
+// No-op for ACP1 / Ember+.
+func stripRootNodeSentinel(path []string) []string {
+	if len(path) > 0 && strings.EqualFold(path[0], "ROOT_NODE_V2") {
+		return path[1:]
+	}
+	return path
+}
+
+// containerMeta builds the `_meta` payload attached to every container
+// (Kind=Raw) node: numeric OID, local element number, access bits, and
+// every protocol-specific property the plugin placed in Object.Meta
+// (matrix type/connections/labels, function arguments/result, node
+// description/isOnline, etc). Returns nil when there is nothing
+// informative to emit.
+func containerMeta(o protocol.Object) map[string]any {
+	m := map[string]any{}
+	if o.OID != "" {
+		m["oid"] = o.OID
+	}
+	m["number"] = o.ID
+	if o.Label != "" {
+		m["identifier"] = o.Label
+	}
+	m["access"] = accessStr(o.Access)
+	for k, v := range o.Meta {
+		m[k] = v
+	}
+	if len(m) == 0 {
+		return nil
+	}
+	return m
+}
+
+// ensureMapChain walks segs from root, creating empty sub-maps where
+// segments are missing, and returns the deepest map reached. When a
+// non-map value already occupies a segment name we skip past it —
+// this happens when a leaf and a container share a name; the leaf
+// wins (unlikely in practice, but a defensive choice).
+func ensureMapChain(root map[string]any, segs []string) map[string]any {
+	cur := root
+	for _, seg := range segs {
+		if _, exists := cur[seg]; !exists {
+			cur[seg] = make(map[string]any)
+		}
+		if sub, ok := cur[seg].(map[string]any); ok {
+			cur = sub
+		}
+	}
+	return cur
+}
+
+// jsonLeaf builds the property map for a single leaf object. For
+// Ember+ this also merges the plugin-supplied Meta (parameter
+// description/format/formula/factor/streamDescriptor/enumMap/...)
+// flat so the exported JSON can be fed back to a provider.
 func jsonLeaf(o protocol.Object) map[string]any {
 	m := map[string]any{
 		"id":     o.ID,
 		"kind":   kindName(o.Kind),
 		"access": accessStr(o.Access),
+	}
+	if o.OID != "" {
+		m["oid"] = o.OID
 	}
 	if o.Unit != "" {
 		m["unit"] = o.Unit
@@ -164,6 +215,14 @@ func jsonLeaf(o protocol.Object) map[string]any {
 	case protocol.KindIPAddr:
 		m["value"] = fmt.Sprintf("%d.%d.%d.%d",
 			v.IPAddr[0], v.IPAddr[1], v.IPAddr[2], v.IPAddr[3])
+	}
+	// Merge plugin-supplied metadata last so the leaf carries
+	// description/format/formula/streamDescriptor/etc. Existing
+	// standard keys win on collision.
+	for k, val := range o.Meta {
+		if _, exists := m[k]; !exists {
+			m[k] = val
+		}
 	}
 	return m
 }

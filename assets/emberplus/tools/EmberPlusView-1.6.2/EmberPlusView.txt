@@ -1,0 +1,171 @@
+﻿---------------------------------
+Ember+ Viewer
+(previously called "GlowView")
+
+L-S-B Broadcast Technologies GmbH
+---------------------------------
+
+Author: pbo@l-s-b.de
+Last changed: 2014-05-23
+
+
+-------------------- Change Log:
+- 1.6.2:
+  - Version number changed to match Ember SDK version
+  - Built against tagged EmberLib.net 1.6.2
+
+- 1.2.2:
+  - Built against tagged EmberLib.net 1.6.0
+
+- 1.2.1:
+  - Built against current EmberLib.net 1.5.0 =>  supports GlowDTD 2.30 (schema extensions)
+  - Fixed issue with duplicated tree entries when receiving parameters
+    with contents set and children sequence
+
+- 1.2.0:
+  - Built against current EmberLib.net 1.2.0 =>  supports GlowDTD 2.20 (function extensions)
+  - GUI support for functions and function invocations.
+  - Option to clear tree when the connection to a provider is closed/lost.
+
+- 1.1.3:
+  - Built against current EmberLib.net trunk with preliminary REAL bug fixes
+  - Current parameter value is displayed in the tree view
+  - Replaced command line parameter "-consolelog" with "-noconsole".
+    The console window now opens by default; this can be suppressed by
+    passing "-noconsole" on the command line.
+
+- 1.1.2:
+  - Built against EmberLib.net 1.1.2
+
+- 1.1.1:
+  - FIXED: crash on exit when not running with "-consolelog" argument.
+  - Receive buffer size increased from 1K to 16K
+
+- 1.1.0:
+  - Built against EmberLib.net 1.1.0 => supports GlowDTD 2.10 (matrix extensions)
+  - Displays matrices in X/Y view.
+  - Matrix parameters and labels accessible via context menu in matrix view.
+  - FIXED: crash when decoding invalid BER data.
+    When invalid BER data has been received, a notification is displayed.
+  - Validates parameters and nodes after decoding.
+    Elements with invalid identifiers are highlighted red in the tree.
+  - Sends Unsubscribe command to nodes and matrices
+    when collapsing a tree node.
+  - Added slider control to parameter view to enable sending dense strobes
+    of value changes.
+  - XML logged to console is in Glow-specific format
+  - Typing 'g' in the console window toggles the Glow-specific
+    XML format.
+  - Typing 'x' in the console window toggles XML output entirely.
+
+- 1.0.14:
+  - Remembers main window grid layout
+  - Creates a log file on user's desktop in case of a crash
+
+- 1.0.13:
+  - If a node is empty, its tree node expander is displayed transparent
+  - For parameters the tree node expander is displayed transparent
+
+- 1.0.12:
+  - Added option to show description instead of identifier in node tree
+  - Adheres to rule "algebraic formulas must be enclosed in parenthesis";
+    formulas not enclosed in parenthesis are ignored.
+
+- 1.0.11:
+  - Built against EmberLib.net 1.0.13
+  - Renamed to "Ember+ Viewer" (EmberPlusView)
+  - FIXED: Application would start with a zero-size window on first
+    launch.
+  - Minor bug fixes
+  - Uses maximum TX package length of 1K
+
+- 1.0.10:
+  - Changed display format for nodes and parameters in the treeview.
+  - Smarter Keep-Alive mechanism: if Keep-Alive is enabled, devices
+    which have not sent an Ember message for 10 seconds will be marked
+    idle (with question mark icon).
+  - FIXED: When receiving spontaneously sent QualifiedNodes or
+    QualifiedParameters, the tree structure could be messed up.
+
+- 1.0.9:
+  - Built against EmberLib.net 1.0.12
+  - Displays streamed values even if they do not match the parameter's
+    type (as sent by TinyEmber 2.0.7).
+  - FIXED: when issueing a GetDirectory command on a parameter and not
+    using the qualified types, a node was emitted instead of a parameter.
+  - Uses 0 as S101 slot id instead of 0xFF.
+  - Remembers window position and state.
+
+- 1.0.8:
+  - Support for Glow DTD 2.5
+  - UI Option added to toggle usage of "Qualified" types
+    (GlowingEmber.QualifiedNode and GlowingEmber.QualifiedParameter).
+  - Writeable parameters are displayed blue in the tree.
+  - "Change Value" button is disabled for read-only parameters
+  - Streamed values are displayed as the current parameter value
+    and - if numerical - fed into the peak meter.
+  - Peak meter uses the "minimum" and "maximum" fields as display range.
+  - Formula evaluation added
+  - UI Option added to adjust behavior of "GetDirectory" command:
+    Either get all fields, identifiers only or values only.
+  - Identifier path of currently selected item is printed below the tree.
+  - UI Option to send Keep-Alive request every 5 seconds
+
+- 1.0.7:
+  - Support for ppm stream subscriptions. If a parameter has a
+    streamIdentifier, you can click the "Subscribe" button to send
+    the "subscribe"/"unsubscribe" command.
+
+- 1.0.6:
+  - Supports ppm streams: if a parameter has a streamIdentifier,
+    GlowView displays a simple peak meter on the parameter page.
+    All incoming stream entries for this streamIdentifier are fed
+    into the peak meter.
+
+- 1.0.5:
+  - Supports Glow DTD 2.4
+  - Evaluates the Parameter field "factor"
+
+- 1.0.4:
+  - Supports Glow DTD 2.3
+  - New command line parameter: -consolelog.
+  - New context menu item: "Clear" - clears all children of the selected
+    node/endpoint
+  - New context menu item: "Close" - closes the selected endpoint.
+    It will be re-opened shortly after.
+  - Also traces low-level framing errors like CRC mismatch.
+
+- 1.0.3:
+  - Fully Supports Glow DTD 2.2, including the new Parameter field "enumMap"
+  - Prints warnings when received package specify an Glow DTD version
+    different from the one that is used by GlowView
+  - Minor bug fixes
+  - Minor visual improvements
+
+- 1.0.2:
+  - Lists contents of nodes, not only parameters
+  - Displays identifier and number for nodes and parameters in tree view
+  - Tags adjusted to Glow DTD 2.1
+
+- 1.0.1:
+  - Ability to change parameter value
+
+- 1.0.0:
+  - Initial release
+
+
+-------------------- General Information
+EmberPlusView is a consumer application for the Ember+ standard.
+It allows you to navigate the glow tree of any provider, to change
+parameter values and to subscribe to ppm streams.
+
+
+-------------------- Command line arguments:
+-noconsole
+   does not open the console that displays all received ember packages as XML.
+
+
+-------------------- Requirements:
+
+- .NET framework 4.0 Client Profile:
+  http://www.microsoft.com/download/en/details.aspx?id=24872

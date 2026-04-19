@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -35,6 +37,23 @@ type commonFlags struct {
 	verbose   bool
 	logLevel  string
 	capture   string
+
+	// captureDir is populated by connect() when --capture points at a
+	// directory (or at a path without a .jsonl extension). In that
+	// mode, raw frames go to <captureDir>/raw.s101.jsonl and the
+	// post-walk step additionally writes glow.json + tree.json
+	// alongside it. Plain single-file --capture keeps the legacy
+	// flat-JSONL behaviour for ACP1/ACP2.
+	captureDir string
+
+	// canonical-export mode flags (Ember+ only). Each controls one
+	// piece of the resolver contract — see docs/protocols/schema.md §4
+	// and internal/protocol/emberplus/resolver.go. Default "pointer"
+	// emits the wire-faithful shape; "inline" absorbs the referenced
+	// subtree into the referring element; "both" keeps both.
+	canonTemplates string
+	canonLabels    string
+	canonGain      string
 }
 
 func addCommonFlags(fs *flag.FlagSet) *commonFlags {
@@ -47,8 +66,46 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 	fs.DurationVar(&cf.timeout, "timeout", 30*time.Second, "per-operation timeout")
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
-	fs.StringVar(&cf.capture, "capture", "", "write raw traffic to JSONL file (for unit test data)")
+	fs.StringVar(&cf.capture, "capture", "",
+		"capture traffic. Path ending in .jsonl → single-file raw frame log "+
+			"(ACP1/ACP2/Ember+). Any other path → directory mode: writes "+
+			"raw.s101.jsonl + glow.json + tree.json (Ember+ only).")
+	fs.StringVar(&cf.canonTemplates, "templates", "pointer",
+		"canonical export mode for templateReference (Ember+ only): "+
+			"pointer (wire-faithful), inline (absorb template into element), "+
+			"both (keep ref + absorbed shape).")
+	fs.StringVar(&cf.canonLabels, "labels", "pointer",
+		"canonical export mode for matrix labels (Ember+ only): "+
+			"pointer (wire-faithful, multi-level array preserved), "+
+			"inline (absorb label subtree, populate targetLabels/sourceLabels), "+
+			"both (keep pointer + absorbed maps).")
+	fs.StringVar(&cf.canonGain, "gain", "pointer",
+		"canonical export mode for parametersLocation (Ember+ only): "+
+			"pointer (wire-faithful), inline (absorb params subtree, populate "+
+			"targetParams/sourceParams/connectionParams), both (keep both).")
 	return cf
+}
+
+// isDirectoryCapture decides whether the --capture path should be
+// treated as a directory (three-file mode) or a single JSONL file.
+// Rules, in order:
+//
+//  1. Existing directory → dir mode.
+//  2. Existing file     → file mode.
+//  3. Path ends in ".jsonl" or ".json" → file mode.
+//  4. Otherwise         → dir mode (the path will be created).
+func isDirectoryCapture(path string) bool {
+	if path == "" {
+		return false
+	}
+	if st, err := os.Stat(path); err == nil {
+		return st.IsDir()
+	}
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".jsonl", ".json":
+		return false
+	}
+	return true
 }
 
 // connect builds a fresh plugin instance, dials the host, and returns the
@@ -68,8 +125,16 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 	// Optional traffic capture for test data generation.
 	var recorder *transport.Recorder
 	if cf.capture != "" {
+		recorderPath := cf.capture
+		if isDirectoryCapture(cf.capture) {
+			cf.captureDir = cf.capture
+			if err := os.MkdirAll(cf.captureDir, 0o755); err != nil {
+				return nil, nil, fmt.Errorf("capture dir: %w", err)
+			}
+			recorderPath = filepath.Join(cf.captureDir, "raw.s101.jsonl")
+		}
 		var recErr error
-		recorder, recErr = transport.NewRecorder(cf.capture)
+		recorder, recErr = transport.NewRecorder(recorderPath)
 		if recErr != nil {
 			return nil, nil, fmt.Errorf("capture: %w", recErr)
 		}
