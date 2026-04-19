@@ -1,4 +1,4 @@
-# Binaries
+# Binaries — ignore build output, but allow vendor tools under assets/
 bin/
 dist/
 *.exe
@@ -6,6 +6,10 @@ dist/
 *.dll
 *.so
 *.dylib
+!assets/**/*.exe
+!assets/**/*.dll
+!assets/**/*.so
+!assets/**/*.dylib
 
 # Go build cache
 *.test

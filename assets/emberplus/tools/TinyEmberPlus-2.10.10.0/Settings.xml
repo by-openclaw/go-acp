@@ -1,0 +1,11 @@
+<!DOCTYPE Settings>
+<Settings>
+ <ConfigurationName value="DHD_Example1.EmBER"/>
+ <AutoLoadConfig value="true"/>
+ <AlwaysReportOnlineState value="true"/>
+ <UseEnumMap value="true"/>
+ <ResponseBehavior value="Force Tree Structure"/>
+ <SendKeepAliveRequest value="true"/>
+ <GenerateRandomValues value="true"/>
+ <NotificationBehavior value="Force Tree Structure"/>
+</Settings>

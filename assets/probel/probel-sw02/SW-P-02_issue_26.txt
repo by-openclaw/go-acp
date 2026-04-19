@@ -1,0 +1,1228 @@
+
+TitleGeneral Switcher Communication ProtocolDocument NoSW-P-02Issue No26Date22/09/05Approved
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright and Confidentiality
+
+
+All rights reserved.  All intellectual property rights including copyright subsisting in this publication are owned and/or controlled by Pro-Bel Limited.  This publication and any information it contains is intended solely for use by the purchasers of Pro-Bel Limited equipment to which this publication pertains.  It is to be treated as confidential and shall not be used for any other purpose.  The publication shall not be copied or disclosed to third parties in whole or in part by any means without the prior written consent of Pro-Bel Limited.
+
+Whilst every precaution has been taken in the preparation of this publication, Pro-Bel Limited accepts no responsibility for the accuracy of the information contained herein.  Neither is any liability assumed for damages resulting from the information contained herein.  The contents of this publication may change regularly to meet Pro-Bel Limited's business needs and may not maintain backwards compatibility with previous releases of the document.  To this end Pro-Bel Limited reserves the right to change or supersede the content hereof at any time without prior written notice or consultation.
+
+
+
+CONTENTS
+
+1.	INTRODUCTION	6
+2.	ELECTRICAL	6
+3.	PROTOCOL	6
+3.1.	Message Format	6
+3.2.	Message Commands	6
+3.2.1.	DATABASE CHECKSUM REQUEST Message	6
+3.2.2.	DATABASE CHECKSUM RESPONSE Message	7
+3.2.3.	INTERROGATE Message	7
+3.2.4.	CONNECT Message	8
+3.2.5.	TALLY Message	8
+3.2.6.	CONNECTED Message	8
+3.2.7.	CONNECT ON Go Message	9
+3.2.8.	GO Message	9
+3.2.9.	STATUS REQUEST Message	9
+3.2.10.	STATUS RESPONSE - 1 Message	10
+3.2.11.	STATUS RESPONSE - 2 Message	10
+3.2.12.	STATUS RESPONSE - 3 Message	11
+3.2.13.	ENABLE CROSSPOINT UPDATE Message	11
+3.2.14.	CONNECT ON GO ACKNOWLEDGE Message	11
+3.2.15.	GO DONE ACKNOWLEDGE Message	12
+3.2.16.	SOURCE LOCK STATUS REQUEST Message	12
+3.2.17.	SOURCE LOCK STATUS RESPONSE Message	12
+3.2.18.	STATUS RESPONSE - 4 Message	13
+3.2.19.	STATUS RESPONSE - 5 Message	13
+3.2.20.	STATUS REQUEST 2 Message	15
+3.2.21.	STATUS RESPONSE - 6 Message	16
+3.2.22.	MIXER INTERROGATE Message	16
+3.2.23.	MIXER CONNECT Message	17
+3.2.24.	MIXER TALLY DUMP Message	17
+3.2.25.	MIXER CONNECTED Message	18
+3.2.26.	ASSIGN SLOT/SLOT STATUS Message	18
+3.2.27.	READ SLOT ASSIGNMENT Message	18
+3.2.28.	SET OUTPUT GAIN/OUTPUT GAIN STATUS Message	19
+3.2.29.	READ OUTPUT GAIN Message	19
+3.2.30.	READ TWINKLER Message	19
+3.2.31.	TWINKLER STATUS Message	19
+3.2.32.	INSTALLED MODULES STATUS REQUEST Message	20
+3.2.33.	INSTALLED MODULES STATUS RESPONSE - 1 Message	20
+3.2.34.	MIXER DISCONNECTED Message	20
+3.2.35.	INSTALLED MODULES STATUS RESPONSE - 3 Message	21
+3.2.36.	CONNECT ON GO GROUP SALVO Message	21
+3.2.37.	GO GROUP SALVO Message	22
+3.2.38.	CONNECT ON GO GROUP SALVO ACKNOWLEDGE Message	22
+3.2.39.	GO DONE GROUP SALVO ACKNOWLEDGE Message	22
+3.2.40.	INSTALLED MODULES STATUS RESPONSE - 2 Message	23
+3.2.41.	ROUTER INPUT/OUTPUT PARAMETERS INTERROGATE Message	23
+3.2.42.	ROUTER INPUT/OUTPUT PARAMETERS TALLY Message	24
+3.2.43.	ROUTER INPUT/OUTPUT PARAMETERS CONNECT Message	25
+3.2.44.	ROUTER INPUT/OUTPUT PARAMETERS CONNECTED Message	25
+3.2.45.	DUAL CONTROLLER STATUS REQUEST Message	25
+3.2.46.	DUAL CONTROLLER STATUS RESPONSE Message	25
+3.2.47.	Extended INTERROGATE Message	26
+3.2.48.	Extended CONNECT Message	26
+3.2.49.	Extended TALLY Message	26
+3.2.50.	Extended CONNECTED Message	27
+3.2.51.	Extended CONNECT ON GO Message	27
+3.2.52.	Extended CONNECT ON GO ACKNOWLEDGE Message	27
+3.2.53.	Extended CONNECT ON GO GROUP SALVO Message	28
+3.2.54.	Extended CONNECT ON GO GROUP SALVO ACKNOWLEDGE Message	28
+3.2.55.	STATUS DATA REQUEST Message	29
+3.2.56.	STATUS DATA RESPONSE - 1 Message	29
+3.2.57.	ROUTER CONFIGURATION REQUEST Message	30
+3.2.58.	ROUTER CONFIGURATION RESPONSE - 1 Message	31
+3.2.59.	ROUTER CONFIGURATION RESPONSE - 2 Message	32
+3.2.60.	Extended PROTECT TALLY Message	33
+3.2.61.	Extended PROTECT CONNECTED Message	33
+3.2.62.	Extended PROTECT DIS-CONNECTED Message	34
+3.2.63.	PROTECT DEVICE NAME RESPONSE Message	34
+3.2.64.	Extended PROTECT TALLY DUMP Message	35
+3.2.65.	Extended PROTECT INTERROGATE Message	36
+3.2.66.	Extended PROTECT CONNECT Message	36
+3.2.67.	PROTECT DEVICE NAME REQUEST Message	36
+3.2.68.	Extended PROTECT DIS-CONNECT Message	37
+3.2.69.	Extended PROTECT TALLY DUMP REQUEST Message	37
+3.2.70.	X_TALLY_INTERROGATE Message	37
+3.2.71.	X_TALLY_RESPONSE Message	38
+3.2.72.	X_TALLY_STATUS Message	39
+3.2.73.	X_TALLY_STATUS_ACKNOWLEDGE Message	39
+3.2.74.	Command Numbers 82 to 86	40
+3.2.75.	Command Numbers 90 to 95	40
+3.3.	Notes on Implementation	40
+3.3.1.	Philosophy	40
+3.3.2.	Further Criteria	41
+4.	STANDARD' PRO-BEL CONTROLLER IMPLEMENTATIONS	42
+
+
+Change Record
+IssueDateChange Details113/04/98First Issue229/01/90Added notes on monitor row, destination - out-of-range indication and Command 3.11324/05/90Correction401/07/91Sections 3, 3.1 & 3.11 amended to allow for new message additions.  Command 05/06 changed and implemented on HD series local control card.  Commands 12-15 added - relevant sections for details.  Note added in Section 3 to indicate that command byte numbers are in decimal.506/03/92Commands 21-32 added for 4-Wire TDM Router.  Also section added detailing commands implemented on various 'standard' Pro-Bel controllers.  Document reformatted.616//03/98TDM 4-Wire Router changed to use Status response - 1 message instead of Status response - 3 messages.705/05/92Page 15, Para 3.3.1, 2nd para altered so that the Philosophy applies to System 3.  Page 15, Para 3.3.2, 1st para "is" changed to "are".820/09/93TDM 4-Wire Router Mixer Disconnected message added.  Frame addresses added to the Twinkler and Installed Modules Status messages.
+TM24 (2659) added to standard controller implementations (Section 4) and also references added to Section 3.2.8 for TM24.918/12/96SW-DCR-0159  Changed to Amipro format.  Added XD Router Controller commands.  Added Charisma Ten x Tally System commands.  Added Extended Router Control Commands.1017/06/97Added additional connect on go salvo commands allowing groups of salvos to be configured.  Sections inserted 3.2.32-3.2.35.1119/03/98Section 4, added nos. 90-95, special for 16x2.1230/04/98Section added to expand on 90-95.1308/06/98Document translated to Microsoft Word1408/07/98Two new extended commands added -  Commands 71/72
+Freeway Commands Added - Commands 50/511507/08/98Command 17 (Status Response 5 message) added.1612/08/98Command 17 amended to add primary fault (port failure) indication1714/10/98Command 34 (Installed Modules #3 Message) added1801/12/99Commands 82, 83, 84 and 85 added, reserved for Pro-Bel internal use only.
+Added Eclipse (2400) to list of Pro-Bel controllers.1903/12/99Commands 82, 83, 84 and 85 removed and put in separate document.2008/08/00Addition of Protect Commands (96-105)
+Command 86 now also reserved for Pro-Bel Internal use. 2116/08/00Document formatting and various mistakes corrected
+Aurora Controller added to standard controller list2214/09/00Document formatting changed again.
+Command 100 - Extended PROTECT TALLY DUMP RESPONSE command message format changed.2315/08/02Commands to return the status of MADI inputs added (Commands 73 and 74).
+Commands to return the router configuration added (Commands 75 and 76).2410/12/03Company Logo modified, copyright and confidentiality statement modified.
+Reference to Nebula added to section 4.2512/03/04Secondary status command 5 modified to include PSU/Fan/Controller failure for type 1 routers.
+Simple status request/response commands (Commands 18/19) added.2622/09/05Router Configuration Response #2 command added.
+(Command 77)
+Command table in section 4 updated.
+1. 
+INTRODUCTION
+This protocol provides a robust and asynchronous method of controlling routers and is the preferred method of communication.  New message commands are added as required.
+2. ELECTRICAL
+Normal electrical parameters are:
+		RS485/RS422, 8 Bit DATA, 1 STOP Bit, EVEN Parity, 38.4K Baud,
+But the protocol will operate with any common RS485/RS422 and RS232 data parameters.
+3. PROTOCOL
+3.1. Message Format
+All messages conform to the following format:
+SOMCOMMANDMessageChecksum
+where
+		SOM		-	Start of message = FF hex
+		COMMAND	-	Command byte
+						(this also defined message length)
+						All command bytes listed are in decimal
+		Message		-	May be zero or more bytes
+		Checksum	-	7 bit, 2's complement sum of command and message field 
+						(m.s.b. = 0)
+
+3.2. Message Commands
+All command numbers referred to in this document are in decimal.
+The following commands are defined:
+3.2.1. DATABASE CHECKSUM REQUEST Message
+This message is used to request a database checksum.
+Command Byte:	00
+Message:	Byte 1 -	00 = request a checksum
+
+
+3.2.2. DATABASE CHECKSUM RESPONSE Message
+This message responds with the checksum of a database after a DATABASE CHECKSUM REQUEST has been received.
+Command Byte:	00
+Message:	Byte 1 -	bits [0-3]	:	0001 = checksum response
+					bits [5]	:	high bit of low byte of checksum
+					bits [6]	:	high bit of high byte of checksum
+Byte 2 -	bits [0-6]	:	bits [0-6] of checksum (low byte)
+Byte 3 -	bits [0-6]	:	bits [0-6] of checksum (high byte)
+
+3.2.3. INTERROGATE Message
+Request for tally information.  A device responds to this message with a TALLY message 3.2.5.
+Command Byte:	01
+Message:	Byte 1 -	Multiplier
+					(this field allows sources and dests of up to 1023 to be used
+					and provides source status info from TDM and HD Digital
+					Video routers).
+					bit 7		:	0
+					bit 4-6	:	Dest number DIV 128
+								Note:	When all bits set to 1, the
+										subsequent 7 bit byte refers to
+										a Monitoring row,  hence
+										practically, this means Dests
+										0-895 are main	router dests &
+										dests 896 to 1023 are monitor
+										rows.
+					bit 3		:	either
+								TDM and Digital Video "bad" source on
+								output status
+								(1 = bad source)
+								or
+								Crosspoint Update Disabled.
+								(1 = crosspoint updated disabled.)
+								See Section 3.2.13 for details
+								or
+								not used.
+					bit 0-2	:	Source number DIV 128
+								(Not applicable to this command)
+								(always 0 for this command).
+ Byte 2 -	Destination number MOD 128
+ 
+ 
+ 
+3.2.4. CONNECT Message
+This message requests a route to be made through the router.  A device will make the route and respond with a CONNECTED message (3.2.6) that also performs an effective acknowledgement.
+Command Byte:	02
+Message:	Byte 1 -	Multiplier as defined in (3.2.3)
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source number MOD 128
+Note:	A single CONNECT command will suffice to set two crosspoints in the TDM 4-Wire Router 2510 local controller. The 2510 local controller will confirm this by sending two CONNECTED messages.
+
+3.2.5. TALLY Message
+This message returns tally information in response to an interrogating device.  It also performs an effective acknowledgement to the INTERROGATE message.
+Command Byte:	03
+Message:	Byte 1 -	Multiplier as defined in (3.2.3)
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source number MOD 128
+Note:	Source number 1023 is reserved to indicate destination out of range.
+
+3.2.6. CONNECTED Message
+This message is issued by a device after it has made a router through a router, usually in response to a CONNECT request.  It is issued on ALL ports of the interface device.
+Command Byte:	04
+Message:	Byte 1 -	Multiplier as defined in (3.2.3)
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source number MOD 128
+     
+     
+     
+     
+     
+3.2.7. CONNECT ON Go Message
+Used in Salvo switching situations.  Routing information is held in the receiving device until activated by GO command (3.2.8).  A device will respond with a CONNECT ON GO ACKNOWLEDGE message (3.2.14) to indicate that the routing information has been stored successfully.
+Command Byte:	05
+Message:	Byte 1 -	Multiplier as defined in (3.2.3)
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source number MOD 128
+     
+3.2.8. GO Message
+Triggers the receiving device to set all routes in/clear the previously received CONNECT ON GO messages.  A GO DONE acknowledge message (3.2.15), will be issued to indicate that the command has been executed.
+Note:	No individual CONNECTED messages (3.2.6) are issued.  It is the
+		responsibility of the controlling/listening devices to poll for the information,
+		i.e. INTERROGATE commands (3.2.3).
+Command Byte:	06
+Message:	Byte 1 -	00 Set previously received messages
+					01 Clear previously received messages
+
+3.2.9. STATUS REQUEST Message
+Triggers the receiving device to respond with a status response message (3.2.10, 3.2.11, 3.2.12, 3.2.18 or 3.2.19).
+Command Byte:	07
+Message:	Byte 1 -	Value 0 requests response by LH controller
+					Value 1 requests response by RH controller
+					(single controller systems or TDM 4-Wire Router value = 0)
+3.2.10. 
+STATUS RESPONSE - 1 Message
+Issued by a 2513/2514/2515/2659/2440/2441/2442/2443 card or a TDM 4-Wire router (2510) card in response to the STATUS REQUEST message (3.2.9). This message indicates the number of faulty 8 x 8 crosspoint cards or faulty 4-Wire router I/O modules or faulty crosspoint modules on TM24 (2659) or Freeway (2440/1) or Nebula (2442/3) in the router unit.
+Command Byte:	08
+Message:	Byte 1 -	Number of faulty blocks/modules
+     Byte 2 -	Faulty 2538 number (0-15)
+			or 4-Wire router frame number (0-7)
+			or level number on TM24 (0-3)
+			or level number on Freeway/Nebula (0-7)
+     Byte 3 -	Faulty crosspoint card number (0-15),
+			or 4-Wire router I/O module number (0-16)
+			(Module 16 = Idle 2510 controller card)
+			or TM24 crosspoint module number (0-31)
+			(0-7 = main audio, 16-23 = expansion audio,
+			8-15 = main video, 24-31 = expansion video),
+			or Freeway/Nebula crosspoint module number (0-31)
+Bytes 2 and 3 are repeated as many times as byte 1 indicates that there are faulty blocks.
+
+3.2.11. STATUS RESPONSE - 2 Message
+Issued by a 5007/5107 TDM controller card in response to the STATUS REQUEST message (3.2.9).
+Command Byte:	09
+Message:	Byte 1 -	bit 7	:	0
+					bit 6	:	0 = Active systems
+							1 = Idle system
+					bit 5	:	0 = No bus fault
+							1 = Bus fault
+					bit 4	:	0 = No overheat (system is cool!)
+							1 = Overheat
+					bit 0-3 :	Always 0
+
+
+
+
+
+
+3.2.12. STATUS RESPONSE - 3 Message
+Issued by an HD local control card (2412/2413/2414) in response to the STATUS REQUEST message (3.2.9).  This message indicates the number of faulty input/crosspoint/output card in the switcher unit.
+Command Byte:	10
+Message:	Byte 1 -	Number of faulty modules
+     Byte 2 -	Faulty module number (1-58)
+     Byte 3 -	Faulty module type												(0 = input card, 1 = crosspoint card, 2 = output card)
+Bytes 2 and 3 are repeated as many times as byte 1 indicates that there are faulty modules.
+
+3.2.13. ENABLE CROSSPOINT UPDATE Message
+Issued to a router to enable actual crosspoint setting to take place, otherwise the crosspoint card will store requests until enabled.
+Note:	
+Currently only implemented in the HD local control card and this feature is jumper selectable.  Also this command has no effect on HD Digital video/RS422 routers or MADI routers.
+When this mode is enabled, bit 3 of the multiplier byte (see Section 3.2.3) is used to indicate the crosspoint update status.
+Command Byte:	11
+Message:	No message field.
+
+3.2.14. CONNECT ON GO ACKNOWLEDGE Message
+This message is issued by a device in response to a CONNECT ON GO request (3.2.7).
+Command Byte:	12
+Message:	Byte 1 -	Multiplier as defined in (3.2.3)
+				(Except bad source bit always 0)
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source number MOD 128.
+     
+     
+3.2.15. GO DONE ACKNOWLEDGE Message
+This message is issued by a device in response to a GO message, (3.2.8).  If crosspoints are set then the message is issued on all ports of the receiving device.
+Command Byte:	13
+Message:	Byte 1 -	00 = Crosspoints set
+					01 =	Stored crosspoints cleared
+					02 = No crosspoints to set/clear
+
+3.2.16. SOURCE LOCK STATUS REQUEST Message
+Triggers the receiving device to respond with a SOURCE LOCK STATUS response message (3.2.17).  This command is only applicable to the HD digital video routers.
+Command Byte:	14
+Message:	Byte 1 -	Value 0 requests response by LH controller
+					Value 1 requests response by RH controller
+					(single controller systems, value = 0)
+
+3.2.17. SOURCE LOCK STATUS RESPONSE Message
+Issued by an HD series local control card in response to the Source Lock Status request message (3.2.16).  This message indicates the source lock status on the input modules.
+Command Byte:	15
+Message:	Byte 1 -	Bytes in message DIV 128
+     Byte 2 -	Bytes in message MOD 128
+     Byte 3 -	bit 0 : source 0 lock state
+			bit 1 : source 1 lock state
+			bit 2 : source 2 lock state
+			bit 3 : source 3 lock state
+			bits 4-7 : 0
+     Byte 4 - 	Byte (max source DIV 4)
+			as byte 3 for each group of 4 sources.
+Notes:		1.	Source lock ok value = 1
+			2.	If an input card missing/not installed then source lock value for
+				the sources on that module will be returned as 0.
+
+
+
+
+3.2.18. STATUS RESPONSE - 4 Message
+This is sent in response to a STATUS REQUEST message (3.2.9).  It indicates which modules in an XD router are faulty.
+Command Byte:	16
+Message:	Byte 1 -	Number of faulty modules
+     Byte 2 -	1st faulty card number DIV 128
+     Byte 3 -	1st faulty card number MOD 128
+     Byte 4 -	2nd faulty card number DIV 128
+     Byte 5 -	2nd faulty card number MOD 128
+	..
+	..
+     Byte n -	nth faulty card number DIV 128
+     Byte n+1-	nth faulty card number MOD 128
+The maximum number of faulty cards reported is limited to 127.
+The total number of message bytes is equal to:
+     (No. of faulty cards x 2) + 2
+     
+3.2.19. STATUS RESPONSE - 5 Message
+This is sent in response to a STATUS REQUEST message (3.2.9).  It indicates which modules in a router made up of multiple routers are faulty. This message would normally be implemented on an interface unit that combines several router frames to make a logically larger router.
+Command Byte:	17
+Message:	Byte 1 -	Number of Faulty modules DIV 128
+			Byte 2 -	Number of Faulty modules MOD 128
+			Bytes 3-6	1st Fault.
+					The format of the returned fault is dependent on the
+					router type. Sections 3.2.19.1  - 3.2.19.4  define the formats
+					available.
+Bytes 3 to 6 are repeated as many times as bytes 1 and 2 indicate there are faulty modules.
+
+
+
+
+
+3.2.19.1  Type 1 Routers
+This type of router covers all router controller types defined in the Status Response-1 message (See 3.2.10 for details).
+Each returned fault has the following message structure:
+     Byte 1 	-	Frame/Port no (00-127)
+     Byte 2 	-	Fault Type
+				01H =	Primary Fault - Port failure
+						(comms failure with this section of router)
+				11H = 	Secondary Fault - Module failure 
+				21H =	Secondary Fault - PSU/Fan failure
+				31H =	Secondary Fault - Controller failure
+Byte 3 & 4 -	Both 00H if Primary Fault	
+			or
+			as bytes 2 & 3 of Status Response-1 Message if 
+			Secondary Fault - Module failure
+			or 
+ 			if Secondary Fault - PSU/Fan failure
+ 			Byte 2 = 	PSU Fails 
+ 					(bit 7 = 0, bits 0 - 6 = individual PSU fails,
+ 					bit = 1 = failed),
+ 			Byte 3 =	Fan Fails
+ 					(bit 7 = 0, bits 0 - 6 = individual fails,
+ 					bit = 1 = failed)
+			or 
+ 			if Secondary Fault - Controller failure
+ 			Byte 2 = 	Controller Fails 
+ 					(bit 7 = 0, bits 0 - 6 = individual Controller fails,
+ 					bit = 1 = failed),
+					(normally only bits 0 and 1 used as only a
+					maximum of two controllers).				
+ 			Byte 3 =	00H
+
+3.2.19.2 Type 2 Routers
+This type of router covers all controller types defined in the Status Response-2 message (See 3.2.11 for details).
+Each returned fault has the following message structure:
+     Byte 1	-	Frame/Port no (00-127)
+     Byte 2	-	Fault Type
+				02H =	Primary Fault - Port failure
+						(comms failure with this section of router)
+				12H =	Secondary Fault - Module failure
+Byte 3	-	00H if Primary Fault
+			or
+			as byte 1 of Status Response-2 Message if secondary
+			fault
+     Byte 4	-	Always 00H
+     
+3.2.19.3  Type 3 Routers
+This type of router covers all controller types defined in the Status Response-3 message (See 3.2.12 for details)
+Each returned fault has the following message structure:
+     Byte 1	-	Frame/Port no (00-127)
+     Byte 2	-	Fault Type
+				03H =	Primary Fault - Port failure
+						(comms failure with this section of router)
+				13H = 	Secondary Fault - Module failure
+     Byte 3 & 4 -	Both 00H if Primary Fault	
+				or
+				as bytes 2 & 3 of Status Response-3 Message if 
+				secondary fault
+     
+3.2.19.4  Type 4 Routers
+This type of router covers all controller types defined in the Status Response-4 message (See 3.2.18 for details)
+Each returned fault has the following message structure:
+     Byte 1	-	Frame/Port no (00-127)
+     Byte 2	-	Fault Type
+				04H =	Primary Fault - Port failure
+						(comms failure with this section of router)
+				14H = 	Secondary Fault - Module failure
+     Byte 3 & 4	Both 00H if Primary Fault	
+				or
+				as bytes 2 & 3 of Status Response-4 Message if 
+				secondary fault
+     
+3.2.20. STATUS REQUEST 2 Message
+Triggers the receiving device to respond with a status response message 6 (3.2.21).
+Command Byte:	18
+Message:	Byte 1 -	Value 0 requests response by controller A
+					Value 1 requests response by controller B
+					(single controller systems  = 0)
+
+
+
+3.2.21. STATUS RESPONSE - 6 Message
+Issued by a controller card in response to the STATUS REQUEST 2 message (3.2.20). This message indicates that there are one or more types of these faults in the system. To find out more information about the faults use the command 07 (3.2.9) to request this. This message is broadcast on all ports whenever the fault status changes.
+Command Byte:	19
+Message:	Byte 1 -	bit 7	:	0
+					bit 4-6:	0 (reserved for future use)
+					bit 3	:	1 = Controller Fault
+					bit 2	:	1 = Module Fault (Crosspoint/Input/Output)
+					bit 1	:	1 = Fan Fault 
+					bit 0 :	1 = PSU Fault
+			Byte 2 -	bit 7	:	0 
+					bit 0-6:	0 (reserved for future use)
+
+3.2.22. MIXER INTERROGATE Message
+The TDM 4-Wire Router has potential of mixing up to 32 sources with different gain coefficients.  The MIXER INTERROGATE message is sent by the control system to inquire about all sources contributing to the given output.  The TDM 4-Wire Router controller (2510) will reply with MIXER TALLY DUMP (3.2.24).
+Command Byte:	21
+Message:	Byte 1 -	Multiplier
+					bits 0-3	:	All 0
+					bits 4-6	:	Destination number DIV 128
+					bit 7		:	0
+     Byte 2 -	Destination number MOD 128
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+3.2.23. MIXER CONNECT Message
+This message is sent by the control system to the TDM 4-Wire Router to set a mixing crosspoint with the given gain coefficient.  The command will fail if there are already 32 sources contributing to the given output.  To cancel a selection made previously, a MIXER CONNECT message with gain 0 has to be sent.
+Command Byte:	22
+Message:	Byte 1 -	Multiplier
+					bits 0-2	:	Source number DIV 128
+					bit 3		:	0
+					bits 4-6	:	Destination number DIV 128
+					bit 7		:	0
+   Byte 2 -	Destination number MOD 128
+    Byte 3 -	Source number MOD 128
+ Byte 4 -	(gain x 8) DIV 128
+   Byte 5 -	(gain x 8) MOD 128
+Notes:		1.	Gain coefficients are given in the linear scale 0-40 in steps of
+				0.125.
+			2.	MIXER CONNECT will set only the forward router, unlike the
+				CONNECT command which is used to make bi-directional
+				routes.
+
+3.2.24. MIXER TALLY DUMP Message
+This message is sent by a TDM 4-Wire Router in response to a MIXER INTERROGATE message (3.2.22). It returns information about all sources contributing to the given output.
+Command Byte:	23
+Message:	Byte 1 -	Destination number DIV 128
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Number of sources routed with non-zero gain.
+     Byte 4 -	Input/Gain Multiplier	
+			bits 0-2	:	Source number DIV 128
+			bit 3		:	0
+			bits 4-6	:	(gain x 8) DIV 128
+			bit 7		:	0
+     Byte 5 -	Source number MOD 128
+     Byte 6 -	(gain x 8) MOD 128
+Bytes 4-6 will be repeated as many times as byte 3 indicates (maximum of 32 times).
+
+3.2.25. MIXER CONNECTED Message
+This message confirms that crosspoint has been set following the MIXER CONNECT message (3.2.23).
+Command Byte:	24
+Message:	Byte 1 -	Multiplier as byte 1 in 3.2.22.
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source number MOD 128
+     Byte 4 -	(gain x 8) DIV 128
+     Byte 5 -	(gain x 8) MOD 128
+     
+3.2.26. ASSIGN SLOT/SLOT STATUS Message
+This message allows the TDM 4-Wire Router to change assignment of physical inputs to time slots.  It is indispensable for routers of size greater than 384 x 384.
+This message is also sent in response to a READ SLOT ASSIGNMENT message (3.2.27) by the TDM 4-Wire Router controller.
+Command Byte:	25
+Message:	Byte 1 -	Slot/Input Multiplier:
+					bits 0-2	:	source number DIV 128
+					bit 3		:	0
+					bits 4-6	:	slot number DIV 128
+					bit 7		:	0
+     Byte 2 -	Source number MOD 128
+     Byte 3 -	Slot number MOD 128
+     
+3.2.27. READ SLOT ASSIGNMENT Message
+This message interrogates the TDM 4-Wire Router to find out which slot number is allocated to the given input.
+Command Byte:	26
+Message:	Byte 1 -	Slot/Input Multiplier:
+					bits 0-2	:	source number DIV 128
+					bits 3-7	:	All 0
+     Byte 2 -	Source number MOD 128
+     
+     
+3.2.28. SET OUTPUT GAIN/OUTPUT GAIN STATUS Message
+This message is sent to the TDM 4-Wire Router to change gain on the given output.  This message is also sent in response to READ OUTPUT GAIN message (3.2.29).
+Command Byte:	27
+Message:	Byte 1 -	Multiplier:
+					bits 0-3	:	All 0,
+					bits 4-6	:	Destination number DIV 128,
+					bit 7		:	0
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	(gain x 8) DIV 128
+     Byte 4 -	(gain x 8) MOD 128
+     
+3.2.29. READ OUTPUT GAIN Message
+This message is sent by the control system to read the gain coefficient applied on the given output of the TDM 4-Wire Router.
+Command Byte:	28
+Message:	Byte 1 -	Multiplier:
+					bits 0-3	:	All 0,
+					bits 4-6	:	Destination number DIV 128,
+					bit 7		:	0
+     Byte 2 -	Destination number MOD 128.
+     
+3.2.30. READ TWINKLER Message
+This message is sent by the control system to read the input signal levels on all 96 ports of the TDM 4-Wire Router.
+Command Byte:	29
+Message:	No message bytes.
+
+3.2.31. TWINKLER STATUS Message
+This message is sent by the TDM 4-Wire Router in response to a READ TWINKLER command (3.2.30).
+Command Byte:	30
+Message:	Byte 1 	-	Frame address (0 - 7).
+     Bytes 2-97-	Twinkler data in low nibbles, one nibble per I/O unit.
+3.2.32. INSTALLED MODULES STATUS REQUEST Message
+This command requests the current configuration of installed crosspoint and I/O modules in a router.
+Command Byte:	31
+Message:	Byte 1 -	Value 0 requests response by LH controller
+					Value 1 requests response by RH controller
+					(single controller systems or TDM 4-Wire Router value
+					=frame address).
+
+3.2.33. INSTALLED MODULES STATUS RESPONSE - 1 Message
+This message is sent in response to the INSTALLED MODULES STATUS REQUEST (3.2.32). It indicates which cards were present when RECONFIGURE button was pressed last on router controller card.
+Command Byte:	32
+Message:	Byte 1 -	Frame address (0 - 7).
+     Byte 2 -	number of cards in the fully equipped frame.
+     Byte 3 -	Low nibble indicates status of the first 4 cards
+			(bit set = card absent)
+			High nibble = 0
+     Byte 4 -	Low nibble indicates status of the next 4 cards.
+			High nibble = 0
+     Byte n -	Low nibble indicates status of the last 4 cards.	
+			High nibble = 0
+The total number of message bytes is equal to the number of cards in the fully equipped frame - 1 divided by 4 plus 3.
+
+3.2.34. MIXER DISCONNECTED Message
+This message will be sent by a 4-Wire Router if a source has been replaced by the parking source on the given destination.
+Command Byte:	33
+Message:	Byte 1 -	Multiplier as defined in (3.2.3).
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source number MOD 128
+
+
+
+
+3.2.35. INSTALLED MODULES STATUS RESPONSE - 3 Message
+This message is sent in response to the INSTALLED MODULES STATUS REQUEST (3.2.32). It indicates which cards were present when RECONFIGURE button was pressed last on router controller card.
+Command Byte:	34
+Message:	Byte 1 -	Frame Address (00-127)
+			Byte 2 -	Number of Installed Modules in message DIV 128
+			Byte 3 -	Number of Installed Modules in message MOD 128
+			Byte 4 -	Max. Number Installed Modules in Router DIV 128
+			Byte 5 -	Max. Number Installed Modules in Router MOD 128
+			Byte 6 -	Installed Module start number DIV 128
+			Byte 7 -	Installed Module start number MOD 128
+			Byte 8 -	Low Nibble indicates status of first 4 modules in message
+					modules + start module.
+					(bit set = card absent)
+					High Nibble = 0
+			Byte n -	Low Nibble indicates status of last 4 installed modules in
+					message modules + start module.
+					High Nibble = 0
+Length of message (byte n) is calculated as follows:
+			(No of Installed Modules In message - 1) DIV 4 + 8
+
+3.2.36. CONNECT ON GO GROUP SALVO Message
+Used in configuring up to 128 Salvos required for switching situations. Routing information is held in the receiving device until activated by GO GROUP SALVO command (3.2.37). A device will respond with a CONNECT ON GO GROUP SALVO ACKNOWLEDGE message (3.2.38) to indicate that the routing information has been stored successfully. 
+Command Byte:	35
+Message:	Byte 1 -	Multiplier as defined in (3.2.3)
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source number MOD 128
+     Byte 4 -	Holds the Salvo group number to configure
+			(Destination and source will always overwrite previous data).
+			bit 7		:	0
+			bit 0-6	:	Salvo number 0-127.
+3.2.37. GO GROUP SALVO Message
+Triggers the receiving device to set all routes in / clear the previously received CONNECT ON GO GROUP SALVO messages.  A GO DONE GROUP SALVO ACKNOWLEDGE message (3.2.39) will be issued to indicate that the command has been executed.
+Note:	No individual CONNECTED messages (3.2.6) are issued.  It is the
+		responsibility of the controlling / listening devices to poll for the information,
+		i.e. INTERROGATE commands (3.2.3).
+Command Byte:	36
+Message:	Byte 1 -	00	Set previously received messages
+					01	Clear previously received messages
+     Byte 2 -	Salvo group number as defined in (3.2.36).
+     
+3.2.38. CONNECT ON GO GROUP SALVO ACKNOWLEDGE Message
+This message is issued by a device in response to a CONNECT ON GO GROUP SALVO request (3.2.36).
+Command Byte:	37
+Message:	Byte 1 -	Multiplier as defined in (3.2.3).	
+					(Except bad source bit always 0).
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source number MOD 128
+     Byte 4 -	Salvo group number as defined in (3.2.36).
+     
+3.2.39. GO DONE GROUP SALVO ACKNOWLEDGE Message
+This message is issued by a device in response to a GO GROUP SALVO message (3.2.37).  If crosspoints are set then the message is issued on all ports of the receiving device.
+Command Byte:	38
+Message:	Byte 1 -	00	=	Crosspoints set.
+					01	=	Stored crosspoints cleared.
+					02	=	No crosspoints to set / clear.
+     Byte 2 -	Salvo group number as defined in (3.2.36).
+     
+     
+     
+3.2.40. INSTALLED MODULES STATUS RESPONSE - 2 Message
+This is sent in response to the INSTALLED MODULES STATUS REQUEST (3.2.32).  It indicates which cards were present when RECONFIGURE button was pressed last on XD router controller card.
+Command Byte:	42
+Message:	Byte 1 -	No. of cards in fully equipped frame DIV 128
+     Byte 2 -	No. of cards in fully equipped frame MOD 128
+     Byte 3 -	Low nibble indicates status of the first 4 cards
+			(bit set = absent)
+			High nibble = 0
+     Byte n -	Low nibble indicates status of the last four cards
+			High nibble = 0
+The total number of message bytes can be calculated as follows:
+     ((No. of cards in fully equipped frame - 1) DIV 4) + 3
+     
+3.2.41. ROUTER INPUT/OUTPUT PARAMETERS INTERROGATE Message
+This message requests the router input/output parameter data, the nature of which depends on the router type. The maximum number of sources that can be requested from any one request is restricted to 64.
+Command Byte:	43
+Message:	Byte 1 -	Type select:	XD Routers:
+								0 = XD Analogue Video
+								1 = XD Digital Video
+								2 = XD AES
+								Freeway Routers:
+								0 = Audio Source Parameter
+								1 = Audio Dest Parameter
+								2 = Trigger Method Parameter
+     Byte 2 -	Multiplier
+			bits[0-2]	:	start source DIV 128
+			bit 3		:	set to 0
+			bits[4-6]	:	start dest DIV 128
+     Byte 3 -	Start source or dest MOD 128
+     Byte 4 -	No. of dest or sources (max = 64)
+     
+     
+     
+     
+     
+3.2.42. ROUTER INPUT/OUTPUT PARAMETERS TALLY Message
+This message is issued in response to a ROUTER INPUT/OUTPUT PARAMETERS INTERROGATE message (3.2.41). The message data content depends on the router type selected :
+Command Byte:	44
+Message:	Byte 1 -	Type select as defined in 3.2.41
+ Byte 2 -	Dest/Source Multiplier as defined in 3.2.41
+   Byte 3 -	Start source or dest MOD 128
+    Byte 4 -	No. of sources or dests (max = 64)
+Byte 5 -	1st Dest/source Parameter:
+		XD Routers:
+		AV Reference -											bits[0-2]	:	0 = Vref 1 (PAL)
+						1 = Vref 2 (NTSC)
+		DV standard -
+			bits[0-2]	:	0 = 360 Mbits (PAL)	
+						1 = 270 Mbits (PAL)
+						2 = 177 Mbits (PAL)
+						3 = 143 Mbits (NTSC)
+						4 = 360 Mbits (NTSC)
+						5 = 270 Mbits (NTSC)
+						6 = 177 Mbits (PAL)
+						7 = 143 Mbits (NTSC)
+		AES parameters -
+			bit[0]		:	0 = reframed
+						1 = synchronised
+			bit[1]		:	0 = original CS
+						1 = new CS
+			bit[2]		:	0 = forced to valid
+						1 = transparent validity
+			bit[3-7]	:	set to 0
+		Freeway/Halo/Sirius Routers:
+			Source Audio Parameter -
+				0 = Normal Stereo Source
+				1 = Left channel to both
+				2 = Right channel to both	
+				3 = Left and Right channel swapped
+			Destination Audio Parameter -	
+				0 = Normal Stereo Dest
+				3 = Left and Right Channels swapped
+				5 = Mono or Sum left/right channels
+			Source Trigger Method -
+				0 = 625 PAL Ref on Vref 1
+				1 = 525 NTSC Ref on Vref 2
+				2 = TTL level Pulse on Vref 1
+ Byte 6 -	2nd Dest/Source Parameter
+     etc.
+This is a variable length message.  Message byte count can be calculated as follows:
+     No. of sources or dests + 4
+3.2.43. ROUTER INPUT/OUTPUT PARAMETERS CONNECT Message
+This message is issued to set input/output parameters for various router types.
+Command Byte:	45
+Message:	Byte 1 -	Type select as defined in 3.2.41
+     Byte 2 -	Dest/Source Multiplier as defined in 3.2.41
+     Byte 3 -	Dest or Source MOD 128
+     Byte 4 -	Dest or Source Parameter
+			(as for Byte 5, Command 44 -	See 3.2.42.)
+     
+3.2.44. ROUTER INPUT/OUTPUT PARAMETERS CONNECTED Message
+This message is issued in response to a ROUTER INPUT/OUTPUT PARAMETERS CONNECT message (3.2.43).  The message is issued as confirmation of a successful 'connect'.
+Command Byte:	46
+Message:	Byte 1 -	Type select as defined in 3.2.41
+     Byte 2 -	Dest/Source Multiplier as defined in 3.2.41
+     Byte 3 -	Dest or Source MOD 128
+     Byte 4 -	Dest or Source Parameter
+			(as for Byte 5, Command 44 - See 3.2.42.)
+     
+3.2.45. DUAL CONTROLLER STATUS REQUEST Message
+This message is issued to a dual router controller system to request the status of the controllers.
+Command Byte:	50
+Message:	No Message Bytes
+
+3.2.46. DUAL CONTROLLER STATUS RESPONSE Message
+This message is issued by the active controller on power-up or in response to a DUAL CONTROLLER STATUS REQUEST message (3.2.45).
+Command Byte:	51
+Message:	Byte 1 -	Active Controller Card:	0 = Master is Active
+										1 = Slave is Active
+     Byte 2 -	Idle Controller Status:	0 = Idle controller is OK.
+								1 = Idle controller missing/faulty
+3.2.47. Extended INTERROGATE Message
+This message requests tally information for devices with greater than 1024 sources and/or destinations. A device responds to this message with an Extended TALLY message (3.2.49). This message allows up to 16384 destinations to be addressed.
+Command Byte:	65
+Message:	Byte 1 -	Destination Multiplier
+					Bits 0 - 6	:	Dest number DIV 128
+					Bit 7		:	Always 0
+     Byte 2 -	Destination Number MOD 128
+     
+3.2.48. Extended CONNECT Message
+This message requests a route to be made through a router with greater than 1024 sources and/or destinations. If the device makes the route it will respond with an Extended CONNECTED message (3.2.50). This message allows up to 16384 sources and destinations to be controlled.
+Command Byte:	66
+Message:	Byte 1 -	Destination Multiplier as defined in 3.2.47
+     Byte 2 -	Destination Number MOD 128
+     Byte 3 -	Source Multiplier
+			Bits 0 - 6	:	Source number DIV 128
+			Bit 7		:	Always 0
+     Byte 4 -	Source Number MOD 128
+     
+3.2.49. Extended TALLY Message
+This message returns tally information in response to an interrogating device. It also performs an effective acknowledgement to the extended INTERROGATE command (3.2.47).
+Command Byte:	67
+Message:	Byte 1 -	Destination Multiplier (as defined in 3.2.47)
+     Byte 2 -	Destination Number MOD 128
+     Byte 3 -	Source Multiplier (as defined in 3.2.48)
+     Byte 4 -	Source Number MOD 128
+     Byte 5 -	Status
+			Bit  0	:	Crosspoint update disabled
+						(As bit 3 of multiplier byte of 3.2.3)
+			Bit 1		:	Bad source bit
+						(As bit 3 of multiplier byte 3.2.3)
+						Bits 2-6	:	Not used (always 0)
+						Bit 7		:	Always 0
+3.2.50. Extended CONNECTED Message
+This message is issued by a device after it has made a route through a router, usually in response to an Extended CONNECT request (3.2.48). It is issued on ALL ports of the interface device.
+Command Byte:	68
+Message:	Byte 1 -	Destination Multiplier (as defined in 3.2.47)
+     Byte 2 -	Destination Number MOD 128
+     Byte 3 -	Source Multiplier (as defined in 3.2.48)
+     Byte 4 -	Source Number MOD 128
+     Byte 5 -	Status (as defined in 3.2.49)
+     
+3.2.51. Extended CONNECT ON GO Message
+This is used in salvo switching situations. Routing information is held in the receiving device until activated by a GO command (3.2.8). A device will respond with an extended CONNECT ON GO ACKNOWLEDGE message (3.2.52) to indicate that the routing information has been stored successfully. This message allows up to 4096 sources and/or destinations to be controlled.
+Command Byte:	69
+Message:	Byte 1 -	Destination multiplier (as defined in 3.2.47)
+     Byte 2 -	Destination Number MOD 128
+     Byte 3 -	Source multiplier (as defined in 3.2.48)
+     Byte 4 -	Source Number MOD 128
+     
+3.2.52. Extended CONNECT ON GO ACKNOWLEDGE Message
+This message is issued by a device in response to an extended CONNECT ON GO message (3.2.51).
+Command Byte:	70
+Message:	Byte 1 -	Destination multiplier (as defined in 3.2.47)
+     Byte 2 -	Destination Number MOD 128
+     Byte 3 -	Source Multiplier (as defined in 3.2.48)
+     Byte 4 -	Source Number MOD 128
+     
+3.2.53. Extended CONNECT ON GO GROUP SALVO Message
+Used in configuring up to 128 Salvos required for switching situations. Routing information is held in the receiving device until activated by GO GROUP SALVO command (3.2.37). A device will respond with an Extended CONNECT ON GO GROUP SALVO  ACKNOWLEDGE message (3.2.54) to indicate that the routing information has been stored successfully. 
+Command Byte:	71
+Message:	Byte 1 -	Destination Multiplier (as defined in 3.2.47)
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source Multiplier (as defined in 3.2.48)
+     Byte 4 -	Source Number MOD 128
+     Byte 5 -	Holds the Salvo group number to configure
+			(Destination and source will always overwrite previous
+			data).
+			bit 7		:	0
+			bit 0-6	:	Salvo number 0-127.
+     
+3.2.54. Extended CONNECT ON GO GROUP SALVO ACKNOWLEDGE Message
+This message is issued by a device in response to an extended CONNECT ON GO GROUP SALVO request (3.2.53).
+Command Byte:	72
+Message:	Byte 1 -	Destination Multiplier (as defined in 3.2.47).
+     Byte 2 -	Destination number MOD 128
+     Byte 3 -	Source Multiplier (as defined in 3.2.48)
+     Byte 4 -	Source Number MOD 128
+     Byte 5 -	Salvo group number as defined in (3.2.53)
+     
+3.2.55. STATUS DATA REQUEST Message
+This is sent to request status data from the target system. A number of responses are possible depending on the target type. Multiple bits can be set in the status data type bit, to request more then 1 type of information in a single message.
+Command Byte:	73
+Message:	Byte 1 -	1st 5604 module to report status (0..7)
+			Byte 2 -	No. of 5604 modules to report status (1..8)
+			Byte 3 -	Status Data Type:
+ 				bit[0] = Report MADI input signal present status
+ 				bit[1] = Report MADI input signal format status
+ 				bit[2] = Report MADI Timing source
+ 				A bit set indicates the status data to report.
+
+3.2.56. STATUS DATA RESPONSE - 1 Message
+This is sent in response to a STATUS DATA REQUEST message (3.2.55). It contains status information pertaining to MADI Eclipse router. Where multiple types are requested (by setting more then one bit), the data is returned, bit 0 data to bit 2 data for each card requested. I.e. 1st card bit 0 data, 1st card bit 1 data, 1st card bit 2 data, 2nd card bit 0 data, 2nd card bit 1 data, 2nd card bit 2 data, etc.
+Command Byte:	74
+Message:	Byte 1 -	1st 5604 module to report status (0..7).
+     Byte 2 -	No. of 5604 modules to report status (1..8).
+Byte 3 -	Status Data Type:
+ 		Bit[0] = Report MADI input signal present status
+ 		Bit[1] = Report MADI input signal format status
+ 		Bit[2] = Report MADI Timing source
+ 		A bit set indicates the status data being reported.
+     Status Data Type bit[0] set - Report MADI input signal present status
+     Byte 4 -	bits[0..3] MADI input signal present detect for channels 1 to 4.
+ 			Bit 0 = 1st channel. Bit set = MADI signal present.
+     Byte 5 -	bits[0..3] MADI input signal present detect for channels 5 to 8
+Byte 6 -	bits[0..3] MADI input signal present detect for channels 9 to 12
+Byte 7 -	bits[0..3] MADI input signal present detect for
+channels 13 to 16
+	bits[4..5] MADI input signal present detect for
+	expansion channels 1 - 2. Bit 4 = 1st expansion channel.
+Bytes 4 - 7 are repeated for as many 5604 modules as specified in 
+Byte 2
+     Status Data Type bit[1] set - Report MADI input signal format status
+     Byte 4 -	bits[0..3] MADI input signal format for channels 1 to 4.
+ 			Bit set = 64 audio stream MADI,
+ 			Bit clear = 56 audio stream MADI.
+     Byte 5 -	bits[0..3] MADI input signal format for channels 5 to 8.
+     Byte 6 -	bits[0..3] MADI input signal format for channels 9 to 12.
+     Byte 7 -	bits[0..3] MADI input signal format for channels 13 to 16.
+ 			bits[4..5] MADI input signal format for Expansion channels.
+     Bytes 4 - 7 are repeated for as many 5604 modules as specified
+ 	in Byte 2
+Status Data Type bit[2] set - Report MADI card timing source
+     Byte 4 -	Timing source for card
+ 			0x03 if the timing is locked to AES 11 reference from card 1
+ 			(highest priority source).
+ 			0x02 if the timing is locked to the MADI channel 1 on card 1
+ 			(for all cards) (2nd highest priority)
+ 			0x01 if the timing is locked to the local MADI input channel 1
+ 			(on cards 2 to 8 only) (3rd highest priority).
+ 			0x00 - card not locked to reference but free running at
+ 			a nominal 48KHz sample rate. (lowest priority).
+     Byte 4 is repeated for as many 5604 modules as specified in Byte 2
+If all bits are set - Report all status data for each card in turn: this reports type bit 0, followed by type bit 1, followed by type bit 2, status data for each card in turn.  
+Max message length is 76 bytes 
+3.2.57. ROUTER CONFIGURATION REQUEST Message
+This is sent to request how the router is configured. The router responds with the ROUTER CONFIGURATION RESPONSE - 1 Message (3.2.58) or a ROUTER CONFIGUATION RESPONSE - 2 Message ( ).
+Command Byte:	75
+Message:	none
+3.2.58. ROUTER CONFIGURATION RESPONSE - 1 Message
+This is sent in response to a ROUTER CONFIGURATION REQUEST message (3.2.57). It contains a bit map showing which levels are configured and the number of destinations and sources on each level. When controlling a router with multiple levels the destinations are stacked on top of each other. E.g. For a router consisting of 3 levels of 128x128, 64x64 and 32x32, the levels would be controlled as follows. Level 1 crosspoints using destinations and sources in the range 0 - 127, level 2 using destinations in the range 128 - 191, sources in the range 0 - 63 and level 3 using destinations in the range 192 - 223, sources in the range 0 - 31. The size of this message depends on the number of level in the router. For applications that do not need the level information but need the maximum source and destination numbers, the number of destinations can be calculated by adding the size of each of the levels together and the number of sources by taking the maximum on any level.
+Command Byte:	76
+Message:	Byte 1 -	Levels bit map (Bits 0 - 6 = levels 21 - 27, Bit 7 = 0).
+     Byte 2 -	Levels bit map (Bits 0 - 6 = levels 14 - 20, Bit 7 = 0).
+ Byte 3 -	Levels bit map (Bits 0 - 6 = levels 7 - 13, Bit 7 = 0).
+     Byte 4 -	Levels bit map (Bits 0 - 6 = levels 0 - 6, Bit 7 = 0).
+Bytes 1 - 4 provide a 28 bit, bit map. Bit 0 represents the first level. The bit is set to indicate the level is available on the router and that a destination and source size is returned in the message.
+     Byte 5 -	First level, No of Destinations Multiplier
+			Bits 0 - 6	:	Dest number DIV 128
+			Bit 7		:	Always 0
+     Byte 6 -	First level, No of Destinations MOD 128
+     Byte 7 -	First level, No of Sources Multiplier
+			Bits 0 - 6	:	Source number DIV 128
+			Bit 7		:	Always 0
+     Byte 8 -	First level, No of Sources MOD 128
+Bytes 5 - 8 are repeated for as many bits as are set in the levels bit map.
+Note - The first destination and source size returned may not be for level 0
+(if bit 0 is not set in the levels bit map).
+
+
+
+
+
+
+
+3.2.59. ROUTER CONFIGURATION RESPONSE - 2 Message
+This is sent in response to a ROUTER CONFIGURATION REQUEST message (3.2.57). It contains a bit map showing which levels are configured and the number of destinations and sources on each level. When controlling a router with multiple levels the destinations are stacked on top of each other. The 'Start Destination' and 'Start Source' parameters determine the first destination and source number that the level is addressed within the SW-P-02 protocol and in conjunction with the size will define the level's end. The size of this message depends on the number of levels in the router. For applications that do not need the level information but need the maximum source and destination numbers, the number of destinations can be calculated by taking the level with the highest 'Start Destination' and adding its 'No of Destinations' to it and the number of sources by taking the level which has the highest sum of the 'Start Source' and 'No of Sources'. In most router configurations the 'Start Source' for each level will be zero.
+Command Byte:	77
+Message:	Byte 1 -	Levels bit map (Bits 0 - 6 = levels 21 - 27, Bit 7 = 0).
+     Byte 2 -	Levels bit map (Bits 0 - 6 = levels 14 - 20, Bit 7 = 0).
+     Byte 3 -	Levels bit map (Bits 0 - 6 = levels 7 - 13, Bit 7 = 0).
+     Byte 4 -	Levels bit map (Bits 0 - 6 = levels 0 - 6, Bit 7 = 0).
+Bytes 1 - 4 provide a 28 bit, bit map. Bit 0 represents the first level. The bit is set to indicate the level is available on the router and that a destination and source size is returned in the message.
+     Byte 5 -	First level, No of Destinations DIV 128 (Bit 7 = 0)
+     Byte 6 - 	First level, No of Destinations MOD 128 (Bit 7 = 0)
+     Byte 7 -	First level, No of Sources DIV 128 (Bit 7 = 0)	
+     Byte 8 -	First level, No of Sources MOD 128 (Bit 7 = 0)
+     Byte 9 - 	First Level, Start Destination DIV 128 (Bit 7 = 0)
+     Byte 10 - 	First Level, Start Destination MOD 128 (Bit 7 = 0)
+     Byte 11 - 	First Level, Start Source DIV 128 (Bit 7 = 0)
+     Byte 12 -	First Level, Start Source MOD 128 (Bit 7 = 0)
+     Byte 13 - 	First Level, Reserved for future use (Bit 7 = 0)
+     Byte 14 - 	First Level, Reserved for future use (Bit 7 = 0)
+Bytes 5 - 14 are repeated for as many bits as are set in the levels bit map.
+Note - The first destination and source's size and start returned may not be for level 0
+(if bit 0 is not set in the levels bit map).
+Start Destinations and Start sources are referenced from zero.
+
+3.2.60. Extended PROTECT TALLY Message
+This message is issued by a controller or a router in response to an EXTENDED PROTECT INTERROGATE message (3.2.65). It returns the current protect status of a destination. 
+Command Byte:	96
+Message:	Byte 1 -	Protect details
+					Bit 0-1 -	0	Indicates Not Protected
+							1	Indicates Pro-Bel Protected
+							2	Pro-Bel override Protected
+								(Cannot be altered remotely)
+							3	Indicates OEM/Router Protected
+ Byte 2 -	Destination number DIV 128 (as defined in 3.2.47)
+   Byte 3 -	Destination number MOD 128
+    Byte 4 -	Device number DIV 128
+			Bits 0 - 6:	Dest number DIV 128
+			Bit 7	:	Always 0
+ Byte 5 -	Device number MOD 128
+ 
+3.2.61. Extended PROTECT CONNECTED Message
+This message is issued by either a controller or a router when the protect data is altered and also if the data was unsuccessfully altered as a result of an EXTENDED PROTECT CONNECT message (3.2.66). This message is broadcast on all ports.
+Command Byte:	97
+Message:	Byte 1 -	Protect details as defined in 3.2.58
+ Byte 2 -	Destination number DIV 128 (as defined in 3.2.47)
+   Byte 3 -	Destination number MOD 128
+    Byte 4 -	Device number DIV 128 (as defined in 3.2.58)
+ Byte 5 -	Device number MOD 128
+ 
+Following the issue of an extended protect connected message the router will then issue a PROTECT DEVICE NAME REQUEST message (3.2.67).  The remote device should then respond with a PROTECT DEVICE NAME RESPONSE message (3.2.63).
+
+
+
+3.2.62. Extended PROTECT DIS-CONNECTED Message
+This message is issued by a controller or a router when the protect data is altered, i.e. a destination has been unprotected and also if the data was unsuccessfully altered as a result of an EXTENDED PROTECT DIS-CONNECT message (3.2.68).  This message is broadcast on all ports.
+Command Byte:	98
+Message:	Byte 1 -	Protect details as defined in 3.2.58
+ Byte 2 -	Destination number DIV 128 (as defined in 3.2.47)
+   Byte 3 -	Destination number MOD 128
+    Byte 4 -	Device number DIV 128 (as defined in 3.2.58)
+ Byte 5 -	Device number MOD 128
+ 
+3.2.63. PROTECT DEVICE NAME RESPONSE Message
+This message is issued by a controller or a Router in response to a PROTECT DEVICE NAME REQUEST message (3.2.67), returning the device name protecting a particular destination.  When received by the router the name is assumed to be an AURORA or OEM device and when received by the remote device the name is assumed to be an AURORA or router name.
+Command Byte:	99
+Message:	Byte 1 -	Multiplier.
+					Bit 7		-	0
+					Bit 3-6	-	Not used
+					Bit 0-2	-	Device number DIV 128
+								(0-1023 Devices - Total 1024)
+ Byte 2 -	Device number MOD 128
+   Bytes 3-10- Eight character ASCII device name
+
+
+
+
+
+
+
+
+
+3.2.64. Extended PROTECT TALLY DUMP Message
+This message is issued by a controller or a router in response to an EXTENDED PROTECT DUMP REQUEST (3.2.69). It returns all the Protect Information. 
+On a Master Controller (e.g. AURORA) reset, this message is issued with the number of protect tallies set to 127, this will cause the receiving device to re-evaluate it's copy of the protect status. This could be to clear out any protect status and if necessary request the current status from the controller. This message is echoed from the receiving device on all its other remote control ports so that other remote devices connected to the receiving device know that the controller has reset and the protect status needs to be re-evaluated.
+(Note: when Byte 1 is 00 or 127, then the message will have no further bytes).
+Command Byte:	100
+Message:	Byte 1 	 -	Number of Protect Tallies (Maximum 32)
+						or
+						127 (7F Hex) if controller (AURORA) has just reset
+Byte 2 	 -	First Protected Destination Number DIV 128 
+     	(as defined in 3.2.47)
+   Byte 3 	 -	First Protected Destination Number MOD 128
+Byte 4 & 5 -	First Device Number & Protect Data
+Bits 0-6	-	Device No MOD 128
+Bit   7	-	Always 0 
+Bits 8-10	-	Device No DIV 128
+Bit 11	-	Undefined (set to 0)
+Bits 12-14	-	Protected data
+			0	Indicates Not Protected
+			1	Indicates Pro-Bel Protected
+			2	Pro-Bel override Protected
+				(Cannot be altered remotely)
+			3	Indicates OEM Protected
+Bit 15	-	Always 0
+Byte 6 	 -	Second Protected Destination Number DIV 128 
+     	(as defined in 3.2.47)
+   Byte 7 	 -	Second Protected Destination Number MOD 128
+Byte 8 & 9 -	Second Device Number & Protect Data
+(As bytes 4 & 5 above)
+     
+etc.
+The message length is limited to 132 bytes, therefore a message that exceeds this will require more than one message.
+
+
+3.2.65. Extended PROTECT INTERROGATE Message
+This message is issued either by a controller or by a router to get the current protect status of a destination. The router will respond with an EXTENDED PROTECT TALLY message (3.2.58).
+Command Byte:	101
+Message:	Byte 1	-	Destination number DIV 128 (as defined in 3.2.47)
+ Byte 2	-	Destination number MOD 128
+ 
+3.2.66. Extended PROTECT CONNECT Message
+This message is issued by a router or a remote device to protect a destination. The router will respond with an EXTENDED PROTECT CONNECTED message (3.2.61).
+Command Byte:	102
+Message:	Byte 1	-	Destination number DIV 128 (as defined in 3.2.47)
+ Byte 2	-	Destination number MOD 128
+   Byte 3	-	Device number DIV 128 (as defined in 3.2.58)
+    Byte 4	-	Device number MOD 128
+    
+3.2.67. PROTECT DEVICE NAME REQUEST Message
+Any device issues this message when the device name protecting a particular destination is required.  When issued by a router to an OEM (connected to another router port) then an OEM device name is being requested. When issued by a router to System 3 then a System 3 name is being requested. When issued by an OEM then either a Pro-Bel router name or System 3 name is being requested. When issued by System 3 then either a Pro-Bel router name or an OEM name is being requested.  The remote device or router will respond with a PROTECT DEVICE NAME RESPONSE message (3.2.63).
+Command Byte:	103
+Message:	Byte 1	-	Multiplier.
+						Bit 7		-	0
+						Bit 3-6	-	Not used
+						Bit 0-2	-	Device number DIV 128
+									(0-1023 Devices - Total 1024)
+ Byte 2	-	Device number MOD 128
+ 
+ 
+ 
+3.2.68. Extended PROTECT DIS-CONNECT Message
+This message is issued by a router or a remote device to remove protection from a destination. The controller or the router will issue an EXTENDED PROTECT DIS-CONNECTED message (3.2.62) in response. 
+Command Byte:	104
+Message:	Byte 1	-	Destination number DIV 128 (as defined in 3.2.47)
+ Byte 2	-	Destination number MOD 128
+   Byte 3	-	Device number DIV 128 (as defined in 3.2.58)
+    Byte 4	-	Device number MOD 128
+    
+3.2.69. Extended PROTECT TALLY DUMP REQUEST Message
+This message allows all the Protect information to be requested from a controller by  a router when the router initialises.  The controller will respond with an EXTENDED PROTECT TALLY DUMP message (3.2.64).
+Command Byte:	105
+Message:	Byte 1	-	Number of PROTECT Tallies required
+ Byte 2	-	Start Destination DIV 128 (as defined in 3.2.47)
+   Byte 3	-	Start Destination MOD 128
+   
+3.2.70. X_TALLY_INTERROGATE Message
+This message is sent by an external device to the Charisma Ten X to request a bitmap of the video and key sources that currently appear on the output of the Charisma Ten X, and, for the Ten X destination number mapping for each of video input.  Because of the size of the response to this (X_TALLY_RESPONSE), the DVE would only expect to see this message during Edit mode and not Run mode of operation.
+Command Byte:	125
+Message:	None
+
+
+
+
+
+3.2.71. X_TALLY_RESPONSE Message
+This message is sent by Charisma Ten X in response to a X_TALLY_INTERROGATE request. A high bit means that it is contributing to the output.  The message bytes 4 through 21 define the correspondence between destination number in an external matrix and the DVE video source inputs.
+Command Byte:	127
+Message:	Byte 1 -	bitmap Master video and key inputs	
+		The bits are defined as follows:
+		Bit 0	:	Chan A Video 1: by default, the Master Program
+				video
+		Bit 1	:	Chan A Video 2: by default, the Master Preset	
+				video
+		Bit 2	:	Chan A Video 3: by default, the system
+				background video
+		Bit 3	:	Chan A Key 1:
+		Bit 4	:	Chan A Key 2:
+		Bit 5	:	Chan A Key 3:
+		Bit 6	:	unused, always zero	
+		Bit 7	:	always zero.
+     Byte 2 -	bitmap Slave B video and key inputs
+			The bits are defined as follows:
+			Bit 0	:	Chan B Video 1: by default, the Slave B Program
+					video
+			Bit 1	:	Chan B Video 2: by default, the Slave B Preset
+					video
+			Bit 2	:	Chan B Video 3:
+			Bit 3	:	Chan B Key 1:
+			Bit 4	:	Chan B Key 2:
+			Bit 5	:	Chan B Key 3:
+			Bit 6	:	unused, always zero	
+			Bit 7	:	always zero.
+     Byte 3 -	bitmap Slave C video and key inputs
+			The bits are defined as follows:
+			Bit 0	:	Chan C Video 1: by default, the Slave C Program
+					video
+			Bit 1	:	Chan C Video 2: by default, the Slave C Preset
+					video
+			Bit 2	:	Chan C Video 3:
+			Bit 3	:	Chan C Key 1:
+			Bit 4	:	Chan C Key 2:
+			Bit 5	:	Chan C Key 3:
+			Bit 6	:	unused, always zero	
+			Bit 7	:	always zero.
+     Byte 4 -	Destination multiplier Chan A Video 1 DIV 128
+			This multiplier has bits defined as follows:
+			Bit 7	:	always zero.
+			Bit 6-4 :	Dest number DIV 128
+			Bit 3-0 :	unused, always zero
+     Byte 5 -	Destination Channel A Video
+     Byte 6 -	Destination multiplier Channel A Video 2 DIV 128
+     Byte 7 -	Destination Channel A Video 2 MOD 128
+     Byte 8 -	Destination multiplier Channel A Video 3 DIV 128
+     Byte 9 -	Destination Channel A Video 3 MOD 128
+     Byte 10 -	Destination multiplier Channel B Video 1 DIV 128
+     Byte 11 -	Destination Channel B Video 1 MOD 128
+     Byte 12 -	Destination multiplier Channel B Video 2 DIV 128
+     Byte 13 -	Destination Channel B Video 2 MOD 128
+     Byte 14 -	Destination multiplier Channel B Video 3 DIV 128
+     Byte 15 -	Destination Channel B Video 3 MOD 128
+     Byte 16 -	Destination multiplier Channel C Video 1 DIV 128
+     Byte 17 -	Destination Channel C Video 1 MOD 128
+     Byte 18 -	Destination multiplier Channel C Video 2 DIV 128
+     Byte 19 -	Destination Channel C Video 2 MOD 128
+     Byte 20 -	Destination multiplier Channel C Video 3 DIV 128
+     Byte 21 -	Destination Channel C Video 3 MOD 128
+     
+3.2.72. X_TALLY_STATUS Message
+This message is sent by Charisma Ten X to an external device whenever the tally status inside the Charisma Ten X changes.  This is the video and key sources that currently contribute to the output video of the Charisma Ten X.  A high bit means that it is contributing to the output.
+Command Byte:	124
+Message:	Byte 1 -	bitmap Master video and key inputs	
+					(as Byte 1 of command 127 - see 3.2.71)
+     Byte 2 -	bitmap Slave B video and key inputs
+			(as Byte 2 of command 127 - see 3.2.71)
+     Byte 3 -	bitmap for Slave C video and key inputs
+			(as Byte 3 of command 127 - see 3.2.71)
+     
+3.2.73. X_TALLY_STATUS_ACKNOWLEDGE Message
+This message is sent by an external device to the Charisma Ten X to acknowledge an X_TALLY_STATUS message previously sent by a Charisma Ten X.
+Command Byte:	126
+Message:	none
+
+3.2.74. Command Numbers 82 to 86
+These command numbers are reserved for Pro-Bel internal use only.
+
+3.2.75. Command Numbers 90 to 95
+Command numbers 90 to 95 inclusive are reserved for Broadcast Technology for operation of their 16 x 2 router range.
+
+3.3. Notes on Implementation
+3.3.1. Philosophy
+The philosophy of this message transfer protocol is that a controller assumes that a command has been successful until proved otherwise through, for example, a timeout.
+In Pro-Bel controllers, a switcher is continually INTERROGATED as a background function to ensure that tally information is up-to-date.  In System1/System2 when a CONNECT message is issued, the control system assumes that the connection will be successful and updates its internal tables accordingly.  After a CONNECT message is issued, TALLY messages are ignored for a preset time interval of approx. 100mS.  This ensures that any outstanding TALLY messages in the controlled device does not overwrite the new CONNECT information in the controller tally table.  In System3/Aurora the internal tally table is not updated until the connected message is received.
+The background INTERROGATE function performed by a controller also indicates data link failure by timeouts on the TALLY message in the following manner :
+When an INTERROGATE message is issued, a timeout counter is initialised.  If a TALLY message is not received before the counter reaches zero, then a data link failure is adjudged to have occurred.
+Further Note, therefore, that the timeout period must be less than the INTERROGATE interval and that this implies a fundamental lower limit to the INTERROGATE poll time of
+INTERROGATE send time
+•	peripheral service time
+•	TALLY + response time
+•	TALLY service
+Theoretically this could be as fast as
+		1.25 + 1 + 1.25 + 1/2 = 4 mS.
+Practically this should be no greater than an average of 1 INTERROGATE per 20 mS.
+
+3.3.2. Further Criteria
+Further criteria to be met by any implementation of this protocol are :
+i)		A system must successfully service messages being received 					simultaneously on all ports.
+ii)	A system must successfully service up to 20 consecutive CONNECT 				messages on any port, at any one time.
+iii)	A system must successfully service an average of 1 CONNECT message 			every 10 mS.
+4. 
+STANDARD' PRO-BEL CONTROLLER IMPLEMENTATIONS
+The following table defines which command sets have been implemented on the various 'Standard' Pro-Bel Controller configurations.
+COMMAND DESCRIPTIONNOREFSTANDARD CONTROLLER (See Key for Details)010203040506070809101112131415161718192021DATABASE CHECKSUM REQUEST/RESPONSE003.2.1/ 3.2.2XXINTERROGATE013.2.3XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXCONNECT023.2.4XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXTALLY033.2.5XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXCONNECTED043.2.6XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXCONNECT ON GO053.2.7XXXX GO063.2.8XXXX STATUS REQUEST073.2.9XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXSTATUS RESPONSE - 1083.2.10XXXXXXXXXXXXXXXXXXSTATUS RESPONSE - 2093.2.11XXXXXXXXXXXXSTATUS RESPONSE - 3103.2.12XXXXXXXXXXXXXXENABLE CROSSPOINT UPDATE113.2.13XXXXCONNECT ON GO ACKNOWLEDGE123.2.14XXXX GO ACKNOWLEDGE133.2.15XXXX SOURCE LOCK STATUS REQUEST143.2.16XXSOURCE LOCK STATUS RESPONSE153.2.17XXSTATUS RESPONSE - 4163.2.18XXXX XXXXXXXXXXSTATUS RESPONSE - 5173.2.19XXXXSTATUS REQUEST -  2183.2.20STATUS RESPONSE - 6193.2.21MIXER INTERROGATE213.2.22XXMIXER CONNECT223.2.23XXMIXER TALLY DUMP233.2.24XXMIXER CONNECTED243.2.25XXASSIGN SLOT/SLOT STATUS253.2.26XXREAD SLOT ASSIGNMENT263.2.27XXSET OUTPUT GAIN/ O/P GAIN STATUS273.2.28XXREAD OUTPUT GAIN283.2.29XXREAD TWINKLER293.2.30XXTWINKLER STATUS303.2.31XXINSTALLED MODULES STATUS REQUEST313.2.32XXXX XX XXXXINSTALLED MODULES STATUS   RESPONSE -1323.2.33XXMIXER DISCONNECTED333.2.34XXINSTALLED MODULES STATUS   RESPONSE - 3343.2.35XXXXCONNECT ON GO GROUP SALVO353.2.36XX XXXXXXXXXXGO GROUP SALVO363.2.37XX XXXXXXXXXXCONNECT ON GO GROUP SALVO ACKNOWLEDGE373.2.38XX XXXXXXXXXXGO DONE GROUP SALVO ACKNOWLEDGE383.2.39XX XXXXXXXXXXINSTALLED MODULES STATUS   RESPONSE -2423.2.40XXXX ROUTER INPUT/OUTPUT  PARAMETERS INTERROGATE433.2.41XXXX XXXXXXROUTER INPUT/OUTPUT  PARAMETERS TALLY443.2.42XXXXXXXXXXROUTER INPUT/OUTPUT  PARAMETERS CONNECT453.2.43XXXX XXXXXXROUTER INPUT/OUTPUT PARAMETERS CONNECTED463.2.44XXXXXXXXXXDUAL CONTROLLER STATUS REQUEST503.2.45XXXXXXDUAL CONTROLLER STATUS RESPONSE513.2.46XXXXXXEXTENDED INTERROGATE653.2.47XXXXXXXXXXEXTENDED CONNECT663.2.48XXXXXXXXXXEXTENDED TALLY673.2.49XXXXXXXXXXEXTENDED CONNECTED683.2.50XXXXXXXXXXEXTENDED CONNECT ON GO693.2.51 EXTENDED CONNECT ON GO ACKNOWLEDGE703.2.52EXTENDED CONNECT ON GO GROUP SALVO713.2.53XXXXXXXXEXTENDED CONNECT ON GO GROUP SALVO ACKNOWLEDGE723.2.54XXXXXXXXSTATUS DATA REQUEST Message733.2.55XXSTATUS DATA RESPONSE - 1 Message743.2.56XXROUTER CONFIGURATION REQUEST Message753.2.57XXROUTER CONFIGURATION RESPONSE  - 1 Message763.2.58XXROUTER CONFIGURATION RESPONSE - 2 Message773.2.59XXPRO-BEL RESERVED823.2.74 PRO-BEL RESERVED833.2.74PRO-BEL RESERVED843.2.74PRO-BEL RESERVED853.2.74PRO-BEL RESERVED863.2.74SPECIAL FOR 16X2 (Broadcast Technology)90-953.2.75Extended PROTECT TALLY 963.2.58XXExtended PROTECT CONNECTED973.2.61XXExtended PROTECT DIS-CONNECTED 983.2.62XXPROTECT DEVICE NAME RESPONSE993.2.63XXExtended PROTECT TALLY DUMP1003.2.64XXExtended PROTECT INTERROGATE1013.2.65XXExtended PROTECT CONNECT 1023.2.66XXPROTECT DEVICE NAME REQUEST1033.2.67XXExtended PROTECT DIS-CONNECT1043.2.68XXExtended PROTECT TALLY DUMP REQUEST 1053.2.69XXX_TALLY_STATUS1243.2.72X_TALLY_INTERROGATE1253.2.70X_TALLY_STATUS_ACKNOWLEDGE1263.2.73X_TALLY_RESPONSE1273.2.71					
+      XX = Command Supported
+
+Key:STANDARD CONTROLLERS  NOCONTROLLERNOCONTROLLERNOCONTROLLER01SYSTEM1 (7900)02SYSTEM2 (2411 & 8070)03SYSTEM3 (8180/8300/8400)04PRODIGY (2640)05TS16 (16x4 2317)062513/4/5 MASTER CARD072412 HD LOCAL CONTROLLER082413/4 HD LOCAL CONTROLLER092553/8 SERIAL INTERFACE105007/5107 TDM CONTROLLER112510 4 WIRE ROUTER CONTROLLER12TM16/24/32 (2659)132136 SERIAL CONTROLLER146170 PROTOCOL TRANSLATOR15XD LOCAL CONTROLLER (2419)16FREEWAY/AXIS/HALO/SIRIUS (2440/1) / NEBULA(2442/3/4/5)17SYSTEM3 (6000)18SYSTEM3 (6001)19ECLIPSE (2400)20ECLIPSE (2404)21AURORA CONTROLLER (6006)
+NOTES:
+1) Controller Type 16
+Command 76 is supported on 2440/1 controllers, 2442/3 controllers fitted with V1.03 or below firmware, and 2444/5 controllers fitted with V3.01 or below firmware, whilst command 77 is supported on 2442/3 controllers fitted with V1.04 or above firmware and 2444/5 controllers fitted with V3.02 or above firmware.
+Commands 65, 66, 67and 68 are supported on 2444/5 controllers only.
+Issue No. 26	SW-P-02	General Switcher Communication Protocol
+
+Copyright ?1999-2005 by Pro-Bel Ltd	Page 6 of 45	__
+
+
