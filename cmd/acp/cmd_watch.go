@@ -115,8 +115,9 @@ func runWatch(ctx context.Context, args []string) error {
 	defer func() { _ = plug.Unsubscribe(req) }()
 
 	fmt.Println("watching — Ctrl-C to stop")
-	fmt.Printf("%-8s  %-10s  %-4s  %-20s  %-7s  value\n", "time", "group", "id", "label", "source")
-	fmt.Println(strings.Repeat("-", 80))
+	fmt.Printf("%-8s  %-18s  %-30s  %-20s  %-3s  %-7s  value\n",
+		"time", "oid", "path", "label", "acc", "fr")
+	fmt.Println(strings.Repeat("-", 117))
 	for {
 		select {
 		case <-ctx.Done():
@@ -131,19 +132,73 @@ func runWatch(ctx context.Context, args []string) error {
 					src = "cache"
 				}
 			}
-			// Append unit if available.
+			// OID falls back to "s<slot>.<group>.<id>" for protocols
+			// that don't populate it (ACP1 / ACP2).
+			oid := ev.OID
+			if oid == "" {
+				oid = fmt.Sprintf("s%d.%s.%d", ev.Slot, ev.Group, ev.ID)
+			}
+
+			// Matrix crosspoint events render differently —
+			// target/sources/disposition replace the single value
+			// column.
+			lockedTag := func(b bool) string {
+				if b {
+					return " locked"
+				}
+				return ""
+			}
+			if mc := ev.MatrixChange; mc != nil {
+				srcList := "[]"
+				if len(mc.Sources) > 0 {
+					parts := make([]string, len(mc.Sources))
+					for i, s := range mc.Sources {
+						parts[i] = fmt.Sprintf("%d", s)
+					}
+					srcList = "[" + strings.Join(parts, ",") + "]"
+				}
+				fmt.Printf("%s  %-18s  %-30s  %-20s  [matrix]  t=%d ← %s op=%s disp=%s%s\n",
+					ev.Timestamp.Format("15:04:05"),
+					truncate(oid, 18),
+					truncate(ev.Path, 30),
+					truncate(label, 20),
+					mc.Target,
+					srcList,
+					mc.Operation,
+					mc.Disposition,
+					lockedTag(mc.Locked),
+				)
+				continue
+			}
+
+			// Parameter event — value column.
 			valStr := formatValueInline(ev.Value)
 			if unit, ok := unitCache[ev.ID]; ok && unit != "" {
 				valStr += " " + unit
 			}
-			fmt.Printf("%s  s%-2d %-7s  %-4d  %-20s  [%-5s]  %s\n",
+			// Live description + access + freshness + changes tag.
+			descTag := ""
+			if ev.Description != "" {
+				descTag = fmt.Sprintf("  desc=%q", ev.Description)
+			}
+			changesTag := ""
+			if len(ev.Changes) > 0 {
+				changesTag = "  changed: " + formatChanges(ev.Changes)
+			}
+			fr := ev.Freshness
+			if fr == "" {
+				fr = src
+			}
+			fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s%s%s\n",
 				ev.Timestamp.Format("15:04:05"),
-				ev.Slot,
-				ev.Group,
-				ev.ID,
+				truncate(oid, 18),
+				truncate(ev.Path, 30),
 				truncate(label, 20),
-				src,
+				accessStr(ev.Access),
+				fr,
 				valStr,
+				descTag,
+				changesTag,
 			)
 		}
 	}

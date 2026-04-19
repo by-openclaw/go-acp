@@ -432,9 +432,77 @@ type Event struct {
 	Slot      int
 	Group     string
 	ID        int
+
+	// Path is the dot-joined identifier path of the element the
+	// event originates from, e.g. "router.oneToN.sources.src-1".
+	// Empty for plugins that don't populate it (ACP1).
+	Path string
+
+	// OID is the numeric RelOID as a dot-joined string (e.g. "1.1.2.5").
+	// Authoritative addressing across Ember+ trees where integer ID
+	// alone (the sibling number) is ambiguous. Empty for protocols
+	// without OIDs.
+	OID string
+
 	Label     string
+
+	// Description is the human-readable description of the element
+	// (Ember+ Parameter/Node/Matrix Description field). Empty for
+	// protocols that don't carry one. Useful to render alongside the
+	// value column so live description edits are visible.
+	Description string
+
+	// Access encodes the read/write permission bits in effect at the
+	// time of the event. Bitmask: read=1, write=2, setDef=4 (matches
+	// Object.Access). Surfaced so live access changes are visible in
+	// watch output.
+	Access uint8
+
 	Value     Value
 	Timestamp time.Time
+
+	// MatrixChange is non-nil when this event represents a matrix
+	// crosspoint update (connect / disconnect / tally change). The
+	// event's OID + Path identify the Matrix element; the fields
+	// inside MatrixChange identify the crosspoint within it.
+	//
+	// Parameter-update events keep this nil.
+	MatrixChange *MatrixChange
+
+	// Freshness classifies the trust level of Value at the moment
+	// this event fired. "live" = just confirmed by the provider;
+	// "stale" = value cached, awaiting refresh (e.g. after a session
+	// drop); "cache" = loaded from disk at startup, never confirmed.
+	// Empty for protocols that don't model freshness.
+	Freshness string
+
+	// Changes lists the fields that actually differ between this
+	// event and the element's previously-stored state. Empty on
+	// first sight. Useful for rendering "what just moved" without
+	// diffing the full element on the UI side.
+	Changes []FieldChange
+}
+
+// FieldChange describes one field transition on an element. Old and
+// New are pre-formatted strings so the caller doesn't need type
+// awareness. Name uses canonical keys: "value", "description",
+// "access", "min", "max", "step", "default", "format", "factor",
+// "formula", "enumeration", "streamIdentifier", "isOnline".
+type FieldChange struct {
+	Name string
+	Old  string
+	New  string
+}
+
+// MatrixChange carries the fields that change on a matrix crosspoint
+// announce. Matches canonical.MatrixConnection semantics (see
+// docs/protocols/elements/matrix.md).
+type MatrixChange struct {
+	Target      int64
+	Sources     []int64
+	Operation   string // "absolute" | "connect" | "disconnect"
+	Disposition string // "tally" | "modified" | "pending" | "locked"
+	Locked      bool
 }
 
 // EventFunc is the callback signature used by Subscribe. It must not block.

@@ -248,8 +248,27 @@ func formatValue(v protocol.Value, obj *protocol.Object) string {
 
 // formatValueInline is a compact value renderer for the watch output.
 // Loses the unit (we don't have the Object here) but still typed.
+// formatChanges renders a compact "name old→new" list for the watch
+// output's changed: tag. Comma-separated, stable order (preserving
+// the order the plugin emitted).
+func formatChanges(cs []protocol.FieldChange) string {
+	if len(cs) == 0 {
+		return ""
+	}
+	parts := make([]string, len(cs))
+	for i, c := range cs {
+		parts[i] = fmt.Sprintf("%s %s→%s", c.Name, c.Old, c.New)
+	}
+	return strings.Join(parts, ", ")
+}
+
 func formatValueInline(v protocol.Value) string {
 	switch v.Kind {
+	case protocol.KindBool:
+		if v.Bool {
+			return "true"
+		}
+		return "false"
 	case protocol.KindInt:
 		return fmt.Sprintf("%d", v.Int)
 	case protocol.KindUint:

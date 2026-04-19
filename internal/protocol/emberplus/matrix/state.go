@@ -156,6 +156,23 @@ func (s *State) CanConnect(target int32, newSources []int32, op int64) error {
 		return fmt.Errorf("target %d is locked (spec p.89 ConnectionDisposition)", target)
 	}
 
+	// Spec p.33: oneToN and oneToOne require exactly 1 source per
+	// target. Explicit disconnect would leave the target unrouted,
+	// violating the invariant. Reject pre-flight with guidance
+	// instead of sending a request the provider will silently drop.
+	if op == glow.ConnOpDisconnect {
+		switch s.Type {
+		case glow.MatrixTypeOneToN:
+			return fmt.Errorf(
+				"oneToN matrix: disconnect not permitted (target must keep exactly 1 source) — " +
+					"reroute to a silence source instead, or use op=absolute with the new source [spec p.33]")
+		case glow.MatrixTypeOneToOne:
+			return fmt.Errorf(
+				"oneToOne matrix: disconnect not permitted (target must keep exactly 1 source) — " +
+					"reroute to a silence source instead, or use op=absolute with the new source [spec p.33]")
+		}
+	}
+
 	projected := projectSources(s.Targets[target], newSources, op)
 
 	switch s.Type {

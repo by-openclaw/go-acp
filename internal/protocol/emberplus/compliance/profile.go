@@ -63,6 +63,92 @@ const (
 	// APP or CTX tag it does not recognise. Usually a vendor-
 	// private extension; harmless.
 	UnknownTagSkipped = "unknown_tag_skipped"
+
+	// EnumMaskedItem fires when an enum option carries a masked
+	// flag (smh `~Label` convention; stripped and marked
+	// non-selectable). Canonical schema §4.5.
+	EnumMaskedItem = "enum_masked_item"
+
+	// EnumDoubleSource fires when a Parameter carries both a
+	// native EnumMap and the LF-joined Enumeration with differing
+	// counts. Canonical schema §6.
+	EnumDoubleSource = "enum_double_source"
+
+	// EnumMapDerived fires when the canonical EnumMap was
+	// synthesised from the legacy Enumeration string (no native
+	// EnumMap on the wire). Informational.
+	EnumMapDerived = "enum_map_derived"
+
+	// FieldInferred fires when a canonical field was synthesised
+	// from a protocol-specific source (e.g. Parameter.Type
+	// inferred from Value CHOICE). Canonical schema §6.
+	FieldInferred = "field_inferred"
+
+	// --- Resolver events (spec §5.1.1 / §5.1.2 / §8) ---
+	// Matrix-scoped events fire when --labels / --gain / --templates
+	// request inline or both and the resolver encounters a malformed
+	// or missing reference. They never block the export; the canonical
+	// JSON still ships with wire-faithful pointer data even when the
+	// referenced subtree is absent.
+
+	// MatrixLabelBasepathUnresolved fires when a Matrix carries
+	// labels[i].basePath that does not resolve to a walked Node.
+	// Pointer-mode output preserves the dangling ref; inline-mode
+	// output skips the level entirely (no empty inner map).
+	MatrixLabelBasepathUnresolved = "matrix_label_basepath_unresolved"
+
+	// MatrixLabelNone fires when a Matrix ships no labels[] array
+	// or an empty one. Informational — small providers routinely
+	// omit labels and rely on target/source identifier as display.
+	MatrixLabelNone = "matrix_label_none"
+
+	// MatrixLabelDescriptionEmpty fires when a labels[i] entry has
+	// no description. The resolver falls back to the basePath as
+	// the outer map key in inline mode.
+	MatrixLabelDescriptionEmpty = "matrix_label_description_empty"
+
+	// MatrixLabelLevelMismatch fires when two label levels expose
+	// a different number of target/source entries. Informational —
+	// may indicate a stale label tree or a partial walk.
+	MatrixLabelLevelMismatch = "matrix_label_level_mismatch"
+
+	// MatrixParametersLocationUnresolved fires when a Matrix
+	// carries parametersLocation that does not resolve to a walked
+	// Node. Mirrors MatrixLabelBasepathUnresolved semantics.
+	MatrixParametersLocationUnresolved = "matrix_parameters_location_unresolved"
+
+	// TemplateReferenceUnresolved fires when a Parameter / Node
+	// / Matrix carries templateReference pointing to a path with
+	// no walked Template. Pointer-mode keeps the ref; inline-mode
+	// leaves the element shape as delivered on the wire.
+	TemplateReferenceUnresolved = "template_reference_unresolved"
+
+	// LabelsAbsorbed fires once per Matrix when --labels=inline
+	// successfully collapses at least one label level into the
+	// matrix element and removes the source subtree from the tree.
+	LabelsAbsorbed = "labels_absorbed"
+
+	// GainAbsorbed fires once per Matrix when --gain=inline
+	// successfully collapses parametersLocation into the matrix
+	// element and removes the source subtree from the tree.
+	GainAbsorbed = "gain_absorbed"
+
+	// TemplateAbsorbed fires once per resolved templateReference
+	// when --templates=inline successfully inflates the referenced
+	// Template into the referring element.
+	TemplateAbsorbed = "template_absorbed"
+
+	// StreamIDCollisionNoDescriptor fires when the consumer sees
+	// two or more Parameters sharing the same streamIdentifier
+	// with at least one of them missing a streamDescriptor.
+	// Spec §7 (Streams): a shared streamIdentifier is legal only
+	// in CollectionAggregate mode, where EVERY participating
+	// Parameter MUST carry a streamDescriptor (format + offset)
+	// so the consumer can split the aggregated blob. Without a
+	// descriptor the streamIdentifier is implicitly exclusive;
+	// reusing it across Parameters is a provider-side bug that
+	// causes value mis-dispatch.
+	StreamIDCollisionNoDescriptor = "stream_id_collision_no_descriptor"
 )
 
 // Profile aggregates tolerance events for a single live connection.

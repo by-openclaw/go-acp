@@ -118,6 +118,21 @@ type Plugin struct {
 	// connIP / connPort are captured at Connect time for log context.
 	connIP   string
 	connPort int
+
+	// sessionConnected mirrors the underlying session's liveness.
+	// Updated by onSessionStateChange; read by SetValue to gate
+	// writes and by the watch event synthesiser. Guarded by p.mu.
+	sessionConnected bool
+
+	// pendingSets tracks in-flight SetValue calls awaiting the
+	// provider's confirming announce. Keyed by the parameter's
+	// numeric OID string.
+	pendingSets *pendingSetRegistry
+
+	// reconnect drives the auto-redial goroutine that fires on
+	// unsolicited disconnect and exits when a fresh session is
+	// established or the user calls Disconnect.
+	reconnect reconnectCtrl
 }
 
 // ComplianceProfile returns the live compliance profile for this
@@ -165,6 +180,12 @@ type treeEntry struct {
 	// FreshnessLive on the first live confirmation.
 	freshness Freshness
 	updatedAt time.Time
+
+	// pendingChanges is populated by processParameter just before
+	// the subscriber notify; carries the field-diff between the
+	// prior and current glowParam. Copied onto the outgoing Event
+	// by notifySubscribers, then cleared (diff is per-event).
+	pendingChanges []protocol.FieldChange
 }
 
 // Connect opens the TCP session, installs the element handler, and prepares
@@ -184,6 +205,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.streamSubs = make(map[string][]int32)
 	p.streamIndex = make(map[int64][]string)
 	p.templates = make(map[string]*glow.Template)
+	p.pendingSets = newPendingSetRegistry()
 	p.profile = &compliance.Profile{}
 	p.connIP = ip
 	p.connPort = port
@@ -191,10 +213,132 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	s.SetOnElement(p.handleElements)
 	s.SetProfile(p.profile)
+	s.SetOnStateChange(p.onSessionStateChange)
 	if p.recorder != nil {
 		s.SetRecorder(p.recorder)
 	}
 	return s.Connect(ctx, ip, port)
+}
+
+// onSessionStateChange reacts to session liveness transitions.
+// Called once with connected=true after successful Connect, and
+// once with connected=false on any unsolicited disconnect
+// (keep-alive timeout, TCP EOF, decode failure).
+//
+// On disconnect: mark every walked entry freshness=Stale, keep
+// their last known values, and fire a synthetic root event so
+// wildcard watch subscribers see the transition as a single
+// "root isOnline y→n" announcement — they can derive the cascade
+// themselves (every child is effectively offline while root is).
+//
+// On reconnect: mirror event n→y. Re-walk is the caller's
+// responsibility (today: restart watch). Auto-reconnect is out of
+// scope for the consumer — parked per scope_sequencing.
+func (p *Plugin) onSessionStateChange(connected bool, reason string) {
+	p.mu.Lock()
+	prev := p.sessionConnected
+	p.sessionConnected = connected
+	p.mu.Unlock()
+	if prev == connected {
+		return
+	}
+
+	if !connected {
+		p.markTreeStale()
+
+		// Clear stream-subscription tracking. The old session is
+		// dead, so Command 31 (Unsubscribe) is pointless and in
+		// any case impossible. The fresh session created by
+		// reconnect needs to re-issue Command 30 for every
+		// stream-backed parameter, which autoSubscribeStreams
+		// will do — but ONLY if streamSubs is empty, since its
+		// idempotency check skips entries it already thinks are
+		// subscribed. Without this clear, no streams resume.
+		//
+		// streamIndex (streamId → paths) stays intact because
+		// the mapping is still correct on the wire for paths
+		// that haven't changed.
+		p.subsMu.Lock()
+		p.streamSubs = make(map[string][]int32)
+		p.subsMu.Unlock()
+
+		p.logger.Info("emberplus: session disconnected",
+			"host", p.connIP, "port", p.connPort, "reason", reason)
+		// Unsolicited disconnect kicks off auto-reconnect.
+		// Deliberate Disconnect() from the caller cancels it.
+		p.reconnect.start(p)
+	} else {
+		p.logger.Info("emberplus: session connected",
+			"host", p.connIP, "port", p.connPort)
+	}
+	p.emitRootSessionEvent(connected, reason)
+}
+
+// markTreeStale walks numIndex under the write lock and flips every
+// entry's freshness to Stale. Values are left intact — the last
+// known value is still useful to display (with "stale" badge).
+func (p *Plugin) markTreeStale() {
+	p.treeMu.Lock()
+	for _, e := range p.numIndex {
+		e.freshness = FreshnessStale
+	}
+	p.treeMu.Unlock()
+}
+
+// emitRootSessionEvent synthesises one Event signalling the session
+// transition to any wildcard subscriber. The event targets the
+// tree's root node (shortest numericPath) when known; when the
+// plugin hasn't walked anything yet (disconnect during initial
+// connect), the event carries empty OID/Path and just the change.
+func (p *Plugin) emitRootSessionEvent(connected bool, reason string) {
+	p.subsMu.RLock()
+	fn := p.subs["*"]
+	p.subsMu.RUnlock()
+	if fn == nil {
+		return
+	}
+
+	var rootEntry *treeEntry
+	p.treeMu.RLock()
+	for _, e := range p.numIndex {
+		if rootEntry == nil || len(e.numericPath) < len(rootEntry.numericPath) {
+			rootEntry = e
+		}
+	}
+	p.treeMu.RUnlock()
+
+	oldLbl, newLbl := "y", "n"
+	if connected {
+		oldLbl, newLbl = "n", "y"
+	}
+
+	changes := []protocol.FieldChange{
+		{Name: "isOnline", Old: oldLbl, New: newLbl},
+	}
+	if reason != "" {
+		changes = append(changes, protocol.FieldChange{
+			Name: "reason", Old: "", New: reason,
+		})
+	}
+
+	ev := protocol.Event{
+		Slot:      0,
+		Timestamp: time.Now(),
+		Changes:   changes,
+		Freshness: "stale",
+	}
+	if connected {
+		ev.Freshness = "live"
+	}
+	if rootEntry != nil {
+		ev.ID = rootEntry.obj.ID
+		ev.OID = rootEntry.obj.OID
+		ev.Path = strings.Join(rootEntry.obj.Path, ".")
+		ev.Label = rootEntry.obj.Label
+	} else {
+		ev.Label = "session"
+	}
+	fn(ev)
 }
 
 // Disconnect releases every explicit stream subscription (Command 31),
@@ -202,6 +346,10 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 // per-provider tolerance footprint in the log), then tears the session
 // down. Safe to call on an already-disconnected Plugin.
 func (p *Plugin) Disconnect() error {
+	// Stop the auto-reconnect loop first so a race can't re-dial
+	// right as we're tearing down.
+	p.reconnect.stop()
+
 	p.unsubscribeAll()
 
 	if p.profile != nil {
@@ -393,20 +541,51 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 // value as an announcement; the returned Value is the *requested* value,
 // not the confirmed one. Callers that need the confirmed value should
 // subscribe first.
+// SetValue sends a write to the provider and waits for the
+// confirming announce. Returns the confirmed value (may differ from
+// val when the provider coerces) and an error describing anomalies.
+//
+// Error semantics (see internal/protocol/errors.go):
+//
+//   - protocol.ErrNotConnected → session is dead; no wire traffic sent.
+//     Returns the last known value from the tree.
+//   - protocol.ErrWriteTimeout → send succeeded but no confirming
+//     announce arrived within defaultWriteTimeout. Tree value
+//     unchanged.
+//   - protocol.ErrWriteCoerced → provider announced a different value
+//     (clamp, round). Returned Value reflects what the provider
+//     applied. Caller opts-in to accept via errors.Is.
+//
+// The method is blocking; callers wanting fire-and-forget writes
+// should cancel ctx early.
 func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
+	// Session-liveness gate: never send on a dead session.
+	p.mu.Lock()
+	connected := p.sessionConnected
+	p.mu.Unlock()
+	if !connected {
+		return protocol.Value{}, protocol.ErrNotConnected
+	}
+
 	s := p.currentSession()
 	if s == nil {
 		return protocol.Value{}, protocol.ErrNotConnected
 	}
+
 	if err := p.ensureWalked(ctx, "set"); err != nil {
 		return protocol.Value{}, err
 	}
 
-	_, entry := p.findEntry(req)
+	key, entry := p.findEntry(req)
 	if entry == nil || entry.glowParam == nil {
 		return protocol.Value{}, WrapProto("parameter not found", nil)
 	}
 	path := entry.glowParam.Path
+	if len(path) == 0 {
+		// Fallback for non-qualified providers that registered the
+		// parameter without a wire Path: use our canonical numeric.
+		path = cloneInt32Slice(entry.numericPath)
+	}
 	if len(path) == 0 {
 		return protocol.Value{}, WrapProto("parameter has no path", nil)
 	}
@@ -417,10 +596,33 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	coerceStringToTyped(&val)
 
 	glowVal := valueToGlow(val)
+
+	// Register the pending-set watcher BEFORE sending so we don't
+	// miss a fast provider echo.
+	ps := &pendingSet{
+		expected: glowVal,
+		kind:     entry.obj.Kind,
+		done:     make(chan pendingResult, 1),
+	}
+	p.pendingSets.register(key, ps)
+	defer p.pendingSets.unregister(key)
+
 	if err := s.SendSetValue(path, glowVal); err != nil {
 		return protocol.Value{}, err
 	}
-	return val, nil
+
+	// Await confirmation or timeout.
+	timer := time.NewTimer(defaultWriteTimeout)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return entry.obj.Value, ctx.Err()
+	case <-timer.C:
+		return entry.obj.Value, protocol.ErrWriteTimeout
+	case r := <-ps.done:
+		return r.value, r.err
+	}
 }
 
 // Subscribe registers a callback for one parameter path. Behaviour per
@@ -449,6 +651,13 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		p.subsMu.Lock()
 		p.subs["*"] = fn
 		p.subsMu.Unlock()
+
+		// Stream-backed Parameters require an explicit Command 30
+		// (spec p.30–31) — GetDirectory alone won't start the flow.
+		// Enumerate already-walked stream parameters now; new ones
+		// discovered later during walk/announce get auto-subscribed
+		// from processParameter via maybeWildcardStreamSubscribe.
+		p.autoSubscribeStreams()
 		return nil
 	}
 
@@ -764,14 +973,36 @@ func (p *Plugin) dispatchStreams(entries []glow.StreamEntry) {
 }
 
 // deliverStreamValue updates the entry's cached value to FreshnessUpdated
-// and invokes any registered callback (specific or wildcard).
+// and invokes any registered callback (specific or wildcard). Stream
+// frames carry only the new value — we synthesise a one-item field
+// diff so watch/UI see "changed: value X→Y" just like announces.
 func (p *Plugin) deliverStreamValue(entry *treeEntry, value any) {
 	if entry.glowParam == nil {
 		return
 	}
+
+	// Snapshot the old rendered-value before we overwrite so the
+	// diff shows the transition. formatAny handles nil/typed.
+	oldRendered := formatAny(entry.glowParam.Value)
+
 	entry.freshness = FreshnessUpdated
 	entry.updatedAt = time.Now()
 	assignToValue(&entry.obj.Value, entry.obj.Kind, value)
+
+	// Keep glowParam.Value in sync so the next diff against this
+	// entry uses the correct "prior" baseline. Without this, the
+	// next announce's diff would compare against the pre-stream
+	// value, producing noisy deltas.
+	entry.glowParam.Value = value
+
+	newRendered := formatAny(value)
+	if oldRendered != newRendered {
+		entry.pendingChanges = []protocol.FieldChange{{
+			Name: "value",
+			Old:  oldRendered,
+			New:  newRendered,
+		}}
+	}
 	p.notifySubscribers(entry)
 }
 
@@ -890,14 +1121,40 @@ func assignToValue(v *protocol.Value, kind protocol.ValueKind, value any) {
 }
 
 // processNode stores a Node in the tree and recurses into its children.
-// If the node arrives with no children, issues a lazy GetDirectory so we
-// can fetch the subtree on demand.
+// If the node arrives with no children on FIRST SIGHTING, issues a lazy
+// GetDirectory so we can fetch the subtree on demand.
+//
+// The "first sighting" guard matters: Ember+ announces are deltas (spec
+// p.85). When a child Parameter changes (e.g. the user toggles a stream
+// on Fader), the provider routinely re-delivers the parent Node with
+// an empty `children[]` because it is only carrying the change —
+// the child list is implicit from the earlier walk. Without this
+// guard, every stream toggle on Fader would cause us to fire
+// GetDirectory on Channel 1, which the provider responds to by
+// re-announcing every child under Channel 1 — the symptom the user
+// reported as "we have a walk of the entire tree" on each streamId
+// toggle.
+//
+// Re-fetching after reconnect is handled by refreshAfterReconnect +
+// clearTree(); that path wipes numIndex before walking, so the
+// "first sighting" check trips naturally.
 func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []int32) {
 	numPath := p.resolveNumPath(n.Path, parentNumPath, n.Number)
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, n.Identifier)
 	}
 	stringPath := p.pathForElement(numPath, n.Identifier, n.Number, parentPath)
+
+	// "Have we seen this Node before?" — determines whether an empty
+	// children[] means "unwalked subtree" (fetch now) or "announce
+	// delta with no structural change" (ignore).
+	firstSighting := true
+	if len(numPath) > 0 {
+		p.treeMu.RLock()
+		_, alreadyStored := p.numIndex[numericKey(numPath)]
+		p.treeMu.RUnlock()
+		firstSighting = !alreadyStored
+	}
 
 	entry := &treeEntry{
 		glowNode:    n,
@@ -924,7 +1181,7 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []
 		p.processElement(child, stringPath, numPath)
 	}
 
-	if len(n.Children) == 0 && len(numPath) > 0 {
+	if firstSighting && len(n.Children) == 0 && len(numPath) > 0 {
 		if s := p.currentSession(); s != nil {
 			numCopy := cloneInt32Slice(numPath)
 			go func() {
@@ -1255,6 +1512,41 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, param.Identifier)
 	}
+
+	// Announce-vs-walk merge (Ember+ spec p.85): announces typically
+	// carry ONLY the changed field(s) inside ParameterContents — the
+	// other 17 fields are absent on the wire and arrive as zero-values
+	// in the decoded struct. If we already walked this parameter, the
+	// prior glowParam has the full metadata (Type, Identifier, Access,
+	// ranges, enumMap, streamDescriptor, ...). Overwriting wholesale
+	// would strip that metadata on every announce, which is the root
+	// cause of the "decoded value mismatch" symptom during watch.
+	//
+	// Merge: start from the prior param, overlay only the fields the
+	// announce actually carried (non-zero / non-nil). The merged
+	// *glow.Parameter is what we store and what builds the obj.
+	p.treeMu.RLock()
+	existing, seen := p.numIndex[numericKey(numPath)]
+	p.treeMu.RUnlock()
+
+	// Capture whether THIS announce carried a new Value on the wire
+	// BEFORE merge — the merge fills incoming.Value from the prior
+	// glowParam when the announce omitted it, which would make the
+	// "did the announce change the value?" question impossible to
+	// answer later.
+	announceCarriedValue := param.Value != nil
+
+	// Snapshot the prior glowParam for field-diff. nil on first
+	// sighting → diffParameters returns empty, which is what we want.
+	var priorParam *glow.Parameter
+	if seen && existing.glowParam != nil {
+		priorParam = existing.glowParam
+	}
+
+	if seen && existing.glowParam != nil {
+		param = mergeAnnouncedParameter(existing.glowParam, param)
+	}
+
 	stringPath := p.pathForElement(numPath, param.Identifier, param.Number, parentPath)
 
 	obj := protocol.Object{
@@ -1289,6 +1581,21 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	obj.Value.Kind = obj.Kind
 	populateValue(&obj, param)
 
+	// Preserve the last live value across description-only announces.
+	// Neither the walk nor this announce carried a typed Value, but the
+	// existing entry's obj.Value may already hold the current live state
+	// (written directly by stream dispatch via deliverStreamValue). Without
+	// this restore, a description-change announce would reset the watch
+	// output to "?" (Kind=Unknown).
+	if !announceCarriedValue && seen {
+		if existing.obj.Value.Kind != protocol.KindUnknown {
+			obj.Value = existing.obj.Value
+			if obj.Kind == protocol.KindUnknown {
+				obj.Kind = existing.obj.Value.Kind
+			}
+		}
+	}
+
 	if param.Type == glow.ParamTypeEnum || obj.Kind == protocol.KindEnum {
 		if param.Enumeration != "" {
 			obj.EnumItems = strings.Split(param.Enumeration, "\n")
@@ -1305,14 +1612,47 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 		updatedAt:   time.Now(),
 		obj:         obj,
 	}
+	// Stash the field-diff on the entry so notifySubscribers can
+	// attach it to the outgoing Event without re-walking state.
+	entry.pendingChanges = diffParameters(priorParam, param)
 	p.storeEntry(entry, stringPath)
 	if param.StreamIdentifier != 0 {
 		key := numericKey(entry.numericPath)
 		p.subsMu.Lock()
-		p.streamIndex[param.StreamIdentifier] = appendUnique(p.streamIndex[param.StreamIdentifier], key)
+		existing := p.streamIndex[param.StreamIdentifier]
+		// Spec §7: a shared streamIdentifier is legal only when every
+		// participating Parameter carries a streamDescriptor (format +
+		// offset) — that is the CollectionAggregate pattern. Sharing
+		// without a descriptor is a provider bug; values dispatched to
+		// that streamId would overwrite one another. Flag it on the
+		// new registrant's side; duplicate-detection-on-existing would
+		// require re-reading numIndex entries here, which we avoid on
+		// the hot path.
+		if len(existing) > 0 && param.StreamDescriptor == nil && p.profile != nil {
+			isNewPath := true
+			for _, k := range existing {
+				if k == key {
+					isNewPath = false
+					break
+				}
+			}
+			if isNewPath {
+				p.profile.Note(compliance.StreamIDCollisionNoDescriptor)
+			}
+		}
+		p.streamIndex[param.StreamIdentifier] = appendUnique(existing, key)
 		p.subsMu.Unlock()
+
+		// If wildcard watch is active, send Command 30 for this
+		// stream on first discovery. Without this, stream-backed
+		// Parameters stay silent under `acp watch` (the provider
+		// requires explicit subscription, spec p.30–31).
+		p.maybeWildcardStreamSubscribe(entry)
 	}
 	p.notifySubscribers(entry)
+	// Resolve any SetValue waiting on this OID. Done last so the
+	// caller's Value reflects the post-merge state.
+	p.signalPendingSet(entry)
 }
 
 // processMatrix stores a Matrix with all raw contents + targets/sources/
@@ -1335,7 +1675,8 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	p.treeMu.RUnlock()
 
 	var state *matrix.State
-	if existing != nil && existing.matrixState != nil {
+	isInitial := existing == nil || existing.matrixState == nil
+	if !isInitial {
 		state = existing.matrixState
 		for _, c := range m.Connections {
 			state.ApplyConnection(c, matrix.ChangeAnnounce)
@@ -1366,6 +1707,19 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	}
 	p.storeEntry(entry, stringPath)
 
+	// Notify subscribers of matrix crosspoint changes. On the first
+	// sight of a matrix (isInitial=true) we do NOT fire per-connection
+	// events — that would flood the watch with initial-state noise.
+	// On subsequent updates each announced Connection is a genuine
+	// crosspoint delta and fires one event. The Event carries the
+	// matrix OID/Path plus a MatrixChange payload identifying the
+	// specific crosspoint within it.
+	if !isInitial {
+		for _, c := range m.Connections {
+			p.notifyMatrixSubscribers(entry, c)
+		}
+	}
+
 	for _, child := range m.Children {
 		p.processElement(child, stringPath, numPath)
 	}
@@ -1385,6 +1739,55 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 			}()
 		}
 	}
+}
+
+// notifyMatrixSubscribers fires one event per crosspoint change
+// observed on an announce. Targets the per-matrix-OID callback if
+// one is registered, falling back to the wildcard "*".
+func (p *Plugin) notifyMatrixSubscribers(entry *treeEntry, c glow.Connection) {
+	if entry == nil || entry.glowMatrix == nil {
+		return
+	}
+	numKey := numericKey(entry.numericPath)
+	p.subsMu.RLock()
+	fn := p.subs[numKey]
+	wildcard := p.subs["*"]
+	p.subsMu.RUnlock()
+	if fn == nil {
+		fn = wildcard
+	}
+	if fn == nil {
+		return
+	}
+
+	sources := make([]int64, 0, len(c.Sources))
+	for _, s := range c.Sources {
+		sources = append(sources, int64(s))
+	}
+
+	desc := ""
+	if entry.glowMatrix != nil {
+		desc = entry.glowMatrix.Description
+	}
+	fn(protocol.Event{
+		Slot:        0,
+		ID:          entry.obj.ID,
+		OID:         entry.obj.OID,
+		Path:        strings.Join(entry.obj.Path, "."),
+		Label:       entry.obj.Label,
+		Description: desc,
+		Access:      entry.obj.Access,
+		Group:       entry.obj.Group,
+		Freshness:   freshnessLabel(entry.freshness),
+		Timestamp:   time.Now(),
+		MatrixChange: &protocol.MatrixChange{
+			Target:      int64(c.Target),
+			Sources:     sources,
+			Operation:   connOpName(c.Operation),
+			Disposition: connDispName(c.Disposition),
+			Locked:      connDispName(c.Disposition) == "locked",
+		},
+	})
 }
 
 // processFunction stores a Function record; invocation plumbing lives in
@@ -1455,15 +1858,42 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 		fn = wildcard
 	}
 	if fn != nil {
+		desc := ""
+		if entry.glowParam != nil {
+			desc = entry.glowParam.Description
+		}
+		changes := entry.pendingChanges
+		entry.pendingChanges = nil
 		fn(protocol.Event{
-			Slot:      0,
-			ID:        entry.obj.ID,
-			Label:     entry.obj.Label,
-			Group:     entry.obj.Group,
-			Value:     entry.obj.Value,
-			Timestamp: time.Now(),
+			Slot:        0,
+			ID:          entry.obj.ID,
+			OID:         entry.obj.OID,
+			Path:        strings.Join(entry.obj.Path, "."),
+			Label:       entry.obj.Label,
+			Description: desc,
+			Access:      entry.obj.Access,
+			Group:       entry.obj.Group,
+			Value:       entry.obj.Value,
+			Freshness:   freshnessLabel(entry.freshness),
+			Changes:     changes,
+			Timestamp:   time.Now(),
 		})
 	}
+}
+
+// freshnessLabel maps the internal Freshness enum to the canonical
+// string used on protocol.Event.Freshness. Keeps the enum internal
+// while the public surface stays string-based.
+func freshnessLabel(f Freshness) string {
+	switch f {
+	case FreshnessLive:
+		return "live"
+	case FreshnessUpdated:
+		return "updated"
+	case FreshnessStale:
+		return "stale"
+	}
+	return ""
 }
 
 // pathForElement builds the human-readable identifier path. Prefers the
