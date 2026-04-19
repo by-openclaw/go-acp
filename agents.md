@@ -491,13 +491,21 @@ Ember+ stubs pending fixtures.
 |---|---|---|
 | ACP1 | ✅ on main | UDP/TCP direct, all 11 object types + MDATA decode |
 | ACP2 | ✅ on main | AN2 framing, all 20 PIDs with 4-byte alignment |
-| Ember+ | 🟢 PR #55 | S101 + CRC + full Glow BER walker + multi-packet reassembly + Info-column content summary (Matrix/Function/Parameter/Stream/InvocationResult) + TCP 9000/9090/9092 auto + any-port heuristic |
+| Ember+ | ✅ on main | S101 + CRC + full Glow BER walker + multi-packet reassembly + Info-column content summary (Matrix/Function/Parameter/Stream/InvocationResult) + TCP 9000/9090/9092 auto + any-port heuristic |
+
+**Per-type fixture library** (`tests/fixtures/protocol_types/<proto>/<type>/`): one slimmed capture + frozen `tshark -V` tree + README per wire element type. Generator: `scripts/fixturize.sh <src.pcapng> <dst-dir> <frame-list>` or `make fixtures-emberplus`. Smoke-verified in CI by `tests/unit/fixture_parity/*_test.go` — the test asserts fixture integrity (pcap/tree/README present, expected APP tags in tree) without requiring tshark at runtime.
+
+| Protocol | #types shipped | Gap (capture needed) |
+|---|---|---|
+| Ember+ | 14 | StreamDescription (APP 12), QualifiedFunction (20), TupleItemDescription (21), Template (24), QualifiedTemplate (25) — TinyEmber+ / TinyEmberPlusRouter don't publish these. Re-capture from a Lawo / DHD / Riedel provider. |
+| ACP1 | — | queued: per-type fixture pass against Synapse emulator 10.6.239.113 |
+| ACP2 | — | queued: per-type fixture pass against VM 10.41.40.195 |
 
 **Dissector enhancement backlog**:
 - #57 — ACP1 Info column watch-style summary + full `slot.group.id` path
 - #58 — ACP2 Info column watch-style summary + full `slot.obj_id` path
 - #59 — Ember+ watch-parity (dotted identifier, matrix labels, value diff) — needs per-conversation state
-- #60 — Per-type fixtures under `tests/fixtures/protocol_types/<proto>/<type>/{capture.pcapng,tshark.tree,README.md}`. Slimmed captures (<30 KB) via `editcap` so the whole fixture set fits as regular git blobs. CI parity test diffs `tshark -V` output against frozen `tshark.tree`.
+- #60 — ✅ Ember+ per-type fixtures shipped (14 types). Layout: `tests/fixtures/protocol_types/emberplus/<type>/{capture.pcapng,tshark.tree,README.md}`. Follow-up issue tracks the 5 missing Glow types.
 
 **Tshark self-verification loop**: developer can iterate on Ember+ autonomously against loopback TinyEmber+ (ports 9000/9092) without user-in-the-loop. ACP1 (emulator 10.6.239.113) + ACP2 (VM 10.41.40.195) require user-side execution for captures.
 

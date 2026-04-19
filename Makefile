@@ -122,6 +122,29 @@ test-integration-acp1:
 test-integration-acp2:
 	$(GO) test -tags integration ./tests/integration/acp2/...
 
+# ---------------------------------------------------------------- Fixtures
+
+.PHONY: fixtures-emberplus
+
+# Re-extract all Ember+ per-type fixtures from bin/*.pcapng sources.
+# Requires Wireshark (tshark + editcap) on PATH. See
+# tests/fixtures/protocol_types/emberplus/README.md for the fixture map.
+fixtures-emberplus:
+	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   tests/fixtures/protocol_types/emberplus/root_node              1
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_labels_param_lua.pcapng   tests/fixtures/protocol_types/emberplus/qualified_node         582
+	@scripts/fixturize.sh bin/emberplus_glow_glow_lua.pcapng               tests/fixtures/protocol_types/emberplus/parameter              19
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_labels_param_lua.pcapng   tests/fixtures/protocol_types/emberplus/qualified_parameter    19
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng                tests/fixtures/protocol_types/emberplus/matrix                 41
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng                tests/fixtures/protocol_types/emberplus/qualified_matrix       43
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng                tests/fixtures/protocol_types/emberplus/matrix_connection      41
+	@scripts/fixturize.sh bin/emberplus_glow_lua.pcapng                    tests/fixtures/protocol_types/emberplus/label                  127
+	@scripts/fixturize.sh bin/emberplus_glow_lua.pcapng                    tests/fixtures/protocol_types/emberplus/stream_collection      9
+	@scripts/fixturize.sh bin/emberplus_glow_lua.pcapng                    tests/fixtures/protocol_types/emberplus/command_get_directory  125
+	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   tests/fixtures/protocol_types/emberplus/command_subscribe      52
+	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   tests/fixtures/protocol_types/emberplus/command_unsubscribe    105
+	@scripts/fixturize.sh bin/emberplus_glow_functions_lua.pcapng          tests/fixtures/protocol_types/emberplus/function_invoke        346
+	@scripts/fixturize.sh bin/emberplus_glow_functions_lua.pcapng          tests/fixtures/protocol_types/emberplus/invocation_result      348
+
 # ---------------------------------------------------------------- Lint / vet / fmt
 
 .PHONY: lint vet fmt fmt-check tidy

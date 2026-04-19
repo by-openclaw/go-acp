@@ -1,0 +1,305 @@
+Frame 1: Packet, 132 bytes on wire (1056 bits), 132 bytes captured (1056 bits) on interface \Device\NPF_Loopback, id 0
+    Section number: 1
+    Interface id: 0 (\Device\NPF_Loopback)
+        Interface name: \Device\NPF_Loopback
+        Interface description: Adapter for loopback traffic capture
+    Encapsulation type: NULL/Loopback (15)
+    Arrival Time: [frozen]
+    UTC Arrival Time: [frozen]
+    Epoch Arrival Time: [frozen]
+    [Time shift for this packet: [frozen]
+    [Time since ref: [frozen]
+    Frame Number: 1
+    Frame Length: 132 bytes (1056 bits)
+    Capture Length: 132 bytes (1056 bits)
+    [Frame is marked: False]
+    [Frame is ignored: False]
+    [Protocols in frame: null:ip:tcp:emberplus]
+    Character encoding: ASCII (0)
+Null/Loopback
+    Family: IP (2)
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+    0100 .... = Version: 4
+    .... 0101 = Header Length: 20 bytes (5)
+    Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)
+        0000 00.. = Differentiated Services Codepoint: Default (0)
+        .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
+    Total Length: 128
+    Identification: 0x32c1 (12993)
+    010. .... = Flags: 0x2, Don't fragment
+        0... .... = Reserved bit: Not set
+        .1.. .... = Don't fragment: Set
+        ..0. .... = More fragments: Not set
+    ...0 0000 0000 0000 = Fragment Offset: 0
+    Time to Live: 128
+    Protocol: TCP (6)
+    Header Checksum: 0xc9b4 [validation disabled]
+    [Header checksum status: Unverified]
+    Source Address: 127.0.0.1
+    Destination Address: 127.0.0.1
+    [Stream index: 0]
+Transmission Control Protocol, Src Port: 51083, Dst Port: 9092, Seq: 1, Ack: 1, Len: 88
+    Source Port: 51083
+    Destination Port: 9092
+    [Stream index: 0]
+    [Stream Packet Number: 1]
+    [Conversation completeness: Incomplete (0)]
+        ..0. .... = RST: Absent
+        ...0 .... = FIN: Absent
+        .... 0... = Data: Absent
+        .... .0.. = ACK: Absent
+        .... ..0. = SYN-ACK: Absent
+        .... ...0 = SYN: Absent
+        [Completeness Flags: [ Null ]]
+    [TCP Segment Len: 88]
+    Sequence Number: 1    (relative sequence number)
+    Sequence Number (raw): 1950417322
+    [Next Sequence Number: 89    (relative sequence number)]
+    Acknowledgment Number: 1    (relative ack number)
+    Acknowledgment number (raw): 3232322685
+    0101 .... = Header Length: 20 bytes (5)
+    Flags: 0x018 (PSH, ACK)
+        000. .... .... = Reserved: Not set
+        ...0 .... .... = Accurate ECN: Not set
+        .... 0... .... = Congestion Window Reduced: Not set
+        .... .0.. .... = ECN-Echo: Not set
+        .... ..0. .... = Urgent: Not set
+        .... ...1 .... = Acknowledgment: Set
+        .... .... 1... = Push: Set
+        .... .... .0.. = Reset: Not set
+        .... .... ..0. = Syn: Not set
+        .... .... ...0 = Fin: Not set
+        [TCP Flags: ·······AP···]
+    Window: 251
+    [Calculated window size: 251]
+    [Window size scaling factor: -1 (unknown)]
+    Checksum: 0x9dd0 [unverified]
+    [Checksum Status: Unverified]
+    Urgent Pointer: 0
+    [Timestamps]
+        [Time since first frame in this TCP stream: 0.000000000 seconds]
+        [Time since previous frame in this TCP stream: 0.000000000 seconds]
+    [Client Contiguous Streams: 0]
+    [Server Contiguous Streams: 1]
+    TCP payload (88 bytes)
+Ember+ (S101)
+    BoF: 0xfe
+    EoF: 0xff
+    Unescaped Content: 000e0001c001021f0260496b47a0456343a003020101a23c643aa0386336a003020104a22f642da02b7329a003020101a2226420a01e621ca003020121a2157613a003020108a10c300aa003020105a003020107c54a
+    Slot: 0
+    Msg Type: EmBER / KeepAlive (0x0e)
+    Command: EmBER (Glow data) (0x00)
+    Version: 1
+    CRC: 0x4ac5
+    [CRC Status: OK]
+    Flags: Single packet (0xc0)
+    DTD Type: Glow (0x01)
+    App Bytes Length: 2
+    App Bytes: 1f02
+    Glow Payload (75 bytes reassembled) — Root { RootElementCollection [Function] } → Function #1
+        [APPLICATION 0] Root {}
+            Class: Application (1)
+            Constructed: True
+            Tag Number: 0
+            Tag Name: Root
+            Length: 73
+            [APPLICATION 11] RootElementCollection {}
+                Class: Application (1)
+                Constructed: True
+                Tag Number: 11
+                Tag Name: RootElementCollection
+                Length: 71
+                [CONTEXT 0] {}
+                    Class: Context (2)
+                    Constructed: True
+                    Tag Number: 0
+                    Length: 69
+                    [APPLICATION 3] Node {}
+                        Class: Application (1)
+                        Constructed: True
+                        Tag Number: 3
+                        Tag Name: Node
+                        Length: 67
+                        [0] number {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 0
+                            Tag Name: number
+                            Length: 3
+                            INTEGER = 1
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 1
+                                Value (int): 1
+                        [2] children {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 2
+                            Tag Name: children
+                            Length: 60
+                            [APPLICATION 4] ElementCollection {}
+                                Class: Application (1)
+                                Constructed: True
+                                Tag Number: 4
+                                Tag Name: ElementCollection
+                                Length: 58
+                                [CONTEXT 0] {}
+                                    Class: Context (2)
+                                    Constructed: True
+                                    Tag Number: 0
+                                    Length: 56
+                                    [APPLICATION 3] Node {}
+                                        Class: Application (1)
+                                        Constructed: True
+                                        Tag Number: 3
+                                        Tag Name: Node
+                                        Length: 54
+                                        [0] number {}
+                                            Class: Context (2)
+                                            Constructed: True
+                                            Tag Number: 0
+                                            Tag Name: number
+                                            Length: 3
+                                            INTEGER = 4
+                                                Class: Universal (0)
+                                                Constructed: False
+                                                Tag Number: 2
+                                                Tag Name: INTEGER
+                                                Length: 1
+                                                Value (int): 4
+                                        [2] children {}
+                                            Class: Context (2)
+                                            Constructed: True
+                                            Tag Number: 2
+                                            Tag Name: children
+                                            Length: 47
+                                            [APPLICATION 4] ElementCollection {}
+                                                Class: Application (1)
+                                                Constructed: True
+                                                Tag Number: 4
+                                                Tag Name: ElementCollection
+                                                Length: 45
+                                                [CONTEXT 0] {}
+                                                    Class: Context (2)
+                                                    Constructed: True
+                                                    Tag Number: 0
+                                                    Length: 43
+                                                    [APPLICATION 19] Function {}
+                                                        Class: Application (1)
+                                                        Constructed: True
+                                                        Tag Number: 19
+                                                        Tag Name: Function
+                                                        Length: 41
+                                                        [0] number {}
+                                                            Class: Context (2)
+                                                            Constructed: True
+                                                            Tag Number: 0
+                                                            Tag Name: number
+                                                            Length: 3
+                                                            INTEGER = 1
+                                                                Class: Universal (0)
+                                                                Constructed: False
+                                                                Tag Number: 2
+                                                                Tag Name: INTEGER
+                                                                Length: 1
+                                                                Value (int): 1
+                                                        [2] children {}
+                                                            Class: Context (2)
+                                                            Constructed: True
+                                                            Tag Number: 2
+                                                            Tag Name: children
+                                                            Length: 34
+                                                            [APPLICATION 4] ElementCollection {}
+                                                                Class: Application (1)
+                                                                Constructed: True
+                                                                Tag Number: 4
+                                                                Tag Name: ElementCollection
+                                                                Length: 32
+                                                                [CONTEXT 0] {}
+                                                                    Class: Context (2)
+                                                                    Constructed: True
+                                                                    Tag Number: 0
+                                                                    Length: 30
+                                                                    [APPLICATION 2] Command {}
+                                                                        Class: Application (1)
+                                                                        Constructed: True
+                                                                        Tag Number: 2
+                                                                        Tag Name: Command
+                                                                        Length: 28
+                                                                        [0] number {}
+                                                                            Class: Context (2)
+                                                                            Constructed: True
+                                                                            Tag Number: 0
+                                                                            Tag Name: number
+                                                                            Length: 3
+                                                                            INTEGER = 33 (Invoke)
+                                                                                Class: Universal (0)
+                                                                                Constructed: False
+                                                                                Tag Number: 2
+                                                                                Tag Name: INTEGER
+                                                                                Length: 1
+                                                                                Value (int): 33
+                                                                        [2] invocation {}
+                                                                            Class: Context (2)
+                                                                            Constructed: True
+                                                                            Tag Number: 2
+                                                                            Tag Name: invocation
+                                                                            Length: 21
+                                                                            [APPLICATION 22] Invocation {}
+                                                                                Class: Application (1)
+                                                                                Constructed: True
+                                                                                Tag Number: 22
+                                                                                Tag Name: Invocation
+                                                                                Length: 19
+                                                                                [0] invocationID {}
+                                                                                    Class: Context (2)
+                                                                                    Constructed: True
+                                                                                    Tag Number: 0
+                                                                                    Tag Name: invocationID
+                                                                                    Length: 3
+                                                                                    INTEGER = 8
+                                                                                        Class: Universal (0)
+                                                                                        Constructed: False
+                                                                                        Tag Number: 2
+                                                                                        Tag Name: INTEGER
+                                                                                        Length: 1
+                                                                                        Value (int): 8
+                                                                                [1] arguments {}
+                                                                                    Class: Context (2)
+                                                                                    Constructed: True
+                                                                                    Tag Number: 1
+                                                                                    Tag Name: arguments
+                                                                                    Length: 12
+                                                                                    SEQUENCE {}
+                                                                                        Class: Universal (0)
+                                                                                        Constructed: True
+                                                                                        Tag Number: 16
+                                                                                        Tag Name: SEQUENCE
+                                                                                        Length: 10
+                                                                                        [CONTEXT 0] {}
+                                                                                            Class: Context (2)
+                                                                                            Constructed: True
+                                                                                            Tag Number: 0
+                                                                                            Length: 3
+                                                                                            INTEGER = 5
+                                                                                                Class: Universal (0)
+                                                                                                Constructed: False
+                                                                                                Tag Number: 2
+                                                                                                Tag Name: INTEGER
+                                                                                                Length: 1
+                                                                                                Value (int): 5
+                                                                                        [CONTEXT 0] {}
+                                                                                            Class: Context (2)
+                                                                                            Constructed: True
+                                                                                            Tag Number: 0
+                                                                                            Length: 3
+                                                                                            INTEGER = 7
+                                                                                                Class: Universal (0)
+                                                                                                Constructed: False
+                                                                                                Tag Number: 2
+                                                                                                Tag Name: INTEGER
+                                                                                                Length: 1
+                                                                                                Value (int): 7
+

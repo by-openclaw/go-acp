@@ -1,0 +1,297 @@
+Frame 1: Packet, 136 bytes on wire (1088 bits), 136 bytes captured (1088 bits) on interface \Device\NPF_Loopback, id 0
+    Section number: 1
+    Interface id: 0 (\Device\NPF_Loopback)
+        Interface name: \Device\NPF_Loopback
+        Interface description: Adapter for loopback traffic capture
+    Encapsulation type: NULL/Loopback (15)
+    Arrival Time: [frozen]
+    UTC Arrival Time: [frozen]
+    Epoch Arrival Time: [frozen]
+    [Time shift for this packet: [frozen]
+    [Time since ref: [frozen]
+    Frame Number: 1
+    Frame Length: 136 bytes (1088 bits)
+    Capture Length: 136 bytes (1088 bits)
+    [Frame is marked: False]
+    [Frame is ignored: False]
+    [Protocols in frame: null:ip:tcp:emberplus]
+    Character encoding: ASCII (0)
+Null/Loopback
+    Family: IP (2)
+Internet Protocol Version 4, Src: 10.6.239.113, Dst: 10.6.239.113
+    0100 .... = Version: 4
+    .... 0101 = Header Length: 20 bytes (5)
+    Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)
+        0000 00.. = Differentiated Services Codepoint: Default (0)
+        .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
+    Total Length: 132
+    Identification: 0x8171 (33137)
+    010. .... = Flags: 0x2, Don't fragment
+        0... .... = Reserved bit: Not set
+        .1.. .... = Don't fragment: Set
+        ..0. .... = More fragments: Not set
+    ...0 0000 0000 0000 = Fragment Offset: 0
+    Time to Live: 128
+    Protocol: TCP (6)
+    Header Checksum: 0x8613 [validation disabled]
+    [Header checksum status: Unverified]
+    Source Address: 10.6.239.113
+    Destination Address: 10.6.239.113
+    [Stream index: 0]
+Transmission Control Protocol, Src Port: 9000, Dst Port: 55109, Seq: 1, Ack: 1, Len: 92
+    Source Port: 9000
+    Destination Port: 55109
+    [Stream index: 0]
+    [Stream Packet Number: 1]
+    [Conversation completeness: Incomplete (0)]
+        ..0. .... = RST: Absent
+        ...0 .... = FIN: Absent
+        .... 0... = Data: Absent
+        .... .0.. = ACK: Absent
+        .... ..0. = SYN-ACK: Absent
+        .... ...0 = SYN: Absent
+        [Completeness Flags: [ Null ]]
+    [TCP Segment Len: 92]
+    Sequence Number: 1    (relative sequence number)
+    Sequence Number (raw): 1738183495
+    [Next Sequence Number: 93    (relative sequence number)]
+    Acknowledgment Number: 1    (relative ack number)
+    Acknowledgment number (raw): 1574329743
+    0101 .... = Header Length: 20 bytes (5)
+    Flags: 0x018 (PSH, ACK)
+        000. .... .... = Reserved: Not set
+        ...0 .... .... = Accurate ECN: Not set
+        .... 0... .... = Congestion Window Reduced: Not set
+        .... .0.. .... = ECN-Echo: Not set
+        .... ..0. .... = Urgent: Not set
+        .... ...1 .... = Acknowledgment: Set
+        .... .... 1... = Push: Set
+        .... .... .0.. = Reset: Not set
+        .... .... ..0. = Syn: Not set
+        .... .... ...0 = Fin: Not set
+        [TCP Flags: ·······AP···]
+    Window: 1020
+    [Calculated window size: 1020]
+    [Window size scaling factor: -1 (unknown)]
+    Checksum: 0x2a83 [unverified]
+    [Checksum Status: Unverified]
+    Urgent Pointer: 0
+    [Timestamps]
+        [Time since first frame in this TCP stream: 0.000000000 seconds]
+        [Time since previous frame in this TCP stream: 0.000000000 seconds]
+    [Client Contiguous Streams: 0]
+    [Server Contiguous Streams: 1]
+    TCP payload (92 bytes)
+Ember+ (S101)
+    BoF: 0xfe
+    EoF: 0xff
+    Unescaped Content: 000e0001c001021f02604c664aa00d650ba003020101a1040202d421a00d650ba003020102a1040202e216a00d650ba003020103a1040202db17a00d650ba003020104a1040202e35ea00c650aa003020105a10304014ff959
+    Slot: 0
+    Msg Type: EmBER / KeepAlive (0x0e)
+    Command: EmBER (Glow data) (0x00)
+    Version: 1
+    CRC: 0x59f9
+    [CRC Status: OK]
+    Flags: Single packet (0xc0)
+    DTD Type: Glow (0x01)
+    App Bytes Length: 2
+    App Bytes: 1f02
+    Glow Payload (78 bytes reassembled) — Root { StreamCollection [5] } → #1 = -11231
+        [APPLICATION 0] Root {}
+            Class: Application (1)
+            Constructed: True
+            Tag Number: 0
+            Tag Name: Root
+            Length: 76
+            [APPLICATION 6] StreamCollection {}
+                Class: Application (1)
+                Constructed: True
+                Tag Number: 6
+                Tag Name: StreamCollection
+                Length: 74
+                [CONTEXT 0] {}
+                    Class: Context (2)
+                    Constructed: True
+                    Tag Number: 0
+                    Length: 13
+                    [APPLICATION 5] StreamEntry {}
+                        Class: Application (1)
+                        Constructed: True
+                        Tag Number: 5
+                        Tag Name: StreamEntry
+                        Length: 11
+                        [0] streamIdentifier {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 0
+                            Tag Name: streamIdentifier
+                            Length: 3
+                            INTEGER = 1
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 1
+                                Value (int): 1
+                        [1] streamValue {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 1
+                            Tag Name: streamValue
+                            Length: 4
+                            INTEGER = -11231
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 2
+                                Value (int): -11231
+                [CONTEXT 0] {}
+                    Class: Context (2)
+                    Constructed: True
+                    Tag Number: 0
+                    Length: 13
+                    [APPLICATION 5] StreamEntry {}
+                        Class: Application (1)
+                        Constructed: True
+                        Tag Number: 5
+                        Tag Name: StreamEntry
+                        Length: 11
+                        [0] streamIdentifier {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 0
+                            Tag Name: streamIdentifier
+                            Length: 3
+                            INTEGER = 2
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 1
+                                Value (int): 2
+                        [1] streamValue {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 1
+                            Tag Name: streamValue
+                            Length: 4
+                            INTEGER = -7658
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 2
+                                Value (int): -7658
+                [CONTEXT 0] {}
+                    Class: Context (2)
+                    Constructed: True
+                    Tag Number: 0
+                    Length: 13
+                    [APPLICATION 5] StreamEntry {}
+                        Class: Application (1)
+                        Constructed: True
+                        Tag Number: 5
+                        Tag Name: StreamEntry
+                        Length: 11
+                        [0] streamIdentifier {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 0
+                            Tag Name: streamIdentifier
+                            Length: 3
+                            INTEGER = 3
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 1
+                                Value (int): 3
+                        [1] streamValue {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 1
+                            Tag Name: streamValue
+                            Length: 4
+                            INTEGER = -9449
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 2
+                                Value (int): -9449
+                [CONTEXT 0] {}
+                    Class: Context (2)
+                    Constructed: True
+                    Tag Number: 0
+                    Length: 13
+                    [APPLICATION 5] StreamEntry {}
+                        Class: Application (1)
+                        Constructed: True
+                        Tag Number: 5
+                        Tag Name: StreamEntry
+                        Length: 11
+                        [0] streamIdentifier {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 0
+                            Tag Name: streamIdentifier
+                            Length: 3
+                            INTEGER = 4
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 1
+                                Value (int): 4
+                        [1] streamValue {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 1
+                            Tag Name: streamValue
+                            Length: 4
+                            INTEGER = -7330
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 2
+                                Value (int): -7330
+                [CONTEXT 0] {}
+                    Class: Context (2)
+                    Constructed: True
+                    Tag Number: 0
+                    Length: 12
+                    [APPLICATION 5] StreamEntry {}
+                        Class: Application (1)
+                        Constructed: True
+                        Tag Number: 5
+                        Tag Name: StreamEntry
+                        Length: 10
+                        [0] streamIdentifier {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 0
+                            Tag Name: streamIdentifier
+                            Length: 3
+                            INTEGER = 5
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 2
+                                Tag Name: INTEGER
+                                Length: 1
+                                Value (int): 5
+                        [1] streamValue {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 1
+                            Tag Name: streamValue
+                            Length: 3
+                            OCTET STRING
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 4
+                                Tag Name: OCTET STRING
+                                Length: 1
+                                Value (octets): 4f
+
