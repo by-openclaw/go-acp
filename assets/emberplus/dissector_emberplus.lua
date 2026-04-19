@@ -1051,6 +1051,17 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
                 child_scope = scope_function_contents
             elseif class == 2 and scope == wrapper_scope_by_app[20] and tag_num == 1 then
                 child_scope = scope_function_contents
+            elseif class == 2 and scope == scope_invocation and (tag_num == 0 or tag_num == 1) then
+                -- Inside Invocation, [0] is invocationID (keep scope),
+                -- [1] is arguments Tuple — descend with no scope so tuple
+                -- items are NOT mislabelled as invocationID.
+                if tag_num == 1 then child_scope = nil else child_scope = scope end
+            elseif class == 2 and scope == scope_invocation_result and (tag_num == 0 or tag_num == 1 or tag_num == 2) then
+                -- [0] invocationID, [1] success — keep scope.
+                -- [2] result Tuple — drop scope. (Can't use `x and nil or scope`
+                -- ternary — Lua's nil short-circuits `and`, so it resolves to
+                -- scope instead of nil.)
+                if tag_num == 2 then child_scope = nil else child_scope = scope end
             end
             walk_ber(ba, unesc_tvb, value_off, value_len, node, child_scope, depth + 1)
         else
