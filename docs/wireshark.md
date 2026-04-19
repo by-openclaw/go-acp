@@ -67,7 +67,7 @@ unchecked it, run the installer again and enable it.
 Close and re-open Wireshark. On the start screen open
 **Analyze → Enabled Protocols** and verify the three protocols are listed:
 
-- `ep_s101` — S101 / Ember+ (with child `ep_glow` for the BER tree)
+- `emberplus` — Ember+ / S101 (with child `emberplus_glow` for the BER tree)
 - `acp2_msg` / `an2_acp2` — ACP2 + AN2 transport
 - `acp1` — ACP1
 
@@ -106,14 +106,14 @@ up the default ports automatically.
 | All ACP2 traffic             | `acp2 or an2`                 |
 | ACP2 announces               | `acp2.type == 2`              |
 | ACP2 errors                  | `acp2.type == 3`              |
-| All Ember+ traffic           | `ep_s101`                     |
+| All Ember+ traffic           | `emberplus`                   |
 | Ember+ keep-alive only       | `emberplus.s101.command == 0x01 or emberplus.s101.command == 0x02` |
-| Ember+ Glow elements         | `ep_glow`                     |
+| Ember+ Glow elements         | `emberplus_glow`              |
 
 ### Decode As… (non-default ports)
 
 If your provider runs on a port we don't register by default, right-click a
-packet → **Decode As…** → pick the appropriate protocol (`ep_s101`,
+packet → **Decode As…** → pick the appropriate protocol (`emberplus`,
 `acp2_msg`, `acp1`) → OK. The rule is saved for the session; tick **Save**
 to make it persistent.
 
@@ -142,7 +142,7 @@ live debugging.
 |-----------------------------------------|----------------------------------------------------------------------------|
 | Protocol column is blank                | Confirm the port matches a registered default, or use **Decode As…**.      |
 | "Lua: Error during loading" on startup  | **View → Lua → Evaluate** to see stack trace; check Wireshark version ≥ 4. |
-| Ember+ frames show only raw bytes       | `ep_s101` heuristic disabled under **Analyze → Enabled Protocols**. |
+| Ember+ frames show only raw bytes       | `emberplus` heuristic disabled under **Analyze → Enabled Protocols**. |
 | CRC mismatch on every Ember+ frame      | Your provider uses non-standard escaping — open an issue with a pcap.      |
 | Tree recursion cut off at depth 20      | Malformed Glow tree. Grab the pcap and file a spec-deviation bug.          |
 

@@ -237,8 +237,8 @@ local contents_scope_by_app = {
 -- Protocol declarations
 -------------------------------------------------------------------------------
 
-local s101_proto = Proto("ep_s101", "S101 / Ember+")
-local glow_proto = Proto("ep_glow", "Glow BER")
+local s101_proto = Proto("emberplus",      "Ember+ (S101)")
+local glow_proto = Proto("emberplus_glow", "Ember+ Glow BER")
 
 -------------------------------------------------------------------------------
 -- ProtoFields
