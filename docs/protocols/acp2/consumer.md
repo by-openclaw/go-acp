@@ -442,6 +442,22 @@ acp import 10.41.40.195 --protocol acp2 --file slot0.yaml --dry-run
 acp import 10.41.40.195 --protocol acp2 --file slot0.yaml
 ```
 
+### CSV columns (lossless round-trip, issue #38)
+
+ACP2 labels collide freely across sub-trees (e.g. `Present` lives
+under `PSU.1` and `PSU.2` with different obj-ids). CSV round-trip
+carries `id` — the globally-unique u32 obj-id — and uses it as the
+importer's matching key. `oid` is empty for ACP2; `path` records the
+tree location for human readability.
+
+```
+acp convert --in slot0.json --out slot0.csv
+acp import  10.41.40.195 --protocol acp2 --file slot0.csv --dry-run   # applied N, failed 0
+```
+
+`failed 0` on an unchanged device confirms duplicate-label sub-nodes
+round-trip unambiguously.
+
 ---
 
 ## Raw Capture

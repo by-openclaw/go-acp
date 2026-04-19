@@ -115,16 +115,48 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 				continue
 			}
 
-			// ACP2 can have duplicate labels across sub-nodes (e.g.
-			// "Present" under PSU/1 and PSU/2). Use ID when available
-			// for unambiguous matching; fall back to label for ACP1.
-			req := protocol.ValueRequest{
-				Slot: dump.Slot,
-			}
-			if obj.ID > 0 {
+			// Per-protocol resolution — the plugins each accept a
+			// different subset of ValueRequest fields:
+			//   acp1      : (Group + ID) or (Group + Label). Labels
+			//               are unique within a group.
+			//   acp2      : ID (globally unique u32 obj-id). Labels
+			//               collide across sub-nodes so are unsafe.
+			//   emberplus : Path (dotted OID preferred) via numIndex.
+			// Populating unused fields is harmless; what matters is
+			// that *at least one* unique key is set. CSV round-trip
+			// (issue #38) carries oid + path + id + label so every
+			// protocol gets its unambiguous key back.
+			req := protocol.ValueRequest{Slot: dump.Slot}
+			switch s.Device.Protocol {
+			case "acp1":
+				req.Group = obj.Group
+				if req.Group == "" && len(obj.Path) > 0 {
+					req.Group = obj.Path[0]
+				}
 				req.ID = obj.ID
-			} else {
 				req.Label = obj.Label
+			case "acp2":
+				req.ID = obj.ID
+			case "emberplus":
+				switch {
+				case obj.OID != "":
+					req.Path = obj.OID
+				case len(obj.Path) > 0:
+					req.Path = strings.Join(obj.Path, ".")
+				default:
+					req.Label = obj.Label
+				}
+			default:
+				// Unknown protocol — set every field we have and hope
+				// the plugin's resolver picks one.
+				req.Group = obj.Group
+				req.ID = obj.ID
+				req.Label = obj.Label
+				if obj.OID != "" {
+					req.Path = obj.OID
+				} else if len(obj.Path) > 0 {
+					req.Path = strings.Join(obj.Path, ".")
+				}
 			}
 			if dryRun {
 				rep.Applied++

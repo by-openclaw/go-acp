@@ -13,10 +13,14 @@ import (
 // csvHeader is the fixed column order every row follows. Adding a
 // column is a breaking change for any consumer that parses this file
 // by position — prefer parsing by header name.
-// csvHeader — value and value_name are right after label so the "edit
-// me" column is visible in Excel without scrolling.
+//
+// oid + path + id + label together make the CSV a lossless round-trip
+// carrier: oid disambiguates Ember+ elements whose labels collide
+// across sub-trees; path records the dotted tree location; id is the
+// numeric handle ACP1/ACP2 importers match by. Readers fall back to
+// the legacy `group` column when present (pre-#38 exports).
 var csvHeader = []string{
-	"ip", "protocol", "slot", "group",
+	"ip", "protocol", "slot", "oid", "path",
 	"id", "label", "kind", "access",
 	"value", "value_name",
 	"unit", "min", "max", "step", "default",
@@ -31,13 +35,15 @@ var csvHeader = []string{
 // intra-cell separator — chosen to avoid conflict with the CSV `,`
 // delimiter and European Excel `;`.
 //
-// CSV is lossy by design:
+// CSV still has shape limitations vs JSON:
 //   - Preset depth indices (ACP2) are not represented — only the
 //     active-index row is emitted.
-//   - Hierarchical paths deeper than one level are joined with `/`.
+//   - Hierarchical paths are joined with `/`; reader splits them back.
 //   - Raw byte values are hex-encoded.
 //
-// For lossless round-trip use JSON or YAML.
+// Writable-object round-trip is lossless: every scalar field the
+// importer needs (oid, path, id, label, kind, value, access) survives
+// a JSON → CSV → JSON → import --dry-run with zero diff (issue #38).
 func WriteCSV(w io.Writer, s *Snapshot) error {
 	cw := csv.NewWriter(w)
 	defer cw.Flush()
@@ -75,39 +81,40 @@ func WriteCSV(w io.Writer, s *Snapshot) error {
 // csvHeader. Missing fields become empty strings.
 func buildCSVRow(dev DeviceInfo, slot SlotDump, o protocol.Object) []string {
 	row := make([]string, len(csvHeader))
-	// ip, protocol, slot, group
+	// ip, protocol, slot, oid, path
 	row[0] = dev.IP
 	row[1] = dev.Protocol
 	row[2] = strconv.Itoa(slot.Slot)
-	row[3] = joinPath(o)
+	row[3] = o.OID
+	row[4] = joinPath(o)
 	// id, label, kind, access
-	row[4] = strconv.Itoa(o.ID)
-	row[5] = o.Label
-	row[6] = kindName(o.Kind)
-	row[7] = accessStr(o.Access)
+	row[5] = strconv.Itoa(o.ID)
+	row[6] = o.Label
+	row[7] = kindName(o.Kind)
+	row[8] = accessStr(o.Access)
 	// value, value_name — the "edit me" columns
-	row[8], row[9] = valueAndName(o)
+	row[9], row[10] = valueAndName(o)
 	// unit, min, max, step, default — metadata
-	row[10] = o.Unit
-	row[11] = numStr(o.Min)
-	row[12] = numStr(o.Max)
-	row[13] = numStr(o.Step)
-	row[14] = numStr(o.Def)
+	row[11] = o.Unit
+	row[12] = numStr(o.Min)
+	row[13] = numStr(o.Max)
+	row[14] = numStr(o.Step)
+	row[15] = numStr(o.Def)
 	// enum_items
-	row[15] = strings.Join(o.EnumItems, "|")
+	row[16] = strings.Join(o.EnumItems, "|")
 	// max_len
 	if o.MaxLen > 0 {
-		row[16] = strconv.Itoa(o.MaxLen)
+		row[17] = strconv.Itoa(o.MaxLen)
 	}
 	// alarm
 	if o.Kind == protocol.KindAlarm {
-		row[17] = strconv.Itoa(int(o.AlarmPriority))
-		row[18] = fmt.Sprintf("0x%02X", o.AlarmTag)
-		row[19] = o.AlarmOnMsg
-		row[20] = o.AlarmOffMsg
+		row[18] = strconv.Itoa(int(o.AlarmPriority))
+		row[19] = fmt.Sprintf("0x%02X", o.AlarmTag)
+		row[20] = o.AlarmOnMsg
+		row[21] = o.AlarmOffMsg
 	}
 	// slot_status
-	row[21] = slotStatusPipe(o.Value.SlotStatus)
+	row[22] = slotStatusPipe(o.Value.SlotStatus)
 	return row
 }
 
