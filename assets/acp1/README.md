@@ -72,9 +72,9 @@ Requires a real ACP1 device or emulator on the same VLAN.
 
 ## Reference
 
-- Spec: [docs/protocols/AXON-ACP_v1_4.pdf](../AXON-ACP_v1_4.pdf)
-- Wireshark dissector: [assets/dissector_acpv1.lua](../../../assets/dissector_acpv1.lua)
-- Full wire reference: [CLAUDE.md](../../../CLAUDE.md) (ACP1 section)
+- Spec: [AXON-ACP_v1_4.pdf](AXON-ACP_v1_4.pdf)
+- Wireshark dissector: [dissector_acpv1.lua](dissector_acpv1.lua) — install per [docs/wireshark.md](../../docs/wireshark.md)
+- Full wire reference: [CLAUDE.md](../../CLAUDE.md) (ACP1 section)
 
 ---
 
