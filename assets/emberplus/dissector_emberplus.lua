@@ -530,10 +530,228 @@ local function peek_app_tag(ba, off, endpos)
     return class, cons, tag_num, t_consumed + l_consumed, len
 end
 
+-------------------------------------------------------------------------------
+-- Typed-field decoders for Info-column content summary.
+-- Extract path / identifier / value / connection details from a Glow leaf
+-- so the packet list shows watch-style content at a glance:
+--   "QMatrix 1.2.3 'router.nToN.3' conn t=3←[12] absolute modified"
+--   "QParameter 1.4.0 'Volume' RW = 50"
+--   "StreamEntry #3 = -12328"
+-------------------------------------------------------------------------------
+
+local function read_utf8(ba, off, len)
+    if len <= 0 then return "" end
+    local out = {}
+    for i = 0, len - 1 do
+        local b = ba:get_index(off + i)
+        if b == 0 then break end
+        out[#out + 1] = string.char(b)
+    end
+    return table.concat(out)
+end
+
+local function decode_utf8_field(ba, off, endpos)
+    local c, _cn, t, h, l = peek_app_tag(ba, off, endpos)
+    if not c or c ~= 0 or t ~= 0x0C or l == nil or l < 0 then return nil end
+    return read_utf8(ba, off + h, l)
+end
+
+local function decode_integer_field(ba, off, endpos)
+    local c, _cn, t, h, l = peek_app_tag(ba, off, endpos)
+    if not c or c ~= 0 or t ~= 0x02 or l == nil or l < 0 then return nil end
+    return decode_ber_integer(ba, off + h, l)
+end
+
+local function decode_reloid_field(ba, off, endpos)
+    local c, _cn, t, h, l = peek_app_tag(ba, off, endpos)
+    if not c or c ~= 0 or t ~= 0x0D or l == nil or l < 0 then return nil end
+    return decode_relative_oid(ba, off + h, l)
+end
+
+local function decode_bool_field(ba, off, endpos)
+    local c, _cn, t, h, l = peek_app_tag(ba, off, endpos)
+    if not c or c ~= 0 or t ~= 0x01 or l == nil or l < 0 then return nil end
+    return l > 0 and ba:get_index(off + h) ~= 0 or false
+end
+
+-- Value CHOICE — integer / real / string / boolean / octets / null.
+local function decode_value_field(ba, off, endpos)
+    local c, _cn, t, h, l = peek_app_tag(ba, off, endpos)
+    if not c or c ~= 0 or l == nil or l < 0 then return nil end
+    local v_off = off + h
+    if t == 0x02 then return tostring(decode_ber_integer(ba, v_off, l))
+    elseif t == 0x01 then
+        return (l > 0 and ba:get_index(v_off) ~= 0) and "true" or "false"
+    elseif t == 0x09 then
+        local r = decode_ber_real(ba, v_off, l)
+        return r and string.format("%g", r) or nil
+    elseif t == 0x0C then return '"' .. read_utf8(ba, v_off, l) .. '"'
+    elseif t == 0x04 then return string.format("<%dB>", l)
+    elseif t == 0x05 then return "null"
+    end
+    return nil
+end
+
+local ACCESS_NAMES  = { [0] = "--", [1] = "R-", [2] = "-W", [3] = "RW" }
+local CONN_OPS      = { [0] = "absolute", [1] = "connect", [2] = "disconnect" }
+local CONN_DISPS    = { [0] = "tally", [1] = "modified", [2] = "pending", [3] = "locked" }
+
+local function decode_parameter_contents(ba, off, endpos)
+    local out = {}
+    local walk = off
+    while walk < endpos do
+        local c, _cn, t, h, l = peek_app_tag(ba, walk, endpos)
+        if not c or l == nil or l < 0 then break end
+        local v_off, v_end = walk + h, math.min(walk + h + l, endpos)
+        if c == 2 then
+            if     t == 0 then out.identifier = decode_utf8_field(ba, v_off, v_end)
+            elseif t == 2 then out.value      = decode_value_field(ba, v_off, v_end)
+            elseif t == 5 then
+                local acc = decode_integer_field(ba, v_off, v_end)
+                if acc then out.access = ACCESS_NAMES[acc] or tostring(acc) end
+            end
+        end
+        walk = v_off + l
+    end
+    return out
+end
+
+local function decode_node_contents(ba, off, endpos)
+    local out = {}
+    local walk = off
+    while walk < endpos do
+        local c, _cn, t, h, l = peek_app_tag(ba, walk, endpos)
+        if not c or l == nil or l < 0 then break end
+        local v_off, v_end = walk + h, math.min(walk + h + l, endpos)
+        if c == 2 and t == 0 then out.identifier = decode_utf8_field(ba, v_off, v_end) end
+        walk = v_off + l
+    end
+    return out
+end
+
+local function decode_connection_seq(ba, off, endpos)
+    local out = {}
+    local walk = off
+    while walk < endpos do
+        local c, _cn, t, h, l = peek_app_tag(ba, walk, endpos)
+        if not c or l == nil or l < 0 then break end
+        local v_off, v_end = walk + h, math.min(walk + h + l, endpos)
+        if c == 2 then
+            if     t == 0 then out.target  = decode_integer_field(ba, v_off, v_end)
+            elseif t == 1 then out.sources = decode_reloid_field(ba, v_off, v_end)
+            elseif t == 2 then
+                local n = decode_integer_field(ba, v_off, v_end)
+                out.op = n and (CONN_OPS[n] or tostring(n))
+            elseif t == 3 then
+                local n = decode_integer_field(ba, v_off, v_end)
+                out.disp = n and (CONN_DISPS[n] or tostring(n))
+            end
+        end
+        walk = v_off + l
+    end
+    return out
+end
+
+-- ConnectionCollection: universal SEQUENCE OF { [0] Connection (APP 16) }.
+-- Wire sample: a5 15 (ctx [5]) 30 13 (universal SEQUENCE) a0 11 (ctx [0]) 70 0f (APP 16).
+local function decode_matrix_connections(ba, off, endpos)
+    -- Step through an optional universal SEQUENCE wrapper.
+    local c0, _cn0, t0, h0, l0 = peek_app_tag(ba, off, endpos)
+    if c0 == 0 and t0 == 16 and l0 ~= nil and l0 >= 0 then
+        off    = off + h0
+        endpos = math.min(off + l0, endpos)
+    end
+
+    local walk = off
+    while walk < endpos do
+        local c, _cn, t, h, l = peek_app_tag(ba, walk, endpos)
+        if not c or l == nil then break end
+        local v_off = walk + h
+        local v_end = (l < 0) and endpos or math.min(v_off + l, endpos)
+        if c == 2 and t == 0 then
+            local cc, _cn2, ct, ch, cl = peek_app_tag(ba, v_off, v_end)
+            if cc == 1 and ct == 16 and cl ~= nil and cl >= 0 then
+                return decode_connection_seq(ba, v_off + ch, v_off + ch + cl)
+            end
+        elseif c == 1 and t == 16 and l >= 0 then
+            return decode_connection_seq(ba, v_off, v_end)
+        end
+        if l < 0 then break end
+        walk = v_off + l
+    end
+    return nil
+end
+
+local function decode_stream_entry(ba, off, endpos)
+    local out = {}
+    local walk = off
+    while walk < endpos do
+        local c, _cn, t, h, l = peek_app_tag(ba, walk, endpos)
+        if not c or l == nil or l < 0 then break end
+        local v_off, v_end = walk + h, math.min(walk + h + l, endpos)
+        if c == 2 then
+            if     t == 0 then out.id    = decode_integer_field(ba, v_off, v_end)
+            elseif t == 1 then out.value = decode_value_field(ba, v_off, v_end)
+            end
+        end
+        walk = v_off + l
+    end
+    return out
+end
+
+-- Build a short human-readable content string for a single leaf element.
+local function element_summary(ba, app_tag, off, endpos)
+    local is_q      = (app_tag == 9) or (app_tag == 10) or (app_tag == 17) or (app_tag == 20) or (app_tag == 25)
+    local is_matrix = (app_tag == 13) or (app_tag == 17)
+    local is_param  = (app_tag == 1)  or (app_tag == 9)
+    local path, number, identifier, value, access, conn
+    local walk = off
+    while walk < endpos do
+        local c, _cn, t, h, l = peek_app_tag(ba, walk, endpos)
+        if not c or l == nil then break end
+        local v_off = walk + h
+        local v_end = (l < 0) and endpos or math.min(v_off + l, endpos)
+        if c == 2 then
+            if t == 0 then
+                if is_q then path = decode_reloid_field(ba, v_off, v_end)
+                else number = decode_integer_field(ba, v_off, v_end) end
+            elseif t == 1 then
+                if is_param then
+                    local pc = decode_parameter_contents(ba, v_off, v_end)
+                    identifier, value, access = pc.identifier, pc.value, pc.access
+                else
+                    local nc = decode_node_contents(ba, v_off, v_end)
+                    identifier = nc.identifier
+                end
+            elseif t == 5 and is_matrix then
+                conn = decode_matrix_connections(ba, v_off, v_end)
+            end
+        end
+        if l < 0 then break end
+        walk = v_off + l
+    end
+
+    local parts = {}
+    if path then table.insert(parts, path)
+    elseif number then table.insert(parts, "#" .. tostring(number)) end
+    if identifier then table.insert(parts, "'" .. identifier .. "'") end
+    if access then table.insert(parts, access) end
+    if value then table.insert(parts, "= " .. value) end
+    if conn then
+        local cparts = { string.format("t=%s←[%s]",
+            tostring(conn.target or "?"),
+            tostring(conn.sources or "")) }
+        if conn.op   then table.insert(cparts, conn.op)   end
+        if conn.disp then table.insert(cparts, conn.disp) end
+        table.insert(parts, table.concat(cparts, " "))
+    end
+    return table.concat(parts, " ")
+end
+
 -- Recursively count interesting leaf types in a Glow subtree so the
 -- Info column identifies Matrix / Function / Parameter content even when
--- it's nested below Node wrappers. Container types (Node, ElementCollection)
--- are walked through, not counted.
+-- it's nested below Node wrappers. Also captures the first leaf's
+-- detailed summary (path + identifier + value or connection).
 local LEAF_TAGS = {
     [1] = "Parameter", [9]  = "QParameter",
     [13] = "Matrix",   [17] = "QMatrix",
@@ -542,7 +760,7 @@ local LEAF_TAGS = {
     [23] = "InvocationResult",
 }
 
-local function count_leaves(ba, off, endpos, counts, depth)
+local function count_leaves(ba, off, endpos, counts, highlight, depth)
     if depth > 12 then return end
     while off < endpos do
         local c, _cn, t, h, l = peek_app_tag(ba, off, endpos)
@@ -552,13 +770,14 @@ local function count_leaves(ba, off, endpos, counts, depth)
         if c == 1 and LEAF_TAGS[t] then
             local name = LEAF_TAGS[t]
             counts[name] = (counts[name] or 0) + 1
-            -- Do NOT recurse into leaves — the tree below is contents/children
-            -- of this element, not additional siblings worth counting.
+            if not highlight.set then
+                local s = element_summary(ba, t, val_off, val_end)
+                highlight.set  = true
+                highlight.kind = name
+                highlight.text = (s ~= "") and (name .. " " .. s) or name
+            end
         else
-            -- Recurse into containers: Root (0), ElementCollection (4/11),
-            -- Node (3/10), CONTEXT wrappers ([0], [1], [2]), universal
-            -- SET/SEQUENCE. StreamCollection (6) handled by caller.
-            count_leaves(ba, val_off, val_end, counts, depth + 1)
+            count_leaves(ba, val_off, val_end, counts, highlight, depth + 1)
         end
         if l < 0 then return end
         off = val_off + l
@@ -589,30 +808,72 @@ local function summarize_glow(ba, off, avail)
     if c3 == 1 then
         local top = glow_app_valstr[t3] or ("APP " .. t3)
         if t3 == 11 or t3 == 4 then
-            -- ElementCollection: recursively count leaves (Matrix, Function,
-            -- Parameter, Q* variants) across all nested Node wrappers.
+            -- ElementCollection: recursively count leaves AND capture the
+            -- first leaf's content detail (path, identifier, value, conn).
             local child_end = inner_off + h3 + (l3 < 0 and (inner_end - inner_off - h3) or l3)
             local counts = {}
-            count_leaves(ba, inner_off + h3, child_end, counts, 0)
+            local highlight = {}
+            count_leaves(ba, inner_off + h3, child_end, counts, highlight, 0)
             local parts = {}
             for name, n in pairs(counts) do
                 table.insert(parts, (n > 1 and (n .. " ") or "") .. name)
             end
             if #parts == 0 then return "Root { " .. top .. " [Node only] }" end
-            return "Root { " .. top .. " [" .. table.concat(parts, ", ") .. "] }"
+            local tail = ""
+            if highlight.text then tail = " → " .. highlight.text end
+            return "Root { " .. top .. " [" .. table.concat(parts, ", ") .. "] }" .. tail
         elseif t3 == 6 then
-            -- StreamCollection: count entries.
+            -- StreamCollection: each entry is wrapped in [0] CONTEXT
+            -- (StreamElement CHOICE) → APP 5 StreamEntry.
             local child_end = inner_off + h3 + (l3 < 0 and (inner_end - inner_off - h3) or l3)
             local walk = inner_off + h3
             local n = 0
+            local first
             while walk < child_end do
                 local cc, _cn, ct, ch, cl = peek_app_tag(ba, walk, child_end)
-                if not cc then break end
-                if cc == 2 or (cc == 1 and ct == 5) then n = n + 1 end
-                if cl == nil or cl < 0 then break end
-                walk = walk + ch + cl
+                if not cc or cl == nil or cl < 0 then break end
+                local entry_off, entry_end = walk + ch, walk + ch + cl
+                -- Step into [0] context wrapper to reach the APP 5 tag.
+                if cc == 2 and ct == 0 then
+                    local ec, _cn2, et, eh, el = peek_app_tag(ba, entry_off, entry_end)
+                    if ec == 1 and et == 5 and el ~= nil and el >= 0 then
+                        n = n + 1
+                        if not first then
+                            first = decode_stream_entry(ba, entry_off + eh, entry_off + eh + el)
+                        end
+                    end
+                elseif cc == 1 and ct == 5 then
+                    n = n + 1
+                    if not first then
+                        first = decode_stream_entry(ba, entry_off, entry_end)
+                    end
+                end
+                walk = entry_off + cl
             end
-            return "Root { StreamCollection [" .. n .. "] }"
+            local s = "Root { StreamCollection [" .. n .. "] }"
+            if first and first.id ~= nil then
+                s = s .. string.format(" → #%s = %s", tostring(first.id),
+                                       tostring(first.value or "?"))
+            end
+            return s
+        elseif t3 == 23 then
+            -- InvocationResult: show invocationID + success flag.
+            local rend = inner_off + h3 + (l3 < 0 and (inner_end - inner_off - h3) or l3)
+            local walk = inner_off + h3
+            local inv_id, success
+            while walk < rend do
+                local cc, _cn, ct, ch, cl = peek_app_tag(ba, walk, rend)
+                if not cc or cl == nil or cl < 0 then break end
+                local v_off, v_end = walk + ch, walk + ch + cl
+                if cc == 2 and ct == 0 then inv_id  = decode_integer_field(ba, v_off, v_end)
+                elseif cc == 2 and ct == 1 then success = decode_bool_field(ba, v_off, v_end) end
+                walk = v_off + cl
+            end
+            local extras = {}
+            if inv_id  ~= nil then table.insert(extras, "id=" .. tostring(inv_id)) end
+            if success ~= nil then table.insert(extras, success and "ok" or "FAIL") end
+            return "Root { InvocationResult"
+                .. (#extras > 0 and (" " .. table.concat(extras, " ")) or "") .. " }"
         else
             return "Root { " .. top .. " }"
         end
