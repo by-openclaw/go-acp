@@ -13,8 +13,25 @@ import (
 	"fmt"
 	"sort"
 
+	"acp/internal/protocol"
+	"acp/internal/protocol/acp1"
+	"acp/internal/protocol/compliance"
 	emberplus "acp/internal/protocol/emberplus"
 )
+
+// pluginProfile returns the compliance profile attached to the given
+// plugin, or nil if the plugin does not expose one. Dispatches by
+// concrete type since ComplianceProfile() is not in the
+// protocol.Protocol interface (it's optional per-plugin).
+func pluginProfile(plug protocol.Protocol) *compliance.Profile {
+	switch p := plug.(type) {
+	case *emberplus.Plugin:
+		return p.ComplianceProfile()
+	case *acp1.Plugin:
+		return p.ComplianceProfile()
+	}
+	return nil
+}
 
 func runProfile(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("profile", flag.ExitOnError)
@@ -39,12 +56,10 @@ func runProfile(ctx context.Context, args []string) error {
 		return fmt.Errorf("walk: %w", err)
 	}
 
-	ep, ok := plug.(*emberplus.Plugin)
-	if !ok {
-		return fmt.Errorf("profile command is only supported for Ember+ protocol")
+	profile := pluginProfile(plug)
+	if profile == nil {
+		return fmt.Errorf("profile command not supported for protocol %q", cf.protocol)
 	}
-
-	profile := ep.ComplianceProfile()
 	classification := profile.Classification()
 	snap := profile.Snapshot()
 

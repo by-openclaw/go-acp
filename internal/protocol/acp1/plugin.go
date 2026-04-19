@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"acp/internal/protocol"
+	"acp/internal/protocol/compliance"
 	"acp/internal/transport"
 )
 
@@ -97,6 +98,20 @@ type Plugin struct {
 
 	// Optional traffic capture for unit test data generation.
 	recorder *transport.Recorder
+
+	// profile aggregates wire-tolerance events observed during this
+	// session. See compliance_events.go for the catalog. Nil until
+	// Connect fires; callers read via ComplianceProfile().
+	profile *compliance.Profile
+}
+
+// ComplianceProfile returns the session-scoped compliance profile.
+// Returns nil if Connect hasn't been called yet. Safe to call from
+// any goroutine.
+func (p *Plugin) ComplianceProfile() *compliance.Profile {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.profile
 }
 
 // SetRecorder attaches a traffic recorder to this plugin.
@@ -162,7 +177,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	cfg := defaultCacheConfig()
 	p.trees = newSlotTreeCache(cfg.MaxSize, cfg.TTL)
 	p.subHandles = map[subKey]SubHandle{}
+	p.profile = &compliance.Profile{}
 	p.walker = NewWalker(p.client)
+	p.walker.SetProfile(p.profile)
 	p.logger.Info("acp1 connected",
 		"host", ip, "port", port, "transport", p.transport)
 	return nil

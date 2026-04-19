@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"acp/internal/export/canonical"
-	"acp/internal/protocol/emberplus/compliance"
 )
 
 // modePointer / modeInline / modeBoth are the three values of each
@@ -70,7 +69,7 @@ func (p *Plugin) resolveMatrixLabels(m *canonical.Matrix, elements map[string]ca
 
 	if len(m.Labels) == 0 {
 		if p.profile != nil {
-			p.profile.Note(compliance.MatrixLabelNone)
+			p.profile.Note(MatrixLabelNone)
 		}
 		return
 	}
@@ -86,21 +85,21 @@ func (p *Plugin) resolveMatrixLabels(m *canonical.Matrix, elements map[string]ca
 		} else {
 			key = lbl.BasePath
 			if p.profile != nil {
-				p.profile.Note(compliance.MatrixLabelDescriptionEmpty)
+				p.profile.Note(MatrixLabelDescriptionEmpty)
 			}
 		}
 
 		base, ok := elements[lbl.BasePath]
 		if !ok {
 			if p.profile != nil {
-				p.profile.Note(compliance.MatrixLabelBasepathUnresolved)
+				p.profile.Note(MatrixLabelBasepathUnresolved)
 			}
 			continue
 		}
 		baseNode, ok := base.(*canonical.Node)
 		if !ok {
 			if p.profile != nil {
-				p.profile.Note(compliance.MatrixLabelBasepathUnresolved)
+				p.profile.Note(MatrixLabelBasepathUnresolved)
 			}
 			continue
 		}
@@ -124,7 +123,7 @@ func (p *Plugin) resolveMatrixLabels(m *canonical.Matrix, elements map[string]ca
 
 	if mismatched(targetLabels) || mismatched(sourceLabels) {
 		if p.profile != nil {
-			p.profile.Note(compliance.MatrixLabelLevelMismatch)
+			p.profile.Note(MatrixLabelLevelMismatch)
 		}
 	}
 
@@ -138,7 +137,7 @@ func (p *Plugin) resolveMatrixLabels(m *canonical.Matrix, elements map[string]ca
 	if mode == modeInline && len(absorb) > 0 {
 		removeFromTree(elements, absorb)
 		if p.profile != nil {
-			p.profile.Note(compliance.LabelsAbsorbed)
+			p.profile.Note(LabelsAbsorbed)
 		}
 	}
 }
@@ -163,14 +162,14 @@ func (p *Plugin) resolveMatrixGain(m *canonical.Matrix, elements map[string]cano
 	base, ok := elements[*m.ParametersLocation]
 	if !ok {
 		if p.profile != nil {
-			p.profile.Note(compliance.MatrixParametersLocationUnresolved)
+			p.profile.Note(MatrixParametersLocationUnresolved)
 		}
 		return
 	}
 	baseNode, ok := base.(*canonical.Node)
 	if !ok {
 		if p.profile != nil {
-			p.profile.Note(compliance.MatrixParametersLocationUnresolved)
+			p.profile.Note(MatrixParametersLocationUnresolved)
 		}
 		return
 	}
@@ -195,7 +194,7 @@ func (p *Plugin) resolveMatrixGain(m *canonical.Matrix, elements map[string]cano
 	if mode == modeInline {
 		removeFromTree(elements, []string{*m.ParametersLocation})
 		if p.profile != nil {
-			p.profile.Note(compliance.GainAbsorbed)
+			p.profile.Note(GainAbsorbed)
 		}
 	}
 }
@@ -240,18 +239,18 @@ func (p *Plugin) resolveTemplates(elements map[string]canonical.Element, templat
 		t, ok := index[*ref]
 		if !ok || t == nil || t.Template == nil {
 			if p.profile != nil {
-				p.profile.Note(compliance.TemplateReferenceUnresolved)
+				p.profile.Note(TemplateReferenceUnresolved)
 			}
 			continue
 		}
 		if !inflateTemplate(el, t.Template) {
 			if p.profile != nil {
-				p.profile.Note(compliance.TemplateReferenceUnresolved)
+				p.profile.Note(TemplateReferenceUnresolved)
 			}
 			continue
 		}
 		if p.profile != nil {
-			p.profile.Note(compliance.TemplateAbsorbed)
+			p.profile.Note(TemplateAbsorbed)
 		}
 	}
 }
