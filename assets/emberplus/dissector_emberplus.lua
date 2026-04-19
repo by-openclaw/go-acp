@@ -202,6 +202,11 @@ local scope_command = {
     [0] = "number", [1] = "dirFieldMask", [2] = "invocation",
 }
 
+-- Sentinel scope set when we descend from Command [0] into its INTEGER
+-- child so the primitive renderer can annotate the CommandType enum
+-- (30=Subscribe, 31=Unsubscribe, 32=GetDirectory, 33=Invoke).
+local scope_command_number = { [".marker"] = "cmd_num" }
+
 local scope_label = {
     [0] = "basePath", [1] = "description",
 }
@@ -1051,6 +1056,11 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
                 child_scope = scope_function_contents
             elseif class == 2 and scope == wrapper_scope_by_app[20] and tag_num == 1 then
                 child_scope = scope_function_contents
+            elseif class == 2 and scope == scope_command and tag_num == 0 then
+                -- [0] number — mark child scope so INTEGER renderer can
+                -- annotate with the CommandType name (Subscribe/Unsubscribe/
+                -- GetDirectory/Invoke).
+                child_scope = scope_command_number
             elseif class == 2 and scope == scope_invocation and (tag_num == 0 or tag_num == 1) then
                 -- Inside Invocation, [0] is invocationID (keep scope),
                 -- [1] is arguments Tuple — descend with no scope so tuple
@@ -1076,8 +1086,9 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
                         node:add(glow_f.value_int, tostring(v))
                     end
                     node:append_text(" = " .. tostring(v))
-                    -- If this was Command.number, annotate the name.
-                    if scope == scope_command and ctx_label == "number" then
+                    -- If this is Command.number, annotate with the CommandType
+                    -- enum name (Subscribe / Unsubscribe / GetDirectory / Invoke).
+                    if scope == scope_command_number then
                         local cn = glow_cmd_number_valstr[v]
                         if cn then node:append_text(" (" .. cn .. ")") end
                     end
