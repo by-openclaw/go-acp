@@ -25,6 +25,28 @@ local S101_BOF = 0xFE
 local S101_EOF = 0xFF
 local S101_ESC = 0xFD
 
+-- S101 flag bits (EmBER data frames, byte offset 4 of unescaped content).
+local FLAG_SINGLE = 0xC0  -- first + last
+local FLAG_FIRST  = 0x80
+local FLAG_LAST   = 0x40
+local FLAG_EMPTY  = 0x20
+
+-- Per-TCP-stream reassembly state (first dissection pass only).
+-- Key: "src:sport>dst:dport"   Value: { payload = ByteArray accumulating the Glow fragment bytes }
+local s101_reassembly_state = {}
+
+-- Per-packet result cache keyed by pktinfo.number, so re-dissection (filtering
+-- / scrolling) is deterministic. Cleared at start of each capture file via
+-- s101_proto.init below.
+-- Value: { assembled = bool, payload = ByteArray, fragment_kind = "first"|"middle"|"last"|"orphan" }
+local s101_packet_cache = {}
+
+local function s101_conv_key(pktinfo)
+    return string.format("%s:%d>%s:%d",
+        tostring(pktinfo.src), pktinfo.src_port,
+        tostring(pktinfo.dst), pktinfo.dst_port)
+end
+
 -- Default TCP ports where Ember+ providers listen. Multiple known vendor
 -- defaults; adjust via Decode As if needed.
 local DEFAULT_TCP_PORTS = { 9000, 9090, 9092 }
@@ -1171,18 +1193,71 @@ local function dissect_s101_frame(tvbuf, pktinfo, root, frame_start, frame_end)
 
             local payload_off = 7 + appblen
             local payload_len = clen - 2 - payload_off
-            local summary
-            if payload_len > 0 then
-                summary = summarize_glow(unesc_bytes, payload_off, payload_len)
-                local glow_tree = tree:add(glow_proto, unesc_tvb:range(payload_off, payload_len),
-                                           "Glow Payload (" .. payload_len .. " bytes)" ..
-                                           (summary and " — " .. summary or ""))
-                walk_ber(unesc_bytes, unesc_tvb, payload_off, payload_len, glow_tree, nil, 0)
+
+            -- Multi-packet S101 reassembly. Fragment accumulator runs only on
+            -- first dissection pass; re-dissection (scroll / filter) reads
+            -- from the per-packet cache.
+            local key = s101_conv_key(pktinfo)
+            if not pktinfo.visited then
+                if flags == FLAG_SINGLE or flags == FLAG_EMPTY then
+                    s101_packet_cache[pktinfo.number] = {
+                        assembled = true,
+                        payload   = (payload_len > 0) and unesc_bytes:subset(payload_off, payload_len) or ByteArray.new(),
+                    }
+                elseif flags == FLAG_FIRST then
+                    local frag = (payload_len > 0) and unesc_bytes:subset(payload_off, payload_len) or ByteArray.new()
+                    s101_reassembly_state[key] = { payload = frag }
+                    s101_packet_cache[pktinfo.number] = { fragment_kind = "first" }
+                elseif flags == FLAG_LAST then
+                    local rb = s101_reassembly_state[key]
+                    if rb then
+                        if payload_len > 0 then rb.payload:append(unesc_bytes:subset(payload_off, payload_len)) end
+                        s101_packet_cache[pktinfo.number] = { assembled = true, payload = rb.payload }
+                        s101_reassembly_state[key] = nil
+                    else
+                        s101_packet_cache[pktinfo.number] = { fragment_kind = "last (orphan)" }
+                    end
+                else
+                    -- Middle (0x00) or unknown flags — append if we have a buffer.
+                    local rb = s101_reassembly_state[key]
+                    if rb then
+                        if payload_len > 0 then rb.payload:append(unesc_bytes:subset(payload_off, payload_len)) end
+                        s101_packet_cache[pktinfo.number] = { fragment_kind = "middle" }
+                    else
+                        s101_packet_cache[pktinfo.number] = { fragment_kind = "orphan" }
+                    end
+                end
             end
 
+            local cache     = s101_packet_cache[pktinfo.number]
             local flag_name = s101_flags_valstr[flags] or string.format("flags=0x%02X", flags)
-            info = "Ember+ " .. flag_name .. (summary and " " .. summary or "") ..
-                   " payload=" .. payload_len .. "B"
+
+            if cache and cache.assembled then
+                local full     = cache.payload
+                local full_len = full:len()
+                local summary  = (full_len > 0) and summarize_glow(full, 0, full_len) or nil
+                local label    = string.format("Glow Payload (%d bytes reassembled)%s",
+                                               full_len, summary and (" — " .. summary) or "")
+                local glow_tree
+                if payload_len > 0 then
+                    glow_tree = tree:add(glow_proto, unesc_tvb:range(payload_off, payload_len), label)
+                else
+                    glow_tree = tree:add(glow_proto, label)
+                end
+                if full_len > 0 then
+                    local full_tvb = full:tvb("Reassembled Glow")
+                    walk_ber(full, full_tvb, 0, full_len, glow_tree, nil, 0)
+                end
+                info = "Ember+ " .. flag_name .. (summary and (" " .. summary) or "")
+                    .. string.format(" payload=%dB", full_len)
+            else
+                local kind = (cache and cache.fragment_kind) or "unknown"
+                if payload_len > 0 then
+                    tree:add(glow_proto, unesc_tvb:range(payload_off, payload_len),
+                             string.format("Ember+ fragment (%s) — %d bytes pending reassembly", kind, payload_len))
+                end
+                info = string.format("Ember+ %s fragment %s (%dB)", flag_name, kind, payload_len)
+            end
         end
     else
         info = "S101 cmd=0x" .. string.format("%02X", command)
@@ -1235,6 +1310,13 @@ end
 -- the TCP dissector's invariant ("save_desegment_*" assertion at
 -- packet-tcp.c:8139) and causes Wireshark to abort with a dissector bug.
 -------------------------------------------------------------------------------
+
+-- Reset per-capture-file state. Wireshark calls this before a new capture
+-- file is loaded so packet-number caches from the previous file don't leak.
+function s101_proto.init()
+    s101_reassembly_state = {}
+    s101_packet_cache     = {}
+end
 
 function s101_proto.dissector(tvbuf, pktinfo, root)
     local pktlen = tvbuf:reported_length_remaining()
