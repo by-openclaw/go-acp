@@ -1,5 +1,8 @@
 *.pdf filter=lfs diff=lfs merge=lfs -text
-tests/fixtures/**/*.json filter=lfs diff=lfs merge=lfs -text
+# tests/fixtures/**/*.json and *.jsonl — LFS disabled (free plan 10 GB
+# cap reached). Large walk/watch/frame captures go in .gitignore and
+# stay local only. Tiny hand-trimmed golden fixtures (<100 KB) may be
+# committed as regular blobs when replay tests need them.
 *.docx filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
 *.gif filter=lfs diff=lfs merge=lfs -text
