@@ -53,6 +53,21 @@ Export/import rules:
 - Round-trip: export → edit → import works for all 3 formats
 - Hierarchical tree format: identity > Card name > {id, kind, value}
 
+### Import summary line
+
+`acp import` prints `applied N, skipped M, failed X` when it finishes. The
+counts mean:
+
+| Count | What it is | Not an error |
+|---|---|---|
+| `applied` | RW objects the importer wrote (or would write, in `--dry-run`) | — |
+| `skipped` | Objects deliberately not attempted: read-only (no W bit), node containers (BOARD / IDENTITY / PROCESSING VIDEO / …), sub-group markers | ✅ expected |
+| `failed` | `SetValue` returned an error from the device (`no access`, `invalid value`, …) | ❌ real failure |
+
+On an ACP2 slot 1 export of ~39 k objects, `skipped ≈ 16 k` is normal —
+that's the read-only metric / identity / structural subtree the spec
+defines as non-writable. Only `failed > 0` indicates a problem.
+
 ---
 
 ## 3. CLI — commands
