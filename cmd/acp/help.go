@@ -44,8 +44,9 @@ OUT  slot 0:
         1  User label      string   RW-  "Synapse Simulator"
         2  Card description string  R--  "Virtual Rack Controller"
         …
-     (with --capture <dir> also writes raw.s101.jsonl + tree.json,
-      plus glow.json for Ember+)
+     (with --capture <dir> also writes raw.<transport>.jsonl +
+      tree.json — raw.acp1.jsonl / raw.an2.jsonl / raw.s101.jsonl
+      per protocol — plus glow.json for Ember+)
 
 USAGE
   acp walk <host> --slot N [flags]

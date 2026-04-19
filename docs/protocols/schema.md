@@ -308,23 +308,27 @@ resolutions happened?" rather than "what was the last one?"
 
 ## 7. Capture pipeline
 
-`--capture <dir>` on any consumer plugin writes three files per session:
+`--capture <dir>` on any consumer plugin writes a raw frame file plus
+the decoded tree, named after the wire framing of the plugin in use:
 
-| File              | Content                                                          |
-|-------------------|------------------------------------------------------------------|
-| `raw.s101.jsonl`  | Every S101 frame tx+rx, one JSON line each: `{ts, dir, hex}`.     |
-| `glow.json`       | Decoded Glow tree snapshot after initial walk completes.          |
-| `tree.json`       | Canonical-shape export (post-resolution) using current mode flags.|
+| File                        | Written for  | Content                                                          |
+|-----------------------------|--------------|------------------------------------------------------------------|
+| `raw.acp1.jsonl`            | ACP1         | Every ACP1 frame tx+rx (UDP datagrams or TCP/AN2), one JSON line.|
+| `raw.an2.jsonl`             | ACP2         | Every AN2 frame tx+rx (including its ACP2 payload).              |
+| `raw.s101.jsonl`            | Ember+       | Every S101 frame tx+rx, one JSON line each: `{ts, dir, hex}`.    |
+| `glow.json`                 | Ember+ only  | Decoded Glow tree snapshot after initial walk completes.         |
+| `tree.json`                 | All 3        | Canonical-shape export (post-resolution) using current mode flags.|
 
-Replay unit tests under `tests/unit/emberplus/` consume these fixtures:
+Replay unit tests under `tests/unit/{acp1,acp2,emberplus}/` consume these fixtures:
 
 | Test                   | What it verifies                                        |
 |------------------------|---------------------------------------------------------|
-| `s101_replay`          | Re-framing `raw.s101.jsonl` yields identical byte stream.|
-| `ber_roundtrip`        | BER decode → re-encode of each frame matches byte-exact.|
-| `glow_decode`          | `raw.s101.jsonl` → Glow tree == `glow.json`.            |
-| `export_shape`         | Glow tree → canonical export == `tree.json`.            |
-| `encoder_compliance`   | Encoder emits byte-exact frames for known operations.   |
+| `s101_replay`          | Re-framing `raw.s101.jsonl` yields identical byte stream (Ember+).|
+| `ber_roundtrip`        | BER decode → re-encode of each frame matches byte-exact (Ember+).|
+| `glow_decode`          | `raw.s101.jsonl` → Glow tree == `glow.json` (Ember+).           |
+| `export_shape`         | Glow tree → canonical export == `tree.json` (Ember+).           |
+| `encoder_compliance`   | Encoder emits byte-exact frames for known operations.           |
+| `an2_replay` (ACP2)    | Re-framing `raw.an2.jsonl` yields identical byte stream.        |
 
 Fixtures come from two live providers:
 

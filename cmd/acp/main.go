@@ -185,7 +185,7 @@ IN / OUT — one-line contract per command (see "acp help <cmd>" for full detail
   info              IN  acp info <host>
                     OUT device info + per-slot status table
   walk              IN  acp walk <host> --slot N
-                    OUT one line per object (+ raw.s101.jsonl/tree.json under --capture <dir>)
+                    OUT one line per object (+ raw.<transport>.jsonl / tree.json under --capture <dir>)
   get               IN  acp get <host> --slot N --label L | --id I
                     OUT decoded value + metadata (range/step/unit/enum)
   set               IN  acp set <host> --slot N --id I --value V
