@@ -616,21 +616,22 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
 
         -- Tag / length detail fields
         if node_tvb_range then
-            node:add(glow_f.tag,       unesc_tvb:range(off, 1))
-            node:add(glow_f.tag_class, class)
-            node:add(glow_f.tag_cons,  cons and 1 or 0)
-            node:add(glow_f.tag_num,   tag_num)
+            local tag_range = unesc_tvb:range(off, t_consumed)
+            node:add(glow_f.tag_class, tag_range, class)
+            node:add(glow_f.tag_cons,  tag_range, cons and 1 or 0)
+            node:add(glow_f.tag_num,   tag_range, tag_num)
             if class == 1 and glow_app_valstr[tag_num] then
-                node:add(glow_f.tag_name, glow_app_valstr[tag_num])
+                node:add(glow_f.tag_name, tag_range, glow_app_valstr[tag_num])
             elseif class == 0 and ber_universal_valstr[tag_num] then
-                node:add(glow_f.tag_name, ber_universal_valstr[tag_num])
+                node:add(glow_f.tag_name, tag_range, ber_universal_valstr[tag_num])
             elseif ctx_label then
-                node:add(glow_f.tag_name, ctx_label)
+                node:add(glow_f.tag_name, tag_range, ctx_label)
             end
+            local len_range = unesc_tvb:range(off + t_consumed, l_consumed)
             if indefinite then
-                node:add(glow_f.length_indef, 1)
+                node:add(glow_f.length_indef, len_range, 1)
             else
-                node:add(glow_f.length, len)
+                node:add(glow_f.length, len_range, len)
             end
         end
 
