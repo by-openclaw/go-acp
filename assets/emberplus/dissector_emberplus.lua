@@ -904,7 +904,11 @@ local function summarize_glow(ba, off, avail)
 end
 
 local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
-    if depth > 20 then
+    -- Each wrapper level (application wrapper + [1]/[2] context + inner
+    -- universal SET/SEQUENCE + child element) burns ~4 depth steps, so a
+    -- modestly-nested Function invocation tree legitimately reaches 25-30.
+    -- 40 is a safety net, not an expected limit.
+    if depth > 40 then
         tree:add_expert_info(PI_MALFORMED, PI_WARN, "Glow tree recursion limit")
         return 0
     end
