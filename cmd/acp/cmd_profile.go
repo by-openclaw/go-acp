@@ -15,6 +15,7 @@ import (
 
 	"acp/internal/protocol"
 	"acp/internal/protocol/acp1"
+	"acp/internal/protocol/acp2"
 	"acp/internal/protocol/compliance"
 	emberplus "acp/internal/protocol/emberplus"
 )
@@ -28,6 +29,8 @@ func pluginProfile(plug protocol.Protocol) *compliance.Profile {
 	case *emberplus.Plugin:
 		return p.ComplianceProfile()
 	case *acp1.Plugin:
+		return p.ComplianceProfile()
+	case *acp2.Plugin:
 		return p.ComplianceProfile()
 	}
 	return nil
