@@ -274,7 +274,7 @@ OUT  would apply 21, skipped 38, failed 0
          …
 
 USAGE
-  acp import <host> --file SNAPSHOT [--dry-run] [flags]
+  acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] [flags]
 
 DESCRIPTION
   Reads a snapshot produced by 'acp export' (json / yaml / csv — format
@@ -288,18 +288,31 @@ DESCRIPTION
   slot, id, kind, access, and path printed so you know exactly which
   rows in your edited file will be ignored.
 
-  Partial import: hand-edit the file to keep only the rows you want
-  applied — the importer acts on whatever rows survive. Selective
-  addressing via --id / --label is tracked in #36 (not yet implemented).
+  Selective addressing (issue #45): narrow the apply set to specific
+  targets with --id (object ID, per-protocol unambiguous) or --path
+  (dotted hierarchical path). Both flags repeat. They are MUTUALLY
+  EXCLUSIVE — pick one scheme per invocation. --label is deliberately
+  not offered: labels collide thousands of times across sub-trees in
+  Ember+ ("gain" per channel) and ACP2 ("Present" per PSU), so
+  label-only matching would be ambiguous.
 
 FLAGS
   --file PATH        snapshot file (json / yaml / csv)        (required)
+  --slot N           apply only this slot (-1 = all, default)
+  --id N             apply only this object ID. Repeat for multiple.
+                     Mutually exclusive with --path.
+  --path P           apply only this dotted path (e.g. "BOARD.Gain A").
+                     Repeat for multiple. Mutually exclusive with --id.
   --dry-run          validate without writing; prints skip report
 
 EXAMPLES
   acp import 10.6.239.113 --file device.json --dry-run
   acp import 10.6.239.113 --file device.json
-  acp import 10.6.239.113 --file edited.csv                     # partial setup`)
+  acp import 10.6.239.113 --file edited.csv                      # partial setup via edited file
+  acp import 10.6.239.113 --file device.json --id 47431          # one specific object
+  acp import 10.6.239.113 --file device.json --id 47431 --id 60001
+  acp import 10.6.239.113 --file tree.json --path "router.inputs.ch2.gain"
+  acp import 10.6.239.113 --file device.json --slot 1 --path "BOARD.Gain A" --dry-run`)
 }
 
 func helpDiscover() {
