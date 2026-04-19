@@ -40,4 +40,4 @@ assets/smh/
 
 # Local capture files produced by --capture
 *.jsonl
-!testdata/**/*.jsonl
+!tests/fixtures/**/*.jsonl
