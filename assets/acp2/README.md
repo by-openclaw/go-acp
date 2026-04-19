@@ -21,10 +21,10 @@ See [CLAUDE.md](../../../CLAUDE.md) for the full ACP2 wire reference.
 
 ## Reference
 
-- Spec: [docs/protocols/acp2_protocol.pdf](../acp2_protocol.pdf)
-- AN2 spec: [docs/protocols/an2_protocol.pdf](../an2_protocol.pdf)
-- Wireshark dissector: [assets/dissector_acp2.lua](../../../assets/dissector_acp2.lua)
-- Full wire reference: [CLAUDE.md](../../../CLAUDE.md) (ACP2 section)
+- Spec: [acp2_protocol.pdf](acp2_protocol.pdf)
+- AN2 spec: [an2_protocol.pdf](an2_protocol.pdf)
+- Wireshark dissector: [dissector_acp2.lua](dissector_acp2.lua) — install per [docs/wireshark.md](../../docs/wireshark.md)
+- Full wire reference: [CLAUDE.md](../../CLAUDE.md) (ACP2 section)
 
 ---
 

@@ -208,12 +208,20 @@ internal/
 assets/
   acp1/               ACP1 spec PDF + Wireshark dissector
   acp2/               ACP2 spec PDF + Wireshark dissector
+  emberplus/          Ember+ spec PDF + Wireshark dissector
 tests/unit/           Table-driven + replay tests
 tests/integration/    Real-device tests (build tag)
 tests/smoke/          Simple-path sanity per protocol
 tests/fixtures/       Version-controlled test input (walk captures + export fixtures)
 docs/                 Architecture, connector design, references
 ```
+
+## Debugging with Wireshark
+
+All three protocols ship Lua dissectors under `assets/`. Install once (copy
+into your Wireshark personal plugins directory) and live captures from
+`acp walk` / `acp watch` / `acp extract` are auto-decoded. Full install +
+filter guide: [docs/wireshark.md](docs/wireshark.md).
 
 ---
 
