@@ -24,6 +24,8 @@ func runExtract(ctx context.Context, args []string) error {
 		"vendor display name preserving casing (e.g. Axon, Lawo). Required.")
 	product := fs.String("product", "",
 		"product identifier as the vendor writes it (e.g. DDB08, CDV08v06). Required.")
+	direction := fs.String("direction", "",
+		"how the product speaks this protocol: consumer (we read it), provider (we expose it), or both. Required.")
 	ver := fs.String("version", "",
 		"product / firmware version as reported by the device (e.g. 2.3). Required.")
 	versionKind := fs.String("version-kind", "firmware",
@@ -38,12 +40,17 @@ func runExtract(ctx context.Context, args []string) error {
 
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp extract <host> --protocol P --manufacturer M --product P --version V --out DIR [--slot N]")
+		return fmt.Errorf("usage: acp extract <host> --protocol P --manufacturer M --product X --direction D --version V --out DIR [--slot N]")
 	}
 	_ = fs.Parse(rest)
 
-	if *manufacturer == "" || *product == "" || *ver == "" || *outDir == "" {
-		return fmt.Errorf("--manufacturer, --product, --version, and --out are all required")
+	if *manufacturer == "" || *product == "" || *direction == "" || *ver == "" || *outDir == "" {
+		return fmt.Errorf("--manufacturer, --product, --direction, --version, and --out are all required")
+	}
+	switch *direction {
+	case "consumer", "provider", "both":
+	default:
+		return fmt.Errorf("--direction must be one of: consumer, provider, both (got %q)", *direction)
 	}
 
 	if cf.protocol == "emberplus" && *slot < 0 {
@@ -103,6 +110,7 @@ func runExtract(ctx context.Context, args []string) error {
 		Protocol:      cf.protocol,
 		Manufacturer:  *manufacturer,
 		Product:       *product,
+		Direction:     *direction,
 		Version:       *ver,
 		VersionKind:   *versionKind,
 		DiscoveredAt:  time.Now().UTC().Format(time.RFC3339),
@@ -128,6 +136,7 @@ type metaJSON struct {
 	Protocol      string          `json:"protocol"`
 	Manufacturer  string          `json:"manufacturer"`
 	Product       string          `json:"product"`
+	Direction     string          `json:"direction"`
 	Version       string          `json:"version"`
 	VersionKind   string          `json:"version_kind"`
 	DiscoveredAt  string          `json:"discovered_at"`

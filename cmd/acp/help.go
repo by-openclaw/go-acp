@@ -266,15 +266,15 @@ func helpExtract() {
 	fmt.Println(`acp extract — capture a per-product DM triple into the fixture layout
 
 IN   acp extract 10.41.40.195 --protocol acp2 --slot 0 \
-       --manufacturer Axon --product DDB08 --version 2.3 \
-       --out tests/fixtures/products/axon/DDB08/acp2/v2.3/
+       --manufacturer Axon --product DDB08 --direction consumer --version 2.3 \
+       --out tests/fixtures/products/axon/DDB08/acp2/consumer/v2.3/
 OUT  walked 214 objects on slot 0
-     capture: wrote tree.json to tests/fixtures/products/axon/DDB08/acp2/v2.3/
-     extract complete: tests/fixtures/products/axon/DDB08/acp2/v2.3/{meta.json, wire.jsonl, tree.json}
+     capture: wrote tree.json to tests/fixtures/products/axon/DDB08/acp2/consumer/v2.3/
+     extract complete: tests/fixtures/products/axon/DDB08/acp2/consumer/v2.3/{meta.json, wire.jsonl, tree.json}
        fingerprint: sha256:3fa1c4e8abcd...
 
 USAGE
-  acp extract <host> --protocol P --manufacturer M --product X --version V --out DIR [--slot N] [flags]
+  acp extract <host> --protocol P --manufacturer M --product X --direction D --version V --out DIR [--slot N] [flags]
 
 DESCRIPTION
   Walks the target device (all protocols) and produces the three-file
@@ -300,6 +300,7 @@ DESCRIPTION
 FLAGS
   --manufacturer M    vendor display name (preserve casing)      (required)
   --product P         product identifier as vendor writes it     (required)
+  --direction D       consumer | provider | both                 (required)
   --version V         version as reported by the device          (required)
   --version-kind K    firmware | software | release (default firmware)
   --description S     free text from the identity block          (optional)
@@ -309,12 +310,12 @@ FLAGS
 
 EXAMPLES
   acp extract 10.6.239.113 --protocol acp1 --slot 1 \
-    --manufacturer Axon --product CDV08v06 --version 2.1 \
-    --out tests/fixtures/products/axon/CDV08v06/acp1/v2.1/
+    --manufacturer Axon --product CDV08v06 --direction consumer --version 2.1 \
+    --out tests/fixtures/products/axon/CDV08v06/acp1/consumer/v2.1/
 
   acp extract 127.0.0.1 --protocol emberplus --port 9092 \
-    --manufacturer L-S-B --product TinyEmberPlus --version 1.0 \
-    --out tests/fixtures/products/l-s-b/TinyEmberPlus/emberplus/v1.0/`)
+    --manufacturer L-S-B --product TinyEmberPlus --direction consumer --version 1.0 \
+    --out tests/fixtures/products/l-s-b/TinyEmberPlus/emberplus/consumer/v1.0/`)
 }
 
 func helpImport() {

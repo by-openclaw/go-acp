@@ -202,7 +202,7 @@ IN / OUT — one-line contract per command (see "acp help <cmd>" for full detail
                     OUT stream of announcements until Ctrl-C
   export            IN  acp export <host> --format json|yaml|csv --out FILE
                     OUT snapshot file (json/yaml lossless, csv flat)
-  extract           IN  acp extract <host> --protocol P --manufacturer M --product X --version V --out DIR
+  extract           IN  acp extract <host> --protocol P --manufacturer M --product X --direction D --version V --out DIR
                     OUT writes meta.json + wire.jsonl + tree.json; prints fingerprint
   import            IN  acp import <host> --file SNAPSHOT [--dry-run]
                     OUT applied/skipped/failed counts; dry-run prints skip table

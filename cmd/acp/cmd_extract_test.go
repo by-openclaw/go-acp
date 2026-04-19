@@ -64,6 +64,7 @@ func TestMetaJSONRoundTrip(t *testing.T) {
 		Protocol:      "acp2",
 		Manufacturer:  "Axon",
 		Product:       "DDB08",
+		Direction:     "consumer",
 		Version:       "2.3",
 		VersionKind:   "firmware",
 		DiscoveredAt:  "2026-04-19T13:20:00Z",
@@ -97,7 +98,7 @@ func TestMetaJSONRoundTrip(t *testing.T) {
 	// Schema stability: make sure the wire JSON has the keys downstream
 	// tools depend on. Drift here breaks every replay test.
 	wantKeys := []string{
-		`"protocol"`, `"manufacturer"`, `"product"`, `"version"`,
+		`"protocol"`, `"manufacturer"`, `"product"`, `"direction"`, `"version"`,
 		`"version_kind"`, `"discovered_at"`, `"dm_fingerprint"`,
 		`"object_count"`, `"capture_tool"`, `"name"`, `"git_tag"`, `"git_commit"`,
 	}

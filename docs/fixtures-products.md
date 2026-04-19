@@ -12,14 +12,15 @@ tests/fixtures/products/
 └── <manufacturer>/                     axon | lawo | dhd | by-systems | ...
     └── <product>/                      DDB08 | CDV08v06 | mc56 | xs-core | ...
         └── <protocol>/                 acp1 | acp2 | emberplus
-            ├── CHANGELOG.md            generated on each new version add
-            └── <version>/              v2.3 | 9092 | firmware-A.B.C
-                ├── meta.json           identity, fingerprint, source tool
-                ├── wire.jsonl          raw frames (replay source)
-                └── tree.json           canonical export (replay destination)
+            └── <direction>/            consumer | provider | both
+                ├── CHANGELOG.md        generated on each new version add
+                └── <version>/          v2.3 | 9092 | firmware-A.B.C
+                    ├── meta.json       identity, fingerprint, source tool
+                    ├── wire.jsonl      raw frames (replay source)
+                    └── tree.json       canonical export (replay destination)
 ```
 
-A product folder can contain multiple protocol subfolders — one physical card sometimes exposes several interfaces (e.g. an Axon DDB08 speaking both ACP2 and Ember+). Each protocol has its own version lineage and its own `CHANGELOG.md`.
+A product folder can contain multiple protocol subfolders — one physical card sometimes exposes several interfaces (e.g. an Axon DDB08 speaking both ACP2 and Ember+). Each protocol can further split by **direction**: the same product speaks `consumer` (we read the device), `provider` (we expose a tree to external consumers), or `both` on a given protocol. Provider-side DMs usually differ from consumer-side (extra RPC / stream / write endpoints), so direction is its own segment with its own version lineage and its own `CHANGELOG.md`.
 
 ### Slug rules
 
@@ -28,6 +29,7 @@ A product folder can contain multiple protocol subfolders — one physical card 
 | `<manufacturer>` | lowercase, hyphen for spaces | Vendor slug. `axon`, `lawo`, `dhd`, `by-systems`, `calrec`. |
 | `<product>` | preserve vendor casing | Product identifier as the vendor writes it. `DDB08`, `CDV08v06`, `mc56`, `xs-core`. No spaces — replace with hyphens. |
 | `<protocol>` | lowercase | Exactly one of `acp1`, `acp2`, `emberplus`. |
+| `<direction>` | lowercase | Exactly one of `consumer`, `provider`, `both`. Use `both` only when the same DM holds in both roles — if consumer-side and provider-side differ at all, use two separate folders. |
 | `<version>` | as reported by device | ACP1/ACP2: firmware version from identity block (`v2.3`, `2.3.1`). Ember+: provider port or named release (`9092`, `lawo-v7.12`). Use what the device itself returns so lookup is deterministic. |
 
 ---
@@ -41,6 +43,7 @@ Locked schema. Extra keys allowed but not required.
   "protocol": "acp2",
   "manufacturer": "Axon",
   "product": "DDB08",
+  "direction": "consumer",
   "version": "2.3",
   "version_kind": "firmware",
   "discovered_at": "2026-04-19T13:20:00Z",
@@ -62,6 +65,7 @@ Locked schema. Extra keys allowed but not required.
 | `protocol` | yes | One of `acp1`, `acp2`, `emberplus` — matches the directory segment. |
 | `manufacturer` | yes | Vendor name, preserving vendor casing (`Axon`, `Lawo`, `DHD`). Directory segment uses the lowercase slug form. |
 | `product` | yes | Product identifier — matches the directory segment. |
+| `direction` | yes | `consumer` / `provider` / `both` — matches the directory segment. Determines how the product speaks this protocol: we read it (consumer), we expose it (provider), or both. |
 | `version` | yes | Version string — matches the directory segment. |
 | `version_kind` | yes | `firmware` for hardware devices, `software` for Ember+/soft providers, `release` for named releases. |
 | `discovered_at` | yes | UTC ISO-8601 with second precision. Timestamp of the capture run, not a DM property — included so fixtures can be audited. |
@@ -112,7 +116,7 @@ Identical firmware → identical fingerprint across captures. Different fingerpr
 
 ## `CHANGELOG.md` per product-protocol
 
-One `CHANGELOG.md` per `<manufacturer>/<product>/<protocol>/` folder. A dual-protocol product (e.g. DDB08 exposed on both ACP2 and Ember+) gets two independent changelogs because each protocol's DM evolves on its own cadence.
+One `CHANGELOG.md` per `<manufacturer>/<product>/<protocol>/<direction>/` folder. A dual-protocol product (e.g. DDB08 exposed on both ACP2 and Ember+) gets two independent changelogs because each protocol's DM evolves on its own cadence. A protocol that's spoken in two directions (we both read and publish) gets one changelog per direction when the DM differs between roles.
 
 Generated on new version addition by `acp diff <existing-version> <new-version>` (#36.c).
 
@@ -151,10 +155,11 @@ Ordering: newest version at top. Initial capture at bottom with "Initial capture
 1. **Fixtures under `products/` are generated, never hand-edited.** If a file is wrong, fix the generator and regenerate.
 2. **One product per `<manufacturer>/<product>/` folder.** Different vendor products in different folders even if similar.
 3. **One protocol per `<manufacturer>/<product>/<protocol>/` folder.** Dual-protocol products have two sibling protocol folders under the same product.
+3a. **One direction per `<protocol>/<direction>/` folder.** Use `consumer`, `provider`, or `both`. `both` only when the DM is literally identical in both roles — otherwise split.
 4. **Version folders are immutable.** New firmware = new folder. Never overwrite an existing version.
 5. **`meta.json` + `tree.json` are committed as regular blobs (not LFS).** LFS is frozen — keep files < 100 KB or store the capture locally under `bin/devices/` instead.
 6. **`wire.jsonl` is committed only if < 100 KB.** Larger wire captures stay local under `bin/devices/captures/` and are referenced in the meta.json `notes` field.
-7. **One `CHANGELOG.md` per `<product>/<protocol>/` folder.** Never per version.
+7. **One `CHANGELOG.md` per `<product>/<protocol>/<direction>/` folder.** Never per version.
 8. **When a version folder is added or removed, update the product's `CHANGELOG.md`** — if you're doing it by hand (before #36.c lands), use the format above exactly.
 
 ---
@@ -163,7 +168,7 @@ Ordering: newest version at top. Initial capture at bottom with "Initial capture
 
 | Source | Command | Generates |
 |---|---|---|
-| Live device | `acp extract <host> --protocol <p> --out tests/fixtures/products/<manufacturer>/<product>/<p>/<version>/` | Full triple (meta + wire + tree) — shipping as **#36.b** |
+| Live device | `acp extract <host> --protocol <p> --direction <d> --out tests/fixtures/products/<manufacturer>/<product>/<p>/<d>/<version>/` | Full triple (meta + wire + tree) — see `acp help extract` |
 | Existing `wire.jsonl` | Replay through plugin decoder + re-emit canonical | `tree.json` (regenerate-only), `meta.json` fields refreshed |
 | Existing `tree.json` snapshot | `acp convert --in tree.json --out <any-other-format>` | Format conversions — already supported today |
 | Diff between two versions | `acp diff <v1>/tree.json <v2>/tree.json` | `CHANGELOG.md` entry — shipping as **#36.c** |

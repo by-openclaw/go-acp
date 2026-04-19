@@ -10,7 +10,7 @@ Per-product, per-firmware captures used by offline replay tests and by `acp diff
 
 ```
 products/
-└── <manufacturer>/<product>/<protocol>/
+└── <manufacturer>/<product>/<protocol>/<direction>/
     ├── CHANGELOG.md        generated on each new version add
     └── <version>/
         ├── meta.json       identity + fingerprint + capture_tool build info
@@ -18,7 +18,7 @@ products/
         └── tree.json       canonical export (replay destination)
 ```
 
-A product folder can hold multiple `<protocol>` subfolders — one physical card sometimes exposes several interfaces (e.g. an Axon card speaking both ACP2 and Ember+). Each protocol has its own version lineage and its own CHANGELOG.
+A product folder can hold multiple `<protocol>` subfolders — one physical card sometimes exposes several interfaces (e.g. an Axon card speaking both ACP2 and Ember+). Each protocol splits further by `<direction>`: `consumer` (we read the device), `provider` (we expose a tree to external consumers), or `both` (same DM in both roles). Each direction has its own version lineage and its own CHANGELOG.
 
 Full spec + schema: [docs/fixtures-products.md](../../../docs/fixtures-products.md).
 
