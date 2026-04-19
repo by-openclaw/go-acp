@@ -237,28 +237,28 @@ local contents_scope_by_app = {
 -- Protocol declarations
 -------------------------------------------------------------------------------
 
-local s101_proto = Proto("s101_emberplus", "S101 / Ember+")
-local glow_proto = Proto("glow_ber",      "Glow BER")
+local s101_proto = Proto("ep_s101", "S101 / Ember+")
+local glow_proto = Proto("ep_glow", "Glow BER")
 
 -------------------------------------------------------------------------------
 -- ProtoFields
 -------------------------------------------------------------------------------
 
 local s101_f = {
-    bof      = ProtoField.uint8 ("s101.bof",     "BoF",      base.HEX),
-    eof      = ProtoField.uint8 ("s101.eof",     "EoF",      base.HEX),
-    slot     = ProtoField.uint8 ("s101.slot",    "Slot",     base.DEC),
-    msgtype  = ProtoField.uint8 ("s101.msgtype", "Msg Type", base.HEX, s101_msgtype_valstr),
-    command  = ProtoField.uint8 ("s101.command", "Command",  base.HEX, s101_cmd_valstr),
-    version  = ProtoField.uint8 ("s101.version", "Version",  base.DEC),
-    flags    = ProtoField.uint8 ("s101.flags",   "Flags",    base.HEX, s101_flags_valstr),
-    dtd      = ProtoField.uint8 ("s101.dtd",     "DTD Type", base.HEX, s101_dtd_valstr),
-    appblen  = ProtoField.uint8 ("s101.applen",  "App Bytes Length", base.DEC),
-    appbytes = ProtoField.bytes ("s101.appbytes","App Bytes"),
-    crc      = ProtoField.uint16("s101.crc",     "CRC",      base.HEX),
-    crc_status = ProtoField.string("s101.crc_status", "CRC Status"),
-    escaped  = ProtoField.bytes ("s101.escaped", "Escaped Payload"),
-    unescaped= ProtoField.bytes ("s101.unescaped","Unescaped Content"),
+    bof      = ProtoField.uint8 ("emberplus.s101.bof",     "BoF",      base.HEX),
+    eof      = ProtoField.uint8 ("emberplus.s101.eof",     "EoF",      base.HEX),
+    slot     = ProtoField.uint8 ("emberplus.s101.slot",    "Slot",     base.DEC),
+    msgtype  = ProtoField.uint8 ("emberplus.s101.msgtype", "Msg Type", base.HEX, s101_msgtype_valstr),
+    command  = ProtoField.uint8 ("emberplus.s101.command", "Command",  base.HEX, s101_cmd_valstr),
+    version  = ProtoField.uint8 ("emberplus.s101.version", "Version",  base.DEC),
+    flags    = ProtoField.uint8 ("emberplus.s101.flags",   "Flags",    base.HEX, s101_flags_valstr),
+    dtd      = ProtoField.uint8 ("emberplus.s101.dtd",     "DTD Type", base.HEX, s101_dtd_valstr),
+    appblen  = ProtoField.uint8 ("emberplus.s101.applen",  "App Bytes Length", base.DEC),
+    appbytes = ProtoField.bytes ("emberplus.s101.appbytes","App Bytes"),
+    crc      = ProtoField.uint16("emberplus.s101.crc",     "CRC",      base.HEX),
+    crc_status = ProtoField.string("emberplus.s101.crc_status", "CRC Status"),
+    escaped  = ProtoField.bytes ("emberplus.s101.escaped", "Escaped Payload"),
+    unescaped= ProtoField.bytes ("emberplus.s101.unescaped","Unescaped Content"),
 }
 s101_proto.fields = s101_f
 
@@ -267,20 +267,20 @@ s101_proto.fields = s101_f
 -- uses its own BER sub-encoding). Raw bytes are still attached separately
 -- for binary inspection.
 local glow_f = {
-    tag_class = ProtoField.uint8 ("glow.class",    "Class",     base.DEC, ber_class_valstr),
-    tag_cons  = ProtoField.bool  ("glow.constructed","Constructed"),
-    tag_num   = ProtoField.uint32("glow.tag_num",  "Tag Number",base.DEC),
-    tag_name  = ProtoField.string("glow.tag_name", "Tag Name"),
-    length    = ProtoField.uint32("glow.length",   "Length",    base.DEC),
-    length_indef = ProtoField.bool ("glow.length_indef", "Indefinite Length"),
-    value_int   = ProtoField.string("glow.int",    "Value (int)"),
-    value_bool  = ProtoField.string("glow.bool",   "Value (bool)"),
-    value_real  = ProtoField.string("glow.real",   "Value (real)"),
-    value_utf8  = ProtoField.string("glow.utf8",   "Value (UTF-8)"),
-    value_oid   = ProtoField.string("glow.reloid", "Value (RELATIVE-OID)"),
-    value_null  = ProtoField.string("glow.null",   "Value (NULL)"),
-    value_octets= ProtoField.bytes ("glow.octets", "Value (octets)"),
-    value_raw   = ProtoField.bytes ("glow.raw",    "Value (raw)"),
+    tag_class = ProtoField.uint8 ("emberplus.glow.class",    "Class",     base.DEC, ber_class_valstr),
+    tag_cons  = ProtoField.bool  ("emberplus.glow.constructed","Constructed"),
+    tag_num   = ProtoField.uint32("emberplus.glow.tag_num",  "Tag Number",base.DEC),
+    tag_name  = ProtoField.string("emberplus.glow.tag_name", "Tag Name"),
+    length    = ProtoField.uint32("emberplus.glow.length",   "Length",    base.DEC),
+    length_indef = ProtoField.bool ("emberplus.glow.length_indef", "Indefinite Length"),
+    value_int   = ProtoField.string("emberplus.glow.int",    "Value (int)"),
+    value_bool  = ProtoField.string("emberplus.glow.bool",   "Value (bool)"),
+    value_real  = ProtoField.string("emberplus.glow.real",   "Value (real)"),
+    value_utf8  = ProtoField.string("emberplus.glow.utf8",   "Value (UTF-8)"),
+    value_oid   = ProtoField.string("emberplus.glow.reloid", "Value (RELATIVE-OID)"),
+    value_null  = ProtoField.string("emberplus.glow.null",   "Value (NULL)"),
+    value_octets= ProtoField.bytes ("emberplus.glow.octets", "Value (octets)"),
+    value_raw   = ProtoField.bytes ("emberplus.glow.raw",    "Value (raw)"),
 }
 glow_proto.fields = glow_f
 
