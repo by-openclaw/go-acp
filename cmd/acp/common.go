@@ -63,7 +63,7 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"transport: udp (default, subnet broadcast announcements) or tcp "+
 			"(ACP1 v1.4 TCP direct, crosses VLANs)")
 	fs.IntVar(&cf.port, "port", 0, "override default port (0 = plugin default)")
-	fs.DurationVar(&cf.timeout, "timeout", 30*time.Second, "per-operation timeout")
+	fs.DurationVar(&cf.timeout, "timeout", 1*time.Second, "per-operation timeout (single get/set/connect; walks ignore this and run until done)")
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
 	fs.StringVar(&cf.capture, "capture", "",
@@ -174,7 +174,16 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 		port = factory.Meta().DefaultPort
 	}
 
-	dialCtx, cancel := context.WithTimeout(ctx, cf.timeout)
+	// Connect needs a longer floor than a single-op --timeout: ACP2
+	// does AN2 GetVersion + GetDeviceInfo + GetSlotInfo(n) + EnableEvents
+	// + ACP2 GetVersion before returning ready (~5 round trips on LAN),
+	// and TCP dial itself can take 100-300 ms on first attempt. Use
+	// max(cf.timeout, 5s) so a tight --timeout doesn't kill connect.
+	dialTimeout := cf.timeout
+	if dialTimeout < 5*time.Second {
+		dialTimeout = 5 * time.Second
+	}
+	dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
 	defer cancel()
 	if err := plug.Connect(dialCtx, host, port); err != nil {
 		return nil, nil, err

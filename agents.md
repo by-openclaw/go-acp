@@ -206,35 +206,51 @@ dead-man + auto-reconnect, matrix spec invariants. Wire-verified on
 TinyEmberPlus :9092 (4494 objects) and :9000 (~20 000 objects, DHD tree).
 Issues #20–#28 closed.
 
-**ACP1 consumer — runtime feature complete**, pre-canonical. Verified
-against Synapse Simulator at `10.6.239.113:2071`. All 11 object types,
-LRU+TTL cache, announcements, export/import round-trip. Canonical
-alignment pending under #31.
+**ACP1 consumer — SHIPPED + canonical-aligned** on `main` as 9c5448e
+(PR #33, closes #31). Adds `Canonicalize() → canonical.Export`,
+compliance profile (`acp profile --protocol acp1`), 12-event catalog
+with spec-page citations, `--capture <dir>` dir-mode writes
+`tree.json`. Verified on Synapse Simulator at `10.6.239.113:2071`
+(59 objects, classification strict). Consumer doc refreshed to match
+Ember+ shape. Plus: `internal/protocol/compliance/profile.go`
+extracted as a shared package for all plugins.
 
-**ACP2 consumer — runtime feature complete**, pre-canonical. Verified
-against Axon CONVERT Hybrid at `10.41.40.195:2072` (VM only — not
-reachable from dev shell). 214 objects (slot 0), 44 k+ objects (slot 1).
-Full DFS walker, streaming, enum u32 optionsMap, background walk for
-watch. Canonical alignment pending under #32.
+**ACP2 consumer — runtime feature complete, canonical alignment PENDING
+(#32).** Pre-canonical plugin verified against Axon CONVERT Hybrid at
+`10.41.40.195:2072` (VM only — not reachable from dev shell). 214
+objects (slot 0), 44 k+ objects (slot 1). Full DFS walker, streaming,
+enum u32 optionsMap, background walk for watch. User has VM access —
+will run integration checks when the PR opens.
 
-### In progress — ACP1 + ACP2 canonical alignment (umbrella #30)
+### In progress — ACP2 canonical alignment (#32, last child of #30)
 
-Propagate the Ember+ architecture to ACP1 + ACP2:
-- `internal/protocol/<name>/canonicalize.go` — map objects to
-  canonical `Node` / `Parameter`
-- `internal/protocol/<name>/compliance.go` — wire tolerance events,
-  spec-page cited
-- Freshness model (live / updated / stale / cache)
-- Cascade on disconnect (root `isOnline y→n` synthetic event)
-- Auto-reconnect goroutine (pattern lifted from Ember+)
-- Dir-mode capture: `--capture <dir>` → `tree.json`
-- `acp profile <host> --protocol <name>` CLI
-- Consumer doc refresh matching Ember+ shape
-
-**Order:** ACP1 first (locally testable, #31), then ACP2 (VM-blocked, #32).
-Each ships as its own PR with `Closes #<sub>` + `Advances #<umbrella>` in
-the PR body (not only commit body — squash drops per-commit lines per
+Mirrors the ACP1 scope (shipped in PR #33). Each PR opens with
+`Closes #<sub>` + `Advances #<umbrella>` in the PR body (not only
+commit body — squash drops per-commit lines per
 `memory/feedback_pr_issue_close.md`).
+
+Scope:
+- `internal/protocol/acp2/canonicalize.go` — map ACP2 objects (Node
+  / Preset / Enum / Number / IPv4 / String across 20 pids) to
+  canonical `Node` / `Parameter`, including preset-depth handling
+  and the number_type vtype table
+- `internal/protocol/acp2/compliance_events.go` — wire tolerance
+  events catalog, ACP2 + AN2 spec page cited per label
+- `Plugin.ComplianceProfile()` + `acp profile --protocol acp2`
+- `--capture <dir>` dir-mode writes `tree.json`
+- `docs/protocols/acp2/consumer.md` refreshed to Ember+/ACP1 shape
+- Unit tests (synthetic BER + AN2 frames) — offline, CI-friendly
+- User runs VM integration checks (`10.41.40.195:2072`) before merge
+
+### Shipped — ACP1 canonical alignment (PR #33 on main)
+
+- `internal/protocol/acp1/canonicalize.go` — SlotTree → canonical.Export
+- `internal/protocol/acp1/compliance_events.go` — 12-event catalog
+- Walker.SetProfile + transport/object error events on MTYPE=3
+- `acp walk --protocol acp1 --capture <dir>` writes `tree.json`
+- `acp profile --protocol acp1` returns classification + counters
+- Wire-verified on Synapse Simulator 10.6.239.113:2071
+- Plus shared `internal/protocol/compliance/profile.go` extracted
 
 ### Ember+ — what shipped in PR #29
 

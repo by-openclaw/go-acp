@@ -53,8 +53,8 @@ func runInvoke(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	// Walk to populate tree.
-	if _, err := plug.Walk(opCtx, *slot); err != nil {
+	// Walk to populate tree (raw ctx — no per-op deadline).
+	if _, err := plug.Walk(ctx, *slot); err != nil {
 		return fmt.Errorf("walk: %w", err)
 	}
 

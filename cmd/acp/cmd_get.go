@@ -45,7 +45,11 @@ func runGet(ctx context.Context, args []string) error {
 	// Path-based addressing: walk first, then lookup by path key.
 	// Label-based: resolve from cache or walk.
 	if *pathFlag != "" || *label != "" {
-		if _, err := plug.Walk(opCtx, *slot); err != nil {
+		// Resolution walk uses the raw signal-only ctx, not opCtx.
+		// A tree walk takes as long as it takes (44k objects on ACP2
+		// slot 1 needs minutes); --timeout only bounds the single
+		// GetValue below.
+		if _, err := plug.Walk(ctx, *slot); err != nil {
 			return fmt.Errorf("walk for resolution: %w", err)
 		}
 	}

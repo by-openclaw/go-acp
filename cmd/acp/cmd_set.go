@@ -18,13 +18,27 @@ func runSet(ctx context.Context, args []string) error {
 	label := fs.String("label", "", "object label")
 	id := fs.Int("id", -1, "object id within group")
 	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
-	valueStr := fs.String("value", "", "typed value (e.g. -3.0, \"On\", \"192.168.1.5\", \"CH1\")")
+	valueStr := fs.String("value", "", "typed value (e.g. -3.0, \"On\", \"192.168.1.5\", \"CH1\"); empty string is valid for string objects")
 	valueHex := fs.String("raw", "", "raw wire bytes as hex — escape hatch bypassing typed encoding")
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: acp set <host> --slot N (--path P | --label L | --id I) --value <v>")
 	}
 	_ = fs.Parse(rest)
+	// Detect whether --value / --raw were explicitly passed (even if
+	// empty). fs.Visit walks only flags the user actually supplied, so
+	// `--value ""` is distinguishable from "--value omitted" — needed
+	// to clear string objects back to empty.
+	valueSet := false
+	rawSet := false
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "value":
+			valueSet = true
+		case "raw":
+			rawSet = true
+		}
+	})
 	// Ember+ has no slot concept; default to 0.
 	if cf.protocol == "emberplus" && *slot < 0 {
 		*slot = 0
@@ -32,7 +46,7 @@ func runSet(ctx context.Context, args []string) error {
 	if *slot < 0 {
 		return fmt.Errorf("--slot is required")
 	}
-	if *valueStr == "" && *valueHex == "" {
+	if !valueSet && !rawSet {
 		return fmt.Errorf("either --value or --raw is required")
 	}
 	if *pathFlag == "" && *label == "" && *id < 0 {
@@ -61,9 +75,11 @@ func runSet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	// Path or label addressing: walk to populate tree.
+	// Path or label addressing: walk to populate tree. Uses raw ctx
+	// (signal-only) so big trees don't fail their own resolution; only
+	// the SetValue below is bounded by --timeout.
 	if *pathFlag != "" || *label != "" {
-		if _, err := plug.Walk(opCtx, *slot); err != nil {
+		if _, err := plug.Walk(ctx, *slot); err != nil {
 			return fmt.Errorf("walk for resolution: %w", err)
 		}
 	} else if *label != "" && *id < 0 {

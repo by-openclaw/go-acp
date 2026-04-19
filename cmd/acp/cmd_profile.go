@@ -48,10 +48,7 @@ func runProfile(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	opCtx, cancel := withTimeout(ctx, cf.timeout)
-	defer cancel()
-
-	objs, err := plug.Walk(opCtx, 0)
+	objs, err := plug.Walk(ctx, 0)
 	if err != nil {
 		return fmt.Errorf("walk: %w", err)
 	}

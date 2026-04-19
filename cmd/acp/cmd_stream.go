@@ -35,10 +35,7 @@ func runStream(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	opCtx, cancel := withTimeout(ctx, cf.timeout)
-	defer cancel()
-
-	if _, err := plug.Walk(opCtx, 0); err != nil {
+	if _, err := plug.Walk(ctx, 0); err != nil {
 		return fmt.Errorf("walk: %w", err)
 	}
 

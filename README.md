@@ -22,8 +22,8 @@ and CLI examples.
 
 | Protocol | Transport | Port | Status | Documentation |
 |---|---|---|---|---|
-| ACP1 | UDP / TCP direct | 2071 | done | [docs/protocols/acp1/consumer.md](docs/protocols/acp1/consumer.md) |
-| ACP2 | AN2/TCP | 2072 | done | [docs/protocols/acp2/consumer.md](docs/protocols/acp2/consumer.md) |
+| ACP1 | UDP / TCP direct | 2071 | done, canonical-aligned | [docs/protocols/acp1/consumer.md](docs/protocols/acp1/consumer.md) |
+| ACP2 | AN2/TCP | 2072 | done, canonical alignment pending (#32) | [docs/protocols/acp2/consumer.md](docs/protocols/acp2/consumer.md) |
 | Ember+ | S101/TCP | 9000-9092 | consumer done (resolver + multi-level labels) | [docs/protocols/emberplus/consumer.md](docs/protocols/emberplus/consumer.md) |
 | Probel SW-P-02 | TCP | — | planned (audit YELLOW) | [memory: project_probel_extensions.md] |
 | Probel SW-P-08+ | TCP | — | planned (audit YELLOW) | [memory: project_probel_extensions.md] |
@@ -52,6 +52,21 @@ Export/import rules:
 - Values in export are live (from walk)
 - Round-trip: export → edit → import works for all 3 formats
 - Hierarchical tree format: identity > Card name > {id, kind, value}
+
+### Import summary line
+
+`acp import` prints `applied N, skipped M, failed X` when it finishes. The
+counts mean:
+
+| Count | What it is | Not an error |
+|---|---|---|
+| `applied` | RW objects the importer wrote (or would write, in `--dry-run`) | — |
+| `skipped` | Objects deliberately not attempted: read-only (no W bit), node containers (BOARD / IDENTITY / PROCESSING VIDEO / …), sub-group markers | ✅ expected |
+| `failed` | `SetValue` returned an error from the device (`no access`, `invalid value`, …) | ❌ real failure |
+
+On an ACP2 slot 1 export of ~39 k objects, `skipped ≈ 16 k` is normal —
+that's the read-only metric / identity / structural subtree the spec
+defines as non-writable. Only `failed > 0` indicates a problem.
 
 ---
 

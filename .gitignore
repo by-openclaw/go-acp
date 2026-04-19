@@ -45,3 +45,18 @@ assets/smh/
 # Local capture files produced by --capture
 *.jsonl
 !tests/fixtures/**/*.jsonl
+
+# Raw per-device captures (walk/watch/frames). These can reach 50-100+
+# MB each and would blow through the GitHub free-plan LFS quota (10 GB)
+# or exceed the 100 MB per-file blob limit. Keep them local only.
+# Drop new VM / device capture dumps under tests/fixtures/<proto>/vm_*/,
+# device_*/, or raw/ so this rule catches them. Hand-trimmed golden
+# fixtures (<100 KB) can still be committed at tests/fixtures/<proto>/
+# root or any other subdirectory that doesn't match the patterns below.
+tests/fixtures/**/vm_*/
+tests/fixtures/**/device_*/
+tests/fixtures/**/raw/
+
+# The bin/devices/ folder is where the CLI writes --capture output and
+# the local tree cache during development. Never commit it.
+bin/devices/
