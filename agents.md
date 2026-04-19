@@ -196,19 +196,47 @@ log entries         NEVER to disk
 
 ## Implementation status (as of 2026-04-19)
 
-**ACP1 — feature complete.** Verified against Synapse Simulator at
-`10.6.239.113`. All 11 object types, LRU+TTL cache, announcements,
-export/import round-trip.
+### Shipped
 
-**ACP2 — feature complete.** Verified against Axon CONVERT Hybrid at
-`10.41.40.195`. 214 objects (slot 0), 44k+ objects (slot 1). Full DFS
-walker, streaming, enum u32 optionsMap, background walk for watch.
+**Ember+ consumer — SHIPPED** on `main` as 171f32a (PR #29). Full spec
+v2.50 coverage: BER codec, S101 framing, Glow DTD, canonical export
+with resolver (templates/labels/gain × pointer/inline/both), multi-level
+matrix labels, watch field-diff, SetValue with write-confirm, session
+dead-man + auto-reconnect, matrix spec invariants. Wire-verified on
+TinyEmberPlus :9092 (4494 objects) and :9000 (~20 000 objects, DHD tree).
+Issues #20–#28 closed.
 
-**Ember+ — consumer feature-complete.** BER codec, S101 framing,
-Glow DTD, non-qualified fallback, full tree walk against TinyEmberPlus
-:9092 (4494 objects) AND :9000 (~20000 objects, DHD tree). Types
-rebuilt from spec v2.50. Resolver + mode flags landed 2026-04-19;
-wire-verified on 9092.
+**ACP1 consumer — runtime feature complete**, pre-canonical. Verified
+against Synapse Simulator at `10.6.239.113:2071`. All 11 object types,
+LRU+TTL cache, announcements, export/import round-trip. Canonical
+alignment pending under #31.
+
+**ACP2 consumer — runtime feature complete**, pre-canonical. Verified
+against Axon CONVERT Hybrid at `10.41.40.195:2072` (VM only — not
+reachable from dev shell). 214 objects (slot 0), 44 k+ objects (slot 1).
+Full DFS walker, streaming, enum u32 optionsMap, background walk for
+watch. Canonical alignment pending under #32.
+
+### In progress — ACP1 + ACP2 canonical alignment (umbrella #30)
+
+Propagate the Ember+ architecture to ACP1 + ACP2:
+- `internal/protocol/<name>/canonicalize.go` — map objects to
+  canonical `Node` / `Parameter`
+- `internal/protocol/<name>/compliance.go` — wire tolerance events,
+  spec-page cited
+- Freshness model (live / updated / stale / cache)
+- Cascade on disconnect (root `isOnline y→n` synthetic event)
+- Auto-reconnect goroutine (pattern lifted from Ember+)
+- Dir-mode capture: `--capture <dir>` → `tree.json`
+- `acp profile <host> --protocol <name>` CLI
+- Consumer doc refresh matching Ember+ shape
+
+**Order:** ACP1 first (locally testable, #31), then ACP2 (VM-blocked, #32).
+Each ships as its own PR with `Closes #<sub>` + `Advances #<umbrella>` in
+the PR body (not only commit body — squash drops per-commit lines per
+`memory/feedback_pr_issue_close.md`).
+
+### Ember+ — what shipped in PR #29
 
 Working:
 - Canonical JSON export per `docs/protocols/schema.md` + `elements/*.md`
@@ -251,20 +279,18 @@ Working:
   `template_reference_unresolved`, `labels_absorbed`, `gain_absorbed`,
   `template_absorbed`
 
-**Ember+ pending** (order locked in `memory/project_scope_sequencing.md`):
+**Ember+ known gaps** (accepted for now — not blockers):
 
-1. Doc conformance test (`tests/unit/export/conformance_test.go`):
-   read fenced JSON blocks from `docs/protocols/elements/*.md`,
-   parse through canonical Go structs, fail on key drift.
-2. Synthetic Glow tree → golden canonical JSON test (covers N≥2
-   multi-level labels case not present on wire captures).
+1. Matrix-template / Function-template inflation pointer-only
+   (no real provider in current captures ships these; fires
+   `template_reference_unresolved`).
+2. Gain resolver wire-verified on 9092 only (9000 and 9090 captures
+   have no `parametersLocation`).
 3. Replay tests (s101_replay, ber_roundtrip, glow_decode,
-   export_shape, encoder_compliance) against captured fixtures
-   in `tests/fixtures/emberplus/{9000,9090,9092}/`.
-4. Matrix-template / Function-template inflation (current resolver
-   covers Node + Parameter inflation; Matrix / Function are
-   pointer-only until a real provider ships one).
-5. VM integration run, then PR.
+   export_shape, encoder_compliance) not implemented — doc-conformance
+   + resolver tests cover the core shape-drift risk.
+4. VM integration for PR #29 not run — branch did not touch ACP2;
+   ACP1 exists in this codebase but was not the subject of the PR.
 
 ---
 

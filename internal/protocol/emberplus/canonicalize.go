@@ -8,7 +8,6 @@ import (
 
 	"acp/internal/export/canonical"
 	"acp/internal/protocol"
-	"acp/internal/protocol/emberplus/compliance"
 	"acp/internal/protocol/emberplus/glow"
 )
 
@@ -331,13 +330,13 @@ func (p *Plugin) enumMapToCanonical(glowMap map[int64]string, enumeration string
 			if isMasked(lbl) {
 				entry.Masked = true
 				if p.profile != nil {
-					p.profile.Note(compliance.EnumMaskedItem)
+					p.profile.Note(EnumMaskedItem)
 				}
 			}
 			entries = append(entries, entry)
 		}
 		if p.profile != nil {
-			p.profile.Note(compliance.EnumMapDerived)
+			p.profile.Note(EnumMapDerived)
 		}
 		return entries
 	}
@@ -352,7 +351,7 @@ func (p *Plugin) enumMapToCanonical(glowMap map[int64]string, enumeration string
 		if isMasked(k) {
 			entry.Masked = true
 			if p.profile != nil {
-				p.profile.Note(compliance.EnumMaskedItem)
+				p.profile.Note(EnumMaskedItem)
 			}
 		}
 		entries = append(entries, entry)
@@ -366,7 +365,7 @@ func (p *Plugin) enumMapToCanonical(glowMap map[int64]string, enumeration string
 	if enumeration != "" && p.profile != nil {
 		legacy := strings.Split(enumeration, "\n")
 		if len(legacy) != len(entries) {
-			p.profile.Note(compliance.EnumDoubleSource)
+			p.profile.Note(EnumDoubleSource)
 		}
 	}
 	return entries
@@ -390,12 +389,12 @@ func (p *Plugin) buildParameter(e *treeEntry) *canonical.Parameter {
 		if inferred := inferParamType(pr.Value); inferred != "" {
 			typeName = inferred
 			if p.profile != nil {
-				p.profile.Note(compliance.FieldInferred)
+				p.profile.Note(FieldInferred)
 			}
 		} else {
 			typeName = canonical.ParamString
 			if p.profile != nil {
-				p.profile.Note(compliance.FieldInferred)
+				p.profile.Note(FieldInferred)
 			}
 		}
 	}

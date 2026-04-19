@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/protocol/emberplus/compliance"
+	"acp/internal/protocol/compliance"
 	"acp/internal/protocol/emberplus/glow"
 	"acp/internal/protocol/emberplus/s101"
 	"acp/internal/transport"
@@ -444,7 +444,7 @@ func (s *Session) readLoop() {
 			// First fragment of a multi-packet message.
 			multiframeBuf = append([]byte{}, frame.Payload...)
 			s.logger.Debug("emberplus: multi-frame start", "len", len(frame.Payload))
-			s.noteCompliance(compliance.MultiFrameReassembly)
+			s.noteCompliance(MultiFrameReassembly)
 			continue
 		case frame.Flags&s101.FlagLast != 0:
 			// Last fragment — assemble and decode.

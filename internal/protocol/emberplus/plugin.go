@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"acp/internal/protocol"
-	"acp/internal/protocol/emberplus/compliance"
+	"acp/internal/protocol/compliance"
 	"acp/internal/protocol/emberplus/glow"
 	"acp/internal/protocol/emberplus/matrix"
 	"acp/internal/transport"
@@ -905,7 +905,7 @@ func (p *Plugin) resolveNumPath(explicit []int32, parent []int32, number int32) 
 	if len(explicit) > 0 {
 		return cloneInt32Slice(explicit)
 	}
-	p.profile.Note(compliance.NonQualifiedElement)
+	p.profile.Note(NonQualifiedElement)
 	out := make([]int32, 0, len(parent)+1)
 	out = append(out, parent...)
 	out = append(out, number)
@@ -1637,7 +1637,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 				}
 			}
 			if isNewPath {
-				p.profile.Note(compliance.StreamIDCollisionNoDescriptor)
+				p.profile.Note(StreamIDCollisionNoDescriptor)
 			}
 		}
 		p.streamIndex[param.StreamIdentifier] = appendUnique(existing, key)
