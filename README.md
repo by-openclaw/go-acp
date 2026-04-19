@@ -96,7 +96,9 @@ Every command has a fixed **IN / OUT** contract. Run `acp help <cmd>` for the fu
 | `set` | `acp set <host> --slot N --id I --value V` | confirmed value echoed by device (or typed error) |
 | `watch` | `acp watch <host> [filters]` | stream of live announcements until Ctrl-C |
 | `export` | `acp export <host> --format json\|yaml\|csv --out FILE` | snapshot file (json/yaml lossless, csv flat) |
-| `import` | `acp import <host> --file SNAPSHOT [--dry-run]` | `applied N, skipped M, failed X`; dry-run also prints per-reason skip table |
+| `import` | `acp import <host> --file SNAPSHOT [--id N ...\| --path P ...] [--dry-run]` | `applied N, skipped M, failed X[, filtered Y]`; dry-run also prints per-reason skip table |
+| `extract` | `acp extract <host> --protocol P --manufacturer M --product X --direction D --version V --out DIR` | meta.json + wire.jsonl + tree.json into the product fixture layout + SHA-256 fingerprint |
+| `diff` | `acp diff <before-tree.json> <after-tree.json> [--format text\|changelog] [--into PATH]` | OID-matched semantic diff; text report or Keep-a-Changelog markdown section |
 | `convert` | `acp convert --in FILE --out FILE` **(offline)** | same snapshot in the requested format, no device needed |
 | `discover` | `acp discover` | list of ACP1 devices on the local subnet (ACP1 only) |
 | `matrix` | `acp matrix <host> --path P --target N --sources N,N,...` | confirmed crosspoint connections (Ember+ only) |
