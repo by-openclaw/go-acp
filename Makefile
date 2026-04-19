@@ -124,11 +124,13 @@ test-integration-acp2:
 
 # ---------------------------------------------------------------- Fixtures
 
-.PHONY: fixtures-emberplus
+.PHONY: fixtures-emberplus fixtures-acp1 fixtures
 
-# Re-extract all Ember+ per-type fixtures from bin/*.pcapng sources.
+# Re-extract all per-type fixtures from bin/*.pcapng sources.
 # Requires Wireshark (tshark + editcap) on PATH. See
-# tests/fixtures/protocol_types/emberplus/README.md for the fixture map.
+# tests/fixtures/protocol_types/<proto>/README.md for the fixture maps.
+fixtures: fixtures-emberplus fixtures-acp1
+
 fixtures-emberplus:
 	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   tests/fixtures/protocol_types/emberplus/root_node              1
 	@scripts/fixturize.sh bin/emberplus_glow_mtx_labels_param_lua.pcapng   tests/fixtures/protocol_types/emberplus/qualified_node         582
@@ -144,6 +146,22 @@ fixtures-emberplus:
 	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   tests/fixtures/protocol_types/emberplus/command_unsubscribe    105
 	@scripts/fixturize.sh bin/emberplus_glow_functions_lua.pcapng          tests/fixtures/protocol_types/emberplus/function_invoke        346
 	@scripts/fixturize.sh bin/emberplus_glow_functions_lua.pcapng          tests/fixtures/protocol_types/emberplus/invocation_result      348
+
+# Re-extract all ACP1 per-type fixtures from a Synapse-emulator walk.
+fixtures-acp1:
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/root          6
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/integer       64
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/ip_address    26
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/float         68
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/enumerated    24
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/string        8
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/frame_status  2
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/alarm         114
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/long          400
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/byte          38
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/request       1
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/reply         2
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/error         1274
 
 # ---------------------------------------------------------------- Lint / vet / fmt
 
