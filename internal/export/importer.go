@@ -21,9 +21,16 @@ var (
 // ImportReport collects per-object outcomes from Apply so callers can
 // print a summary without guessing.
 type ImportReport struct {
-	Applied  int
-	Skipped  int
-	Failed   int
+	Applied int
+	Skipped int
+	Failed  int
+	// Filtered is the count of objects excluded before Apply by an
+	// ImportFilter (e.g. --id / --label / --path flags). Different
+	// from Skipped — filtered objects were never considered for apply;
+	// skipped objects were considered and rejected by policy (read-only
+	// / unknown-kind / marker). Populated by the caller after
+	// ApplyFilter runs; Apply itself does not set this field.
+	Filtered int
 	DryRun   bool
 	Failures []string
 	// Skips lists every object that the importer deliberately did not

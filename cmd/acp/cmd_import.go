@@ -4,9 +4,40 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"acp/internal/export"
 )
+
+// multiInt and multiString let --id / --label / --path repeat on the
+// command line, building up a slice for the ImportFilter.
+type multiInt []int
+
+func (m *multiInt) String() string {
+	parts := make([]string, len(*m))
+	for i, v := range *m {
+		parts[i] = strconv.Itoa(v)
+	}
+	return strings.Join(parts, ",")
+}
+
+func (m *multiInt) Set(s string) error {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return fmt.Errorf("--id value %q is not an integer", s)
+	}
+	*m = append(*m, n)
+	return nil
+}
+
+type multiString []string
+
+func (m *multiString) String() string { return strings.Join(*m, ",") }
+func (m *multiString) Set(s string) error {
+	*m = append(*m, s)
+	return nil
+}
 
 func runImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
@@ -14,13 +45,34 @@ func runImport(ctx context.Context, args []string) error {
 	file := fs.String("file", "", "snapshot file (.json, .yaml, .csv)")
 	dry := fs.Bool("dry-run", false, "validate and list would-write actions without sending")
 	slot := fs.Int("slot", -1, "apply only this slot (-1 = all slots in snapshot)")
+
+	// Selective-import filters (issue #45). --id and --path are
+	// mutually exclusive — pick one addressing scheme per invocation.
+	// Multiple values of the same flag are fine: --id 1 --id 2 targets
+	// both objects; --path "A.B" --path "C.D" targets both paths.
+	//
+	// --label is deliberately NOT offered. Labels collide across
+	// sub-trees thousands of times in Ember+ ("gain" per channel) and
+	// in ACP2 ("Present" per PSU). The only unambiguous keys are the
+	// per-protocol ID and the dotted path — --label would be a
+	// footgun.
+	var filterIDs multiInt
+	var filterPaths multiString
+	fs.Var(&filterIDs, "id",
+		"apply only this object ID. Repeat for multiple IDs. Mutually exclusive with --path.")
+	fs.Var(&filterPaths, "path",
+		"apply only objects with this dotted path (e.g. \"BOARD.Gain A\"). Repeat for multiple. Mutually exclusive with --id.")
+
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp import <host> --file SNAPSHOT [--slot N] [--dry-run]")
+		return fmt.Errorf("usage: acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run]")
 	}
 	_ = fs.Parse(rest)
 	if *file == "" {
 		return fmt.Errorf("--file is required")
+	}
+	if len(filterIDs) > 0 && len(filterPaths) > 0 {
+		return fmt.Errorf("--id and --path are mutually exclusive; pick one addressing scheme")
 	}
 
 	snap, err := export.LoadSnapshot(*file)
@@ -41,6 +93,15 @@ func runImport(ctx context.Context, args []string) error {
 		}
 	}
 
+	// Apply --id / --path filtering in place. Count of removed objects
+	// surfaces in the report so the operator sees exactly how many
+	// snapshot rows were excluded before Apply ran.
+	filter := &export.ImportFilter{
+		IDs:   []int(filterIDs),
+		Paths: []string(filterPaths),
+	}
+	filteredOut := export.ApplyFilter(snap, filter)
+
 	plug, cleanup, err := connect(ctx, host, cf)
 	if err != nil {
 		return err
@@ -54,12 +115,18 @@ func runImport(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	rep.Filtered = filteredOut
 
 	tag := "applied"
 	if *dry {
 		tag = "would apply"
 	}
-	fmt.Printf("%s %d, skipped %d, failed %d\n", tag, rep.Applied, rep.Skipped, rep.Failed)
+	if rep.Filtered > 0 {
+		fmt.Printf("%s %d, skipped %d, failed %d, filtered %d\n",
+			tag, rep.Applied, rep.Skipped, rep.Failed, rep.Filtered)
+	} else {
+		fmt.Printf("%s %d, skipped %d, failed %d\n", tag, rep.Applied, rep.Skipped, rep.Failed)
+	}
 	if len(rep.Failures) > 0 {
 		fmt.Println("failures:")
 		for _, f := range rep.Failures {
