@@ -61,9 +61,11 @@ func runSet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	// Path or label addressing: walk to populate tree.
+	// Path or label addressing: walk to populate tree. Uses raw ctx
+	// (signal-only) so big trees don't fail their own resolution; only
+	// the SetValue below is bounded by --timeout.
 	if *pathFlag != "" || *label != "" {
-		if _, err := plug.Walk(opCtx, *slot); err != nil {
+		if _, err := plug.Walk(ctx, *slot); err != nil {
 			return fmt.Errorf("walk for resolution: %w", err)
 		}
 	} else if *label != "" && *id < 0 {

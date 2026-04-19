@@ -13,9 +13,10 @@ func runImport(ctx context.Context, args []string) error {
 	cf := addCommonFlags(fs)
 	file := fs.String("file", "", "snapshot file (.json, .yaml, .csv)")
 	dry := fs.Bool("dry-run", false, "validate and list would-write actions without sending")
+	slot := fs.Int("slot", -1, "apply only this slot (-1 = all slots in snapshot)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp import <host> --file SNAPSHOT [--dry-run]")
+		return fmt.Errorf("usage: acp import <host> --file SNAPSHOT [--slot N] [--dry-run]")
 	}
 	_ = fs.Parse(rest)
 	if *file == "" {
@@ -27,16 +28,29 @@ func runImport(ctx context.Context, args []string) error {
 		return err
 	}
 
+	if *slot >= 0 {
+		filtered := snap.Slots[:0]
+		for _, sd := range snap.Slots {
+			if sd.Slot == *slot {
+				filtered = append(filtered, sd)
+			}
+		}
+		snap.Slots = filtered
+		if len(snap.Slots) == 0 {
+			return fmt.Errorf("snapshot does not contain slot %d", *slot)
+		}
+	}
+
 	plug, cleanup, err := connect(ctx, host, cf)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	opCtx, cancel := withTimeout(ctx, cf.timeout)
-	defer cancel()
-
-	rep, err := export.Apply(opCtx, plug, snap, *dry)
+	// Raw ctx: Apply's internal walk per slot has no deadline (44k
+	// objects on ACP2 takes minutes); individual SetValue calls inside
+	// Apply still follow their own per-plugin timeouts.
+	rep, err := export.Apply(ctx, plug, snap, *dry)
 	if err != nil {
 		return err
 	}
