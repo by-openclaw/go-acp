@@ -265,8 +265,10 @@ Working:
   both preserves both. Multi-level labels supported throughout
   (`targetLabels`/`sourceLabels` keyed by `labels[i].description`).
   Connection params keyed by composite `"target.source"`.
-- Capture pipeline `--capture <dir>` → `raw.s101.jsonl` + `glow.json` +
-  `tree.json`, three-file mode auto-detected
+- Capture pipeline `--capture <dir>` → `raw.<transport>.jsonl`
+  (`raw.acp1` / `raw.an2` / `raw.s101` per protocol, issue #41) +
+  `tree.json` (all 3) + `glow.json` (Ember+ only), three-file mode
+  auto-detected
 - Watch with field-diff `changes[]`, description, access, freshness
   (live/updated/stale), matrix crosspoint events
 - Wildcard stream auto-subscribe (Command 30 on discovery, uses

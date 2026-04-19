@@ -88,7 +88,7 @@ Every command has a fixed **IN / OUT** contract. Run `acp help <cmd>` for the fu
 | Command | IN | OUT |
 |---|---|---|
 | `info` | `acp info <host>` | device info + per-slot status |
-| `walk` | `acp walk <host> --slot N` | one line per object (+ `raw.s101.jsonl` / `tree.json` under `--capture <dir>`) |
+| `walk` | `acp walk <host> --slot N` | one line per object (+ `raw.<transport>.jsonl` / `tree.json` under `--capture <dir>` — `raw.acp1` / `raw.an2` / `raw.s101` per protocol) |
 | `get` | `acp get <host> --slot N --label L \| --id I` | decoded value + metadata (range, step, unit, enum) |
 | `set` | `acp set <host> --slot N --id I --value V` | confirmed value echoed by device (or typed error) |
 | `watch` | `acp watch <host> [filters]` | stream of live announcements until Ctrl-C |
@@ -121,7 +121,7 @@ Every command has a fixed **IN / OUT** contract. Run `acp help <cmd>` for the fu
 | `--timeout` | Per-operation timeout | `30s` |
 | `--log-level` | trace/debug/info/warn/error/critical | `info` |
 | `--verbose` | Shortcut for `--log-level debug` | false |
-| `--capture` | Traffic capture. If value is a directory or has no `.jsonl` ext, writes `raw.s101.jsonl` + `glow.json` + `tree.json` (Ember+ only, canonical shape). Single file (`.jsonl`) keeps legacy single-stream log for ACP1/ACP2. | — |
+| `--capture` | Traffic capture. If value is a directory or has no `.jsonl` ext, writes `raw.<transport>.jsonl` (`raw.acp1` / `raw.an2` / `raw.s101` named after the protocol's wire framing) + `tree.json` (all 3 protocols) + `glow.json` (Ember+ only, canonical resolver output). Single file (`.jsonl`) keeps legacy single-stream log. | — |
 | `--templates` | Canonical export mode for `templateReference` (Ember+). `pointer` = wire-faithful, `inline` = absorb template shape into referring element, `both` = keep ref + absorbed shape. | `pointer` |
 | `--labels` | Canonical export mode for matrix labels (Ember+). `pointer` = wire-faithful (multi-level `labels[]` preserved), `inline` = absorb label subtree(s) into matrix (populates `targetLabels`/`sourceLabels` keyed by level description), `both` = keep pointer + absorbed maps. | `pointer` |
 | `--gain` | Canonical export mode for `parametersLocation` (Ember+). `pointer` = wire-faithful, `inline` = absorb params subtree (populates `targetParams`/`sourceParams`/`connectionParams`), `both` = both. | `pointer` |

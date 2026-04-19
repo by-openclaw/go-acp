@@ -40,10 +40,12 @@ type commonFlags struct {
 
 	// captureDir is populated by connect() when --capture points at a
 	// directory (or at a path without a .jsonl extension). In that
-	// mode, raw frames go to <captureDir>/raw.s101.jsonl and the
-	// post-walk step additionally writes glow.json + tree.json
-	// alongside it. Plain single-file --capture keeps the legacy
-	// flat-JSONL behaviour for ACP1/ACP2.
+	// mode, raw frames go to <captureDir>/raw.<transport>.jsonl named
+	// after the wire-format carried — raw.acp1.jsonl for ACP1 UDP/TCP,
+	// raw.an2.jsonl for ACP2 AN2 frames, raw.s101.jsonl for Ember+
+	// S101 framing — and the post-walk step additionally writes
+	// glow.json + tree.json alongside. Plain single-file --capture
+	// keeps the legacy flat-JSONL behaviour.
 	captureDir string
 
 	// canonical-export mode flags (Ember+ only). Each controls one
@@ -69,7 +71,8 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 	fs.StringVar(&cf.capture, "capture", "",
 		"capture traffic. Path ending in .jsonl → single-file raw frame log "+
 			"(ACP1/ACP2/Ember+). Any other path → directory mode: writes "+
-			"raw.s101.jsonl + glow.json + tree.json (Ember+ only).")
+			"raw.<transport>.jsonl (raw.acp1 / raw.an2 / raw.s101 per protocol) "+
+			"+ tree.json (all 3 protocols) + glow.json (Ember+ only).")
 	fs.StringVar(&cf.canonTemplates, "templates", "pointer",
 		"canonical export mode for templateReference (Ember+ only): "+
 			"pointer (wire-faithful), inline (absorb template into element), "+
@@ -84,6 +87,28 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 			"pointer (wire-faithful), inline (absorb params subtree, populate "+
 			"targetParams/sourceParams/connectionParams), both (keep both).")
 	return cf
+}
+
+// rawFrameFilename picks the capture-dir filename that matches the
+// wire-format the plugin carries. Kept here (not in the plugin) so
+// directory-mode captures get the correct filename even when the
+// recorder is wrapped before the plugin instance exists.
+//
+//	acp1       → raw.acp1.jsonl   (UDP datagrams or TCP/AN2 ACP1 frames)
+//	acp2       → raw.an2.jsonl    (AN2 frames wrapping ACP2 payload)
+//	emberplus  → raw.s101.jsonl   (S101-framed BER)
+//	other      → raw.jsonl        (generic fallback — should not happen
+//	                               on registered plugins)
+func rawFrameFilename(proto string) string {
+	switch proto {
+	case "acp1":
+		return "raw.acp1.jsonl"
+	case "acp2":
+		return "raw.an2.jsonl"
+	case "emberplus":
+		return "raw.s101.jsonl"
+	}
+	return "raw.jsonl"
 }
 
 // isDirectoryCapture decides whether the --capture path should be
@@ -131,7 +156,7 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 			if err := os.MkdirAll(cf.captureDir, 0o755); err != nil {
 				return nil, nil, fmt.Errorf("capture dir: %w", err)
 			}
-			recorderPath = filepath.Join(cf.captureDir, "raw.s101.jsonl")
+			recorderPath = filepath.Join(cf.captureDir, rawFrameFilename(cf.protocol))
 		}
 		var recErr error
 		recorder, recErr = transport.NewRecorder(recorderPath)
