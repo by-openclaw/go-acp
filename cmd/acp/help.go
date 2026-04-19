@@ -262,6 +262,68 @@ EXAMPLES
   acp export 10.6.239.113 > device.json`)
 }
 
+func helpDiff() {
+	fmt.Println(`acp diff — compare two canonical tree.json exports
+
+IN   acp diff products/axon/DDB08/acp2/consumer/v2.3/tree.json \
+              products/axon/DDB08/acp2/consumer/v2.4/tree.json
+OUT  6 changes: Breaking=2 Changed=2 Added=1 Removed=1
+
+     ## Breaking (2)
+       - Parameter "BOARD.ACP Trace" access changed readWrite → read
+       - Parameter "BOARD.Gain" max 12 → 6
+
+     ## Changed (2)
+       - Parameter "BOARD.Mute" default true → false
+       - Parameter "BOARD.Level" description updated
+
+     ## Added (1)
+       - parameter "BOARD.New Feature" added
+
+     ## Removed (1)
+       - parameter "STATUS.Legacy Counter" removed
+
+USAGE
+  acp diff <before-tree.json> <after-tree.json> [--format text|changelog] [--version V] [--date D] [--into PATH]
+
+DESCRIPTION
+  Loads two canonical tree.json files (as produced by 'acp walk --capture'
+  or 'acp extract'), matches elements by OID, and classifies every
+  per-field change into one of four categories:
+
+    Breaking   access narrowed (RW→R), enum item removed, range
+               narrowed (min raised / max lowered), type changed,
+               unit changed, parameter removed
+    Changed    min widened, max widened, default changed, description
+               updated
+    Added      new element, new enum value
+    Removed    element present in before but absent in after
+
+  Matching key: canonical OID. Renames of identifier or path do NOT
+  produce false Removed/Added pairs when the OID is stable (Ember+
+  numeric OID, ACP1 group.id, ACP2 obj-id).
+
+FORMATS
+  --format text        (default) terminal report, counts + grouped list
+  --format changelog   Keep-a-Changelog markdown block for one version
+
+CHANGELOG MODE
+  With --format=changelog, --version is required. --date defaults to
+  today (UTC). With --into PATH, the block is prepended to the named
+  CHANGELOG.md (creating the file with a preamble if absent). Used to
+  auto-maintain the per-product-per-protocol changelogs inside the
+  product fixture layout — see docs/fixtures-products.md §CHANGELOG.
+
+EXAMPLES
+  acp diff before.json after.json
+  acp diff before.json after.json --format changelog --version 2.4
+  acp diff before.json after.json --format changelog --version 2.4 --date 2026-05-15
+  acp diff products/axon/DDB08/acp2/consumer/v2.3/tree.json \
+           products/axon/DDB08/acp2/consumer/v2.4/tree.json \
+           --format changelog --version 2.4 \
+           --into products/axon/DDB08/acp2/consumer/CHANGELOG.md`)
+}
+
 func helpExtract() {
 	fmt.Println(`acp extract — capture a per-product DM triple into the fixture layout
 
