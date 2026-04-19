@@ -466,7 +466,139 @@ Rename once. Don't debate in-flight.
 
 ---
 
-## 15. One-page decision summary
+## 15. Catalog backend — NetBox integration
+
+NetBox is a natural backend for the Catalog block (§7) — the infra team already uses it as source of truth for racks, frames, slots, cards, and mgmt IPs. Fabric should integrate, not reinvent.
+
+### Concept mapping
+
+| NetBox | Fabric | Owner |
+|---|---|---|
+| Manufacturer | Vendor | NetBox |
+| Device Type | Product | NetBox |
+| Device Role | Form factor + functional category | NetBox |
+| Rack / Chassis / Module Bay | Physical topology | NetBox |
+| Module (installed card) | Card Resource | NetBox |
+| Interface + primary_ip | Fabric inbound connector target | NetBox |
+| Custom Fields | Fabric-discovered metadata (last_seen, dm_fingerprint, protocols, directions, firmware) | Fabric writes |
+| Journal entries | Audit log of discover / snapshot / restore | Both append |
+
+### Zero-touch inventory workflow
+
+Operator enters one mgmt IP in NetBox → Fabric auto-populates the rest.
+
+```
+1.  SI adds Device in NetBox (name + primary_ip + role + rack location)
+2.  NetBox webhook fires → Fabric
+3.  Fabric connects via mgmt IP, walks per-slot identity
+4.  Fabric PATCHes NetBox:
+      · creates Module Bays + Modules per populated slot
+      · stamps Manufacturer + Device Type + Serial + firmware
+      · sets custom fields (protocols, directions, fingerprint, last_discovered)
+      · appends Journal entry "Discovered N cards at T"
+5.  NetBox is now fully populated. SI typed one IP.
+```
+
+Hand-entered: rack/frame/position/cabling (Fabric can't see these).
+Auto-discovered: every slot + card + serial + firmware + protocol support.
+
+### Re-discovery triggers
+
+| Event | Trigger | Action |
+|---|---|---|
+| New frame | NetBox webhook | Full discovery |
+| Card hot-swap | Live announce (ACP1 frame-status / Ember+ RootChange / ACP2 slot event) | Incremental update of one Module |
+| Firmware change | Fingerprint diff on same serial | Update Module firmware + compliance profile |
+| Periodic health | Cron | Confirm identity unchanged; bump last_seen |
+
+### Integration surface (Fabric REST endpoints)
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /fabric/discover` | Walk device, return per-slot identity |
+| `POST /fabric/devices/{ip}/snapshot` | Full live-values snapshot |
+| `POST /fabric/devices/{ip}/restore` | Apply a prior snapshot (see §16) |
+| `POST /fabric/devices/{ip}/diff` | Schema + value diff vs prior snapshot |
+| `GET /fabric/devices/{ip}/status` | Online + last_seen |
+| `WS /fabric/events` | Stream of change events |
+
+### Plugin architecture rule
+
+The NetBox plugin is **thin Python** that only talks to Fabric's REST/WS API. It never speaks ACP1/ACP2/Ember+ directly — protocol knowledge stays in Fabric's Go codecs.
+
+### Scope
+
+Nice-to-have Catalog backend — Catalog (§7) stays abstract; NetBox adapter is one concrete backing alongside static YAML, etcd, or DB. Plugin lives in its own repo (`fabric-netbox-plugin`), pip-installable.
+
+---
+
+## 16. Firmware upgrade lifecycle
+
+Broadcast facilities upgrade card firmware regularly. Today: engineer writes down values by hand, upgrades, types them back, misses some. Fabric + NetBox automate this.
+
+### Flow
+
+```
+T-0  SI: "Pre-upgrade snapshot" in NetBox UI
+     └─► Fabric extracts full state (all slots, all params)
+     └─► Returns snapshot + DM fingerprint + timestamp
+     └─► NetBox stores: Journal entry + snapshot attachment + custom field last_pre_upgrade_at
+
+T-1  Firmware upgrade (vendor tooling — outside Fabric scope)
+
+T-2  SI: "Re-discover + Restore" in NetBox UI
+     └─► Fabric re-walks → new DM + fingerprint
+     └─► Fabric computes restore plan per parameter:
+            · exists in post-upgrade DM?
+            · access still writable?
+            · range still contains the saved value?
+            · enum item still present?
+     └─► Fabric applies restorable set via `acp import --force-by-id`
+     └─► Returns report: applied N, skipped M (per-item reason), failed X
+     └─► NetBox displays diff + journal-logs the outcome
+```
+
+### Primitives — status
+
+| Step | Fabric tooling | State |
+|---|---|---|
+| Snapshot capture | `acp extract` | #36.b in flight |
+| Apply snapshot | `acp import` | exists |
+| Per-param ID-stable matching | PR #39 per-protocol resolver | shipped |
+| Lossless carrier format | JSON always; CSV since PR #39 | shipped |
+| Schema diff (pre vs post) | `acp diff` | #36.c in flight |
+| Live snapshot endpoint | `acp-srv` REST | planned |
+
+### Reporting categories after restore
+
+- Restored as-is
+- Parameter removed in new firmware — value dropped, logged
+- Access now read-only — skipped, logged
+- Enum item removed — reset to default, flagged for SI review
+- Range narrowed, value out of bounds — clamped, flagged
+- Applied but confirmation failed — retry candidate
+
+### Edge case — upgrade while on-air
+
+Plugin must detect if the device is bound to an active Production (§8):
+
+- Warn SI before snapshot
+- Offer **scheduled restore** — fire post-show
+- Or **immediate restore** — SI explicitly accepts the blip
+- Journal the choice
+
+### Why it's a killer workflow
+
+| Pain today | Fabric + NetBox fix |
+|---|---|
+| Engineer writes values on paper, types them back, misses some | Full auto-snapshot + auto-restore |
+| No audit trail of post-upgrade drift | Journal entry with before/after |
+| Silent breakage of values that moved/renamed | Restore report names every unrestored item |
+| Discovery of schema-breaking changes only after show fails | `acp diff` surfaces them before firmware install |
+
+---
+
+## 17. One-page decision summary
 
 - **Live metadata** — schema mutations are first-class events, propagate without restart. (Q4)
 - **PTP time source** — external grandmaster, ns accuracy, degraded fallback policy TBD. (Q6)
@@ -479,3 +611,6 @@ Rename once. Don't debate in-flight.
 - **Naming parked** — working labels only; rename exercise later.
 - **DHS concepts kept** — MasterView/ClientView/LogicalView intent + Preset/Value split + hot-plug + one abstract DM + event-driven reactive + plugin template.
 - **DHS concepts extended** — live schema, PTP, Catalog, Templates, Instances, Schedule, Alarms, Diff connector, control connectors.
+- **NetBox as Catalog backend** (§15) — zero-touch inventory via webhook-triggered discovery; thin Python plugin calls Fabric REST.
+- **Firmware upgrade lifecycle** (§16) — pre-upgrade snapshot + re-discover + restore report, orchestrated from NetBox UI.
+- **Hierarchy locked** — `vendor → form factor (equipment/device/card) → product → protocol (1..N per product, consumer/provider/both) → version → compliance/limitations per (product, protocol, direction)`.
