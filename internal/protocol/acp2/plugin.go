@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"acp/internal/protocol"
+	"acp/internal/protocol/compliance"
 	"acp/internal/transport"
 )
 
@@ -57,6 +58,20 @@ type Plugin struct {
 
 	// Optional walk progress callback.
 	walkProgress WalkProgressFunc
+
+	// profile aggregates wire-tolerance events observed during this
+	// session. See compliance_events.go for the catalog. Nil until
+	// Connect fires; callers read via ComplianceProfile().
+	profile *compliance.Profile
+}
+
+// ComplianceProfile returns the session-scoped compliance profile.
+// Returns nil if Connect hasn't been called yet. Safe to call from
+// any goroutine.
+func (p *Plugin) ComplianceProfile() *compliance.Profile {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.profile
 }
 
 // subKey canonicalises a ValueRequest for map lookup.
@@ -111,6 +126,8 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.walker.OnProgress = p.walkProgress
 	p.trees = newWalkedTreeCache(32, 10*time.Minute)
 	p.subHandles = make(map[subKey]int)
+	p.profile = &compliance.Profile{}
+	s.SetProfile(p.profile)
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"acp/internal/protocol"
+	"acp/internal/protocol/compliance"
 	"acp/internal/transport"
 )
 
@@ -55,6 +56,13 @@ type Session struct {
 
 	// Optional traffic capture for unit test data generation.
 	recorder *transport.Recorder
+
+	// Optional compliance profile. When non-nil the session fires
+	// wire-tolerance events (magic mismatch, short payload, spec-
+	// listed stat codes, …) into this counter. Plugin injects it
+	// after Connect; nil-safe to leave unset (unit tests that only
+	// exercise codec primitives).
+	profile *compliance.Profile
 }
 
 // AnnounceFunc is the callback signature for ACP2 announce subscriptions.
@@ -64,6 +72,23 @@ type AnnounceFunc func(slot uint8, msg *ACP2Message)
 // Call before Connect. All sent and received AN2 frames are recorded.
 func (s *Session) SetRecorder(rec *transport.Recorder) {
 	s.recorder = rec
+}
+
+// SetProfile attaches a compliance profile that this session will
+// increment on every wire-tolerance event (see compliance_events.go).
+// Idempotent; safe to call before or after Connect. Nil-safe: passing
+// nil disables event counting for this session.
+func (s *Session) SetProfile(p *compliance.Profile) {
+	s.profile = p
+}
+
+// note is the thin wrapper that fires an event on the attached
+// profile. Guards against nil profile so codec-only unit tests (no
+// plugin Connect) don't crash.
+func (s *Session) note(event string) {
+	if s.profile != nil {
+		s.profile.Note(event)
+	}
 }
 
 // NewSession creates an uninitialised Session. Call Connect to establish
@@ -319,6 +344,15 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *ACP2Message) (*AC
 			return nil, fmt.Errorf("acp2: nil reply for mtid=%d", mtid)
 		}
 		if reply.Type == ACP2TypeError {
+			// Fire the per-stat-code compliance event so the session
+			// profile reflects spec-listed error frequencies. Status
+			// codes 0..5 defined in acp2_protocol.pdf p.5; error
+			// replies carry the code in the Func slot (codec.go
+			// ACP2Message.Func comment). Switch lives in the pure
+			// helper EventForErrStatus so replay tests can assert it.
+			if label := EventForErrStatus(ACP2ErrStatus(reply.Func)); label != "" {
+				s.note(label)
+			}
 			return reply, reply.ToACP2Error()
 		}
 		s.logger.Debug("acp2: received reply",

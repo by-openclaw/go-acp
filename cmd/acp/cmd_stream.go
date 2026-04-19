@@ -92,6 +92,12 @@ func formatStreamValue(v protocol.Value) string {
 func helpStream() {
 	fmt.Println(`acp stream — subscribe to Ember+ stream parameters
 
+IN   acp stream 127.0.0.1 --protocol emberplus --port 9092
+OUT  subscribing to 12 stream parameter(s)
+     14:23:45.123  router.streams.fader01 = -3.5
+     14:23:45.223  router.streams.fader02 =  0.0
+     …  (runs until Ctrl-C)
+
 USAGE
   acp stream <host> [--port 9092] [--id N]
 

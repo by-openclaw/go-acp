@@ -170,8 +170,30 @@ func writeCanonicalCapture(ctx context.Context, dir string, plug protocol.Protoc
 		return writeEmberplusCapture(ctx, dir, p, cf)
 	case *acp1.Plugin:
 		return writeACP1Capture(ctx, dir, p)
+	case *acp2.Plugin:
+		return writeACP2Capture(ctx, dir, p)
 	}
-	// ACP2 canonical capture lands under #32.
+	return nil
+}
+
+// writeACP2Capture writes `tree.json` in canonical shape for an ACP2
+// device. Mirrors writeACP1Capture: the raw AN2 frame log (recorder)
+// is appended alongside by the transport layer; this function covers
+// only the decoded canonical export.
+func writeACP2Capture(ctx context.Context, dir string, p *acp2.Plugin) error {
+	tree, err := p.Canonicalize(ctx)
+	if err != nil {
+		return fmt.Errorf("canonicalize: %w", err)
+	}
+	f, err := os.Create(filepath.Join(dir, "tree.json"))
+	if err != nil {
+		return fmt.Errorf("create tree.json: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+	if err := export.WriteCanonicalJSON(ctx, f, tree); err != nil {
+		return fmt.Errorf("write tree.json: %w", err)
+	}
+	fmt.Printf("capture: wrote tree.json to %s\n", dir)
 	return nil
 }
 

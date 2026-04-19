@@ -15,6 +15,7 @@ import (
 
 	"acp/internal/protocol"
 	"acp/internal/protocol/acp1"
+	"acp/internal/protocol/acp2"
 	"acp/internal/protocol/compliance"
 	emberplus "acp/internal/protocol/emberplus"
 )
@@ -28,6 +29,8 @@ func pluginProfile(plug protocol.Protocol) *compliance.Profile {
 	case *emberplus.Plugin:
 		return p.ComplianceProfile()
 	case *acp1.Plugin:
+		return p.ComplianceProfile()
+	case *acp2.Plugin:
 		return p.ComplianceProfile()
 	}
 	return nil
@@ -83,6 +86,13 @@ func runProfile(ctx context.Context, args []string) error {
 
 func helpProfile() {
 	fmt.Println(`acp profile — Ember+ compliance classification
+
+IN   acp profile 127.0.0.1 --protocol emberplus --port 9000
+OUT  classification : partial
+     objects walked : 20127
+     events:
+       multi_frame_reassembly     : 3
+       non_qualified_element      : 2619
 
 USAGE
   acp profile <host> [--port 9000] [--timeout DUR]

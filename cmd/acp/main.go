@@ -55,6 +55,7 @@ var commands = []command{
 	{"watch", "subscribe to live announcements", helpWatch, runWatch},
 	{"export", "dump a walked device to json / yaml / csv", helpExport, runExport},
 	{"import", "apply values from a json snapshot file", helpImport, runImport},
+	{"convert", "translate a snapshot file between json / yaml / csv (offline)", helpConvert, runConvert},
 	{"discover", "passive + active scan for devices on the local subnet", helpDiscover, runDiscover},
 	{"matrix", "set matrix crosspoint connections (Ember+ only)", helpMatrix, runMatrix},
 	{"invoke", "invoke an Ember+ function (RPC)", helpInvoke, runInvoke},
@@ -179,6 +180,39 @@ COMMANDS`)
 		fmt.Printf("  %-16s %s\n", c.name, c.short)
 	}
 	fmt.Println(`
+IN / OUT — one-line contract per command (see "acp help <cmd>" for full detail)
+
+  info              IN  acp info <host>
+                    OUT device info + per-slot status table
+  walk              IN  acp walk <host> --slot N
+                    OUT one line per object (+ raw.s101.jsonl/tree.json under --capture <dir>)
+  get               IN  acp get <host> --slot N --label L | --id I
+                    OUT decoded value + metadata (range/step/unit/enum)
+  set               IN  acp set <host> --slot N --id I --value V
+                    OUT confirmed value echoed by device (or typed error)
+  watch             IN  acp watch <host> [filters]
+                    OUT stream of announcements until Ctrl-C
+  export            IN  acp export <host> --format json|yaml|csv --out FILE
+                    OUT snapshot file (json/yaml lossless, csv flat)
+  import            IN  acp import <host> --file SNAPSHOT [--dry-run]
+                    OUT applied/skipped/failed counts; dry-run prints skip table
+  convert           IN  acp convert --in FILE --out FILE            (offline)
+                    OUT same snapshot in the requested format
+  discover          IN  acp discover
+                    OUT list of ACP1 devices on the local subnet
+  matrix            IN  acp matrix <host> --path P --target N --sources N,N,...
+                    OUT confirmed crosspoint connections (Ember+ only)
+  invoke            IN  acp invoke <host> --path P [--args v1,v2,...]
+                    OUT function result(s) (Ember+ only)
+  stream            IN  acp stream <host> [--id N]
+                    OUT live stream values until Ctrl-C (Ember+ only)
+  profile           IN  acp profile <host>
+                    OUT compliance classification + event counts
+  diag              IN  acp diag <host> --slot N
+                    OUT per-probe success/failure table (ACP2 only)
+  list-protocols    IN  acp list-protocols
+                    OUT table of registered plugins
+
 GLOBAL FLAGS (accepted by all commands that connect to a device)
   --protocol NAME    protocol plugin: acp1 (default) | acp2
   --transport MODE   transport: udp (default) | tcp  (ACP1 only)
