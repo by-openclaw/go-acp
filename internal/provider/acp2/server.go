@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"acp/internal/export/canonical"
+	iacp2 "acp/internal/protocol/acp2"
 )
 
 // server is the concrete provider.Provider for ACP2 over AN2/TCP.
@@ -124,6 +125,43 @@ func (s *server) Stop() error {
 func (s *server) SetValue(_ context.Context, path string, val any) (any, error) {
 	_, _ = path, val
 	return nil, errors.New("acp2 provider: SetValue ships in Step 2e")
+}
+
+// broadcastAnnounce wraps the announce ACP2 message in an AN2 data
+// frame and sends it to every session that has EnableProtocolEvents
+// ([ACP2]) subscribed — spec §"ACP2 Announces" p.88. Sessions that
+// haven't subscribed are silently skipped (matching how a real Axon
+// device ignores unregistered listeners).
+func (s *server) broadcastAnnounce(slot uint8, ann *iacp2.ACP2Message) {
+	raw, err := iacp2.EncodeACP2Message(ann)
+	if err != nil {
+		s.logger.Warn("acp2 announce encode", slog.String("err", err.Error()))
+		return
+	}
+	frame := &iacp2.AN2Frame{
+		Proto:   iacp2.AN2ProtoACP2,
+		Slot:    slot,
+		MTID:    0,
+		Type:    iacp2.AN2TypeData,
+		Payload: raw,
+	}
+
+	s.mu.Lock()
+	targets := make([]*session, 0, len(s.sessions))
+	for sess := range s.sessions {
+		if sess.enabled[iacp2.AN2ProtoACP2] {
+			targets = append(targets, sess)
+		}
+	}
+	s.mu.Unlock()
+
+	for _, sess := range targets {
+		if err := sess.write(frame); err != nil {
+			s.logger.Debug("acp2 announce send failed",
+				slog.String("err", err.Error()),
+			)
+		}
+	}
 }
 
 func (s *server) registerSession(sess *session) {

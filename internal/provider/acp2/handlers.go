@@ -145,9 +145,103 @@ func (s *session) handleACP2(f *iacp2.AN2Frame) {
 		})
 	case iacp2.ACP2FuncGetObject:
 		s.handleGetObject(f.Slot, msg)
+	case iacp2.ACP2FuncGetProperty:
+		s.handleGetProperty(f.Slot, msg)
+	case iacp2.ACP2FuncSetProperty:
+		s.handleSetProperty(f.Slot, msg)
 	default:
 		s.replyACP2(f.Slot, errorACP2(msg, iacp2.ErrProtocol))
 	}
+}
+
+// handleGetProperty returns one specific property of an object. The
+// request carries the requested pid in msg.PID; the reply echoes the
+// same pid with its current value.
+func (s *session) handleGetProperty(slot uint8, msg *iacp2.ACP2Message) {
+	e, ok := s.srv.tree.lookup(slot, msg.ObjID)
+	if !ok {
+		s.replyACP2(slot, errorACP2(msg, iacp2.ErrInvalidObjID))
+		return
+	}
+	all, err := buildProperties(e)
+	if err != nil {
+		s.replyACP2(slot, errorACP2(msg, iacp2.ErrProtocol))
+		return
+	}
+	for i := range all {
+		if all[i].PID == msg.PID {
+			body, err := iacp2.EncodeProperty(&all[i])
+			if err != nil {
+				s.replyACP2(slot, errorACP2(msg, iacp2.ErrProtocol))
+				return
+			}
+			s.replyACP2(slot, &iacp2.ACP2Message{
+				Type:  iacp2.ACP2TypeReply,
+				MTID:  msg.MTID,
+				Func:  iacp2.ACP2FuncGetProperty,
+				PID:   msg.PID,
+				ObjID: msg.ObjID,
+				Idx:   msg.Idx,
+				Body:  appendObjIDIdx(msg.ObjID, msg.Idx, body),
+			})
+			return
+		}
+	}
+	s.replyACP2(slot, errorACP2(msg, iacp2.ErrInvalidPID))
+}
+
+// handleSetProperty mutates the tree for the requested (obj-id, pid)
+// + incoming property, sends a reply with the confirmed post-state,
+// and broadcasts an announce to every session that has
+// EnableProtocolEvents([ACP2]) subscribed.
+func (s *session) handleSetProperty(slot uint8, msg *iacp2.ACP2Message) {
+	e, ok := s.srv.tree.lookup(slot, msg.ObjID)
+	if !ok {
+		s.replyACP2(slot, errorACP2(msg, iacp2.ErrInvalidObjID))
+		return
+	}
+	if len(msg.Properties) == 0 {
+		s.replyACP2(slot, errorACP2(msg, iacp2.ErrProtocol))
+		return
+	}
+	in := &msg.Properties[0]
+	post, errStatus, err := s.srv.applySet(e, in)
+	if err != nil {
+		s.srv.logger.Debug("acp2 applySet",
+			slog.Int("obj", int(msg.ObjID)),
+			slog.String("err", err.Error()),
+		)
+		s.replyACP2(slot, errorACP2(msg, errStatus))
+		return
+	}
+	body, err := iacp2.EncodeProperty(&post)
+	if err != nil {
+		s.replyACP2(slot, errorACP2(msg, iacp2.ErrProtocol))
+		return
+	}
+	// Reply with the confirmed post-state.
+	reply := &iacp2.ACP2Message{
+		Type:  iacp2.ACP2TypeReply,
+		MTID:  msg.MTID,
+		Func:  iacp2.ACP2FuncSetProperty,
+		PID:   msg.PID,
+		ObjID: msg.ObjID,
+		Idx:   msg.Idx,
+		Body:  appendObjIDIdx(msg.ObjID, msg.Idx, body),
+	}
+	s.replyACP2(slot, reply)
+
+	// Fan out the announce to every session with ACP2 events enabled.
+	announce := &iacp2.ACP2Message{
+		Type:  iacp2.ACP2TypeAnnounce,
+		MTID:  0,
+		Func:  iacp2.ACP2Func(iacp2.PIDValue), // announce carries the pid in the func slot per spec
+		PID:   iacp2.PIDValue,
+		ObjID: msg.ObjID,
+		Idx:   msg.Idx,
+		Body:  appendObjIDIdx(msg.ObjID, msg.Idx, body),
+	}
+	s.srv.broadcastAnnounce(slot, announce)
 }
 
 // handleGetObject builds the full property list for the requested
