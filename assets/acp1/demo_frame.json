@@ -1,0 +1,410 @@
+{
+  "root": {
+    "number": 1,
+    "identifier": "device",
+    "path": "device",
+    "oid": "1",
+    "description": null,
+    "isOnline": true,
+    "access": "read",
+    "children": [
+      {
+        "number": 0,
+        "identifier": "slot-0",
+        "path": "device.slot-0",
+        "oid": "1.1",
+        "description": "Rack controller",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "identity",
+            "path": "device.slot-0.identity",
+            "oid": "1.1.1",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "CardName", "path": "device.slot-0.identity.CardName", "oid": "1.1.1.0",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "string", "value": "ACP1-Frame",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 1, "identifier": "UserLabel", "path": "device.slot-0.identity.UserLabel", "oid": "1.1.1.1",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "string", "value": "Synapse",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 2, "identifier": "Serial", "path": "device.slot-0.identity.Serial", "oid": "1.1.1.2",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "string", "value": "SN-FRAME01",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          },
+          {
+            "number": 6,
+            "identifier": "frame",
+            "path": "device.slot-0.frame",
+            "oid": "1.1.6",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0,
+                "identifier": "frameStatus",
+                "path": "device.slot-0.frame.frameStatus",
+                "oid": "1.1.6.0",
+                "description": "per-slot card presence",
+                "isOnline": true,
+                "access": "read",
+                "children": [],
+                "type": "octets",
+                "value": [0, 2, 2, 3],
+                "default": null, "minimum": null, "maximum": null,
+                "step": null, "unit": null,
+                "format": "frame",
+                "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          }
+        ]
+      },
+
+      {
+        "number": 1,
+        "identifier": "slot-1",
+        "path": "device.slot-1",
+        "oid": "1.2",
+        "description": "CardTypeA — audio I/O card",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "identity",
+            "path": "device.slot-1.identity",
+            "oid": "1.2.1",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "CardName", "path": "device.slot-1.identity.CardName", "oid": "1.2.1.0",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "string", "value": "GIO-12",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 1, "identifier": "UserLabel", "path": "device.slot-1.identity.UserLabel", "oid": "1.2.1.1",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "string", "value": "Input-A",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 2, "identifier": "Serial", "path": "device.slot-1.identity.Serial", "oid": "1.2.1.2",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "string", "value": "SN-0A1F",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          },
+          {
+            "number": 2,
+            "identifier": "control",
+            "path": "device.slot-1.control",
+            "oid": "1.2.2",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "Level", "path": "device.slot-1.control.Level", "oid": "1.2.2.0",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "integer", "value": -6,
+                "default": 0, "minimum": -60, "maximum": 12, "step": 1,
+                "unit": "dB", "format": null, "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 1, "identifier": "Mute", "path": "device.slot-1.control.Mute", "oid": "1.2.2.1",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "enum", "value": 0,
+                "default": 0, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": null, "factor": null, "formula": null,
+                "enumeration": "Off\nOn",
+                "enumMap": [
+                  {"key": "Off", "value": 0},
+                  {"key": "On",  "value": 1}
+                ],
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 2, "identifier": "Gain", "path": "device.slot-1.control.Gain", "oid": "1.2.2.2",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "real", "value": 0.0,
+                "default": 0.0, "minimum": 0.0, "maximum": 20.0, "step": 0.5,
+                "unit": "dB", "format": null, "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 3, "identifier": "Saturation", "path": "device.slot-1.control.Saturation", "oid": "1.2.2.3",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "integer", "value": 128,
+                "default": 0, "minimum": 0, "maximum": 255, "step": 1,
+                "unit": "%", "format": "uint8", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 4, "identifier": "Bitrate", "path": "device.slot-1.control.Bitrate", "oid": "1.2.2.4",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "integer", "value": 48000,
+                "default": 48000, "minimum": 0, "maximum": 192000, "step": 1000,
+                "unit": "Hz", "format": "int32", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 5, "identifier": "Gateway", "path": "device.slot-1.control.Gateway", "oid": "1.2.2.5",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "string", "value": "192.168.1.1",
+                "default": null, "minimum": "0.0.0.0", "maximum": "255.255.255.255", "step": null,
+                "unit": null, "format": "ipv4", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          },
+          {
+            "number": 3,
+            "identifier": "status",
+            "path": "device.slot-1.status",
+            "oid": "1.2.3",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "Temperature", "path": "device.slot-1.status.Temperature", "oid": "1.2.3.0",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "integer", "value": 42,
+                "default": null, "minimum": -40, "maximum": 125, "step": 1,
+                "unit": "C", "format": null, "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          },
+          {
+            "number": 4,
+            "identifier": "alarm",
+            "path": "device.slot-1.alarm",
+            "oid": "1.2.4",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "OverTemp", "path": "device.slot-1.alarm.OverTemp", "oid": "1.2.4.0",
+                "description": "on: Overheat / off: OK",
+                "isOnline": true, "access": "read", "children": [],
+                "type": "boolean", "value": false,
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "alarm,priority=2,tag=17",
+                "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          }
+        ]
+      },
+
+      {
+        "number": 2,
+        "identifier": "slot-2",
+        "path": "device.slot-2",
+        "oid": "1.3",
+        "description": "CardTypeA — same DM as slot-1, independent values",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "identity",
+            "path": "device.slot-2.identity",
+            "oid": "1.3.1",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "CardName", "path": "device.slot-2.identity.CardName", "oid": "1.3.1.0",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "string", "value": "GIO-12",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 1, "identifier": "UserLabel", "path": "device.slot-2.identity.UserLabel", "oid": "1.3.1.1",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "string", "value": "Input-B",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 2, "identifier": "Serial", "path": "device.slot-2.identity.Serial", "oid": "1.3.1.2",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "string", "value": "SN-0A20",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          },
+          {
+            "number": 2,
+            "identifier": "control",
+            "path": "device.slot-2.control",
+            "oid": "1.3.2",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "Level", "path": "device.slot-2.control.Level", "oid": "1.3.2.0",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "integer", "value": 3,
+                "default": 0, "minimum": -60, "maximum": 12, "step": 1,
+                "unit": "dB", "format": null, "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 1, "identifier": "Mute", "path": "device.slot-2.control.Mute", "oid": "1.3.2.1",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "enum", "value": 1,
+                "default": 0, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": null, "factor": null, "formula": null,
+                "enumeration": "Off\nOn",
+                "enumMap": [
+                  {"key": "Off", "value": 0},
+                  {"key": "On",  "value": 1}
+                ],
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          }
+        ]
+      },
+
+      {
+        "number": 3,
+        "identifier": "slot-3",
+        "path": "device.slot-3",
+        "oid": "1.4",
+        "description": "CardTypeB — firmware card",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "identity",
+            "path": "device.slot-3.identity",
+            "oid": "1.4.1",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "CardName", "path": "device.slot-3.identity.CardName", "oid": "1.4.1.0",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "string", "value": "CP3000",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          },
+          {
+            "number": 5,
+            "identifier": "file",
+            "path": "device.slot-3.file",
+            "oid": "1.4.5",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "firmware.bin", "path": "device.slot-3.file.firmware.bin", "oid": "1.4.5.0",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "string", "value": "firmware.bin",
+                "default": 42, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "file", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "templates": null
+}
