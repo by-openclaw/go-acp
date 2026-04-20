@@ -147,14 +147,19 @@ func (s *session) handleFrame(f *s101.Frame) error {
 
 // handleEmber parses a Glow-encoded request and dispatches it.
 //
-// Two inbound shapes are handled:
+// Three inbound shapes are handled:
 //
-//  1. Command request — GetDirectory (32) / Subscribe (30) / Unsubscribe (31).
-//     Invoke (33) is a no-op in MVP.
+//  1. Command request — GetDirectory (32) / Subscribe (30) / Unsubscribe (31)
+//     / Invoke (33). Invoke extracts the Invocation, runs the registered
+//     function callback, and replies with InvocationResult.
 //
 //  2. SetValue request — a QualifiedParameter (or nested Node → Parameter)
 //     carrying `contents.value`. Applied via server.SetValue; the resulting
 //     announcement is broadcast to subscribers including the sender.
+//
+//  3. Matrix connection request — a QualifiedMatrix (or nested Node → Matrix)
+//     carrying [CTX 5] connections with operation=absolute|connect|disconnect.
+//     Applied to the tree and echoed back + broadcast to subscribers.
 func (s *session) handleEmber(payload []byte) error {
 	els, err := glow.DecodeRoot(payload)
 	if err != nil {
@@ -165,6 +170,7 @@ func (s *session) handleEmber(payload []byte) error {
 		oid := oidFromPath(path)
 		switch cmd.Number {
 		case glow.CmdGetDirectory:
+			s.logger.Debug("get directory", slog.String("oid", oid))
 			return s.replyGetDirectory(oid)
 		case glow.CmdSubscribe:
 			s.srv.subscribe(s, oid)
@@ -173,8 +179,21 @@ func (s *session) handleEmber(payload []byte) error {
 			s.srv.unsubscribe(s, oid)
 			return nil
 		case glow.CmdInvoke:
+			s.handleInvoke(oid, cmd.Invocation)
 			return nil
 		}
+		return nil
+	}
+
+	if path, conns, ok := findMatrixConnectionsInElements(els); ok {
+		oid := oidFromPath(path)
+		s.logger.Debug("matrix connection", slog.String("oid", oid), slog.Int("count", len(conns)))
+		post, err := s.srv.applyMatrixConnections(oid, conns)
+		if err != nil {
+			s.logger.Debug("matrix connection failed", slog.String("oid", oid), slog.String("err", err.Error()))
+			return nil
+		}
+		s.srv.broadcastMatrixConnections(oid, post, s)
 		return nil
 	}
 
@@ -199,6 +218,24 @@ func (s *session) handleEmber(payload []byte) error {
 	return nil
 }
 
+// handleInvoke runs the registered function callback for oid and replies
+// with an InvocationResult. A missing function or callback error yields
+// success=false with an empty result tuple (spec p.92).
+func (s *session) handleInvoke(oid string, inv *glow.Invocation) {
+	var invID int32
+	var args []any
+	if inv != nil {
+		invID = inv.InvocationID
+		args = inv.Arguments
+	}
+	s.logger.Debug("invoke", slog.String("oid", oid), slog.Int("invocation_id", int(invID)), slog.Int("argc", len(args)))
+
+	result, ok := s.srv.invokeFunction(oid, args)
+	payload := s.srv.encodeInvocationResult(invID, ok, result)
+	s.logger.Debug("invoke reply", slog.Int("invocation_id", int(invID)), slog.Bool("success", ok), slog.Int("bytes", len(payload)))
+	s.send(payload)
+}
+
 func (s *session) replyGetDirectory(oid string) error {
 	// Empty oid means consumer sent a bare Command(32) at the root of the
 	// element collection — spec pattern: reply with the single top-level
@@ -220,6 +257,27 @@ func (s *session) replyGetDirectory(oid string) error {
 		return fmt.Errorf("encode reply: %w", err)
 	}
 	s.send(payload)
+
+	// Spec p.88: "As soon as a consumer issues a GetDirectory command
+	// on a matrix object, it implicitly subscribes to matrix connection
+	// changes." Without this, salvo recalls / external crosspoint
+	// changes broadcast to nobody — cells don't update on the client.
+	//
+	// Strict reading: only the direct GetDir(path=matrix) triggers. But
+	// most consumers (EmberViewer included) read matrix contents from a
+	// parent node's reply instead of re-walking, so we also subscribe
+	// the session to any matrix child in the reply — keeps crosspoint
+	// tallies reaching the client regardless of walking style.
+	if !bareRoot {
+		if _, ok := e.el.(*canonical.Matrix); ok {
+			s.srv.subscribe(s, oid)
+		}
+		for _, child := range e.el.Common().Children {
+			if _, ok := child.(*canonical.Matrix); ok {
+				s.srv.subscribe(s, child.Common().OID)
+			}
+		}
+	}
 	return nil
 }
 
@@ -228,35 +286,128 @@ func (s *session) replyGetDirectory(oid string) error {
 // Path is built from QualifiedNode.Path / QualifiedParameter.Path if
 // present, else from chained Node.Number values for the non-qualified
 // form.
+//
+// All four container kinds (Node, Parameter, Matrix, Function) can hold
+// a child Command per spec p.86 — Function is particularly important
+// because Invoke commands arrive as QualifiedFunction(path){children:
+// [Command(Invoke)]}; if we don't descend into Function.Children the
+// Invoke gets silently dropped and the consumer times out.
 func findCommandInElements(els []glow.Element) (*glow.Command, []uint32) {
 	for _, e := range els {
 		if e.Command != nil {
 			return e.Command, nil
 		}
 		if e.Node != nil {
-			basePath := []uint32(nil)
-			if len(e.Node.Path) > 0 {
-				basePath = toUint32(e.Node.Path)
-			} else if e.Node.Number != 0 {
-				basePath = []uint32{uint32(e.Node.Number)}
-			}
+			base := nodeBasePath(e.Node)
 			if c, sub := findCommandInElements(e.Node.Children); c != nil {
-				return c, append(append([]uint32{}, basePath...), sub...)
+				return c, append(append([]uint32{}, base...), sub...)
 			}
 		}
 		if e.Parameter != nil {
-			basePath := []uint32(nil)
-			if len(e.Parameter.Path) > 0 {
-				basePath = toUint32(e.Parameter.Path)
-			} else if e.Parameter.Number != 0 {
-				basePath = []uint32{uint32(e.Parameter.Number)}
-			}
+			base := paramBasePath(e.Parameter)
 			if c, sub := findCommandInElements(e.Parameter.Children); c != nil {
-				return c, append(append([]uint32{}, basePath...), sub...)
+				return c, append(append([]uint32{}, base...), sub...)
+			}
+		}
+		if e.Function != nil {
+			base := funcBasePath(e.Function)
+			if c, sub := findCommandInElements(e.Function.Children); c != nil {
+				return c, append(append([]uint32{}, base...), sub...)
+			}
+		}
+		if e.Matrix != nil {
+			base := matrixBasePath(e.Matrix)
+			if c, sub := findCommandInElements(e.Matrix.Children); c != nil {
+				return c, append(append([]uint32{}, base...), sub...)
 			}
 		}
 	}
 	return nil, nil
+}
+
+func funcBasePath(f *glow.Function) []uint32 {
+	if len(f.Path) > 0 {
+		return toUint32(f.Path)
+	}
+	return []uint32{uint32(f.Number)}
+}
+
+// findMatrixConnectionsInElements walks the decoded tree looking for a
+// Matrix (or QualifiedMatrix) that carries at least one Connection entry.
+// Returns the absolute matrix path plus the connection list translated to
+// canonical form. Like the Parameter walker, it concatenates wrapping
+// Node / QualifiedNode path segments if the consumer nested the Matrix.
+func findMatrixConnectionsInElements(els []glow.Element) ([]uint32, []canonical.MatrixConnection, bool) {
+	for _, e := range els {
+		if e.Matrix != nil && len(e.Matrix.Connections) > 0 {
+			return matrixBasePath(e.Matrix), convertConnections(e.Matrix.Connections), true
+		}
+		if e.Node != nil {
+			base := nodeBasePath(e.Node)
+			if sub, conns, ok := findMatrixConnectionsInElements(e.Node.Children); ok {
+				return append(append([]uint32{}, base...), sub...), conns, true
+			}
+		}
+		if e.Matrix != nil {
+			base := matrixBasePath(e.Matrix)
+			if sub, conns, ok := findMatrixConnectionsInElements(e.Matrix.Children); ok {
+				return append(append([]uint32{}, base...), sub...), conns, true
+			}
+		}
+	}
+	return nil, nil, false
+}
+
+func matrixBasePath(m *glow.Matrix) []uint32 {
+	if len(m.Path) > 0 {
+		return toUint32(m.Path)
+	}
+	if m.Number != 0 {
+		return []uint32{uint32(m.Number)}
+	}
+	return nil
+}
+
+// convertConnections translates glow.Connection entries (wire form) to
+// canonical.MatrixConnection entries the provider state machine consumes.
+// operation / disposition enums become their string equivalents.
+func convertConnections(conns []glow.Connection) []canonical.MatrixConnection {
+	out := make([]canonical.MatrixConnection, 0, len(conns))
+	for _, c := range conns {
+		sources := make([]int64, 0, len(c.Sources))
+		for _, s := range c.Sources {
+			sources = append(sources, int64(s))
+		}
+		out = append(out, canonical.MatrixConnection{
+			Target:      int64(c.Target),
+			Sources:     sources,
+			Operation:   connOperationName(c.Operation),
+			Disposition: connDispositionName(c.Disposition),
+		})
+	}
+	return out
+}
+
+func connOperationName(op int64) string {
+	switch op {
+	case glow.ConnOpConnect:
+		return canonical.ConnOpConnect
+	case glow.ConnOpDisconnect:
+		return canonical.ConnOpDisconnect
+	}
+	return canonical.ConnOpAbsolute
+}
+
+func connDispositionName(d int64) string {
+	switch d {
+	case glow.ConnDispModified:
+		return canonical.ConnDispModified
+	case glow.ConnDispPending:
+		return canonical.ConnDispPending
+	case glow.ConnDispLocked:
+		return canonical.ConnDispLocked
+	}
+	return canonical.ConnDispTally
 }
 
 // findSetValueInElements walks the decoded tree looking for a Parameter
@@ -286,24 +437,26 @@ func findSetValueInElements(els []glow.Element) ([]uint32, any, bool) {
 	return nil, nil, false
 }
 
+// nodeBasePath / paramBasePath return the path segment an element
+// contributes when the walker concatenates nested wrappers.
+//
+// Number=0 is a LEGAL sub-identifier (e.g. label/target "t-0" sits at
+// .0 under its parent). We deliberately include it — stripping 0 broke
+// SetValue on any parameter whose number is 0. The cost of including
+// a genuinely-absent Number=0 is a path like "0" that fails lookup
+// cleanly; the cost of dropping a real .0 is a silently wrong SetValue.
 func nodeBasePath(n *glow.Node) []uint32 {
 	if len(n.Path) > 0 {
 		return toUint32(n.Path)
 	}
-	if n.Number != 0 {
-		return []uint32{uint32(n.Number)}
-	}
-	return nil
+	return []uint32{uint32(n.Number)}
 }
 
 func paramBasePath(p *glow.Parameter) []uint32 {
 	if len(p.Path) > 0 {
 		return toUint32(p.Path)
 	}
-	if p.Number != 0 {
-		return []uint32{uint32(p.Number)}
-	}
-	return nil
+	return []uint32{uint32(p.Number)}
 }
 
 func oidFromPath(parts []uint32) string {

@@ -1,0 +1,488 @@
+{
+  "root": {
+    "number": 1,
+    "identifier": "router",
+    "path": "router",
+    "oid": "1",
+    "description": "ACP demo router — spec-compliant Matrix+labels+params+functions (spec v2.50)",
+    "isOnline": true,
+    "access": "read",
+    "children": [
+      {
+        "number": 1,
+        "identifier": "identity",
+        "path": "router.identity",
+        "oid": "1.1",
+        "description": null,
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {"number": 1, "identifier": "product", "path": "router.identity.product", "oid": "1.1.1", "description": null, "isOnline": true, "access": "read", "children": [], "type": "string", "value": "ACP Demo Router", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+          {"number": 2, "identifier": "company", "path": "router.identity.company", "oid": "1.1.2", "description": null, "isOnline": true, "access": "read", "children": [], "type": "string", "value": "BY-SYSTEMS", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+        ]
+      },
+
+      {
+        "number": 2,
+        "identifier": "oneToN",
+        "path": "router.oneToN",
+        "oid": "1.2",
+        "description": "4x4 oneToN linear — two label levels (Primary + Secondary)",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1, "identifier": "labels", "path": "router.oneToN.labels", "oid": "1.2.1",
+            "description": "Label levels container (spec p.41 shape)", "isOnline": true, "access": "read",
+            "children": [
+              {
+                "number": 1, "identifier": "Primary", "path": "router.oneToN.labels.Primary", "oid": "1.2.1.1",
+                "description": "Primary label level (long names)", "isOnline": true, "access": "read",
+                "children": [
+                  {
+                    "number": 1, "identifier": "targets", "path": "router.oneToN.labels.Primary.targets", "oid": "1.2.1.1.1",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "t-0", "path": "router.oneToN.labels.Primary.targets.t-0", "oid": "1.2.1.1.1.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "MAIN OUT 1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "t-1", "path": "router.oneToN.labels.Primary.targets.t-1", "oid": "1.2.1.1.1.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "MAIN OUT 2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 2, "identifier": "t-2", "path": "router.oneToN.labels.Primary.targets.t-2", "oid": "1.2.1.1.1.2", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "AUX 1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 3, "identifier": "t-3", "path": "router.oneToN.labels.Primary.targets.t-3", "oid": "1.2.1.1.1.3", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "AUX 2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  },
+                  {
+                    "number": 2, "identifier": "sources", "path": "router.oneToN.labels.Primary.sources", "oid": "1.2.1.1.2",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "s-0", "path": "router.oneToN.labels.Primary.sources.s-0", "oid": "1.2.1.1.2.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "CAM 1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "s-1", "path": "router.oneToN.labels.Primary.sources.s-1", "oid": "1.2.1.1.2.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "CAM 2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 2, "identifier": "s-2", "path": "router.oneToN.labels.Primary.sources.s-2", "oid": "1.2.1.1.2.2", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "PLAY 1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 3, "identifier": "s-3", "path": "router.oneToN.labels.Primary.sources.s-3", "oid": "1.2.1.1.2.3", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "PLAY 2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  }
+                ]
+              },
+              {
+                "number": 2, "identifier": "Secondary", "path": "router.oneToN.labels.Secondary", "oid": "1.2.1.2",
+                "description": "Secondary label level (short codes)", "isOnline": true, "access": "read",
+                "children": [
+                  {
+                    "number": 1, "identifier": "targets", "path": "router.oneToN.labels.Secondary.targets", "oid": "1.2.1.2.1",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "t-0", "path": "router.oneToN.labels.Secondary.targets.t-0", "oid": "1.2.1.2.1.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "M1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "t-1", "path": "router.oneToN.labels.Secondary.targets.t-1", "oid": "1.2.1.2.1.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "M2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 2, "identifier": "t-2", "path": "router.oneToN.labels.Secondary.targets.t-2", "oid": "1.2.1.2.1.2", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "A1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 3, "identifier": "t-3", "path": "router.oneToN.labels.Secondary.targets.t-3", "oid": "1.2.1.2.1.3", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "A2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  },
+                  {
+                    "number": 2, "identifier": "sources", "path": "router.oneToN.labels.Secondary.sources", "oid": "1.2.1.2.2",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "s-0", "path": "router.oneToN.labels.Secondary.sources.s-0", "oid": "1.2.1.2.2.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "C1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "s-1", "path": "router.oneToN.labels.Secondary.sources.s-1", "oid": "1.2.1.2.2.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "C2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 2, "identifier": "s-2", "path": "router.oneToN.labels.Secondary.sources.s-2", "oid": "1.2.1.2.2.2", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "P1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 3, "identifier": "s-3", "path": "router.oneToN.labels.Secondary.sources.s-3", "oid": "1.2.1.2.2.3", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "P2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": 2, "identifier": "matrix", "path": "router.oneToN.matrix", "oid": "1.2.2",
+            "description": "4x4 oneToN", "isOnline": true, "access": "readWrite", "children": [],
+            "type": "oneToN", "mode": "linear",
+            "targetCount": 4, "sourceCount": 4,
+            "maximumTotalConnects": null, "maximumConnectsPerTarget": null,
+            "parametersLocation": null, "gainParameterNumber": null,
+            "labels": [
+              {"basePath": "1.2.1.1", "description": "Primary"},
+              {"basePath": "1.2.1.2", "description": "Secondary"}
+            ],
+            "targets": [], "sources": [],
+            "connections": [
+              {"target": 0, "sources": [0], "operation": "absolute", "disposition": "tally", "locked": false},
+              {"target": 1, "sources": [1], "operation": "absolute", "disposition": "tally", "locked": false},
+              {"target": 2, "sources": [2], "operation": "absolute", "disposition": "tally", "locked": false},
+              {"target": 3, "sources": [3], "operation": "absolute", "disposition": "tally", "locked": false}
+            ],
+            "targetLabels": null, "sourceLabels": null, "targetParams": null, "sourceParams": null, "connectionParams": null
+          }
+        ]
+      },
+
+      {
+        "number": 3,
+        "identifier": "oneToOne",
+        "path": "router.oneToOne",
+        "oid": "1.3",
+        "description": "4x4 oneToOne linear — permutation; source exclusivity enforced",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1, "identifier": "labels", "path": "router.oneToOne.labels", "oid": "1.3.1",
+            "description": null, "isOnline": true, "access": "read",
+            "children": [
+              {
+                "number": 1, "identifier": "Primary", "path": "router.oneToOne.labels.Primary", "oid": "1.3.1.1",
+                "description": null, "isOnline": true, "access": "read",
+                "children": [
+                  {
+                    "number": 1, "identifier": "targets", "path": "router.oneToOne.labels.Primary.targets", "oid": "1.3.1.1.1",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "t-0", "path": "router.oneToOne.labels.Primary.targets.t-0", "oid": "1.3.1.1.1.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "REC A", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "t-1", "path": "router.oneToOne.labels.Primary.targets.t-1", "oid": "1.3.1.1.1.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "REC B", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 2, "identifier": "t-2", "path": "router.oneToOne.labels.Primary.targets.t-2", "oid": "1.3.1.1.1.2", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "REC C", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 3, "identifier": "t-3", "path": "router.oneToOne.labels.Primary.targets.t-3", "oid": "1.3.1.1.1.3", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "REC D", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  },
+                  {
+                    "number": 2, "identifier": "sources", "path": "router.oneToOne.labels.Primary.sources", "oid": "1.3.1.1.2",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "s-0", "path": "router.oneToOne.labels.Primary.sources.s-0", "oid": "1.3.1.1.2.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "SDI IN 1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "s-1", "path": "router.oneToOne.labels.Primary.sources.s-1", "oid": "1.3.1.1.2.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "SDI IN 2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 2, "identifier": "s-2", "path": "router.oneToOne.labels.Primary.sources.s-2", "oid": "1.3.1.1.2.2", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "SDI IN 3", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 3, "identifier": "s-3", "path": "router.oneToOne.labels.Primary.sources.s-3", "oid": "1.3.1.1.2.3", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "SDI IN 4", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": 2, "identifier": "matrix", "path": "router.oneToOne.matrix", "oid": "1.3.2",
+            "description": "4x4 oneToOne permutation", "isOnline": true, "access": "readWrite", "children": [],
+            "type": "oneToOne", "mode": "linear",
+            "targetCount": 4, "sourceCount": 4,
+            "maximumTotalConnects": null, "maximumConnectsPerTarget": null,
+            "parametersLocation": null, "gainParameterNumber": null,
+            "labels": [{"basePath": "1.3.1.1", "description": "Primary"}],
+            "targets": [], "sources": [],
+            "connections": [
+              {"target": 0, "sources": [3], "operation": "absolute", "disposition": "tally", "locked": false},
+              {"target": 1, "sources": [2], "operation": "absolute", "disposition": "tally", "locked": false},
+              {"target": 2, "sources": [1], "operation": "absolute", "disposition": "tally", "locked": false},
+              {"target": 3, "sources": [0], "operation": "absolute", "disposition": "tally", "locked": false}
+            ],
+            "targetLabels": null, "sourceLabels": null, "targetParams": null, "sourceParams": null, "connectionParams": null
+          }
+        ]
+      },
+
+      {
+        "number": 4,
+        "identifier": "nToN",
+        "path": "router.nToN",
+        "oid": "1.4",
+        "description": "2x2 nToN with spec-shape parametersLocation (targets/sources/connections) + two label levels",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1, "identifier": "labels", "path": "router.nToN.labels", "oid": "1.4.1",
+            "description": "Label levels container", "isOnline": true, "access": "read",
+            "children": [
+              {
+                "number": 1, "identifier": "Primary", "path": "router.nToN.labels.Primary", "oid": "1.4.1.1",
+                "description": null, "isOnline": true, "access": "read",
+                "children": [
+                  {
+                    "number": 1, "identifier": "targets", "path": "router.nToN.labels.Primary.targets", "oid": "1.4.1.1.1",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "t-0", "path": "router.nToN.labels.Primary.targets.t-0", "oid": "1.4.1.1.1.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "MIX A", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "t-1", "path": "router.nToN.labels.Primary.targets.t-1", "oid": "1.4.1.1.1.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "MIX B", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  },
+                  {
+                    "number": 2, "identifier": "sources", "path": "router.nToN.labels.Primary.sources", "oid": "1.4.1.1.2",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "s-0", "path": "router.nToN.labels.Primary.sources.s-0", "oid": "1.4.1.1.2.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "MIC 1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "s-1", "path": "router.nToN.labels.Primary.sources.s-1", "oid": "1.4.1.1.2.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "MIC 2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  }
+                ]
+              },
+              {
+                "number": 2, "identifier": "Secondary", "path": "router.nToN.labels.Secondary", "oid": "1.4.1.2",
+                "description": null, "isOnline": true, "access": "read",
+                "children": [
+                  {
+                    "number": 1, "identifier": "targets", "path": "router.nToN.labels.Secondary.targets", "oid": "1.4.1.2.1",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "t-0", "path": "router.nToN.labels.Secondary.targets.t-0", "oid": "1.4.1.2.1.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "MA", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "t-1", "path": "router.nToN.labels.Secondary.targets.t-1", "oid": "1.4.1.2.1.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "MB", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  },
+                  {
+                    "number": 2, "identifier": "sources", "path": "router.nToN.labels.Secondary.sources", "oid": "1.4.1.2.2",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 0, "identifier": "s-0", "path": "router.nToN.labels.Secondary.sources.s-0", "oid": "1.4.1.2.2.0", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "M1", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 1, "identifier": "s-1", "path": "router.nToN.labels.Secondary.sources.s-1", "oid": "1.4.1.2.2.1", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "M2", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": 2, "identifier": "parameters", "path": "router.nToN.parameters", "oid": "1.4.2",
+            "description": "parametersLocation container — spec shape: 1=targets, 2=sources, 3=connections",
+            "isOnline": true, "access": "read",
+            "children": [
+              {
+                "number": 1, "identifier": "targets", "path": "router.nToN.parameters.targets", "oid": "1.4.2.1",
+                "description": "Per-target bus parameters", "isOnline": true, "access": "read",
+                "children": [
+                  {
+                    "number": 0, "identifier": "t-0", "path": "router.nToN.parameters.targets.t-0", "oid": "1.4.2.1.0",
+                    "description": null, "isOnline": true, "access": "read", "children": [
+                      {"number": 1, "identifier": "level", "path": "router.nToN.parameters.targets.t-0.level", "oid": "1.4.2.1.0.1", "description": "Bus level", "isOnline": true, "access": "readWrite", "children": [], "type": "real", "value": 0.0, "default": 0.0, "minimum": -60.0, "maximum": 12.0, "step": 0.5, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 2, "identifier": "mute", "path": "router.nToN.parameters.targets.t-0.mute", "oid": "1.4.2.1.0.2", "description": "Bus mute", "isOnline": true, "access": "readWrite", "children": [], "type": "boolean", "value": false, "default": false, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  },
+                  {
+                    "number": 1, "identifier": "t-1", "path": "router.nToN.parameters.targets.t-1", "oid": "1.4.2.1.1",
+                    "description": null, "isOnline": true, "access": "read", "children": [
+                      {"number": 1, "identifier": "level", "path": "router.nToN.parameters.targets.t-1.level", "oid": "1.4.2.1.1.1", "description": "Bus level", "isOnline": true, "access": "readWrite", "children": [], "type": "real", "value": -3.0, "default": 0.0, "minimum": -60.0, "maximum": 12.0, "step": 0.5, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 2, "identifier": "mute", "path": "router.nToN.parameters.targets.t-1.mute", "oid": "1.4.2.1.1.2", "description": "Bus mute", "isOnline": true, "access": "readWrite", "children": [], "type": "boolean", "value": false, "default": false, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  }
+                ]
+              },
+              {
+                "number": 2, "identifier": "sources", "path": "router.nToN.parameters.sources", "oid": "1.4.2.2",
+                "description": "Per-source input parameters", "isOnline": true, "access": "read",
+                "children": [
+                  {
+                    "number": 0, "identifier": "s-0", "path": "router.nToN.parameters.sources.s-0", "oid": "1.4.2.2.0",
+                    "description": null, "isOnline": true, "access": "read", "children": [
+                      {"number": 1, "identifier": "trim", "path": "router.nToN.parameters.sources.s-0.trim", "oid": "1.4.2.2.0.1", "description": "Input trim", "isOnline": true, "access": "readWrite", "children": [], "type": "real", "value": 0.0, "default": 0.0, "minimum": -20.0, "maximum": 20.0, "step": 0.1, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  },
+                  {
+                    "number": 1, "identifier": "s-1", "path": "router.nToN.parameters.sources.s-1", "oid": "1.4.2.2.1",
+                    "description": null, "isOnline": true, "access": "read", "children": [
+                      {"number": 1, "identifier": "trim", "path": "router.nToN.parameters.sources.s-1.trim", "oid": "1.4.2.2.1.1", "description": "Input trim", "isOnline": true, "access": "readWrite", "children": [], "type": "real", "value": 2.0, "default": 0.0, "minimum": -20.0, "maximum": 20.0, "step": 0.1, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  }
+                ]
+              },
+              {
+                "number": 3, "identifier": "connections", "path": "router.nToN.parameters.connections", "oid": "1.4.2.3",
+                "description": "Per-crosspoint parameters (gain)", "isOnline": true, "access": "read",
+                "children": [
+                  {
+                    "number": 0, "identifier": "t-0", "path": "router.nToN.parameters.connections.t-0", "oid": "1.4.2.3.0",
+                    "description": null, "isOnline": true, "access": "read", "children": [
+                      {
+                        "number": 0, "identifier": "s-0", "path": "router.nToN.parameters.connections.t-0.s-0", "oid": "1.4.2.3.0.0",
+                        "description": null, "isOnline": true, "access": "read", "children": [
+                          {"number": 1, "identifier": "gain", "path": "router.nToN.parameters.connections.t-0.s-0.gain", "oid": "1.4.2.3.0.0.1", "description": "Crosspoint gain", "isOnline": true, "access": "readWrite", "children": [], "type": "real", "value": 0.0, "default": 0.0, "minimum": -60.0, "maximum": 12.0, "step": 0.5, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                        ]
+                      },
+                      {
+                        "number": 1, "identifier": "s-1", "path": "router.nToN.parameters.connections.t-0.s-1", "oid": "1.4.2.3.0.1",
+                        "description": null, "isOnline": true, "access": "read", "children": [
+                          {"number": 1, "identifier": "gain", "path": "router.nToN.parameters.connections.t-0.s-1.gain", "oid": "1.4.2.3.0.1.1", "description": "Crosspoint gain", "isOnline": true, "access": "readWrite", "children": [], "type": "real", "value": -6.0, "default": 0.0, "minimum": -60.0, "maximum": 12.0, "step": 0.5, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "number": 1, "identifier": "t-1", "path": "router.nToN.parameters.connections.t-1", "oid": "1.4.2.3.1",
+                    "description": null, "isOnline": true, "access": "read", "children": [
+                      {
+                        "number": 0, "identifier": "s-0", "path": "router.nToN.parameters.connections.t-1.s-0", "oid": "1.4.2.3.1.0",
+                        "description": null, "isOnline": true, "access": "read", "children": [
+                          {"number": 1, "identifier": "gain", "path": "router.nToN.parameters.connections.t-1.s-0.gain", "oid": "1.4.2.3.1.0.1", "description": "Crosspoint gain", "isOnline": true, "access": "readWrite", "children": [], "type": "real", "value": -6.0, "default": 0.0, "minimum": -60.0, "maximum": 12.0, "step": 0.5, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                        ]
+                      },
+                      {
+                        "number": 1, "identifier": "s-1", "path": "router.nToN.parameters.connections.t-1.s-1", "oid": "1.4.2.3.1.1",
+                        "description": null, "isOnline": true, "access": "read", "children": [
+                          {"number": 1, "identifier": "gain", "path": "router.nToN.parameters.connections.t-1.s-1.gain", "oid": "1.4.2.3.1.1.1", "description": "Crosspoint gain", "isOnline": true, "access": "readWrite", "children": [], "type": "real", "value": 0.0, "default": 0.0, "minimum": -60.0, "maximum": 12.0, "step": 0.5, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": 3, "identifier": "matrix", "path": "router.nToN.matrix", "oid": "1.4.3",
+            "description": "2x2 nToN with per-cell gain",
+            "isOnline": true, "access": "readWrite", "children": [],
+            "type": "nToN", "mode": "linear",
+            "targetCount": 2, "sourceCount": 2,
+            "maximumTotalConnects": 4, "maximumConnectsPerTarget": 2,
+            "parametersLocation": "1.4.2", "gainParameterNumber": 1,
+            "labels": [
+              {"basePath": "1.4.1.1", "description": "Primary"},
+              {"basePath": "1.4.1.2", "description": "Secondary"}
+            ],
+            "targets": [], "sources": [],
+            "connections": [
+              {"target": 0, "sources": [0], "operation": "absolute", "disposition": "tally", "locked": false},
+              {"target": 1, "sources": [1], "operation": "absolute", "disposition": "tally", "locked": false}
+            ],
+            "targetLabels": null, "sourceLabels": null, "targetParams": null, "sourceParams": null, "connectionParams": null
+          }
+        ]
+      },
+
+      {
+        "number": 5,
+        "identifier": "dynamic",
+        "path": "router.dynamic",
+        "oid": "1.5",
+        "description": "Dynamic nToN — non-linear addressing, signal numbers sparse (10/20 targets, 30/40 sources)",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1, "identifier": "labels", "path": "router.dynamic.labels", "oid": "1.5.1",
+            "description": null, "isOnline": true, "access": "read",
+            "children": [
+              {
+                "number": 1, "identifier": "Primary", "path": "router.dynamic.labels.Primary", "oid": "1.5.1.1",
+                "description": null, "isOnline": true, "access": "read",
+                "children": [
+                  {
+                    "number": 1, "identifier": "targets", "path": "router.dynamic.labels.Primary.targets", "oid": "1.5.1.1.1",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 10, "identifier": "t-10", "path": "router.dynamic.labels.Primary.targets.t-10", "oid": "1.5.1.1.1.10", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "DYN TGT A", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 20, "identifier": "t-20", "path": "router.dynamic.labels.Primary.targets.t-20", "oid": "1.5.1.1.1.20", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "DYN TGT B", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  },
+                  {
+                    "number": 2, "identifier": "sources", "path": "router.dynamic.labels.Primary.sources", "oid": "1.5.1.1.2",
+                    "description": null, "isOnline": true, "access": "read",
+                    "children": [
+                      {"number": 30, "identifier": "s-30", "path": "router.dynamic.labels.Primary.sources.s-30", "oid": "1.5.1.1.2.30", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "DYN SRC X", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+                      {"number": 40, "identifier": "s-40", "path": "router.dynamic.labels.Primary.sources.s-40", "oid": "1.5.1.1.2.40", "description": null, "isOnline": true, "access": "readWrite", "children": [], "type": "string", "value": "DYN SRC Y", "default": null, "minimum": null, "maximum": null, "step": null, "unit": null, "format": null, "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": 2, "identifier": "matrix", "path": "router.dynamic.matrix", "oid": "1.5.2",
+            "description": "Dynamic nToN — explicit signal numbers",
+            "isOnline": true, "access": "readWrite", "children": [],
+            "type": "nToN", "mode": "nonLinear",
+            "targetCount": 2, "sourceCount": 2,
+            "maximumTotalConnects": 4, "maximumConnectsPerTarget": 2,
+            "parametersLocation": null, "gainParameterNumber": null,
+            "labels": [{"basePath": "1.5.1.1", "description": "Primary"}],
+            "targets": [{"number": 10}, {"number": 20}],
+            "sources": [{"number": 30}, {"number": 40}],
+            "connections": [
+              {"target": 10, "sources": [30], "operation": "absolute", "disposition": "tally", "locked": false},
+              {"target": 20, "sources": [40], "operation": "absolute", "disposition": "tally", "locked": false}
+            ],
+            "targetLabels": null, "sourceLabels": null, "targetParams": null, "sourceParams": null, "connectionParams": null
+          }
+        ]
+      },
+
+      {
+        "number": 7,
+        "identifier": "streams",
+        "path": "router.streams",
+        "oid": "1.7",
+        "description": "Live stream parameters — sine-wave meters pushed via StreamCollection",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {"number": 1, "identifier": "meter-L", "path": "router.streams.meter-L", "oid": "1.7.1", "description": "Left channel PPM (streamId 100) — int centi-dB, factor 100", "isOnline": true, "access": "read", "children": [], "type": "integer", "value": 0, "default": 0, "minimum": -6000, "maximum": 0, "step": 1, "unit": "dB", "format": "%.2f dB", "factor": 100, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 100, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+          {"number": 2, "identifier": "meter-R", "path": "router.streams.meter-R", "oid": "1.7.2", "description": "Right channel PPM (streamId 101) — int centi-dB, factor 100", "isOnline": true, "access": "read", "children": [], "type": "integer", "value": 0, "default": 0, "minimum": -6000, "maximum": 0, "step": 1, "unit": "dB", "format": "%.2f dB", "factor": 100, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 101, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+          {"number": 3, "identifier": "meter-real", "path": "router.streams.meter-real", "oid": "1.7.3", "description": "REAL-typed PPM (streamId 102) — re-verifies EmberViewer REAL quirk #68", "isOnline": true, "access": "read", "children": [], "type": "real", "value": 0.0, "default": 0.0, "minimum": -60.0, "maximum": 0.0, "step": 0.1, "unit": "dB", "format": "%.2f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 102, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+          {"number": 4, "identifier": "gain-with-formula", "path": "router.streams.gain-with-formula", "oid": "1.7.4", "description": "Integer gain with provider|consumer formula — 32 dB per unit on wire, display divides by 32", "isOnline": true, "access": "readWrite", "children": [], "type": "integer", "value": -1024, "default": -1024, "minimum": -4096, "maximum": 480, "step": 1, "unit": "dB", "format": "%8.2f dB", "factor": 32, "formula": "$*32\n$/32", "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+        ]
+      },
+
+      {
+        "number": 6,
+        "identifier": "functions",
+        "path": "router.functions",
+        "oid": "1.6",
+        "description": "Callable RPCs: sum, recallSalvo, storeSalvo",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1, "identifier": "sum", "path": "router.functions.sum", "oid": "1.6.1",
+            "description": "Add two integers", "isOnline": true, "access": "read", "children": [],
+            "arguments": [
+              {"name": "a", "type": "integer"},
+              {"name": "b", "type": "integer"}
+            ],
+            "result": [
+              {"name": "sum", "type": "integer"}
+            ]
+          },
+          {
+            "number": 2, "identifier": "recallSalvo", "path": "router.functions.recallSalvo", "oid": "1.6.2",
+            "description": "Apply saved crosspoints. matrixPath = OID '1.2.2' or dotted path 'router.oneToN.matrix'",
+            "isOnline": true, "access": "read", "children": [],
+            "arguments": [
+              {"name": "matrixPath", "type": "string"},
+              {"name": "salvoID", "type": "integer"}
+            ],
+            "result": [{"name": "appliedCount", "type": "integer"}]
+          },
+          {
+            "number": 3, "identifier": "storeSalvo", "path": "router.functions.storeSalvo", "oid": "1.6.3",
+            "description": "Snapshot matrix state. matrixPath = OID '1.4.3' or dotted path 'router.nToN.matrix'",
+            "isOnline": true, "access": "read", "children": [],
+            "arguments": [
+              {"name": "matrixPath", "type": "string"},
+              {"name": "salvoID", "type": "integer"}
+            ],
+            "result": [{"name": "success", "type": "boolean"}]
+          },
+          {
+            "number": 4, "identifier": "listSalvos", "path": "router.functions.listSalvos", "oid": "1.6.4",
+            "description": "Stored salvo IDs for a matrix (comma-separated, e.g. '1,2,5')",
+            "isOnline": true, "access": "read", "children": [],
+            "arguments": [
+              {"name": "matrixPath", "type": "string"}
+            ],
+            "result": [{"name": "ids", "type": "string"}]
+          },
+          {
+            "number": 5, "identifier": "setLock", "path": "router.functions.setLock", "oid": "1.6.5",
+            "description": "Lock or unlock a matrix target. Locked targets reject Connection changes (disposition=locked per spec p.89)",
+            "isOnline": true, "access": "read", "children": [],
+            "arguments": [
+              {"name": "matrixPath", "type": "string"},
+              {"name": "target", "type": "integer"},
+              {"name": "locked", "type": "boolean"}
+            ],
+            "result": [{"name": "wasLocked", "type": "boolean"}]
+          },
+          {
+            "number": 6, "identifier": "listLocks", "path": "router.functions.listLocks", "oid": "1.6.6",
+            "description": "Locked target IDs for a matrix (comma-separated)",
+            "isOnline": true, "access": "read", "children": [],
+            "arguments": [
+              {"name": "matrixPath", "type": "string"}
+            ],
+            "result": [{"name": "targets", "type": "string"}]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -418,15 +418,27 @@ No next phase until previous ships with VM integration passing.
 (branch `feat/emberplus-provider`). New tier-1 plugin directory
 `internal/provider/emberplus/` mirrors the consumer under
 `internal/protocol/emberplus/`. Binary `cmd/acp-provider`. Round-tripped
-live against EmberViewer for Node + all 7 Parameter types. Open
-follow-ups: #68 (viewer quirks), #69 (Matrix + Function extension,
-labels, parametersLocation, sum/recallSalvo functions).
+live against EmberViewer for Node + all 7 Parameter types.
+
+**Part B completion (2026-04-20):** #69 shipped on `feat/emberplus-matrix`
+(10 commits, ~1800 lines added). Adds all 4 Matrix modes (oneToN,
+oneToOne, nToN, dynamic), two-level Labels with spec-p.41 layout,
+`parametersLocation` grid (1=targets, 2=sources, 3=connections per
+spec p.37), QualifiedFunction + InvocationResult, four builtin
+functions (sum, storeSalvo/recallSalvo/listSalvos + setLock/listLocks),
+Connection Lock enforcement per spec p.89, subscribe-gated
+StreamCollection broadcast, and Parameter.formula field emission.
+12 wire-correctness landmines documented in
+`memory/project_emberplus_provider.md`. Live-smoked via EmberViewer
+1.6.2 and our own `acp invoke` / `acp walk` CLI. Open follow-ups:
+#68 (viewer REAL quirks, cross-viewer testing), #70 (formula
+expression evaluator — shared provider/consumer).
 
 ### Parked — TODO / SOW (do not start now)
 
 | item | phase | notes |
 |---|---|---|
-| Ember+ provider | ✅ MVP on PR #67; #69 for Matrix/Function |
+| Ember+ provider | ✅ MVP on PR #67; Matrix/Function/Labels/Streams/Lock on #69 branch `feat/emberplus-matrix` (ready for PR); #70 formula eval parked |
 | Bus bridge (`acp-srv --bus=none\|nats\|es\|redis-stream`) | Part C | orchestrator-level; plugins stay bus-free |
 | Probel SW-P-02 consumer+provider | later | canonical Matrix shape, no walkable tree |
 | Probel SW-P-08 Plus consumer+provider | later | canonical Matrix with level multiplex |

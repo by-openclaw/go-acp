@@ -50,13 +50,15 @@ func runInvoke(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	opCtx, cancel := withTimeout(ctx, cf.timeout)
-	defer cancel()
-
 	// Walk to populate tree (raw ctx — no per-op deadline).
 	if _, err := plug.Walk(ctx, *slot); err != nil {
 		return fmt.Errorf("walk: %w", err)
 	}
+
+	// Start the per-op timer AFTER the walk — otherwise the walk burns
+	// through --timeout before Invoke even sends its Command frame.
+	opCtx, cancel := withTimeout(ctx, cf.timeout)
+	defer cancel()
 
 	ep, ok := plug.(*emberplus.Plugin)
 	if !ok {

@@ -75,6 +75,16 @@ func (s *server) encodeElementMinimal(e *entry) ber.TLV {
 			ber.ContextConstructed(glow.QParamPath, ber.RelOID(encodeRelativeOID(e.oidParts))),
 			ber.ContextConstructed(glow.QParamContents, contents),
 		)
+	case *canonical.Matrix:
+		return ber.AppConstructed(glow.TagQualifiedMatrix,
+			ber.ContextConstructed(0, ber.RelOID(encodeRelativeOID(e.oidParts))),
+			ber.ContextConstructed(1, contents),
+		)
+	case *canonical.Function:
+		return ber.AppConstructed(glow.TagQualifiedFunction,
+			ber.ContextConstructed(glow.QFuncPath, ber.RelOID(encodeRelativeOID(e.oidParts))),
+			ber.ContextConstructed(glow.QFuncContents, contents),
+		)
 	default:
 		return ber.AppConstructed(glow.TagQualifiedNode,
 			ber.ContextConstructed(glow.QNodePath, ber.RelOID(encodeRelativeOID(e.oidParts))),
@@ -92,6 +102,10 @@ func (s *server) encodeQualifiedElement(e *entry) (ber.TLV, error) {
 		return s.encodeQualifiedNode(e, el), nil
 	case *canonical.Parameter:
 		return s.encodeQualifiedParameter(e, el), nil
+	case *canonical.Matrix:
+		return s.encodeQualifiedMatrix(e, el)
+	case *canonical.Function:
+		return s.encodeQualifiedFunction(e, el), nil
 	default:
 		return ber.TLV{}, fmt.Errorf("encoder: element kind %q not yet implemented", e.el.Kind())
 	}
@@ -157,6 +171,14 @@ func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentFactor, ber.Integer(*p.Factor))) // [8]
 	}
+	// Formula [CTX 10]: "provider|consumer" split, newline-separated
+	// in spec examples (see Ember+ Formulas.pdf). Full evaluator lands
+	// in a follow-up — for now we emit the string so consumers that
+	// parse formulas themselves see it.
+	if p.Formula != nil && *p.Formula != "" {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentFormula, ber.UTF8(*p.Formula))) // [10]
+	}
 	if v, ok := encodeValue(p.Type, p.Step); ok {
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentStep, v)) // [11]
@@ -168,6 +190,10 @@ func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.
 	if tc, ok := paramTypeConst(p.Type); ok {
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentType, ber.Integer(tc))) // [13]
+	}
+	if p.StreamIdentifier != nil {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentStreamIdentifier, ber.Integer(*p.StreamIdentifier))) // [14]
 	}
 	if len(p.EnumMap) > 0 {
 		kids = append(kids,

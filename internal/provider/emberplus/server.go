@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"acp/internal/export/canonical"
 )
@@ -16,6 +17,9 @@ import (
 type server struct {
 	logger *slog.Logger
 	tree   *tree
+	funcs  *functionRegistry
+	salvos *salvoStore
+	locks  *lockStore
 
 	mu       sync.Mutex
 	listener net.Listener
@@ -34,6 +38,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 	t, err := newTree(exp)
 	s := &server{
 		logger:   logger.With(slog.String("plugin", "emberplus-provider")),
+		funcs:    newFunctionRegistry(),
 		sessions: map[*session]struct{}{},
 		subs:     map[string]map[*session]struct{}{},
 		stopped:  make(chan struct{}),
@@ -43,6 +48,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		s.logger.Error("tree build failed", slog.String("err", err.Error()))
 	} else {
 		s.tree = t
+		s.setupBuiltinFunctions()
 	}
 	return s
 }
@@ -66,6 +72,10 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 		slog.String("addr", ln.Addr().String()),
 		slog.Int("tree_size", len(s.tree.byOID)),
 	)
+
+	// Unsolicited stream fan-out — runs if the tree has any Parameters
+	// with a streamIdentifier, exits on ctx cancel or Stop().
+	go s.runStreamer(ctx, 100*time.Millisecond)
 
 	// Close listener on ctx cancel to unblock Accept.
 	go func() {
