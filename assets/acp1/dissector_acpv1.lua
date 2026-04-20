@@ -454,23 +454,32 @@ end
 -------------------------------------------------------------------------------
 -- acp1_value_preview returns a compact decoded-value string for the
 -- Info column when we're looking at a getValue reply / setValue request
--- without type context. Heuristic: length-based — 1 byte = u8, 2 bytes
--- = s16, 4 bytes = u32 or float. Longer runs show as hex + possible
--- ASCII. Always prints as "value=..." so the Info column reads cleanly.
+-- without type context. The ACP1 protocol doesn't carry a type byte
+-- with the value (unlike ACP2's vtype in the property header), so the
+-- type is derived from the OBJECT definition — which requires prior
+-- getObject context we don't have here. We do a length-based guess:
+--   1 byte  -> u8  (byte/enum)
+--   2 bytes -> s16 (integer)
+--   4 bytes -> s32 (long) + hex (covers u32/float/ipaddr ambiguity)
+--   varies  -> string (if printable) or raw byte count
+-- The "/0x..." hex on 4-byte values lets the reader recognise float or
+-- ipaddr patterns without the dissector having to pick a type.
 -------------------------------------------------------------------------------
 local function acp1_value_preview(tvbuf, offset, datalen)
     if datalen <= 0 then return "" end
     if datalen == 1 then
-        return "value=" .. tvbuf:range(offset, 1):uint()
+        return "value(u8)=" .. tvbuf:range(offset, 1):uint()
     elseif datalen == 2 then
-        return "value=" .. tvbuf:range(offset, 2):int()
+        return "value(s16)=" .. tvbuf:range(offset, 2):int()
     elseif datalen == 4 then
         local u = tvbuf:range(offset, 4):uint()
-        return string.format("value=%d/0x%X", u, u)
-    elseif datalen <= 16 then
+        local s = tvbuf:range(offset, 4):int()
+        return string.format("value(s32/u32)=%d/0x%X", s, u)
+    elseif datalen <= 32 then
         local s = tvbuf:range(offset, datalen):string()
-        if s:match("^[%w%s%._%-/:]*$") and #s > 0 then
-            return "value=\"" .. s:gsub("\0", "") .. "\""
+        local printable = s:match("^[%w%s%._%-/:%+%(%)]*$") and #s > 0
+        if printable then
+            return "value(string)=\"" .. s:gsub("\0", "") .. "\""
         end
         return "value=" .. datalen .. "B"
     end
@@ -568,12 +577,23 @@ local function dissect_acpv1_message(tvbuf, pktinfo, root)
             local label_str = nil
             if value_len > 0 then
                 if mcode_val == 5 and (mtype_val == 2 or mtype_val == 0) then
-                    -- getObject reply or announce: full property decode, capture label
+                    -- getObject reply or announce: full property decode.
+                    -- The first byte of the object payload is obj_type
+                    -- (spec Property Layouts table) — expose it in the
+                    -- Info column so you can see "type=integer" /
+                    -- "type=enum" / "type=string" at a glance without
+                    -- expanding the tree. decode_getobject_value reads
+                    -- the full property list and returns the label.
+                    local obj_type = tvbuf:range(mdata_offset + 3, 1):uint()
+                    local type_name = objtype_valstr[obj_type] or ("type=" .. obj_type)
+                    table.insert(info_parts, "type=" .. type_name)
                     label_str = decode_getobject_value(tvbuf, tree, mdata_offset + 3, value_len)
                 else
-                    -- setValue/getValue/setInc/setDec/setDef: we don't know the
-                    -- object type without context (would need to have seen the
-                    -- getObject reply first). Show a compact value preview.
+                    -- setValue/getValue/setInc/setDec/setDef: we don't
+                    -- know the object type without state (prior
+                    -- getObject reply). Length-based heuristic in
+                    -- acp1_value_preview tags with best-guess type
+                    -- ("value(u8)=", "value(s16)=", "value(s32/u32)=").
                     tree:add(f_value, tvbuf:range(mdata_offset + 3, value_len))
                     local preview = acp1_value_preview(tvbuf, mdata_offset + 3, value_len)
                     if preview ~= "" then
