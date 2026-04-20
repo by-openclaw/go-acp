@@ -23,6 +23,12 @@ local AN2_MAGIC   = 0xC635
 -- read by the AN2 dissector right after the nested call.
 local acp2_last_info = ""
 
+-- Slot lives in the AN2 frame header, not the ACP2 payload. AN2 writes
+-- it here before invoking acp2_proto.dissector so the ACP2 side can
+-- build dotted paths like "0.5.value" (slot.obj_id.pid) per issue #58
+-- — matches the Ember+ OID-dotted Info column style.
+local acp2_current_slot = 0
+
 -------------------------------------------------------------------------------
 -- Value-string tables
 -------------------------------------------------------------------------------
@@ -659,7 +665,8 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 local idx    = tvbuf:range(8, 4):uint()
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-                table.insert(info_parts, "obj=" .. obj_id)
+                -- Dotted slot.obj path per issue #58 (match Ember+ OID style).
+                table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
                 end
@@ -677,7 +684,8 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 local idx    = tvbuf:range(8, 4):uint()
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-                table.insert(info_parts, "obj=" .. obj_id)
+                -- Dotted slot.obj path per issue #58 (match Ember+ OID style).
+                table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
                 table.insert(info_parts, "pid=" .. pid_name)
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
@@ -698,7 +706,8 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 local idx    = tvbuf:range(8, 4):uint()
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-                table.insert(info_parts, "obj=" .. obj_id)
+                -- Dotted slot.obj path per issue #58 (match Ember+ OID style).
+                table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
                 table.insert(info_parts, "pid=" .. pid_name)
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
@@ -724,7 +733,7 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
             local idx    = tvbuf:range(8, 4):uint()
             tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
             tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-            table.insert(info_parts, "obj=" .. obj_id)
+            table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
             if idx ~= 0 then
                 table.insert(info_parts, "idx=" .. idx)
             end
@@ -747,7 +756,7 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
             tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
             tree:add(acp2_f.idx,    tvbuf:range(8, 4))
             local obj_id = tvbuf:range(4, 4):uint()
-            table.insert(info_parts, "obj=" .. obj_id)
+            table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
         end
     end
 
@@ -874,18 +883,21 @@ local function dissect_one_an2(tvbuf, pktinfo, root, offset)
         -- ACP2 data frame: hand off to ACP2 dissector. We read the
         -- composed info text from the module-local side-channel
         -- `acp2_last_info`, because Wireshark's Proto.dissector wrapper
-        -- drops multi-return values when called via Lua.
+        -- drops multi-return values when called via Lua. Slot is
+        -- forwarded the same way so ACP2 can build dotted paths.
         acp2_last_info = ""
+        acp2_current_slot = slot_val
         local payload_tvb = tvbuf:range(offset + AN2_HDR_LEN, dlen):tvb()
         acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
-        info_str = "AN2 > ACP2 " .. acp2_last_info .. " " .. slot_str
+        info_str = "AN2 > ACP2 " .. acp2_last_info
 
     elseif proto_val == 2 and dlen > 0 then
         -- ACP2 non-data frame (req/reply/event/error at AN2 level)
         acp2_last_info = ""
+        acp2_current_slot = slot_val
         local payload_tvb = tvbuf:range(offset + AN2_HDR_LEN, dlen):tvb()
         acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
-        info_str = "AN2 " .. type_str .. " > ACP2 " .. acp2_last_info .. " " .. slot_str
+        info_str = "AN2 " .. type_str .. " > ACP2 " .. acp2_last_info
 
     elseif proto_val == 0 and dlen > 0 then
         -- AN2 internal protocol

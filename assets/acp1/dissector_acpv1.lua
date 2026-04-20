@@ -565,7 +565,11 @@ local function dissect_acpv1_message(tvbuf, pktinfo, root)
             tree:add(f_objgrp, tvbuf:range(mdata_offset + 1, 1))
             tree:add(f_objid,  tvbuf:range(mdata_offset + 2, 1))
             local grp_str = objgrp_valstr[grp] or tostring(grp)
-            table.insert(info_parts, string.format("%s[%d]", grp_str, oid))
+            -- Path notation: group.id per issue #57 — dotted OID form
+            -- (control.3 instead of control[3]). Slot is already shown
+            -- by the "slot=N" token earlier in the Info line, no need
+            -- to repeat it in the path.
+            table.insert(info_parts, string.format("%s.%d", grp_str, oid))
         end
         if mdata_len > 3 then
             tree:add(f_value, tvbuf:range(mdata_offset + 3, mdata_len - 3))
@@ -583,7 +587,11 @@ local function dissect_acpv1_message(tvbuf, pktinfo, root)
             tree:add(f_objid,  tvbuf:range(mdata_offset + 2, 1))
 
             local grp_str = objgrp_valstr[grp] or tostring(grp)
-            table.insert(info_parts, string.format("%s[%d]", grp_str, oid))
+            -- Path notation: group.id per issue #57 — dotted OID form
+            -- (control.3 instead of control[3]). Slot is already shown
+            -- by the "slot=N" token earlier in the Info line, no need
+            -- to repeat it in the path.
+            table.insert(info_parts, string.format("%s.%d", grp_str, oid))
 
             local value_len = mdata_len - 3
             local label_str = nil
