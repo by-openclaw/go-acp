@@ -118,7 +118,7 @@ func TestSession_GetValue_ReadOnlyString(t *testing.T) {
 		MCode: byte(iacp1.MethodGetValue),
 		ObjGroup: iacp1.GroupIdentity, ObjID: 0,
 	}
-	rep := s.handleRequest(req)
+	rep, _ := s.handleRequest(req)
 	if rep == nil {
 		t.Fatal("nil reply")
 	}
@@ -142,7 +142,7 @@ func TestSession_GetObject_Integer(t *testing.T) {
 		MCode: byte(iacp1.MethodGetObject),
 		ObjGroup: iacp1.GroupControl, ObjID: 0,
 	}
-	rep := s.handleRequest(req)
+	rep, _ := s.handleRequest(req)
 	if rep == nil || rep.MType != iacp1.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
@@ -169,7 +169,7 @@ func TestSession_Root_Synthesised(t *testing.T) {
 		MCode: byte(iacp1.MethodGetValue),
 		ObjGroup: iacp1.GroupRoot, ObjID: 0,
 	}
-	rep := s.handleRequest(req)
+	rep, _ := s.handleRequest(req)
 	if rep == nil || rep.MType != iacp1.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
@@ -181,7 +181,7 @@ func TestSession_Root_Synthesised(t *testing.T) {
 	// access(1=read), boot_mode(0), numIdentity(1), numControl(1),
 	// numStatus(0), numAlarm(0), numFile(0).
 	req.MCode = byte(iacp1.MethodGetObject)
-	rep = s.handleRequest(req)
+	rep, _ = s.handleRequest(req)
 	if rep == nil || rep.MType != iacp1.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
@@ -199,7 +199,7 @@ func TestSession_UnknownObject_InstanceError(t *testing.T) {
 		MCode: byte(iacp1.MethodGetValue),
 		ObjGroup: iacp1.GroupControl, ObjID: 99,
 	}
-	rep := s.handleRequest(req)
+	rep, _ := s.handleRequest(req)
 	if rep.MType != iacp1.MTypeError {
 		t.Fatalf("want error, got MType=%d", rep.MType)
 	}
@@ -216,7 +216,7 @@ func TestSession_UnknownGroup_GroupError(t *testing.T) {
 		MCode: byte(iacp1.MethodGetValue),
 		ObjGroup: iacp1.GroupAlarm, ObjID: 0,
 	}
-	rep := s.handleRequest(req)
+	rep, _ := s.handleRequest(req)
 	if rep.MType != iacp1.MTypeError {
 		t.Fatalf("want error")
 	}
@@ -235,7 +235,7 @@ func TestSession_SetValue_RoundTrip(t *testing.T) {
 		ObjGroup: iacp1.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x05},
 	}
-	rep := s.handleRequest(req)
+	rep, _ := s.handleRequest(req)
 	if rep.MType != iacp1.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
@@ -245,7 +245,7 @@ func TestSession_SetValue_RoundTrip(t *testing.T) {
 	// Re-read via getValue to confirm persistence.
 	req.MCode = byte(iacp1.MethodGetValue)
 	req.Value = nil
-	rep = s.handleRequest(req)
+	rep, _ = s.handleRequest(req)
 	if string(rep.Value) != string([]byte{0x00, 0x05}) {
 		t.Fatalf("getValue after set=%x want 0005", rep.Value)
 	}
@@ -260,7 +260,7 @@ func TestSession_SetValue_ClampsToMax(t *testing.T) {
 		ObjGroup: iacp1.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x64}, // 100
 	}
-	rep := s.handleRequest(req)
+	rep, _ := s.handleRequest(req)
 	if rep.MType != iacp1.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
@@ -278,13 +278,13 @@ func TestSession_SetIncDec_RespectsStepAndLimits(t *testing.T) {
 		ObjGroup: iacp1.GroupControl, ObjID: 0,
 	}
 	// Inc from -6 -> -5.
-	rep := s.handleRequest(req)
+	rep, _ := s.handleRequest(req)
 	if rep.MType != iacp1.MTypeReply || string(rep.Value) != string([]byte{0xFF, 0xFB}) {
 		t.Fatalf("setInc bytes=%x want FFFB (-5)", rep.Value)
 	}
 	// Dec from -5 -> -6.
 	req.MCode = byte(iacp1.MethodSetDecValue)
-	rep = s.handleRequest(req)
+	rep, _ = s.handleRequest(req)
 	if string(rep.Value) != string([]byte{0xFF, 0xFA}) {
 		t.Fatalf("setDec bytes=%x want FFFA (-6)", rep.Value)
 	}
@@ -300,16 +300,24 @@ func TestSession_SetDefValue_ResetsToDefault(t *testing.T) {
 		ObjGroup: iacp1.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x05},
 	}
-	_ = s.handleRequest(setReq)
+	if _, ann := s.handleRequest(setReq); ann == nil {
+		t.Fatal("setValue should have produced an announcement")
+	}
 
 	defReq := &iacp1.Message{
 		MTID: 2, MType: iacp1.MTypeRequest, MAddr: 1,
 		MCode:    byte(iacp1.MethodSetDefValue),
 		ObjGroup: iacp1.GroupControl, ObjID: 0,
 	}
-	rep := s.handleRequest(defReq)
+	rep, ann := s.handleRequest(defReq)
 	if rep.MType != iacp1.MTypeReply || string(rep.Value) != string([]byte{0x00, 0x00}) {
 		t.Fatalf("setDef bytes=%x want 0000", rep.Value)
+	}
+	if ann == nil || ann.MTID != 0 || ann.MType != iacp1.MTypeReply {
+		t.Fatalf("announce missing or wrong shape: %+v", ann)
+	}
+	if string(ann.Value) != string([]byte{0x00, 0x00}) {
+		t.Errorf("announce value=%x want 0000", ann.Value)
 	}
 }
 
@@ -322,7 +330,7 @@ func TestSession_SetValue_DeniedOnReadOnly(t *testing.T) {
 		ObjGroup: iacp1.GroupIdentity, ObjID: 0,
 		Value: []byte("X\x00"),
 	}
-	rep := s.handleRequest(req)
+	rep, _ := s.handleRequest(req)
 	if rep.MType != iacp1.MTypeError {
 		t.Fatalf("want error, got %+v", rep)
 	}
@@ -379,7 +387,7 @@ func TestSession_NonRequestIgnored(t *testing.T) {
 	s := newTestServer(t)
 	for _, mt := range []iacp1.MType{iacp1.MTypeAnnounce, iacp1.MTypeReply, iacp1.MTypeError} {
 		req := &iacp1.Message{MTID: 1, MType: mt, MAddr: 1}
-		if rep := s.handleRequest(req); rep != nil {
+		if rep, _ := s.handleRequest(req); rep != nil {
 			t.Errorf("MType=%d should be dropped, got %+v", mt, rep)
 		}
 	}

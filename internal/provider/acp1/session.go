@@ -6,43 +6,38 @@ import (
 	iacp1 "acp/internal/protocol/acp1"
 )
 
-// handleRequest dispatches a decoded request message to the right
-// handler and returns the reply message (ready for Encode). The
-// function is pure in the sense that it never writes to the network;
-// the caller is responsible for socket I/O. Read-only methods
-// (getValue, getObject) leave the tree untouched; mutating methods
-// lock tree.mu for the duration of their handler.
+// handleRequest dispatches a decoded request to the right handler and
+// returns (reply, announce). Reply is what we send back to the caller.
+// Announce is non-nil only after a successful mutation, in which case
+// it is the MTID=0 broadcast the wire I/O layer should fan out to the
+// LAN (spec §"Announcements", p.14 Reply Matrix row "MType=2 MTID=0").
 //
-// Returns nil if the message should be silently dropped (non-request
-// messages, including announcements from other providers).
-func (s *server) handleRequest(msg *iacp1.Message) *iacp1.Message {
+// Pure in the I/O sense — this function never touches the socket; the
+// caller is responsible for framing and sending both messages.
+//
+// Returns (nil, nil) for messages that should be silently dropped
+// (announcements and replies from other providers, error messages).
+func (s *server) handleRequest(msg *iacp1.Message) (*iacp1.Message, *iacp1.Message) {
 	if msg.MType != iacp1.MTypeRequest {
-		return nil
+		return nil, nil
 	}
 
-	// Spec p.21: Root object is [group=0, id=0]. We synthesise it from
-	// per-slot counters rather than storing a canonical Parameter — the
-	// canonical tree's slot Nodes carry the shape, not a "root" leaf.
 	if msg.ObjGroup == iacp1.GroupRoot && msg.ObjID == 0 {
-		return s.handleRoot(msg)
+		return s.handleRoot(msg), nil
 	}
 
 	key := objectKey{slot: msg.MAddr, group: msg.ObjGroup, id: msg.ObjID}
 	e, ok := s.tree.lookup(key)
 	if !ok {
-		// Spec p.29 error codes: distinguish missing group vs missing
-		// instance. If the slot/group exists but the id doesn't, it's
-		// OErrInstanceNoExist (17); if the group has no objects at all
-		// on this slot, OErrGroupNoExist (16).
-		return errorReply(msg, groupOrInstanceMissing(s, key))
+		return errorReply(msg, groupOrInstanceMissing(s, key)), nil
 	}
 
 	method := iacp1.Method(msg.MCode)
 	if !methodSupported(e.acpType, method) {
-		return errorReply(msg, iacp1.OErrIllegalForType)
+		return errorReply(msg, iacp1.OErrIllegalForType), nil
 	}
 	if err := checkAccess(e.access, method); err != 0 {
-		return errorReply(msg, err)
+		return errorReply(msg, err), nil
 	}
 
 	switch method {
@@ -50,16 +45,16 @@ func (s *server) handleRequest(msg *iacp1.Message) *iacp1.Message {
 		raw, err := encodeValue(e)
 		if err != nil {
 			s.logger.Error("getValue encode", slog.String("oid", e.param.OID), slog.String("err", err.Error()))
-			return errorReply(msg, iacp1.OErrIllegalForType)
+			return errorReply(msg, iacp1.OErrIllegalForType), nil
 		}
-		return reply(msg, raw)
+		return reply(msg, raw), nil
 	case iacp1.MethodGetObject:
 		raw, err := encodeObject(e)
 		if err != nil {
 			s.logger.Error("getObject encode", slog.String("oid", e.param.OID), slog.String("err", err.Error()))
-			return errorReply(msg, iacp1.OErrIllegalForType)
+			return errorReply(msg, iacp1.OErrIllegalForType), nil
 		}
-		return reply(msg, raw)
+		return reply(msg, raw), nil
 	case iacp1.MethodSetValue, iacp1.MethodSetIncValue,
 		iacp1.MethodSetDecValue, iacp1.MethodSetDefValue:
 		raw, err := s.applyMutation(e, method, msg.Value)
@@ -69,11 +64,28 @@ func (s *server) handleRequest(msg *iacp1.Message) *iacp1.Message {
 				slog.String("method", methodName(method)),
 				slog.String("err", err.Error()),
 			)
-			return errorReply(msg, iacp1.OErrIllegalForType)
+			return errorReply(msg, iacp1.OErrIllegalForType), nil
 		}
-		return reply(msg, raw)
+		return reply(msg, raw), announce(msg, raw)
 	}
-	return errorReply(msg, iacp1.OErrIllegalMethod)
+	return errorReply(msg, iacp1.OErrIllegalMethod), nil
+}
+
+// announce builds the unsolicited value-change announcement that every
+// successful set* method must broadcast per spec §"Announcements" p.14.
+//
+// Shape: MTID=0 (announcement marker), MType=2 (Reply), MCode=set*,
+// MAddr=slot, ObjGroup/ObjID=changed object, Value=new stored bytes.
+func announce(req *iacp1.Message, value []byte) *iacp1.Message {
+	return &iacp1.Message{
+		MTID:     0,
+		MType:    iacp1.MTypeReply,
+		MAddr:    req.MAddr,
+		MCode:    req.MCode,
+		ObjGroup: req.ObjGroup,
+		ObjID:    req.ObjID,
+		Value:    value,
+	}
 }
 
 // methodName is a small helper so debug logs read "setValue" not "1".
@@ -241,8 +253,9 @@ func groupOrInstanceMissing(s *server, k objectKey) iacp1.ObjectErrCode {
 // UDP plumbing — handleDatagram is called by server.readLoop.
 
 // handleDatagram decodes the incoming bytes, dispatches via
-// handleRequest, and writes the reply back to src. Decode failures are
-// logged and dropped — the spec has no "bad-framing" reply.
+// handleRequest, writes the reply back to src, and — if a mutation
+// happened — broadcasts the announcement via broadcastFn. Decode
+// failures are logged and dropped (no "bad-framing" reply in spec).
 func (s *server) handleDatagram2(data []byte, srcStr string, send func([]byte) error) {
 	msg, err := iacp1.Decode(data)
 	if err != nil {
@@ -252,7 +265,7 @@ func (s *server) handleDatagram2(data []byte, srcStr string, send func([]byte) e
 		)
 		return
 	}
-	rep := s.handleRequest(msg)
+	rep, ann := s.handleRequest(msg)
 	if rep == nil {
 		return
 	}
@@ -269,6 +282,9 @@ func (s *server) handleDatagram2(data []byte, srcStr string, send func([]byte) e
 			slog.String("err", err.Error()),
 			slog.String("src", srcStr),
 		)
+	}
+	if ann != nil {
+		s.broadcastAnnounce(ann)
 	}
 }
 

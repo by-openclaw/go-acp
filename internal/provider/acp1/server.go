@@ -30,7 +30,8 @@ type server struct {
 	tree   *tree
 
 	mu      sync.Mutex
-	conn    *net.UDPConn
+	conn    *net.UDPConn // listener + unicast reply socket
+	bcast   *net.UDPConn // separate socket dialed to 255.255.255.255
 	closed  bool
 	stopped chan struct{}
 }
@@ -66,22 +67,41 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 		return fmt.Errorf("acp1 provider: listen %q: %w", addr, err)
 	}
 
+	// Dial a second socket to the limited broadcast address. Go stdlib
+	// auto-sets SO_BROADCAST on dialed sockets with broadcast peers,
+	// which is the portable path across Windows / Linux / macOS.
+	bcastAddr := &net.UDPAddr{IP: net.IPv4bcast, Port: udpAddr.Port}
+	bconn, bErr := net.DialUDP("udp4", nil, bcastAddr)
+	// Best-effort: if the OS rejects the broadcast dial (no route, no
+	// iface up) we log and continue without announcements.
+	if bErr != nil {
+		s.logger.Warn("acp1 provider: broadcast disabled",
+			slog.String("err", bErr.Error()),
+			slog.String("addr", bcastAddr.String()),
+		)
+	}
+
 	s.mu.Lock()
 	s.conn = conn
+	s.bcast = bconn
 	s.mu.Unlock()
 
 	s.logger.Info("acp1 provider listening",
 		slog.String("addr", conn.LocalAddr().String()),
+		slog.String("broadcast", bcastAddr.String()),
 		slog.Int("objects", len(s.tree.entries)),
 	)
 
-	// Close the socket when ctx goes away; unblocks the read loop.
+	// Close both sockets when ctx goes away; unblocks the read loop.
 	go func() {
 		<-ctx.Done()
 		s.mu.Lock()
 		if !s.closed {
 			s.closed = true
 			_ = conn.Close()
+			if s.bcast != nil {
+				_ = s.bcast.Close()
+			}
 		}
 		s.mu.Unlock()
 	}()
@@ -94,7 +114,8 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	return err
 }
 
-// Stop closes the listening socket. Safe to call multiple times.
+// Stop closes the listening and broadcast sockets. Safe to call
+// multiple times.
 func (s *server) Stop() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -102,10 +123,14 @@ func (s *server) Stop() error {
 		return nil
 	}
 	s.closed = true
+	var err error
 	if s.conn != nil {
-		return s.conn.Close()
+		err = s.conn.Close()
 	}
-	return nil
+	if s.bcast != nil {
+		_ = s.bcast.Close()
+	}
+	return err
 }
 
 // SetValue mutates the served tree via the API path (acp-srv, tests).
@@ -136,6 +161,32 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 		return nil, err
 	}
 	return convertStoredValue(e.param), nil
+}
+
+// broadcastAnnounce serialises an announcement message and sends it to
+// the LAN limited-broadcast address. Called after every successful
+// mutating method per spec §"Announcements" p.14. Silent on send error
+// — announcements are fire-and-forget, and the consumer that made the
+// setX call already has the change confirmed via the reply.
+func (s *server) broadcastAnnounce(ann *iacp1.Message) {
+	s.mu.Lock()
+	bc := s.bcast
+	s.mu.Unlock()
+	if bc == nil {
+		return
+	}
+	out, err := ann.Encode()
+	if err != nil {
+		s.logger.Warn("acp1 announce encode",
+			slog.String("err", err.Error()),
+		)
+		return
+	}
+	if _, err := bc.Write(out); err != nil {
+		s.logger.Debug("acp1 announce send",
+			slog.String("err", err.Error()),
+		)
+	}
 }
 
 // readLoop reads datagrams until ctx is cancelled or the conn is closed.
