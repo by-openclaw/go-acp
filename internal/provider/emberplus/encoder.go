@@ -149,7 +149,11 @@ func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentEnumeration, ber.UTF8(*p.Enumeration))) // [7]
 	}
-	if p.Factor != nil {
+	// Emit factor only when it actually scales something. factor=0 / 1 are
+	// no-ops on the spec (display = value * factor or value / factor
+	// depending on provider convention). Emitting factor=1 trips the tree
+	// cell update path in EmberViewer — skip it.
+	if p.Factor != nil && *p.Factor != 0 && *p.Factor != 1 {
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentFactor, ber.Integer(*p.Factor))) // [8]
 	}
