@@ -510,21 +510,33 @@ local function dissect_acpv1_message(tvbuf, pktinfo, root)
     tree:add(f_mtype, tvbuf:range(5, 1))
     tree:add(f_maddr, tvbuf:range(6, 1))
 
-    -- Short type names: Ann/Req/Rep/Err (concise, matches ACP2 dissector style)
-    local mtype_short = { [0] = "Ann", [1] = "Req", [2] = "Rep", [3] = "Err" }
-    local mtype_str = mtype_short[mtype_val] or ("T" .. mtype_val)
+    -- MTID=0 is the authoritative announcement discriminator per spec
+    -- "Announcements" — a broadcast value-change carries MType=2 (Reply)
+    -- AND MTID=0 to tell subscribers "this was not solicited by you",
+    -- while a regular solicited reply has MTID>0 matching the request.
+    -- Label by MTID first so MType=2+MTID=0 shows "Ann" (not "Rep").
     local is_announce = (mtid_val == 0)
+    local mtype_short = { [0] = "Ann", [1] = "Req", [2] = "Rep", [3] = "Err" }
+    local mtype_str
+    if is_announce then
+        mtype_str = "Ann"
+    else
+        mtype_str = mtype_short[mtype_val] or ("T" .. mtype_val)
+    end
 
     -- MDATA starts at offset 7
     local mdata_offset = 7
     local mdata_len = pktlen - mdata_offset
 
     -- Build info incrementally so every packet gets the common prefix:
-    -- "ACP1 <type> slot=N [mtid=...]"
-    local info_parts = { "ACP1", mtype_str, "slot=" .. maddr_val }
-    if not is_announce then
-        table.insert(info_parts, string.format("mtid=0x%X", mtid_val))
-    end
+    -- "ACP1 <type> slot=N mtid=0x..."
+    -- Always show mtid — for announces it's the discriminator (mtid=0)
+    -- and useful for debugging; for req/reply it pairs them.
+    local info_parts = {
+        "ACP1", mtype_str,
+        "slot=" .. maddr_val,
+        string.format("mtid=0x%X", mtid_val),
+    }
 
     if mdata_len <= 0 then
         table.insert(info_parts, "(no mdata)")
