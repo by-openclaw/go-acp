@@ -10,6 +10,59 @@ import (
 	"acp/internal/export/canonical"
 )
 
+// lockStore holds per-target locks keyed by matrixOID -> target.
+// Spec p.89: a locked target rejects connection changes and the
+// provider replies with disposition=locked + the unchanged sources.
+type lockStore struct {
+	mu     sync.Mutex
+	locked map[string]map[int64]bool
+}
+
+func newLockStore() *lockStore {
+	return &lockStore{locked: map[string]map[int64]bool{}}
+}
+
+func (l *lockStore) set(matrixOID string, target int64, on bool) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	inner, ok := l.locked[matrixOID]
+	if !ok {
+		inner = map[int64]bool{}
+		l.locked[matrixOID] = inner
+	}
+	prev := inner[target]
+	if on {
+		inner[target] = true
+	} else {
+		delete(inner, target)
+	}
+	return prev
+}
+
+func (l *lockStore) isLocked(matrixOID string, target int64) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if inner, ok := l.locked[matrixOID]; ok {
+		return inner[target]
+	}
+	return false
+}
+
+func (l *lockStore) list(matrixOID string) []int64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	inner, ok := l.locked[matrixOID]
+	if !ok {
+		return nil
+	}
+	out := make([]int64, 0, len(inner))
+	for t := range inner {
+		out = append(out, t)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
 // salvoStore holds matrix-connection snapshots keyed by
 // matrixOID -> salvoID -> []MatrixConnection. In-memory only — restart
 // drops every salvo. Realistic broadcast routers persist, but that is a
@@ -84,6 +137,7 @@ func (s *server) setupBuiltinFunctions() {
 		return
 	}
 	s.salvos = newSalvoStore()
+	s.locks = newLockStore()
 
 	s.walkFunctions(s.tree.root, func(e *entry, f *canonical.Function) {
 		oid := e.el.Common().OID
@@ -96,8 +150,63 @@ func (s *server) setupBuiltinFunctions() {
 			s.funcs.register(oid, s.makeBuiltinStoreSalvo())
 		case "listSalvos", "list":
 			s.funcs.register(oid, s.makeBuiltinListSalvos())
+		case "setLock", "lock":
+			s.funcs.register(oid, s.makeBuiltinSetLock())
+		case "listLocks", "locks":
+			s.funcs.register(oid, s.makeBuiltinListLocks())
 		}
 	})
+}
+
+// makeBuiltinSetLock binds a lock-toggle callback. Args:
+//   - args[0] string matrixPath — OID or dotted identifier
+//   - args[1] int64  target
+//   - args[2] bool   locked   (true = lock, false = unlock)
+//
+// Returns the previous lock state (true if target was already locked).
+// Locked targets reject Connection changes — see applyMatrixConnections.
+func (s *server) makeBuiltinSetLock() FunctionImpl {
+	return func(args []any) ([]any, error) {
+		if len(args) < 3 {
+			return nil, fmt.Errorf("setLock: need (matrixPath, target, locked)")
+		}
+		matrixRef, okP := args[0].(string)
+		target, okT := asInt64(args[1])
+		on, okL := args[2].(bool)
+		if !okP || !okT || !okL {
+			return nil, fmt.Errorf("setLock: bad arg types (%T, %T, %T)", args[0], args[1], args[2])
+		}
+		oid, _, ok := s.resolveMatrix(matrixRef)
+		if !ok {
+			return []any{false}, nil
+		}
+		prev := s.locks.set(oid, target, on)
+		return []any{prev}, nil
+	}
+}
+
+// makeBuiltinListLocks returns comma-separated locked target IDs for a
+// matrix. Empty string if no targets are locked.
+func (s *server) makeBuiltinListLocks() FunctionImpl {
+	return func(args []any) ([]any, error) {
+		if len(args) < 1 {
+			return nil, fmt.Errorf("listLocks: need (matrixPath)")
+		}
+		matrixRef, ok := args[0].(string)
+		if !ok {
+			return nil, fmt.Errorf("listLocks: bad arg type (%T)", args[0])
+		}
+		oid, _, ok := s.resolveMatrix(matrixRef)
+		if !ok {
+			return []any{""}, nil
+		}
+		targets := s.locks.list(oid)
+		parts := make([]string, len(targets))
+		for i, t := range targets {
+			parts[i] = strconv.FormatInt(t, 10)
+		}
+		return []any{strings.Join(parts, ",")}, nil
+	}
 }
 
 // walkFunctions invokes visit for every Function element reachable from el.

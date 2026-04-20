@@ -171,6 +171,14 @@ func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentFactor, ber.Integer(*p.Factor))) // [8]
 	}
+	// Formula [CTX 10]: "provider|consumer" split, newline-separated
+	// in spec examples (see Ember+ Formulas.pdf). Full evaluator lands
+	// in a follow-up — for now we emit the string so consumers that
+	// parse formulas themselves see it.
+	if p.Formula != nil && *p.Formula != "" {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentFormula, ber.UTF8(*p.Formula))) // [10]
+	}
 	if v, ok := encodeValue(p.Type, p.Step); ok {
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentStep, v)) // [11]

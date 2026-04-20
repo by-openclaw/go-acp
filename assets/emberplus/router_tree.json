@@ -406,7 +406,9 @@
         "access": "read",
         "children": [
           {"number": 1, "identifier": "meter-L", "path": "router.streams.meter-L", "oid": "1.7.1", "description": "Left channel PPM (streamId 100) — int centi-dB, factor 100", "isOnline": true, "access": "read", "children": [], "type": "integer", "value": 0, "default": 0, "minimum": -6000, "maximum": 0, "step": 1, "unit": "dB", "format": "%.2f dB", "factor": 100, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 100, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
-          {"number": 2, "identifier": "meter-R", "path": "router.streams.meter-R", "oid": "1.7.2", "description": "Right channel PPM (streamId 101) — int centi-dB, factor 100", "isOnline": true, "access": "read", "children": [], "type": "integer", "value": 0, "default": 0, "minimum": -6000, "maximum": 0, "step": 1, "unit": "dB", "format": "%.2f dB", "factor": 100, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 101, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+          {"number": 2, "identifier": "meter-R", "path": "router.streams.meter-R", "oid": "1.7.2", "description": "Right channel PPM (streamId 101) — int centi-dB, factor 100", "isOnline": true, "access": "read", "children": [], "type": "integer", "value": 0, "default": 0, "minimum": -6000, "maximum": 0, "step": 1, "unit": "dB", "format": "%.2f dB", "factor": 100, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 101, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+          {"number": 3, "identifier": "meter-real", "path": "router.streams.meter-real", "oid": "1.7.3", "description": "REAL-typed PPM (streamId 102) — re-verifies EmberViewer REAL quirk #68", "isOnline": true, "access": "read", "children": [], "type": "real", "value": 0.0, "default": 0.0, "minimum": -60.0, "maximum": 0.0, "step": 0.1, "unit": "dB", "format": "%.2f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 102, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+          {"number": 4, "identifier": "gain-with-formula", "path": "router.streams.gain-with-formula", "oid": "1.7.4", "description": "Integer gain with provider|consumer formula — 32 dB per unit on wire, display divides by 32", "isOnline": true, "access": "readWrite", "children": [], "type": "integer", "value": -1024, "default": -1024, "minimum": -4096, "maximum": 480, "step": 1, "unit": "dB", "format": "%8.2f dB", "factor": 32, "formula": "$*32\n$/32", "enumeration": null, "enumMap": null, "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
         ]
       },
 
@@ -458,6 +460,26 @@
               {"name": "matrixPath", "type": "string"}
             ],
             "result": [{"name": "ids", "type": "string"}]
+          },
+          {
+            "number": 5, "identifier": "setLock", "path": "router.functions.setLock", "oid": "1.6.5",
+            "description": "Lock or unlock a matrix target. Locked targets reject Connection changes (disposition=locked per spec p.89)",
+            "isOnline": true, "access": "read", "children": [],
+            "arguments": [
+              {"name": "matrixPath", "type": "string"},
+              {"name": "target", "type": "integer"},
+              {"name": "locked", "type": "boolean"}
+            ],
+            "result": [{"name": "wasLocked", "type": "boolean"}]
+          },
+          {
+            "number": 6, "identifier": "listLocks", "path": "router.functions.listLocks", "oid": "1.6.6",
+            "description": "Locked target IDs for a matrix (comma-separated)",
+            "isOnline": true, "access": "read", "children": [],
+            "arguments": [
+              {"name": "matrixPath", "type": "string"}
+            ],
+            "result": [{"name": "targets", "type": "string"}]
           }
         ]
       }

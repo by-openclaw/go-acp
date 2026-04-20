@@ -106,6 +106,23 @@ func (s *server) applyMatrixConnections(matrixOID string, incoming []canonical.M
 	}
 
 	for _, in := range incoming {
+		// Spec p.89: locked target rejects the change. Provider echoes
+		// the unchanged sources with disposition=locked so the consumer
+		// knows the request was seen but not applied.
+		if s.locks != nil && s.locks.isLocked(matrixOID, in.Target) {
+			var current []int64
+			if idx := findConnectionIndex(m.Connections, in.Target); idx >= 0 {
+				current = append([]int64{}, m.Connections[idx].Sources...)
+			}
+			emit(canonical.MatrixConnection{
+				Target:      in.Target,
+				Sources:     current,
+				Operation:   canonical.ConnOpAbsolute,
+				Disposition: canonical.ConnDispLocked,
+			})
+			continue
+		}
+
 		// oneToN + oneToOne both enforce target-side cardinality of 1.
 		if (m.Type == canonical.MatrixOneToN || m.Type == canonical.MatrixOneToOne) && len(in.Sources) > 1 {
 			in.Sources = in.Sources[:1]
