@@ -257,6 +257,27 @@ func (s *session) replyGetDirectory(oid string) error {
 		return fmt.Errorf("encode reply: %w", err)
 	}
 	s.send(payload)
+
+	// Spec p.88: "As soon as a consumer issues a GetDirectory command
+	// on a matrix object, it implicitly subscribes to matrix connection
+	// changes." Without this, salvo recalls / external crosspoint
+	// changes broadcast to nobody — cells don't update on the client.
+	//
+	// Strict reading: only the direct GetDir(path=matrix) triggers. But
+	// most consumers (EmberViewer included) read matrix contents from a
+	// parent node's reply instead of re-walking, so we also subscribe
+	// the session to any matrix child in the reply — keeps crosspoint
+	// tallies reaching the client regardless of walking style.
+	if !bareRoot {
+		if _, ok := e.el.(*canonical.Matrix); ok {
+			s.srv.subscribe(s, oid)
+		}
+		for _, child := range e.el.Common().Children {
+			if _, ok := child.(*canonical.Matrix); ok {
+				s.srv.subscribe(s, child.Common().OID)
+			}
+		}
+	}
 	return nil
 }
 
