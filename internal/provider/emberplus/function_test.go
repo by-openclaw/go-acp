@@ -125,3 +125,32 @@ func TestSalvoStoreRecall(t *testing.T) {
 		t.Errorf("saved source=%d want 5 (deep-copy broken)", got[0].Sources[0])
 	}
 }
+
+// TestResolveMatrix_AcceptsOIDAndPath asserts the salvo functions accept
+// either the numeric OID or the dotted identifier path for a Matrix,
+// and reject refs that point at non-matrix elements.
+func TestResolveMatrix_AcceptsOIDAndPath(t *testing.T) {
+	m := &canonical.Matrix{Type: canonical.MatrixOneToN}
+	srv := buildMatrixTree(t, m)
+
+	cases := []struct {
+		name, ref string
+		wantOK    bool
+	}{
+		{"by OID", "1.1", true},
+		{"by dotted path", "router.mat", true},
+		{"non-matrix OID", "1", false},
+		{"non-existent OID", "9.9.9", false},
+		{"empty", "", false},
+	}
+	for _, c := range cases {
+		oid, got, ok := srv.resolveMatrix(c.ref)
+		if ok != c.wantOK {
+			t.Errorf("%s: ok=%v want %v (ref=%q)", c.name, ok, c.wantOK, c.ref)
+			continue
+		}
+		if c.wantOK && (oid != "1.1" || got != m) {
+			t.Errorf("%s: resolved to oid=%q m=%v want 1.1 / the Matrix", c.name, oid, got)
+		}
+	}
+}
