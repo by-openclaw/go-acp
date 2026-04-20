@@ -20,14 +20,14 @@ Each protocol has a dedicated connector page with transport, firewall rules,
 identity, object types, discovery, get/set, subscriptions, export, capture,
 and CLI examples.
 
-| Protocol | Transport | Port | Status | Documentation |
-|---|---|---|---|---|
-| ACP1 | UDP / TCP direct | 2071 | done, canonical-aligned | [docs/protocols/acp1/consumer.md](docs/protocols/acp1/consumer.md) |
-| ACP2 | AN2/TCP | 2072 | done, canonical alignment pending (#32) | [docs/protocols/acp2/consumer.md](docs/protocols/acp2/consumer.md) |
-| Ember+ | S101/TCP | 9000-9092 | consumer done (resolver + multi-level labels) | [docs/protocols/emberplus/consumer.md](docs/protocols/emberplus/consumer.md) |
-| Probel SW-P-02 | TCP | — | planned (audit YELLOW) | [memory: project_probel_extensions.md] |
-| Probel SW-P-08+ | TCP | — | planned (audit YELLOW) | [memory: project_probel_extensions.md] |
-| TSL UMD v3.1/v4/v5 | UDP push | — | planned (audit GREEN) | [memory: project_tsl_extensions.md] |
+| Protocol | Transport | Port | Consumer | Provider | Documentation |
+|---|---|---|---|---|---|
+| ACP1 | UDP / TCP direct | 2071 | done, canonical-aligned | ✅ merged (#74), SynapseSetUp + Lawo VSM Controller validated, `--announce-demo` ticker (#81) | [docs/protocols/acp1/consumer.md](docs/protocols/acp1/consumer.md) |
+| ACP2 | AN2/TCP | 2072 | done, canonical alignment pending (#32) | 🟡 PR #76, 5/6 object types Lawo-VSM-validated; Enum (pid 15) parked in #79 pending Cerebrum | [docs/protocols/acp2/consumer.md](docs/protocols/acp2/consumer.md) |
+| Ember+ | S101/TCP | 9000-9092 | consumer done (resolver + multi-level labels) | ✅ merged (#67 + #72) | [docs/protocols/emberplus/consumer.md](docs/protocols/emberplus/consumer.md) |
+| Probel SW-P-02 | TCP | — | planned (audit YELLOW) | — | [memory: project_probel_extensions.md] |
+| Probel SW-P-08+ | TCP | 2008 | 🟡 PR #77 in progress (rx/tx codec through Step 2e) | planned | [memory: project_probel_extensions.md] |
+| TSL UMD v3.1/v4/v5 | UDP push | — | planned (audit GREEN) | — | [memory: project_tsl_extensions.md] |
 
 Canonical JSON schema shared across all protocols: [docs/protocols/schema.md](docs/protocols/schema.md).
 Per-type element docs with realistic samples: [docs/protocols/elements/](docs/protocols/elements/).
@@ -222,6 +222,21 @@ All three protocols ship Lua dissectors under `assets/`. Install once (copy
 into your Wireshark personal plugins directory) and live captures from
 `acp walk` / `acp watch` / `acp extract` are auto-decoded. Full install +
 filter guide: [docs/wireshark.md](docs/wireshark.md).
+
+**Info column content (PR #80, 2026-04-21):** ACP1 and ACP2 Info columns
+now carry short type / mtid / dotted OID path / typed value inline, so
+you can scroll through a capture without expanding every tree:
+
+```
+ACP1 Req slot=1 mtid=0x4A2F setValue control.3 value(s16)=-30
+ACP1 Ann slot=1 mtid=0x0   setValue control.0 value(s16)=-10
+AN2 > ACP2 Rep mtid=116 SetProperty 0.3 pid=value value(string)="ACP2-Frame"
+AN2 > ACP2 Evt mtid=0   Announce    pid=value 1.18 value(float)=-35.3
+```
+
+Announce detection uses MTID=0 per spec "Announcements" — MType=2+MTID=0
+is labelled `Ann`, not `Rep`. Per-value type tagging (s8/s16/s32/s64/u8/u16/u32/u64/float/enum/ipv4/string)
+matches the declared object category derived from the ACP2 vtype byte.
 
 ---
 
