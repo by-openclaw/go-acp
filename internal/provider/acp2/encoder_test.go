@@ -1,6 +1,7 @@
 package acp2
 
 import (
+	"encoding/binary"
 	"testing"
 
 	"acp/internal/export/canonical"
@@ -161,8 +162,10 @@ func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	if maxLen.PID != iacp2.PIDStringMaxLength {
 		t.Fatal("missing pid=6 string_max_length")
 	}
-	if len(maxLen.Data) < 4 || maxLen.Data[3] != 16 {
-		t.Errorf("maxLen data=%x want low byte 16", maxLen.Data)
+	// pid 6 per spec §5.4: plen=6, body = u16 len + u16 pad.
+	// After DecodeProperties, body is the 2-byte u16; pad is stripped.
+	if len(maxLen.Data) < 2 || binary.BigEndian.Uint16(maxLen.Data[0:2]) != 16 {
+		t.Errorf("maxLen data=%x want u16=16", maxLen.Data)
 	}
 	if s := iacp2.PropertyString(&val); s != "Input-A" {
 		t.Errorf("string value=%q want Input-A", s)

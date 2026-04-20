@@ -21,6 +21,11 @@ func newTestSession(t *testing.T) (*session, net.Conn) {
 		sessions: map[*session]struct{}{},
 	}
 	server.tree.slotN = 2
+	// Mark slots 0 and 1 as present in perSlot so slotInfo returns
+	// AN2Internal+ACP2 per spec. Empty map values are fine for tests
+	// that only exercise AN2 internal handshake (not ACP2 walks).
+	server.tree.perSlot[0] = map[uint32]*entry{}
+	server.tree.perSlot[1] = map[uint32]*entry{}
 
 	a, b := net.Pipe() // a = session side, b = test side
 	sess := newSession(server, a)
@@ -138,11 +143,12 @@ func TestAN2Handshake_GetSlotInfo(t *testing.T) {
 		Slot:    0,
 		MTID:    3,
 		Type:    iacp2.AN2TypeRequest,
-		Payload: []byte{iacp2.AN2FuncGetSlotInfo, 0},
+		Payload: []byte{iacp2.AN2FuncGetSlotInfo},
 	}
 	rep := roundtrip(t, sess, peer, req)
-	// payload: [funcID=2, status=2, num_protos=1, proto=AN2Internal]
-	want := []byte{iacp2.AN2FuncGetSlotInfo, slotStatusPresent, 1, uint8(iacp2.AN2ProtoInternal)}
+	// payload: [funcID=2, status=present, num_protos=2, AN2Internal, ACP2]
+	want := []byte{iacp2.AN2FuncGetSlotInfo, slotStatusPresent, 2,
+		uint8(iacp2.AN2ProtoInternal), uint8(iacp2.AN2ProtoACP2)}
 	if !bytesEq(rep.Payload, want) {
 		t.Fatalf("slot 0 info=%x want %x", rep.Payload, want)
 	}
@@ -159,7 +165,7 @@ func TestAN2Handshake_GetSlotInfo_CardSlot(t *testing.T) {
 		Slot:    1,
 		MTID:    4,
 		Type:    iacp2.AN2TypeRequest,
-		Payload: []byte{iacp2.AN2FuncGetSlotInfo, 1},
+		Payload: []byte{iacp2.AN2FuncGetSlotInfo},
 	}
 	rep := roundtrip(t, sess, peer, req)
 	want := []byte{iacp2.AN2FuncGetSlotInfo, slotStatusPresent, 2,
@@ -180,7 +186,7 @@ func TestAN2Handshake_GetSlotInfo_OutOfRange(t *testing.T) {
 		Slot:    9,
 		MTID:    5,
 		Type:    iacp2.AN2TypeRequest,
-		Payload: []byte{iacp2.AN2FuncGetSlotInfo, 9},
+		Payload: []byte{iacp2.AN2FuncGetSlotInfo},
 	}
 	rep := roundtrip(t, sess, peer, req)
 	want := []byte{iacp2.AN2FuncGetSlotInfo, slotStatusEmpty, 0}

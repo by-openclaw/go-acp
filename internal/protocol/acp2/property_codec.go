@@ -139,65 +139,50 @@ func PropertyChildren(p *Property) ([]uint32, error) {
 	return ids, nil
 }
 
-// PropertyOptions extracts enum option labels (ordered) from a pid=15 property.
-// Wire format per option: u32_be(index) + null-terminated string + pad to 4-byte boundary.
+// ACP2OptionSize is the fixed on-wire size of one enum option per spec
+// §5.4 pid 15: 4-byte u32 index + 68-byte NUL-padded UTF-8 name = 72 bytes.
+const ACP2OptionSize = 72
+
+// PropertyOptions extracts enum option labels (ordered by wire position)
+// from a pid=15 property. Fixed 72-byte stride per spec §5.4.
 func PropertyOptions(p *Property) []string {
-	m := PropertyOptionsMap(p)
-	if len(m) == 0 {
+	if len(p.Data) < ACP2OptionSize {
 		return nil
 	}
-	// Return labels in wire order. PropertyOptionsMap preserves insertion
-	// order only if we collect separately, so re-parse for ordered labels.
-	var labels []string
-	off := 0
-	for off+4 <= len(p.Data) {
-		// skip u32 index
-		off += 4
-		// find null terminator
-		end := off
-		for end < len(p.Data) && p.Data[end] != 0 {
-			end++
-		}
-		label := string(p.Data[off:end])
-		labels = append(labels, label)
-		// advance past null
-		if end < len(p.Data) {
-			end++
-		}
-		// align to 4-byte boundary
-		end = (end + 3) &^ 3
-		off = end
+	n := len(p.Data) / ACP2OptionSize
+	labels := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		off := i * ACP2OptionSize
+		labels = append(labels, trimZero(p.Data[off+4:off+ACP2OptionSize]))
 	}
 	return labels
 }
 
-// PropertyOptionsMap extracts enum options from pid=15 as a map of index → label.
-// Wire format per option: u32_be(index) + null-terminated string + pad to 4-byte boundary.
+// PropertyOptionsMap extracts enum options as a map of index → label.
+// Fixed 72-byte stride per spec §5.4 pid 15.
 func PropertyOptionsMap(p *Property) map[uint32]string {
-	if len(p.Data) < 5 { // need at least u32 + 1 byte
+	if len(p.Data) < ACP2OptionSize {
 		return nil
 	}
-	m := make(map[uint32]string)
-	off := 0
-	for off+4 <= len(p.Data) {
+	n := len(p.Data) / ACP2OptionSize
+	m := make(map[uint32]string, n)
+	for i := 0; i < n; i++ {
+		off := i * ACP2OptionSize
 		idx := binary.BigEndian.Uint32(p.Data[off : off+4])
-		off += 4
-		// find null terminator
-		end := off
-		for end < len(p.Data) && p.Data[end] != 0 {
-			end++
-		}
-		label := string(p.Data[off:end])
-		m[idx] = label
-		// advance past null
-		if end < len(p.Data) {
-			end++
-		}
-		// align to 4-byte boundary
-		end = (end + 3) &^ 3
-		off = end
+		m[idx] = trimZero(p.Data[off+4 : off+ACP2OptionSize])
 	}
 	return m
+}
+
+// trimZero returns the UTF-8 prefix of b up to the first NUL byte (or
+// the full slice if none). Used for fixed-width NUL-padded name slots.
+func trimZero(b []byte) string {
+	for i, c := range b {
+		if c == 0 {
+			return string(b[:i])
+		}
+	}
+	return string(b)
 }
 
 // PropertyEventMessages extracts the two event message strings from pid=19.

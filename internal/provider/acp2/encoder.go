@@ -33,15 +33,15 @@ import (
 func buildProperties(e *entry) ([]iacp2.Property, error) {
 	props := make([]iacp2.Property, 0, 8)
 
-	props = append(props, propU32(iacp2.PIDObjectType, uint32(e.objType)))
-	props = append(props, iacp2.MakeStringProperty(iacp2.PIDLabel, e.label))
-	props = append(props, propU32(iacp2.PIDAccess, uint32(e.access)))
+	props = append(props, propInline(iacp2.PIDObjectType, uint8(e.objType)))
+	props = append(props, propStringData0(iacp2.PIDLabel, e.label))
+	props = append(props, propInline(iacp2.PIDAccess, e.access))
 
 	switch e.objType {
 	case iacp2.ObjTypeNode:
 		props = append(props, propChildren(e.children))
 	case iacp2.ObjTypeNumber:
-		props = append(props, propU32(iacp2.PIDNumberType, uint32(e.numType)))
+		props = append(props, propInline(iacp2.PIDNumberType, uint8(e.numType)))
 		val, err := encodeValueProp(iacp2.PIDValue, e)
 		if err != nil {
 			return nil, err
@@ -68,16 +68,17 @@ func buildProperties(e *entry) ([]iacp2.Property, error) {
 			props = append(props, cp)
 		}
 		if e.param.Unit != nil && *e.param.Unit != "" {
-			props = append(props, iacp2.MakeStringProperty(iacp2.PIDUnit, *e.param.Unit))
+			props = append(props, propStringData0(iacp2.PIDUnit, *e.param.Unit))
 		}
 	case iacp2.ObjTypeEnum:
-		props = append(props, propU32(iacp2.PIDNumberType, uint32(iacp2.NumTypeU32)))
+		// Enum per spec §5.4: pid 5 number_type does NOT apply (Number only).
+		// pid 8 value uses vtype = 9 (preset/enum), stored as u32 index.
 		val, err := encodeValueProp(iacp2.PIDValue, e)
 		if err != nil {
 			return nil, err
 		}
 		props = append(props, val)
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDDefaultValue, iacp2.NumTypeU32, e.param.Default); err != nil {
+		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDDefaultValue, iacp2.NumTypePreset, e.param.Default); err != nil {
 			return nil, err
 		} else if ok {
 			props = append(props, cp)
@@ -91,7 +92,7 @@ func buildProperties(e *entry) ([]iacp2.Property, error) {
 		props = append(props, val)
 	case iacp2.ObjTypeString:
 		if ml := maxLenHint(e.param); ml > 0 {
-			props = append(props, propU32(iacp2.PIDStringMaxLength, uint32(ml)))
+			props = append(props, propU16Pad(iacp2.PIDStringMaxLength, uint16(ml)))
 		}
 		val, err := encodeValueProp(iacp2.PIDValue, e)
 		if err != nil {
@@ -103,18 +104,45 @@ func buildProperties(e *entry) ([]iacp2.Property, error) {
 	return props, nil
 }
 
-// propU32 builds a 4-byte big-endian u32 property. Used for the
-// "small-value-in-u32" cases — object_type, access, number_type,
-// string_max_length. The consumer's walker reads these from data[3]
-// (the low byte of the big-endian u32).
-func propU32(pid uint8, v uint32) iacp2.Property {
-	data := make([]byte, 4)
-	binary.BigEndian.PutUint32(data, v)
+// propStringData0 builds a string property with data byte = 0 per spec
+// §5.4 (pid 2 label, pid 13 unit). Body is a NUL-terminated UTF-8 string;
+// plen = 4 + len(string+NUL). EncodeProperty adds 4-byte alignment pad.
+func propStringData0(pid uint8, s string) iacp2.Property {
+	body := make([]byte, len(s)+1) // +1 for NUL terminator
+	copy(body, s)
 	return iacp2.Property{
 		PID:   pid,
 		VType: 0,
-		PLen:  uint16(4 + 4),
-		Data:  data,
+		PLen:  uint16(4 + len(body)),
+		Data:  body,
+	}
+}
+
+// propInline builds a property whose entire value rides in the header's
+// data byte (pid=1 object_type, pid=3 access, pid=5 number_type per
+// spec §5.4 table: "data: obj type | access | number type — plen: 4").
+// There is no body.
+func propInline(pid uint8, val uint8) iacp2.Property {
+	return iacp2.Property{
+		PID:   pid,
+		VType: val, // the "data" byte carries the value itself
+		PLen:  4,   // header only; no body
+		Data:  nil,
+	}
+}
+
+// propU16Pad builds pid=6 string_max_length per spec §5.4 table
+// ("data: 0 — plen: 6 — body: u16 value + u16 pad"). The 2-byte body is
+// the u16 length; EncodeProperty will tack on the u16 padding to reach
+// the next 4-byte boundary.
+func propU16Pad(pid uint8, v uint16) iacp2.Property {
+	body := make([]byte, 2)
+	binary.BigEndian.PutUint16(body, v)
+	return iacp2.Property{
+		PID:   pid,
+		VType: 0,
+		PLen:  uint16(4 + 2), // plen excludes padding per spec §5.3
+		Data:  body,
 	}
 }
 
@@ -133,26 +161,37 @@ func propChildren(ids []uint32) iacp2.Property {
 	}
 }
 
-// propOptions builds the pid=15 (options) property: repeated
-// [u32 BE index + NUL-terminated UTF-8 string + 0-3 bytes pad] per
-// option. Index 0..N-1 matches EnumMap ordering.
+// acp2OptionSize is the fixed on-wire size of one enum option (pid 15
+// entry) per spec §5.4: plen = 4 + (72 * option), so each option is
+// exactly 72 bytes: 4-byte u32 index + 68-byte NUL-padded UTF-8 name.
+const acp2OptionSize = 72
+
+// propOptions builds the pid=15 (options) property per spec §5.4:
+//
+//	header: pid=15, data=num_option (INLINE), plen=4 + 72 * N
+//	body  : N fixed-size slots, each {u32 index, 68-byte NUL-padded name}
+//
+// Matches real Axon firmware; Lawo VSM's driver parses with this layout.
+// Index 0..N-1 matches EnumMap ordering.
 func propOptions(opts []string) iacp2.Property {
-	var data []byte
-	var idx [4]byte
+	n := len(opts)
+	data := make([]byte, acp2OptionSize*n)
 	for i, opt := range opts {
-		binary.BigEndian.PutUint32(idx[:], uint32(i))
-		data = append(data, idx[:]...)
-		data = append(data, []byte(opt)...)
-		data = append(data, 0) // NUL terminator
-		// 4-byte align the next option's index.
-		for len(data)%4 != 0 {
-			data = append(data, 0)
+		off := i * acp2OptionSize
+		binary.BigEndian.PutUint32(data[off:off+4], uint32(i))
+		// Copy the UTF-8 name into the 68-byte slot. Truncate if
+		// longer; zero-pad otherwise. No explicit NUL — the zero
+		// padding serves as the terminator.
+		name := opt
+		if len(name) > acp2OptionSize-4-1 { // reserve at least 1 NUL
+			name = name[:acp2OptionSize-4-1]
 		}
+		copy(data[off+4:off+acp2OptionSize], name)
 	}
 	return iacp2.Property{
 		PID:   iacp2.PIDOptions,
-		VType: 0,
-		PLen:  uint16(4 + len(data)),
+		VType: uint8(n), // spec §5.4: "data: num option" — inline count
+		PLen:  uint16(4 + acp2OptionSize*n),
 		Data:  data,
 	}
 }
@@ -168,7 +207,8 @@ func encodeValueProp(pid uint8, e *entry) (iacp2.Property, error) {
 		if err != nil {
 			return iacp2.Property{}, err
 		}
-		return numericProp(pid, iacp2.NumTypeU32, u32Data(v)), nil
+		// Enum value uses vtype=9 (preset/enum) per spec §5.2.2, stored as u32.
+		return numericProp(pid, iacp2.NumTypePreset, u32Data(v)), nil
 	case iacp2.ObjTypeIPv4:
 		v, err := ipv4Uint32(e.param.Value)
 		if err != nil {

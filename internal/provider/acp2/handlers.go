@@ -72,14 +72,18 @@ func (s *session) handleAN2Internal(f *iacp2.AN2Frame) {
 	case iacp2.AN2FuncGetVersion:
 		body = []byte{funcID, an2VersionMajor, an2VersionMinor}
 	case iacp2.AN2FuncGetDeviceInfo:
-		body = []byte{funcID, s.srv.tree.slotN}
+		// AN2 spec §1.2.2 + §3.3.2 example: "an RC could return 5(=4+1),
+		// 9(=8+1), 19(=18+1), since slot0 is also counted." The reply value
+		// is the TOTAL slot count (cards + RC), not the max slot number.
+		s.srv.tree.mu.RLock()
+		count := uint8(len(s.srv.tree.perSlot))
+		s.srv.tree.mu.RUnlock()
+		body = []byte{funcID, count}
 	case iacp2.AN2FuncGetSlotInfo:
-		if len(f.Payload) < 2 {
-			s.srv.logger.Warn("an2 GetSlotInfo: missing slot byte")
-			return
-		}
-		slot := f.Payload[1]
-		status, protos := s.srv.slotInfo(slot)
+		// AN2 spec §3.3.3: request is dlen=1 (just funcID). The requested
+		// slot is carried in the AN2 frame header's Slot field, NOT in the
+		// payload. Read it from f.Slot.
+		status, protos := s.srv.slotInfo(f.Slot)
 		body = append([]byte{funcID, status, uint8(len(protos))}, protos...)
 	case iacp2.AN2FuncEnableProtocolEvents:
 		// Payload: funcID, count, proto_ids[count]
@@ -367,20 +371,22 @@ func errorACP2(req *iacp2.ACP2Message, stat iacp2.ACP2ErrStatus) *iacp2.ACP2Mess
 	}
 }
 
-// slotInfo answers GetSlotInfo for a given slot. Slot 0 is the rack
-// controller (no ACP2 payload protocols); card slots expose ACP2 plus
-// AN2 internal. Subclasses of this reply (ACMP, etc.) are out of scope.
+// slotInfo answers GetSlotInfo for a given slot per AN2 spec §3.3.3.
+// A slot is "present" iff we hold canonical ACP2 data for it in the
+// provider's tree; every other slot (0-254) is "empty". Present slots
+// advertise both AN2 internal and ACP2; empty slots advertise nothing.
+//
+// The slot number of the rack-controller endpoint is fixture-defined
+// (typically slot 0 on real Synapse frames, but any number is valid per
+// spec). Callers that want a frame-controller view for slot 0 must
+// include a slot-0 subtree in the canonical export.
 func (s *server) slotInfo(slot uint8) (status uint8, protos []uint8) {
 	s.tree.mu.RLock()
 	defer s.tree.mu.RUnlock()
-	if slot == 0 {
-		// Controller slot exposes AN2 internal only.
-		return slotStatusPresent, []uint8{uint8(iacp2.AN2ProtoInternal)}
+	if _, ok := s.tree.perSlot[slot]; ok {
+		return slotStatusPresent, []uint8{uint8(iacp2.AN2ProtoInternal), uint8(iacp2.AN2ProtoACP2)}
 	}
-	if slot > s.tree.slotN {
-		return slotStatusEmpty, nil
-	}
-	return slotStatusPresent, []uint8{uint8(iacp2.AN2ProtoInternal), uint8(iacp2.AN2ProtoACP2)}
+	return slotStatusEmpty, nil
 }
 
 // -----------------------------------------------------------------

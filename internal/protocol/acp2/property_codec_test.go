@@ -304,13 +304,13 @@ func TestPropertyChildren(t *testing.T) {
 }
 
 func TestPropertyOptions(t *testing.T) {
-	// Real ACP2 wire format: u32_be(index) + null-terminated string + pad to 4-byte boundary.
-	// Option 0: idx=7, "Off\0" (4+4=8 bytes)
-	// Option 1: idx=8, "On\0\0" (4+4=8 bytes, "On\0" padded to 4)
-	data := []byte{
-		0x00, 0x00, 0x00, 0x07, 'O', 'f', 'f', 0x00,
-		0x00, 0x00, 0x00, 0x08, 'O', 'n', 0x00, 0x00,
-	}
+	// Spec §5.4 pid 15: fixed 72 bytes per option = u32 BE index + 68-byte
+	// NUL-padded UTF-8 name. Build two options: idx=7 "Off", idx=8 "On".
+	data := make([]byte, 2*ACP2OptionSize)
+	binary.BigEndian.PutUint32(data[0:4], 7)
+	copy(data[4:], "Off")
+	binary.BigEndian.PutUint32(data[ACP2OptionSize:ACP2OptionSize+4], 8)
+	copy(data[ACP2OptionSize+4:], "On")
 
 	p := &Property{PID: PIDOptions, Data: data}
 	opts := PropertyOptions(p)
@@ -321,7 +321,6 @@ func TestPropertyOptions(t *testing.T) {
 		t.Errorf("options: got %v, want [Off, On]", opts)
 	}
 
-	// Also test the map variant.
 	m := PropertyOptionsMap(p)
 	if len(m) != 2 {
 		t.Fatalf("expected 2 map entries, got %d", len(m))
