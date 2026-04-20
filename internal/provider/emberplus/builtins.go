@@ -107,60 +107,80 @@ func builtinSum(args []any) ([]any, error) {
 	return []any{a + b}, nil
 }
 
+// resolveMatrix accepts either a numeric OID ("1.4.3") or a dotted
+// identifier path ("router.nToN.matrix") and returns the canonical OID
+// plus the underlying Matrix element. Returns ("", nil, false) if the
+// ref does not resolve to a Matrix — so storeSalvo/recallSalvo reject
+// attempts against label string params, nodes, or bogus OIDs rather
+// than silently keying into the salvo store.
+func (s *server) resolveMatrix(ref string) (string, *canonical.Matrix, bool) {
+	e, ok := s.tree.lookupOID(ref)
+	if !ok {
+		e, ok = s.tree.lookupPath(ref)
+	}
+	if !ok {
+		return "", nil, false
+	}
+	m, ok := e.el.(*canonical.Matrix)
+	if !ok {
+		return "", nil, false
+	}
+	return e.el.Common().OID, m, true
+}
+
 // makeBuiltinRecallSalvo binds a recall callback to this server. Args:
-//   - args[0] string matrixPath — canonical OID of the target matrix
+//   - args[0] string matrixPath — OID (e.g. "1.4.3") OR dotted identifier
+//     path (e.g. "router.nToN.matrix"); both resolve to the same matrix.
 //   - args[1] int64  salvoID
 //
 // Applies the saved crosspoint set to the matrix, broadcasts the resulting
-// connections, and returns the number of connections applied.
+// connections, and returns the number of connections applied. Returns 0
+// if the ref does not point at a Matrix or the salvo was never stored.
 func (s *server) makeBuiltinRecallSalvo() FunctionImpl {
 	return func(args []any) ([]any, error) {
 		if len(args) < 2 {
 			return nil, fmt.Errorf("recallSalvo: need (matrixPath, salvoID)")
 		}
-		matrixOID, okP := args[0].(string)
+		matrixRef, okP := args[0].(string)
 		salvoID, okS := asInt64(args[1])
 		if !okP || !okS {
 			return nil, fmt.Errorf("recallSalvo: bad arg types (%T, %T)", args[0], args[1])
 		}
-		conns, ok := s.salvos.recall(matrixOID, salvoID)
+		oid, _, ok := s.resolveMatrix(matrixRef)
 		if !ok {
 			return []any{int64(0)}, nil
 		}
-		post, err := s.applyMatrixConnections(matrixOID, conns)
+		conns, ok := s.salvos.recall(oid, salvoID)
+		if !ok {
+			return []any{int64(0)}, nil
+		}
+		post, err := s.applyMatrixConnections(oid, conns)
 		if err != nil {
 			return nil, err
 		}
-		s.broadcastMatrixConnections(matrixOID, post, nil)
+		s.broadcastMatrixConnections(oid, post, nil)
 		return []any{int64(len(post))}, nil
 	}
 }
 
-// makeBuiltinStoreSalvo binds a store callback. Args:
-//   - args[0] string matrixPath
-//   - args[1] int64  salvoID
-//
+// makeBuiltinStoreSalvo binds a store callback. Args mirror recallSalvo.
 // Snapshots the matrix's current connections under salvoID. Returns true
-// on success; false if the matrix OID is unknown.
+// on success; false if the ref does not resolve to a Matrix element.
 func (s *server) makeBuiltinStoreSalvo() FunctionImpl {
 	return func(args []any) ([]any, error) {
 		if len(args) < 2 {
 			return nil, fmt.Errorf("storeSalvo: need (matrixPath, salvoID)")
 		}
-		matrixOID, okP := args[0].(string)
+		matrixRef, okP := args[0].(string)
 		salvoID, okS := asInt64(args[1])
 		if !okP || !okS {
 			return nil, fmt.Errorf("storeSalvo: bad arg types (%T, %T)", args[0], args[1])
 		}
-		e, ok := s.tree.lookupOID(matrixOID)
+		oid, m, ok := s.resolveMatrix(matrixRef)
 		if !ok {
 			return []any{false}, nil
 		}
-		m, ok := e.el.(*canonical.Matrix)
-		if !ok {
-			return []any{false}, nil
-		}
-		s.salvos.store(matrixOID, salvoID, m.Connections)
+		s.salvos.store(oid, salvoID, m.Connections)
 		return []any{true}, nil
 	}
 }

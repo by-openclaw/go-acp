@@ -418,7 +418,7 @@
           },
           {
             "number": 2, "identifier": "recallSalvo", "path": "router.functions.recallSalvo", "oid": "1.6.2",
-            "description": "Apply saved crosspoint set (args: matrixOID string, salvoID int)",
+            "description": "Apply saved crosspoints. matrixPath = OID '1.2.2' or dotted path 'router.oneToN.matrix'",
             "isOnline": true, "access": "read", "children": [],
             "arguments": [
               {"name": "matrixPath", "type": "string"},
@@ -428,7 +428,7 @@
           },
           {
             "number": 3, "identifier": "storeSalvo", "path": "router.functions.storeSalvo", "oid": "1.6.3",
-            "description": "Snapshot matrix state as salvo (args: matrixOID, salvoID)",
+            "description": "Snapshot matrix state. matrixPath = OID '1.4.3' or dotted path 'router.nToN.matrix'",
             "isOnline": true, "access": "read", "children": [],
             "arguments": [
               {"name": "matrixPath", "type": "string"},
