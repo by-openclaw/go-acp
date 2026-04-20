@@ -2,6 +2,9 @@ package emberplus
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 
 	"acp/internal/export/canonical"
@@ -55,6 +58,23 @@ func (s *salvoStore) recall(matrixOID string, salvoID int64) ([]canonical.Matrix
 	return conns, ok
 }
 
+// list returns the salvoIDs stored for matrixOID, ascending. Empty slice
+// if the matrix has no salvos yet.
+func (s *salvoStore) list(matrixOID string) []int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	inner, ok := s.saved[matrixOID]
+	if !ok {
+		return nil
+	}
+	ids := make([]int64, 0, len(inner))
+	for id := range inner {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	return ids
+}
+
 // setupBuiltinFunctions walks the loaded tree and registers default
 // callbacks for any canonical.Function whose identifier matches a known
 // builtin name. Order mirrors the spec-p.91 examples + the
@@ -74,6 +94,8 @@ func (s *server) setupBuiltinFunctions() {
 			s.funcs.register(oid, s.makeBuiltinRecallSalvo())
 		case "storeSalvo", "store":
 			s.funcs.register(oid, s.makeBuiltinStoreSalvo())
+		case "listSalvos", "list":
+			s.funcs.register(oid, s.makeBuiltinListSalvos())
 		}
 	})
 }
@@ -182,5 +204,34 @@ func (s *server) makeBuiltinStoreSalvo() FunctionImpl {
 		}
 		s.salvos.store(oid, salvoID, m.Connections)
 		return []any{true}, nil
+	}
+}
+
+// makeBuiltinListSalvos returns a comma-separated list of stored salvo
+// IDs for the given matrix, ascending. Args:
+//   - args[0] string matrixPath — OID or dotted identifier path
+//
+// Empty string if the matrix has no salvos yet. Returns an empty string
+// for non-matrix refs rather than an error so consumers can probe
+// cheaply without trapping exceptions.
+func (s *server) makeBuiltinListSalvos() FunctionImpl {
+	return func(args []any) ([]any, error) {
+		if len(args) < 1 {
+			return nil, fmt.Errorf("listSalvos: need (matrixPath)")
+		}
+		matrixRef, ok := args[0].(string)
+		if !ok {
+			return nil, fmt.Errorf("listSalvos: bad arg type (%T)", args[0])
+		}
+		oid, _, ok := s.resolveMatrix(matrixRef)
+		if !ok {
+			return []any{""}, nil
+		}
+		ids := s.salvos.list(oid)
+		parts := make([]string, len(ids))
+		for i, id := range ids {
+			parts[i] = strconv.FormatInt(id, 10)
+		}
+		return []any{strings.Join(parts, ",")}, nil
 	}
 }

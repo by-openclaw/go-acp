@@ -435,6 +435,15 @@
               {"name": "salvoID", "type": "integer"}
             ],
             "result": [{"name": "success", "type": "boolean"}]
+          },
+          {
+            "number": 4, "identifier": "listSalvos", "path": "router.functions.listSalvos", "oid": "1.6.4",
+            "description": "Stored salvo IDs for a matrix (comma-separated, e.g. '1,2,5')",
+            "isOnline": true, "access": "read", "children": [],
+            "arguments": [
+              {"name": "matrixPath", "type": "string"}
+            ],
+            "result": [{"name": "ids", "type": "string"}]
           }
         ]
       }
