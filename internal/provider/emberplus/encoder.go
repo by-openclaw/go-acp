@@ -183,6 +183,10 @@ func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentType, ber.Integer(tc))) // [13]
 	}
+	if p.StreamIdentifier != nil {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentStreamIdentifier, ber.Integer(*p.StreamIdentifier))) // [14]
+	}
 	if len(p.EnumMap) > 0 {
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentEnumMap, encodeEnumMap(p.EnumMap))) // [15]
