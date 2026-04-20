@@ -36,15 +36,7 @@ func (s *session) dispatch(f *iacp2.AN2Frame) {
 	case iacp2.AN2ProtoInternal:
 		s.handleAN2Internal(f)
 	case iacp2.AN2ProtoACP2:
-		// Full dispatch arrives in Step 2d/2e. For this commit we log
-		// the incoming ACP2 request so the handshake path is testable
-		// without full ACP2 wiring.
-		s.srv.logger.Debug("acp2 frame received (dispatch in Step 2d)",
-			slog.String("type", f.Type.String()),
-			slog.Int("mtid", int(f.MTID)),
-			slog.Int("slot", int(f.Slot)),
-			slog.Int("dlen", len(f.Payload)),
-		)
+		s.handleACP2(f)
 	default:
 		s.srv.logger.Debug("acp2 frame dropped — unsupported proto",
 			slog.String("proto", f.Proto.String()),
@@ -118,6 +110,138 @@ func (s *session) handleAN2Internal(f *iacp2.AN2Frame) {
 		s.srv.logger.Debug("an2 reply write failed",
 			slog.String("err", err.Error()),
 		)
+	}
+}
+
+// handleACP2 dispatches one ACP2 proto=2 request. Decodes the ACP2
+// message, routes by Func, and writes the reply inside an AN2 data
+// frame back to the consumer.
+//
+// MVP scope: get_version + get_object. get_property + set_property
+// ship in Step 2e.
+func (s *session) handleACP2(f *iacp2.AN2Frame) {
+	if f.Type != iacp2.AN2TypeData {
+		s.srv.logger.Debug("acp2 dispatch: ignoring non-data frame",
+			slog.String("type", f.Type.String()),
+		)
+		return
+	}
+	msg, err := iacp2.DecodeACP2Message(f.Payload)
+	if err != nil {
+		s.srv.logger.Warn("acp2 decode failed", slog.String("err", err.Error()))
+		return
+	}
+	if msg.Type != iacp2.ACP2TypeRequest {
+		return
+	}
+
+	switch msg.Func {
+	case iacp2.ACP2FuncGetVersion:
+		s.replyACP2(f.Slot, &iacp2.ACP2Message{
+			Type: iacp2.ACP2TypeReply,
+			MTID: msg.MTID,
+			Func: iacp2.ACP2FuncGetVersion,
+			PID:  acp2Version,
+		})
+	case iacp2.ACP2FuncGetObject:
+		s.handleGetObject(f.Slot, msg)
+	default:
+		s.replyACP2(f.Slot, errorACP2(msg, iacp2.ErrProtocol))
+	}
+}
+
+// handleGetObject builds the full property list for the requested
+// obj-id and writes the reply.
+func (s *session) handleGetObject(slot uint8, msg *iacp2.ACP2Message) {
+	e, ok := s.srv.tree.lookup(slot, msg.ObjID)
+	if !ok {
+		s.replyACP2(slot, errorACP2(msg, iacp2.ErrInvalidObjID))
+		return
+	}
+	props, err := buildProperties(e)
+	if err != nil {
+		s.srv.logger.Error("acp2 buildProperties",
+			slog.Int("slot", int(slot)),
+			slog.Int("obj", int(msg.ObjID)),
+			slog.String("err", err.Error()),
+		)
+		s.replyACP2(slot, errorACP2(msg, iacp2.ErrProtocol))
+		return
+	}
+	body, err := iacp2.EncodeProperties(props)
+	if err != nil {
+		s.replyACP2(slot, errorACP2(msg, iacp2.ErrProtocol))
+		return
+	}
+	// get_object reply body layout: header(4) + obj-id(4) + idx(4) + props.
+	// Use Body to carry the trailing props so EncodeACP2Message's default
+	// path serialises it correctly.
+	reply := &iacp2.ACP2Message{
+		Type:  iacp2.ACP2TypeReply,
+		MTID:  msg.MTID,
+		Func:  iacp2.ACP2FuncGetObject,
+		PID:   msg.PID,
+		ObjID: msg.ObjID,
+		Idx:   msg.Idx,
+		Body:  appendObjIDIdx(msg.ObjID, msg.Idx, body),
+	}
+	s.replyACP2(slot, reply)
+}
+
+// appendObjIDIdx prepends the 8-byte obj-id + idx header to a property
+// byte sequence. The ACP2 codec's "default" encode path writes Body
+// verbatim after the 4-byte message header, so we stuff the obj-id/idx
+// into the body itself.
+func appendObjIDIdx(objID, idx uint32, props []byte) []byte {
+	out := make([]byte, 8+len(props))
+	binaryBigEndianU32(out[0:4], objID)
+	binaryBigEndianU32(out[4:8], idx)
+	copy(out[8:], props)
+	return out
+}
+
+func binaryBigEndianU32(dst []byte, v uint32) {
+	dst[0] = byte(v >> 24)
+	dst[1] = byte(v >> 16)
+	dst[2] = byte(v >> 8)
+	dst[3] = byte(v)
+}
+
+// replyACP2 wraps an ACP2 message in an AN2 data frame and sends it
+// via the session's write socket.
+func (s *session) replyACP2(slot uint8, msg *iacp2.ACP2Message) {
+	raw, err := iacp2.EncodeACP2Message(msg)
+	if err != nil {
+		s.srv.logger.Warn("acp2 encode reply", slog.String("err", err.Error()))
+		return
+	}
+	frame := &iacp2.AN2Frame{
+		Proto:   iacp2.AN2ProtoACP2,
+		Slot:    slot,
+		MTID:    0, // AN2 data frames always carry mtid=0
+		Type:    iacp2.AN2TypeData,
+		Payload: raw,
+	}
+	if err := s.write(frame); err != nil {
+		s.srv.logger.Debug("acp2 reply write failed",
+			slog.String("err", err.Error()),
+		)
+	}
+}
+
+// errorACP2 builds an ACP2 error reply per spec §"Error Codes". The
+// func field of an error message holds the stat byte (not a function
+// ID); codec.go picks this back up in ToACP2Error.
+func errorACP2(req *iacp2.ACP2Message, stat iacp2.ACP2ErrStatus) *iacp2.ACP2Message {
+	body := make([]byte, 4)
+	binaryBigEndianU32(body, req.ObjID)
+	return &iacp2.ACP2Message{
+		Type:  iacp2.ACP2TypeError,
+		MTID:  req.MTID,
+		Func:  iacp2.ACP2Func(stat),
+		PID:   0,
+		ObjID: req.ObjID,
+		Body:  body,
 	}
 }
 
