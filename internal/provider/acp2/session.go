@@ -5,16 +5,21 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"sync"
 
 	iacp2 "acp/internal/protocol/acp2"
 )
 
-// session is one TCP connection. Holds the conn, the read loop, and —
-// as later commits add it — a write mutex + subscribed-protocols set
-// for announce gating per spec §EnableProtocolEvents.
+// session is one TCP connection. Holds the conn, a write mutex so
+// replies + announces don't interleave, and the consumer's
+// AN2.EnableProtocolEvents subscription set (announces only fan out
+// to sessions that opted in — spec §3.3.4).
 type session struct {
 	srv  *server
 	conn net.Conn
+
+	writeMu sync.Mutex
+	enabled map[iacp2.AN2Proto]bool
 }
 
 func newSession(srv *server, conn net.Conn) *session {
@@ -46,16 +51,7 @@ func (s *session) run() {
 	}
 }
 
-// handleFrame dispatches one incoming AN2 frame. The AN2 internal
-// handshake ships in Step 2b; ACP2 dispatch in Step 2d/2e. For now
-// the session logs what it sees so you can confirm the consumer is
-// reaching the provider before real handlers arrive.
+// handleFrame dispatches one incoming AN2 frame via handlers.go.
 func (s *session) handleFrame(f *iacp2.AN2Frame) {
-	s.srv.logger.Debug("acp2 frame (dispatch pending)",
-		slog.String("proto", f.Proto.String()),
-		slog.String("type", f.Type.String()),
-		slog.Int("slot", int(f.Slot)),
-		slog.Int("mtid", int(f.MTID)),
-		slog.Int("dlen", len(f.Payload)),
-	)
+	s.dispatch(f)
 }
