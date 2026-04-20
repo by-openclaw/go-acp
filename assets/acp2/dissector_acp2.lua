@@ -16,6 +16,19 @@
 local AN2_HDR_LEN = 8
 local AN2_MAGIC   = 0xC635
 
+-- Side-channel from the ACP2 dissector back to its AN2 caller.
+-- Wireshark's Proto:dissector wrapper drops multi-return values, so we
+-- can't rely on `local consumed, info = acp2_proto.dissector(...)`.
+-- Module-local string set by acp2_proto.dissector on every invocation,
+-- read by the AN2 dissector right after the nested call.
+local acp2_last_info = ""
+
+-- Slot lives in the AN2 frame header, not the ACP2 payload. AN2 writes
+-- it here before invoking acp2_proto.dissector so the ACP2 side can
+-- build dotted paths like "0.5.value" (slot.obj_id.pid) per issue #58
+-- — matches the Ember+ OID-dotted Info column style.
+local acp2_current_slot = 0
+
 -------------------------------------------------------------------------------
 -- Value-string tables
 -------------------------------------------------------------------------------
@@ -213,33 +226,46 @@ end
 local function parse_numeric_value(tvbuf, tree, offset, vtype, remaining)
     if remaining < 4 then return end
 
+    -- Spec §5.4 "Property value wire sizes":
+    --   s8/s16/s32 all stored as 4-byte signed (sign-extended)
+    --   u8/u16/u32 all stored as 4-byte unsigned (zero-extended)
+    --   s64/u64    stored as 8 bytes
+    --   float      stored as 4 bytes
+    -- The Wireshark ProtoField types are fixed at declaration, so we
+    -- always read 4/8 bytes and override the displayed label via
+    -- set_text() to reflect the DECLARED type (s8/s16/s32/u8/...) —
+    -- matches the "[Number.sX]" annotation in the property header.
+    local type_label = acp2_numtype_valstr[vtype] or ("vtype=" .. vtype)
+
     if vtype >= 0 and vtype <= 2 then
-        -- s8, s16, s32 all stored as s32
+        local v = tvbuf:range(offset, 4):int()
         tree:add(prop_f.val_s32, tvbuf:range(offset, 4))
+            :set_text(string.format("Value (%s): %d", type_label, v))
     elseif vtype == 3 then
-        -- s64
         if remaining >= 8 then
             tree:add(prop_f.val_s64, tvbuf:range(offset, 8))
+                :set_text("Value (s64): " .. tostring(tvbuf:range(offset, 8):int64()))
         end
     elseif vtype >= 4 and vtype <= 6 then
-        -- u8, u16, u32 all stored as u32
+        local v = tvbuf:range(offset, 4):uint()
         tree:add(prop_f.val_u32, tvbuf:range(offset, 4))
+            :set_text(string.format("Value (%s): %d", type_label, v))
     elseif vtype == 7 then
-        -- u64
         if remaining >= 8 then
             tree:add(prop_f.val_u64, tvbuf:range(offset, 8))
+                :set_text("Value (u64): " .. tostring(tvbuf:range(offset, 8):uint64()))
         end
     elseif vtype == 8 then
-        -- float stored as 4 bytes
+        local v = tvbuf:range(offset, 4):float()
         tree:add(prop_f.val_float, tvbuf:range(offset, 4))
+            :set_text(string.format("Value (float): %g", v))
     elseif vtype == 9 then
-        -- preset/enum stored as u32
+        local v = tvbuf:range(offset, 4):uint()
         tree:add(prop_f.val_u32, tvbuf:range(offset, 4))
+            :set_text(string.format("Value (enum/preset index): %d", v))
     elseif vtype == 10 then
-        -- ipv4
         tree:add(prop_f.val_ipv4, tvbuf:range(offset, 4))
     elseif vtype == 11 then
-        -- string: null-terminated
         local str_bytes = tvbuf:range(offset, remaining):bytes()
         local str_len = remaining
         for i = 0, remaining - 1 do
@@ -249,7 +275,9 @@ local function parse_numeric_value(tvbuf, tree, offset, vtype, remaining)
             end
         end
         if str_len > 0 then
+            local s = tvbuf:range(offset, str_len):string()
             tree:add(prop_f.val_str, tvbuf:range(offset, str_len))
+                :set_text(string.format("Value (string): \"%s\"", s))
         end
     end
 end
@@ -348,10 +376,33 @@ local function parse_property(tvbuf, pktinfo, parent_tree, offset)
 
     elseif pid_val >= 8 and pid_val <= 12 then
         -- value, default_value, min_value, max_value, step_size
-        -- vtype is in data byte
+        -- vtype is in data byte. Derive the containing object type from
+        -- vtype (spec §5.2.2 "Property value type") so the property tree
+        -- shows both the object category (Number/Enum/IPv4/String) and
+        -- the numeric subtype: e.g. "[Number.float]" instead of just
+        -- "[float]". This matters for announces, which only carry pid 8
+        -- and never pid 1 (object_type) — otherwise a consumer has to
+        -- remember per-obj context across frames to know what kind of
+        -- object just changed.
         local vtype = data_val
         local vtype_name = acp2_numtype_valstr[vtype] or ("vtype=" .. vtype)
-        tree:append_text(" [" .. vtype_name .. "]")
+        local obj_cat
+        if vtype <= 8 then
+            obj_cat = "Number"         -- s8/s16/s32/s64/u8/u16/u32/u64/float
+        elseif vtype == 9 then
+            obj_cat = "Enum/Preset"    -- u32 index
+        elseif vtype == 10 then
+            obj_cat = "IPv4"           -- 4 bytes
+        elseif vtype == 11 then
+            obj_cat = "String"         -- NUL-terminated UTF-8
+        else
+            obj_cat = "Unknown"
+        end
+        tree:append_text(" [" .. obj_cat .. "." .. vtype_name .. "]")
+        -- Expose the derived object category as a discrete field so
+        -- users can filter and the Detail panel shows it on its own row.
+        tree:add(prop_f.obj_type, tvbuf:range(offset + 1, 1))
+            :set_text("Object Category (derived): " .. obj_cat)
         if val_len > 0 then
             parse_numeric_value(tvbuf, tree, val_offset, vtype, val_len)
         end
@@ -494,6 +545,85 @@ end
 -------------------------------------------------------------------------------
 -- ACP2 dissector (called for AN2 proto=2, type=4 data frames)
 -------------------------------------------------------------------------------
+-- Peek the value bytes of the first property at `offset` in tvbuf and
+-- return a short text summary for the Info column: `value=42`,
+-- `value="ACP2-Frame"`, `value=10.4.210.100`, etc. Returns "" when
+-- nothing meaningful can be extracted.
+local function summarize_first_prop(tvbuf, offset)
+    local remaining = tvbuf:reported_length_remaining(offset)
+    if remaining < 4 then return "" end
+    local pid = tvbuf:range(offset, 1):uint()
+    local data = tvbuf:range(offset + 1, 1):uint()
+    local plen = tvbuf:range(offset + 2, 2):uint()
+    if plen < 4 then return "" end
+    local vlen = plen - 4
+    if vlen < 0 then vlen = 0 end
+    local voff = offset + 4
+
+    -- inline-in-data pids (value rides the header's data byte itself)
+    if pid == 1 then
+        local t = acp2_objtype_valstr[data] or ("type=" .. data)
+        return "type=" .. t
+    elseif pid == 3 then
+        return "access=" .. data
+    elseif pid == 5 then
+        local t = acp2_numtype_valstr[data] or ("nt=" .. data)
+        return "numtype=" .. t
+    elseif pid == 15 then
+        return "options=" .. data
+    end
+
+    if vlen == 0 then return "" end
+
+    if pid == 2 or pid == 13 or pid == 19 then
+        -- label / unit / event_messages = NUL-terminated UTF-8
+        local strlen = vlen
+        for i = 0, vlen - 1 do
+            if tvbuf:range(voff + i, 1):uint() == 0 then strlen = i; break end
+        end
+        if strlen == 0 then return "" end
+        return "\"" .. tvbuf:range(voff, strlen):string() .. "\""
+    elseif pid == 6 then
+        if vlen >= 2 then
+            return "maxlen=" .. tvbuf:range(voff, 2):uint()
+        end
+    elseif pid == 14 then
+        -- children array
+        local n = math.floor(vlen / 4)
+        return n .. " children"
+    elseif pid >= 8 and pid <= 12 then
+        -- value / default / min / max / step — decode by vtype in data
+        -- byte. Tag each summary with the declared type so the Info
+        -- column reads e.g. `value(s8)=-40`, `value(float)=-35.3073`,
+        -- `value(string)="Input-A"` — no guessing needed.
+        local vtype = data
+        local t = acp2_numtype_valstr[vtype] or ("vtype=" .. vtype)
+        if vtype <= 2 then
+            return string.format("value(%s)=%d", t, tvbuf:range(voff, 4):int())
+        elseif vtype == 3 and vlen >= 8 then
+            return string.format("value(s64)=%s", tostring(tvbuf:range(voff, 8):int64()))
+        elseif vtype >= 4 and vtype <= 6 then
+            return string.format("value(%s)=%d", t, tvbuf:range(voff, 4):uint())
+        elseif vtype == 7 and vlen >= 8 then
+            return string.format("value(u64)=%s", tostring(tvbuf:range(voff, 8):uint64()))
+        elseif vtype == 8 then
+            return string.format("value(float)=%g", tvbuf:range(voff, 4):float())
+        elseif vtype == 9 then
+            return string.format("value(enum)=%d", tvbuf:range(voff, 4):uint())
+        elseif vtype == 10 then
+            return "value(ipv4)=" .. tostring(tvbuf:range(voff, 4):ipv4())
+        elseif vtype == 11 then
+            local strlen = vlen
+            for i = 0, vlen - 1 do
+                if tvbuf:range(voff + i, 1):uint() == 0 then strlen = i; break end
+            end
+            if strlen == 0 then return "value(string)=\"\"" end
+            return string.format("value(string)=\"%s\"", tvbuf:range(voff, strlen):string())
+        end
+    end
+    return ""
+end
+
 function acp2_proto.dissector(tvbuf, pktinfo, root)
     local pktlen = tvbuf:reported_length_remaining()
     if pktlen < 4 then return 0 end
@@ -508,14 +638,16 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
     tree:add(acp2_f.type, tvbuf:range(0, 1))
     tree:add(acp2_f.mtid, tvbuf:range(1, 1))
 
-    local type_str = acp2_type_valstr[type_val] or "Unknown"
+    local type_short = { [0]="Req", [1]="Rep", [2]="Evt", [3]="Err" }
+    local type_str = type_short[type_val] or ("T" .. type_val)
     local info_parts = {}
+    table.insert(info_parts, type_str)
+    table.insert(info_parts, "mtid=" .. mtid_val)
 
     if type_val == 0 or type_val == 1 then
         -- Request or Reply
         tree:add(acp2_f.func, tvbuf:range(2, 1))
         local func_str = acp2_func_valstr[byte2] or ("func=" .. byte2)
-        table.insert(info_parts, type_str)
         table.insert(info_parts, func_str)
 
         if byte2 == 0 then
@@ -533,7 +665,8 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 local idx    = tvbuf:range(8, 4):uint()
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-                table.insert(info_parts, "obj=" .. obj_id)
+                -- Dotted slot.obj path per issue #58 (match Ember+ OID style).
+                table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
                 end
@@ -551,12 +684,15 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 local idx    = tvbuf:range(8, 4):uint()
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-                table.insert(info_parts, "obj=" .. obj_id)
-                table.insert(info_parts, pid_name)
+                -- Dotted slot.obj path per issue #58 (match Ember+ OID style).
+                table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
+                table.insert(info_parts, "pid=" .. pid_name)
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
                 end
                 if type_val == 1 and pktlen > 12 then
+                    local vs = summarize_first_prop(tvbuf, 12)
+                    if vs ~= "" then table.insert(info_parts, vs) end
                     parse_properties(tvbuf, pktinfo, tree, 12)
                 end
             end
@@ -570,12 +706,15 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 local idx    = tvbuf:range(8, 4):uint()
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-                table.insert(info_parts, "obj=" .. obj_id)
-                table.insert(info_parts, pid_name)
+                -- Dotted slot.obj path per issue #58 (match Ember+ OID style).
+                table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
+                table.insert(info_parts, "pid=" .. pid_name)
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
                 end
                 if pktlen > 12 then
+                    local vs = summarize_first_prop(tvbuf, 12)
+                    if vs ~= "" then table.insert(info_parts, vs) end
                     parse_properties(tvbuf, pktinfo, tree, 12)
                 end
             end
@@ -587,18 +726,20 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
         tree:add(acp2_f.pid, tvbuf:range(3, 1))
         local pid_name = acp2_pid_valstr[byte3] or ("pid=" .. byte3)
         table.insert(info_parts, "Announce")
-        table.insert(info_parts, pid_name)
+        table.insert(info_parts, "pid=" .. pid_name)
 
         if pktlen >= 12 then
             local obj_id = tvbuf:range(4, 4):uint()
             local idx    = tvbuf:range(8, 4):uint()
             tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
             tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-            table.insert(info_parts, "obj=" .. obj_id)
+            table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
             if idx ~= 0 then
                 table.insert(info_parts, "idx=" .. idx)
             end
             if pktlen > 12 then
+                local vs = summarize_first_prop(tvbuf, 12)
+                if vs ~= "" then table.insert(info_parts, vs) end
                 parse_properties(tvbuf, pktinfo, tree, 12)
             end
         end
@@ -615,11 +756,16 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
             tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
             tree:add(acp2_f.idx,    tvbuf:range(8, 4))
             local obj_id = tvbuf:range(4, 4):uint()
-            table.insert(info_parts, "obj=" .. obj_id)
+            table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
         end
     end
 
-    return pktlen, table.concat(info_parts, " ")
+    -- Write composed info text to the module-local side-channel so the
+    -- AN2 caller can render it into pktinfo.cols.info. Multi-return here
+    -- is unreliable because Wireshark's Proto.dissector wrapper drops
+    -- extra values.
+    acp2_last_info = table.concat(info_parts, " ")
+    return pktlen
 end
 
 -------------------------------------------------------------------------------
@@ -734,18 +880,24 @@ local function dissect_one_an2(tvbuf, pktinfo, root, offset)
     local info_str = ""
 
     if proto_val == 2 and type_val == 4 and dlen > 0 then
-        -- ACP2 data frame: hand off to ACP2 dissector
+        -- ACP2 data frame: hand off to ACP2 dissector. We read the
+        -- composed info text from the module-local side-channel
+        -- `acp2_last_info`, because Wireshark's Proto.dissector wrapper
+        -- drops multi-return values when called via Lua. Slot is
+        -- forwarded the same way so ACP2 can build dotted paths.
+        acp2_last_info = ""
+        acp2_current_slot = slot_val
         local payload_tvb = tvbuf:range(offset + AN2_HDR_LEN, dlen):tvb()
-        local consumed, acp2_info = acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
-        info_str = "AN2 > ACP2 " .. (acp2_info or "")
-        info_str = info_str .. " " .. slot_str
+        acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
+        info_str = "AN2 > ACP2 " .. acp2_last_info
 
     elseif proto_val == 2 and dlen > 0 then
         -- ACP2 non-data frame (req/reply/event/error at AN2 level)
+        acp2_last_info = ""
+        acp2_current_slot = slot_val
         local payload_tvb = tvbuf:range(offset + AN2_HDR_LEN, dlen):tvb()
-        local consumed, acp2_info = acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
-        info_str = "AN2 " .. type_str .. " > ACP2 " .. (acp2_info or "")
-        info_str = info_str .. " " .. slot_str
+        acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
+        info_str = "AN2 " .. type_str .. " > ACP2 " .. acp2_last_info
 
     elseif proto_val == 0 and dlen > 0 then
         -- AN2 internal protocol
