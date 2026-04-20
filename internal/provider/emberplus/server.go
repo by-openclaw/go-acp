@@ -19,6 +19,7 @@ type server struct {
 	tree   *tree
 	funcs  *functionRegistry
 	salvos *salvoStore
+	locks  *lockStore
 
 	mu       sync.Mutex
 	listener net.Listener
