@@ -414,11 +414,19 @@ Replay tests under tests/unit/emberplus/:
 Order: **Ember+ consumer → Ember+ provider → bus / extra protocols**.
 No next phase until previous ships with VM integration passing.
 
+**Part B update (2026-04-20):** Ember+ provider MVP opened on PR #67
+(branch `feat/emberplus-provider`). New tier-1 plugin directory
+`internal/provider/emberplus/` mirrors the consumer under
+`internal/protocol/emberplus/`. Binary `cmd/acp-provider`. Round-tripped
+live against EmberViewer for Node + all 7 Parameter types. Open
+follow-ups: #68 (viewer quirks), #69 (Matrix + Function extension,
+labels, parametersLocation, sum/recallSalvo functions).
+
 ### Parked — TODO / SOW (do not start now)
 
 | item | phase | notes |
 |---|---|---|
-| Ember+ provider | Part B | after consumer closed |
+| Ember+ provider | ✅ MVP on PR #67; #69 for Matrix/Function |
 | Bus bridge (`acp-srv --bus=none\|nats\|es\|redis-stream`) | Part C | orchestrator-level; plugins stay bus-free |
 | Probel SW-P-02 consumer+provider | later | canonical Matrix shape, no walkable tree |
 | Probel SW-P-08 Plus consumer+provider | later | canonical Matrix with level multiplex |
