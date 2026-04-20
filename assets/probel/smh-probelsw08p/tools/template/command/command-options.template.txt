@@ -1,0 +1,87 @@
+import { LocaleData } from '../../../common/locale-data/locale-data.model';
+import { CommandIdentifier, CommandIdentifiers, ValidationError } from '../../../command/command-contract';
+import { LocaleDataCache } from '../../../command/command-locale-data-cache';
+import { CommandBase } from '../../../Command/command.base';
+import { CommandErrorsKeys } from '../../../command/locale-data-keys';
+import { CommandParamsValidator } from './params.validator';
+import { CommandOptionsValidator } from './options.validator';
+import { $$CAMEL_CMD_NAME$$CommandParams } from './params';
+import { $$CAMEL_CMD_NAME$$CommandOptions } from './options';
+import { NotImplementedError } from '../../../common/error/not-implemented.error';
+
+/**
+ * $$SPACE_CMD_NAME$$ Command
+ *
+ * @export
+ * @class $$CAMEL_CMD_NAME$$Command
+ * @extends {CommandBase<$$CAMEL_CMD_NAME$$CommandParams>}
+ */
+export class $$CAMEL_CMD_NAME$$Command extends CommandBase<$$CAMEL_CMD_NAME$$CommandParams, $$CAMEL_CMD_NAME$$CommandOptions> {
+    /**
+     * Creates an instance of $$CAMEL_CMD_NAME$$Command
+     * 
+     * @param {$$CAMEL_CMD_NAME$$CommandParams} params the command parameters
+     * @param {$$CAMEL_CMD_NAME$$CommandOptions} options the command options
+     * @memberof $$CAMEL_CMD_NAME$$Command
+     */
+    constructor(params: $$CAMEL_CMD_NAME$$CommandParams, options: $$CAMEL_CMD_NAME$$CommandOptions) {
+        super($$CAMEL_CMD_NAME$$Command.getCommandId(params), params);
+        this.validateParamsOptions(params, options);
+    }
+
+    /**
+     * Returns the command identifier
+     *
+     * @private
+     * @static
+     * @param {$$CAMEL_CMD_NAME$$CommandParams} params
+     * @returns {number} Command ID of the command
+     * @memberof $$CAMEL_CMD_NAME$$Command
+     */
+    private static getCommandId(params: $$CAMEL_CMD_NAME$$CommandParams): CommandIdentifier {
+        return CommandIdentifiers.RX.GENERAL.CROSSPOINT_INTERROGATE_MESSAGE;
+    }
+
+    /**
+     * Returns the command description used for logging purpose
+     *
+     * @returns {string} the command description 
+     * @memberof $$CAMEL_CMD_NAME$$Command
+     */
+    toLogDescription(): string {
+        throw new NotImplementedError();
+    }
+
+    /**
+     * Build the $$SPACE_CMD_NAME$$ command
+     * 
+     * @protected
+     * @returns {Buffer} $$SPACE_CMD_NAME$$ command buffer
+     * @memberof $$CAMEL_CMD_NAME$$ 
+     */
+    protected buildData(): Buffer {
+        throw new NotImplementedError();
+    }
+
+    /**
+     * Validate the command parameters, options and throw a ValidationError in case of error
+     *
+     * @private
+     * @param {$$CAMEL_CMD_NAME$$CommandParams} params the command parameters
+     * @param {$$CAMEL_CMD_NAME$$CommandParams} options the command options
+     * @memberof $$CAMEL_CMD_NAME$$Command
+     */
+    private validateParamsOptions(params: $$CAMEL_CMD_NAME$$CommandParams, options: $$CAMEL_CMD_NAME$$CommandOptions): void {
+        const validationErrors: Record<string, LocaleData> = {
+            ...new CommandParamsValidator(params).validate(),
+            ...new CommandOptionsValidator(options).validate()
+        };
+
+        if (Object.keys(validationErrors).length > 0) {
+            const localeData = LocaleDataCache.INSTANCE.getCommandErrorLocaleData(
+                CommandErrorsKeys.CREATE_COMMAND_FAILURE
+            );
+            throw new ValidationError(localeData.description, validationErrors);
+        }
+    }
+}

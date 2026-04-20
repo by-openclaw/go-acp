@@ -1,0 +1,56 @@
+{
+    "data": [
+        {
+            "id": "CROSSPOINT_INTERROGATE_MESSAGE",
+            "description": "This message is a request for Tally information by matrix no., level and destination, issued by the remote device.\nThe controller will respond to this message with an EXTENDED CROSSPOINT TALLY message (Command Byte 0x83)."
+        },
+        {
+            "id": "CROSSPOINT_CONNECT_MESSAGE",
+            "description": "This message is issued by the remote device in order to set crosspoints.\nThe controller will respond with an EXTENDED CONNECTED message (Command Byte 0x84)."
+        },
+        {
+            "id": "PROTECT_INTERROGATE_MESSAGE",
+            "description": "This message is issued by the remote device to get the current protect status of a destination.\nThe controller will respond with an EXTENDED PROTECT TALLY message (Command Byte 0x8b)."
+        },
+        {
+            "id": "PROTECT_CONNECT_MESSAGE",
+            "description": "This is issued by the remote device to protect a destination.\nThe controller will respond with a an EXTENDED PROTECT CONNECTED message (Command Byte 0x8d)."
+        },
+        {
+            "id": "PROTECT_DIS_CONNECT_MESSAGE",
+            "description": "This message is issued by the remote device to remove protection from a destination.\nThe controller will issue an EXTENDED PROTECT DIS-CONNECTED message (Command Byte 0x8f) in response."
+        },
+        {
+            "id": "PROTECT_TALLY_DUMP_REQUEST_MESSAGE",
+            "description": "This message allows all the Protect information to be requested from the Pro-Bel Controller when a Remote device initialises.\nThe controller will respond with an EXTENDED PROTECT TALLY DUMP message (Command Byte 0x94)."
+        },
+        {
+            "id": "CROSSPOINT_TALLY_DUMP_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request a tally table dump for a given matrix/level combination.\nThe controller will respond with an EXTENDED CROSSPOINT TALLY DUMP (word) message (Command Byte 0x97)."
+        },
+        {
+            "id": "ALL_SOURCE_NAMES_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request the names for all the sources on a given matrix and level.\nThe controller will respond with one or more EXTENDED SOURCE NAME RESPONSE messages (Command Byte 0xea)."
+        },
+        {
+            "id": "SINGLE_SOURCE_NAMES_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request the name for a single source.\nThe controller will respond with a single EXTENDED SOURCE NAME RESPONSE message (Command Byte 0xea)."
+        },
+        {
+            "id": "ALL_DESTINATIONS_ASSOCIATION_NAMES_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request the names for all the destination associations for a given matrix.\nThe controller will respond with one or more EXTENDED DESTINATION ASSOCIATION NAMES RESPONSE messages (Command Byte 0xeb)."
+        },
+        {
+            "id": "SINGLE_DESTINATION_ASSOCIATION_NAMES_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request the name for a single destination association for a given matrix.\nThe controller will respond with one EXTENDED DESTINATION ASSOCIATION NAMES RESPONSE message (Command Byte 0xeb)."
+        },
+        {
+            "id": "CROSSPOINT_CONNECT_ON_GO_GROUP_SALVO_MESSAGE",
+            "description": "This message is issued by the remote device to set up salvo switches.\nRouting information is held in the receiving device until activated by CROSSPOINT GO GROUP SALVO command (Command Byte 0x79).\nThe controller will respond with an EXTENDED CROSSPOINT CONNECT ON GO GROUP SALVO  ACKNOWLEDGE message (Command Byte 0xfa) to\nindicate that the routing information has been stored successfully."
+        },
+        {
+            "id": "CROSSPOINT_SALVO_GROUP_INTERROGATE_MESSAGE",
+            "description": "This message is issued by the remote device to set up salvo switches.\nRouting information is held in the receiving device until activated by CROSSPOINT GO GROUP SALVO command (Command Byte 0x79).\nThe controller will respond with an EXTENDED CROSSPOINT CONNECT ON GO GROUP SALVO  ACKNOWLEDGE message (Command Byte 0xfa) to indicate\nthat the routing information has been stored successfully."
+        }
+    ]
+}

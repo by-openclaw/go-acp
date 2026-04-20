@@ -430,20 +430,55 @@ Connection Lock enforcement per spec p.89, subscribe-gated
 StreamCollection broadcast, and Parameter.formula field emission.
 12 wire-correctness landmines documented in
 `memory/project_emberplus_provider.md`. Live-smoked via EmberViewer
-1.6.2 and our own `acp invoke` / `acp walk` CLI. Open follow-ups:
-#68 (viewer REAL quirks, cross-viewer testing), #70 (formula
-expression evaluator — shared provider/consumer).
+1.6.2 and our own `acp invoke` / `acp walk` CLI. **Merged:** #67 +
+#72 (replaced auto-closed #71). Open follow-ups: #68 (viewer REAL
+quirks, cross-viewer testing), #70 (formula expression evaluator —
+shared provider/consumer).
+
+**Part B extension (2026-04-20):** ACP1 + ACP2 providers shipped to
+match the Ember+ provider tier.
+
+- **#74** `feat/acp1-provider` — UDP:2071 MVP, all 11 ACP1 object
+  types (Root/Int/Long/Float/Byte/IPAddr/Enum/String/Alarm/File/Frame),
+  all 6 methods (get/set/setInc/setDec/setDef/getObject) with spec-p.28
+  clamping + method-support matrix + access bits, value-change
+  announcements on 255.255.255.255. 39 sub-tests including round-trip
+  encoder for every type + 6 dispatch scenarios. Loopback smoke:
+  walk/get/set/clamp on :20710 all green. Demo tree
+  `assets/acp1/demo_frame.json` has 4-slot rack with 2 slots sharing
+  a DM, 1 different-DM slot, 1 rack-controller frame. 12
+  wire-correctness details in `memory/project_acp1_provider.md`.
+
+- **#76** `feat/acp2-provider` — AN2/TCP:2072 MVP, full AN2 handshake
+  (GetVersion / GetDeviceInfo / GetSlotInfo / EnableProtocolEvents),
+  all 4 ACP2 functions (get_version / get_object / get_property /
+  set_property), all 6 object types (Node/Number/Enum/IPv4/String +
+  Preset as U32), per-NumberType numeric mutators, subscribe-gated
+  announces. 22 sub-tests. 3 consumer-side wire quirks documented in
+  `memory/project_acp2_provider.md`: reply-format encoder bypass
+  (consumer's EncodeACP2Message is request-shaped), request obj-id /
+  idx must be parsed manually by the provider (consumer skips it for
+  requests), and obj-id=0 root alias (consumer walker starts at 0).
+  Loopback smoke: walk/get/string-set all green. Demo tree
+  `assets/acp2/demo_device.json`.
+
+Both PRs pending external viewer validation (user sourcing Probel-free
+ACP1 + ACP2 clients). No merge until confirmed.
 
 ### Parked — TODO / SOW (do not start now)
 
 | item | phase | notes |
 |---|---|---|
-| Ember+ provider | ✅ MVP on PR #67; Matrix/Function/Labels/Streams/Lock on #69 branch `feat/emberplus-matrix` (ready for PR); #70 formula eval parked |
+| Ember+ provider | ✅ merged main (#67 + #72); #70 formula eval parked |
+| ACP1 provider | ✅ PR #74 pending external-client validation |
+| ACP2 provider | ✅ PR #76 pending external-client validation |
+| Probel SW-P-08 consumer | **Part B → Part C bridge** | **#77 opened** — matrix/level encoded as Node hierarchy (same shape as ACP slot). TS ref at `assets/probel/smh-probelsw08p/` with both matrix emulator (main-server) and controller emulator (main-client). Commie.exe + .dat for cross-vendor |
+| Wire codec doc retrofit (byte-tables + range comments) | tracked | **#78 opened** — apply the TS doc convention (`feedback_command_docstyle.md`) to ACP1/ACP2/Ember+ codecs |
+| Probel SW-P-02 consumer+provider | later | subset of SW-P-08; after SW-P-08 ships |
+| Probel SW-P-08 provider | Part C | uses main-client.ts as round-trip target |
 | Bus bridge (`acp-srv --bus=none\|nats\|es\|redis-stream`) | Part C | orchestrator-level; plugins stay bus-free |
-| Probel SW-P-02 consumer+provider | later | canonical Matrix shape, no walkable tree |
-| Probel SW-P-08 Plus consumer+provider | later | canonical Matrix with level multiplex |
 | TSL UMD v3.1 / v5 consumer+provider | later | canonical Node with per-address tally |
-| `internal/crossmap/` cross-protocol translator | later | needs ≥2 provider-capable plugins |
+| `internal/crossmap/` cross-protocol translator | later | now unblocked — 4 provider-capable plugins (Ember+/ACP1/ACP2/Probel once #77 lands) |
 | Auto inline→pointer size-threshold downgrade | later | measure real captures first |
 | ACP1 / ACP2 migration to canonical shape | later | after Ember+ consumer proves shape |
 

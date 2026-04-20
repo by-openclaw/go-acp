@@ -1,0 +1,12 @@
+{
+    "data": [
+        {
+            "id": "CMD_01",
+            "description": "CMD_1 FR Description"
+        },
+        {
+            "id": "CMD_02",
+            "description": "CMD_2 FR Description"
+        }
+    ]
+}

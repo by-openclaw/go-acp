@@ -1,0 +1,41 @@
+# Webstorm/IntelliJ
+*.iml
+*.ipr
+*.iws
+.idea/
+out/
+
+# VScode
+.vscode
+
+# OS X
+.DS_Store
+xcuserdata/
+*.pbxuser
+# Thumbnails
+._*
+
+# Files that might appear on external disk
+.Spotlight-V100
+.Trashes
+
+# NodeJS
+node_modules/
+npm-debug.log
+.npm
+.node-gyp/
+.npmrc
+
+# Archives
+*.7z
+*.zip
+
+# TypeScript
+tsd-debug.log
+
+# Build
+lib/
+
+# Gitlab-ci
+PipelineUtils/
+com/

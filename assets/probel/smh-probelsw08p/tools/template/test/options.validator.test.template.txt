@@ -1,0 +1,42 @@
+import { BootstrapService } from '../../../../src/bootstrap.service';
+import { LocaleData } from '../../../../src/common/locale-data/locale-data.model';
+import { $$CAMEL_CMD_NAME$$CommandOptions } from '../../../../src/command/rx/$$CMD_ID$$-$$DASH_CMD_NAME$$/options';
+import { CommandOptionsValidator } from '../../../../src/command/rx/$$CMD_ID$$-$$DASH_CMD_NAME$$/options.validator';
+
+describe('CommandOptionsValidator ($$CAMEL_CMD_NAME$$Command - CMD_$$CMD_ID$$)', () => {
+    beforeAll(async () => {
+        await BootstrapService.bootstrapAsync('en');
+    });
+
+    describe('ctor', () => {
+        it('Should instantiate the validator', () => {
+            // Arrange
+            const options: $$CAMEL_CMD_NAME$$CommandOptions = {
+                // Add properties ...
+            };
+            // Act
+            const validator = new CommandOptionsValidator(options);
+
+            // Assert
+            expect(validator).toBeDefined();
+            expect(validator.data).toBe(options);
+        });
+    });
+    
+    describe('validate', () => {
+        it('Should succeed with valid params - ...', () => {
+            // Arrange
+            const options: $$CAMEL_CMD_NAME$$CommandOptions = {
+                // Add properties ...
+            };
+
+            // Act
+            const validator = new CommandOptionsValidator(options);
+            const errors: Record<string, LocaleData> = validator.validate();
+
+            // Assert
+            expect(errors).toBeDefined();
+            expect(Object.keys(errors).length).toBe(0);
+        });
+    });
+});

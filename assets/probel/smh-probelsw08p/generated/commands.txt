@@ -1,0 +1,221 @@
+0x01-GENERAL CROSSPOINT INTERROGATE MESSAGE-This message is a request for Tally information by matrix no., level and destination, issued by the remote device.
+The controller will respond to this message with a CROSSPOINT TALLY message (normal or extended) (Command Bytes 0x03 or 0x83).
+
+0x81-EXTENDED CROSSPOINT INTERROGATE MESSAGE-This message is a request for Tally information by matrix no., level and destination, issued by the remote device.
+The controller will respond to this message with an EXTENDED CROSSPOINT TALLY message (Command Byte 0x83).
+
+0x02-CROSSPOINT CONNECT MESSAGE-This message is issued by the remote device in order to set crosspoints.
+The controller will respond with a CROSSPOINT CONNECTED message (Command Bye 0x04).
+
+0x82-EXTENDED CROSSPOINT CONNECT MESSAGE-This message is issued by the remote device in order to set crosspoints.
+The controller will respond with an EXTENDED CONNECTED message (Command Byte 0x84).
+
+0x07-MAINTENANCE MESSAGE-This message is issued by the remote device and allows various maintenance functions to be performed on the controller,
+i.e. hard reset, soft reset, clear protects, configure installed modules, database transfer.
+The number of bytes following the command byte is dependent on the operation being performed.
+
+0x08-DUAL CONTROLLER STATUS REQUEST MESSAGE-This message is issued by the remote device to the active controller to ascertain the status of both controllers in a dual system.
+The controller will respond with a DUAL CONTROLLER STATUS RESPONSE message (Command Byte 0x09).
+
+0x0a-PROTECT INTERROGATE MESSAGE-This message is issued by the remote device to get the current protect status of a destination.
+The controller will respond with a PROTECT TALLY message (Command Byte 0x0b).
+
+0x8a-EXTENDED PROTECT INTERROGATE MESSAGE-This message is issued by the remote device to get the current protect status of a destination.
+The controller will respond with an EXTENDED PROTECT TALLY message (Command Byte 0x8b).
+
+0x0c-PROTECT CONNECT MESSAGE-This is issued by the remote device to protect a destination.
+The controller will respond with a PROTECT CONNECTED message (Command Byte 0x0d).
+
+0x8c-EXTENDED PROTECT CONNECT MESSAGE-This is issued by the remote device to protect a destination.
+The controller will respond with a an EXTENDED PROTECT CONNECTED message (Command Byte 0x8d).
+
+0x0e-PROTECT DIS CONNECT MESSAGE-This message is issued by the remote device to remove protection from a destination.
+The controller will issue a PROTECT DISCONNECTED message (Command Byte 0x0f) in response.
+
+0x8e-EXTENDED PROTECT DIS CONNECT MESSAGE-This message is issued by the remote device to remove protection from a destination.
+`The controller will issue an EXTENDED PROTECT DIS-CONNECTED message (Command Byte 0x8f) in response.
+
+0x11-PROTECT DEVICE NAME REQUEST MESSAGE-This message is issued by the remote device or controller when the device name protecting a particular destination is required.
+When issued by a controller an OEM device name is being requested, when issued by the OEM remote device a Pro-Bel panel name is being requested.
+The remote device or controller will respond with a PROTECT DEVICE NAME RESPONSE message (Command Byte 0x12).
+
+0x13-PROTECT TALLY DUMP REQUEST MESSAGE-This message is a request for Tally information by matrix no., level and destination, issued by the remote device.
+The controller will respond to this message with an EXTENDED CROSSPOINT TALLY message (Command Byte 0x83).
+
+0x93-EXTENDED PROTECT TALLY DUMP REQUEST MESSAGE-This message allows all the Protect information to be requested from the Pro-Bel Controller when a Remote device initialises.
+The controller will respond with an EXTENDED PROTECT TALLY DUMP message (Command Byte 0x94).
+
+0x15-CROSSPOINT TALLY DUMP REQUEST MESSAGE-This message is issued by the remote device to request a tally table dump for a given matrix/level combination.
+The controller will respond with CROSSPOINT TALLY DUMP (byte & word) messages (Command Bytes 0x16 & 0x17 dependent on matrix size).
+
+0x95-EXTENDED CROSSPOINT TALLY DUMP REQUEST MESSAGE-This message is issued by the remote device to request a tally table dump for a given matrix/level combination.
+The controller will respond with an EXTENDED CROSSPOINT TALLY DUMP (word) message (Command Byte 0x97).
+
+0x1d-MASTER PROTECT CONNECT MESSAGE-This message is issued by the remote device to protect a destination.
+The controller will claim any existing protection applied by any panel in the same way that a master panel can.
+The controller will respond with a PROTECT CONNECTED message (Command byte 0x0d).
+
+0x64-ALL SOURCE NAMES REQUEST MESSAGE-This message is issued by the remote device to protect a destination.
+This message is issued by the remote device to request the names for all the sources on a given matrix and level.
+The controller will respond with one or more SOURCE NAME RESPONSE messages (Command Byte 0x6a).
+
+0xe4-EXTENDED ALL SOURCE NAMES REQUEST MESSAGE-This message is issued by the remote device to request the names for all the sources on a given matrix and level.
+The controller will respond with one or more EXTENDED SOURCE NAME RESPONSE messages (Command Byte 0xea).
+
+0x65-SINGLE SOURCE NAMES REQUEST MESSAGE-This message is issued by the remote device to request the name for a single source.
+The controller will respond with a single SOURCE NAME RESPONSE message (Command Byte 0x6a).
+
+0xe5-EXTENDED SINGLE SOURCE NAMES REQUEST MESSAGE-This message is issued by the remote device to request the name for a single source.
+The controller will respond with a single EXTENDED SOURCE NAME RESPONSE message (Command Byte 0xea).
+
+0x66-ALL DESTINATIONS ASSOCIATION NAMES REQUEST MESSAGE-This message is issued by the remote device to request the names for all the destination associations for a given matrix.
+The controller will respond with one or more DESTINATION ASSOCIATION NAMES RESPONSE messages (Command Byte 0x6b).
+
+0xe6-EXTENDED ALL DESTINATIONS ASSOCIATION NAMES REQUEST MESSAGE-This message is issued by the remote device to request the names for all the destination associations for a given matrix.
+The controller will respond with one or more EXTENDED DESTINATION ASSOCIATION NAMES RESPONSE messages (Command Byte 0xeb).
+
+0x67-SINGLE DESTINATIONS ASSOCIATION NAMES REQUEST MESSAGE-This message is issued by the remote device to request the name for a single destination association for a given matrix.
+The controller will respond with one DESTINATION ASSOCIATION NAMES RESPONSE message (Command Byte 0x6b).
+
+0xe7-EXTENDED SINGLE DESTINATIONS ASSOCIATION NAMES REQUEST MESSAGE-This message is issued by the remote device to request the name for a single destination association for a given matrix.
+The controller will respond with one EXTENDED DESTINATION ASSOCIATION NAMES RESPONSE message (Command Byte 0xeb).
+
+0x70-CROSSPOINT TIE LINE INTERROGATE MESSAGE MESSAGE-This message is issued by the remote device to request tallies for a given matrix and destination association number.
+The controller responds with a CROSSPOINT TIE LINE TALLY message (Command Byte 0x71)
+
+0x72-ALL SOURCE ASSOCIATION NAMES REQUEST MESSAGE-This message is issued by the remote device to request the names for all the source associations for a given matrix.
+The controller will respond with one or more SOURCE ASSOCIATION NAMES RESPONSE messages (Command Byte 0x74).
+
+0x73-SINGLE SOURCE ASSOCIATION NAMES REQUEST MESSAGE-This message is issued by the remote device to request the names for all the source associations for a given matrix.
+The controller will respond with one or more SOURCE ASSOCIATION NAMES RESPONSE messages (Command Byte 0x74).
+
+0x75-UPDATE NAME REQUEST MESSAGE-This message is issued by a remote device to remotely update a name in the system database of the controller.
+There is no response to this command.
+NOTE:
+Using this command on an Aurora or similar controller will result in a database mismatch when the system configuration editor is next connected online.
+This will mean that before edits are done using the system editor the database from the controller will need to be uploaded first otherwise any remote name changes will be lost.
+
+0x78-CROSSPOINT CONNECT ON GO GROUP SALVO MESSAGE-This message is issued by the remote device to set up salvo switches.
+Routing information is held in the receiving device until activated by CROSSPOINT GO GROUP SALVO command (Command Byte 0x79).
+The controller will respond with a CROSSPOINT CONNECT ON GO GROUP SALVO ACKNOWLEDGE message (Command Byte 0x7a) to indicate
+that the routing information has been stored successfully.
+
+0xf8-EXTENDED CROSSPOINT CONNECT ON GO GROUP SALVO MESSAGE-This message is issued by the remote device to set up salvo switches.
+Routing information is held in the receiving device until activated by CROSSPOINT GO GROUP SALVO command (Command Byte 0x79).
+The controller will respond with an EXTENDED CROSSPOINT CONNECT ON GO GROUP SALVO  ACKNOWLEDGE message (Command Byte 0xfa) to
+indicate that the routing information has been stored successfully.
+
+0x79-CROSSPOINT GO GROUP SALVO MESSAGE-This message is issued by the remote device to triggers the receiving device to set all routes in
+clear the previously received CROSSPOINT CONNECT ON GO GROUP SALVO messages.
+A CROSSPOINT GO DONE GROUP SALVO ACKNOWLEDGE message (Command Byte 0x7b) will be issued to indicate that the command has been executed.
+Note :	No individual CONNECTED messages (Command Byte 0x04) are issued.
+It is the responsibility of the controlling / listening devices to use the CROSSPOINT CONNECT ON GO GROUP SALVO ACKNOWLEDGE (Command Byte 0x7a)
+and CROSSPOINT GO DONE GROUP SALVO (Command Byte 0x7b) to keep their tally Information up to date.
+
+0xfc-EXTENDED CROSSPOINT SALVO GROUP INTERROGATE MESSAGE-This message is issued by the remote device to set up salvo switches.
+Routing information is held in the receiving device until activated by CROSSPOINT GO GROUP SALVO command (Command Byte 0x79).
+The controller will respond with an EXTENDED CROSSPOINT CONNECT ON GO GROUP SALVO  ACKNOWLEDGE message (Command Byte 0xfa) to indicate
+that the routing information has been stored successfully.
+
+0x7c-CROSSPOINT SALVO GROUP INTERROGATE MESSAGE-This message is issued by the remote device to request the status of the GROUP SALVOS.
+The controller will respond with a CROSSPOINT GROUP SALVO TALLY message (Command Byte 0x7d).
+
+0x03-CROSSPOINT TALLY MESSAGE-This message returns router tally information in response to a CROSSPOINT INTERROGATE message (Command Byte 0x01).
+
+0x83-EXTENDED CROSSPOINT TALLY MESSAGE-This message returns router tally information in response to an EXTENDED CROSSPOINT INTERROGATE message (Command Byte 0x81).
+
+0x04-CROSSPOINT TALLY MESSAGE-This message is issued spontaneously by the controller on all ports after it has confirmation that a route has been made through the router.
+The message is effectively broadcast.
+
+0x84-EXTENDED CROSSPOINT TALLY MESSAGE-This message is issued spontaneously by the controller on all ports after it has confirmation that a route has been made through the router.
+The message is effectively broadcast.
+
+0x09-DUAL CONTROLLER STATUS RESPONSE MESSAGE-This message is issued by the controller on power-up and in response to a DUAL CONTROLLER STATUS REQUEST (Command byte 0x08).
+
+0x0b-PROTECT TALLY MESSAGE-This message is issued by a controller in response to a PROTECT INTERROGATE message (Command Byte 0x0a).
+It returns the current protect status of a destination.
+
+0x8b-EXTENDED PROTECT TALLY MESSAGE-This message is issued by a controller in response to an EXTENDED PROTECT INTERROGATE message (Command Byte 0x8a).
+It returns the current protect status of a destination.
+
+0x0d-PROTECT CONNECTED MESSAGE-This message is issued by the controller in when the protect data is altered and also if the data was unsuccessfully altered as a result of a PROTECT CONNECT message (Command Bytes 0x0c)
+This message is broadcast on all ports.NOTE:
+Following the issue of an extended protect connected message SYSTEM3 will then issue a PROTECT DEVICE NAME REQUEST message (Command Byte 0x11).
+The remote device should then respond with a PROTECT DEVICE NAME RESPONSE message (Command Byte 0x12).
+
+0x8d-EXTENDED PROTECT CONNECTED MESSAGE-This message is issued by the controller in when the protect data is altered and also if the data was unsuccessfully altered as a result of an EXTENDED PROTECT CONNECT message (Command Bytes 0x8c).
+This message is broadcast on all ports.
+NOTE:
+Following the issue of an extended protect connected message SYSTEM3 will then issue a PROTECT DEVICE NAME REQUEST message (Command Byte 0x11).
+The remote device should then respond with a PROTECT DEVICE NAME RESPONSE message (Command Byte 0x12).
+
+0x0f-PROTECT DIS CONNECTED MESSAGE-This command is issued by the controller when the protect data is altered i.e. a destination has been unprotected and also if the data was unsuccessfully altered as a result of a PROTECT DIS-CONNECT message (Command Bytes 0x0e).
+This message is broadcast on all ports.
+
+0x8f-EXTENDED PROTECT DIS CONNECTED MESSAGE-This command is issued by the controller when the protect data is altered i.e. a destination has been unprotected and also if the data was unsuccessfully altered as a result of an EXTENDED PROTECT DIS-CONNECT message (Command Bytes 0x8e)
+This message is broadcast on all ports.
+
+0x12-PROTECT DEVICE NAME RESPONSE MESSAGE-This message is issued by a controller or remote device in response to a PROTECT DEVICE NAME REQUEST message (Command Byte 0x11), returning the device name protecting a particular destinationWhen received by the controller the name is assumed to be an OEM device and when received by the remote device the name is assumed to be a panel name.
+
+0x6a-SOURCE NAMES RESPONSE MESSAGE-This command is issued by the controller in response to ALL SOURCE NAMES REQUEST and SINGLE SOURCE NAME REQUEST messages (Command Bytes 0x64 and 0x65).
+The message length is limited to 134 bytes, thus name tables that would exceed this length would cause more than one message to be issued with the appropriate source number value in the third field of the message.
+
+0xea-EXTENDED SOURCE NAMES RESPONSE MESSAGE-This command is issued by the controller in response to EXTENDED ALL SOURCE NAMES REQUEST and EXTENDED SINGLE SOURCE NAME REQUEST messages (Command Bytes 0xe4 and 0xe5).
+This message is broadcast on all ports.
+
+0x6b-DESTINATION ASSOCIATION NAMES RESPONSE MESSAGE-This command is issued by the controller in response to an ALL DESTINATION ASSOCIATION NAMES REQUEST or SINGLE DESTINATION ASSOCIATION NAME REQUEST messages (Command Bytes 0x66 and 0x67).
+The message length restrictions in 3.2.19 apply.
+
+0xeb-EXTENDED DESTINATION ASSOCIATION NAMES RESPONSE MESSAGE-This command is issued by the controller in response to an EXTENDED ALL DESTINATION ASSOCIATION NAMES REQUEST or EXTENDED SINGLE DESTINATION ASSOCIATION NAME REQUEST messages (Command Bytes 0xe6 and 0xe7).
+The message length restrictions in 3.5.10 apply.
+
+0x74-SOURCE ASSOCIATION NAMES RESPONSE MESSAGE-This command is issued by the controller in response to an ALL SOURCE ASSOCIATION NAMES REQUEST or a SINGLE SOURCE ASSOCIATION NAME REQUEST message (Command Bytes 0x72 and 0x73)
+The message length restrictions in 3.2.19 apply.
+
+0x71-CROSSPOINT TIE LINE TALLY MESSAGE-This message is issued by the controller returning association based tally information in response to a CROSSPOINT TIE LINE INTERROGATE message (Command Byte 0x70)
+The command returns a tally for every level where a source is connected to the destination association.
+Comments:	The Tie Line Tally command contains a Source Matrix, Source Level and Source Number for every Destination in the specified Destination Association.
+
+0x7a-CROSSPOINT CONNECT ON GO GROUP SALVO ACKNOWLEDGE MESSAGE-This message is issued by the controller in response to a CROSSPOINT CONNECT ON GO GROUP SALVO message (Command Byte 0x78).
+N.B.: 	The group salvo commands are only implemented on the XD and ECLIPSE router ranges
+
+0xfa-EXTENDED CROSSPOINT CONNECT ON GO GROUP SALVO ACKNOWLEDGE MESSAGE-This message is issued by the controller in response to an EXTENDED  CROSSPOINT CONNECT ON GO GROUP SALVO message (Command Byte 0xf8).
+N.B.: 	The group salvo commands are only implemented on the XD and ECLIPSE router ranges
+
+0x7b-CROSSPOINT GO DONE GROUP SALVO ACKNOWLEDGE MESSAGE-This message is issued by the controller in response to a CROSSPOINT GO GROUP SALVO message (Command Byte 0x79).
+N.B.: 	The group salvo commands are only implemented on the XD and ECLIPSE router ranges
+
+0x7d-CROSSPOINT GROUP SALVO TALLY MESSAGE-This message is issued by the controller in response to a CROSSPOINT GROUP SALVO INTERROGATE message (Command Byte 0x7c).
+It returns the SALVO data for the specified SALVO GROUP.
+The data returned is for a particular index, the validity flag indicates whether any more data is present.
+N.B. 	The group salvo commands are only implemented on the XD and ECLIPSE router ranges.
+
+0xfd-EXTENDED CROSSPOINT GROUP SALVO TALLY MESSAGE-This message is issued by the controller in response to a CROSSPOINT GROUP SALVO INTERROGATE message (Command Byte 0x7c).
+It returns the SALVO data for the specified SALVO GROUP.
+The data returned is for a particular index, the validity flag indicates whether any more data is present.
+N.B.: 	The group salvo commands are only implemented on the XD and ECLIPSE router ranges
+
+0x16-CROSSPOINT TALLY DUMP BYTE MESSAGE-This message is issued by a controller in response to a CROSSPOINT TALLY DUMP REQUEST (Command Byte 0x15).
+It provides tally table data for a given matrix/level combination.
+This message assumes a maximum destination/source number of 191.
+
+0x17-CROSSPOINT CROSSPOINT TALLY DUMP DWORD MESSAGE-This message is issued by a controller in response to a CROSSPOINT TALLY DUMP REQUEST (Command Byte 0x15).
+This message assumes a maximum destination/source number of 65535.
+The message length is limited in total to 133 bytes, thus, tables that would exceed this length would cause more than one message
+to be issued with the appropriate destination value in the bytes 3 and 4 of the message.
+
+0x97-EXTENDED CROSSPOINT TALLY DUMP DWORD MESSAGE-This message is issued by a controller in response to an EXTENDED CROSSPOINT TALLY DUMP REQUEST (Command Byte 0x95). 
+It provides tally table data for a given matrix/level combination.
+This message assumes a maximum destination/source number of 65535.The message length is limited in total to 133 bytes, thus, tables that would exceed this length would cause more than one message
+to be issued with the appropriate destination value in the bytes 4 and 5 of the message.
+
+0x14-PROTECT TALLY DUMP MESSAGE-This message is issued by a controller in response to a CROSSPOINT TALLY DUMP REQUEST (Command Byte 0x15).
+This message assumes a maximum destination/source number of 65535.
+The message length is limited in total to 133 bytes, thus, tables that would exceed this length would cause more than one message
+to be issued with the appropriate destination value in the bytes 3 and 4 of the message.
+
+0x94-EXTENDED PROTECT TALLY DUMP MESSAGE-This message is issued by a controller in response to an EXTENDED CROSSPOINT TALLY DUMP REQUEST (Command Byte 0x95). 
+It provides tally table data for a given matrix/level combination.
+This message assumes a maximum destination/source number of 65535.The message length is limited in total to 133 bytes, thus, tables that would exceed this length would cause more than one message
+to be issued with the appropriate destination value in the bytes 4 and 5 of the message.
+

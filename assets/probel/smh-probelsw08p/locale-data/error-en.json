@@ -1,0 +1,23 @@
+{
+    "data": [{
+            "id": "EXTENDED_GENERAL_COMMAND_RECEIVED_INFO_MSG",
+            "description": "Extended General Command Received"
+        },
+        {
+            "id": "GENERAL_COMMAND_RECEIVED_INFO_MSG",
+            "description": "General Command Received"
+        },
+        {
+            "id": "EXTENDED_GENERAL_COMMAND_TRANSMITTED_INFO_MSG",
+            "description": "Extended General Command Transmitted"
+        },
+        {
+            "id": "GENERAL_COMMAND_TRANSMITTED_INFO_MSG",
+            "description": "General Command Transmitted"
+        },
+        {
+            "id": "COMMAND_ERROR_MSG",
+            "description": "'Could not generate the command"
+        }
+    ]
+}

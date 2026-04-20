@@ -1,0 +1,43 @@
+import { LocaleData } from '../../../common/locale-data/locale-data.model';
+import { IValidator } from '../../../command/command-contract';
+import { LocaleDataCache } from '../../../command/command-locale-data-cache';
+import { $$CAMEL_CMD_NAME$$CommandOptions } from './options';
+
+/**
+ * $$CAMEL_CMD_NAME$$CommandParams command options validator
+ *
+ * @export
+ * @class CommandOptionsValidator
+ * @implements {IValidator<$$CAMEL_CMD_NAME$$Commandoptions>}
+ */
+export class CommandOptionsValidator
+    implements IValidator<$$CAMEL_CMD_NAME$$CommandOptions> {
+
+    /**
+    * Creates an instance of CommandOptionsValidator
+    *
+    * @param {$$CAMEL_CMD_NAME$$CommandOptions} data the command options
+    * @memberof CommandOptionsValidator
+    */
+    constructor(readonly data: $$CAMEL_CMD_NAME$$CommandOptions) {}
+
+    /**
+     * Validate the command options(s) and returns one error message for each invalid option
+     *
+     * @returns {Record<string, LocaleData>} the localized validation errors
+     * @memberof CommandOptionsValidator
+     */
+    validate(): Record<string, LocaleData> {
+        const errors: Record<string, any> = {};
+        const cache = LocaleDataCache.INSTANCE;
+
+        // Sample code
+        // if (this.isDestinationIdOutOfRange()) {
+        //     errors.destinationId = cache.getCommandErrorLocaleData( 
+        //         CommandErrorsKeys.DESTINATION_IS_OUT_OF_RANGE_ERROR_MSG
+        //     );
+        // }
+
+        return errors;
+    }
+}

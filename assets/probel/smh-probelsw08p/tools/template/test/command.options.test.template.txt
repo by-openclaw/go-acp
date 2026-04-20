@@ -1,0 +1,219 @@
+import { $$CAMEL_CMD_NAME$$Command } from '../../../../src/command/rx/$$CMD_ID$$-$$DASH_CMD_NAME$$/command';
+import { $$CAMEL_CMD_NAME$$CommandParams } from '../../../../src/command/rx/$$CMD_ID$$-$$DASH_CMD_NAME$$/params';
+import { $$CAMEL_CMD_NAME$$CommandOptions } from '../../../../src/command/rx/$$CMD_ID$$-$$DASH_CMD_NAME$$/options';
+import { Fixture } from '../../../fixture/fixture';
+import { BootstrapService } from '../../../../src/bootstrap.service';
+import { ValidationError, CommandIdentifiers, CommandIdentifier } from '../../../../src/command/command-contract';
+import { CommandErrorsKeys } from '../../../../src/command/locale-data-keys';
+
+describe('$$CAMEL_CMD_NAME$$Command - CMD_$$CMD_ID$$)', () => {
+    beforeAll(async () => {
+        await BootstrapService.bootstrapAsync('en');
+    });
+
+    describe('ctor', () => {
+        it('Should instantiate the command with valid params, options', () => {
+            // Arrange
+            const params: $$CAMEL_CMD_NAME$$CommandParams = {
+                // Sample 
+                // matrixId: 0,
+                // levelId: 0,
+                // destinationId: 0
+            };
+            const options: $$CAMEL_CMD_NAME$$CommandOptions = {
+                // Add properties
+            };
+
+            // Act
+            const command = new $$CAMEL_CMD_NAME$$Command(params, options);
+
+            // Assert
+            expect(command).toBeDefined();
+        });
+
+        it('Should throw an error if params, options are invalid', done => {
+            // Arrange
+            const params: $$CAMEL_CMD_NAME$$CommandParams = {
+                // Sample 
+                // matrixId: -1,
+                // levelId: -1,
+                // destinationId: -1
+            };
+
+            const options: $$CAMEL_CMD_NAME$$CommandOptions = {
+                // Add properties
+            };
+
+            // Act
+            const fct = () => new $$CAMEL_CMD_NAME$$Command(params, options);
+
+            // Assert
+            try {
+                fct();
+            } catch (e) {
+                expect(e).toBeInstanceOf(ValidationError);
+                const localeDataError = e as ValidationError;
+                expect(localeDataError.validationErrors).toBeDefined();
+                expect(localeDataError.message).toBeDefined();
+                // Sample 
+                // expect(localeDataError.validationErrors?.destinationId.id).toBe(CommandErrorsKeys.DESTINATION_IS_OUT_OF_RANGE_ERROR_MSG);
+                done();
+            }
+        });
+    });
+
+    describe('buildCommand', () => {
+        describe('general command', () => {
+            let commandIdentifier: CommandIdentifier;
+
+            beforeAll(() => {
+                commandIdentifier = CommandIdentifiers.$$NORMAL_CMD_IDENTIFER$$;
+            });
+
+            it('Should create & pack the general command (...)', () => {
+                // Arrange
+                const params: $$CAMEL_CMD_NAME$$CommandParams = {
+                    // Sample
+                    // matrixId: 0,
+                    // levelId: 0,
+                    // destinationId: 0
+                };
+
+                const options: $$CAMEL_CMD_NAME$$CommandOptions = {
+                    // Add properties
+                };
+
+                // Act
+                const command = new $$CAMEL_CMD_NAME$$Command(params, options);
+                command.buildCommand();
+
+                // Assert
+                Fixture.assertCommand(
+                    command,
+                    commandIdentifier, // id, name, isExtended, rxTxType
+                    '00 00 00 00', // data
+                    0, // bytesCount
+                    0x00, // checksum
+                    '10 02 1003' // buffer
+                );
+            });
+        });
+
+        describe('extended command', () => {
+            let commandIdentifier: CommandIdentifier;
+
+            beforeAll(() => {
+                commandIdentifier = CommandIdentifiers.$$EXTENDED_CMD_IDENTIFIER$$;
+            });
+
+            it('Should create & pack the extended command (...)', () => {
+                // Arrange
+                const params: $$CAMEL_CMD_NAME$$CommandParams = {
+                    // Sample
+                    // matrixId: 16,
+                    // levelId: 15,
+                    // destinationId: 895
+                };
+
+                const options: $$CAMEL_CMD_NAME$$CommandOptions = {
+                    // Add properties
+                };
+
+                // Act
+                const command = new $$CAMEL_CMD_NAME$$Command(params, options);
+                command.buildCommand();
+
+                // Assert
+                Fixture.assertCommand(
+                    command,
+                    commandIdentifier, // id, name, isExtended, rxTxType
+                    '00 00 00 00', // data
+                    0, // bytesCount
+                    0x00, // checksum
+                    '10 02 10 03' // buffer
+                );
+            });
+        });
+
+        describe('if [DLE] = [0x10] is found it is replaced with [DLE][DLE] to prevent the DATA, BTC or CHK being interpreted as a command', () => {
+            // When a DLE is found it is replaced with DLE DLE to prevent the DATA, BTC or CHK being interpreted as a command
+            let commandIdentifier: CommandIdentifier;
+
+            beforeAll(() => {
+                commandIdentifier = CommandIdentifiers.$$EXTENDED_CMD_IDENTIFIER$$;
+            });
+            it('Should verify if [DLE] is duplicated (matrixId=16 - levelId=16 - destinationId=16))', () => {
+                // Arrange
+                const params: $$CAMEL_CMD_NAME$$CommandParams = {
+                    // Sample
+                    // matrixId: 16,
+                    // levelId: 16,
+                    // destinationId: 16
+                };
+
+                const options: $$CAMEL_CMD_NAME$$CommandOptions = {
+                    // Add properties
+                };
+
+                // Act
+                const command = new $$CAMEL_CMD_NAME$$Command(params, options);
+                command.buildCommand();
+
+                // Assert
+                Fixture.assertCommand(
+                    command,
+                    commandIdentifier, // id, name, isExtended, rxTxType
+                    '00 10 10 00', // data
+                    0, // bytesCount
+                    0x00, // checksum
+                    '10 02 10 03' // buffer
+                );
+            });
+        });
+    });
+
+    describe('to Log Description of the general and extended command', () => {
+        it('Should log general command description', () => {
+            // Arrange
+            const params: $$CAMEL_CMD_NAME$$CommandParams = {
+                // Sample
+                // matrixId: 0,
+                // levelId: 0,
+                // destinationId: 0
+            };
+
+            const options: $$CAMEL_CMD_NAME$$CommandOptions = {
+                // Add properties
+            };
+
+
+            // Act
+            const command = new $$CAMEL_CMD_NAME$$Command(params, options);
+            const description = command.toLogDescription();
+
+            // Assert
+            expect(description.toLowerCase().startsWith('general')).toBe(true);
+        });
+
+        it('Should log extended command description', () => {
+            // Arrange
+            const params: $$CAMEL_CMD_NAME$$CommandParams = {
+                // Sample
+                // matrixId: 16,
+                // levelId: 16,
+                // destinationId: 16
+            };
+
+            const options: $$CAMEL_CMD_NAME$$CommandOptions = {
+                // Add properties
+            };
+
+            // Act
+            const command = new $$CAMEL_CMD_NAME$$Command(params, options);
+            const description = command.toLogDescription();
+
+            // Assert
+            expect(description.toLowerCase().startsWith('extended')).toBe(true);
+        });
+    });
+});

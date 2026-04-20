@@ -1,0 +1,72 @@
+{
+    "data": [
+        {
+            "id": "CROSSPOINT_TALLY_MESSAGE",
+            "description": "This message returns router tally information in response to a CROSSPOINT INTERROGATE message (Command Byte 0x01)."
+        },
+        {
+            "id": "CROSSPOINT_CONNECTED_MESSAGE",
+            "description": "This message is issued spontaneously by the controller on all ports after it has confirmation that a route has been made through the router.\nThe message is effectively broadcast."
+        },
+        {
+            "id": "DUAL_CONTROLLER_STATUS_RESPONSE_MESSAGE",
+            "description": "This message is issued by the controller on power-up and in response to a DUAL CONTROLLER STATUS REQUEST (Command byte 0x08)."
+        },
+        {
+            "id": "PROTECT_TALLY_MESSAGE",
+            "description": "This message is issued by a controller in response to a PROTECT INTERROGATE message (Command Byte 0x0a).\nIt returns the current protect status of a destination."
+        },
+        {
+            "id": "GENERAL.PROTECT_CONNECTED_MESSAGE",
+            "description": "This message is issued by the controller in when the protect data is altered and also if the data was unsuccessfully altered as a result of a PROTECT CONNECT message (Command Bytes 0x0c)\nThis message is broadcast on all ports.\n'NOTE:\nFollowing the issue of an extended protect connected message SYSTEM3 will then issue a PROTECT DEVICE NAME REQUEST message (Command Byte 0x11).\nThe remote device should then respond with a PROTECT DEVICE NAME RESPONSE message (Command Byte 0x12)."
+        },
+        {
+            "id": "PROTECT_DIS_CONNECTED_MESSAGE",
+            "description": "This command is issued by the controller when the protect data is altered i.e. a destination has been unprotected and also if the data was unsuccessfully altered as a result of a PROTECT DIS-CONNECT message (Command Bytes 0x0e).\nThis message is broadcast on all ports."
+        },
+        {
+            "id": "PROTECT_DEVICE_NAME_RESPONSE_MESSAGE",
+            "description": "This message is issued by a controller or remote device in response to a PROTECT DEVICE NAME REQUEST message (Command Byte 0x11), returning the device name protecting a particular destination. When received by the controller the name is assumed to be an OEM device and when received by the remote device the name is assumed to be a panel name."
+        },
+        {
+            "id": "PROTECT_TALLY_DUMP_MESSAGE",
+            "description": "This message is issued by a controller in response to a CROSSPOINT TALLY DUMP REQUEST (Command Byte 0x15).\nThis message assumes a maximum destination/source number of 65535.\nThe message length is limited in total to 133 bytes, thus, tables that would exceed this length would cause more than one message\nto be issued with the appropriate destination value in the bytes 3 and 4 of the message."
+        },
+        {
+            "id": "CROSSPOINT_TALLY_DUMP_BYTE_MESSAGE",
+            "description": "This message is issued by a controller in response to a CROSSPOINT TALLY DUMP REQUEST (Command Byte 0x15).\nIt provides tally table data for a given matrix/level combination.\nThis message assumes a maximum destination/source number of 191."
+        },
+        {
+            "id": "CROSSPOINT_TALLY_DUMP_DWORD_MESSAGE",
+            "description": "This message is issued by a controller in response to a CROSSPOINT TALLY DUMP REQUEST (Command Byte 0x15).\nThis message assumes a maximum destination/source number of 65535.\nThe message length is limited in total to 133 bytes, thus, tables that would exceed this length would cause more than one message\nto be issued with the appropriate destination value in the bytes 3 and 4 of the message."
+        },
+        {
+            "id": "SOURCE_NAMES_RESPONSE_MESSAGE",
+            "description": "This command is issued by the controller in response to ALL SOURCE NAMES REQUEST and SINGLE SOURCE NAME REQUEST messages (Command Bytes 0x64 and 0x65).\nThe message length is limited to 134 bytes, thus name tables that would exceed this length would cause more than one message to be issued with the appropriate source number value in the third field of the message."
+        },
+        {
+            "id": "DESTINATION_ASSOCIATION_NAMES_RESPONSE_MESSAGE",
+            "description": "This command is issued by the controller in response to an ALL DESTINATION ASSOCIATION NAMES REQUEST or SINGLE DESTINATION ASSOCIATION NAME REQUEST messages (Command Bytes 0x66 and 0x67).\nThe message length restrictions in 3.2.19 apply."
+        },
+        {
+            "id": "SOURCE_ASSOCIATION_NAMES_RESPONSE_MESSAGE",
+            "description": "This command is issued by the controller in response to an ALL SOURCE ASSOCIATION NAMES REQUEST or a SINGLE SOURCE ASSOCIATION NAME REQUEST message (Command Bytes 0x72 and 0x73)\nThe message length restrictions in 3.2.19 apply."
+        },
+        {
+            "id": "CROSSPOINT_TIE_LINE_TALLY_MESSAGE",
+            "description": "This message is issued by the controller returning association based tally information in response to a CROSSPOINT TIE LINE INTERROGATE message (Command Byte 0x70)The command returns a tally for every level where a source is connected to the destination association.\nComments: The Tie Line Tally command contains a Source Matrix, Source Level and Source Number for every Destination in the specified Destination Association."
+        },
+        {
+            "id": "CROSSPOINT_CONNECT_ON_GO_GROUP_SALVO_ACKNOWLEDGE_MESSAGE",
+            "description": "This message is issued by the controller in response to a CROSSPOINT CONNECT ON GO GROUP SALVO message (Command Byte 0x78).\n'N.B.: The group salvo commands are only implemented on the XD and ECLIPSE router ranges"
+        },
+        {
+            "id": "CROSSPOINT_GO_DONE_GROUP_SALVO_ACKNOWLEDGE_MESSAGE",
+            "description": "This message is issued by the controller in response to a CROSSPOINT GO GROUP SALVO message (Command Byte 0x79).\n'N.B.: The group salvo commands are only implemented on the XD and ECLIPSE router ranges"
+        },
+        {
+            "id": "CROSSPOINT_GROUP_SALVO_TALLY_MESSAGE",
+            "description": "This message is issued by the controller in response to a CROSSPOINT GROUP SALVO INTERROGATE message (Command Byte 0x7c).\nIt returns the SALVO data for the specified SALVO GROUP.\nThe data returned is for a particular index, the validity flag indicates whether any more data is present.\n'N.B.: The group salvo commands are only implemented on the XD and ECLIPSE router ranges."
+        }
+    ]
+}

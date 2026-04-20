@@ -1,0 +1,21 @@
+module.exports = {
+    inputFiles: ['./src/'],
+    mode: 'file',
+    includeDeclarations: true,
+    tsconfig: 'tsconfig.json',
+    out: './docs/dist/docs-bitbucket/',
+    excludePrivate: false,
+    excludeProtected: false,
+    excludeExternals: true,
+    readme: './README.md',
+    name: 'Probel SW-P-8 protocol Library',
+    ignoreCompilerErrors: true,
+    plugin: 'typedoc-plugin-markdown',
+    listInvalidSymbolLinks: true,
+    entryPoint: 'index',
+    categorizeByGroup: true,
+    media: './medias',
+    gitRemote: 'remote',
+    gitRevision: 'revision',
+    theme: 'bitbucket'
+};
