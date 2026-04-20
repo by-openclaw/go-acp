@@ -1,0 +1,8 @@
+/**
+ * $$SPACE_CMD_NAME$$ Command Parameters
+ *
+ * @export
+ * @interface $$CAMEL_CMD_NAME$$CommandParams
+ */
+export interface $$CAMEL_CMD_NAME$$CommandParams {
+}

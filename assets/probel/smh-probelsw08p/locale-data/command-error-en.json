@@ -1,0 +1,48 @@
+{
+    "data": [{
+            "id": "CREATE_COMMAND_FAILURE",
+            "description": "Unable to create the Command !"
+        },
+        {
+            "id": "MATRIXID_IS_OUT_OF_RANGE_ERROR_MSG",
+            "description": "MatrixId argument is out of range ! Allowed range value [0, 255]"
+        },
+        {
+            "id": "LEVEL_IS_OUT_OF_RANGE_ERROR_MSG",
+            "descriprion": "Level argument is out of range ! Allowed range value [0, 255]"
+        },
+        {
+            "id": "SOURCE_IS_OUT_OF_RANGE_ERROR_MSG",
+            "description": "Source argument is out of range ! Allowed range value [0,65535]"
+        },
+        {
+            "id": "DESTINATION_IS_OUT_OF_RANGE_ERROR_MSG",
+            "description": "Destination argument is out of range ! Allowed range value [0, 65535]"
+        },
+        {
+            "id": "DEVICE_IS_OUT_OF_RANGE_ERROR_MSG",
+            "description": "Device argument is out of range ! Allowed range value [0, 1023]"
+        },
+        {
+            "id": "SALVO_IS_OUT_OF_RANGE_ERROR_MSG",
+            "description": "Salvo argument is out of range ! Allowed range value [0, 65535]"
+        },
+        {
+            "id": "SOURCE_NAMES_ITEMS_IS_OUT_OF_RANGE_ERROR_MSG",
+            "description": "Source Names Items argument is out of range ! Allowed range value [0, 65535]"
+        },
+        {
+            "id": "SOURCE_ID_AND_MAXIMUM_NUMBER_OF_NAMES_IS_OUT_OF_RANGE_ERROR_MSG",
+            "description": "Source and Maximum number of names arguments are out of range ! Allowed range value [0, 65535]"
+        },
+        {
+            "id": "SALVO_GROUP_MESSAGE_COMMAND_IS_OUT_OF_RANGE_ERROR_MSG",
+            "description": "Salvo group message command argument is out of range ! Allowed range value [0, 65535]"
+        },
+        {
+            "id": "CONNECT_INDEX_IS_OUT_OF_RANGE_ERROR_MSG",
+            "description": "Connect Index argument is out of range ! Allowed range value [0, 65535]"
+        }
+
+    ]
+}

@@ -1,0 +1,86 @@
+{
+    "name": "@by-research/smh-template-connector-lib",
+    "version": "0.0.0-development",
+    "description": "Smart Media Hub (SMH) NodeJs Typescript Connector Library Template",
+    "main": "lib/index.ts",
+    "types": "lib/index.d.ts",
+    "scripts": {
+        "compile": "rimraf lib && tsc -p .",
+        "compile:watch": "tsc -w -p .",
+        "eslint": "eslint \"./src/**\"",
+        "eslint:fix": "npm run eslint -- --fix",
+        "test": "jest --forceExit --detectOpenHandles",
+        "test:badges": "npx jest-coverage-badges output ./badges",
+        "test:coverage": "jest --coverage --forceExit --detectOpenHandles && npm run test:badges",
+        "commit": "npx git-cz",
+        "ci": "npm run compile && npm run eslint && npm run test:coverage",
+        "generate-command": "ts-node tools/generate-command.ts",
+        "generate-test": "ts-node tools/generate-test.ts",
+        "docs:web": "rimraf ./docs/dist/docs-web && npx typedoc --options ./typedoc/typedoc-config-web.ts",
+        "docs:plantuml": "rimraf ./docs/dist/docs-plantuml && npx typedoc --options ./typedoc/typedoc-config-plantuml.ts",
+        "docs:bitbucket": "rimraf ./docs/dist/bitbucket && npx typedoc --options ./typedoc/typedoc-config-bitbucket.ts",
+        "docs:class:diagram:files": "rimraf ./docs/dist/docs-class-diagram && typedoc --options ./typedoc/typedoc-config-class-diagram-files.ts",
+        "docs:class:diagram:modules": "rimraf ./docs/dist/docs-class-diagram && typedoc --options ./typedoc/typedoc-config-class-diagram-modules.ts",
+        "docs:pages": "rimraf ./docs/dist/docs-pages && typedoc --options ./typedoc/typedoc-config-pages.ts",
+        "docs:all": "npm run docs:web && npm run docs:plantuml && npm run docs:bitbucket && npm run docs:class:diagram"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git@bitbucket.org:smhdev/smh-template-connector-lib.git"
+    },
+    "author": "BY-RESEARCH",
+    "license": "UNLICENSED",
+    "engines": {
+        "node": ">=10.13.0"
+    },
+    "devDependencies": {
+        "@types/circular-json": "0.4.0",
+        "@types/jest": "24.0.23",
+        "@types/jest-when": "2.7.0",
+        "@types/lodash": "4.14.149",
+        "@types/mz": "2.7.0",
+        "@types/node": "13.9.1",
+        "@types/rimraf": "3.0.0",
+        "@typescript-eslint/eslint-plugin": "2.23.0",
+        "@typescript-eslint/eslint-plugin-tslint": "2.23.0",
+        "@typescript-eslint/parser": "2.23.0",
+        "commitizen": "4.0.3",
+        "cz-conventional-changelog": "3.1.0",
+        "eslint": "6.8.0",
+        "eslint-config-prettier": "6.10.0",
+        "eslint-plugin-prettier": "3.1.2",
+        "eslint-plugin-simple-import-sort": "5.0.2",
+        "eslint-plugin-unused-imports": "0.1.2",
+        "husky": "4.2.3",
+        "jest": "24.9.0",
+        "jest-cli": "24.9.0",
+        "jest-coverage-badges": "1.1.2",
+        "jest-create-mock-instance": "1.1.0",
+        "jest-html-reporter": "^3.1.2",
+        "jest-jenkins-reporter": "1.0.2",
+        "jest-junit-reporter": "1.1.0",
+        "jest-when": "2.7.0",
+        "prettier": "1.19.1",
+        "rimraf": "^3.0.2",
+        "ts-jest": "24.2.0",
+        "ts-node": "8.6.2",
+        "tslint": "6.1.0",
+        "typedoc": "^0.17.7",
+        "typedoc-umlclass": "^0.1.6",
+        "typescript": "^3.8.3"
+    },
+    "dependencies": {
+        "circular-json": "0.5.9",
+        "lodash": "4.17.15",
+        "mz": "^2.7.0",
+        "reflect-metadata": "0.1.13",
+        "smart-buffer": "4.1.0",
+        "source-map-support": "0.5.16",
+        "typedi": "0.8.0"
+    },
+    "config": {
+        "commitizen": {
+            "path": "./node_modules/cz-conventional-changelog"
+        }
+    }
+}

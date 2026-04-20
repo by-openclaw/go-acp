@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "module": "commonjs",
+        "lib": [
+            "es6",
+            "esnext"
+        ],
+        "declaration": true,
+        "sourceMap": true,
+        "outDir": "lib",
+        "rootDirs": [
+            "src",
+            "test"
+        ],
+        "removeComments": true,
+        "strict": true,
+        "noImplicitAny": true,
+        "moduleResolution": "node",
+        "strictNullChecks": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true
+    },
+    "exclude": [
+        //"test",
+        "tools",
+        "typedoc"
+    ]
+}

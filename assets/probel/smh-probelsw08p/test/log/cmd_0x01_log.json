@@ -1,0 +1,20 @@
+Interrogate: 1, 1, 1
+10 02 01 00 00 00 04 FB 10 03
+10 06
+10 02 03 00 00 00 00 05 F8 10 03
+10 06
+Tally: Matrix: 1, Level: 1, Destination: 1, Source: 1
+
+Interrogate: 1, 1, 17
+10 02 01 00 00 10 10 04 EB 10 03
+10 06
+10 02 03 00 00 10 10 10 10 05 D8 10 03
+10 06
+Tally: Matrix: 1, Level: 1, Destination: 17, Source: 17
+
+Interrogate: 1, 1, 1024
+10 02 81 00 00 03 FF 05 78 10 03
+10 06
+10 02 83 00 00 03 FF 03 FF 00 08 71 10 03
+10 06
+Ext Tally: Matrix: 1, Level: 1, Destination: 1024, Source: 1024, Status: 0x00

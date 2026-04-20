@@ -1,0 +1,92 @@
+{
+    "data": [
+        {
+            "id": "CROSSPOINT_INTERROGATE_MESSAGE",
+            "description": "This message is a request for Tally information by matrix no., level and destination, issued by the remote device.\nThe controller will respond to this message with a CROSSPOINT TALLY message (normal or extended) (Command Bytes 0x03 or 0x83)."
+        },
+        {
+            "id": "CROSSPOINT_CONNECT_MESSAGE",
+            "description": "This message is issued by the remote device in order to set crosspoints.\nThe controller will respond with a CROSSPOINT CONNECTED message (Command Bye 0x04)."
+        },
+        {
+            "id": "MAINTENANCE_MESSAGE",
+            "description": "This message is issued by the remote device and allows various maintenance functions to be performed on the controller,\n'i.e. hard reset, soft reset, clear protects, configure installed modules, database transfer.The number of bytes following the command byte is dependent on the operation being performed."
+        },
+        {
+            "id": "DUAL_CONTROLLER_STATUS_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to the active controller to ascertain the status of both controllers in a dual system.\nThe controller will respond with a DUAL CONTROLLER STATUS RESPONSE message (Command Byte 0x09)."
+        },
+        {
+            "id": "PROTECT_INTERROGATE_MESSAGE",
+            "description": "This message is issued by the remote device to get the current protect status of a destination.The controller will respond with a PROTECT TALLY message (Command Byte 0x0b)."
+        },
+        {
+            "id": "PROTECT_CONNECT_MESSAGE",
+            "description": "This is issued by the remote device to protect a destination.\nThe controller will respond with a PROTECT CONNECTED message (Command Byte 0x0d)."
+        },
+        {
+            "id": "PROTECT_DIS_CONNECT_MESSAGE",
+            "description": "This message is issued by the remote device to remove protection from a destination.\nThe controller will issue a PROTECT DISCONNECTED message (Command Byte 0x0f) in response."
+        },
+        {
+            "id": "PROTECT_DEVICE_NAME_REQUEST_MESSAGE",
+            "description": "@This message is issued by the remote device or controller when the device name protecting a particular destination is required.When issued by a controller an OEM device name is being requested, when issued by the OEM remote device a Pro-Bel panel name is being requested.The remote device or controller will respond with a PROTECT DEVICE NAME RESPONSE message (Command Byte 0x12)."
+        },
+        {
+            "id": "PROTECT_TALLY_DUMP_REQUEST_MESSAGE",
+            "description": "This message is a request for Tally information by matrix no., level and destination, issued by the remote device.\nThe controller will respond to this message with an EXTENDED CROSSPOINT TALLY message (Command Byte 0x83)."
+        },
+        {
+            "id": "CROSSPOINT_TALLY_DUMP_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request a tally table dump for a given matrix/level combination.\nThe controller will respond with CROSSPOINT TALLY DUMP (byte & word) messages (Command Bytes 0x16 & 0x17 dependent on matrix size)."
+        },
+        {
+            "id": "MASTER_PROTECT_CONNECT_MESSAGE",
+            "description": "This message is issued by the remote device to protect a destination.\nThe controller will claim any existing protection applied by any panel in the same way that a master panel can.\nThe controller will respond with a PROTECT CONNECTED message (Command byte 0x0d)."
+        },
+        {
+            "id": "ALL_SOURCE_NAMES_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to protect a destination.\nThis message is issued by the remote device to request the names for all the sources on a given matrix and level.\nThe controller will respond with one or more SOURCE NAME RESPONSE messages (Command Byte 0x6a)."
+        },
+        {
+            "id": "SINGLE_SOURCE_NAME_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request the name for a single source.\nThe controller will respond with a single SOURCE NAME RESPONSE message (Command Byte 0x6a)."
+        },
+        {
+            "id": "ALL_DESTINATIONS_ASSOCIATION_NAMES_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request the names for all the destination associations for a given matrix.\nThe controller will respond with one or more DESTINATION ASSOCIATION NAMES RESPONSE messages (Command Byte 0x6b)."
+        },
+        {
+            "id": "SINGLE_DESTINATIONS_ASSOCIATION_NAMES_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request the name for a single destination association for a given matrix.The controller will respond with one DESTINATION ASSOCIATION NAMES RESPONSE message (Command Byte 0x6b)."
+        },
+        {
+            "id": "CROSSPOINT_TIE_LINE_INTERROGATE_MESSAGE",
+            "description": "This message is issued by the remote device to request tallies for a given matrix and destination association number.\nThe controller responds with a CROSSPOINT TIE LINE TALLY message (Command Byte 0x71)"
+        },
+        {
+            "id": "ALL_SOURCE_ASSOCIATION_NAMES_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request the names for all the source associations for a given matrix.\nThe controller will respond with one or more SOURCE ASSOCIATION NAMES RESPONSE messages (Command Byte 0x74)."
+        },
+        {
+            "id": "SINGLE_SOURCE_ASSOCIATION_NAMES_REQUEST_MESSAGE",
+            "description": "This message is issued by the remote device to request the names for all the source associations for a given matrix.\nThe controller will respond with one or more SOURCE ASSOCIATION NAMES RESPONSE messages (Command Byte 0x74)."
+        },
+        {
+            "id": "UPDATE_NAME_REQUEST_MESSAGE",
+            "description": "This message is issued by a remote device to remotely update a name in the system database of the controller.\nThere is no response to this command.NOTE:\nUsing this command on an Aurora or similar controller will result in a database mismatch when the system configuration editor is next connected online.This will mean that before edits are done using the system editor the database from the controller will need to be uploaded first otherwise any remote name changes will be lost."
+        },
+        {
+            "id": "CROSSPOINT_CONNECT_ON_GO_GROUP_SALVO_MESSAGE",
+            "description": "This message is issued by the remote device to set up salvo switches.\nRouting information is held in the receiving device until activated by CROSSPOINT GO GROUP SALVO command (Command Byte 0x79).\n    'The controller will respond with a CROSSPOINT CONNECT ON GO GROUP SALVO ACKNOWLEDGE message (Command Byte 0x7a) to indicate\nthat the routing information has been stored successfully."
+        },
+        {
+            "id": "CROSSPOINT_GO_GROUP_SALVO_MESSAGE",
+            "description": "This message is issued by the remote device to triggers the receiving device to set all routes in\nclear the previously received CROSSPOINT CONNECT ON GO GROUP SALVO messages.\nA CROSSPOINT GO DONE GROUP SALVO ACKNOWLEDGE message (Command Byte 0x7b) will be issued to indicate that the command has been executed.\nNote : No individual CONNECTED messages (Command Byte 0x04) are issued.\nIt is the responsibility of the controlling - listening devices to use the CROSSPOINT CONNECT ON GO GROUP SALVO ACKNOWLEDGE (Command Byte 0x7a)\nand CROSSPOINT GO DONE GROUP SALVO (Command Byte 0x7b) to keep their tally Information up to date."
+        },
+        {
+            "id": "CROSSPOINT_SALVO_GROUP_INTERROGATE_MESSAGE",
+            "description": "This message is issued by the remote device to request the status of the GROUP SALVOS.\nThe controller will respond with a CROSSPOINT GROUP SALVO TALLY message (Command Byte 0x7d)."
+        }
+    ]
+}
