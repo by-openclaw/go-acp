@@ -465,13 +465,59 @@ match the Ember+ provider tier.
 Both PRs pending external viewer validation (user sourcing Probel-free
 ACP1 + ACP2 clients). No merge until confirmed.
 
+**Part B completion (2026-04-20, late session):**
+
+- **#74 ACP1 provider MERGED to main.** Validated against real **Axon
+  SynapseSetUp v1.90** — full walk (Root/Identity/Control/Status/Alarm),
+  setValue on string/int/float/ipv4/enum/byte/long, setDec on float +
+  int with spec-correct Level-max=12 clamping, value-change broadcasts.
+  10/11 operator-mode ACP1 types exercised; File type (type 8) is
+  engineer-mode only on real Synapse and is covered by unit tests.
+
+- **#76 ACP2 provider** — **5/6 types Lawo-VSM-validated** on
+  2026-04-20/21. Node / Number (all 9 subtypes) / IPv4 / String+maxLen /
+  subscribe / client-set echo / device-initiated announces (via
+  `--announce-demo`) all parse clean. Memory
+  `project_acp2_provider.md` now documents **16 wire-correctness
+  landmines** — incl. announce header byte 2 = stat=0 (NOT pid), Enum
+  MUST NOT emit pid 9 (depth-indexed only), GetSlotInfo slot-header
+  placement (§3.3.3), GetDeviceInfo slot-count semantics (§3.3.2),
+  inline-data for pid 1/3/5, data=0 for pid 2/13, pid 6 u16+pad body,
+  72-byte fixed enum options (§5.4), enum value vtype=9. Only **Enum
+  (pid 15 options inner 72-byte layout)** unresolved, parked behind
+  **issue #79** pending Cerebrum controller capture. PR #76 merge-
+  conflict with main after #74 + #81 touched `cmd/acp-provider/main.go`
+  — needs rebase.
+
+- **#80 Wireshark dissector Info enrichment** — ACP1 + ACP2 Info
+  column now carries short type (Req/Rep/Evt/Err/Ann), mtid, dotted
+  OID path (control.3 / 1.18), typed value (value(s8)=-40,
+  value(float)=-35.3, value(string)="Input-A", value(enum)=0).
+  ACP1 Ann label driven by MTID=0 per spec "Announcements".
+  Landmine: Wireshark's Proto.dissector FFI drops Lua multi-return —
+  use module-local side channels (pattern:
+  `feedback_wireshark_lua_quirks.md`). Partial resolution of issues
+  #57 and #58 (remaining polish: per-session label cache,
+  min/max/unit on getObject Info, ACP1 frame-status Info decode).
+
+- **#81 ACP1 --announce-demo ticker** — Symmetric to ACP2's demo.
+  `cmd/acp-provider --announce-demo --announce-demo-slot 1
+  --announce-demo-group 2 --announce-demo-id 0
+  --announce-demo-interval 2s` oscillates an Integer (s16) over its
+  declared [min,max] and broadcasts MTID=0 MType=Reply MCode=setValue
+  to 255.255.255.255:2071 every 2s. Plus Info-level diagnostic logs
+  on every inbound datagram + announce broadcast (fixed the "am I
+  actually emitting?" debugging problem). Lawo VSM Controller
+  auto-discovers + walks + receives announces end-to-end.
+
 ### Parked — TODO / SOW (do not start now)
 
 | item | phase | notes |
 |---|---|---|
 | Ember+ provider | ✅ merged main (#67 + #72); #70 formula eval parked |
-| ACP1 provider | ✅ PR #74 pending external-client validation |
-| ACP2 provider | ✅ PR #76 pending external-client validation |
+| ACP1 provider | ✅ merged main (#74, SynapseSetUp + Lawo VSM Controller validated); #81 adds --announce-demo |
+| ACP2 provider | 🟡 PR #76, 5/6 types Lawo-validated, merge-conflict with main needs rebase; Enum parked in #79 pending Cerebrum |
+| Wireshark dissectors | 🟡 PR #80 Info column enrichment — dotted OID + type-tagged values + MTID=0 Ann label |
 | Probel SW-P-08 consumer | **Part B → Part C bridge** | **#77 opened** — matrix/level encoded as Node hierarchy (same shape as ACP slot). TS ref at `assets/probel/smh-probelsw08p/` with both matrix emulator (main-server) and controller emulator (main-client). Commie.exe + .dat for cross-vendor |
 | Wire codec doc retrofit (byte-tables + range comments) | tracked | **#78 opened** — apply the TS doc convention (`feedback_command_docstyle.md`) to ACP1/ACP2/Ember+ codecs |
 | Probel SW-P-02 consumer+provider | later | subset of SW-P-08; after SW-P-08 ships |

@@ -452,6 +452,41 @@ local function decode_getobject_value(tvbuf, tree, offset, datalen)
 end
 
 -------------------------------------------------------------------------------
+-- acp1_value_preview returns a compact decoded-value string for the
+-- Info column when we're looking at a getValue reply / setValue request
+-- without type context. The ACP1 protocol doesn't carry a type byte
+-- with the value (unlike ACP2's vtype in the property header), so the
+-- type is derived from the OBJECT definition — which requires prior
+-- getObject context we don't have here. We do a length-based guess:
+--   1 byte  -> u8  (byte/enum)
+--   2 bytes -> s16 (integer)
+--   4 bytes -> s32 (long) + hex (covers u32/float/ipaddr ambiguity)
+--   varies  -> string (if printable) or raw byte count
+-- The "/0x..." hex on 4-byte values lets the reader recognise float or
+-- ipaddr patterns without the dissector having to pick a type.
+-------------------------------------------------------------------------------
+local function acp1_value_preview(tvbuf, offset, datalen)
+    if datalen <= 0 then return "" end
+    if datalen == 1 then
+        return "value(u8)=" .. tvbuf:range(offset, 1):uint()
+    elseif datalen == 2 then
+        return "value(s16)=" .. tvbuf:range(offset, 2):int()
+    elseif datalen == 4 then
+        local u = tvbuf:range(offset, 4):uint()
+        local s = tvbuf:range(offset, 4):int()
+        return string.format("value(s32/u32)=%d/0x%X", s, u)
+    elseif datalen <= 32 then
+        local s = tvbuf:range(offset, datalen):string()
+        local printable = s:match("^[%w%s%._%-/:%+%(%)]*$") and #s > 0
+        if printable then
+            return "value(string)=\"" .. s:gsub("\0", "") .. "\""
+        end
+        return "value=" .. datalen .. "B"
+    end
+    return "value=" .. datalen .. "B"
+end
+
+-------------------------------------------------------------------------------
 -- Core ACP1 dissection (shared by UDP and TCP paths)
 -- tvbuf: starts at MTID (no MLEN prefix)
 -- Returns bytes consumed
@@ -475,42 +510,54 @@ local function dissect_acpv1_message(tvbuf, pktinfo, root)
     tree:add(f_mtype, tvbuf:range(5, 1))
     tree:add(f_maddr, tvbuf:range(6, 1))
 
-    local mtype_str = mtype_valstr[mtype_val] or "Unknown"
-    local info_parts = {}
-
-    -- Check for announcement (MTID = 0)
+    -- MTID=0 is the authoritative announcement discriminator per spec
+    -- "Announcements" — a broadcast value-change carries MType=2 (Reply)
+    -- AND MTID=0 to tell subscribers "this was not solicited by you",
+    -- while a regular solicited reply has MTID>0 matching the request.
+    -- Label by MTID first so MType=2+MTID=0 shows "Ann" (not "Rep").
     local is_announce = (mtid_val == 0)
+    local mtype_short = { [0] = "Ann", [1] = "Req", [2] = "Rep", [3] = "Err" }
+    local mtype_str
+    if is_announce then
+        mtype_str = "Ann"
+    else
+        mtype_str = mtype_short[mtype_val] or ("T" .. mtype_val)
+    end
 
     -- MDATA starts at offset 7
     local mdata_offset = 7
     local mdata_len = pktlen - mdata_offset
 
+    -- Build info incrementally so every packet gets the common prefix:
+    -- "ACP1 <type> slot=N mtid=0x..."
+    -- Always show mtid — for announces it's the discriminator (mtid=0)
+    -- and useful for debugging; for req/reply it pairs them.
+    local info_parts = {
+        "ACP1", mtype_str,
+        "slot=" .. maddr_val,
+        string.format("mtid=0x%X", mtid_val),
+    }
+
     if mdata_len <= 0 then
-        -- Header only, no MDATA
-        if is_announce then
-            table.insert(info_parts, "ACP1 Announce (empty)")
-        else
-            table.insert(info_parts, string.format("ACP1 %s slot=%d (no data)", mtype_str, maddr_val))
-        end
-        pktinfo.cols.info:set(table.concat(info_parts))
+        table.insert(info_parts, "(no mdata)")
+        pktinfo.cols.info:set(table.concat(info_parts, " "))
         return pktlen
     end
 
     local mcode_val = tvbuf:range(mdata_offset, 1):uint()
 
     if mtype_val == 3 then
-        -- Error reply
+        -- Error reply: MCODE is the error code
+        local err_str
         if mcode_val < 16 then
             tree:add(f_err_transport, tvbuf:range(mdata_offset, 1))
-            local err_str = transport_error_valstr[mcode_val] or "Unknown transport error"
-            table.insert(info_parts, string.format("ACP1 Error slot=%d: %s (code=%d)",
-                maddr_val, err_str, mcode_val))
+            err_str = transport_error_valstr[mcode_val] or "Unknown transport error"
         else
             tree:add(f_err_object, tvbuf:range(mdata_offset, 1))
-            local err_str = object_error_valstr[mcode_val] or "Unknown object error"
-            table.insert(info_parts, string.format("ACP1 Error slot=%d: %s (code=%d)",
-                maddr_val, err_str, mcode_val))
+            err_str = object_error_valstr[mcode_val] or "Unknown object error"
         end
+        table.insert(info_parts, string.format("%s(code=%d)", err_str, mcode_val))
+
         -- Error may have ObjGrp/ObjId after MCODE
         if mdata_len >= 3 then
             local grp = tvbuf:range(mdata_offset + 1, 1):uint()
@@ -518,7 +565,11 @@ local function dissect_acpv1_message(tvbuf, pktinfo, root)
             tree:add(f_objgrp, tvbuf:range(mdata_offset + 1, 1))
             tree:add(f_objid,  tvbuf:range(mdata_offset + 2, 1))
             local grp_str = objgrp_valstr[grp] or tostring(grp)
-            info_parts[1] = info_parts[1] .. string.format(" %s[%d]", grp_str, oid)
+            -- Path notation: group.id per issue #57 — dotted OID form
+            -- (control.3 instead of control[3]). Slot is already shown
+            -- by the "slot=N" token earlier in the Info line, no need
+            -- to repeat it in the path.
+            table.insert(info_parts, string.format("%s.%d", grp_str, oid))
         end
         if mdata_len > 3 then
             tree:add(f_value, tvbuf:range(mdata_offset + 3, mdata_len - 3))
@@ -527,6 +578,7 @@ local function dissect_acpv1_message(tvbuf, pktinfo, root)
         -- Non-error: MCODE is method ID
         tree:add(f_mcode, tvbuf:range(mdata_offset, 1))
         local method_str = mcode_method_valstr[mcode_val] or string.format("method(%d)", mcode_val)
+        table.insert(info_parts, method_str)
 
         if mdata_len >= 3 then
             local grp = tvbuf:range(mdata_offset + 1, 1):uint()
@@ -535,53 +587,51 @@ local function dissect_acpv1_message(tvbuf, pktinfo, root)
             tree:add(f_objid,  tvbuf:range(mdata_offset + 2, 1))
 
             local grp_str = objgrp_valstr[grp] or tostring(grp)
-            local label_str = nil
-            local value_len = mdata_len - 3
+            -- Path notation: group.id per issue #57 — dotted OID form
+            -- (control.3 instead of control[3]). Slot is already shown
+            -- by the "slot=N" token earlier in the Info line, no need
+            -- to repeat it in the path.
+            table.insert(info_parts, string.format("%s.%d", grp_str, oid))
 
+            local value_len = mdata_len - 3
+            local label_str = nil
             if value_len > 0 then
-                -- Decode value bytes
                 if mcode_val == 5 and (mtype_val == 2 or mtype_val == 0) then
-                    -- getObject reply or announce: full property decode
+                    -- getObject reply or announce: full property decode.
+                    -- The first byte of the object payload is obj_type
+                    -- (spec Property Layouts table) — expose it in the
+                    -- Info column so you can see "type=integer" /
+                    -- "type=enum" / "type=string" at a glance without
+                    -- expanding the tree. decode_getobject_value reads
+                    -- the full property list and returns the label.
+                    local obj_type = tvbuf:range(mdata_offset + 3, 1):uint()
+                    local type_name = objtype_valstr[obj_type] or ("type=" .. obj_type)
+                    table.insert(info_parts, "type=" .. type_name)
                     label_str = decode_getobject_value(tvbuf, tree, mdata_offset + 3, value_len)
                 else
-                    -- Other methods: show raw value
+                    -- setValue/getValue/setInc/setDec/setDef: we don't
+                    -- know the object type without state (prior
+                    -- getObject reply). Length-based heuristic in
+                    -- acp1_value_preview tags with best-guess type
+                    -- ("value(u8)=", "value(s16)=", "value(s32/u32)=").
                     tree:add(f_value, tvbuf:range(mdata_offset + 3, value_len))
+                    local preview = acp1_value_preview(tvbuf, mdata_offset + 3, value_len)
+                    if preview ~= "" then
+                        table.insert(info_parts, preview)
+                    end
                 end
-            end
-
-            if is_announce then
-                if mcode_val == 0 then
-                    -- Status/card-event announcement
-                    table.insert(info_parts, string.format("ACP1 Announce slot=%d %s[%d]",
-                        maddr_val, grp_str, oid))
-                else
-                    -- Value-change echo
-                    table.insert(info_parts, string.format("ACP1 Announce %s slot=%d %s[%d]",
-                        method_str, maddr_val, grp_str, oid))
-                end
-            else
-                table.insert(info_parts, string.format("ACP1 %s %s slot=%d %s[%d]",
-                    mtype_str, method_str, maddr_val, grp_str, oid))
             end
 
             if label_str and label_str ~= "" then
-                info_parts[1] = info_parts[1] .. " " .. label_str
-            end
-        else
-            -- Only MCODE, no ObjGrp/ObjId
-            if is_announce then
-                table.insert(info_parts, string.format("ACP1 Announce %s slot=%d",
-                    method_str, maddr_val))
-            else
-                table.insert(info_parts, string.format("ACP1 %s %s slot=%d",
-                    mtype_str, method_str, maddr_val))
+                table.insert(info_parts, string.format("\"%s\"", label_str))
             end
         end
     end
 
-    pktinfo.cols.info:set(table.concat(info_parts))
+    pktinfo.cols.info:set(table.concat(info_parts, " "))
     return pktlen
 end
+
 
 -------------------------------------------------------------------------------
 -- UDP dissector (Mode A) — each datagram is one ACP1 message
