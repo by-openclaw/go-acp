@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 
@@ -81,7 +82,26 @@ func newTree(exp *canonical.Export) (*tree, error) {
 				return nil, fmt.Errorf("slot %d: %w", slot, err)
 			}
 		}
+		// The consumer's walker starts at obj-id=0 per spec §"Walk
+		// does DFS from obj-id 1 (or 0)". Real Axon devices expose the
+		// absolute root at obj-id=0; canonical trees use Number=1 for
+		// the ROOT_NODE_V2 (because canonicalize writes what the walker
+		// got back). Bridge both by aliasing 0 to the first top-level
+		// child of this slot.
 		if len(index) > 0 {
+			if _, has0 := index[0]; !has0 {
+				// Pick the obj-id whose parent==0 with the lowest
+				// Number — that's the slot's root node.
+				var rootID uint32 = math.MaxUint32
+				for id, e := range index {
+					if e.parent == 0 && id < rootID {
+						rootID = id
+					}
+				}
+				if rootID != math.MaxUint32 {
+					index[0] = index[rootID]
+				}
+			}
 			t.perSlot[slot] = index
 		}
 	}

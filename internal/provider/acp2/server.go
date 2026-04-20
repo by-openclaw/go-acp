@@ -133,11 +133,15 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 // haven't subscribed are silently skipped (matching how a real Axon
 // device ignores unregistered listeners).
 func (s *server) broadcastAnnounce(slot uint8, ann *iacp2.ACP2Message) {
-	raw, err := iacp2.EncodeACP2Message(ann)
-	if err != nil {
-		s.logger.Warn("acp2 announce encode", slog.String("err", err.Error()))
-		return
-	}
+	// Bypass EncodeACP2Message (which is request-shaped for the four
+	// ACP2 funcs) and build the reply/announce frame manually. See
+	// replyACP2 for the same rationale.
+	raw := make([]byte, 4+len(ann.Body))
+	raw[0] = byte(ann.Type)
+	raw[1] = ann.MTID
+	raw[2] = byte(ann.Func)
+	raw[3] = ann.PID
+	copy(raw[4:], ann.Body)
 	frame := &iacp2.AN2Frame{
 		Proto:   iacp2.AN2ProtoACP2,
 		Slot:    slot,

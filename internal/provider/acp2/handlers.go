@@ -134,6 +134,23 @@ func (s *session) handleACP2(f *iacp2.AN2Frame) {
 	if msg.Type != iacp2.ACP2TypeRequest {
 		return
 	}
+	// Consumer's DecodeACP2Message only parses obj-id / idx for replies
+	// and announces (codec.go line 144). For incoming requests we parse
+	// them ourselves from msg.Body[0:4]/[4:8] so the handler has the
+	// addressed object.
+	if (msg.Func == iacp2.ACP2FuncGetObject ||
+		msg.Func == iacp2.ACP2FuncGetProperty ||
+		msg.Func == iacp2.ACP2FuncSetProperty) && len(msg.Body) >= 8 {
+		msg.ObjID = beU32(msg.Body[0:4])
+		msg.Idx = beU32(msg.Body[4:8])
+		// set_property carries the incoming property header after idx.
+		if msg.Func == iacp2.ACP2FuncSetProperty && len(msg.Body) > 8 {
+			props, err := iacp2.DecodeProperties(msg.Body[8:])
+			if err == nil {
+				msg.Properties = props
+			}
+		}
+	}
 
 	switch msg.Func {
 	case iacp2.ACP2FuncGetVersion:
@@ -301,14 +318,25 @@ func binaryBigEndianU32(dst []byte, v uint32) {
 	dst[3] = byte(v)
 }
 
-// replyACP2 wraps an ACP2 message in an AN2 data frame and sends it
-// via the session's write socket.
+func beU32(src []byte) uint32 {
+	return uint32(src[0])<<24 | uint32(src[1])<<16 | uint32(src[2])<<8 | uint32(src[3])
+}
+
+// replyACP2 wraps an ACP2 message in an AN2 data frame and sends it.
+//
+// Consumer's EncodeACP2Message has per-Func cases shaped for REQUESTS
+// (get_object writes only obj-id+idx; get_property writes obj-id+idx+
+// empty property header). For replies we bypass those cases by
+// building the 4-byte header ourselves + concatenating msg.Body —
+// which the provider builds as obj-id+idx+encoded-properties. This
+// matches the spec reply layout exactly.
 func (s *session) replyACP2(slot uint8, msg *iacp2.ACP2Message) {
-	raw, err := iacp2.EncodeACP2Message(msg)
-	if err != nil {
-		s.srv.logger.Warn("acp2 encode reply", slog.String("err", err.Error()))
-		return
-	}
+	raw := make([]byte, 4+len(msg.Body))
+	raw[0] = byte(msg.Type)
+	raw[1] = msg.MTID
+	raw[2] = byte(msg.Func)
+	raw[3] = msg.PID
+	copy(raw[4:], msg.Body)
 	frame := &iacp2.AN2Frame{
 		Proto:   iacp2.AN2ProtoACP2,
 		Slot:    slot,

@@ -1,0 +1,122 @@
+{
+  "root": {
+    "number": 1,
+    "identifier": "device",
+    "path": "device",
+    "oid": "1",
+    "description": null,
+    "isOnline": true,
+    "access": "read",
+    "children": [
+      {
+        "number": 1,
+        "identifier": "slot-1",
+        "path": "device.slot-1",
+        "oid": "1.1",
+        "description": "CardTypeA — ACP2 demo card",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "ROOT_NODE_V2",
+            "path": "device.slot-1.ROOT_NODE_V2",
+            "oid": "1.1.1",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 2,
+                "identifier": "IDENTITY",
+                "path": "device.slot-1.ROOT_NODE_V2.IDENTITY",
+                "oid": "1.1.2",
+                "description": null,
+                "isOnline": true,
+                "access": "read",
+                "children": [
+                  {
+                    "number": 3, "identifier": "UserLabel", "path": "device.slot-1.ROOT_NODE_V2.IDENTITY.UserLabel", "oid": "1.1.3",
+                    "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                    "type": "string", "value": "Input-A",
+                    "default": null, "minimum": null, "maximum": null, "step": null,
+                    "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                    "enumeration": null, "enumMap": null,
+                    "streamIdentifier": null, "streamDescriptor": null,
+                    "templateReference": null, "schemaIdentifiers": null
+                  },
+                  {
+                    "number": 4, "identifier": "CardName", "path": "device.slot-1.ROOT_NODE_V2.IDENTITY.CardName", "oid": "1.1.4",
+                    "description": null, "isOnline": true, "access": "read", "children": [],
+                    "type": "string", "value": "GIO-12v2",
+                    "default": null, "minimum": null, "maximum": null, "step": null,
+                    "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                    "enumeration": null, "enumMap": null,
+                    "streamIdentifier": null, "streamDescriptor": null,
+                    "templateReference": null, "schemaIdentifiers": null
+                  }
+                ]
+              },
+              {
+                "number": 5,
+                "identifier": "CONTROL",
+                "path": "device.slot-1.ROOT_NODE_V2.CONTROL",
+                "oid": "1.1.5",
+                "description": null,
+                "isOnline": true,
+                "access": "read",
+                "children": [
+                  {
+                    "number": 6, "identifier": "Level", "path": "device.slot-1.ROOT_NODE_V2.CONTROL.Level", "oid": "1.1.6",
+                    "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                    "type": "integer", "value": -6,
+                    "default": 0, "minimum": -60, "maximum": 12, "step": 1,
+                    "unit": "dB", "format": "s16", "factor": null, "formula": null,
+                    "enumeration": null, "enumMap": null,
+                    "streamIdentifier": null, "streamDescriptor": null,
+                    "templateReference": null, "schemaIdentifiers": null
+                  },
+                  {
+                    "number": 7, "identifier": "Mute", "path": "device.slot-1.ROOT_NODE_V2.CONTROL.Mute", "oid": "1.1.7",
+                    "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                    "type": "enum", "value": 0,
+                    "default": 0, "minimum": null, "maximum": null, "step": null,
+                    "unit": null, "format": null, "factor": null, "formula": null,
+                    "enumeration": "Off\nOn",
+                    "enumMap": [
+                      {"key": "Off", "value": 0},
+                      {"key": "On",  "value": 1}
+                    ],
+                    "streamIdentifier": null, "streamDescriptor": null,
+                    "templateReference": null, "schemaIdentifiers": null
+                  },
+                  {
+                    "number": 8, "identifier": "Gain", "path": "device.slot-1.ROOT_NODE_V2.CONTROL.Gain", "oid": "1.1.8",
+                    "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                    "type": "real", "value": 0.0,
+                    "default": 0.0, "minimum": 0.0, "maximum": 20.0, "step": 0.5,
+                    "unit": "dB", "format": null, "factor": null, "formula": null,
+                    "enumeration": null, "enumMap": null,
+                    "streamIdentifier": null, "streamDescriptor": null,
+                    "templateReference": null, "schemaIdentifiers": null
+                  },
+                  {
+                    "number": 9, "identifier": "Gateway", "path": "device.slot-1.ROOT_NODE_V2.CONTROL.Gateway", "oid": "1.1.9",
+                    "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                    "type": "string", "value": "192.168.1.1",
+                    "default": null, "minimum": null, "maximum": null, "step": null,
+                    "unit": null, "format": "ipv4", "factor": null, "formula": null,
+                    "enumeration": null, "enumMap": null,
+                    "streamIdentifier": null, "streamDescriptor": null,
+                    "templateReference": null, "schemaIdentifiers": null
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "templates": null
+}

@@ -53,8 +53,13 @@ func TestTree_FlattensAndIndexesBySlot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newTree: %v", err)
 	}
-	if tr.count() != 3 {
-		t.Fatalf("count=%d want 3", tr.count())
+	// 3 unique entries (obj-ids 1, 2, 3) + obj-id 0 alias pointing at
+	// obj-id 1 for spec-§Walk starts-at-0 compatibility.
+	if tr.count() != 4 {
+		t.Fatalf("count=%d want 4 (3 entries + obj-id=0 alias)", tr.count())
+	}
+	if e0, ok := tr.lookup(1, 0); !ok || e0.objID != 1 {
+		t.Errorf("obj-id 0 alias missing or wrong: %+v", e0)
 	}
 	if tr.slotN != 1 {
 		t.Errorf("slotN=%d want 1", tr.slotN)
