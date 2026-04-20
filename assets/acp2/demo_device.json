@@ -162,13 +162,6 @@
                 "number": 6, "identifier": "CONTROL", "path": "device.slot-1.ROOT_NODE_V2.CONTROL", "oid": "1.1.6",
                 "description": null, "isOnline": true, "access": "read",
                 "children": [
-                  { "number": 20, "identifier": "Mute", "path": "device.slot-1.ROOT_NODE_V2.CONTROL.Mute", "oid": "1.1.20",
-                    "description": null, "isOnline": true, "access": "readWrite", "children": [],
-                    "type": "enum", "value": 0, "default": 0, "minimum": null, "maximum": null, "step": null,
-                    "unit": null, "format": null, "factor": null, "formula": null,
-                    "enumeration": "Off\nOn\nAuto",
-                    "enumMap": [ {"key":"Off","value":0}, {"key":"On","value":1}, {"key":"Auto","value":2} ],
-                    "streamIdentifier": null, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null },
                   { "number": 21, "identifier": "Gateway", "path": "device.slot-1.ROOT_NODE_V2.CONTROL.Gateway", "oid": "1.1.21",
                     "description": null, "isOnline": true, "access": "readWrite", "children": [],
                     "type": "string", "value": "192.168.1.1", "default": null, "minimum": "0.0.0.0", "maximum": "255.255.255.255", "step": null,

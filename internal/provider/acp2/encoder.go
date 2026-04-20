@@ -71,18 +71,19 @@ func buildProperties(e *entry) ([]iacp2.Property, error) {
 			props = append(props, propStringData0(iacp2.PIDUnit, *e.param.Unit))
 		}
 	case iacp2.ObjTypeEnum:
-		// Enum per spec §5.4: pid 5 number_type does NOT apply (Number only).
+		// Enum per spec §5.1: pid 5 number_type does NOT apply (Number only),
+		// and pid 9 default_value is depth-indexed ([d]) — only valid for
+		// preset children which carry pid 7 preset_depth. A plain Enum is
+		// not a preset child, so pid 9 is omitted. Emitting pid 9 with
+		// vtype=9 but no pid 7 trips Lawo VSM's parser:
+		// "Index was outside the bounds of the array" — the preset array
+		// hasn't been sized.
 		// pid 8 value uses vtype = 9 (preset/enum), stored as u32 index.
 		val, err := encodeValueProp(iacp2.PIDValue, e)
 		if err != nil {
 			return nil, err
 		}
 		props = append(props, val)
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDDefaultValue, iacp2.NumTypePreset, e.param.Default); err != nil {
-			return nil, err
-		} else if ok {
-			props = append(props, cp)
-		}
 		props = append(props, propOptions(enumOptions(e.param)))
 	case iacp2.ObjTypeIPv4:
 		val, err := encodeValueProp(iacp2.PIDValue, e)

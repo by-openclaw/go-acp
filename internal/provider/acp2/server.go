@@ -12,6 +12,12 @@ import (
 	iacp2 "acp/internal/protocol/acp2"
 )
 
+// Server is the exported alias for the concrete provider — lets
+// `cmd/acp-provider/main.go` reach the ACP2-specific helpers
+// (e.g. RunAnnounceDemo) via a type assertion without widening the
+// cross-protocol provider.Provider interface.
+type Server = server
+
 // server is the concrete provider.Provider for ACP2 over AN2/TCP.
 //
 // Concurrency model:
@@ -151,6 +157,7 @@ func (s *server) broadcastAnnounce(slot uint8, ann *iacp2.ACP2Message) {
 	}
 
 	s.mu.Lock()
+	totalSessions := len(s.sessions)
 	targets := make([]*session, 0, len(s.sessions))
 	for sess := range s.sessions {
 		if sess.enabled[iacp2.AN2ProtoACP2] {
@@ -159,9 +166,16 @@ func (s *server) broadcastAnnounce(slot uint8, ann *iacp2.ACP2Message) {
 	}
 	s.mu.Unlock()
 
+	s.logger.Info("acp2 announce fanout",
+		slog.Int("slot", int(slot)),
+		slog.Int("sessions_total", totalSessions),
+		slog.Int("sessions_subscribed", len(targets)),
+		slog.Int("frame_bytes", len(raw)+8),
+	)
+
 	for _, sess := range targets {
 		if err := sess.write(frame); err != nil {
-			s.logger.Debug("acp2 announce send failed",
+			s.logger.Warn("acp2 announce send failed",
 				slog.String("err", err.Error()),
 			)
 		}

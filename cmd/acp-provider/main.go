@@ -20,21 +20,26 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"acp/internal/export/canonical"
 	"acp/internal/provider"
 
-	_ "acp/internal/provider/acp2"
+	acp2provider "acp/internal/provider/acp2"
 	_ "acp/internal/provider/emberplus"
 )
 
 func main() {
 	var (
-		treePath = flag.String("tree", "", "path to canonical tree.json (required)")
-		proto    = flag.String("protocol", "emberplus", "provider plugin name")
-		port     = flag.Int("port", 0, "TCP listen port (0 = plugin default)")
-		host     = flag.String("host", "0.0.0.0", "TCP listen host")
-		logLevel = flag.String("log-level", "info", "log level: debug, info, warn, error")
+		treePath      = flag.String("tree", "", "path to canonical tree.json (required)")
+		proto         = flag.String("protocol", "emberplus", "provider plugin name")
+		port          = flag.Int("port", 0, "TCP listen port (0 = plugin default)")
+		host          = flag.String("host", "0.0.0.0", "TCP listen host")
+		logLevel      = flag.String("log-level", "info", "log level: debug, info, warn, error")
+		announceDemo  = flag.Bool("announce-demo", false, "acp2: oscillate slot=1 GainFloat every --announce-demo-interval and broadcast announces (demonstrates device-initiated state changes)")
+		announceSlot  = flag.Int("announce-demo-slot", 1, "acp2: slot for --announce-demo target")
+		announceObj   = flag.Int("announce-demo-obj", 18, "acp2: obj-id for --announce-demo target (must be Number+Float)")
+		announceEvery = flag.Duration("announce-demo-interval", 2*time.Second, "acp2: --announce-demo tick interval")
 	)
 	flag.Parse()
 
@@ -78,6 +83,20 @@ func main() {
 		cancel()
 		_ = srv.Stop()
 	}()
+
+	// Optional: spawn a device-state-change simulator. Only active when
+	// --announce-demo is set AND the loaded plugin is acp2. Ignored for
+	// Ember+ / ACP1 (each provider surfaces its own demo hooks when
+	// relevant).
+	if *announceDemo {
+		if s, ok := srv.(*acp2provider.Server); ok {
+			go s.RunAnnounceDemo(ctx, uint8(*announceSlot), uint32(*announceObj), *announceEvery)
+		} else {
+			logger.Warn("--announce-demo ignored: current provider is not acp2",
+				slog.String("protocol", *proto),
+			)
+		}
+	}
 
 	if err := srv.Serve(ctx, addr); err != nil && !errors.Is(err, context.Canceled) {
 		logger.Error("serve", slog.String("err", err.Error()))

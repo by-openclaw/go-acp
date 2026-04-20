@@ -92,9 +92,18 @@ func (s *session) handleAN2Internal(f *iacp2.AN2Frame) {
 			return
 		}
 		count := int(f.Payload[1])
+		enabled := make([]int, 0, count)
 		for i := 0; i < count && 2+i < len(f.Payload); i++ {
-			s.enable(iacp2.AN2Proto(f.Payload[2+i]))
+			proto := iacp2.AN2Proto(f.Payload[2+i])
+			s.enable(proto)
+			enabled = append(enabled, int(proto))
 		}
+		s.srv.logger.Info("an2 EnableProtocolEvents",
+			slog.Int("slot", int(f.Slot)),
+			slog.Any("payload_hex", fmt.Sprintf("%x", f.Payload)),
+			slog.Int("count", count),
+			slog.Any("enabled_protos", enabled),
+		)
 		body = []byte{funcID, 0} // ack
 	default:
 		s.srv.logger.Debug("an2 internal: unknown funcID",
@@ -253,10 +262,14 @@ func (s *session) handleSetProperty(slot uint8, msg *iacp2.ACP2Message) {
 	s.replyACP2(slot, reply)
 
 	// Fan out the announce to every session with ACP2 events enabled.
+	// Spec §3.2 / §4.2 ACP2 Announce header: [type=2, mtid=0, stat=0, pid].
+	// Byte 2 is stat (always 0 for announces) — NOT a second copy of pid.
+	// Emitting pid here makes Lawo VSM silently drop the frame; its parser
+	// expects byte 2 == 0.
 	announce := &iacp2.ACP2Message{
 		Type:  iacp2.ACP2TypeAnnounce,
 		MTID:  0,
-		Func:  iacp2.ACP2Func(iacp2.PIDValue), // announce carries the pid in the func slot per spec
+		Func:  0, // stat = 0 for announces per spec §3.2
 		PID:   iacp2.PIDValue,
 		ObjID: msg.ObjID,
 		Idx:   msg.Idx,
