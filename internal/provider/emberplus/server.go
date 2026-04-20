@@ -16,6 +16,8 @@ import (
 type server struct {
 	logger *slog.Logger
 	tree   *tree
+	funcs  *functionRegistry
+	salvos *salvoStore
 
 	mu       sync.Mutex
 	listener net.Listener
@@ -34,6 +36,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 	t, err := newTree(exp)
 	s := &server{
 		logger:   logger.With(slog.String("plugin", "emberplus-provider")),
+		funcs:    newFunctionRegistry(),
 		sessions: map[*session]struct{}{},
 		subs:     map[string]map[*session]struct{}{},
 		stopped:  make(chan struct{}),
@@ -43,6 +46,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		s.logger.Error("tree build failed", slog.String("err", err.Error()))
 	} else {
 		s.tree = t
+		s.setupBuiltinFunctions()
 	}
 	return s
 }
