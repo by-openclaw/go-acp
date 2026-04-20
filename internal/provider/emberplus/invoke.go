@@ -61,15 +61,23 @@ func (s *server) invokeFunction(oid string, args []any) ([]any, bool) {
 // applyMatrixConnections mutates a Matrix element's connections per the
 // inbound Connection list and returns the resulting post-state to broadcast.
 //
-// Semantics (spec p.89 ConnectionOperation):
+// Matrix type is enforced here (spec p.88):
 //
-//	absolute (default) — for oneToN: set target's sources list to the
-//	                     incoming sources. For nToN: replace.
-//	connect           — nToN only: add sources to existing connection.
-//	disconnect        — nToN only: remove sources from existing connection.
+//	oneToN   — target has at most 1 source; same source MAY be on many targets
+//	oneToOne — target has at most 1 source; source has at most 1 target
+//	           (bijective). When a new binding steals a source, the losing
+//	           target is emitted in the returned tally so consumers redraw.
+//	nToN     — free many-to-many. connect / disconnect are additive;
+//	           absolute replaces the target's sources list.
 //
-// The returned Connection list uses disposition=tally so consumers treat it
-// as confirmed current state.
+// Operation semantics (spec p.89):
+//
+//	absolute (default) — set target's sources list to the incoming sources
+//	connect            — nToN only: add sources to existing connection
+//	disconnect         — nToN only: remove sources from existing connection
+//
+// The returned list uses disposition=tally so consumers treat it as
+// confirmed current state.
 func (s *server) applyMatrixConnections(matrixOID string, incoming []canonical.MatrixConnection) ([]canonical.MatrixConnection, error) {
 	e, ok := s.tree.lookupOID(matrixOID)
 	if !ok {
@@ -83,10 +91,52 @@ func (s *server) applyMatrixConnections(matrixOID string, incoming []canonical.M
 	s.tree.mu.Lock()
 	defer s.tree.mu.Unlock()
 
-	out := make([]canonical.MatrixConnection, 0, len(incoming))
+	// Use a map keyed by target so multiple updates to the same target in
+	// one request collapse to the final state (last-write-wins). Preserves
+	// insertion order via a parallel slice.
+	out := []canonical.MatrixConnection{}
+	touched := map[int64]int{} // target -> index into out
+	emit := func(post canonical.MatrixConnection) {
+		if idx, ok := touched[post.Target]; ok {
+			out[idx] = post
+			return
+		}
+		touched[post.Target] = len(out)
+		out = append(out, post)
+	}
+
 	for _, in := range incoming {
+		// oneToN + oneToOne both enforce target-side cardinality of 1.
+		if (m.Type == canonical.MatrixOneToN || m.Type == canonical.MatrixOneToOne) && len(in.Sources) > 1 {
+			in.Sources = in.Sources[:1]
+		}
+
 		applied := applyOneConnection(m, in)
-		out = append(out, applied)
+		emit(applied)
+
+		// oneToOne: source-side exclusivity — any other target that held
+		// one of the newly bound sources must release it. Emit the loser
+		// as a separate tally so the consumer redraws.
+		if m.Type == canonical.MatrixOneToOne {
+			for _, src := range applied.Sources {
+				for i := range m.Connections {
+					if m.Connections[i].Target == applied.Target {
+						continue
+					}
+					stripped := subtractSources(m.Connections[i].Sources, []int64{src})
+					if len(stripped) == len(m.Connections[i].Sources) {
+						continue
+					}
+					m.Connections[i].Sources = stripped
+					emit(canonical.MatrixConnection{
+						Target:      m.Connections[i].Target,
+						Sources:     append([]int64{}, stripped...),
+						Operation:   canonical.ConnOpAbsolute,
+						Disposition: canonical.ConnDispTally,
+					})
+				}
+			}
+		}
 	}
 	return out, nil
 }

@@ -148,6 +148,57 @@ func TestApplyConnection_Absolute(t *testing.T) {
 	}
 }
 
+// TestApplyConnection_OneToOne_Exclusivity asserts that reassigning a
+// source to a new target releases it from the previous target — the
+// bijection that defines oneToOne. Each apply returns a tally for the
+// loser + the winner.
+func TestApplyConnection_OneToOne_Exclusivity(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixOneToOne,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{3}}, // t-0 holds s-3
+			{Target: 1, Sources: []int64{2}}, // t-1 holds s-2
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	// Client sends "t-1 → s-3" — must steal s-3 from t-0.
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 1, Sources: []int64{3}, Operation: canonical.ConnOpAbsolute},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	byT := map[int64][]int64{}
+	for _, c := range post {
+		byT[c.Target] = c.Sources
+	}
+	if got := byT[1]; len(got) != 1 || got[0] != 3 {
+		t.Errorf("t-1 post=%v want [3]", got)
+	}
+	if _, seen := byT[0]; !seen {
+		t.Fatal("t-0 loser not emitted — consumer won't redraw")
+	}
+	if got := byT[0]; len(got) != 0 {
+		t.Errorf("t-0 post=%v want [] (source stolen)", got)
+	}
+}
+
+// TestApplyConnection_OneToN_SingleSource asserts target cardinality is
+// clamped to 1 even when the client sends extra sources.
+func TestApplyConnection_OneToN_SingleSource(t *testing.T) {
+	m := &canonical.Matrix{Type: canonical.MatrixOneToN}
+	srv := buildMatrixTree(t, m)
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 0, Sources: []int64{0, 1, 2}, Operation: canonical.ConnOpAbsolute},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post[0].Sources) != 1 {
+		t.Errorf("oneToN target kept %d sources, want 1", len(post[0].Sources))
+	}
+}
+
 // TestApplyConnection_ConnectAndDisconnect exercises the nToN additive ops.
 func TestApplyConnection_ConnectAndDisconnect(t *testing.T) {
 	m := &canonical.Matrix{
