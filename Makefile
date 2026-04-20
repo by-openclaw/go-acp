@@ -22,6 +22,7 @@ DIST_DIR     ?= dist
 PKG          := ./...
 CMD_ACP      := ./cmd/acp
 CMD_SRV      := ./cmd/acp-srv
+CMD_PROVIDER := ./cmd/acp-provider
 
 # Version injected into binaries via -ldflags. Uses git tag if available,
 # otherwise "dev".
@@ -43,16 +44,22 @@ all: build
 
 # ---------------------------------------------------------------- Build
 
-.PHONY: build build-cli build-srv
-build: build-cli build-srv
+.PHONY: build build-cli build-srv build-provider
+build: build-cli build-provider
 
 build-cli:
 	@mkdir -p $(BIN_DIR)
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS_FULL)" -o $(BIN_DIR)/acp$(EXE) $(CMD_ACP)
 
+# build-srv is kept here as a scaffold target — cmd/acp-srv is planned
+# (see CLAUDE.md) but not yet implemented; do not add to `build`.
 build-srv:
 	@mkdir -p $(BIN_DIR)
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS_FULL)" -o $(BIN_DIR)/acp-srv$(EXE) $(CMD_SRV)
+
+build-provider:
+	@mkdir -p $(BIN_DIR)
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS_FULL)" -o $(BIN_DIR)/acp-provider$(EXE) $(CMD_PROVIDER)
 
 # ---------------------------------------------------------------- Cross-compile
 
@@ -66,9 +73,9 @@ build-all: build-linux-amd64 build-linux-arm64 \
 define _xbuild
 	@mkdir -p $(DIST_DIR)/acp_$(1)_$(2)
 	GOOS=$(1) GOARCH=$(2) $(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS_FULL)" \
-		-o $(DIST_DIR)/acp_$(1)_$(2)/acp$(3)     $(CMD_ACP)
+		-o $(DIST_DIR)/acp_$(1)_$(2)/acp$(3)          $(CMD_ACP)
 	GOOS=$(1) GOARCH=$(2) $(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS_FULL)" \
-		-o $(DIST_DIR)/acp_$(1)_$(2)/acp-srv$(3) $(CMD_SRV)
+		-o $(DIST_DIR)/acp_$(1)_$(2)/acp-provider$(3) $(CMD_PROVIDER)
 endef
 
 build-linux-amd64:

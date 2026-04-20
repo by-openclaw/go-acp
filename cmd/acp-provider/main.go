@@ -1,0 +1,112 @@
+// Command acp-provider runs an Ember+ (or future protocol) provider
+// server. Loads a canonical tree.json and serves it to consumers.
+//
+// Usage:
+//
+//	acp-provider --tree <file.json> [--protocol emberplus] [--port 9010]
+//
+// The binary is thin: parse flags, read the tree, resolve the provider
+// plugin, Serve, wait for SIGINT. Plugin registration happens in
+// init() of each imported provider package.
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"acp/internal/export/canonical"
+	"acp/internal/provider"
+
+	_ "acp/internal/provider/emberplus"
+)
+
+func main() {
+	var (
+		treePath = flag.String("tree", "", "path to canonical tree.json (required)")
+		proto    = flag.String("protocol", "emberplus", "provider plugin name")
+		port     = flag.Int("port", 0, "TCP listen port (0 = plugin default)")
+		host     = flag.String("host", "0.0.0.0", "TCP listen host")
+		logLevel = flag.String("log-level", "info", "log level: debug, info, warn, error")
+	)
+	flag.Parse()
+
+	if *treePath == "" {
+		fmt.Fprintln(os.Stderr, "error: --tree is required")
+		flag.Usage()
+		os.Exit(2)
+	}
+
+	logger := newLogger(*logLevel)
+
+	factory, ok := provider.Lookup(*proto)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "error: unknown provider %q. available: %v\n", *proto, provider.List())
+		os.Exit(2)
+	}
+
+	tree, err := loadTree(*treePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: load tree: %v\n", err)
+		os.Exit(1)
+	}
+
+	listenPort := *port
+	if listenPort == 0 {
+		listenPort = factory.Meta().DefaultPort
+	}
+	addr := fmt.Sprintf("%s:%d", *host, listenPort)
+
+	srv := factory.New(logger, tree)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Graceful shutdown on SIGINT / SIGTERM.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		logger.Info("shutdown signal received")
+		cancel()
+		_ = srv.Stop()
+	}()
+
+	if err := srv.Serve(ctx, addr); err != nil && !errors.Is(err, context.Canceled) {
+		logger.Error("serve", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+}
+
+func loadTree(path string) (*canonical.Export, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var exp canonical.Export
+	if err := json.Unmarshal(data, &exp); err != nil {
+		return nil, fmt.Errorf("parse canonical: %w", err)
+	}
+	return &exp, nil
+}
+
+func newLogger(level string) *slog.Logger {
+	var lvl slog.Level
+	switch level {
+	case "debug":
+		lvl = slog.LevelDebug
+	case "warn":
+		lvl = slog.LevelWarn
+	case "error":
+		lvl = slog.LevelError
+	default:
+		lvl = slog.LevelInfo
+	}
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: lvl}))
+}

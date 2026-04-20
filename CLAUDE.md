@@ -8,17 +8,26 @@ This is the single authoritative context for Claude Code working in this reposit
 ## Project Purpose
 
 A Go toolset to connect to, monitor, and control devices that speak the **ACP family
-of protocols** over UDP or TCP (via AN2 transport). Two binaries share one internal
+of protocols** over UDP or TCP (via AN2 transport). Three binaries share one internal
 library:
 
 ```
-cmd/acp          CLI — direct device I/O, no server
-cmd/acp-srv      HTTP REST + WebSocket API (consumed by acp-ui)
+cmd/acp          CLI — direct device I/O, no server (consumer side)
+cmd/acp-srv      HTTP REST + WebSocket API (consumed by acp-ui) — planned
+cmd/acp-provider Provider server — serves a canonical tree.json to consumers over wire (#66)
 internal/        core library — imported only by cmd/
 ```
 
 A separate repository `acp-ui` (React 19) consumes `cmd/acp-srv`.
 This repo has zero frontend code.
+
+**Two plugin tiers**, both Tier-1 compile-time registries:
+- `internal/protocol/` — consumer (connect to a device, walk, get, set, subscribe)
+- `internal/provider/` — provider (listen, serve a tree, broadcast on value change)
+
+Ember+ has both: the consumer plugin at `internal/protocol/emberplus/` and the
+provider plugin at `internal/provider/emberplus/`. ACP1 / ACP2 providers are
+future work.
 
 ---
 
@@ -802,7 +811,17 @@ announcement wins (more recent).
 3. Implement ProtocolFactory.Meta() — name, default port
 4. Add: func init() { protocol.Register(&Factory{}) }
 5. Add import _ "acp/internal/protocol/{name}" in cmd/acp/main.go
-6. Add import _ "acp/internal/protocol/{name}" in cmd/acp-srv/main.go
+6. Add import _ "acp/internal/protocol/{name}" in cmd/acp-srv/main.go (when the server lands)
+
+## Adding a New Provider
+
+Mirror the consumer pattern, but under `internal/provider/`:
+
+1. Create `internal/provider/{name}/`
+2. Implement the `provider.Provider` interface (Serve, Stop, SetValue)
+3. Expose a `Factory` + `func init() { provider.Register(&Factory{}) }`
+4. Add `import _ "acp/internal/provider/{name}"` to `cmd/acp-provider/main.go`
+5. Writes unit tests in `internal/provider/{name}/*_test.go` (no external dirs)
 7. Write unit tests in tests/unit/{name}/
 8. Done — CLI, API, UI pick it up automatically
 ```
