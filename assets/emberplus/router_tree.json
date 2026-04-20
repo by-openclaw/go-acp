@@ -405,8 +405,8 @@
         "isOnline": true,
         "access": "read",
         "children": [
-          {"number": 1, "identifier": "meter-L", "path": "router.streams.meter-L", "oid": "1.7.1", "description": "Left channel PPM (streamId 100)", "isOnline": true, "access": "read", "children": [], "type": "real", "value": 0.0, "default": null, "minimum": -60.0, "maximum": 0.0, "step": null, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 100, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
-          {"number": 2, "identifier": "meter-R", "path": "router.streams.meter-R", "oid": "1.7.2", "description": "Right channel PPM (streamId 101)", "isOnline": true, "access": "read", "children": [], "type": "real", "value": 0.0, "default": null, "minimum": -60.0, "maximum": 0.0, "step": null, "unit": "dB", "format": "%.1f dB", "factor": null, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 101, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
+          {"number": 1, "identifier": "meter-L", "path": "router.streams.meter-L", "oid": "1.7.1", "description": "Left channel PPM (streamId 100) — int centi-dB, factor 100", "isOnline": true, "access": "read", "children": [], "type": "integer", "value": 0, "default": 0, "minimum": -6000, "maximum": 0, "step": 1, "unit": "dB", "format": "%.2f dB", "factor": 100, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 100, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null},
+          {"number": 2, "identifier": "meter-R", "path": "router.streams.meter-R", "oid": "1.7.2", "description": "Right channel PPM (streamId 101) — int centi-dB, factor 100", "isOnline": true, "access": "read", "children": [], "type": "integer", "value": 0, "default": 0, "minimum": -6000, "maximum": 0, "step": 1, "unit": "dB", "format": "%.2f dB", "factor": 100, "formula": null, "enumeration": null, "enumMap": null, "streamIdentifier": 101, "streamDescriptor": null, "templateReference": null, "schemaIdentifiers": null}
         ]
       },
 
