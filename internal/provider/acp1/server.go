@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"acp/internal/export/canonical"
+	iacp1 "acp/internal/protocol/acp1"
 )
 
 // server is the concrete provider.Provider for ACP1 over UDP. One
@@ -107,9 +108,11 @@ func (s *server) Stop() error {
 	return nil
 }
 
-// SetValue mutates the served tree and (later) fans the change out.
-// Skeleton: currently only validates the path — session.go will wire
-// the actual value mutation + announcement in a follow-up commit.
+// SetValue mutates the served tree via the API path (acp-srv, tests).
+// Routes through the same applyMutation pipeline used by wire SetValue
+// requests so clamping + canonical.Parameter.Value update are
+// consistent. The value-change announcement broadcast ships in the
+// follow-up commit (Step 1e).
 func (s *server) SetValue(_ context.Context, path string, val any) (any, error) {
 	key, err := parsePath(path)
 	if err != nil {
@@ -119,9 +122,20 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 	if !ok {
 		return nil, fmt.Errorf("acp1 provider: object not found: %s", path)
 	}
-	_ = e
-	_ = val
-	return nil, errors.New("acp1 provider: SetValue not yet implemented")
+	if e.access&1 == 0 {
+		return nil, fmt.Errorf("acp1 provider: %s has no read access", path)
+	}
+	if e.access&2 == 0 {
+		return nil, fmt.Errorf("acp1 provider: %s has no write access", path)
+	}
+	bytes, err := s.encodeIncomingFromAny(e, val)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.applyMutation(e, iacp1.MethodSetValue, bytes); err != nil {
+		return nil, err
+	}
+	return convertStoredValue(e.param), nil
 }
 
 // readLoop reads datagrams until ctx is cancelled or the conn is closed.

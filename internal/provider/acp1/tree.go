@@ -230,20 +230,23 @@ func deriveACPType(p *canonical.Parameter) (iacp1.ObjectType, error) {
 	return 0, fmt.Errorf("unsupported canonical type %q for ACP1 provider", p.Type)
 }
 
-// deriveAccess maps the canonical access string (spec p.20 read/write
-// bits) to the ACP1 access byte. setDef (bit 2) is not distinguishable
-// in canonical's four-level string so the provider does NOT grant it
-// implicitly — setDefValue on a tree loaded from canonical will return
-// the spec-p.29 "no setDef access" error unless the loader explicitly
-// sets it. This is the spec-conformant behaviour.
+// deriveAccess maps the canonical access string to the ACP1 access
+// byte (spec p.20 bit 0 = read, bit 1 = write, bit 2 = setDef).
+//
+// Canonical's four-level string cannot distinguish setDef from write,
+// but real Axon firmware (the "constructor" reference the provider
+// mirrors) grants setDef on every writable object with a default. The
+// provider follows that convention — write implies setDef — so tree.json
+// round-tripped from a real device behaves the same way under the
+// provider as it did under the device.
 func deriveAccess(a string) uint8 {
 	switch a {
 	case canonical.AccessRead:
 		return iacp1.AccessRead
 	case canonical.AccessWrite:
-		return iacp1.AccessWrite
+		return iacp1.AccessWrite | iacp1.AccessSetDef
 	case canonical.AccessReadWrite:
-		return iacp1.AccessRead | iacp1.AccessWrite
+		return iacp1.AccessRead | iacp1.AccessWrite | iacp1.AccessSetDef
 	}
 	return 0
 }

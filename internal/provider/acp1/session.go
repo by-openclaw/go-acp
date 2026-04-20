@@ -60,10 +60,39 @@ func (s *server) handleRequest(msg *iacp1.Message) *iacp1.Message {
 			return errorReply(msg, iacp1.OErrIllegalForType)
 		}
 		return reply(msg, raw)
+	case iacp1.MethodSetValue, iacp1.MethodSetIncValue,
+		iacp1.MethodSetDecValue, iacp1.MethodSetDefValue:
+		raw, err := s.applyMutation(e, method, msg.Value)
+		if err != nil {
+			s.logger.Warn("acp1 mutation",
+				slog.String("oid", e.param.OID),
+				slog.String("method", methodName(method)),
+				slog.String("err", err.Error()),
+			)
+			return errorReply(msg, iacp1.OErrIllegalForType)
+		}
+		return reply(msg, raw)
 	}
-	// Mutating methods (setValue, setInc, setDec, setDef) land in the
-	// next commit. For now surface as illegal-method.
 	return errorReply(msg, iacp1.OErrIllegalMethod)
+}
+
+// methodName is a small helper so debug logs read "setValue" not "1".
+func methodName(m iacp1.Method) string {
+	switch m {
+	case iacp1.MethodGetValue:
+		return "getValue"
+	case iacp1.MethodSetValue:
+		return "setValue"
+	case iacp1.MethodSetIncValue:
+		return "setIncValue"
+	case iacp1.MethodSetDecValue:
+		return "setDecValue"
+	case iacp1.MethodSetDefValue:
+		return "setDefValue"
+	case iacp1.MethodGetObject:
+		return "getObject"
+	}
+	return "unknown"
 }
 
 // handleRoot synthesises the Root (group=0, id=0) reply for the

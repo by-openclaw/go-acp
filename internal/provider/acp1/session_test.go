@@ -1,6 +1,7 @@
 package acp1
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"testing"
@@ -224,17 +225,121 @@ func TestSession_UnknownGroup_GroupError(t *testing.T) {
 	}
 }
 
-func TestSession_SetValue_NotYetImplemented(t *testing.T) {
+func TestSession_SetValue_RoundTrip(t *testing.T) {
 	s := newTestServer(t)
+	// Control slot-1 id=0 is Level (int16, min=-60 max=12, currently -6).
+	// Write 5, expect echo 5.
 	req := &iacp1.Message{
 		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode: byte(iacp1.MethodSetValue),
+		MCode:    byte(iacp1.MethodSetValue),
 		ObjGroup: iacp1.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x05},
 	}
 	rep := s.handleRequest(req)
-	if rep.MType != iacp1.MTypeError || rep.MCode != byte(iacp1.OErrIllegalMethod) {
-		t.Fatalf("setValue should error until step 1d: %+v", rep)
+	if rep.MType != iacp1.MTypeReply {
+		t.Fatalf("bad reply: %+v", rep)
+	}
+	if string(rep.Value) != string([]byte{0x00, 0x05}) {
+		t.Fatalf("echo bytes=%x want 0005", rep.Value)
+	}
+	// Re-read via getValue to confirm persistence.
+	req.MCode = byte(iacp1.MethodGetValue)
+	req.Value = nil
+	rep = s.handleRequest(req)
+	if string(rep.Value) != string([]byte{0x00, 0x05}) {
+		t.Fatalf("getValue after set=%x want 0005", rep.Value)
+	}
+}
+
+func TestSession_SetValue_ClampsToMax(t *testing.T) {
+	s := newTestServer(t)
+	// Level max=12; request 100 -> clamped to 12.
+	req := &iacp1.Message{
+		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
+		MCode:    byte(iacp1.MethodSetValue),
+		ObjGroup: iacp1.GroupControl, ObjID: 0,
+		Value: []byte{0x00, 0x64}, // 100
+	}
+	rep := s.handleRequest(req)
+	if rep.MType != iacp1.MTypeReply {
+		t.Fatalf("bad reply: %+v", rep)
+	}
+	if string(rep.Value) != string([]byte{0x00, 0x0C}) {
+		t.Fatalf("clamp bytes=%x want 000C (12)", rep.Value)
+	}
+}
+
+func TestSession_SetIncDec_RespectsStepAndLimits(t *testing.T) {
+	s := newTestServer(t)
+	// Level: start at -6, step=1, min=-60, max=12.
+	req := &iacp1.Message{
+		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
+		MCode:    byte(iacp1.MethodSetIncValue),
+		ObjGroup: iacp1.GroupControl, ObjID: 0,
+	}
+	// Inc from -6 -> -5.
+	rep := s.handleRequest(req)
+	if rep.MType != iacp1.MTypeReply || string(rep.Value) != string([]byte{0xFF, 0xFB}) {
+		t.Fatalf("setInc bytes=%x want FFFB (-5)", rep.Value)
+	}
+	// Dec from -5 -> -6.
+	req.MCode = byte(iacp1.MethodSetDecValue)
+	rep = s.handleRequest(req)
+	if string(rep.Value) != string([]byte{0xFF, 0xFA}) {
+		t.Fatalf("setDec bytes=%x want FFFA (-6)", rep.Value)
+	}
+}
+
+func TestSession_SetDefValue_ResetsToDefault(t *testing.T) {
+	s := newTestServer(t)
+	// Level default=0.
+	// First set to 5 so we can observe the reset.
+	setReq := &iacp1.Message{
+		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
+		MCode:    byte(iacp1.MethodSetValue),
+		ObjGroup: iacp1.GroupControl, ObjID: 0,
+		Value: []byte{0x00, 0x05},
+	}
+	_ = s.handleRequest(setReq)
+
+	defReq := &iacp1.Message{
+		MTID: 2, MType: iacp1.MTypeRequest, MAddr: 1,
+		MCode:    byte(iacp1.MethodSetDefValue),
+		ObjGroup: iacp1.GroupControl, ObjID: 0,
+	}
+	rep := s.handleRequest(defReq)
+	if rep.MType != iacp1.MTypeReply || string(rep.Value) != string([]byte{0x00, 0x00}) {
+		t.Fatalf("setDef bytes=%x want 0000", rep.Value)
+	}
+}
+
+func TestSession_SetValue_DeniedOnReadOnly(t *testing.T) {
+	s := newTestServer(t)
+	// Identity slot-1 group=1 id=0 is Model (read-only string).
+	req := &iacp1.Message{
+		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
+		MCode:    byte(iacp1.MethodSetValue),
+		ObjGroup: iacp1.GroupIdentity, ObjID: 0,
+		Value: []byte("X\x00"),
+	}
+	rep := s.handleRequest(req)
+	if rep.MType != iacp1.MTypeError {
+		t.Fatalf("want error, got %+v", rep)
+	}
+	if rep.MCode != byte(iacp1.OErrNoWriteAccess) {
+		t.Errorf("mcode=%d want %d (NoWriteAccess)", rep.MCode, iacp1.OErrNoWriteAccess)
+	}
+}
+
+func TestServer_SetValueAPIPath(t *testing.T) {
+	s := newTestServer(t)
+	// API-driven setValue uses the Provider interface.
+	stored, err := s.SetValue(context.Background(), "1.2.2.0", int64(7))
+	if err != nil {
+		t.Fatalf("SetValue: %v", err)
+	}
+	if stored.(int64) != 7 {
+		t.Fatalf("stored=%v want 7", stored)
 	}
 }
 
