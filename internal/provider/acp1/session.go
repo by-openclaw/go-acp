@@ -257,14 +257,29 @@ func groupOrInstanceMissing(s *server, k objectKey) iacp1.ObjectErrCode {
 // happened — broadcasts the announcement via broadcastFn. Decode
 // failures are logged and dropped (no "bad-framing" reply in spec).
 func (s *server) handleDatagram2(data []byte, srcStr string, send func([]byte) error) {
+	s.logger.Info("acp1 datagram recv",
+		slog.String("src", srcStr),
+		slog.Int("bytes", len(data)),
+	)
 	msg, err := iacp1.Decode(data)
 	if err != nil {
-		s.logger.Debug("acp1 provider: decode failed",
+		s.logger.Warn("acp1 provider: decode failed",
 			slog.String("src", srcStr),
+			slog.Int("bytes", len(data)),
 			slog.String("err", err.Error()),
 		)
 		return
 	}
+	s.logger.Info("acp1 request",
+		slog.String("src", srcStr),
+		slog.Uint64("mtid", uint64(msg.MTID)),
+		slog.Int("mtype", int(msg.MType)),
+		slog.Int("mcode", int(msg.MCode)),
+		slog.Int("objgroup", int(msg.ObjGroup)),
+		slog.Int("objid", int(msg.ObjID)),
+		slog.Int("maddr", int(msg.MAddr)),
+		slog.Int("value_len", len(msg.Value)),
+	)
 	rep, ann := s.handleRequest(msg)
 	if rep == nil {
 		return
