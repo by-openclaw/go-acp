@@ -125,8 +125,7 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 }
 
 // readLoop reads datagrams until ctx is cancelled or the conn is closed.
-// Each message is dispatched inline. Session.go owns the dispatch logic;
-// this file only does transport.
+// Each message is dispatched inline through session.go's handleRequest.
 func (s *server) readLoop(ctx context.Context, conn *net.UDPConn) error {
 	buf := make([]byte, 1500) // covers the 141-byte ACP1 max + headroom
 	for {
@@ -140,17 +139,11 @@ func (s *server) readLoop(ctx context.Context, conn *net.UDPConn) error {
 		if n == 0 {
 			continue
 		}
-		s.handleDatagram(conn, src, append([]byte(nil), buf[:n]...))
+		data := append([]byte(nil), buf[:n]...)
+		send := func(out []byte) error {
+			_, err := conn.WriteToUDP(out, src)
+			return err
+		}
+		s.handleDatagram2(data, src.String(), send)
 	}
-}
-
-// handleDatagram is the per-request entry point. Implemented in session.go
-// so encoder.go / value.go can stay focused.
-func (s *server) handleDatagram(conn *net.UDPConn, src *net.UDPAddr, data []byte) {
-	// Stub: log-and-drop until session.go lands in the next commit.
-	s.logger.Debug("acp1 provider: received datagram (dispatch not yet wired)",
-		slog.String("src", src.String()),
-		slog.Int("bytes", len(data)),
-	)
-	_ = conn
 }
