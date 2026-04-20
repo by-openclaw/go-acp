@@ -494,6 +494,81 @@ end
 -------------------------------------------------------------------------------
 -- ACP2 dissector (called for AN2 proto=2, type=4 data frames)
 -------------------------------------------------------------------------------
+-- Peek the value bytes of the first property at `offset` in tvbuf and
+-- return a short text summary for the Info column: `value=42`,
+-- `value="ACP2-Frame"`, `value=10.4.210.100`, etc. Returns "" when
+-- nothing meaningful can be extracted.
+local function summarize_first_prop(tvbuf, offset)
+    local remaining = tvbuf:reported_length_remaining(offset)
+    if remaining < 4 then return "" end
+    local pid = tvbuf:range(offset, 1):uint()
+    local data = tvbuf:range(offset + 1, 1):uint()
+    local plen = tvbuf:range(offset + 2, 2):uint()
+    if plen < 4 then return "" end
+    local vlen = plen - 4
+    if vlen < 0 then vlen = 0 end
+    local voff = offset + 4
+
+    -- inline-in-data pids (value rides the header's data byte itself)
+    if pid == 1 then
+        local t = acp2_objtype_valstr[data] or ("type=" .. data)
+        return "type=" .. t
+    elseif pid == 3 then
+        return "access=" .. data
+    elseif pid == 5 then
+        local t = acp2_numtype_valstr[data] or ("nt=" .. data)
+        return "numtype=" .. t
+    elseif pid == 15 then
+        return "options=" .. data
+    end
+
+    if vlen == 0 then return "" end
+
+    if pid == 2 or pid == 13 or pid == 19 then
+        -- label / unit / event_messages = NUL-terminated UTF-8
+        local strlen = vlen
+        for i = 0, vlen - 1 do
+            if tvbuf:range(voff + i, 1):uint() == 0 then strlen = i; break end
+        end
+        if strlen == 0 then return "" end
+        return "\"" .. tvbuf:range(voff, strlen):string() .. "\""
+    elseif pid == 6 then
+        if vlen >= 2 then
+            return "maxlen=" .. tvbuf:range(voff, 2):uint()
+        end
+    elseif pid == 14 then
+        -- children array
+        local n = math.floor(vlen / 4)
+        return n .. " children"
+    elseif pid >= 8 and pid <= 12 then
+        -- value / default / min / max / step — decode by vtype in data byte
+        local vtype = data
+        if vtype <= 2 then
+            return "value=" .. tvbuf:range(voff, 4):int()
+        elseif vtype == 3 and vlen >= 8 then
+            return "value=" .. tvbuf:range(voff, 8):int64()
+        elseif vtype >= 4 and vtype <= 6 then
+            return "value=" .. tvbuf:range(voff, 4):uint()
+        elseif vtype == 7 and vlen >= 8 then
+            return "value=" .. tvbuf:range(voff, 8):uint64()
+        elseif vtype == 8 then
+            return string.format("value=%g", tvbuf:range(voff, 4):float())
+        elseif vtype == 9 then
+            return "enum=" .. tvbuf:range(voff, 4):uint()
+        elseif vtype == 10 then
+            return "ipv4=" .. tvbuf:range(voff, 4):ipv4()
+        elseif vtype == 11 then
+            local strlen = vlen
+            for i = 0, vlen - 1 do
+                if tvbuf:range(voff + i, 1):uint() == 0 then strlen = i; break end
+            end
+            if strlen == 0 then return "value=\"\"" end
+            return "value=\"" .. tvbuf:range(voff, strlen):string() .. "\""
+        end
+    end
+    return ""
+end
+
 function acp2_proto.dissector(tvbuf, pktinfo, root)
     local pktlen = tvbuf:reported_length_remaining()
     if pktlen < 4 then return 0 end
@@ -508,14 +583,16 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
     tree:add(acp2_f.type, tvbuf:range(0, 1))
     tree:add(acp2_f.mtid, tvbuf:range(1, 1))
 
-    local type_str = acp2_type_valstr[type_val] or "Unknown"
+    local type_short = { [0]="Req", [1]="Rep", [2]="Evt", [3]="Err" }
+    local type_str = type_short[type_val] or ("T" .. type_val)
     local info_parts = {}
+    table.insert(info_parts, type_str)
+    table.insert(info_parts, "mtid=" .. mtid_val)
 
     if type_val == 0 or type_val == 1 then
         -- Request or Reply
         tree:add(acp2_f.func, tvbuf:range(2, 1))
         local func_str = acp2_func_valstr[byte2] or ("func=" .. byte2)
-        table.insert(info_parts, type_str)
         table.insert(info_parts, func_str)
 
         if byte2 == 0 then
@@ -552,11 +629,13 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
                 table.insert(info_parts, "obj=" .. obj_id)
-                table.insert(info_parts, pid_name)
+                table.insert(info_parts, "pid=" .. pid_name)
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
                 end
                 if type_val == 1 and pktlen > 12 then
+                    local vs = summarize_first_prop(tvbuf, 12)
+                    if vs ~= "" then table.insert(info_parts, vs) end
                     parse_properties(tvbuf, pktinfo, tree, 12)
                 end
             end
@@ -571,11 +650,13 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
                 table.insert(info_parts, "obj=" .. obj_id)
-                table.insert(info_parts, pid_name)
+                table.insert(info_parts, "pid=" .. pid_name)
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
                 end
                 if pktlen > 12 then
+                    local vs = summarize_first_prop(tvbuf, 12)
+                    if vs ~= "" then table.insert(info_parts, vs) end
                     parse_properties(tvbuf, pktinfo, tree, 12)
                 end
             end
@@ -587,7 +668,7 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
         tree:add(acp2_f.pid, tvbuf:range(3, 1))
         local pid_name = acp2_pid_valstr[byte3] or ("pid=" .. byte3)
         table.insert(info_parts, "Announce")
-        table.insert(info_parts, pid_name)
+        table.insert(info_parts, "pid=" .. pid_name)
 
         if pktlen >= 12 then
             local obj_id = tvbuf:range(4, 4):uint()
@@ -599,6 +680,8 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 table.insert(info_parts, "idx=" .. idx)
             end
             if pktlen > 12 then
+                local vs = summarize_first_prop(tvbuf, 12)
+                if vs ~= "" then table.insert(info_parts, vs) end
                 parse_properties(tvbuf, pktinfo, tree, 12)
             end
         end
