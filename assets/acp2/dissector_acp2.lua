@@ -16,6 +16,13 @@
 local AN2_HDR_LEN = 8
 local AN2_MAGIC   = 0xC635
 
+-- Side-channel from the ACP2 dissector back to its AN2 caller.
+-- Wireshark's Proto:dissector wrapper drops multi-return values, so we
+-- can't rely on `local consumed, info = acp2_proto.dissector(...)`.
+-- Module-local string set by acp2_proto.dissector on every invocation,
+-- read by the AN2 dissector right after the nested call.
+local acp2_last_info = ""
+
 -------------------------------------------------------------------------------
 -- Value-string tables
 -------------------------------------------------------------------------------
@@ -702,7 +709,12 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
         end
     end
 
-    return pktlen, table.concat(info_parts, " ")
+    -- Write composed info text to the module-local side-channel so the
+    -- AN2 caller can render it into pktinfo.cols.info. Multi-return here
+    -- is unreliable because Wireshark's Proto.dissector wrapper drops
+    -- extra values.
+    acp2_last_info = table.concat(info_parts, " ")
+    return pktlen
 end
 
 -------------------------------------------------------------------------------
@@ -817,18 +829,21 @@ local function dissect_one_an2(tvbuf, pktinfo, root, offset)
     local info_str = ""
 
     if proto_val == 2 and type_val == 4 and dlen > 0 then
-        -- ACP2 data frame: hand off to ACP2 dissector
+        -- ACP2 data frame: hand off to ACP2 dissector. We read the
+        -- composed info text from the module-local side-channel
+        -- `acp2_last_info`, because Wireshark's Proto.dissector wrapper
+        -- drops multi-return values when called via Lua.
+        acp2_last_info = ""
         local payload_tvb = tvbuf:range(offset + AN2_HDR_LEN, dlen):tvb()
-        local consumed, acp2_info = acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
-        info_str = "AN2 > ACP2 " .. (acp2_info or "")
-        info_str = info_str .. " " .. slot_str
+        acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
+        info_str = "AN2 > ACP2 " .. acp2_last_info .. " " .. slot_str
 
     elseif proto_val == 2 and dlen > 0 then
         -- ACP2 non-data frame (req/reply/event/error at AN2 level)
+        acp2_last_info = ""
         local payload_tvb = tvbuf:range(offset + AN2_HDR_LEN, dlen):tvb()
-        local consumed, acp2_info = acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
-        info_str = "AN2 " .. type_str .. " > ACP2 " .. (acp2_info or "")
-        info_str = info_str .. " " .. slot_str
+        acp2_proto.dissector(payload_tvb, pktinfo, an2_tree)
+        info_str = "AN2 " .. type_str .. " > ACP2 " .. acp2_last_info .. " " .. slot_str
 
     elseif proto_val == 0 and dlen > 0 then
         -- AN2 internal protocol
