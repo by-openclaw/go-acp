@@ -18,6 +18,47 @@
         "access": "read",
         "children": [
           {
+            "number": 1,
+            "identifier": "identity",
+            "path": "device.slot-0.identity",
+            "oid": "1.1.1",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0, "identifier": "CardName", "path": "device.slot-0.identity.CardName", "oid": "1.1.1.0",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "string", "value": "ACP1-Frame",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 1, "identifier": "UserLabel", "path": "device.slot-0.identity.UserLabel", "oid": "1.1.1.1",
+                "description": null, "isOnline": true, "access": "readWrite", "children": [],
+                "type": "string", "value": "Synapse",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 2, "identifier": "Serial", "path": "device.slot-0.identity.Serial", "oid": "1.1.1.2",
+                "description": null, "isOnline": true, "access": "read", "children": [],
+                "type": "string", "value": "SN-FRAME01",
+                "default": null, "minimum": null, "maximum": null, "step": null,
+                "unit": null, "format": "maxLen=16", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
+              }
+            ]
+          },
+          {
             "number": 6,
             "identifier": "frame",
             "path": "device.slot-0.frame",
