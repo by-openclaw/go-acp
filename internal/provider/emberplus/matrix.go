@@ -157,17 +157,20 @@ func encodeConnections(conns []canonical.MatrixConnection) ber.TLV {
 // encodeConnection emits one [APPLICATION 16] Connection. operation and
 // disposition are omitted when they match spec defaults (absolute/tally)
 // to match TinyEmber+ wire economy.
+//
+// sources is ALWAYS emitted — even when empty. EmberViewer (and the
+// spec's CHOICE semantics) treat an absent sources field as "unchanged"
+// rather than "disconnected"; the last-crosspoint-disconnect click
+// leaves the cell lit unless the provider sends an explicit empty
+// RelOID tally. See router oneToOne disconnect regression on #69.
 func encodeConnection(c canonical.MatrixConnection) ber.TLV {
+	parts := make([]uint32, len(c.Sources))
+	for i, v := range c.Sources {
+		parts[i] = uint32(v)
+	}
 	fields := []ber.TLV{
 		ber.ContextConstructed(glow.ConnTarget, ber.Integer(c.Target)),
-	}
-	if len(c.Sources) > 0 {
-		parts := make([]uint32, len(c.Sources))
-		for i, v := range c.Sources {
-			parts[i] = uint32(v)
-		}
-		fields = append(fields,
-			ber.ContextConstructed(glow.ConnSources, ber.RelOID(encodeRelativeOID(parts))))
+		ber.ContextConstructed(glow.ConnSources, ber.RelOID(encodeRelativeOID(parts))),
 	}
 	if op := connOperationConst(c.Operation); op != glow.ConnOpAbsolute {
 		fields = append(fields,

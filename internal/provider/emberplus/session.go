@@ -170,6 +170,7 @@ func (s *session) handleEmber(payload []byte) error {
 		oid := oidFromPath(path)
 		switch cmd.Number {
 		case glow.CmdGetDirectory:
+			s.logger.Debug("get directory", slog.String("oid", oid))
 			return s.replyGetDirectory(oid)
 		case glow.CmdSubscribe:
 			s.srv.subscribe(s, oid)
@@ -231,6 +232,7 @@ func (s *session) handleInvoke(oid string, inv *glow.Invocation) {
 
 	result, ok := s.srv.invokeFunction(oid, args)
 	payload := s.srv.encodeInvocationResult(invID, ok, result)
+	s.logger.Debug("invoke reply", slog.Int("invocation_id", int(invID)), slog.Bool("success", ok), slog.Int("bytes", len(payload)))
 	s.send(payload)
 }
 
@@ -263,35 +265,50 @@ func (s *session) replyGetDirectory(oid string) error {
 // Path is built from QualifiedNode.Path / QualifiedParameter.Path if
 // present, else from chained Node.Number values for the non-qualified
 // form.
+//
+// All four container kinds (Node, Parameter, Matrix, Function) can hold
+// a child Command per spec p.86 — Function is particularly important
+// because Invoke commands arrive as QualifiedFunction(path){children:
+// [Command(Invoke)]}; if we don't descend into Function.Children the
+// Invoke gets silently dropped and the consumer times out.
 func findCommandInElements(els []glow.Element) (*glow.Command, []uint32) {
 	for _, e := range els {
 		if e.Command != nil {
 			return e.Command, nil
 		}
 		if e.Node != nil {
-			basePath := []uint32(nil)
-			if len(e.Node.Path) > 0 {
-				basePath = toUint32(e.Node.Path)
-			} else if e.Node.Number != 0 {
-				basePath = []uint32{uint32(e.Node.Number)}
-			}
+			base := nodeBasePath(e.Node)
 			if c, sub := findCommandInElements(e.Node.Children); c != nil {
-				return c, append(append([]uint32{}, basePath...), sub...)
+				return c, append(append([]uint32{}, base...), sub...)
 			}
 		}
 		if e.Parameter != nil {
-			basePath := []uint32(nil)
-			if len(e.Parameter.Path) > 0 {
-				basePath = toUint32(e.Parameter.Path)
-			} else if e.Parameter.Number != 0 {
-				basePath = []uint32{uint32(e.Parameter.Number)}
-			}
+			base := paramBasePath(e.Parameter)
 			if c, sub := findCommandInElements(e.Parameter.Children); c != nil {
-				return c, append(append([]uint32{}, basePath...), sub...)
+				return c, append(append([]uint32{}, base...), sub...)
+			}
+		}
+		if e.Function != nil {
+			base := funcBasePath(e.Function)
+			if c, sub := findCommandInElements(e.Function.Children); c != nil {
+				return c, append(append([]uint32{}, base...), sub...)
+			}
+		}
+		if e.Matrix != nil {
+			base := matrixBasePath(e.Matrix)
+			if c, sub := findCommandInElements(e.Matrix.Children); c != nil {
+				return c, append(append([]uint32{}, base...), sub...)
 			}
 		}
 	}
 	return nil, nil
+}
+
+func funcBasePath(f *glow.Function) []uint32 {
+	if len(f.Path) > 0 {
+		return toUint32(f.Path)
+	}
+	return []uint32{uint32(f.Number)}
 }
 
 // findMatrixConnectionsInElements walks the decoded tree looking for a
@@ -399,24 +416,26 @@ func findSetValueInElements(els []glow.Element) ([]uint32, any, bool) {
 	return nil, nil, false
 }
 
+// nodeBasePath / paramBasePath return the path segment an element
+// contributes when the walker concatenates nested wrappers.
+//
+// Number=0 is a LEGAL sub-identifier (e.g. label/target "t-0" sits at
+// .0 under its parent). We deliberately include it — stripping 0 broke
+// SetValue on any parameter whose number is 0. The cost of including
+// a genuinely-absent Number=0 is a path like "0" that fails lookup
+// cleanly; the cost of dropping a real .0 is a silently wrong SetValue.
 func nodeBasePath(n *glow.Node) []uint32 {
 	if len(n.Path) > 0 {
 		return toUint32(n.Path)
 	}
-	if n.Number != 0 {
-		return []uint32{uint32(n.Number)}
-	}
-	return nil
+	return []uint32{uint32(n.Number)}
 }
 
 func paramBasePath(p *glow.Parameter) []uint32 {
 	if len(p.Path) > 0 {
 		return toUint32(p.Path)
 	}
-	if p.Number != 0 {
-		return []uint32{uint32(p.Number)}
-	}
-	return nil
+	return []uint32{uint32(p.Number)}
 }
 
 func oidFromPath(parts []uint32) string {
