@@ -61,16 +61,18 @@ func (s *server) collectStreams() []streamEntry {
 	return out
 }
 
-// streamTick produces one Root{StreamCollection{...}} payload with a
-// synthetic value per streamEntry. Values track a sine wave offset by
-// stream id, clamped to [min, max] — good enough to prove metering
-// consumers see the numbers move.
+// streamTick computes sine-wave values for a caller-filtered subset of
+// entries and encodes them as one Root{StreamCollection}. Returns nil
+// if the subset is empty so the caller can skip send() entirely.
 //
 // Wire shape (spec p.93):
 //
 //	Root [APP 0] → StreamCollection [APP 6] → [CTX 0] → StreamEntry [APP 5]
 //	  StreamEntry { [0] streamIdentifier Integer32, [1] streamValue Value }
 func streamTick(entries []streamEntry, t time.Time) []byte {
+	if len(entries) == 0 {
+		return nil
+	}
 	items := make([]ber.TLV, 0, len(entries))
 	phase := float64(t.UnixMilli()) / 500.0 // 2-second period
 	for _, e := range entries {
@@ -99,10 +101,15 @@ func streamTick(entries []streamEntry, t time.Time) []byte {
 	return ber.EncodeTLV(root)
 }
 
-// runStreamer fires a StreamCollection at every active session at
-// interval. Exits when ctx is cancelled or the server stops. One
-// sender covers all sessions — streams are unsolicited, not
-// subscription-based.
+// runStreamer fires StreamCollection frames every interval — but only
+// to sessions that have explicitly Subscribed to at least one stream
+// parameter. Each subscriber receives a StreamCollection containing
+// only the entries for the parameters they watch.
+//
+// This avoids broadcasting meter noise to consumers that aren't
+// interested — which matters at scale: a rack with 200 meters at 10 Hz
+// would otherwise push ~40 KB/s at every passive observer, starving
+// the link for other traffic like crosspoint tallies.
 func (s *server) runStreamer(ctx context.Context, interval time.Duration) {
 	entries := s.collectStreams()
 	if len(entries) == 0 {
@@ -122,16 +129,42 @@ func (s *server) runStreamer(ctx context.Context, interval time.Duration) {
 		case <-s.stopped:
 			return
 		case t := <-ticker.C:
-			payload := streamTick(entries, t)
-			s.mu.Lock()
-			sessions := make([]*session, 0, len(s.sessions))
-			for sess := range s.sessions {
-				sessions = append(sessions, sess)
+			s.fanoutStreams(entries, t)
+		}
+	}
+}
+
+// fanoutStreams builds a per-session StreamCollection restricted to the
+// entries that session has Subscribed to. Sessions with no relevant
+// subscriptions are skipped entirely.
+func (s *server) fanoutStreams(entries []streamEntry, t time.Time) {
+	// Snapshot sessions + their subs under the server lock, then do the
+	// (potentially slow) per-session encode + send outside it.
+	type sessFilter struct {
+		sess *session
+		want []streamEntry
+	}
+	// sess.subs is protected by server.mu — single lock covers the whole
+	// snapshot.
+	s.mu.Lock()
+	var work []sessFilter
+	for sess := range s.sessions {
+		var want []streamEntry
+		for _, e := range entries {
+			if _, ok := sess.subs[e.oid]; ok {
+				want = append(want, e)
 			}
-			s.mu.Unlock()
-			for _, sess := range sessions {
-				sess.send(payload)
-			}
+		}
+		if len(want) > 0 {
+			work = append(work, sessFilter{sess: sess, want: want})
+		}
+	}
+	s.mu.Unlock()
+
+	for _, w := range work {
+		payload := streamTick(w.want, t)
+		if payload != nil {
+			w.sess.send(payload)
 		}
 	}
 }
