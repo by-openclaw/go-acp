@@ -586,29 +586,33 @@ local function summarize_first_prop(tvbuf, offset)
         local n = math.floor(vlen / 4)
         return n .. " children"
     elseif pid >= 8 and pid <= 12 then
-        -- value / default / min / max / step — decode by vtype in data byte
+        -- value / default / min / max / step — decode by vtype in data
+        -- byte. Tag each summary with the declared type so the Info
+        -- column reads e.g. `value(s8)=-40`, `value(float)=-35.3073`,
+        -- `value(string)="Input-A"` — no guessing needed.
         local vtype = data
+        local t = acp2_numtype_valstr[vtype] or ("vtype=" .. vtype)
         if vtype <= 2 then
-            return "value=" .. tvbuf:range(voff, 4):int()
+            return string.format("value(%s)=%d", t, tvbuf:range(voff, 4):int())
         elseif vtype == 3 and vlen >= 8 then
-            return "value=" .. tvbuf:range(voff, 8):int64()
+            return string.format("value(s64)=%s", tostring(tvbuf:range(voff, 8):int64()))
         elseif vtype >= 4 and vtype <= 6 then
-            return "value=" .. tvbuf:range(voff, 4):uint()
+            return string.format("value(%s)=%d", t, tvbuf:range(voff, 4):uint())
         elseif vtype == 7 and vlen >= 8 then
-            return "value=" .. tvbuf:range(voff, 8):uint64()
+            return string.format("value(u64)=%s", tostring(tvbuf:range(voff, 8):uint64()))
         elseif vtype == 8 then
-            return string.format("value=%g", tvbuf:range(voff, 4):float())
+            return string.format("value(float)=%g", tvbuf:range(voff, 4):float())
         elseif vtype == 9 then
-            return "enum=" .. tvbuf:range(voff, 4):uint()
+            return string.format("value(enum)=%d", tvbuf:range(voff, 4):uint())
         elseif vtype == 10 then
-            return "ipv4=" .. tvbuf:range(voff, 4):ipv4()
+            return "value(ipv4)=" .. tostring(tvbuf:range(voff, 4):ipv4())
         elseif vtype == 11 then
             local strlen = vlen
             for i = 0, vlen - 1 do
                 if tvbuf:range(voff + i, 1):uint() == 0 then strlen = i; break end
             end
-            if strlen == 0 then return "value=\"\"" end
-            return "value=\"" .. tvbuf:range(voff, strlen):string() .. "\""
+            if strlen == 0 then return "value(string)=\"\"" end
+            return string.format("value(string)=\"%s\"", tvbuf:range(voff, strlen):string())
         end
     end
     return ""
