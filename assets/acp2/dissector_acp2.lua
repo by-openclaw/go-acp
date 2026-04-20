@@ -220,33 +220,46 @@ end
 local function parse_numeric_value(tvbuf, tree, offset, vtype, remaining)
     if remaining < 4 then return end
 
+    -- Spec §5.4 "Property value wire sizes":
+    --   s8/s16/s32 all stored as 4-byte signed (sign-extended)
+    --   u8/u16/u32 all stored as 4-byte unsigned (zero-extended)
+    --   s64/u64    stored as 8 bytes
+    --   float      stored as 4 bytes
+    -- The Wireshark ProtoField types are fixed at declaration, so we
+    -- always read 4/8 bytes and override the displayed label via
+    -- set_text() to reflect the DECLARED type (s8/s16/s32/u8/...) —
+    -- matches the "[Number.sX]" annotation in the property header.
+    local type_label = acp2_numtype_valstr[vtype] or ("vtype=" .. vtype)
+
     if vtype >= 0 and vtype <= 2 then
-        -- s8, s16, s32 all stored as s32
+        local v = tvbuf:range(offset, 4):int()
         tree:add(prop_f.val_s32, tvbuf:range(offset, 4))
+            :set_text(string.format("Value (%s): %d", type_label, v))
     elseif vtype == 3 then
-        -- s64
         if remaining >= 8 then
             tree:add(prop_f.val_s64, tvbuf:range(offset, 8))
+                :set_text("Value (s64): " .. tostring(tvbuf:range(offset, 8):int64()))
         end
     elseif vtype >= 4 and vtype <= 6 then
-        -- u8, u16, u32 all stored as u32
+        local v = tvbuf:range(offset, 4):uint()
         tree:add(prop_f.val_u32, tvbuf:range(offset, 4))
+            :set_text(string.format("Value (%s): %d", type_label, v))
     elseif vtype == 7 then
-        -- u64
         if remaining >= 8 then
             tree:add(prop_f.val_u64, tvbuf:range(offset, 8))
+                :set_text("Value (u64): " .. tostring(tvbuf:range(offset, 8):uint64()))
         end
     elseif vtype == 8 then
-        -- float stored as 4 bytes
+        local v = tvbuf:range(offset, 4):float()
         tree:add(prop_f.val_float, tvbuf:range(offset, 4))
+            :set_text(string.format("Value (float): %g", v))
     elseif vtype == 9 then
-        -- preset/enum stored as u32
+        local v = tvbuf:range(offset, 4):uint()
         tree:add(prop_f.val_u32, tvbuf:range(offset, 4))
+            :set_text(string.format("Value (enum/preset index): %d", v))
     elseif vtype == 10 then
-        -- ipv4
         tree:add(prop_f.val_ipv4, tvbuf:range(offset, 4))
     elseif vtype == 11 then
-        -- string: null-terminated
         local str_bytes = tvbuf:range(offset, remaining):bytes()
         local str_len = remaining
         for i = 0, remaining - 1 do
@@ -256,7 +269,9 @@ local function parse_numeric_value(tvbuf, tree, offset, vtype, remaining)
             end
         end
         if str_len > 0 then
+            local s = tvbuf:range(offset, str_len):string()
             tree:add(prop_f.val_str, tvbuf:range(offset, str_len))
+                :set_text(string.format("Value (string): \"%s\"", s))
         end
     end
 end
