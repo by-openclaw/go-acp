@@ -26,6 +26,7 @@ import (
 	"acp/internal/provider"
 
 	acp1provider "acp/internal/provider/acp1"
+	acp2provider "acp/internal/provider/acp2"
 	_ "acp/internal/provider/emberplus"
 )
 
@@ -36,11 +37,12 @@ func main() {
 		port          = flag.Int("port", 0, "TCP listen port (0 = plugin default)")
 		host          = flag.String("host", "0.0.0.0", "TCP listen host")
 		logLevel      = flag.String("log-level", "info", "log level: debug, info, warn, error")
-		announceDemo  = flag.Bool("announce-demo", false, "acp1: oscillate (slot,group,id) every --announce-demo-interval and broadcast announces (demonstrates device-initiated state changes)")
-		announceSlot  = flag.Int("announce-demo-slot", 1, "acp1: slot for --announce-demo target")
+		announceDemo  = flag.Bool("announce-demo", false, "oscillate a target value every --announce-demo-interval and broadcast announces (demonstrates device-initiated state changes; acp1/acp2 only)")
+		announceSlot  = flag.Int("announce-demo-slot", 1, "slot for --announce-demo target")
 		announceGroup = flag.Int("announce-demo-group", 2, "acp1: object group for --announce-demo target (2=Control)")
 		announceID    = flag.Int("announce-demo-id", 0, "acp1: object id for --announce-demo target (must be Integer type)")
-		announceEvery = flag.Duration("announce-demo-interval", 2*time.Second, "acp1: --announce-demo tick interval")
+		announceObj   = flag.Int("announce-demo-obj", 18, "acp2: obj-id for --announce-demo target (must be Number+Float)")
+		announceEvery = flag.Duration("announce-demo-interval", 2*time.Second, "--announce-demo tick interval")
 	)
 	flag.Parse()
 
@@ -85,20 +87,22 @@ func main() {
 		_ = srv.Stop()
 	}()
 
-	// Optional: spawn a device-state-change simulator. Only active when
-	// --announce-demo is set AND the loaded plugin is acp1. Ignored for
-	// Ember+ / ACP2 (each provider surfaces its own demo hooks when
-	// relevant).
+	// Optional: spawn a device-state-change simulator. Dispatched to the
+	// loaded plugin's own demo hook; ignored for Ember+ and any other
+	// plugin that does not implement an announce demo.
 	if *announceDemo {
-		if s, ok := srv.(*acp1provider.Server); ok {
+		switch s := srv.(type) {
+		case *acp1provider.Server:
 			go s.RunAnnounceDemo(ctx,
 				uint8(*announceSlot),
 				uint8(*announceGroup),
 				uint8(*announceID),
 				*announceEvery,
 			)
-		} else {
-			logger.Warn("--announce-demo ignored: current provider is not acp1",
+		case *acp2provider.Server:
+			go s.RunAnnounceDemo(ctx, uint8(*announceSlot), uint32(*announceObj), *announceEvery)
+		default:
+			logger.Warn("--announce-demo ignored: current provider has no demo hook",
 				slog.String("protocol", *proto),
 			)
 		}

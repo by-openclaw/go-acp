@@ -197,8 +197,9 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 	s.slotStatus = make([]protocol.SlotStatus, totalSlots)
 	for slot := 0; slot < totalSlots; slot++ {
 		s.logger.Debug("acp2: AN2 GetSlotInfo", "slot", slot)
-		payload := []byte{byte(slot)}
-		reply, err = s.an2Request(ctx, AN2FuncGetSlotInfo, byte(slot), payload)
+		// AN2 spec §3.3.3: dlen=1 (just funcID). Slot is in the AN2 header,
+		// NOT duplicated in the payload.
+		reply, err = s.an2Request(ctx, AN2FuncGetSlotInfo, byte(slot), nil)
 		if err != nil {
 			s.logger.Debug("acp2: GetSlotInfo failed", "slot", slot, "err", err)
 			continue
