@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"acp/internal/export/canonical"
 )
@@ -70,6 +71,10 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 		slog.String("addr", ln.Addr().String()),
 		slog.Int("tree_size", len(s.tree.byOID)),
 	)
+
+	// Unsolicited stream fan-out — runs if the tree has any Parameters
+	// with a streamIdentifier, exits on ctx cancel or Stop().
+	go s.runStreamer(ctx, 100*time.Millisecond)
 
 	// Close listener on ctx cancel to unblock Accept.
 	go func() {
