@@ -9,47 +9,78 @@ import (
 )
 
 // encodeGetDirReply walks the tree entry e and produces the BER payload
-// for a GetDirectory reply. The shape is:
+// for a GetDirectory reply.
 //
-//	Root → RootElementCollection → Context[0] → QualifiedNode(path) →
-//	  children → ElementCollection →
-//	    Context[0] → QualifiedNode | QualifiedParameter | QualifiedMatrix | QualifiedFunction
-//	    Context[0] → (next sibling)
-//	    ...
+// Spec pattern (observed from TinyEmber+ frame 6 + 10):
 //
-// Always emits qualified forms so consumers walking by path resolve each
-// child independently — the lax "bare Node with number only" form is
-// valid wire but upsets strict providers' walkers; provider should
-// always emit the strict-safe shape.
-func (s *server) encodeGetDirReply(e *entry) ([]byte, error) {
+//  1. GetDirectory at root level (bare Command, empty path)
+//     → return the tree's top-level element alone (identifier only)
+//
+//  2. GetDirectory on a specific path P (Command nested in QualifiedNode(P))
+//     → return each direct child of P as a FLAT QualifiedElement with
+//       absolute path at the RootElementCollection level (NOT nested
+//       inside a wrapper). Minimal contents — strict viewers reject
+//       anything beyond identifier (+description where set).
+//
+// isRoot and isOnline are intentionally omitted: TinyEmber+ does not
+// emit them, and EmberViewer treats extra content as schema deviation.
+func (s *server) encodeGetDirReply(e *entry, bareRoot bool) ([]byte, error) {
 	hdr := e.el.Common()
 
-	// Build the children collection as [0]-wrapped qualified elements.
-	kids := make([]ber.TLV, 0, len(hdr.Children))
-	for _, child := range hdr.Children {
-		centry := s.tree.byOID[child.Common().OID]
-		if centry == nil {
-			return nil, fmt.Errorf("encoder: missing index for %q", child.Common().OID)
+	var items []ber.TLV
+	if bareRoot {
+		// Just the queried element itself, identifier only.
+		items = append(items, ber.ContextConstructed(0, s.encodeElementMinimal(e)))
+	} else {
+		// Flat list of direct children, each as a qualified element.
+		for _, child := range hdr.Children {
+			centry := s.tree.byOID[child.Common().OID]
+			if centry == nil {
+				return nil, fmt.Errorf("encoder: missing index for %q", child.Common().OID)
+			}
+			tlv, err := s.encodeQualifiedElement(centry)
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, ber.ContextConstructed(0, tlv))
 		}
-		tlv, err := s.encodeQualifiedElement(centry)
-		if err != nil {
-			return nil, err
-		}
-		kids = append(kids, ber.ContextConstructed(0, tlv))
 	}
-	childCollection := ber.AppConstructed(glow.TagElementCollection, kids...)
 
-	// Wrap the queried element itself as QualifiedNode with children[].
-	node := ber.AppConstructed(glow.TagQualifiedNode,
-		ber.ContextConstructed(glow.QNodePath, ber.RelOID(encodeRelativeOID(e.oidParts))),
-		ber.ContextConstructed(glow.QNodeChildren, childCollection),
-	)
 	root := ber.AppConstructed(glow.TagRoot,
-		ber.AppConstructed(glow.TagRootElementCollection,
-			ber.ContextConstructed(0, node),
-		),
+		ber.AppConstructed(glow.TagRootElementCollection, items...),
 	)
 	return ber.EncodeTLV(root), nil
+}
+
+// encodeElementMinimal emits a qualified element with just the identifier
+// (and description if present) — the shape TinyEmber+ uses for the
+// initial root reply.
+func (s *server) encodeElementMinimal(e *entry) ber.TLV {
+	hdr := e.el.Common()
+	var setChildren []ber.TLV
+	setChildren = append(setChildren,
+		ber.ContextConstructed(glow.NodeContentIdentifier, ber.UTF8(hdr.Identifier)))
+	if hdr.Description != nil && *hdr.Description != "" {
+		setChildren = append(setChildren,
+			ber.ContextConstructed(glow.NodeContentDescription, ber.UTF8(*hdr.Description)))
+	}
+	contents := ber.Set(setChildren...)
+
+	// App tag depends on concrete element kind. For the canonical root we
+	// always emit QualifiedNode; Parameter / Matrix / Function variants
+	// mirror the per-kind encoder below.
+	switch e.el.(type) {
+	case *canonical.Parameter:
+		return ber.AppConstructed(glow.TagQualifiedParameter,
+			ber.ContextConstructed(glow.QParamPath, ber.RelOID(encodeRelativeOID(e.oidParts))),
+			ber.ContextConstructed(glow.QParamContents, contents),
+		)
+	default:
+		return ber.AppConstructed(glow.TagQualifiedNode,
+			ber.ContextConstructed(glow.QNodePath, ber.RelOID(encodeRelativeOID(e.oidParts))),
+			ber.ContextConstructed(glow.QNodeContents, contents),
+		)
+	}
 }
 
 // encodeQualifiedElement dispatches by element kind and emits the
@@ -67,48 +98,100 @@ func (s *server) encodeQualifiedElement(e *entry) (ber.TLV, error) {
 }
 
 func (s *server) encodeQualifiedNode(e *entry, n *canonical.Node) ber.TLV {
-	contents := ber.Set(
-		ber.ContextConstructed(glow.NodeContentIdentifier, ber.UTF8(n.Identifier)),
-	)
+	// Minimal NodeContents — identifier + optional description. Matches
+	// TinyEmber+'s shape; strict viewers reject isRoot/isOnline padding
+	// on per-child replies.
+	var kids []ber.TLV
+	kids = append(kids,
+		ber.ContextConstructed(glow.NodeContentIdentifier, ber.UTF8(n.Identifier)))
 	if n.Description != nil && *n.Description != "" {
-		contents.Children = append(contents.Children,
+		kids = append(kids,
 			ber.ContextConstructed(glow.NodeContentDescription, ber.UTF8(*n.Description)))
 	}
-	contents.Children = append(contents.Children,
-		ber.ContextConstructed(glow.NodeContentIsOnline, ber.Boolean(n.IsOnline)))
-
 	return ber.AppConstructed(glow.TagQualifiedNode,
 		ber.ContextConstructed(glow.QNodePath, ber.RelOID(encodeRelativeOID(e.oidParts))),
-		ber.ContextConstructed(glow.QNodeContents, contents),
+		ber.ContextConstructed(glow.QNodeContents, ber.Set(kids...)),
 	)
 }
 
 func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.TLV {
-	contents := ber.Set(
-		ber.ContextConstructed(glow.ParamContentIdentifier, ber.UTF8(p.Identifier)),
-	)
+	// ParameterContents SET — fields in ASCENDING context tag order
+	// (DER requirement + EmberViewer enforces it). Spec p.85:
+	//   0 identifier, 1 description, 2 value, 3 minimum, 4 maximum,
+	//   5 access, 6 format, 7 enumeration, 8 factor, 11 step,
+	//   12 default, 13 type, 15 enumMap.
+	var kids []ber.TLV
+	kids = append(kids,
+		ber.ContextConstructed(glow.ParamContentIdentifier, ber.UTF8(p.Identifier))) // [0]
 	if p.Description != nil && *p.Description != "" {
-		contents.Children = append(contents.Children,
-			ber.ContextConstructed(glow.ParamContentDescription, ber.UTF8(*p.Description)))
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentDescription, ber.UTF8(*p.Description))) // [1]
 	}
-	// value
 	if v, ok := encodeValue(p.Type, p.Value); ok {
-		contents.Children = append(contents.Children,
-			ber.ContextConstructed(glow.ParamContentValue, v))
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentValue, v)) // [2]
 	}
-	// type
+	if v, ok := encodeValue(p.Type, p.Minimum); ok {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentMinimum, v)) // [3]
+	}
+	if v, ok := encodeValue(p.Type, p.Maximum); ok {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentMaximum, v)) // [4]
+	}
+	kids = append(kids,
+		ber.ContextConstructed(glow.ParamContentAccess, ber.Integer(accessConst(p.Access)))) // [5]
+	if p.Format != nil && *p.Format != "" {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentFormat, ber.UTF8(*p.Format))) // [6]
+	}
+	if p.Enumeration != nil && *p.Enumeration != "" {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentEnumeration, ber.UTF8(*p.Enumeration))) // [7]
+	}
+	if p.Factor != nil {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentFactor, ber.Integer(*p.Factor))) // [8]
+	}
+	if v, ok := encodeValue(p.Type, p.Step); ok {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentStep, v)) // [11]
+	}
+	if v, ok := encodeValue(p.Type, p.Default); ok {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentDefault, v)) // [12]
+	}
 	if tc, ok := paramTypeConst(p.Type); ok {
-		contents.Children = append(contents.Children,
-			ber.ContextConstructed(glow.ParamContentType, ber.Integer(tc)))
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentType, ber.Integer(tc))) // [13]
 	}
-	// access
-	contents.Children = append(contents.Children,
-		ber.ContextConstructed(glow.ParamContentAccess, ber.Integer(accessConst(p.Access))))
-
+	if len(p.EnumMap) > 0 {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentEnumMap, encodeEnumMap(p.EnumMap))) // [15]
+	}
 	return ber.AppConstructed(glow.TagQualifiedParameter,
 		ber.ContextConstructed(glow.QParamPath, ber.RelOID(encodeRelativeOID(e.oidParts))),
-		ber.ContextConstructed(glow.QParamContents, contents),
+		ber.ContextConstructed(glow.QParamContents, ber.Set(kids...)),
 	)
+}
+
+// encodeEnumMap builds a StringIntegerCollection — the canonical form
+// of Parameter.enumMap (spec p.86 StringIntegerPair / Collection).
+//
+//	StringIntegerCollection ::= [APPLICATION 8] SEQUENCE OF [0] StringIntegerPair
+//	StringIntegerPair       ::= [APPLICATION 7] SEQUENCE {
+//	  entryString  [0] EmberString,
+//	  entryInteger [1] Integer64 }
+func encodeEnumMap(entries []canonical.EnumEntry) ber.TLV {
+	pairs := make([]ber.TLV, 0, len(entries))
+	for _, en := range entries {
+		pair := ber.AppConstructed(glow.TagStringIntegerPair,
+			ber.ContextConstructed(0, ber.UTF8(en.Key)),
+			ber.ContextConstructed(1, ber.Integer(en.Value)),
+		)
+		pairs = append(pairs, ber.ContextConstructed(0, pair))
+	}
+	return ber.AppConstructed(glow.TagStringIntegerCollection, pairs...)
 }
 
 // encodeParamAnnouncement produces a value-change announcement — same

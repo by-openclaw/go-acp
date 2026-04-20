@@ -50,7 +50,9 @@ func TestRoundTrip_NodeWithParameter(t *testing.T) {
 		t.Fatal("tree failed to build")
 	}
 
-	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry())
+	// Request bareRoot=false: after initial root reply, consumer issues
+	// GetDirectory on path=[1] → we reply with children flat.
+	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
 	if err != nil {
 		t.Fatalf("encode: %v", err)
 	}
@@ -59,22 +61,16 @@ func TestRoundTrip_NodeWithParameter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(els) != 1 || els[0].Node == nil {
-		t.Fatalf("expected one QualifiedNode, got %+v", els)
+	// Spec pattern: GetDirectory on path=[1] returns children flat at the
+	// RootElementCollection level. Here the only child is the "gain"
+	// QualifiedParameter, so we expect exactly one element and it to be
+	// a Parameter at path [1,1].
+	if len(els) != 1 {
+		t.Fatalf("want 1 element, got %d: %+v", len(els), els)
 	}
-	decodedRoot := els[0].Node
-	// A GetDirectory reply wraps the queried Node but omits its own
-	// contents — the consumer already has those from the parent walk.
-	// Only the child collection is expected to be populated.
-	if len(decodedRoot.Children) != 1 {
-		t.Fatalf("want 1 child, got %d", len(decodedRoot.Children))
-	}
-	if len(decodedRoot.Path) != 1 || decodedRoot.Path[0] != 1 {
-		t.Errorf("root path = %v, want [1]", decodedRoot.Path)
-	}
-	p := decodedRoot.Children[0].Parameter
+	p := els[0].Parameter
 	if p == nil {
-		t.Fatalf("child is not a parameter: %+v", decodedRoot.Children[0])
+		t.Fatalf("expected a QualifiedParameter, got %+v", els[0])
 	}
 	if p.Identifier != "gain" {
 		t.Errorf("param identifier = %q, want gain", p.Identifier)
