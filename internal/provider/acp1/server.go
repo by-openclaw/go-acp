@@ -12,6 +12,12 @@ import (
 	iacp1 "acp/internal/protocol/acp1"
 )
 
+// Server is the exported alias for the concrete ACP1 provider — lets
+// cmd/acp-provider reach protocol-specific helpers (e.g. RunAnnounceDemo)
+// via a type assertion without widening the cross-protocol
+// provider.Provider interface. Mirrors the pattern used in acp2.
+type Server = server
+
 // server is the concrete provider.Provider for ACP1 over UDP. One
 // datagram in -> dispatch -> one datagram out, plus broadcast announce
 // on successful mutating methods.
@@ -173,6 +179,7 @@ func (s *server) broadcastAnnounce(ann *iacp1.Message) {
 	bc := s.bcast
 	s.mu.Unlock()
 	if bc == nil {
+		s.logger.Warn("acp1 announce skipped: no broadcast socket")
 		return
 	}
 	out, err := ann.Encode()
@@ -183,10 +190,22 @@ func (s *server) broadcastAnnounce(ann *iacp1.Message) {
 		return
 	}
 	if _, err := bc.Write(out); err != nil {
-		s.logger.Debug("acp1 announce send",
+		s.logger.Warn("acp1 announce send",
 			slog.String("err", err.Error()),
+			slog.String("dst", bc.RemoteAddr().String()),
 		)
+		return
 	}
+	s.logger.Info("acp1 announce broadcast",
+		slog.Uint64("mtid", uint64(ann.MTID)),
+		slog.Int("mtype", int(ann.MType)),
+		slog.Int("mcode", int(ann.MCode)),
+		slog.Int("objgroup", int(ann.ObjGroup)),
+		slog.Int("objid", int(ann.ObjID)),
+		slog.Int("maddr", int(ann.MAddr)),
+		slog.Int("bytes", len(out)),
+		slog.String("dst", bc.RemoteAddr().String()),
+	)
 }
 
 // readLoop reads datagrams until ctx is cancelled or the conn is closed.
