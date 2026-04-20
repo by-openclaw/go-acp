@@ -355,10 +355,33 @@ local function parse_property(tvbuf, pktinfo, parent_tree, offset)
 
     elseif pid_val >= 8 and pid_val <= 12 then
         -- value, default_value, min_value, max_value, step_size
-        -- vtype is in data byte
+        -- vtype is in data byte. Derive the containing object type from
+        -- vtype (spec §5.2.2 "Property value type") so the property tree
+        -- shows both the object category (Number/Enum/IPv4/String) and
+        -- the numeric subtype: e.g. "[Number.float]" instead of just
+        -- "[float]". This matters for announces, which only carry pid 8
+        -- and never pid 1 (object_type) — otherwise a consumer has to
+        -- remember per-obj context across frames to know what kind of
+        -- object just changed.
         local vtype = data_val
         local vtype_name = acp2_numtype_valstr[vtype] or ("vtype=" .. vtype)
-        tree:append_text(" [" .. vtype_name .. "]")
+        local obj_cat
+        if vtype <= 8 then
+            obj_cat = "Number"         -- s8/s16/s32/s64/u8/u16/u32/u64/float
+        elseif vtype == 9 then
+            obj_cat = "Enum/Preset"    -- u32 index
+        elseif vtype == 10 then
+            obj_cat = "IPv4"           -- 4 bytes
+        elseif vtype == 11 then
+            obj_cat = "String"         -- NUL-terminated UTF-8
+        else
+            obj_cat = "Unknown"
+        end
+        tree:append_text(" [" .. obj_cat .. "." .. vtype_name .. "]")
+        -- Expose the derived object category as a discrete field so
+        -- users can filter and the Detail panel shows it on its own row.
+        tree:add(prop_f.obj_type, tvbuf:range(offset + 1, 1))
+            :set_text("Object Category (derived): " .. obj_cat)
         if val_len > 0 then
             parse_numeric_value(tvbuf, tree, val_offset, vtype, val_len)
         end
