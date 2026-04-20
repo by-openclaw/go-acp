@@ -183,51 +183,106 @@ func (t *tree) lookup(k objectKey) (*entry, bool) {
 //	                                 Enum with "Off,On" items for plain
 //	                                 booleans, Alarm for alarm objects)
 func deriveACPType(p *canonical.Parameter) (iacp1.ObjectType, error) {
-	hint := ""
-	if p.Format != nil {
-		hint = strings.ToLower(*p.Format)
+	// Parameter.Format is a free-form comma-separated hint carrying
+	// ACP1 type information AND other attributes (e.g. "maxLen=N" on
+	// strings, "priority=N,tag=M" on alarms). Split and scan: first
+	// matching type hint wins; non-type hints (maxLen/priority/tag) are
+	// absorbed by later encoders.
+	parts := formatParts(p.Format)
+	typeHint, known := pickTypeHint(parts)
+	if !known {
+		return 0, fmt.Errorf("unrecognised format type-hint %q (valid bare tokens: int16|int32|uint8|ipv4|file|alarm|frame)", typeHint)
 	}
+
 	switch p.Type {
 	case canonical.ParamReal:
 		return iacp1.TypeFloat, nil
 	case canonical.ParamEnum:
 		return iacp1.TypeEnum, nil
 	case canonical.ParamInteger:
-		switch hint {
+		switch typeHint {
 		case "", "int16":
 			return iacp1.TypeInteger, nil
 		case "int32", "long":
 			return iacp1.TypeLong, nil
 		case "uint8", "byte":
 			return iacp1.TypeByte, nil
-		default:
-			return 0, fmt.Errorf("integer: unknown format %q (want int16|int32|uint8)", hint)
 		}
+		return 0, fmt.Errorf("integer: unknown type hint %q (want int16|int32|uint8)", typeHint)
 	case canonical.ParamString:
-		switch hint {
-		case "":
+		switch typeHint {
+		case "", "string":
 			return iacp1.TypeString, nil
 		case "ipv4", "ipaddr":
 			return iacp1.TypeIPAddr, nil
 		case "file":
 			return iacp1.TypeFile, nil
-		default:
-			return 0, fmt.Errorf("string: unknown format %q (want ipv4|file or omit)", hint)
 		}
+		return 0, fmt.Errorf("string: unknown type hint %q (want ipv4|file or omit)", typeHint)
 	case canonical.ParamBoolean:
-		if hint != "alarm" {
+		if typeHint != "alarm" {
 			return 0, fmt.Errorf(
 				"boolean has no ACP1 mapping — use enum with Off,On for plain booleans, " +
 					"or set format=\"alarm\" with description=\"on: … / off: …\" for spec-p.25 Alarm objects")
 		}
 		return iacp1.TypeAlarm, nil
 	case canonical.ParamOctets:
-		if hint == "frame" {
+		if typeHint == "frame" {
 			return iacp1.TypeFrame, nil
 		}
-		return 0, fmt.Errorf("octets: format=%q unsupported in ACP1 (only format=\"frame\" is defined)", hint)
+		return 0, fmt.Errorf("octets: type hint %q unsupported in ACP1 (only \"frame\" is defined)", typeHint)
 	}
 	return 0, fmt.Errorf("unsupported canonical type %q for ACP1 provider", p.Type)
+}
+
+// formatParts splits a canonical Format string into lower-cased
+// comma-trimmed tokens. An empty / nil Format yields an empty slice.
+func formatParts(f *string) []string {
+	if f == nil || *f == "" {
+		return nil
+	}
+	parts := strings.Split(*f, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(strings.ToLower(p))
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// pickTypeHint scans Format parts for the one that identifies an ACP1
+// wire type. Tokens containing "=" are key-value attributes
+// (maxLen=16, priority=2, tag=17) and are ignored here. A bare token
+// that doesn't match a known type is treated as a typo by the caller.
+//
+// Returns:
+//
+//	(hint, true)   — a known type hint was found (or no bare tokens
+//	                 present, which means "use the canonical default")
+//	(badToken, false) — an unknown bare token was seen; caller should
+//	                 surface this as a reject.
+func pickTypeHint(parts []string) (string, bool) {
+	known := map[string]struct{}{
+		"int16": {}, "int32": {}, "long": {},
+		"uint8": {}, "byte": {},
+		"ipv4": {}, "ipaddr": {},
+		"file":   {},
+		"alarm":  {},
+		"frame":  {},
+		"string": {},
+	}
+	for _, p := range parts {
+		if strings.ContainsRune(p, '=') {
+			continue // key=value attribute, not a type hint
+		}
+		if _, ok := known[p]; ok {
+			return p, true
+		}
+		return p, false
+	}
+	return "", true
 }
 
 // deriveAccess maps the canonical access string to the ACP1 access
