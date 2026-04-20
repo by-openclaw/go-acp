@@ -465,13 +465,34 @@ match the Ember+ provider tier.
 Both PRs pending external viewer validation (user sourcing Probel-free
 ACP1 + ACP2 clients). No merge until confirmed.
 
+**Part B completion (2026-04-20, late session):**
+
+- **#74 ACP1 provider MERGED to main.** Validated against real **Axon
+  SynapseSetUp v1.90** — full walk (Root/Identity/Control/Status/Alarm),
+  setValue on string/int/float/ipv4/enum/byte/long, setDec on float +
+  int with spec-correct Level-max=12 clamping, value-change broadcasts.
+  10/11 operator-mode ACP1 types exercised; File type (type 8) is
+  engineer-mode only on real Synapse and is covered by unit tests.
+
+- **#76 ACP2 provider** — viewer-validation in flight against **Lawo
+  VSM Axon Neuron driver** (port 2072). Multiple spec-strict fixes
+  landed on `feat/acp2-provider` after decoding Lawo parser-failure
+  hex dumps against spec §5.4 "Property header per field" table.
+  Memory `project_acp2_provider.md` now documents **14 wire-correctness
+  landmines** (up from 3), covering GetSlotInfo slot-header placement
+  (spec §3.3.3), GetDeviceInfo slot-count semantics (§3.3.2),
+  inline-data encoding for pid 1/3/5, data=0 for pid 2 (label) / pid 13
+  (unit), pid 6 u16+pad body (not u32), **72-byte fixed enum options**
+  (pid 15 spec §5.4), and enum value vtype=9 (preset/enum, not u32).
+  Not yet viewer-green — more frames to decode.
+
 ### Parked — TODO / SOW (do not start now)
 
 | item | phase | notes |
 |---|---|---|
 | Ember+ provider | ✅ merged main (#67 + #72); #70 formula eval parked |
-| ACP1 provider | ✅ PR #74 pending external-client validation |
-| ACP2 provider | ✅ PR #76 pending external-client validation |
+| ACP1 provider | ✅ merged main (#74, SynapseSetUp-validated) |
+| ACP2 provider | 🟡 PR #76, Lawo VSM validation active — no merge until all frames parse |
 | Probel SW-P-08 consumer | **Part B → Part C bridge** | **#77 opened** — matrix/level encoded as Node hierarchy (same shape as ACP slot). TS ref at `assets/probel/smh-probelsw08p/` with both matrix emulator (main-server) and controller emulator (main-client). Commie.exe + .dat for cross-vendor |
 | Wire codec doc retrofit (byte-tables + range comments) | tracked | **#78 opened** — apply the TS doc convention (`feedback_command_docstyle.md`) to ACP1/ACP2/Ember+ codecs |
 | Probel SW-P-02 consumer+provider | later | subset of SW-P-08; after SW-P-08 ships |
