@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/protocol/acp1"
+	"acp/internal/acp1/consumer"
 )
 
 // runDiscover runs a one-shot LAN scan for ACP1 devices. Works only

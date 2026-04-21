@@ -11,7 +11,7 @@ import (
 
 	"acp/internal/logging"
 	"acp/internal/protocol"
-	"acp/internal/protocol/acp1"
+	"acp/internal/acp1/consumer"
 	"acp/internal/storage"
 	"acp/internal/transport"
 )

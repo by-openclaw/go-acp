@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"acp/internal/export/canonical"
-	iacp1 "acp/internal/protocol/acp1"
+	iacp1 "acp/internal/acp1/consumer"
 )
 
 // TestEncodeDecodeRoundTrip asserts that every object type produced by

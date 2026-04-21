@@ -25,7 +25,7 @@ import (
 	"acp/internal/export/canonical"
 	"acp/internal/provider"
 
-	acp1provider "acp/internal/provider/acp1"
+	acp1provider "acp/internal/acp1/provider"
 	acp2provider "acp/internal/provider/acp2"
 	_ "acp/internal/provider/emberplus"
 	_ "acp/internal/probel/provider"

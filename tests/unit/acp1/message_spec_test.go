@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"testing"
 
-	"acp/internal/protocol/acp1"
+	"acp/internal/acp1/consumer"
 )
 
 func TestSpec_EncodeGetFrameStatus(t *testing.T) {

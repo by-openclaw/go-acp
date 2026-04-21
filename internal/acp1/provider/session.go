@@ -3,7 +3,7 @@ package acp1
 import (
 	"log/slog"
 
-	iacp1 "acp/internal/protocol/acp1"
+	iacp1 "acp/internal/acp1/consumer"
 )
 
 // handleRequest dispatches a decoded request to the right handler and

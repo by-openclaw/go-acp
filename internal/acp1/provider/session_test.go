@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"acp/internal/export/canonical"
-	iacp1 "acp/internal/protocol/acp1"
+	iacp1 "acp/internal/acp1/consumer"
 )
 
 // newTestServer builds a server with a hand-crafted tree containing two

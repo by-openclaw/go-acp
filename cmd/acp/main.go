@@ -23,7 +23,7 @@ import (
 
 	"acp/internal/protocol"
 
-	_ "acp/internal/protocol/acp1"
+	_ "acp/internal/acp1/consumer"
 	_ "acp/internal/protocol/acp2"
 	_ "acp/internal/protocol/emberplus"
 	_ "acp/internal/probel/consumer"

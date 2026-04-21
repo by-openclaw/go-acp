@@ -6,7 +6,7 @@ import (
 	"math"
 
 	"acp/internal/export/canonical"
-	iacp1 "acp/internal/protocol/acp1"
+	iacp1 "acp/internal/acp1/consumer"
 )
 
 // applyMutation dispatches the four mutating methods (setValue,

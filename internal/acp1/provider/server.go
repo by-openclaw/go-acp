@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"acp/internal/export/canonical"
-	iacp1 "acp/internal/protocol/acp1"
+	iacp1 "acp/internal/acp1/consumer"
 )
 
 // Server is the exported alias for the concrete ACP1 provider — lets

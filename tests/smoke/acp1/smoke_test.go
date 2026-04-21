@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"acp/internal/protocol"
-	"acp/internal/protocol/acp1"
+	"acp/internal/acp1/consumer"
 )
 
 func testHost() string {

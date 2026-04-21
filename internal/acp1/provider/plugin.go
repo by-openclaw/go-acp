@@ -22,7 +22,7 @@ import (
 
 	"acp/internal/export/canonical"
 	"acp/internal/provider"
-	iacp1 "acp/internal/protocol/acp1"
+	iacp1 "acp/internal/acp1/consumer"
 )
 
 // DefaultPort is the IANA-assigned ACP port for both UDP and TCP direct.

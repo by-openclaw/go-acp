@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"acp/internal/export/canonical"
-	iacp1 "acp/internal/protocol/acp1"
+	iacp1 "acp/internal/acp1/consumer"
 )
 
 // encodeObject builds the Value bytes returned by a getObject reply

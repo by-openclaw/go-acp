@@ -11,7 +11,7 @@ import (
 
 	"acp/internal/export"
 	"acp/internal/protocol"
-	"acp/internal/protocol/acp1"
+	"acp/internal/acp1/consumer"
 	"acp/internal/protocol/acp2"
 	"acp/internal/protocol/emberplus"
 )
