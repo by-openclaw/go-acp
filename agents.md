@@ -287,43 +287,58 @@ Scope:
 
 ### In progress — Probel SW-P-08 end-to-end (PR #84, master #82)
 
-Branch `feat/probel-scaffold`, 12 commits, NOT YET merged — awaiting real-MTX validation.
+Branch `feat/probel-scaffold`, 21+ commits, NOT YET merged — awaiting real-MTX validation.
 
 **Shipped in this PR:**
-- `internal/probel/` byte codec — stdlib-only, lift-to-own-repo-ready (per `feedback_codec_isolation.md`)
-- `internal/probel/client.go` — TCP Client with read-loop, `Send(match)` correlation (no mtid in SW-P-08), `OnTx`/`OnRx` callback hooks
-- Per-frame DLE ACK (10 06) / DLE NAK (10 15) — **spec §2 mandates**, within 10ms of ETX
-- `internal/protocol/probel/` — consumer plugin, one consumer method per command
-- `internal/provider/probel/` — TCP provider plugin, per-session framer, dispatch switch, tally fan-out to other sessions
-- 11 commands end-to-end (Crosspoint Interrogate/Connect/TallyDump, Maintenance, Dual Controller Status, Protect Interrogate/Connect/Disconnect/DeviceName/TallyDump, Master Protect Connect)
-- `cmd/acp probel <subcommand> <host:port> [flags]` — all 11 exposed, `--capture FILE.jsonl` global flag writes JSONL same shape as `acp walk --capture`
-- `cmd/acp-provider --protocol probel --tree demo.json`
-- Demo fixture `assets/probel/demo_matrix.json` — 2 levels (Video + Audio) 64×64 with 4 labelled source/dest each
+
+Codec (`internal/probel/`, stdlib-only):
+- TCP Client with §2 retry loop (5× attempts, 1 s ACK timeout, DLE ACK/NAK signaling)
+- 128-byte DATA cap guard (`ErrDataFieldTooLarge` at 255, `OnCapSoft` event at 129-255)
+- Compliance callbacks: `OnNAK`, `OnTimeout`, `OnRetry`, `OnNoACK`, `OnCapSoft`
+- One encoder+decoder per command in a dedicated file
+
+Consumer (`internal/protocol/probel/`):
+- Per-session `*compliance.Profile` mapped to the codec callbacks
+- Auto-responder for matrix-initiated APP_KEEPALIVE ping (tx 0x11 → rx 0x22)
+- One method per command across 21 files (crosspoint, protect, maintenance, dual-status, source/dest names, source/dest-assoc names, tie-line, update-name, salvo)
+
+Provider (`internal/provider/probel/`):
+- Per-server `*compliance.Profile` for inbound-frame / handler-rejected / tally-broadcast / unsupported-command
+- `SetKeepaliveInterval(d)` — optional tx 0x11 heartbeat per accepted session (off by default)
+- One handler per command in `cmd_*.go` files
+- Salvo build + fire + interrogate with in-tree state (rx 120 → tx 122, rx 121 → tx 123, rx 124 → tx 125)
+
+CLI (`cmd/acp probel <subcommand> <host:port>`):
+- 11 subcommands wired (crosspoint + protect + admin family)
+- Name/tie-line/salvo commands have Go API methods but no CLI glue yet — follow-up
+- `--capture FILE.jsonl` global flag writes `{ts, proto, dir, hex, len}` (same shape as `acp walk --capture`)
+
+Demo + provider entry (`cmd/acp-provider --protocol probel --tree demo.json`):
+- `assets/probel/demo_matrix.json` — 2 levels (Video + Audio) 64×64 with 4 labelled source/dest each
 
 **Hard rules (from `feedback_codec_isolation.md` + user direction 2026-04-21):**
 
-1. Spec-strict, no workarounds — same posture as ACP1/ACP2/Ember+. NO lenient flags (no `--skip-checksum`, no `--skip-ack`). Divergences become compliance EVENTS.
+1. Spec-strict, no workarounds — same posture as ACP1/ACP2/Ember+. NO lenient flags. Divergences become compliance EVENTS.
 2. `internal/probel/` is stdlib-only. Higher layers own `acp/*` coupling via callbacks.
 3. TS emulator `assets/probel/smh-probelsw08p/` is byte-layout aid only — NOT authoritative for flow. Spec `.doc` wins.
 4. Commie is an external test tool — do NOT mention it in runtime doc-comments.
-5. One primary file per command. TS structure `rx/NNN-name/` + `tx/NNN-name/` is the model; CLAUDE.md "one primary type per file" rule applies.
+5. One primary file per command. Satisfied in both consumer + provider.
 
 **Open tracking:**
 
 | Issue | Status | Scope |
 |---|---|---|
 | #82 | open | master — Probel SW-P-08 end-to-end |
-| #90 | open | verify §2 ACK/NAK + retry + 1s timeout + 5-retry against real MTX (strict-spec only) |
-| #91 | open | APP_KEEPALIVE TX 0x11 / RX 0x22 command pair + DLE-ACK-keepalive variant |
+| #90 | code landed | §2 retry / timeout / cap / compliance — awaiting live MTX validation |
+| #91 | code landed | APP_KEEPALIVE tx 0x11 / rx 0x22 — consumer auto-responds, provider opt-in ticker |
 
 **Still to do:**
 
-- [ ] Split grouped handler/method files one-per-command (currently `cmd_crosspoint.go` has 3, `cmd_protect.go` has 6, `cmd_admin.go` has 2; same on consumer side)
-- [ ] `Client.Send` retry-on-NAK with 1s timeout + 5-retry (§2) — compliance events instead of flags
-- [ ] Provider-side retry on tally broadcasts (same §2 contract)
-- [ ] 128-byte DATA cap guard (§2)
-- [ ] APP_KEEPALIVE 0x11/0x22 command pair + Client keepalive scheduler
-- [ ] Source/Dest Names (rx 100-103 / tx 106), Tie-Line (rx 112 / tx 113), Salvo (rx 120-124 / tx 122-125) — encoders don't exist yet in `internal/probel/`
+- [ ] Live MTX validation on `10.6.239.149:7800`
+- [ ] Multi-frame pagination for tx 106 / tx 107 / tx 116 responses when name tables exceed per-frame caps (currently returns first frame only)
+- [ ] Provider-side retry on tally broadcast writes (currently best-effort; failures note `TallyBroadcastFailed`)
+- [ ] CLI glue for name / tie-line / salvo subcommands (Go API methods exist)
+- [ ] UMD labels (rx 104/105 + tx 108) — explicitly descoped for now
 
 **Authoritative spec:**
 
