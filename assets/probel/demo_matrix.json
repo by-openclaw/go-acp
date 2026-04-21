@@ -1,0 +1,70 @@
+{
+  "root": {
+    "number": 1,
+    "identifier": "router",
+    "path": "router",
+    "oid": "1",
+    "description": "Probel SW-P-08 demo matrix (scaffold PR)",
+    "isOnline": true,
+    "access": "read",
+    "children": [
+      {
+        "number": 1,
+        "identifier": "matrix-0",
+        "path": "router.matrix-0",
+        "oid": "1.1",
+        "description": "2-level 64x64 demo (video + audio)",
+        "isOnline": true,
+        "access": "readWrite",
+        "children": [],
+        "type": "oneToN",
+        "mode": "linear",
+        "targetCount": 64,
+        "sourceCount": 64,
+        "maximumTotalConnects": null,
+        "maximumConnectsPerTarget": null,
+        "parametersLocation": null,
+        "gainParameterNumber": null,
+        "labels": [
+          { "basePath": "router.matrix-0.video", "description": "Video" },
+          { "basePath": "router.matrix-0.audio", "description": "Audio" }
+        ],
+        "targets": [],
+        "sources": [],
+        "connections": [],
+        "targetLabels": {
+          "Video": {
+            "0": "VID DST 01",
+            "1": "VID DST 02",
+            "2": "VID DST 03",
+            "3": "VID DST 04"
+          },
+          "Audio": {
+            "0": "AUD DST 01",
+            "1": "AUD DST 02",
+            "2": "AUD DST 03",
+            "3": "AUD DST 04"
+          }
+        },
+        "sourceLabels": {
+          "Video": {
+            "0": "VID SRC 01",
+            "1": "VID SRC 02",
+            "2": "VID SRC 03",
+            "3": "VID SRC 04"
+          },
+          "Audio": {
+            "0": "AUD SRC 01",
+            "1": "AUD SRC 02",
+            "2": "AUD SRC 03",
+            "3": "AUD SRC 04"
+          }
+        },
+        "targetParams": null,
+        "sourceParams": null,
+        "connectionParams": null
+      }
+    ]
+  },
+  "templates": null
+}
