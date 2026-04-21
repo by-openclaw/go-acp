@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleCrosspointInterrogate decodes the incoming interrogate, looks
@@ -16,8 +16,8 @@ import (
 // No tallies broadcast — interrogate is a pure read.
 //
 // Reference: SW-P-08 §3.2 (rx 001 / rx 0x81) → §3.3 (tx 003 / tx 0x83).
-func (s *server) handleCrosspointInterrogate(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeCrosspointInterrogate(f)
+func (s *server) handleCrosspointInterrogate(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeCrosspointInterrogate(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
@@ -25,7 +25,7 @@ func (s *server) handleCrosspointInterrogate(f iprobel.Frame) (handlerResult, er
 	if !ok {
 		src = 0
 	}
-	reply := iprobel.EncodeCrosspointTally(iprobel.CrosspointTallyParams{
+	reply := codec.EncodeCrosspointTally(codec.CrosspointTallyParams{
 		MatrixID:      p.MatrixID,
 		LevelID:       p.LevelID,
 		DestinationID: p.DestinationID,

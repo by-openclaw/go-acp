@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // TestComplianceProfileNilBeforeConnect: accessing ComplianceProfile on a
@@ -56,16 +56,16 @@ func TestComplianceProfileCountsNAK(t *testing.T) {
 				return
 			}
 			tmp = append(tmp, buf[:n]...)
-			for len(tmp) > 0 && tmp[0] == iprobel.DLE && len(tmp) >= 2 && tmp[1] == iprobel.STX {
-				_, consumed, perr := iprobel.Unpack(tmp)
+			for len(tmp) > 0 && tmp[0] == codec.DLE && len(tmp) >= 2 && tmp[1] == codec.STX {
+				_, consumed, perr := codec.Unpack(tmp)
 				if perr != nil {
 					break
 				}
 				count++
 				if count < 3 {
-					_, _ = c.Write(iprobel.PackNAK())
+					_, _ = c.Write(codec.PackNAK())
 				} else {
-					_, _ = c.Write(iprobel.PackACK())
+					_, _ = c.Write(codec.PackACK())
 				}
 				tmp = tmp[consumed:]
 			}
@@ -86,7 +86,7 @@ func TestComplianceProfileCountsNAK(t *testing.T) {
 		t.Fatal("peer never accepted")
 	}
 
-	if err := p.Maintenance(ctx, iprobel.MaintSoftReset, 0, 0); err != nil {
+	if err := p.Maintenance(ctx, codec.MaintSoftReset, 0, 0); err != nil {
 		t.Fatalf("Maintenance: %v", err)
 	}
 

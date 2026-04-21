@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleProtectDisconnect releases the protect iff the caller owns it.
@@ -10,22 +10,22 @@ import (
 // the clear.
 //
 // Reference: SW-P-08 §3.2 (rx 014 / rx 0x8E) → §3.3 (tx 015 + tx 011).
-func (s *server) handleProtectDisconnect(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeProtectDisconnect(f)
+func (s *server) handleProtectDisconnect(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeProtectDisconnect(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	if err := s.tree.applyProtectDisconnect(p.MatrixID, p.LevelID, p.DestinationID, p.DeviceID); err != nil {
 		return handlerResult{}, err
 	}
-	body := iprobel.ProtectTallyParams{
+	body := codec.ProtectTallyParams{
 		MatrixID:      p.MatrixID,
 		LevelID:       p.LevelID,
 		DestinationID: p.DestinationID,
 		DeviceID:      p.DeviceID,
-		State:         iprobel.ProtectNone,
+		State:         codec.ProtectNone,
 	}
-	reply := iprobel.EncodeProtectDisconnected(body)
-	tally := iprobel.EncodeProtectTally(body)
-	return handlerResult{reply: &reply, tallies: []iprobel.Frame{tally}}, nil
+	reply := codec.EncodeProtectDisconnected(body)
+	tally := codec.EncodeProtectTally(body)
+	return handlerResult{reply: &reply, tallies: []codec.Frame{tally}}, nil
 }

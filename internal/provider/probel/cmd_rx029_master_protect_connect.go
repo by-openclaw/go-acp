@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleMasterProtectConnect is Protect Connect with override=true —
@@ -10,23 +10,23 @@ import (
 // as the regular Protect Connect handler.
 //
 // Reference: SW-P-08 §3.2 (rx 029) → §3.3 (tx 013 + tx 011).
-func (s *server) handleMasterProtectConnect(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeMasterProtectConnect(f)
+func (s *server) handleMasterProtectConnect(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeMasterProtectConnect(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
-	state := uint8(iprobel.ProtectProbelOver)
+	state := uint8(codec.ProtectProbelOver)
 	if err := s.tree.applyProtectConnect(p.MatrixID, p.LevelID, p.DestinationID, p.DeviceID, state, true); err != nil {
 		return handlerResult{}, err
 	}
-	body := iprobel.ProtectTallyParams{
+	body := codec.ProtectTallyParams{
 		MatrixID:      p.MatrixID,
 		LevelID:       p.LevelID,
 		DestinationID: p.DestinationID,
 		DeviceID:      p.DeviceID,
-		State:         iprobel.ProtectProbelOver,
+		State:         codec.ProtectProbelOver,
 	}
-	reply := iprobel.EncodeProtectConnected(body)
-	tally := iprobel.EncodeProtectTally(body)
-	return handlerResult{reply: &reply, tallies: []iprobel.Frame{tally}}, nil
+	reply := codec.EncodeProtectConnected(body)
+	tally := codec.EncodeProtectTally(body)
+	return handlerResult{reply: &reply, tallies: []codec.Frame{tally}}, nil
 }

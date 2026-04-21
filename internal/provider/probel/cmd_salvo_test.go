@@ -3,7 +3,7 @@ package probel
 import (
 	"testing"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // TestSalvoBuildFireInterrogate exercises the full salvo lifecycle on
@@ -16,28 +16,28 @@ func TestSalvoBuildFireInterrogate(t *testing.T) {
 	srv := newComplianceServer(t)
 
 	// Step 1 — add two crosspoints to salvo 5.
-	if _, err := srv.handle(iprobel.EncodeSalvoConnectOnGo(iprobel.SalvoConnectOnGoParams{
+	if _, err := srv.handle(codec.EncodeSalvoConnectOnGo(codec.SalvoConnectOnGoParams{
 		MatrixID: 0, LevelID: 0, DestinationID: 0, SourceID: 1, SalvoID: 5,
 	})); err != nil {
 		t.Fatalf("add #1: %v", err)
 	}
-	if _, err := srv.handle(iprobel.EncodeSalvoConnectOnGo(iprobel.SalvoConnectOnGoParams{
+	if _, err := srv.handle(codec.EncodeSalvoConnectOnGo(codec.SalvoConnectOnGoParams{
 		MatrixID: 0, LevelID: 0, DestinationID: 2, SourceID: 3, SalvoID: 5,
 	})); err != nil {
 		t.Fatalf("add #2: %v", err)
 	}
 
 	// Step 2 — interrogate both slots.
-	for idx, wantValid := range []iprobel.SalvoGroupTallyValidity{
-		iprobel.SalvoTallyValidMore, iprobel.SalvoTallyValidLast,
+	for idx, wantValid := range []codec.SalvoGroupTallyValidity{
+		codec.SalvoTallyValidMore, codec.SalvoTallyValidLast,
 	} {
-		res, err := srv.handle(iprobel.EncodeSalvoGroupInterrogate(iprobel.SalvoGroupInterrogateParams{
+		res, err := srv.handle(codec.EncodeSalvoGroupInterrogate(codec.SalvoGroupInterrogateParams{
 			SalvoID: 5, ConnectIndex: uint8(idx),
 		}))
 		if err != nil {
 			t.Fatalf("interrogate #%d: %v", idx, err)
 		}
-		tally, err := iprobel.DecodeSalvoGroupTally(*res.reply)
+		tally, err := codec.DecodeSalvoGroupTally(*res.reply)
 		if err != nil {
 			t.Fatalf("decode tx 125: %v", err)
 		}
@@ -47,26 +47,26 @@ func TestSalvoBuildFireInterrogate(t *testing.T) {
 	}
 
 	// Step 2.5 — out-of-range index yields Invalid.
-	res, err := srv.handle(iprobel.EncodeSalvoGroupInterrogate(iprobel.SalvoGroupInterrogateParams{
+	res, err := srv.handle(codec.EncodeSalvoGroupInterrogate(codec.SalvoGroupInterrogateParams{
 		SalvoID: 5, ConnectIndex: 99,
 	}))
 	if err != nil {
 		t.Fatalf("invalid-idx: %v", err)
 	}
-	tally, _ := iprobel.DecodeSalvoGroupTally(*res.reply)
-	if tally.Validity != iprobel.SalvoTallyInvalid {
+	tally, _ := codec.DecodeSalvoGroupTally(*res.reply)
+	if tally.Validity != codec.SalvoTallyInvalid {
 		t.Errorf("oob validity = %#x; want SalvoTallyInvalid", tally.Validity)
 	}
 
 	// Step 3 — fire the salvo.
-	fire, err := srv.handle(iprobel.EncodeSalvoGo(iprobel.SalvoGoParams{
-		Op: iprobel.SalvoOpSet, SalvoID: 5,
+	fire, err := srv.handle(codec.EncodeSalvoGo(codec.SalvoGoParams{
+		Op: codec.SalvoOpSet, SalvoID: 5,
 	}))
 	if err != nil {
 		t.Fatalf("fire: %v", err)
 	}
-	done, _ := iprobel.DecodeSalvoGoDoneAck(*fire.reply)
-	if done.Status != iprobel.SalvoDoneSet {
+	done, _ := codec.DecodeSalvoGoDoneAck(*fire.reply)
+	if done.Status != codec.SalvoDoneSet {
 		t.Errorf("done status = %#x; want SalvoDoneSet", done.Status)
 	}
 
@@ -79,11 +79,11 @@ func TestSalvoBuildFireInterrogate(t *testing.T) {
 	}
 
 	// Step 4.5 — salvo is drained; interrogating returns Invalid.
-	res, _ = srv.handle(iprobel.EncodeSalvoGroupInterrogate(iprobel.SalvoGroupInterrogateParams{
+	res, _ = srv.handle(codec.EncodeSalvoGroupInterrogate(codec.SalvoGroupInterrogateParams{
 		SalvoID: 5, ConnectIndex: 0,
 	}))
-	drained, _ := iprobel.DecodeSalvoGroupTally(*res.reply)
-	if drained.Validity != iprobel.SalvoTallyInvalid {
+	drained, _ := codec.DecodeSalvoGroupTally(*res.reply)
+	if drained.Validity != codec.SalvoTallyInvalid {
 		t.Errorf("drained validity = %#x; want Invalid", drained.Validity)
 	}
 }
@@ -92,17 +92,17 @@ func TestSalvoBuildFireInterrogate(t *testing.T) {
 // tx 123 reports SalvoDoneCleared.
 func TestSalvoClearDiscards(t *testing.T) {
 	srv := newComplianceServer(t)
-	_, _ = srv.handle(iprobel.EncodeSalvoConnectOnGo(iprobel.SalvoConnectOnGoParams{
+	_, _ = srv.handle(codec.EncodeSalvoConnectOnGo(codec.SalvoConnectOnGoParams{
 		MatrixID: 0, LevelID: 0, DestinationID: 0, SourceID: 1, SalvoID: 2,
 	}))
-	res, err := srv.handle(iprobel.EncodeSalvoGo(iprobel.SalvoGoParams{
-		Op: iprobel.SalvoOpClear, SalvoID: 2,
+	res, err := srv.handle(codec.EncodeSalvoGo(codec.SalvoGoParams{
+		Op: codec.SalvoOpClear, SalvoID: 2,
 	}))
 	if err != nil {
 		t.Fatalf("clear: %v", err)
 	}
-	done, _ := iprobel.DecodeSalvoGoDoneAck(*res.reply)
-	if done.Status != iprobel.SalvoDoneCleared {
+	done, _ := codec.DecodeSalvoGoDoneAck(*res.reply)
+	if done.Status != codec.SalvoDoneCleared {
 		t.Errorf("status = %#x; want SalvoDoneCleared", done.Status)
 	}
 	// Tree should NOT reflect the route — salvo was cleared, not applied.
@@ -114,14 +114,14 @@ func TestSalvoClearDiscards(t *testing.T) {
 // TestSalvoGoNoneWhenEmpty: firing an empty salvo yields SalvoDoneNone.
 func TestSalvoGoNoneWhenEmpty(t *testing.T) {
 	srv := newComplianceServer(t)
-	res, err := srv.handle(iprobel.EncodeSalvoGo(iprobel.SalvoGoParams{
-		Op: iprobel.SalvoOpSet, SalvoID: 99,
+	res, err := srv.handle(codec.EncodeSalvoGo(codec.SalvoGoParams{
+		Op: codec.SalvoOpSet, SalvoID: 99,
 	}))
 	if err != nil {
 		t.Fatalf("fire-empty: %v", err)
 	}
-	done, _ := iprobel.DecodeSalvoGoDoneAck(*res.reply)
-	if done.Status != iprobel.SalvoDoneNone {
+	done, _ := codec.DecodeSalvoGoDoneAck(*res.reply)
+	if done.Status != codec.SalvoDoneNone {
 		t.Errorf("status = %#x; want SalvoDoneNone", done.Status)
 	}
 }

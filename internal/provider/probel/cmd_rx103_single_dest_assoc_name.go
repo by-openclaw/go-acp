@@ -1,14 +1,14 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleSingleDestAssocName: rx 103 → tx 107 with NumNames=1.
 //
 // Reference: SW-P-08 §3.2.21 (rx 103) → §3.3.20 (tx 107).
-func (s *server) handleSingleDestAssocName(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeSingleDestAssocNameRequest(f)
+func (s *server) handleSingleDestAssocName(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeSingleDestAssocNameRequest(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
@@ -19,7 +19,7 @@ func (s *server) handleSingleDestAssocName(f iprobel.Frame) (handlerResult, erro
 	} else {
 		name = positionalName("DST ", int(p.DestAssociationID)+1)
 	}
-	reply := iprobel.EncodeDestAssocNamesResponse(iprobel.DestAssocNamesResponseParams{
+	reply := codec.EncodeDestAssocNamesResponse(codec.DestAssocNamesResponseParams{
 		MatrixID:              p.MatrixID,
 		LevelID:               0,
 		NameLength:            p.NameLength,

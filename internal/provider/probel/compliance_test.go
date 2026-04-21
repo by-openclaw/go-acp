@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/export/canonical"
 )
 
@@ -37,7 +37,7 @@ func newComplianceServer(t *testing.T) *server {
 func TestProfileUnsupportedCommand(t *testing.T) {
 	srv := newComplianceServer(t)
 	before := srv.profile.Snapshot()[UnsupportedCommand]
-	if _, err := srv.handle(iprobel.Frame{ID: iprobel.CommandID(0xDE)}); err != nil {
+	if _, err := srv.handle(codec.Frame{ID: codec.CommandID(0xDE)}); err != nil {
 		t.Fatalf("handle: %v", err)
 	}
 	after := srv.profile.Snapshot()[UnsupportedCommand]
@@ -53,7 +53,7 @@ func TestProfileUnsupportedCommand(t *testing.T) {
 // error surfaces so the dispatch layer has something to count.
 func TestProfileHandlerError(t *testing.T) {
 	srv := newComplianceServer(t)
-	frame := iprobel.EncodeProtectConnect(iprobel.ProtectConnectParams{
+	frame := codec.EncodeProtectConnect(codec.ProtectConnectParams{
 		MatrixID: 99, LevelID: 0, DestinationID: 0, DeviceID: 1,
 	})
 	if _, err := srv.handle(frame); err == nil {

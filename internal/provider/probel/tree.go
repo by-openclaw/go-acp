@@ -46,7 +46,7 @@ type matrixState struct {
 // cmd_protect_connect.go.
 type protectRecord struct {
 	deviceID uint16
-	state    uint8 // matches iprobel.ProtectState values (0..3)
+	state    uint8 // matches codec.ProtectState values (0..3)
 }
 
 // tree is the in-memory state indexed by (matrix, level). Built from a

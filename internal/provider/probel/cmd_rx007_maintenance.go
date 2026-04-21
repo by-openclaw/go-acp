@@ -3,7 +3,7 @@ package probel
 import (
 	"log/slog"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleMaintenance decodes the function byte and logs it; ClearProtects
@@ -17,23 +17,23 @@ import (
 // tests + loopback keep working.
 //
 // Reference: SW-P-08 §3.2 (rx 007).
-func (s *server) handleMaintenance(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeMaintenance(f)
+func (s *server) handleMaintenance(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeMaintenance(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	switch p.Function {
-	case iprobel.MaintHardReset:
+	case codec.MaintHardReset:
 		s.logger.Warn("probel: maintenance hard-reset (logged only, provider stays up)")
-	case iprobel.MaintSoftReset:
+	case codec.MaintSoftReset:
 		s.logger.Info("probel: maintenance soft-reset (logged only, state preserved)")
-	case iprobel.MaintClearProtects:
+	case codec.MaintClearProtects:
 		s.tree.clearProtects(p.MatrixID, p.LevelID)
 		s.logger.Info("probel: maintenance clear-protects",
 			slog.Int("matrix", int(p.MatrixID)),
 			slog.Int("level", int(p.LevelID)),
 		)
-	case iprobel.MaintDatabaseTransfer:
+	case codec.MaintDatabaseTransfer:
 		s.logger.Info("probel: maintenance database-transfer (single-controller: no-op)")
 	default:
 		s.logger.Warn("probel: maintenance unknown function",

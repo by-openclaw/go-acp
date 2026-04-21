@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -17,23 +17,23 @@ func (p *Plugin) TieLineInterrogate(
 	ctx context.Context,
 	matrix uint8,
 	destAssoc uint16,
-) (iprobel.TieLineTallyParams, error) {
+) (codec.TieLineTallyParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.TieLineTallyParams{}, err
+		return codec.TieLineTallyParams{}, err
 	}
-	req := iprobel.EncodeTieLineInterrogate(iprobel.TieLineInterrogateParams{
+	req := codec.EncodeTieLineInterrogate(codec.TieLineInterrogateParams{
 		MatrixID: matrix, DestAssociationID: destAssoc,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxCrosspointTieLineTally
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxCrosspointTieLineTally
 	})
 	if err != nil {
-		return iprobel.TieLineTallyParams{}, fmt.Errorf("probel tie-line-interrogate: %w", err)
+		return codec.TieLineTallyParams{}, fmt.Errorf("probel tie-line-interrogate: %w", err)
 	}
-	t, derr := iprobel.DecodeTieLineTally(reply)
+	t, derr := codec.DecodeTieLineTally(reply)
 	if derr != nil {
-		return iprobel.TieLineTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.TieLineTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return t, nil
 }

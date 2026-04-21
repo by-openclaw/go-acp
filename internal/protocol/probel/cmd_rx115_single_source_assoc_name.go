@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -15,23 +15,23 @@ import (
 func (p *Plugin) SingleSourceAssocName(
 	ctx context.Context,
 	matrix uint8,
-	nameLen iprobel.NameLength,
+	nameLen codec.NameLength,
 	srcAssoc uint16,
 ) (string, error) {
 	cli, err := p.getClient()
 	if err != nil {
 		return "", err
 	}
-	req := iprobel.EncodeSingleSourceAssocNameRequest(iprobel.SingleSourceAssocNameRequestParams{
+	req := codec.EncodeSingleSourceAssocNameRequest(codec.SingleSourceAssocNameRequestParams{
 		MatrixID: matrix, NameLength: nameLen, SourceAssociationID: srcAssoc,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxSourceAssocNamesResponse
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxSourceAssocNamesResponse
 	})
 	if err != nil {
 		return "", fmt.Errorf("probel single-source-assoc-name: %w", err)
 	}
-	r, derr := iprobel.DecodeSourceAssocNamesResponse(reply)
+	r, derr := codec.DecodeSourceAssocNamesResponse(reply)
 	if derr != nil {
 		return "", &protocol.TransportError{Op: "decode", Err: derr}
 	}

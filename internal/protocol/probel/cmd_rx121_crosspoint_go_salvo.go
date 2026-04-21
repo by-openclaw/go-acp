@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -15,22 +15,22 @@ import (
 // Reference: SW-P-08 §3.2.30 / §3.3.25.
 func (p *Plugin) SalvoGo(
 	ctx context.Context,
-	params iprobel.SalvoGoParams,
-) (iprobel.SalvoGoDoneAckParams, error) {
+	params codec.SalvoGoParams,
+) (codec.SalvoGoDoneAckParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.SalvoGoDoneAckParams{}, err
+		return codec.SalvoGoDoneAckParams{}, err
 	}
-	req := iprobel.EncodeSalvoGo(params)
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxSalvoGoDoneAck
+	req := codec.EncodeSalvoGo(params)
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxSalvoGoDoneAck
 	})
 	if err != nil {
-		return iprobel.SalvoGoDoneAckParams{}, fmt.Errorf("probel salvo-go: %w", err)
+		return codec.SalvoGoDoneAckParams{}, fmt.Errorf("probel salvo-go: %w", err)
 	}
-	ack, derr := iprobel.DecodeSalvoGoDoneAck(reply)
+	ack, derr := codec.DecodeSalvoGoDoneAck(reply)
 	if derr != nil {
-		return iprobel.SalvoGoDoneAckParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.SalvoGoDoneAckParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return ack, nil
 }

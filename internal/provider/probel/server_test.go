@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/export/canonical"
 )
 
@@ -121,7 +121,7 @@ func TestServerLoopback(t *testing.T) {
 	disable := false
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDial()
-	cli, err := iprobel.Dial(dialCtx, addr, logger, iprobel.ClientConfig{WireHexLog: &disable})
+	cli, err := codec.Dial(dialCtx, addr, logger, codec.ClientConfig{WireHexLog: &disable})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
@@ -132,8 +132,8 @@ func TestServerLoopback(t *testing.T) {
 	// application level until per-command PRs land).
 	sendCtx, cancelSend := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancelSend()
-	if _, err := cli.Send(sendCtx, iprobel.Frame{
-		ID: iprobel.RxMaintenance, Payload: []byte{byte(iprobel.MaintSoftReset)},
+	if _, err := cli.Send(sendCtx, codec.Frame{
+		ID: codec.RxMaintenance, Payload: []byte{byte(codec.MaintSoftReset)},
 	}, nil); err != nil {
 		t.Fatalf("send: %v", err)
 	}

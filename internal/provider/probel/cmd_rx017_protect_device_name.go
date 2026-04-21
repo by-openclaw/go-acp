@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleProtectDeviceNameRequest resolves the device-id to a name via
@@ -10,12 +10,12 @@ import (
 // no failure reply for this request.
 //
 // Reference: SW-P-08 §3.2 (rx 017) → §3.3 (tx 018).
-func (s *server) handleProtectDeviceNameRequest(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeProtectDeviceNameRequest(f)
+func (s *server) handleProtectDeviceNameRequest(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeProtectDeviceNameRequest(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
-	reply := iprobel.EncodeProtectDeviceNameResponse(iprobel.ProtectDeviceNameResponseParams{
+	reply := codec.EncodeProtectDeviceNameResponse(codec.ProtectDeviceNameResponseParams{
 		DeviceID:   p.DeviceID,
 		DeviceName: s.tree.deviceName(p.DeviceID),
 	})

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -21,14 +21,14 @@ func (p *Plugin) ProtectDeviceName(
 	if err != nil {
 		return "", err
 	}
-	req := iprobel.EncodeProtectDeviceNameRequest(iprobel.ProtectDeviceNameRequestParams{DeviceID: device})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxProtectDeviceNameResponse
+	req := codec.EncodeProtectDeviceNameRequest(codec.ProtectDeviceNameRequestParams{DeviceID: device})
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxProtectDeviceNameResponse
 	})
 	if err != nil {
 		return "", fmt.Errorf("probel protect-name: %w", err)
 	}
-	r, derr := iprobel.DecodeProtectDeviceNameResponse(reply)
+	r, derr := codec.DecodeProtectDeviceNameResponse(reply)
 	if derr != nil {
 		return "", &protocol.TransportError{Op: "decode", Err: derr}
 	}

@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // DefaultKeepaliveInterval matches the TS emulator's heartbeat cadence.
@@ -34,7 +34,7 @@ func (s *session) startKeepalive(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		return
 	}
-	raw := iprobel.Pack(iprobel.EncodeKeepaliveRequest())
+	raw := codec.Pack(codec.EncodeKeepaliveRequest())
 	go func() {
 		t := time.NewTicker(interval)
 		defer t.Stop()

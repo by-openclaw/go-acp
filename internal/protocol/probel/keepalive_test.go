@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // TestKeepaliveAutoResponder: when the peer sends TxAppKeepaliveRequest
@@ -43,7 +43,7 @@ func TestKeepaliveAutoResponder(t *testing.T) {
 		close(peerReady)
 
 		// Send keepalive ping.
-		_, _ = c.Write(iprobel.Pack(iprobel.EncodeKeepaliveRequest()))
+		_, _ = c.Write(codec.Pack(codec.EncodeKeepaliveRequest()))
 
 		// Read until we see a rx 0x22 or timeout.
 		_ = c.SetReadDeadline(time.Now().Add(2 * time.Second))
@@ -56,15 +56,15 @@ func TestKeepaliveAutoResponder(t *testing.T) {
 			}
 			acc = append(acc, buf[:n]...)
 			for len(acc) > 0 {
-				if iprobel.IsACK(acc) || iprobel.IsNAK(acc) {
+				if codec.IsACK(acc) || codec.IsNAK(acc) {
 					acc = acc[2:]
 					continue
 				}
-				if acc[0] != iprobel.DLE {
+				if acc[0] != codec.DLE {
 					acc = acc[1:]
 					continue
 				}
-				f, consumed, perr := iprobel.Unpack(acc)
+				f, consumed, perr := codec.Unpack(acc)
 				if errors.Is(perr, io.ErrUnexpectedEOF) {
 					break
 				}
@@ -72,13 +72,13 @@ func TestKeepaliveAutoResponder(t *testing.T) {
 					acc = acc[2:]
 					continue
 				}
-				if f.ID == iprobel.RxAppKeepaliveResponse {
+				if f.ID == codec.RxAppKeepaliveResponse {
 					responses.Add(1)
 					// ACK the response per spec §2.
-					_, _ = c.Write(iprobel.PackACK())
+					_, _ = c.Write(codec.PackACK())
 					return
 				}
-				_, _ = c.Write(iprobel.PackACK())
+				_, _ = c.Write(codec.PackACK())
 				acc = acc[consumed:]
 			}
 		}

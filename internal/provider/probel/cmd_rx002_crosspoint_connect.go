@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleCrosspointConnect decodes the connect request, records the
@@ -18,25 +18,25 @@ import (
 // a bad Connect, so the originator learns via timeout.
 //
 // Reference: SW-P-08 §3.2 (rx 002 / rx 0x82) → §3.3 (tx 004 + tx 003).
-func (s *server) handleCrosspointConnect(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeCrosspointConnect(f)
+func (s *server) handleCrosspointConnect(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeCrosspointConnect(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	if err := s.tree.applyConnect(p.MatrixID, p.LevelID, p.DestinationID, p.SourceID); err != nil {
 		return handlerResult{}, err
 	}
-	reply := iprobel.EncodeCrosspointConnected(iprobel.CrosspointConnectedParams{
+	reply := codec.EncodeCrosspointConnected(codec.CrosspointConnectedParams{
 		MatrixID:      p.MatrixID,
 		LevelID:       p.LevelID,
 		DestinationID: p.DestinationID,
 		SourceID:      p.SourceID,
 	})
-	tally := iprobel.EncodeCrosspointTally(iprobel.CrosspointTallyParams{
+	tally := codec.EncodeCrosspointTally(codec.CrosspointTallyParams{
 		MatrixID:      p.MatrixID,
 		LevelID:       p.LevelID,
 		DestinationID: p.DestinationID,
 		SourceID:      p.SourceID,
 	})
-	return handlerResult{reply: &reply, tallies: []iprobel.Frame{tally}}, nil
+	return handlerResult{reply: &reply, tallies: []codec.Frame{tally}}, nil
 }

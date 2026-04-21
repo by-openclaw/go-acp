@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/export/canonical"
 	"acp/internal/protocol/compliance"
 )
@@ -194,8 +194,8 @@ func parseCrosspointPath(path string) (uint8, uint8, uint16, error) {
 // TxProtectTally / TxSalvoGroupTally after a successful state change.
 // The originating session receives its own confirm reply via the
 // handlerResult.reply path — it does not need the tally too.
-func (s *server) fanOutTally(origin *session, f iprobel.Frame) {
-	raw := iprobel.Pack(f)
+func (s *server) fanOutTally(origin *session, f codec.Frame) {
+	raw := codec.Pack(f)
 	s.mu.Lock()
 	sessions := make([]*session, 0, len(s.sessions))
 	for sess := range s.sessions {
@@ -210,7 +210,7 @@ func (s *server) fanOutTally(origin *session, f iprobel.Frame) {
 			slog.String("remote", sess.remoteAddr()),
 			slog.Int("cmd", int(f.ID)),
 			slog.Int("wire_len", len(raw)),
-			slog.String("hex", iprobel.HexDump(raw)),
+			slog.String("hex", codec.HexDump(raw)),
 		)
 		if err := sess.write(raw); err != nil {
 			s.logger.Warn("probel tally send",

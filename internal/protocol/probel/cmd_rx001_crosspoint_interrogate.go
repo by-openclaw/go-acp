@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -19,23 +19,23 @@ func (p *Plugin) CrosspointInterrogate(
 	ctx context.Context,
 	matrix, level uint8,
 	dst uint16,
-) (iprobel.CrosspointTallyParams, error) {
+) (codec.CrosspointTallyParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.CrosspointTallyParams{}, err
+		return codec.CrosspointTallyParams{}, err
 	}
-	req := iprobel.EncodeCrosspointInterrogate(iprobel.CrosspointInterrogateParams{
+	req := codec.EncodeCrosspointInterrogate(codec.CrosspointInterrogateParams{
 		MatrixID: matrix, LevelID: level, DestinationID: dst,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxCrosspointTally || f.ID == iprobel.TxCrosspointTallyExt
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxCrosspointTally || f.ID == codec.TxCrosspointTallyExt
 	})
 	if err != nil {
-		return iprobel.CrosspointTallyParams{}, fmt.Errorf("probel interrogate: %w", err)
+		return codec.CrosspointTallyParams{}, fmt.Errorf("probel interrogate: %w", err)
 	}
-	t, derr := iprobel.DecodeCrosspointTally(reply)
+	t, derr := codec.DecodeCrosspointTally(reply)
 	if derr != nil {
-		return iprobel.CrosspointTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.CrosspointTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return t, nil
 }

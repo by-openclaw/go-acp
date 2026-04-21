@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -16,24 +16,24 @@ import (
 func (p *Plugin) AllDestAssocNames(
 	ctx context.Context,
 	matrix uint8,
-	nameLen iprobel.NameLength,
-) (iprobel.DestAssocNamesResponseParams, error) {
+	nameLen codec.NameLength,
+) (codec.DestAssocNamesResponseParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.DestAssocNamesResponseParams{}, err
+		return codec.DestAssocNamesResponseParams{}, err
 	}
-	req := iprobel.EncodeAllDestAssocNamesRequest(iprobel.AllDestAssocNamesRequestParams{
+	req := codec.EncodeAllDestAssocNamesRequest(codec.AllDestAssocNamesRequestParams{
 		MatrixID: matrix, NameLength: nameLen,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxDestAssocNamesResponse
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxDestAssocNamesResponse
 	})
 	if err != nil {
-		return iprobel.DestAssocNamesResponseParams{}, fmt.Errorf("probel all-dest-assoc-names: %w", err)
+		return codec.DestAssocNamesResponseParams{}, fmt.Errorf("probel all-dest-assoc-names: %w", err)
 	}
-	r, derr := iprobel.DecodeDestAssocNamesResponse(reply)
+	r, derr := codec.DecodeDestAssocNamesResponse(reply)
 	if derr != nil {
-		return iprobel.DestAssocNamesResponseParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.DestAssocNamesResponseParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return r, nil
 }

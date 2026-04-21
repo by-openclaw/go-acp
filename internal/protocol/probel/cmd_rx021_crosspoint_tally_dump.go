@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
 // TallyDumpResult carries the decoded reply of a CrosspointTallyDump
 // call. Exactly one of Byte / Word is populated; IsWord indicates which.
 type TallyDumpResult struct {
-	Byte   iprobel.CrosspointTallyDumpByteParams
-	Word   iprobel.CrosspointTallyDumpWordParams
+	Byte   codec.CrosspointTallyDumpByteParams
+	Word   codec.CrosspointTallyDumpWordParams
 	IsWord bool
 }
 
@@ -35,26 +35,26 @@ func (p *Plugin) CrosspointTallyDump(
 	if err != nil {
 		return TallyDumpResult{}, err
 	}
-	req := iprobel.EncodeCrosspointTallyDumpRequest(iprobel.CrosspointTallyDumpRequestParams{
+	req := codec.EncodeCrosspointTallyDumpRequest(codec.CrosspointTallyDumpRequestParams{
 		MatrixID: matrix, LevelID: level,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxCrosspointTallyDumpByte ||
-			f.ID == iprobel.TxCrosspointTallyDumpWord ||
-			f.ID == iprobel.TxCrosspointTallyDumpWordExt
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxCrosspointTallyDumpByte ||
+			f.ID == codec.TxCrosspointTallyDumpWord ||
+			f.ID == codec.TxCrosspointTallyDumpWordExt
 	})
 	if err != nil {
 		return TallyDumpResult{}, fmt.Errorf("probel tally-dump: %w", err)
 	}
 	res := TallyDumpResult{}
-	if reply.ID == iprobel.TxCrosspointTallyDumpByte {
-		b, derr := iprobel.DecodeCrosspointTallyDumpByte(reply)
+	if reply.ID == codec.TxCrosspointTallyDumpByte {
+		b, derr := codec.DecodeCrosspointTallyDumpByte(reply)
 		if derr != nil {
 			return TallyDumpResult{}, &protocol.TransportError{Op: "decode", Err: derr}
 		}
 		res.Byte = b
 	} else {
-		w, derr := iprobel.DecodeCrosspointTallyDumpWord(reply)
+		w, derr := codec.DecodeCrosspointTallyDumpWord(reply)
 		if derr != nil {
 			return TallyDumpResult{}, &protocol.TransportError{Op: "decode", Err: derr}
 		}

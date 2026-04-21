@@ -1,14 +1,14 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleSingleSourceAssocName: rx 115 → tx 116 with NumNames=1.
 //
 // Reference: SW-P-08 §3.2.25 (rx 115) → §3.3.22 (tx 116).
-func (s *server) handleSingleSourceAssocName(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeSingleSourceAssocNameRequest(f)
+func (s *server) handleSingleSourceAssocName(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeSingleSourceAssocNameRequest(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
@@ -19,7 +19,7 @@ func (s *server) handleSingleSourceAssocName(f iprobel.Frame) (handlerResult, er
 	} else {
 		name = positionalName("SRC ", int(p.SourceAssociationID)+1)
 	}
-	reply := iprobel.EncodeSourceAssocNamesResponse(iprobel.SourceAssocNamesResponseParams{
+	reply := codec.EncodeSourceAssocNamesResponse(codec.SourceAssocNamesResponseParams{
 		MatrixID:                p.MatrixID,
 		LevelID:                 0,
 		NameLength:              p.NameLength,

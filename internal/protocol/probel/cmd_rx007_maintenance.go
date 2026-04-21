@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // Maintenance fires a rx 007 Maintenance Message. SW-P-08 does not
@@ -22,14 +22,14 @@ import (
 // Reference: SW-P-08 §3.2 (rx 007). TS rx/007/.
 func (p *Plugin) Maintenance(
 	ctx context.Context,
-	fn iprobel.MaintenanceFunction,
+	fn codec.MaintenanceFunction,
 	matrix, level uint8,
 ) error {
 	cli, err := p.getClient()
 	if err != nil {
 		return err
 	}
-	req := iprobel.EncodeMaintenance(iprobel.MaintenanceParams{
+	req := codec.EncodeMaintenance(codec.MaintenanceParams{
 		Function: fn, MatrixID: matrix, LevelID: level,
 	})
 	if _, err := cli.Send(ctx, req, nil); err != nil {

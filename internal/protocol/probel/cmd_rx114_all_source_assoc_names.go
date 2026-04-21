@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -15,24 +15,24 @@ import (
 func (p *Plugin) AllSourceAssocNames(
 	ctx context.Context,
 	matrix uint8,
-	nameLen iprobel.NameLength,
-) (iprobel.SourceAssocNamesResponseParams, error) {
+	nameLen codec.NameLength,
+) (codec.SourceAssocNamesResponseParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.SourceAssocNamesResponseParams{}, err
+		return codec.SourceAssocNamesResponseParams{}, err
 	}
-	req := iprobel.EncodeAllSourceAssocNamesRequest(iprobel.AllSourceAssocNamesRequestParams{
+	req := codec.EncodeAllSourceAssocNamesRequest(codec.AllSourceAssocNamesRequestParams{
 		MatrixID: matrix, NameLength: nameLen,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxSourceAssocNamesResponse
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxSourceAssocNamesResponse
 	})
 	if err != nil {
-		return iprobel.SourceAssocNamesResponseParams{}, fmt.Errorf("probel all-source-assoc-names: %w", err)
+		return codec.SourceAssocNamesResponseParams{}, fmt.Errorf("probel all-source-assoc-names: %w", err)
 	}
-	r, derr := iprobel.DecodeSourceAssocNamesResponse(reply)
+	r, derr := codec.DecodeSourceAssocNamesResponse(reply)
 	if derr != nil {
-		return iprobel.SourceAssocNamesResponseParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.SourceAssocNamesResponseParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return r, nil
 }

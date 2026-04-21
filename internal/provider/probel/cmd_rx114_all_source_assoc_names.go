@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleAllSourceAssocNames: rx 114 → tx 116. Reuses the sources
@@ -10,14 +10,14 @@ import (
 // to handleAllSourceNames.
 //
 // Reference: SW-P-08 §3.2.24 (rx 114) → §3.3.22 (tx 116).
-func (s *server) handleAllSourceAssocNames(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeAllSourceAssocNamesRequest(f)
+func (s *server) handleAllSourceAssocNames(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeAllSourceAssocNamesRequest(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	st, ok := s.tree.lookup(p.MatrixID, 0)
 	if !ok {
-		empty := iprobel.EncodeSourceAssocNamesResponse(iprobel.SourceAssocNamesResponseParams{
+		empty := codec.EncodeSourceAssocNamesResponse(codec.SourceAssocNamesResponseParams{
 			MatrixID: p.MatrixID, LevelID: 0, NameLength: p.NameLength,
 			FirstSourceAssociationID: 0, Names: nil,
 		})
@@ -32,7 +32,7 @@ func (s *server) handleAllSourceAssocNames(f iprobel.Frame) (handlerResult, erro
 	for i := 0; i < count; i++ {
 		names[i] = sourceNameOrDefault(st, i)
 	}
-	reply := iprobel.EncodeSourceAssocNamesResponse(iprobel.SourceAssocNamesResponseParams{
+	reply := codec.EncodeSourceAssocNamesResponse(codec.SourceAssocNamesResponseParams{
 		MatrixID: p.MatrixID, LevelID: 0, NameLength: p.NameLength,
 		FirstSourceAssociationID: 0, Names: names,
 	})

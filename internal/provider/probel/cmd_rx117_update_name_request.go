@@ -3,7 +3,7 @@ package probel
 import (
 	"log/slog"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleUpdateNameRequest: rx 117 — fire-and-forget label push.
@@ -21,19 +21,19 @@ import (
 // the session has already ACKed at the framer layer.
 //
 // Reference: SW-P-08 §3.2.26.
-func (s *server) handleUpdateNameRequest(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeUpdateNameRequest(f)
+func (s *server) handleUpdateNameRequest(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeUpdateNameRequest(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	switch p.NameType {
-	case iprobel.UpdateNameSource:
+	case codec.UpdateNameSource:
 		s.tree.updateSourceLabels(p.MatrixID, p.LevelID, p.FirstID, p.Names)
-	case iprobel.UpdateNameSourceAssoc:
+	case codec.UpdateNameSourceAssoc:
 		s.tree.updateSourceLabels(p.MatrixID, 0, p.FirstID, p.Names)
-	case iprobel.UpdateNameDestAssoc:
+	case codec.UpdateNameDestAssoc:
 		s.tree.updateTargetLabels(p.MatrixID, 0, p.FirstID, p.Names)
-	case iprobel.UpdateNameUMDLabel:
+	case codec.UpdateNameUMDLabel:
 		s.logger.Info("probel: rx 117 UMD label update ignored (not modelled)",
 			slog.Int("matrix", int(p.MatrixID)),
 			slog.Int("count", len(p.Names)),

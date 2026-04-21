@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -19,23 +19,23 @@ func (p *Plugin) ProtectTallyDump(
 	ctx context.Context,
 	matrix, level uint8,
 	firstDst uint16,
-) (iprobel.ProtectTallyDumpParams, error) {
+) (codec.ProtectTallyDumpParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.ProtectTallyDumpParams{}, err
+		return codec.ProtectTallyDumpParams{}, err
 	}
-	req := iprobel.EncodeProtectTallyDumpRequest(iprobel.ProtectTallyDumpRequestParams{
+	req := codec.EncodeProtectTallyDumpRequest(codec.ProtectTallyDumpRequestParams{
 		MatrixID: matrix, LevelID: level, DestinationID: firstDst,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxProtectTallyDump || f.ID == iprobel.TxProtectTallyDumpExt
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxProtectTallyDump || f.ID == codec.TxProtectTallyDumpExt
 	})
 	if err != nil {
-		return iprobel.ProtectTallyDumpParams{}, fmt.Errorf("probel protect-dump: %w", err)
+		return codec.ProtectTallyDumpParams{}, fmt.Errorf("probel protect-dump: %w", err)
 	}
-	d, derr := iprobel.DecodeProtectTallyDump(reply)
+	d, derr := codec.DecodeProtectTallyDump(reply)
 	if derr != nil {
-		return iprobel.ProtectTallyDumpParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.ProtectTallyDumpParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return d, nil
 }

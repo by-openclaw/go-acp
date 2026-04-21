@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // UpdateNameRequest issues rx 117 UPDATE NAME REQUEST — a fire-and-
@@ -20,13 +20,13 @@ import (
 // Reference: SW-P-08 §3.2.26.
 func (p *Plugin) UpdateNameRequest(
 	ctx context.Context,
-	params iprobel.UpdateNameRequestParams,
+	params codec.UpdateNameRequestParams,
 ) error {
 	cli, err := p.getClient()
 	if err != nil {
 		return err
 	}
-	req := iprobel.EncodeUpdateNameRequest(params)
+	req := codec.EncodeUpdateNameRequest(params)
 	if _, err := cli.Send(ctx, req, nil); err != nil {
 		return fmt.Errorf("probel update-name: %w", err)
 	}

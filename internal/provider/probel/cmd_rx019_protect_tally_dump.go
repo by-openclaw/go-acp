@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleProtectTallyDumpRequest dumps the protect table starting at
@@ -11,14 +11,14 @@ import (
 // Multi-frame iteration is a future scope item.
 //
 // Reference: SW-P-08 §3.2 (rx 019 / rx 0x93) → §3.3 (tx 020).
-func (s *server) handleProtectTallyDumpRequest(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeProtectTallyDumpRequest(f)
+func (s *server) handleProtectTallyDumpRequest(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeProtectTallyDumpRequest(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	st, ok := s.tree.lookup(p.MatrixID, p.LevelID)
 	if !ok {
-		empty := iprobel.EncodeProtectTallyDump(iprobel.ProtectTallyDumpParams{
+		empty := codec.EncodeProtectTallyDump(codec.ProtectTallyDumpParams{
 			MatrixID: p.MatrixID, LevelID: p.LevelID,
 			FirstDestinationID: p.DestinationID,
 		})
@@ -26,7 +26,7 @@ func (s *server) handleProtectTallyDumpRequest(f iprobel.Frame) (handlerResult, 
 	}
 	start := int(p.DestinationID)
 	if start >= st.targetCount {
-		empty := iprobel.EncodeProtectTallyDump(iprobel.ProtectTallyDumpParams{
+		empty := codec.EncodeProtectTallyDump(codec.ProtectTallyDumpParams{
 			MatrixID: p.MatrixID, LevelID: p.LevelID,
 			FirstDestinationID: p.DestinationID,
 		})
@@ -36,15 +36,15 @@ func (s *server) handleProtectTallyDumpRequest(f iprobel.Frame) (handlerResult, 
 	if end > st.targetCount {
 		end = st.targetCount
 	}
-	items := make([]iprobel.ProtectTallyItem, 0, end-start)
+	items := make([]codec.ProtectTallyItem, 0, end-start)
 	for d := start; d < end; d++ {
 		rec := st.protects[uint16(d)]
-		items = append(items, iprobel.ProtectTallyItem{
-			State:    iprobel.ProtectState(rec.state),
+		items = append(items, codec.ProtectTallyItem{
+			State:    codec.ProtectState(rec.state),
 			DeviceID: rec.deviceID,
 		})
 	}
-	reply := iprobel.EncodeProtectTallyDump(iprobel.ProtectTallyDumpParams{
+	reply := codec.EncodeProtectTallyDump(codec.ProtectTallyDumpParams{
 		MatrixID:           p.MatrixID,
 		LevelID:            p.LevelID,
 		FirstDestinationID: p.DestinationID,

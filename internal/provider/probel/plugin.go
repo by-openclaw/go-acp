@@ -18,13 +18,13 @@ package probel
 import (
 	"log/slog"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/export/canonical"
 	"acp/internal/provider"
 )
 
 // DefaultPort mirrors the consumer's default Probel TCP port.
-const DefaultPort = iprobel.DefaultPort
+const DefaultPort = codec.DefaultPort
 
 func init() {
 	provider.Register(&Factory{})

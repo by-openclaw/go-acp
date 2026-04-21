@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -17,23 +17,23 @@ func (p *Plugin) ProtectInterrogate(
 	ctx context.Context,
 	matrix, level uint8,
 	dst, device uint16,
-) (iprobel.ProtectTallyParams, error) {
+) (codec.ProtectTallyParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.ProtectTallyParams{}, err
+		return codec.ProtectTallyParams{}, err
 	}
-	req := iprobel.EncodeProtectInterrogate(iprobel.ProtectInterrogateParams{
+	req := codec.EncodeProtectInterrogate(codec.ProtectInterrogateParams{
 		MatrixID: matrix, LevelID: level, DestinationID: dst, DeviceID: device,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxProtectTally || f.ID == iprobel.TxProtectTallyExt
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxProtectTally || f.ID == codec.TxProtectTallyExt
 	})
 	if err != nil {
-		return iprobel.ProtectTallyParams{}, fmt.Errorf("probel protect-interrogate: %w", err)
+		return codec.ProtectTallyParams{}, fmt.Errorf("probel protect-interrogate: %w", err)
 	}
-	t, derr := iprobel.DecodeProtectTally(reply)
+	t, derr := codec.DecodeProtectTally(reply)
 	if derr != nil {
-		return iprobel.ProtectTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.ProtectTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return t, nil
 }

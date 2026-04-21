@@ -22,7 +22,7 @@ import (
 	"log/slog"
 	"sync"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 	"acp/internal/protocol/compliance"
 	"acp/internal/transport"
@@ -60,7 +60,7 @@ type Plugin struct {
 	mu       sync.Mutex
 	host     string
 	port     int
-	client   *iprobel.Client
+	client   *codec.Client
 	recorder *transport.Recorder
 
 	// profile aggregates wire-tolerance events observed during this
@@ -79,7 +79,7 @@ func (p *Plugin) ComplianceProfile() *compliance.Profile {
 }
 
 // SetRecorder attaches a JSONL traffic recorder to this plugin. Call
-// before Connect — the recorder is wired into the iprobel.Client at
+// before Connect — the recorder is wired into the codec.Client at
 // Dial time and captures every TX and RX frame (including DLE ACK /
 // DLE NAK control sequences) in the same format the ACP1/ACP2/Ember+
 // plugins produce.
@@ -107,7 +107,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	prof := &compliance.Profile{}
-	cfg := iprobel.ClientConfig{
+	cfg := codec.ClientConfig{
 		OnCapSoft: func(int) { prof.Note(DataFieldOversize) },
 		OnNAK:     func() { prof.Note(NAKReceived) },
 		OnTimeout: func() { prof.Note(ACKTimeoutElapsed) },
@@ -119,7 +119,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		cfg.OnTx = func(b []byte) { rec.Record("probel", "tx", b) }
 		cfg.OnRx = func(b []byte) { rec.Record("probel", "rx", b) }
 	}
-	cli, err := iprobel.Dial(ctx, addr, p.logger, cfg)
+	cli, err := codec.Dial(ctx, addr, p.logger, cfg)
 	if err != nil {
 		return &protocol.TransportError{Op: "connect", Err: err}
 	}
@@ -153,7 +153,7 @@ func (p *Plugin) Disconnect() error {
 
 // client returns the in-flight TCP client, or ErrNotConnected. Helper
 // for per-command methods added by follow-up PRs.
-func (p *Plugin) getClient() (*iprobel.Client, error) {
+func (p *Plugin) getClient() (*codec.Client, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.client == nil {
@@ -162,11 +162,11 @@ func (p *Plugin) getClient() (*iprobel.Client, error) {
 	return p.client, nil
 }
 
-// ExposeClient returns the underlying iprobel.Client for callers that
+// ExposeClient returns the underlying codec.Client for callers that
 // need direct Subscribe / raw frame access (e.g. the CLI's watch
 // subcommand, which just prints every async tally it sees). Returns
 // ErrNotConnected before Connect fires.
-func (p *Plugin) ExposeClient() (*iprobel.Client, error) {
+func (p *Plugin) ExposeClient() (*codec.Client, error) {
 	return p.getClient()
 }
 
@@ -205,7 +205,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 }
 
 // Subscribe attaches a callback for async tallies. The wiring of
-// iprobel.Client.Subscribe into protocol.Event lands in the
+// codec.Client.Subscribe into protocol.Event lands in the
 // CrosspointTally per-command PR.
 func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
 	return protocol.ErrNotImplemented

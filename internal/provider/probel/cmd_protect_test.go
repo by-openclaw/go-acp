@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	probelproto "acp/internal/protocol/probel"
 )
 
@@ -41,7 +41,7 @@ func TestProtectRoundTripLoopback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("interrogate empty: %v", err)
 	}
-	if tally.State != iprobel.ProtectNone {
+	if tally.State != codec.ProtectNone {
 		t.Errorf("empty state = %d; want ProtectNone(0)", tally.State)
 	}
 
@@ -50,7 +50,7 @@ func TestProtectRoundTripLoopback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("protect-connect: %v", err)
 	}
-	if connected.DeviceID != 42 || connected.State != iprobel.ProtectProbel {
+	if connected.DeviceID != 42 || connected.State != codec.ProtectProbel {
 		t.Errorf("connected = %+v; want device=42 state=Probel", connected)
 	}
 
@@ -59,7 +59,7 @@ func TestProtectRoundTripLoopback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("interrogate held: %v", err)
 	}
-	if tally.DeviceID != 42 || tally.State != iprobel.ProtectProbel {
+	if tally.DeviceID != 42 || tally.State != codec.ProtectProbel {
 		t.Errorf("held = %+v; want device=42 state=Probel", tally)
 	}
 
@@ -80,7 +80,7 @@ func TestProtectRoundTripLoopback(t *testing.T) {
 	if len(dump.Items) < 4 {
 		t.Fatalf("dump items = %d; want ≥4", len(dump.Items))
 	}
-	if dump.Items[3].DeviceID != 42 || dump.Items[3].State != iprobel.ProtectProbel {
+	if dump.Items[3].DeviceID != 42 || dump.Items[3].State != codec.ProtectProbel {
 		t.Errorf("dump[3] = %+v; want device=42 state=Probel", dump.Items[3])
 	}
 
@@ -89,7 +89,7 @@ func TestProtectRoundTripLoopback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("protect-disconnect: %v", err)
 	}
-	if disc.State != iprobel.ProtectNone {
+	if disc.State != codec.ProtectNone {
 		t.Errorf("disc.state = %d; want None", disc.State)
 	}
 }
@@ -108,7 +108,7 @@ func TestMasterProtectOverrideLoopback(t *testing.T) {
 	host, port := splitAddr(t, addr)
 
 	// Seed a regular Protect Probel owned by 42.
-	if err := srv.tree.applyProtectConnect(0, 0, 7, 42, uint8(iprobel.ProtectProbel), false); err != nil {
+	if err := srv.tree.applyProtectConnect(0, 0, 7, 42, uint8(codec.ProtectProbel), false); err != nil {
 		t.Fatalf("seed protect: %v", err)
 	}
 
@@ -126,12 +126,12 @@ func TestMasterProtectOverrideLoopback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("master-protect-connect: %v", err)
 	}
-	if reply.DeviceID != 99 || reply.State != iprobel.ProtectProbelOver {
+	if reply.DeviceID != 99 || reply.State != codec.ProtectProbelOver {
 		t.Errorf("master reply = %+v; want device=99 state=ProbelOver", reply)
 	}
 	// Tree should now reflect device=99, override state.
 	rec := srv.tree.protectAt(0, 0, 7)
-	if rec.deviceID != 99 || rec.state != uint8(iprobel.ProtectProbelOver) {
+	if rec.deviceID != 99 || rec.state != uint8(codec.ProtectProbelOver) {
 		t.Errorf("tree = %+v; want device=99 state=ProbelOver", rec)
 	}
 }

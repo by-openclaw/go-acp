@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -17,23 +17,23 @@ func (p *Plugin) ProtectConnect(
 	ctx context.Context,
 	matrix, level uint8,
 	dst, device uint16,
-) (iprobel.ProtectConnectedParams, error) {
+) (codec.ProtectConnectedParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.ProtectConnectedParams{}, err
+		return codec.ProtectConnectedParams{}, err
 	}
-	req := iprobel.EncodeProtectConnect(iprobel.ProtectConnectParams{
+	req := codec.EncodeProtectConnect(codec.ProtectConnectParams{
 		MatrixID: matrix, LevelID: level, DestinationID: dst, DeviceID: device,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxProtectConnected || f.ID == iprobel.TxProtectConnectedExt
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxProtectConnected || f.ID == codec.TxProtectConnectedExt
 	})
 	if err != nil {
-		return iprobel.ProtectConnectedParams{}, fmt.Errorf("probel protect-connect: %w", err)
+		return codec.ProtectConnectedParams{}, fmt.Errorf("probel protect-connect: %w", err)
 	}
-	c, derr := iprobel.DecodeProtectConnected(reply)
+	c, derr := codec.DecodeProtectConnected(reply)
 	if derr != nil {
-		return iprobel.ProtectConnectedParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.ProtectConnectedParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return c, nil
 }

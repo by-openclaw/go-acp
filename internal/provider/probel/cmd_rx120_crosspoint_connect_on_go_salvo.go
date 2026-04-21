@@ -1,15 +1,15 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleSalvoConnectOnGo: rx 120 → tx 122. Appends the crosspoint to
 // the named salvo group and echoes it back as an acknowledge.
 //
 // Reference: SW-P-08 §3.2.29 (rx 120) → §3.3.24 (tx 122).
-func (s *server) handleSalvoConnectOnGo(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeSalvoConnectOnGo(f)
+func (s *server) handleSalvoConnectOnGo(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeSalvoConnectOnGo(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
@@ -19,6 +19,6 @@ func (s *server) handleSalvoConnectOnGo(f iprobel.Frame) (handlerResult, error) 
 		dst:    p.DestinationID,
 		src:    p.SourceID,
 	})
-	ack := iprobel.EncodeSalvoConnectOnGoAck(iprobel.SalvoConnectOnGoAckParams(p))
+	ack := codec.EncodeSalvoConnectOnGoAck(codec.SalvoConnectOnGoAckParams(p))
 	return handlerResult{reply: &ack}, nil
 }

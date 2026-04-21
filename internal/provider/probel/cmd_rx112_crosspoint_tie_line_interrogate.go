@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleTieLineInterrogate: rx 112 → tx 113.
@@ -13,15 +13,15 @@ import (
 // with a routed source on that dst, one TieLineSource row is emitted.
 //
 // Reference: SW-P-08 §3.2.28 (rx 112) → §3.3.23 (tx 113).
-func (s *server) handleTieLineInterrogate(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeTieLineInterrogate(f)
+func (s *server) handleTieLineInterrogate(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeTieLineInterrogate(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	s.tree.mu.RLock()
 	defer s.tree.mu.RUnlock()
 
-	var sources []iprobel.TieLineSource
+	var sources []codec.TieLineSource
 	for key, st := range s.tree.matrices {
 		if key.matrix != p.MatrixID {
 			continue
@@ -33,13 +33,13 @@ func (s *server) handleTieLineInterrogate(f iprobel.Frame) (handlerResult, error
 		if src < 0 {
 			continue
 		}
-		sources = append(sources, iprobel.TieLineSource{
+		sources = append(sources, codec.TieLineSource{
 			MatrixID: key.matrix,
 			LevelID:  key.level,
 			SourceID: uint16(src),
 		})
 	}
-	reply := iprobel.EncodeTieLineTally(iprobel.TieLineTallyParams{
+	reply := codec.EncodeTieLineTally(codec.TieLineTallyParams{
 		DestMatrixID:      p.MatrixID,
 		DestAssociationID: p.DestAssociationID,
 		Sources:           sources,

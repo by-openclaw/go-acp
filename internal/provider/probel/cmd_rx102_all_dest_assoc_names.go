@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleAllDestAssocNames: rx 102 → tx 107.
@@ -12,14 +12,14 @@ import (
 // expect. Pagination caveat identical to handleAllSourceNames.
 //
 // Reference: SW-P-08 §3.2.20 (rx 102) → §3.3.20 (tx 107).
-func (s *server) handleAllDestAssocNames(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeAllDestAssocNamesRequest(f)
+func (s *server) handleAllDestAssocNames(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeAllDestAssocNamesRequest(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	st, ok := s.tree.lookup(p.MatrixID, 0)
 	if !ok {
-		empty := iprobel.EncodeDestAssocNamesResponse(iprobel.DestAssocNamesResponseParams{
+		empty := codec.EncodeDestAssocNamesResponse(codec.DestAssocNamesResponseParams{
 			MatrixID: p.MatrixID, LevelID: 0, NameLength: p.NameLength,
 			FirstDestAssociationID: 0, Names: nil,
 		})
@@ -34,7 +34,7 @@ func (s *server) handleAllDestAssocNames(f iprobel.Frame) (handlerResult, error)
 	for i := 0; i < count; i++ {
 		names[i] = destNameOrDefault(st, i)
 	}
-	reply := iprobel.EncodeDestAssocNamesResponse(iprobel.DestAssocNamesResponseParams{
+	reply := codec.EncodeDestAssocNamesResponse(codec.DestAssocNamesResponseParams{
 		MatrixID: p.MatrixID, LevelID: 0, NameLength: p.NameLength,
 		FirstDestAssociationID: 0, Names: names,
 	})

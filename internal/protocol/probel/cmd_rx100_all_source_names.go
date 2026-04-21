@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -17,31 +17,31 @@ import (
 // tx 106 frames with ascending FirstSourceID. This consumer implementation
 // returns the first frame only — callers needing the full table should
 // paginate by issuing follow-up SingleSourceName calls, or use the
-// Subscribe-listener on the iprobel.Client directly. Multi-frame
+// Subscribe-listener on the codec.Client directly. Multi-frame
 // auto-collection is tracked in the Probel master issue.
 //
 // Reference: SW-P-08 §3.2.18 (request) / §3.3.19 (response).
 func (p *Plugin) AllSourceNames(
 	ctx context.Context,
 	matrix, level uint8,
-	nameLen iprobel.NameLength,
-) (iprobel.SourceNamesResponseParams, error) {
+	nameLen codec.NameLength,
+) (codec.SourceNamesResponseParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.SourceNamesResponseParams{}, err
+		return codec.SourceNamesResponseParams{}, err
 	}
-	req := iprobel.EncodeAllSourceNamesRequest(iprobel.AllSourceNamesRequestParams{
+	req := codec.EncodeAllSourceNamesRequest(codec.AllSourceNamesRequestParams{
 		MatrixID: matrix, LevelID: level, NameLength: nameLen,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxSourceNamesResponse
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxSourceNamesResponse
 	})
 	if err != nil {
-		return iprobel.SourceNamesResponseParams{}, fmt.Errorf("probel all-source-names: %w", err)
+		return codec.SourceNamesResponseParams{}, fmt.Errorf("probel all-source-names: %w", err)
 	}
-	r, derr := iprobel.DecodeSourceNamesResponse(reply)
+	r, derr := codec.DecodeSourceNamesResponse(reply)
 	if derr != nil {
-		return iprobel.SourceNamesResponseParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.SourceNamesResponseParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return r, nil
 }

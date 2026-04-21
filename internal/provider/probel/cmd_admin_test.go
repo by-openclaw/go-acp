@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	probelproto "acp/internal/protocol/probel"
 )
 
@@ -26,8 +26,8 @@ func TestMaintenanceClearProtectsUnit(t *testing.T) {
 	}
 	srv.tree.matrices[matrixKey{matrix: 0, level: 0}] = st
 
-	req := iprobel.EncodeMaintenance(iprobel.MaintenanceParams{
-		Function: iprobel.MaintClearProtects, MatrixID: 0, LevelID: 0,
+	req := codec.EncodeMaintenance(codec.MaintenanceParams{
+		Function: codec.MaintClearProtects, MatrixID: 0, LevelID: 0,
 	})
 	if _, err := srv.handle(req); err != nil {
 		t.Fatalf("handle: %v", err)
@@ -38,8 +38,8 @@ func TestMaintenanceClearProtectsUnit(t *testing.T) {
 
 	// All-matrices wildcard also clears.
 	st.protects[1] = protectRecord{deviceID: 7, state: 1}
-	req2 := iprobel.EncodeMaintenance(iprobel.MaintenanceParams{
-		Function: iprobel.MaintClearProtects, MatrixID: 0xFF, LevelID: 0xFF,
+	req2 := codec.EncodeMaintenance(codec.MaintenanceParams{
+		Function: codec.MaintClearProtects, MatrixID: 0xFF, LevelID: 0xFF,
 	})
 	if _, err := srv.handle(req2); err != nil {
 		t.Fatalf("handle wildcard: %v", err)

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/export/canonical"
 	probelproto "acp/internal/protocol/probel"
 )
@@ -90,7 +90,7 @@ func TestHandleCrosspointInterrogateUnit(t *testing.T) {
 	}
 	srv.tree.matrices[matrixKey{matrix: 0, level: 0}] = st
 
-	req := iprobel.EncodeCrosspointInterrogate(iprobel.CrosspointInterrogateParams{
+	req := codec.EncodeCrosspointInterrogate(codec.CrosspointInterrogateParams{
 		MatrixID: 0, LevelID: 0, DestinationID: 2,
 	})
 	res, err := srv.handle(req)
@@ -100,7 +100,7 @@ func TestHandleCrosspointInterrogateUnit(t *testing.T) {
 	if res.reply == nil {
 		t.Fatal("reply is nil")
 	}
-	tally, err := iprobel.DecodeCrosspointTally(*res.reply)
+	tally, err := codec.DecodeCrosspointTally(*res.reply)
 	if err != nil {
 		t.Fatalf("decode tally: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestHandleCrosspointInterrogateUnit(t *testing.T) {
 	}
 
 	// Unknown matrix → tally with SourceID=0 (no error).
-	req2 := iprobel.EncodeCrosspointInterrogate(iprobel.CrosspointInterrogateParams{
+	req2 := codec.EncodeCrosspointInterrogate(codec.CrosspointInterrogateParams{
 		MatrixID: 7, LevelID: 0, DestinationID: 2,
 	})
 	res2, err := srv.handle(req2)
@@ -119,7 +119,7 @@ func TestHandleCrosspointInterrogateUnit(t *testing.T) {
 	if res2.reply == nil {
 		t.Fatal("reply nil for unknown matrix")
 	}
-	tally2, _ := iprobel.DecodeCrosspointTally(*res2.reply)
+	tally2, _ := codec.DecodeCrosspointTally(*res2.reply)
 	if tally2.SourceID != 0 {
 		t.Errorf("unknown-matrix src = %d; want 0", tally2.SourceID)
 	}
@@ -202,14 +202,14 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 	defer func() { _ = primary.Disconnect() }()
 
 	// Secondary consumer: subscribes to async tallies.
-	secondary, err := iprobel.Dial(dc, addr, logger, iprobel.ClientConfig{})
+	secondary, err := codec.Dial(dc, addr, logger, codec.ClientConfig{})
 	if err != nil {
 		t.Fatalf("secondary dial: %v", err)
 	}
 	defer func() { _ = secondary.Close() }()
-	tallyCh := make(chan iprobel.Frame, 1)
-	secondary.Subscribe(func(fr iprobel.Frame) {
-		if fr.ID == iprobel.TxCrosspointTally || fr.ID == iprobel.TxCrosspointTallyExt {
+	tallyCh := make(chan codec.Frame, 1)
+	secondary.Subscribe(func(fr codec.Frame) {
+		if fr.ID == codec.TxCrosspointTally || fr.ID == codec.TxCrosspointTallyExt {
 			select {
 			case tallyCh <- fr:
 			default:
@@ -237,7 +237,7 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 	// Secondary should have received the tally fan-out.
 	select {
 	case fr := <-tallyCh:
-		tally, _ := iprobel.DecodeCrosspointTally(fr)
+		tally, _ := codec.DecodeCrosspointTally(fr)
 		if tally.DestinationID != 5 || tally.SourceID != 12 {
 			t.Errorf("fan-out tally = %+v; want dst=5 src=12", tally)
 		}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -15,23 +15,23 @@ import (
 func (p *Plugin) SingleDestAssocName(
 	ctx context.Context,
 	matrix uint8,
-	nameLen iprobel.NameLength,
+	nameLen codec.NameLength,
 	destAssoc uint16,
 ) (string, error) {
 	cli, err := p.getClient()
 	if err != nil {
 		return "", err
 	}
-	req := iprobel.EncodeSingleDestAssocNameRequest(iprobel.SingleDestAssocNameRequestParams{
+	req := codec.EncodeSingleDestAssocNameRequest(codec.SingleDestAssocNameRequestParams{
 		MatrixID: matrix, NameLength: nameLen, DestAssociationID: destAssoc,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxDestAssocNamesResponse
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxDestAssocNamesResponse
 	})
 	if err != nil {
 		return "", fmt.Errorf("probel single-dest-assoc-name: %w", err)
 	}
-	r, derr := iprobel.DecodeDestAssocNamesResponse(reply)
+	r, derr := codec.DecodeDestAssocNamesResponse(reply)
 	if derr != nil {
 		return "", &protocol.TransportError{Op: "decode", Err: derr}
 	}

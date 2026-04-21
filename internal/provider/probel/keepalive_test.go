@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/export/canonical"
 )
 
@@ -80,15 +80,15 @@ func TestKeepaliveSchedulerSendsPings(t *testing.T) {
 			}
 			acc = append(acc, buf[:n]...)
 			for len(acc) > 0 {
-				if iprobel.IsACK(acc) || iprobel.IsNAK(acc) {
+				if codec.IsACK(acc) || codec.IsNAK(acc) {
 					acc = acc[2:]
 					continue
 				}
-				if acc[0] != iprobel.DLE {
+				if acc[0] != codec.DLE {
 					acc = acc[1:]
 					continue
 				}
-				f, consumed, perr := iprobel.Unpack(acc)
+				f, consumed, perr := codec.Unpack(acc)
 				if errors.Is(perr, io.ErrUnexpectedEOF) {
 					break
 				}
@@ -96,11 +96,11 @@ func TestKeepaliveSchedulerSendsPings(t *testing.T) {
 					acc = acc[2:]
 					continue
 				}
-				if f.ID == iprobel.TxAppKeepaliveRequest {
+				if f.ID == codec.TxAppKeepaliveRequest {
 					pings.Add(1)
 				}
 				// ACK each valid frame per spec §2 so the session is healthy.
-				_, _ = conn.Write(iprobel.PackACK())
+				_, _ = conn.Write(codec.PackACK())
 				acc = acc[consumed:]
 			}
 		}
@@ -162,7 +162,7 @@ func TestKeepaliveDisabledByDefault(t *testing.T) {
 	buf := make([]byte, 256)
 	n, err := conn.Read(buf)
 	if n > 0 {
-		t.Errorf("expected no bytes; got %d: %s", n, iprobel.HexDump(buf[:n]))
+		t.Errorf("expected no bytes; got %d: %s", n, codec.HexDump(buf[:n]))
 	}
 	if err == nil {
 		t.Error("expected timeout error; got nil")

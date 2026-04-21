@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleSalvoGroupInterrogate: rx 124 → tx 125. Returns one salvo slot
@@ -10,25 +10,25 @@ import (
 // stored).
 //
 // Reference: SW-P-08 §3.2.31 (rx 124) → §3.3.26 (tx 125).
-func (s *server) handleSalvoGroupInterrogate(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeSalvoGroupInterrogate(f)
+func (s *server) handleSalvoGroupInterrogate(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeSalvoGroupInterrogate(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	slot, ok, last := s.tree.salvoSlotAt(p.SalvoID, p.ConnectIndex)
 	if !ok {
-		reply := iprobel.EncodeSalvoGroupTally(iprobel.SalvoGroupTallyParams{
+		reply := codec.EncodeSalvoGroupTally(codec.SalvoGroupTallyParams{
 			SalvoID:      p.SalvoID,
 			ConnectIndex: p.ConnectIndex,
-			Validity:     iprobel.SalvoTallyInvalid,
+			Validity:     codec.SalvoTallyInvalid,
 		})
 		return handlerResult{reply: &reply}, nil
 	}
-	v := iprobel.SalvoTallyValidMore
+	v := codec.SalvoTallyValidMore
 	if last {
-		v = iprobel.SalvoTallyValidLast
+		v = codec.SalvoTallyValidLast
 	}
-	reply := iprobel.EncodeSalvoGroupTally(iprobel.SalvoGroupTallyParams{
+	reply := codec.EncodeSalvoGroupTally(codec.SalvoGroupTallyParams{
 		MatrixID:      slot.matrix,
 		LevelID:       slot.level,
 		DestinationID: slot.dst,

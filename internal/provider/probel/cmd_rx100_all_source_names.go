@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handleAllSourceNames: rx 100 → tx 106.  Builds one tx 106 frame from
@@ -15,15 +15,15 @@ import (
 // requests for the rest).
 //
 // Reference: SW-P-08 §3.2.18 (rx 100) → §3.3.19 (tx 106).
-func (s *server) handleAllSourceNames(f iprobel.Frame) (handlerResult, error) {
-	p, err := iprobel.DecodeAllSourceNamesRequest(f)
+func (s *server) handleAllSourceNames(f codec.Frame) (handlerResult, error) {
+	p, err := codec.DecodeAllSourceNamesRequest(f)
 	if err != nil {
 		return handlerResult{}, err
 	}
 	st, ok := s.tree.lookup(p.MatrixID, p.LevelID)
 	if !ok {
 		// Unknown matrix/level — return empty response (no names).
-		empty := iprobel.EncodeSourceNamesResponse(iprobel.SourceNamesResponseParams{
+		empty := codec.EncodeSourceNamesResponse(codec.SourceNamesResponseParams{
 			MatrixID: p.MatrixID, LevelID: p.LevelID, NameLength: p.NameLength,
 			FirstSourceID: 0, Names: nil,
 		})
@@ -38,7 +38,7 @@ func (s *server) handleAllSourceNames(f iprobel.Frame) (handlerResult, error) {
 	for i := 0; i < count; i++ {
 		names[i] = sourceNameOrDefault(st, i)
 	}
-	reply := iprobel.EncodeSourceNamesResponse(iprobel.SourceNamesResponseParams{
+	reply := codec.EncodeSourceNamesResponse(codec.SourceNamesResponseParams{
 		MatrixID: p.MatrixID, LevelID: p.LevelID, NameLength: p.NameLength,
 		FirstSourceID: 0, Names: names,
 	})

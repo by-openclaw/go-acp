@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -22,23 +22,23 @@ func (p *Plugin) CrosspointConnect(
 	ctx context.Context,
 	matrix, level uint8,
 	dst, src uint16,
-) (iprobel.CrosspointConnectedParams, error) {
+) (codec.CrosspointConnectedParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.CrosspointConnectedParams{}, err
+		return codec.CrosspointConnectedParams{}, err
 	}
-	req := iprobel.EncodeCrosspointConnect(iprobel.CrosspointConnectParams{
+	req := codec.EncodeCrosspointConnect(codec.CrosspointConnectParams{
 		MatrixID: matrix, LevelID: level, DestinationID: dst, SourceID: src,
 	})
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxCrosspointConnected || f.ID == iprobel.TxCrosspointConnectedExt
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxCrosspointConnected || f.ID == codec.TxCrosspointConnectedExt
 	})
 	if err != nil {
-		return iprobel.CrosspointConnectedParams{}, fmt.Errorf("probel connect: %w", err)
+		return codec.CrosspointConnectedParams{}, fmt.Errorf("probel connect: %w", err)
 	}
-	c, derr := iprobel.DecodeCrosspointConnected(reply)
+	c, derr := codec.DecodeCrosspointConnected(reply)
 	if derr != nil {
-		return iprobel.CrosspointConnectedParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.CrosspointConnectedParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return c, nil
 }

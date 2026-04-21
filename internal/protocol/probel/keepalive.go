@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // installKeepaliveAutoResponder subscribes to the shared client's async
@@ -16,15 +16,15 @@ import (
 // session alive without bothering application code.
 //
 // Reference: TS assets/probel/smh-probelsw08p/src/command/application-keep-alive/.
-func (p *Plugin) installKeepaliveAutoResponder(cli *iprobel.Client) {
-	cli.Subscribe(func(f iprobel.Frame) {
-		if f.ID != iprobel.TxAppKeepaliveRequest {
+func (p *Plugin) installKeepaliveAutoResponder(cli *codec.Client) {
+	cli.Subscribe(func(f codec.Frame) {
+		if f.ID != codec.TxAppKeepaliveRequest {
 			return
 		}
-		if err := iprobel.DecodeKeepaliveRequest(f); err != nil {
+		if err := codec.DecodeKeepaliveRequest(f); err != nil {
 			return
 		}
-		if err := cli.Write(iprobel.Pack(iprobel.EncodeKeepaliveResponse())); err != nil {
+		if err := cli.Write(codec.Pack(codec.EncodeKeepaliveResponse())); err != nil {
 			p.logger.Warn("probel keepalive response write failed",
 				"err", err.Error())
 		}

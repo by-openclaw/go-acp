@@ -9,7 +9,7 @@ import (
 	"net"
 	"sync"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // session is one connected SW-P-08 client (typically a controller).
@@ -41,8 +41,8 @@ func (s *session) run(ctx context.Context) {
 		slog.String("remote", s.remoteAddr()),
 	)
 
-	buf := make([]byte, 0, iprobel.DefaultReadBufferSize)
-	tmp := make([]byte, iprobel.DefaultReadBufferSize)
+	buf := make([]byte, 0, codec.DefaultReadBufferSize)
+	tmp := make([]byte, codec.DefaultReadBufferSize)
 	for {
 		if err := ctx.Err(); err != nil {
 			return
@@ -61,26 +61,26 @@ func (s *session) run(ctx context.Context) {
 		buf = append(buf, tmp[:n]...)
 
 		for len(buf) >= 2 {
-			if iprobel.IsACK(buf) {
+			if codec.IsACK(buf) {
 				s.srv.logger.Debug("probel session rx ACK",
 					slog.String("remote", s.remoteAddr()))
 				buf = buf[2:]
 				continue
 			}
-			if iprobel.IsNAK(buf) {
+			if codec.IsNAK(buf) {
 				s.srv.logger.Warn("probel session rx NAK",
 					slog.String("remote", s.remoteAddr()))
 				buf = buf[2:]
 				continue
 			}
-			if buf[0] != iprobel.DLE {
+			if buf[0] != codec.DLE {
 				s.srv.logger.Warn("probel session desync: dropping byte",
 					slog.String("remote", s.remoteAddr()),
 					slog.String("byte", fmt.Sprintf("%02x", buf[0])))
 				buf = buf[1:]
 				continue
 			}
-			f, consumed, derr := iprobel.Unpack(buf)
+			f, consumed, derr := codec.Unpack(buf)
 			if errors.Is(derr, io.ErrUnexpectedEOF) {
 				break
 			}
@@ -88,7 +88,7 @@ func (s *session) run(ctx context.Context) {
 				s.srv.logger.Warn("probel session bad frame",
 					slog.String("remote", s.remoteAddr()),
 					slog.String("err", derr.Error()))
-				_ = s.write(iprobel.PackNAK())
+				_ = s.write(codec.PackNAK())
 				s.srv.profile.Note(InboundFrameDecodeFailed)
 				buf = buf[2:]
 				continue
@@ -98,12 +98,12 @@ func (s *session) run(ctx context.Context) {
 				slog.Int("cmd", int(f.ID)),
 				slog.Int("payload_len", len(f.Payload)),
 				slog.Int("wire_len", consumed),
-				slog.String("hex", iprobel.HexDump(buf[:consumed])),
+				slog.String("hex", codec.HexDump(buf[:consumed])),
 			)
 			buf = buf[consumed:]
 			// SW-P-08 §2 — always ACK a well-framed message, then
 			// let dispatch decide whether to also send a functional reply.
-			_ = s.write(iprobel.PackACK())
+			_ = s.write(codec.PackACK())
 			s.dispatch(f)
 		}
 	}
@@ -112,7 +112,7 @@ func (s *session) run(ctx context.Context) {
 // dispatch routes a decoded frame to the server's command handler table
 // (handlers.go), sends the reply (if any) back on the originating
 // session, and fans tallies out to every OTHER live session.
-func (s *session) dispatch(f iprobel.Frame) {
+func (s *session) dispatch(f codec.Frame) {
 	res, err := s.srv.handle(f)
 	if err != nil {
 		s.srv.logger.Warn("probel dispatch",
@@ -124,13 +124,13 @@ func (s *session) dispatch(f iprobel.Frame) {
 		return
 	}
 	if res.reply != nil {
-		raw := iprobel.Pack(*res.reply)
+		raw := codec.Pack(*res.reply)
 		s.srv.logger.Info("probel session tx",
 			slog.String("remote", s.remoteAddr()),
 			slog.Int("cmd", int(res.reply.ID)),
 			slog.Int("payload_len", len(res.reply.Payload)),
 			slog.Int("wire_len", len(raw)),
-			slog.String("hex", iprobel.HexDump(raw)),
+			slog.String("hex", codec.HexDump(raw)),
 		)
 		if werr := s.write(raw); werr != nil {
 			s.srv.logger.Warn("probel session reply write",

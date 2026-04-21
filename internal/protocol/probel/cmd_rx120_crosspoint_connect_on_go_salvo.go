@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	"acp/internal/protocol"
 )
 
@@ -20,22 +20,22 @@ import (
 // Reference: SW-P-08 §3.2.29 / §3.3.24.
 func (p *Plugin) SalvoConnectOnGo(
 	ctx context.Context,
-	params iprobel.SalvoConnectOnGoParams,
-) (iprobel.SalvoConnectOnGoAckParams, error) {
+	params codec.SalvoConnectOnGoParams,
+) (codec.SalvoConnectOnGoAckParams, error) {
 	cli, err := p.getClient()
 	if err != nil {
-		return iprobel.SalvoConnectOnGoAckParams{}, err
+		return codec.SalvoConnectOnGoAckParams{}, err
 	}
-	req := iprobel.EncodeSalvoConnectOnGo(params)
-	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
-		return f.ID == iprobel.TxSalvoConnectOnGoAck
+	req := codec.EncodeSalvoConnectOnGo(params)
+	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
+		return f.ID == codec.TxSalvoConnectOnGoAck
 	})
 	if err != nil {
-		return iprobel.SalvoConnectOnGoAckParams{}, fmt.Errorf("probel salvo-connect-on-go: %w", err)
+		return codec.SalvoConnectOnGoAckParams{}, fmt.Errorf("probel salvo-connect-on-go: %w", err)
 	}
-	ack, derr := iprobel.DecodeSalvoConnectOnGoAck(reply)
+	ack, derr := codec.DecodeSalvoConnectOnGoAck(reply)
 	if derr != nil {
-		return iprobel.SalvoConnectOnGoAckParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.SalvoConnectOnGoAckParams{}, &protocol.TransportError{Op: "decode", Err: derr}
 	}
 	return ack, nil
 }

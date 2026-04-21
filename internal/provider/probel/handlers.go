@@ -1,7 +1,7 @@
 package probel
 
 import (
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // handlerResult is what a per-command handler returns: an optional
@@ -12,8 +12,8 @@ import (
 // session logs it and sends DLE NAK at the framing layer (the ACK has
 // already gone out by the time handle() runs).
 type handlerResult struct {
-	reply   *iprobel.Frame
-	tallies []iprobel.Frame
+	reply   *codec.Frame
+	tallies []codec.Frame
 }
 
 // handle is the central command dispatcher. It is a pure function of
@@ -24,51 +24,51 @@ type handlerResult struct {
 // zero handlerResult (no reply, no error) — the session has already
 // ACKed the frame at the framer layer, which is enough for most
 // well-behaved controllers to consider the message delivered.
-func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
+func (s *server) handle(f codec.Frame) (handlerResult, error) {
 	switch f.ID {
-	case iprobel.RxCrosspointInterrogate, iprobel.RxCrosspointInterrogateExt:
+	case codec.RxCrosspointInterrogate, codec.RxCrosspointInterrogateExt:
 		return s.handleCrosspointInterrogate(f)
-	case iprobel.RxCrosspointConnect, iprobel.RxCrosspointConnectExt:
+	case codec.RxCrosspointConnect, codec.RxCrosspointConnectExt:
 		return s.handleCrosspointConnect(f)
-	case iprobel.RxMaintenance:
+	case codec.RxMaintenance:
 		return s.handleMaintenance(f)
-	case iprobel.RxDualControllerStatusRequest:
+	case codec.RxDualControllerStatusRequest:
 		return s.handleDualControllerStatus(f)
-	case iprobel.RxCrosspointTallyDumpRequest, iprobel.RxCrosspointTallyDumpRequestExt:
+	case codec.RxCrosspointTallyDumpRequest, codec.RxCrosspointTallyDumpRequestExt:
 		return s.handleCrosspointTallyDumpRequest(f)
-	case iprobel.RxProtectInterrogate, iprobel.RxProtectInterrogateExt:
+	case codec.RxProtectInterrogate, codec.RxProtectInterrogateExt:
 		return s.handleProtectInterrogate(f)
-	case iprobel.RxProtectConnect, iprobel.RxProtectConnectExt:
+	case codec.RxProtectConnect, codec.RxProtectConnectExt:
 		return s.handleProtectConnect(f)
-	case iprobel.RxProtectDisconnect, iprobel.RxProtectDisconnectExt:
+	case codec.RxProtectDisconnect, codec.RxProtectDisconnectExt:
 		return s.handleProtectDisconnect(f)
-	case iprobel.RxProtectDeviceNameRequest:
+	case codec.RxProtectDeviceNameRequest:
 		return s.handleProtectDeviceNameRequest(f)
-	case iprobel.RxProtectTallyDumpRequest, iprobel.RxProtectTallyDumpRequestExt:
+	case codec.RxProtectTallyDumpRequest, codec.RxProtectTallyDumpRequestExt:
 		return s.handleProtectTallyDumpRequest(f)
-	case iprobel.RxMasterProtectConnect:
+	case codec.RxMasterProtectConnect:
 		return s.handleMasterProtectConnect(f)
-	case iprobel.RxAllSourceNamesRequest:
+	case codec.RxAllSourceNamesRequest:
 		return s.handleAllSourceNames(f)
-	case iprobel.RxSingleSourceNameRequest:
+	case codec.RxSingleSourceNameRequest:
 		return s.handleSingleSourceName(f)
-	case iprobel.RxAllDestNamesRequest:
+	case codec.RxAllDestNamesRequest:
 		return s.handleAllDestAssocNames(f)
-	case iprobel.RxSingleDestNameRequest:
+	case codec.RxSingleDestNameRequest:
 		return s.handleSingleDestAssocName(f)
-	case iprobel.RxCrosspointTieLineInterrogate:
+	case codec.RxCrosspointTieLineInterrogate:
 		return s.handleTieLineInterrogate(f)
-	case iprobel.RxAllSourceAssocNamesRequest:
+	case codec.RxAllSourceAssocNamesRequest:
 		return s.handleAllSourceAssocNames(f)
-	case iprobel.RxSingleSourceAssocNameRequest:
+	case codec.RxSingleSourceAssocNameRequest:
 		return s.handleSingleSourceAssocName(f)
-	case iprobel.RxUpdateNameRequest:
+	case codec.RxUpdateNameRequest:
 		return s.handleUpdateNameRequest(f)
-	case iprobel.RxCrosspointConnectOnGoSalvo:
+	case codec.RxCrosspointConnectOnGoSalvo:
 		return s.handleSalvoConnectOnGo(f)
-	case iprobel.RxCrosspointGoSalvo:
+	case codec.RxCrosspointGoSalvo:
 		return s.handleSalvoGo(f)
-	case iprobel.RxCrosspointSalvoGroupInterrogate:
+	case codec.RxCrosspointSalvoGroupInterrogate:
 		return s.handleSalvoGroupInterrogate(f)
 	}
 	s.profile.Note(UnsupportedCommand)

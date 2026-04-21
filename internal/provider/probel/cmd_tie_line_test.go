@@ -3,23 +3,23 @@ package probel
 import (
 	"testing"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 )
 
 // TestHandleTieLineInterrogateEmpty: unrouted dst yields NumSrcs=0.
 func TestHandleTieLineInterrogateEmpty(t *testing.T) {
 	srv := newComplianceServer(t)
-	req := iprobel.EncodeTieLineInterrogate(iprobel.TieLineInterrogateParams{
+	req := codec.EncodeTieLineInterrogate(codec.TieLineInterrogateParams{
 		MatrixID: 0, DestAssociationID: 0,
 	})
 	res, err := srv.handle(req)
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	if res.reply == nil || res.reply.ID != iprobel.TxCrosspointTieLineTally {
+	if res.reply == nil || res.reply.ID != codec.TxCrosspointTieLineTally {
 		t.Fatalf("reply = %+v", res.reply)
 	}
-	decoded, err := iprobel.DecodeTieLineTally(*res.reply)
+	decoded, err := codec.DecodeTieLineTally(*res.reply)
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -36,14 +36,14 @@ func TestHandleTieLineInterrogateRouted(t *testing.T) {
 		t.Fatalf("applyConnect: %v", err)
 	}
 
-	req := iprobel.EncodeTieLineInterrogate(iprobel.TieLineInterrogateParams{
+	req := codec.EncodeTieLineInterrogate(codec.TieLineInterrogateParams{
 		MatrixID: 0, DestAssociationID: 1,
 	})
 	res, err := srv.handle(req)
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	decoded, err := iprobel.DecodeTieLineTally(*res.reply)
+	decoded, err := codec.DecodeTieLineTally(*res.reply)
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
