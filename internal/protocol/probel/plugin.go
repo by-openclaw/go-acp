@@ -24,6 +24,7 @@ import (
 
 	iprobel "acp/internal/probel"
 	"acp/internal/protocol"
+	"acp/internal/protocol/compliance"
 	"acp/internal/transport"
 )
 
@@ -61,6 +62,20 @@ type Plugin struct {
 	port     int
 	client   *iprobel.Client
 	recorder *transport.Recorder
+
+	// profile aggregates wire-tolerance events observed during this
+	// session. See compliance_events.go for the catalog. Nil until
+	// Connect fires; callers read via ComplianceProfile().
+	profile *compliance.Profile
+}
+
+// ComplianceProfile returns the session-scoped compliance profile.
+// Nil before Connect, non-nil after. Safe to call from any goroutine —
+// compliance.Profile is internally synchronized.
+func (p *Plugin) ComplianceProfile() *compliance.Profile {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.profile
 }
 
 // SetRecorder attaches a JSONL traffic recorder to this plugin. Call
@@ -91,7 +106,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
-	cfg := iprobel.ClientConfig{}
+	prof := &compliance.Profile{}
+	cfg := iprobel.ClientConfig{
+		OnCapSoft: func(int) { prof.Note(DataFieldOversize) },
+		OnNAK:     func() { prof.Note(NAKReceived) },
+		OnTimeout: func() { prof.Note(ACKTimeoutElapsed) },
+		OnRetry:   func(int) { prof.Note(RetryAttempted) },
+		OnNoACK:   func() { prof.Note(ReplyWithoutACK) },
+	}
 	if p.recorder != nil {
 		rec := p.recorder
 		cfg.OnTx = func(b []byte) { rec.Record("probel", "tx", b) }
@@ -104,6 +126,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.client = cli
 	p.host = ip
 	p.port = port
+	p.profile = prof
 	p.logger.Info("probel connected",
 		slog.String("host", ip),
 		slog.Int("port", port),
@@ -112,6 +135,8 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 }
 
 // Disconnect closes the TCP session. Safe to call on an unconnected plugin.
+// The compliance profile is preserved after Disconnect so callers can
+// still inspect it post-mortem.
 func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	cli := p.client

@@ -49,5 +49,6 @@ func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
 	case iprobel.RxMasterProtectConnect:
 		return s.handleMasterProtectConnect(f)
 	}
+	s.profile.Note(UnsupportedCommand)
 	return handlerResult{}, nil
 }

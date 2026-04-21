@@ -89,6 +89,7 @@ func (s *session) run(ctx context.Context) {
 					slog.String("remote", s.remoteAddr()),
 					slog.String("err", derr.Error()))
 				_ = s.write(iprobel.PackNAK())
+				s.srv.profile.Note(InboundFrameDecodeFailed)
 				buf = buf[2:]
 				continue
 			}
@@ -119,6 +120,7 @@ func (s *session) dispatch(f iprobel.Frame) {
 			slog.Int("cmd", int(f.ID)),
 			slog.String("err", err.Error()),
 		)
+		s.srv.profile.Note(HandlerRejected)
 		return
 	}
 	if res.reply != nil {

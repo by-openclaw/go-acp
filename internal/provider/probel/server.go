@@ -10,6 +10,7 @@ import (
 
 	iprobel "acp/internal/probel"
 	"acp/internal/export/canonical"
+	"acp/internal/protocol/compliance"
 )
 
 // Server is the exported alias for the concrete Probel provider. Mirrors
@@ -31,6 +32,17 @@ type server struct {
 	sessions map[*session]struct{}
 	closed   bool
 	stopped  chan struct{}
+
+	// profile aggregates wire-tolerance events observed across every
+	// session since the server started. See compliance_events.go.
+	profile *compliance.Profile
+}
+
+// ComplianceProfile returns the provider-scoped compliance profile —
+// always non-nil once newServer has run. Safe to read from any
+// goroutine; compliance.Profile is internally synchronized.
+func (s *server) ComplianceProfile() *compliance.Profile {
+	return s.profile
 }
 
 func newServer(logger *slog.Logger, exp *canonical.Export) *server {
@@ -47,6 +59,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		tree:     t,
 		sessions: map[*session]struct{}{},
 		stopped:  make(chan struct{}),
+		profile:  &compliance.Profile{},
 	}
 }
 
@@ -195,6 +208,7 @@ func (s *server) fanOutTally(origin *session, f iprobel.Frame) {
 				slog.String("remote", sess.remoteAddr()),
 				slog.String("err", err.Error()),
 			)
+			s.profile.Note(TallyBroadcastFailed)
 		}
 	}
 }
