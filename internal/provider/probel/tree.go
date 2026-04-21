@@ -33,6 +33,20 @@ type matrixState struct {
 	// positional defaults ("SRC 0001", "DST 0001") when queried.
 	targetLabels []string
 	sourceLabels []string
+
+	// protects maps destination (0-based) → protect record. Absent entry
+	// means "no protect" (ProtectNone on the wire). Populated by rx 012
+	// Protect Connect / rx 029 Master Protect Connect; cleared by
+	// rx 014 Protect Disconnect or rx 007 MaintClearProtects.
+	protects map[uint16]protectRecord
+}
+
+// protectRecord captures who owns a protect on one destination + which
+// of the four spec states applies. See ProtectState in
+// cmd_protect_connect.go.
+type protectRecord struct {
+	deviceID uint16
+	state    uint8 // matches iprobel.ProtectState values (0..3)
 }
 
 // tree is the in-memory state indexed by (matrix, level). Built from a
@@ -125,6 +139,7 @@ func buildState(m *canonical.Matrix, key string) *matrixState {
 	for i := range st.sources {
 		st.sources[i] = -1
 	}
+	st.protects = map[uint16]protectRecord{}
 	if st.targetCount > 0 {
 		st.targetLabels = buildLabels(m.TargetLabels, key, st.targetCount)
 	}
@@ -175,6 +190,27 @@ func (t *tree) currentSource(m, l uint8, dst uint16) (uint16, bool) {
 		return 0, false
 	}
 	return uint16(st.sources[dst]), true
+}
+
+// clearProtects wipes the protect map for the given (matrix, level).
+// 0xFF wildcards are honoured: matrix=0xFF means "all matrices" and
+// level=0xFF means "all levels on the matched matrix". Called by the
+// rx 007 MaintClearProtects handler. Harmless when protect state is
+// empty (the default until a rx 012 Protect Connect lands).
+func (t *tree) clearProtects(matrix, level uint8) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for k, st := range t.matrices {
+		if matrix != 0xFF && k.matrix != matrix {
+			continue
+		}
+		if level != 0xFF && k.level != level {
+			continue
+		}
+		for d := range st.protects {
+			delete(st.protects, d)
+		}
+	}
 }
 
 // Size reports how many (matrix, level) pairs are in the tree.

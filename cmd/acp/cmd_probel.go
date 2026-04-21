@@ -223,10 +223,75 @@ func runProbelWatch(ctx context.Context, args []string) error {
 // Stub subcommands — implemented by per-command commits further on.
 
 func runProbelMaintenance(ctx context.Context, args []string) error {
-	return fmt.Errorf("probel maintenance: not yet implemented (see #82)")
+	fs := flag.NewFlagSet("probel-maintenance", flag.ContinueOnError)
+	fn := fs.String("function", "soft-reset",
+		"function: hard-reset | soft-reset | clear-protects | database-transfer")
+	matrix := fs.Int("matrix", 0, "matrix id (clear-protects only; 255 = all)")
+	level := fs.Int("level", 0, "level id (clear-protects only; 255 = all)")
+	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	rest := fs.Args()
+	if len(rest) < 1 {
+		return fmt.Errorf("missing <host:port>")
+	}
+	addr := rest[0]
+	var mfn iprobel.MaintenanceFunction
+	switch *fn {
+	case "hard-reset":
+		mfn = iprobel.MaintHardReset
+	case "soft-reset":
+		mfn = iprobel.MaintSoftReset
+	case "clear-protects":
+		mfn = iprobel.MaintClearProtects
+	case "database-transfer":
+		mfn = iprobel.MaintDatabaseTransfer
+	default:
+		return fmt.Errorf("unknown --function %q", *fn)
+	}
+	cctx, cancel := context.WithTimeout(ctx, *timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	if err := p.Maintenance(cctx, mfn, uint8(*matrix), uint8(*level)); err != nil {
+		return err
+	}
+	fmt.Printf("maintenance sent: function=%s matrix=%d level=%d\n", *fn, *matrix, *level)
+	return nil
 }
+
 func runProbelDualStatus(ctx context.Context, args []string) error {
-	return fmt.Errorf("probel dual-status: not yet implemented (see #82)")
+	fs := flag.NewFlagSet("probel-dual-status", flag.ContinueOnError)
+	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	rest := fs.Args()
+	if len(rest) < 1 {
+		return fmt.Errorf("missing <host:port>")
+	}
+	cctx, cancel := context.WithTimeout(ctx, *timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, rest[0])
+	if err != nil {
+		return err
+	}
+	defer closer()
+	r, err := p.DualControllerStatus(cctx)
+	if err != nil {
+		return err
+	}
+	who := "MASTER"
+	if r.SlaveActive {
+		who = "SLAVE"
+	}
+	fmt.Printf("dual-controller  who=%s active=%v idle_faulty=%v\n",
+		who, r.Active, r.IdleControllerFaulty)
+	return nil
 }
 func runProbelTallyDump(ctx context.Context, args []string) error {
 	return fmt.Errorf("probel tally-dump: not yet implemented (see #82)")

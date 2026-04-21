@@ -30,6 +30,10 @@ func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
 		return s.handleCrosspointInterrogate(f)
 	case iprobel.RxCrosspointConnect, iprobel.RxCrosspointConnectExt:
 		return s.handleCrosspointConnect(f)
+	case iprobel.RxMaintenance:
+		return s.handleMaintenance(f)
+	case iprobel.RxDualControllerStatusRequest:
+		return s.handleDualControllerStatus(f)
 	}
 	return handlerResult{}, nil
 }
