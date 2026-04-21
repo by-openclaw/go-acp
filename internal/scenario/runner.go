@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"acp/internal/protocol/acp2"
+	"acp/internal/acp2/consumer"
 )
 
 // Run dispatches the scenario to the right per-protocol runner and

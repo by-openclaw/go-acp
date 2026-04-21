@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"acp/internal/export/canonical"
-	iacp2 "acp/internal/protocol/acp2"
+	iacp2 "acp/internal/acp2/consumer"
 )
 
 // buildProperties assembles the ACP2 property list a get_object reply

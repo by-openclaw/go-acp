@@ -17,7 +17,7 @@ import (
 
 	"acp/internal/export/canonical"
 	"acp/internal/provider"
-	iacp2 "acp/internal/protocol/acp2"
+	iacp2 "acp/internal/acp2/consumer"
 )
 
 // DefaultPort is the AN2 TCP port used for ACP2 traffic.

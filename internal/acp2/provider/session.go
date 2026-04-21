@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	iacp2 "acp/internal/protocol/acp2"
+	iacp2 "acp/internal/acp2/consumer"
 )
 
 // session is one TCP connection. Holds the conn, a write mutex so

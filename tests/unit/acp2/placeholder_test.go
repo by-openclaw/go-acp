@@ -9,7 +9,7 @@ import (
 	"math"
 	"testing"
 
-	"acp/internal/protocol/acp2"
+	"acp/internal/acp2/consumer"
 )
 
 // TestAN2FrameRoundTrip verifies that an AN2 frame survives encode → decode.

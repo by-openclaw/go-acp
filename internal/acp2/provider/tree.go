@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"acp/internal/export/canonical"
-	iacp2 "acp/internal/protocol/acp2"
+	iacp2 "acp/internal/acp2/consumer"
 )
 
 // entry is one object in the served tree. Holds the canonical source

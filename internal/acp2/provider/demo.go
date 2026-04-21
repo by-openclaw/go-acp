@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	iacp2 "acp/internal/protocol/acp2"
+	iacp2 "acp/internal/acp2/consumer"
 )
 
 // RunAnnounceDemo mutates slot=1 / obj=18 (GainFloat) every `interval`

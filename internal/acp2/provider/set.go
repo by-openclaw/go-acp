@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	iacp2 "acp/internal/protocol/acp2"
+	iacp2 "acp/internal/acp2/consumer"
 )
 
 // applySet mutates e per an incoming set_property request and returns

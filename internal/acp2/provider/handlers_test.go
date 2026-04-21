@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	iacp2 "acp/internal/protocol/acp2"
+	iacp2 "acp/internal/acp2/consumer"
 )
 
 // newTestSession builds a session bound to a net.Pipe so handshake

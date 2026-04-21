@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"acp/internal/protocol/acp2"
+	"acp/internal/acp2/consumer"
 )
 
 func runDiag(ctx context.Context, args []string) error {

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"acp/internal/export/canonical"
-	iacp2 "acp/internal/protocol/acp2"
+	iacp2 "acp/internal/acp2/consumer"
 )
 
 // helper — round-trips a tree through buildProperties + EncodeProperties

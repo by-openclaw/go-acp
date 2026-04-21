@@ -15,7 +15,7 @@ import (
 
 	"acp/internal/protocol"
 	"acp/internal/acp1/consumer"
-	"acp/internal/protocol/acp2"
+	"acp/internal/acp2/consumer"
 	"acp/internal/protocol/compliance"
 	emberplus "acp/internal/protocol/emberplus"
 )
