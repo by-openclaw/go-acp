@@ -28,6 +28,8 @@ func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
 	switch f.ID {
 	case iprobel.RxCrosspointInterrogate, iprobel.RxCrosspointInterrogateExt:
 		return s.handleCrosspointInterrogate(f)
+	case iprobel.RxCrosspointConnect, iprobel.RxCrosspointConnectExt:
+		return s.handleCrosspointConnect(f)
 	}
 	return handlerResult{}, nil
 }

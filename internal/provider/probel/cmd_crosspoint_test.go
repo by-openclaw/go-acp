@@ -125,6 +125,80 @@ func TestHandleCrosspointInterrogateUnit(t *testing.T) {
 	}
 }
 
+// TestCrosspointConnectLoopback drives a full rx 002 → tx 004 + tx 003
+// round-trip. Extra assertions: the provider's tree now reflects the
+// new routing, and a second consumer attached to the same provider
+// sees the async tx 003 tally.
+func TestCrosspointConnectLoopback(t *testing.T) {
+	exp := demoMatrixExport(16, 16)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := newServer(logger, exp)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	serveDone := make(chan error, 1)
+	go func() { serveDone <- srv.Serve(ctx, "127.0.0.1:0") }()
+	addr := waitBound(t, srv)
+	host, port := splitAddr(t, addr)
+
+	// Primary consumer: sends the Connect.
+	f := &probelproto.Factory{}
+	primary := f.New(logger).(*probelproto.Plugin)
+	dc, cancelDC := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelDC()
+	if err := primary.Connect(dc, host, port); err != nil {
+		t.Fatalf("primary connect: %v", err)
+	}
+	defer func() { _ = primary.Disconnect() }()
+
+	// Secondary consumer: subscribes to async tallies.
+	secondary, err := iprobel.Dial(dc, addr, logger, iprobel.ClientConfig{})
+	if err != nil {
+		t.Fatalf("secondary dial: %v", err)
+	}
+	defer func() { _ = secondary.Close() }()
+	tallyCh := make(chan iprobel.Frame, 1)
+	secondary.Subscribe(func(fr iprobel.Frame) {
+		if fr.ID == iprobel.TxCrosspointTally || fr.ID == iprobel.TxCrosspointTallyExt {
+			select {
+			case tallyCh <- fr:
+			default:
+			}
+		}
+	})
+
+	// Send Connect on primary.
+	callCtx, cancelCall := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelCall()
+	connected, err := primary.CrosspointConnect(callCtx, 0, 0, 5, 12)
+	if err != nil {
+		t.Fatalf("CrosspointConnect: %v", err)
+	}
+	if connected.MatrixID != 0 || connected.LevelID != 0 ||
+		connected.DestinationID != 5 || connected.SourceID != 12 {
+		t.Errorf("connected = %+v; want matrix=0 level=0 dst=5 src=12", connected)
+	}
+
+	// Tree should reflect the new routing.
+	if src, ok := srv.tree.currentSource(0, 0, 5); !ok || src != 12 {
+		t.Errorf("tree[0,0,5] = (%d,%v); want (12,true)", src, ok)
+	}
+
+	// Secondary should have received the tally fan-out.
+	select {
+	case fr := <-tallyCh:
+		tally, _ := iprobel.DecodeCrosspointTally(fr)
+		if tally.DestinationID != 5 || tally.SourceID != 12 {
+			t.Errorf("fan-out tally = %+v; want dst=5 src=12", tally)
+		}
+	case <-time.After(1 * time.Second):
+		t.Error("secondary never saw the tally fan-out")
+	}
+
+	cancel()
+	<-serveDone
+}
+
 // --- test helpers ---------------------------------------------------------
 
 func demoMatrixExport(targets, sources int) *canonical.Export {
