@@ -9,8 +9,6 @@ import (
 	"net"
 	"sync"
 	"time"
-
-	"acp/internal/transport"
 )
 
 // DefaultDialTimeout caps how long Client.Dial waits for a TCP connect.
@@ -43,15 +41,17 @@ type Client struct {
 	readerDone chan struct{}
 
 	// wireHexLog, when true, logs every Pack() send and every Unpack()
-	// receive as space-separated hex at INFO level. On by default — users
-	// pasted the logs straight into Commie for cross-vendor validation.
+	// receive as space-separated lowercase hex at INFO level. Useful for
+	// debugging; off-path for operational code.
 	wireHexLog bool
 
-	// recorder, when non-nil, writes every raw TX and RX frame (including
-	// DLE ACK / DLE NAK control sequences) as JSONL — same shape the ACP1,
-	// ACP2 and Ember+ plugins use for traffic capture. Enables Wireshark-
-	// free stream replay from a plain text capture.
-	recorder *transport.Recorder
+	// onTx / onRx are optional observer callbacks invoked with the raw
+	// wire bytes (pre-escape on send, exactly-received on receive). Used
+	// by higher layers to plug in traffic capture or metrics without
+	// coupling this package to any capture implementation. Empty by
+	// default — keeps this package stdlib-only.
+	onTx func([]byte)
+	onRx func([]byte)
 }
 
 // eventFunc is an async-event callback. Listeners receive every frame
@@ -79,14 +79,15 @@ type ClientConfig struct {
 	// ReadBufferSize is the accumulating read-loop buffer. Defaults to
 	// DefaultReadBufferSize.
 	ReadBufferSize int
-	// WireHexLog enables "probel TX/RX: <hex>" INFO logs of every framed
-	// exchange. Defaults to true — the project's workflow relies on
-	// copy-pasting these logs into Commie for real-MTX validation.
+	// WireHexLog enables "probel TX/RX: <hex>" INFO logs of every
+	// framed exchange. Defaults to true; useful during development.
 	WireHexLog *bool
-	// Recorder, when non-nil, writes every wire frame to a JSONL file
-	// for offline replay. Same shape the other protocols use; see
-	// internal/transport/capture.go.
-	Recorder *transport.Recorder
+	// OnTx / OnRx are optional raw-byte observer callbacks invoked on
+	// every send and receive respectively. Kept as plain funcs to
+	// avoid pulling any other acp package into this codec — callers
+	// wire capture / metrics at their own layer.
+	OnTx func([]byte)
+	OnRx func([]byte)
 }
 
 // Dial opens a TCP connection to addr (host:port) and starts the reader
@@ -116,7 +117,8 @@ func Dial(ctx context.Context, addr string, logger *slog.Logger, cfg ClientConfi
 		conn:       conn,
 		readerDone: make(chan struct{}),
 		wireHexLog: hex,
-		recorder:   cfg.Recorder,
+		onTx:       cfg.OnTx,
+		onRx:       cfg.OnRx,
 	}
 	go c.readLoop(cfg.ReadBufferSize)
 	c.logger.Info("probel client connected",
@@ -143,7 +145,8 @@ func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Cl
 		conn:       conn,
 		readerDone: make(chan struct{}),
 		wireHexLog: hex,
-		recorder:   cfg.Recorder,
+		onTx:       cfg.OnTx,
+		onRx:       cfg.OnRx,
 	}
 	go c.readLoop(cfg.ReadBufferSize)
 	return c
@@ -223,8 +226,8 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 			slog.String("hex", HexDump(raw)),
 		)
 	}
-	if c.recorder != nil {
-		c.recorder.Record("probel", "tx", raw)
+	if c.onTx != nil {
+		c.onTx(raw)
 	}
 	if _, err := conn.Write(raw); err != nil {
 		if waiter != nil {
@@ -260,17 +263,17 @@ func (c *Client) Write(raw []byte) error {
 		return net.ErrClosed
 	}
 	conn := c.conn
-	rec := c.recorder
+	onTx := c.onTx
 	c.mu.Unlock()
-	if rec != nil {
-		rec.Record("probel", "tx", raw)
+	if onTx != nil {
+		onTx(raw)
 	}
 	_, err := conn.Write(raw)
 	return err
 }
 
 // readLoop accumulates bytes from the connection, decodes frames via
-// Unpack, and routes them. Per SW-P-88 §3.5:
+// Unpack, and routes them. Per SW-P-08 §2 (Transmission Protocol):
 //   - well-framed inbound frame   -> emit DLE ACK back to peer
 //   - bad checksum / framing      -> emit DLE NAK back to peer
 //   - inbound DLE ACK / DLE NAK   -> log and swallow (they're confirming
@@ -297,16 +300,16 @@ func (c *Client) readLoop(bufSize int) {
 			// Control sequences DLE ACK / DLE NAK are 2 bytes.
 			if IsACK(buf) {
 				c.logger.Debug("probel rx ACK")
-				if c.recorder != nil {
-					c.recorder.Record("probel", "rx", buf[:2])
+				if c.onRx != nil {
+					c.onRx(buf[:2])
 				}
 				buf = buf[2:]
 				continue
 			}
 			if IsNAK(buf) {
 				c.logger.Warn("probel rx NAK")
-				if c.recorder != nil {
-					c.recorder.Record("probel", "rx", buf[:2])
+				if c.onRx != nil {
+					c.onRx(buf[:2])
 				}
 				buf = buf[2:]
 				continue
@@ -327,7 +330,7 @@ func (c *Client) readLoop(bufSize int) {
 				c.logger.Warn("probel rx decode — emitting DLE NAK",
 					slog.String("err", perr.Error()),
 					slog.String("hex", HexDump(buf[:min(len(buf), 64)])))
-				// SW-P-88 §3.5 — bad frame, negative acknowledge.
+				// SW-P-08 §2 (Transmission Protocol) — bad frame, negative acknowledge.
 				_ = c.Write(PackNAK())
 				// Drop SOM and resync.
 				buf = buf[2:]
@@ -341,10 +344,10 @@ func (c *Client) readLoop(bufSize int) {
 					slog.String("hex", HexDump(buf[:consumed])),
 				)
 			}
-			if c.recorder != nil {
-				c.recorder.Record("probel", "rx", buf[:consumed])
+			if c.onRx != nil {
+				c.onRx(buf[:consumed])
 			}
-			// SW-P-88 §3.5 — always ACK a valid frame so the peer can
+			// SW-P-08 §2 (Transmission Protocol) — always ACK a valid frame so the peer can
 			// free its retransmit buffer.
 			_ = c.Write(PackACK())
 			buf = buf[consumed:]
@@ -382,10 +385,9 @@ func (c *Client) failPending(err error) {
 	}
 }
 
-// HexDump formats bytes as space-separated 2-digit lowercase hex, matching
-// the form Commie shows in its byte view and the SW-P-88 spec examples.
-// The format is always-on because users copy-paste these lines into Commie
-// for real-MTX validation without toggling a debug flag.
+// HexDump formats bytes as space-separated 2-digit lowercase hex — the
+// format SW-P-88 spec examples use and the convention most byte-view
+// tools recognise.
 //
 // Example: [0x10 0x02 0x01 …] → "10 02 01 02 00 05 0c 03 1f 10 03".
 func HexDump(b []byte) string {

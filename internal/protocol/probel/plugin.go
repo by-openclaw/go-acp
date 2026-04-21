@@ -94,9 +94,13 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
-	cli, err := iprobel.Dial(ctx, addr, p.logger, iprobel.ClientConfig{
-		Recorder: p.recorder,
-	})
+	cfg := iprobel.ClientConfig{}
+	if p.recorder != nil {
+		rec := p.recorder
+		cfg.OnTx = func(b []byte) { rec.Record("probel", "tx", b) }
+		cfg.OnRx = func(b []byte) { rec.Record("probel", "rx", b) }
+	}
+	cli, err := iprobel.Dial(ctx, addr, p.logger, cfg)
 	if err != nil {
 		return &protocol.TransportError{Op: "connect", Err: err}
 	}

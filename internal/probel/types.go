@@ -1,13 +1,23 @@
 // Package probel implements the Probel SW-P-08 wire protocol (framer + codec).
 //
-// Spec: Probel SW-P-88 Issue 3 (assets/probel/probel-sw08p/SW-P-88 Issue 3.pdf).
-// Reference implementation: assets/probel/smh-probelsw08p/ (TypeScript, full matrix
-// emulator + controller emulator). Every command carries a byte-layout doc-comment
-// matching the TS per-command style.
+// Authoritative spec:
 //
-// This package is consumer-agnostic and provider-agnostic: it only knows bytes.
-// Consumer wrapper lives at internal/protocol/probel/.
-// Provider wrapper lives at internal/provider/probel/.
+//	assets/probel/probel-sw08p/SW-P-08 Issue 30.doc  (General Remote Control Protocol)
+//
+// Section §2 of that document defines the transmission protocol (ACK/NAK
+// flow, retry semantics, 10ms response target, 128-byte DATA cap).
+//
+// Secondary reference for byte layouts (NOT authoritative for flow):
+//
+//	assets/probel/smh-probelsw08p/  (TypeScript matrix-side emulator — useful as
+//	                                 a decode/layout aid; the Go implementation
+//	                                 follows the spec, not the TS code)
+//
+// This package is consumer-agnostic and provider-agnostic: it only knows
+// bytes. It has ZERO dependencies outside the Go standard library so it
+// can be lifted into a separate repo without modification. Consumer
+// wrapper lives at internal/protocol/probel/; provider wrapper lives at
+// internal/provider/probel/.
 package probel
 
 // Control symbols from ASCII control set (SW-P-88 §3.2).
@@ -117,7 +127,7 @@ const (
 // Extended commands use wider address fields than their general counterparts.
 func (id CommandID) IsExtended() bool { return id&0x80 != 0 }
 
-// DefaultPort is the IANA-unregistered TCP port commonly used by Probel SW-P-08
-// matrices when exposed over TCP ("IP Stream" mode in Commie / SMH). Serial mode
-// is the original transport and carries no port.
+// DefaultPort is the TCP port commonly used by Probel SW-P-08 matrices
+// when exposed over IP. Serial mode is the original transport and
+// carries no port.
 const DefaultPort = 2008

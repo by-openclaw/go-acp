@@ -100,7 +100,7 @@ func (s *session) run(ctx context.Context) {
 				slog.String("hex", iprobel.HexDump(buf[:consumed])),
 			)
 			buf = buf[consumed:]
-			// SW-P-88 §3.5 — always ACK a well-framed message, then
+			// SW-P-08 §2 — always ACK a well-framed message, then
 			// let dispatch decide whether to also send a functional reply.
 			_ = s.write(iprobel.PackACK())
 			s.dispatch(f)

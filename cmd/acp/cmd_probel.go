@@ -16,8 +16,8 @@ import (
 
 // runProbel dispatches `acp probel <subcommand>` — the Probel SW-P-08
 // toolset. Each subcommand runs a single round-trip request and prints
-// the decoded reply + the wire hex on stderr for copy-paste into Commie
-// (hex goes via the slog INFO handler inside iprobel.Client).
+// the decoded reply + the wire hex on stderr (hex goes via the slog
+// INFO handler inside iprobel.Client).
 //
 // Global --capture FILE.jsonl is parsed at the top level and stashed in
 // the context so every subcommand sees the same recorder. Same JSONL
@@ -98,9 +98,8 @@ EXAMPLES
   acp probel tally-dump          127.0.0.1:2008 --matrix 0 --level 0
   acp probel watch               127.0.0.1:2008
 
-All commands log wire bytes (pre-escaped, post-framing) on stderr as a
-space-separated lowercase-hex line, ready to paste into Commie for
-real-MTX replay:
+All commands log wire bytes (post-escape, post-framing) on stderr as a
+space-separated lowercase-hex line for debugging:
   probel TX ... hex=10 02 01 01 00 05 0c 03 1f 10 03`)
 }
 

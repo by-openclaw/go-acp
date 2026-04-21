@@ -23,8 +23,7 @@ import (
 	"acp/internal/provider"
 )
 
-// DefaultPort mirrors the consumer's default and the IANA-unregistered
-// port that Commie / SMH / real MTXs converge on.
+// DefaultPort mirrors the consumer's default Probel TCP port.
 const DefaultPort = iprobel.DefaultPort
 
 func init() {

@@ -95,7 +95,7 @@ func Pack(f Frame) []byte {
 
 // PackACK returns the 2-byte positive-acknowledge sequence DLE ACK (0x10 0x06).
 // Controllers and matrices emit this immediately after every correctly-framed
-// frame they accept (SW-P-88 §3.5).
+// frame they accept (SW-P-08 §2).
 func PackACK() []byte { return []byte{DLE, ACK} }
 
 // PackNAK returns the 2-byte negative-acknowledge sequence DLE NAK (0x10 0x15).
