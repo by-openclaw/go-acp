@@ -1,32 +1,5 @@
 package probel
 
-// --- rx 008 : Dual Controller Status Request -------------------------------
-
-// EncodeDualControllerStatusRequest builds the empty-payload request.
-//
-// General form (CommandID 0x08 — 1-byte DATA = ID only):
-//
-//	| Byte | Field | Notes              |
-//	|------|-------|--------------------|
-//	|  (none) | — | no payload bytes   |
-//
-// The controller replies with tx 009 (DualControllerStatusResponse).
-// Spec: SW-P-88 §5.9. Reference: TS rx/008/command.ts.
-func EncodeDualControllerStatusRequest() Frame {
-	return Frame{ID: RxDualControllerStatusRequest}
-}
-
-// DecodeDualControllerStatusRequest validates an incoming empty-payload
-// request. Returns ErrWrongCommand if the command ID does not match.
-func DecodeDualControllerStatusRequest(f Frame) error {
-	if f.ID != RxDualControllerStatusRequest {
-		return ErrWrongCommand
-	}
-	return nil
-}
-
-// --- tx 009 : Dual Controller Status Response ------------------------------
-
 // DualControllerStatusParams describes the active/idle controller state in
 // a dual-controller system (1:1 redundancy).
 //
@@ -54,7 +27,7 @@ type DualControllerStatusParams struct {
 //	|      |            | bits[2-7] reserved, 0                           |
 //	|  2   | Idle Card  | 0 = idle controller OK, 1 = missing/faulty      |
 //
-// Spec: SW-P-88 §5.9. Reference: TS tx/009/command.ts buildDataNormal.
+// Spec: SW-P-08 §3.3.10. Reference: TS tx/009/command.ts buildDataNormal.
 func EncodeDualControllerStatusResponse(p DualControllerStatusParams) Frame {
 	var status byte
 	if p.SlaveActive {

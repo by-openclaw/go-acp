@@ -1,7 +1,5 @@
 package probel
 
-// --- rx 014 / rx 142 : Protect Disconnect ----------------------------------
-
 // ProtectDisconnectParams clears protection set by the given deviceID on
 // (matrix, level, destination). The router replies with tx 015 Protect
 // Disconnected.
@@ -28,7 +26,7 @@ type ProtectDisconnectParams = ProtectConnectParams
 //
 // Extended form (CommandID 0x8E — 6 data bytes, same layout as rx 140).
 //
-// Spec: SW-P-88 §5.17. Reference: TS rx/014/command.ts.
+// Spec: SW-P-08 §3.2.17. Reference: TS rx/014/command.ts.
 func EncodeProtectDisconnect(p ProtectDisconnectParams) Frame {
 	f := EncodeProtectConnect(p)
 	if f.ID == RxProtectConnectExt {
@@ -50,41 +48,4 @@ func DecodeProtectDisconnect(f Frame) (ProtectDisconnectParams, error) {
 		return ProtectDisconnectParams{}, ErrWrongCommand
 	}
 	return DecodeProtectConnect(f)
-}
-
-// --- tx 015 / tx 143 : Protect Disconnected --------------------------------
-
-// ProtectDisconnectedParams broadcasts the protect-data change after a
-// PROTECT DIS-CONNECT. State should be ProtectNone on success; on failure
-// State reflects the unchanged current state.
-//
-// Wire layout identical to tx 011 / tx 013; CommandID 0x0F (ext 0x8F).
-// Reference: TS tx/015/params.ts.
-type ProtectDisconnectedParams = ProtectTallyParams
-
-// EncodeProtectDisconnected builds the PROTECT DIS-CONNECTED broadcast.
-// Same layout as tx 011 (Protect Tally); see EncodeProtectTally doc table.
-//
-// Spec: SW-P-88 §5.18. Reference: TS tx/015/command.ts.
-func EncodeProtectDisconnected(p ProtectDisconnectedParams) Frame {
-	f := EncodeProtectTally(p)
-	if f.ID == TxProtectTallyExt {
-		f.ID = TxProtectDisconnectedExt
-	} else {
-		f.ID = TxProtectDisconnected
-	}
-	return f
-}
-
-// DecodeProtectDisconnected parses a PROTECT DIS-CONNECTED payload.
-func DecodeProtectDisconnected(f Frame) (ProtectDisconnectedParams, error) {
-	switch f.ID {
-	case TxProtectDisconnected:
-		f.ID = TxProtectTally
-	case TxProtectDisconnectedExt:
-		f.ID = TxProtectTallyExt
-	default:
-		return ProtectDisconnectedParams{}, ErrWrongCommand
-	}
-	return DecodeProtectTally(f)
 }

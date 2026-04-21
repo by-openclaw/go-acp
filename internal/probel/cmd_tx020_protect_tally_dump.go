@@ -1,93 +1,5 @@
 package probel
 
-// --- rx 019 / rx 147 : Protect Tally Dump Request --------------------------
-
-// ProtectTallyDumpRequestParams asks for a bulk dump of protect information
-// for (matrix, level), starting at FirstDestinationID. Unlike rx 001 or rx
-// 010, this request uses a FULL u16 destination in BOTH general and extended
-// forms (no multiplier/mod128 split). Only matrix/level differ in encoding.
-//
-// Reference: TS rx/019/params.ts ProtectTallyDumpRequestMessageCommandParams.
-type ProtectTallyDumpRequestParams struct {
-	MatrixID      uint8
-	LevelID       uint8
-	DestinationID uint16
-}
-
-func (p ProtectTallyDumpRequestParams) needsExtended() bool {
-	return p.MatrixID > 15 || p.LevelID > 15 || p.DestinationID > 895
-}
-
-// EncodeProtectTallyDumpRequest builds the PROTECT TALLY DUMP REQUEST.
-//
-// General form (CommandID 0x13 — 3 data bytes):
-//
-//	| Byte | Field           | Notes                                   |
-//	|------|-----------------|-----------------------------------------|
-//	|  1   | Matrix / Level  | bits[4-7] = Matrix, bits[0-3] = Level   |
-//	|  2   | Dest multiplier | Destination DIV 256                     |
-//	|  3   | Dest (low 8b)   | Destination MOD 256                     |
-//
-// Extended form (CommandID 0x93 — 4 data bytes):
-//
-//	| Byte | Field           | Notes                                   |
-//	|------|-----------------|-----------------------------------------|
-//	|  1   | Matrix          | full 8-bit                              |
-//	|  2   | Level           | full 8-bit                              |
-//	|  3   | Dest multiplier | Destination DIV 256                     |
-//	|  4   | Dest (low 8b)   | Destination MOD 256                     |
-//
-// Spec: SW-P-88 §5.19. Reference: TS rx/019/command.ts.
-func EncodeProtectTallyDumpRequest(p ProtectTallyDumpRequestParams) Frame {
-	if p.needsExtended() {
-		return Frame{
-			ID: RxProtectTallyDumpRequestExt,
-			Payload: []byte{
-				p.MatrixID,
-				p.LevelID,
-				byte(p.DestinationID / 256),
-				byte(p.DestinationID % 256),
-			},
-		}
-	}
-	return Frame{
-		ID: RxProtectTallyDumpRequest,
-		Payload: []byte{
-			(p.MatrixID << 4) | (p.LevelID & 0x0F),
-			byte(p.DestinationID / 256),
-			byte(p.DestinationID % 256),
-		},
-	}
-}
-
-// DecodeProtectTallyDumpRequest parses the request payload.
-func DecodeProtectTallyDumpRequest(f Frame) (ProtectTallyDumpRequestParams, error) {
-	switch f.ID {
-	case RxProtectTallyDumpRequest:
-		if len(f.Payload) < 3 {
-			return ProtectTallyDumpRequestParams{}, ErrShortPayload
-		}
-		return ProtectTallyDumpRequestParams{
-			MatrixID:      f.Payload[0] >> 4,
-			LevelID:       f.Payload[0] & 0x0F,
-			DestinationID: uint16(f.Payload[1])*256 + uint16(f.Payload[2]),
-		}, nil
-	case RxProtectTallyDumpRequestExt:
-		if len(f.Payload) < 4 {
-			return ProtectTallyDumpRequestParams{}, ErrShortPayload
-		}
-		return ProtectTallyDumpRequestParams{
-			MatrixID:      f.Payload[0],
-			LevelID:       f.Payload[1],
-			DestinationID: uint16(f.Payload[2])*256 + uint16(f.Payload[3]),
-		}, nil
-	default:
-		return ProtectTallyDumpRequestParams{}, ErrWrongCommand
-	}
-}
-
-// --- tx 020 / tx 148 : Protect Tally Dump ----------------------------------
-
 // ProtectTallyItem is one (state, deviceID) pair in a protect tally dump,
 // associated with consecutive destination numbers starting at the frame's
 // FirstDestinationID. State occupies bits 12-14 of a u16; device bits 0-9.
@@ -111,19 +23,19 @@ func (p ProtectTallyDumpParams) needsExtended() bool {
 	return p.MatrixID > 15 || p.LevelID > 15 || p.FirstDestinationID > 895
 }
 
-// packItem packs one item as a 16-bit big-endian value:
+// packProtectItem packs one item as a 16-bit big-endian value:
 //
 //	bit[15]     = 0
 //	bits[12-14] = protect state
 //	bits[10-11] = 0
 //	bits[0-9]   = device id
-func packItem(it ProtectTallyItem) (byte, byte) {
+func packProtectItem(it ProtectTallyItem) (byte, byte) {
 	hi := byte((uint16(it.State)&0x07)<<4) | byte((it.DeviceID/256)&0x03)
 	lo := byte(it.DeviceID % 256)
 	return hi, lo
 }
 
-func unpackItem(hi, lo byte) ProtectTallyItem {
+func unpackProtectItem(hi, lo byte) ProtectTallyItem {
 	return ProtectTallyItem{
 		State:    ProtectState((hi >> 4) & 0x07),
 		DeviceID: (uint16(hi) & 0x03) * 256 + uint16(lo),
@@ -141,7 +53,7 @@ func unpackItem(hi, lo byte) ProtectTallyItem {
 //	|  2   | Num protect      | N = len(Items), max 64                 |
 //	|  3   | 1st Dest mult    | FirstDestinationID DIV 256             |
 //	|  4   | 1st Dest num     | FirstDestinationID MOD 256             |
-//	|  5,7,…| Device/protect hi| packed byte 1 (see packItem)           |
+//	|  5,7,…| Device/protect hi| packed byte 1 (see packProtectItem)    |
 //	|  6,8,…| Device/protect lo| packed byte 2                          |
 //
 // Extended form (CommandID 0x94 — 5 + 2N payload bytes):
@@ -156,7 +68,7 @@ func unpackItem(hi, lo byte) ProtectTallyItem {
 //	|  6,8,…| Device/protect hi|                                        |
 //	|  7,9,…| Device/protect lo|                                        |
 //
-// Spec: SW-P-88 §5.20. Reference: TS tx/020/command.ts.
+// Spec: SW-P-08 §3.3.20. Reference: TS tx/020/command.ts.
 func EncodeProtectTallyDump(p ProtectTallyDumpParams) Frame {
 	n := len(p.Items)
 	if p.needsExtended() {
@@ -169,7 +81,7 @@ func EncodeProtectTallyDump(p ProtectTallyDumpParams) Frame {
 			byte(p.FirstDestinationID%256),
 		)
 		for _, it := range p.Items {
-			hi, lo := packItem(it)
+			hi, lo := packProtectItem(it)
 			out = append(out, hi, lo)
 		}
 		return Frame{ID: TxProtectTallyDumpExt, Payload: out}
@@ -182,7 +94,7 @@ func EncodeProtectTallyDump(p ProtectTallyDumpParams) Frame {
 		byte(p.FirstDestinationID%256),
 	)
 	for _, it := range p.Items {
-		hi, lo := packItem(it)
+		hi, lo := packProtectItem(it)
 		out = append(out, hi, lo)
 	}
 	return Frame{ID: TxProtectTallyDump, Payload: out}
@@ -225,7 +137,7 @@ func DecodeProtectTallyDump(f Frame) (ProtectTallyDumpParams, error) {
 	for i := 0; i < count; i++ {
 		hi := f.Payload[headerLen+2*i]
 		lo := f.Payload[headerLen+2*i+1]
-		items[i] = unpackItem(hi, lo)
+		items[i] = unpackProtectItem(hi, lo)
 	}
 	return ProtectTallyDumpParams{
 		MatrixID:           matrix,

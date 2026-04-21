@@ -145,3 +145,22 @@ func (id CommandID) IsExtended() bool { return id&0x80 != 0 }
 // when exposed over IP. Serial mode is the original transport and
 // carries no port.
 const DefaultPort = 2008
+
+// ProtectState is the 4-value enum carried in tx 011 / 013 / 015 / 020
+// byte 3 (or byte 3 of the header for tx 020 items) to describe a
+// destination's protect disposition. Defined in SW-P-08 §3.1.5.
+//
+// | Value | Meaning                                             |
+// |-------|-----------------------------------------------------|
+// |   0   | Not Protected                                       |
+// |   1   | Pro-Bel Protected                                   |
+// |   2   | Pro-Bel override Protected (cannot be altered rem.) |
+// |   3   | OEM Protected                                       |
+type ProtectState uint8
+
+const (
+	ProtectNone       ProtectState = 0
+	ProtectProbel     ProtectState = 1
+	ProtectProbelOver ProtectState = 2
+	ProtectOEM        ProtectState = 3
+)
