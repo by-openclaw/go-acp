@@ -1,4 +1,4 @@
-package fixture_parity_test
+package acp1_test
 
 import (
 	"os"
@@ -12,7 +12,7 @@ import (
 // and the frozen tshark.tree contains the protocol fields that define the
 // type (acpv1.obj.type, acpv1.mtype, acpv1.err_object).
 func TestACP1PerTypeFixtures(t *testing.T) {
-	base := "../../../internal/acp1/testdata/protocol_types"
+	base := "../testdata/protocol_types"
 
 	cases := []struct {
 		dir     string

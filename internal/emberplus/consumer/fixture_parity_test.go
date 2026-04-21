@@ -1,4 +1,4 @@
-package fixture_parity_test
+package emberplus_test
 
 import (
 	"os"
@@ -17,7 +17,7 @@ import (
 // require a matching Wireshark install and the Lua dissector loaded, which
 // is brittle across runners.
 func TestEmberPlusPerTypeFixtures(t *testing.T) {
-	base := "../../../internal/emberplus/testdata/protocol_types"
+	base := "../testdata/protocol_types"
 
 	cases := []struct {
 		dir        string

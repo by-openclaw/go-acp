@@ -17,7 +17,7 @@ import (
 // internal/*/scenarios/ and runs it. Failures are per-scenario — one green
 // line per passing scenario, one red line per failing one.
 func TestScenarios(t *testing.T) {
-	roots, err := filepath.Glob(filepath.Join("..", "..", "..", "internal", "*", "scenarios"))
+	roots, err := filepath.Glob(filepath.Join("..", "*", "scenarios"))
 	if err != nil {
 		t.Fatalf("glob scenarios: %v", err)
 	}

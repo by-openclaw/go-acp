@@ -18,7 +18,7 @@ import (
 var fencedJSON = regexp.MustCompile("(?s)```json\\s*\\n(.*?)\\n```")
 
 func TestDocConformance_ElementsMarkdown(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "docs", "protocols", "elements")
+	root := filepath.Join("..", "..", "docs", "protocols", "elements")
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		t.Fatalf("read docs dir: %v", err)
