@@ -303,6 +303,49 @@ func (t *tree) clearProtects(matrix, level uint8) {
 	}
 }
 
+// updateSourceLabels overwrites sourceLabels[first:first+len(names)] on
+// (matrix, level). Labels beyond sourceCount are silently dropped.
+// Called by the rx 117 UPDATE NAME handler for Source + SourceAssoc
+// name types.
+func (t *tree) updateSourceLabels(m, l uint8, first uint16, names []string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return
+	}
+	if st.sourceLabels == nil {
+		st.sourceLabels = make([]string, st.sourceCount)
+	}
+	for i, n := range names {
+		idx := int(first) + i
+		if idx < 0 || idx >= st.sourceCount {
+			continue
+		}
+		st.sourceLabels[idx] = n
+	}
+}
+
+// updateTargetLabels mirrors updateSourceLabels for destinations.
+func (t *tree) updateTargetLabels(m, l uint8, first uint16, names []string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return
+	}
+	if st.targetLabels == nil {
+		st.targetLabels = make([]string, st.targetCount)
+	}
+	for i, n := range names {
+		idx := int(first) + i
+		if idx < 0 || idx >= st.targetCount {
+			continue
+		}
+		st.targetLabels[idx] = n
+	}
+}
+
 // Size reports how many (matrix, level) pairs are in the tree.
 func (t *tree) Size() int {
 	t.mu.RLock()

@@ -62,6 +62,8 @@ func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
 		return s.handleAllSourceAssocNames(f)
 	case iprobel.RxSingleSourceAssocNameRequest:
 		return s.handleSingleSourceAssocName(f)
+	case iprobel.RxUpdateNameRequest:
+		return s.handleUpdateNameRequest(f)
 	}
 	s.profile.Note(UnsupportedCommand)
 	return handlerResult{}, nil
