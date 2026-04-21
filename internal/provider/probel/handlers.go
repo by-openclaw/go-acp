@@ -48,6 +48,14 @@ func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
 		return s.handleProtectTallyDumpRequest(f)
 	case iprobel.RxMasterProtectConnect:
 		return s.handleMasterProtectConnect(f)
+	case iprobel.RxAllSourceNamesRequest:
+		return s.handleAllSourceNames(f)
+	case iprobel.RxSingleSourceNameRequest:
+		return s.handleSingleSourceName(f)
+	case iprobel.RxAllDestNamesRequest:
+		return s.handleAllDestAssocNames(f)
+	case iprobel.RxSingleDestNameRequest:
+		return s.handleSingleDestAssocName(f)
 	}
 	s.profile.Note(UnsupportedCommand)
 	return handlerResult{}, nil
