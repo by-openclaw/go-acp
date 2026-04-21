@@ -11,13 +11,27 @@ import (
 
 	iprobel "acp/internal/probel"
 	probelproto "acp/internal/protocol/probel"
+	"acp/internal/transport"
 )
 
 // runProbel dispatches `acp probel <subcommand>` — the Probel SW-P-08
 // toolset. Each subcommand runs a single round-trip request and prints
 // the decoded reply + the wire hex on stderr for copy-paste into Commie
 // (hex goes via the slog INFO handler inside iprobel.Client).
+//
+// Global --capture FILE.jsonl is parsed at the top level and stashed in
+// the context so every subcommand sees the same recorder. Same JSONL
+// shape as acp1/acp2/emberplus capture — one {ts, proto, dir, hex, len}
+// object per frame (including DLE ACK / DLE NAK control sequences).
 func runProbel(ctx context.Context, args []string) error {
+	args, rec, err := extractCaptureFlag(args)
+	if err != nil {
+		return err
+	}
+	if rec != nil {
+		defer func() { _ = rec.Close() }()
+		ctx = context.WithValue(ctx, probelRecorderKey{}, rec)
+	}
 	if len(args) == 0 || hasHelpFlag(args) {
 		helpProbel()
 		return nil
@@ -59,6 +73,11 @@ func helpProbel() {
 USAGE
   acp probel <subcommand> <host:port> [flags]
 
+GLOBAL FLAGS (apply to every subcommand)
+  --capture FILE.jsonl   record every wire frame (TX + RX, including
+                         DLE ACK / DLE NAK control sequences) as JSONL;
+                         same format as acp walk / acp get --capture
+
 SUBCOMMANDS
   interrogate          query current source on one (matrix, level, dst)
   connect              route a source to a destination on one (matrix, level)
@@ -86,11 +105,17 @@ real-MTX replay:
 }
 
 // dialProbel is the common connect-or-die helper. Returns a connected
-// plugin plus a deferred-close func the caller must run.
+// plugin plus a deferred-close func the caller must run. If the context
+// carries a *transport.Recorder (set by the global --capture flag at
+// the probel root dispatcher) it is attached before Connect so the
+// JSONL file captures the full TX/RX stream.
 func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), error) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	f := &probelproto.Factory{}
 	p := f.New(logger).(*probelproto.Plugin)
+	if rec, ok := ctx.Value(probelRecorderKey{}).(*transport.Recorder); ok && rec != nil {
+		p.SetRecorder(rec)
+	}
 	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
 	if err != nil {
 		return nil, func() {}, err
@@ -99,6 +124,46 @@ func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), 
 		return nil, func() {}, err
 	}
 	return p, func() { _ = p.Disconnect() }, nil
+}
+
+// probelRecorderKey is the context.Context key for the optional
+// JSONL traffic recorder shared across a single `acp probel` invocation.
+type probelRecorderKey struct{}
+
+// extractCaptureFlag scans args for "--capture FILE" or "--capture=FILE"
+// before sub-command dispatch. Removes the matched tokens from the
+// returned args slice and opens the file as a fresh *transport.Recorder.
+//
+// Global flag — has to run before sub-command dispatch because each
+// sub-command has its own flag set and wouldn't otherwise know about
+// --capture. Matches the top-level --capture pattern used by acp walk /
+// get / set.
+func extractCaptureFlag(args []string) ([]string, *transport.Recorder, error) {
+	out := make([]string, 0, len(args))
+	var path string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--capture" || a == "-capture":
+			if i+1 >= len(args) {
+				return nil, nil, fmt.Errorf("--capture requires a file path")
+			}
+			path = args[i+1]
+			i++
+		case strings.HasPrefix(a, "--capture=") || strings.HasPrefix(a, "-capture="):
+			path = strings.SplitN(a, "=", 2)[1]
+		default:
+			out = append(out, a)
+		}
+	}
+	if path == "" {
+		return out, nil, nil
+	}
+	rec, err := transport.NewRecorder(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("--capture: %w", err)
+	}
+	return out, rec, nil
 }
 
 // probelFlags parses the common "host:port + matrix + level" tuple

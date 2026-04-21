@@ -9,6 +9,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"acp/internal/transport"
 )
 
 // DefaultDialTimeout caps how long Client.Dial waits for a TCP connect.
@@ -44,6 +46,12 @@ type Client struct {
 	// receive as space-separated hex at INFO level. On by default — users
 	// pasted the logs straight into Commie for cross-vendor validation.
 	wireHexLog bool
+
+	// recorder, when non-nil, writes every raw TX and RX frame (including
+	// DLE ACK / DLE NAK control sequences) as JSONL — same shape the ACP1,
+	// ACP2 and Ember+ plugins use for traffic capture. Enables Wireshark-
+	// free stream replay from a plain text capture.
+	recorder *transport.Recorder
 }
 
 // eventFunc is an async-event callback. Listeners receive every frame
@@ -75,6 +83,10 @@ type ClientConfig struct {
 	// exchange. Defaults to true — the project's workflow relies on
 	// copy-pasting these logs into Commie for real-MTX validation.
 	WireHexLog *bool
+	// Recorder, when non-nil, writes every wire frame to a JSONL file
+	// for offline replay. Same shape the other protocols use; see
+	// internal/transport/capture.go.
+	Recorder *transport.Recorder
 }
 
 // Dial opens a TCP connection to addr (host:port) and starts the reader
@@ -104,6 +116,7 @@ func Dial(ctx context.Context, addr string, logger *slog.Logger, cfg ClientConfi
 		conn:       conn,
 		readerDone: make(chan struct{}),
 		wireHexLog: hex,
+		recorder:   cfg.Recorder,
 	}
 	go c.readLoop(cfg.ReadBufferSize)
 	c.logger.Info("probel client connected",
@@ -130,6 +143,7 @@ func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Cl
 		conn:       conn,
 		readerDone: make(chan struct{}),
 		wireHexLog: hex,
+		recorder:   cfg.Recorder,
 	}
 	go c.readLoop(cfg.ReadBufferSize)
 	return c
@@ -209,6 +223,9 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 			slog.String("hex", HexDump(raw)),
 		)
 	}
+	if c.recorder != nil {
+		c.recorder.Record("probel", "tx", raw)
+	}
 	if _, err := conn.Write(raw); err != nil {
 		if waiter != nil {
 			c.mu.Lock()
@@ -243,7 +260,11 @@ func (c *Client) Write(raw []byte) error {
 		return net.ErrClosed
 	}
 	conn := c.conn
+	rec := c.recorder
 	c.mu.Unlock()
+	if rec != nil {
+		rec.Record("probel", "tx", raw)
+	}
 	_, err := conn.Write(raw)
 	return err
 }
@@ -276,11 +297,17 @@ func (c *Client) readLoop(bufSize int) {
 			// Control sequences DLE ACK / DLE NAK are 2 bytes.
 			if IsACK(buf) {
 				c.logger.Debug("probel rx ACK")
+				if c.recorder != nil {
+					c.recorder.Record("probel", "rx", buf[:2])
+				}
 				buf = buf[2:]
 				continue
 			}
 			if IsNAK(buf) {
 				c.logger.Warn("probel rx NAK")
+				if c.recorder != nil {
+					c.recorder.Record("probel", "rx", buf[:2])
+				}
 				buf = buf[2:]
 				continue
 			}
@@ -313,6 +340,9 @@ func (c *Client) readLoop(bufSize int) {
 					slog.Int("wire_len", consumed),
 					slog.String("hex", HexDump(buf[:consumed])),
 				)
+			}
+			if c.recorder != nil {
+				c.recorder.Record("probel", "rx", buf[:consumed])
 			}
 			// SW-P-88 §3.5 — always ACK a valid frame so the peer can
 			// free its retransmit buffer.

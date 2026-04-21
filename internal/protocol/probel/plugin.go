@@ -22,6 +22,7 @@ import (
 
 	iprobel "acp/internal/probel"
 	"acp/internal/protocol"
+	"acp/internal/transport"
 )
 
 // DefaultPort is the TCP port most Probel matrices expose for SW-P-08.
@@ -58,10 +59,22 @@ func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
 type Plugin struct {
 	logger *slog.Logger
 
-	mu     sync.Mutex
-	host   string
-	port   int
-	client *iprobel.Client
+	mu       sync.Mutex
+	host     string
+	port     int
+	client   *iprobel.Client
+	recorder *transport.Recorder
+}
+
+// SetRecorder attaches a JSONL traffic recorder to this plugin. Call
+// before Connect — the recorder is wired into the iprobel.Client at
+// Dial time and captures every TX and RX frame (including DLE ACK /
+// DLE NAK control sequences) in the same format the ACP1/ACP2/Ember+
+// plugins produce.
+func (p *Plugin) SetRecorder(rec *transport.Recorder) {
+	p.mu.Lock()
+	p.recorder = rec
+	p.mu.Unlock()
 }
 
 // Connect opens a TCP session to the matrix. Idempotent when called
@@ -81,7 +94,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
-	cli, err := iprobel.Dial(ctx, addr, p.logger, iprobel.ClientConfig{})
+	cli, err := iprobel.Dial(ctx, addr, p.logger, iprobel.ClientConfig{
+		Recorder: p.recorder,
+	})
 	if err != nil {
 		return &protocol.TransportError{Op: "connect", Err: err}
 	}
