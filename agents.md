@@ -1,15 +1,45 @@
-# agents.md — ACP Project
+# agents.md — DHS (Device Hub Systems)
 
 Shared instructions for all AI agents working on any part of this project.
-Read this alongside the `CLAUDE.md` for the specific repo you are in.
+Read this alongside the per-protocol `CLAUDE.md` living under each
+`internal/<protocol>/CLAUDE.md` (once the 2026-04-21 restructure lands).
+
+---
+
+## ⚠ Pending restructure — decisions locked 2026-04-21
+
+The following decisions are locked and will be executed in a series of
+atomic commits. Until all commits land, the code and this file may
+briefly disagree. See memory files `project_naming.md`,
+`project_repo_layout.md`, and `project_cli_structure.md` for full detail.
+
+1. **Product name: `dhs`** for "Device Hub Systems". Binary renamed
+   `cmd/acp/` → `cmd/dhs/`; `cmd/acp-provider/` folded into the single
+   `dhs` binary (or split into `dhs-consumer` + `dhs-producer` — pending
+   user confirm). Go module path stays `acp` for now.
+
+2. **Per-protocol folder consolidation.** Each protocol lives under
+   `internal/<proto>/{consumer,provider,wireshark,codec?}/` with its own
+   atomic `internal/<proto>/CLAUDE.md`. Current `internal/protocol/<name>/`
+   + `internal/provider/<name>/` directories go away. Neutral registries
+   stay at `internal/protocol/` + `internal/provider/`.
+
+3. **Wireshark dissectors** move from `assets/<proto>/dissector*.lua`
+   to `internal/<proto>/wireshark/dissector_*.lua`. Specs + vendor
+   tools stay in `assets/`.
+
+4. **CLI syntax** becomes `dhs <consumer|producer> <protocol> <verb> <target> [flags]`
+   for every protocol. Drops the implicit-protocol `acp walk X.X.X.X`
+   shorthand; every command carries its protocol + role explicitly.
 
 ---
 
 ## Repositories
 
 ```
-acp/       Go — core library, CLI binary (acp), API server (acp-srv)
-acp-ui/    React 19 — optional browser frontend for acp-srv
+acp/ (Go module path; will remain while binaries rename to dhs)
+        core library + dhs CLI + producer + planned API server
+acp-ui/  React 19 — optional browser frontend
 ```
 
 One integration point: `acp/api/openapi.yaml` defines the REST + WebSocket contract.

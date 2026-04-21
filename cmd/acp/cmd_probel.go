@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	iprobel "acp/internal/probel"
+	"acp/internal/protocol/probel/codec"
 	probelproto "acp/internal/protocol/probel"
 	"acp/internal/transport"
 )
@@ -17,7 +17,7 @@ import (
 // runProbel dispatches `acp probel <subcommand>` — the Probel SW-P-08
 // toolset. Each subcommand runs a single round-trip request and prints
 // the decoded reply + the wire hex on stderr (hex goes via the slog
-// INFO handler inside iprobel.Client).
+// INFO handler inside codec.Client).
 //
 // Global --capture FILE.jsonl is parsed at the top level and stashed in
 // the context so every subcommand sees the same recorder. Same JSONL
@@ -277,7 +277,7 @@ func runProbelWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	cli.Subscribe(func(f iprobel.Frame) {
+	cli.Subscribe(func(f codec.Frame) {
 		fmt.Printf("event  cmd=0x%02x payload_len=%d\n", byte(f.ID), len(f.Payload))
 	})
 	<-ctx.Done()
@@ -300,16 +300,16 @@ func runProbelMaintenance(ctx context.Context, args []string) error {
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
-	var mfn iprobel.MaintenanceFunction
+	var mfn codec.MaintenanceFunction
 	switch *fn {
 	case "hard-reset":
-		mfn = iprobel.MaintHardReset
+		mfn = codec.MaintHardReset
 	case "soft-reset":
-		mfn = iprobel.MaintSoftReset
+		mfn = codec.MaintSoftReset
 	case "clear-protects":
-		mfn = iprobel.MaintClearProtects
+		mfn = codec.MaintClearProtects
 	case "database-transfer":
-		mfn = iprobel.MaintDatabaseTransfer
+		mfn = codec.MaintDatabaseTransfer
 	default:
 		return fmt.Errorf("unknown --function %q", *fn)
 	}
