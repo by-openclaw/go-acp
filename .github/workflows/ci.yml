@@ -141,7 +141,7 @@ jobs:
               if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
               echo "Building ${GOOS}/${GOARCH}..."
               GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "${LDFLAGS}" \
-                -o "dist/acp_${GOOS}_${GOARCH}/acp${EXT}" ./cmd/acp
+                -o "dist/dhs_${GOOS}_${GOARCH}/dhs${EXT}" ./cmd/dhs
             done
           done
 
