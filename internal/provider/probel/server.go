@@ -8,6 +8,7 @@ import (
 	"net"
 	"sync"
 
+	iprobel "acp/internal/probel"
 	"acp/internal/export/canonical"
 )
 
@@ -164,6 +165,38 @@ func parseCrosspointPath(path string) (uint8, uint8, uint16, error) {
 		return 0, 0, 0, fmt.Errorf("probel: path %q has out-of-range component", path)
 	}
 	return uint8(m), uint8(l), uint16(dst), nil
+}
+
+// fanOutTally broadcasts f to every session except the originator.
+// Used by per-command handlers that emit TxCrosspointTally /
+// TxProtectTally / TxSalvoGroupTally after a successful state change.
+// The originating session receives its own confirm reply via the
+// handlerResult.reply path — it does not need the tally too.
+func (s *server) fanOutTally(origin *session, f iprobel.Frame) {
+	raw := iprobel.Pack(f)
+	s.mu.Lock()
+	sessions := make([]*session, 0, len(s.sessions))
+	for sess := range s.sessions {
+		if sess == origin {
+			continue
+		}
+		sessions = append(sessions, sess)
+	}
+	s.mu.Unlock()
+	for _, sess := range sessions {
+		s.logger.Info("probel tally fan-out",
+			slog.String("remote", sess.remoteAddr()),
+			slog.Int("cmd", int(f.ID)),
+			slog.Int("wire_len", len(raw)),
+			slog.String("hex", iprobel.HexDump(raw)),
+		)
+		if err := sess.write(raw); err != nil {
+			s.logger.Warn("probel tally send",
+				slog.String("remote", sess.remoteAddr()),
+				slog.String("err", err.Error()),
+			)
+		}
+	}
 }
 
 func coerceSource(val any) (uint16, error) {

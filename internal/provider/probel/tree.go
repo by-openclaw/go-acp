@@ -165,6 +165,18 @@ func (t *tree) lookup(m, l uint8) (*matrixState, bool) {
 	return st, ok
 }
 
+// currentSource returns the source currently routed to dst on
+// (matrix, level), or (0, false) if unknown or unrouted.
+func (t *tree) currentSource(m, l uint8, dst uint16) (uint16, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok || int(dst) >= len(st.sources) || st.sources[dst] < 0 {
+		return 0, false
+	}
+	return uint16(st.sources[dst]), true
+}
+
 // Size reports how many (matrix, level) pairs are in the tree.
 func (t *tree) Size() int {
 	t.mu.RLock()

@@ -100,15 +100,37 @@ func (s *session) run(ctx context.Context) {
 	}
 }
 
-// dispatch routes a decoded frame to the right command handler. Scaffold
-// behaviour: log + no functional reply. Per-command PRs add cases.
+// dispatch routes a decoded frame to the server's command handler table
+// (handlers.go), sends the reply (if any) back on the originating
+// session, and fans tallies out to every OTHER live session.
 func (s *session) dispatch(f iprobel.Frame) {
-	s.srv.logger.Debug("probel dispatch (stub)",
-		slog.String("remote", s.remoteAddr()),
-		slog.Int("cmd", int(f.ID)),
-	)
-	// Intentionally no reply: scaffold supplies no command logic. The
-	// ACK sent above keeps the peer happy at the framing layer.
+	res, err := s.srv.handle(f)
+	if err != nil {
+		s.srv.logger.Warn("probel dispatch",
+			slog.String("remote", s.remoteAddr()),
+			slog.Int("cmd", int(f.ID)),
+			slog.String("err", err.Error()),
+		)
+		return
+	}
+	if res.reply != nil {
+		raw := iprobel.Pack(*res.reply)
+		s.srv.logger.Info("probel session tx",
+			slog.String("remote", s.remoteAddr()),
+			slog.Int("cmd", int(res.reply.ID)),
+			slog.Int("payload_len", len(res.reply.Payload)),
+			slog.Int("wire_len", len(raw)),
+			slog.String("hex", iprobel.HexDump(raw)),
+		)
+		if werr := s.write(raw); werr != nil {
+			s.srv.logger.Warn("probel session reply write",
+				slog.String("remote", s.remoteAddr()),
+				slog.String("err", werr.Error()))
+		}
+	}
+	for _, tally := range res.tallies {
+		s.srv.fanOutTally(s, tally)
+	}
 }
 
 // write serialises outbound bytes against concurrent writers. All

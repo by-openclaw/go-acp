@@ -1,0 +1,272 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log/slog"
+	"os"
+	"time"
+
+	iprobel "acp/internal/probel"
+	probelproto "acp/internal/protocol/probel"
+)
+
+// runProbel dispatches `acp probel <subcommand>` — the Probel SW-P-08
+// toolset. Each subcommand runs a single round-trip request and prints
+// the decoded reply + the wire hex on stderr for copy-paste into Commie
+// (hex goes via the slog INFO handler inside iprobel.Client).
+func runProbel(ctx context.Context, args []string) error {
+	if len(args) == 0 || hasHelpFlag(args) {
+		helpProbel()
+		return nil
+	}
+	sub := args[0]
+	rest := args[1:]
+	switch sub {
+	case "interrogate":
+		return runProbelInterrogate(ctx, rest)
+	case "connect":
+		return runProbelConnect(ctx, rest)
+	case "watch":
+		return runProbelWatch(ctx, rest)
+	case "maintenance":
+		return runProbelMaintenance(ctx, rest)
+	case "dual-status":
+		return runProbelDualStatus(ctx, rest)
+	case "tally-dump":
+		return runProbelTallyDump(ctx, rest)
+	case "protect-interrogate":
+		return runProbelProtectInterrogate(ctx, rest)
+	case "protect-connect":
+		return runProbelProtectConnect(ctx, rest)
+	case "protect-disconnect":
+		return runProbelProtectDisconnect(ctx, rest)
+	case "protect-name":
+		return runProbelProtectName(ctx, rest)
+	case "protect-dump":
+		return runProbelProtectDump(ctx, rest)
+	case "master-protect":
+		return runProbelMasterProtect(ctx, rest)
+	}
+	return fmt.Errorf("unknown probel subcommand %q", sub)
+}
+
+func helpProbel() {
+	fmt.Println(`acp probel — Probel SW-P-08 / SW-P-88 controller toolset
+
+USAGE
+  acp probel <subcommand> <host:port> [flags]
+
+SUBCOMMANDS
+  interrogate          query current source on one (matrix, level, dst)
+  connect              route a source to a destination on one (matrix, level)
+  watch                subscribe to async tallies until Ctrl-C
+  maintenance          send a maintenance message (reset / clear-protects)
+  dual-status          read 1:1 redundancy state
+  tally-dump           dump every crosspoint on (matrix, level)
+  protect-interrogate  read protect state on one (matrix, level, dst)
+  protect-connect      set a protect on (matrix, level, dst) for a device
+  protect-disconnect   clear a protect
+  protect-name         resolve device id → 8-char name
+  protect-dump         dump every protect on (matrix, level)
+  master-protect       master-override protect connect
+
+EXAMPLES
+  acp probel interrogate         127.0.0.1:2008 --matrix 0 --level 0 --dst 5
+  acp probel connect             127.0.0.1:2008 --matrix 0 --level 0 --dst 5 --src 12
+  acp probel tally-dump          127.0.0.1:2008 --matrix 0 --level 0
+  acp probel watch               127.0.0.1:2008
+
+All commands log wire bytes (pre-escaped, post-framing) on stderr as a
+space-separated lowercase-hex line, ready to paste into Commie for
+real-MTX replay:
+  probel TX ... hex=10 02 01 01 00 05 0c 03 1f 10 03`)
+}
+
+// dialProbel is the common connect-or-die helper. Returns a connected
+// plugin plus a deferred-close func the caller must run.
+func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), error) {
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	f := &probelproto.Factory{}
+	p := f.New(logger).(*probelproto.Plugin)
+	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	if err := p.Connect(ctx, host, port); err != nil {
+		return nil, func() {}, err
+	}
+	return p, func() { _ = p.Disconnect() }, nil
+}
+
+// probelFlags parses the common "host:port + matrix + level" tuple
+// shared by almost every SW-P-08 subcommand.
+type probelFlags struct {
+	addr    string
+	matrix  int
+	level   int
+	dst     int
+	src     int
+	timeout time.Duration
+}
+
+func parseProbelFlags(args []string, want struct{ dst, src bool }) (probelFlags, error) {
+	fs := flag.NewFlagSet("probel", flag.ContinueOnError)
+	pf := probelFlags{}
+	fs.IntVar(&pf.matrix, "matrix", 0, "matrix id (0-255)")
+	fs.IntVar(&pf.level, "level", 0, "level id (0-255)")
+	fs.IntVar(&pf.dst, "dst", 0, "destination id (0-65535)")
+	fs.IntVar(&pf.src, "src", 0, "source id (0-65535)")
+	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
+	if err := fs.Parse(args); err != nil {
+		return pf, err
+	}
+	rest := fs.Args()
+	if len(rest) < 1 {
+		return pf, fmt.Errorf("missing <host:port>")
+	}
+	pf.addr = rest[0]
+	if pf.matrix < 0 || pf.matrix > 255 {
+		return pf, fmt.Errorf("--matrix out of range (0-255)")
+	}
+	if pf.level < 0 || pf.level > 255 {
+		return pf, fmt.Errorf("--level out of range (0-255)")
+	}
+	if want.dst && (pf.dst < 0 || pf.dst > 0xFFFF) {
+		return pf, fmt.Errorf("--dst out of range (0-65535)")
+	}
+	if want.src && (pf.src < 0 || pf.src > 0xFFFF) {
+		return pf, fmt.Errorf("--src out of range (0-65535)")
+	}
+	return pf, nil
+}
+
+func runProbelInterrogate(ctx context.Context, args []string) error {
+	pf, err := parseProbelFlags(args, struct{ dst, src bool }{dst: true})
+	if err != nil {
+		return err
+	}
+	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, pf.addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	reply, err := p.CrosspointInterrogate(cctx, uint8(pf.matrix), uint8(pf.level), uint16(pf.dst))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("crosspoint tally  matrix=%d level=%d dst=%d → src=%d\n",
+		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.SourceID)
+	return nil
+}
+
+func runProbelConnect(ctx context.Context, args []string) error {
+	pf, err := parseProbelFlags(args, struct{ dst, src bool }{dst: true, src: true})
+	if err != nil {
+		return err
+	}
+	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, pf.addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	reply, err := p.CrosspointConnect(cctx,
+		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(pf.src))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("crosspoint connected  matrix=%d level=%d dst=%d src=%d\n",
+		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.SourceID)
+	return nil
+}
+
+// runProbelWatch subscribes to every async frame the client sees until
+// ctx fires. Useful for observing tallies fanned out by the provider
+// when a second client (or the provider's API) mutates a crosspoint.
+func runProbelWatch(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("probel-watch", flag.ContinueOnError)
+	timeout := fs.Duration("timeout", 0, "stop after this duration (0 = run until Ctrl-C)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	rest := fs.Args()
+	if len(rest) < 1 {
+		return fmt.Errorf("missing <host:port>")
+	}
+	addr := rest[0]
+	if *timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *timeout)
+		defer cancel()
+	}
+	p, closer, err := dialProbel(ctx, addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	cli, err := p.ExposeClient()
+	if err != nil {
+		return err
+	}
+	cli.Subscribe(func(f iprobel.Frame) {
+		fmt.Printf("event  cmd=0x%02x payload_len=%d\n", byte(f.ID), len(f.Payload))
+	})
+	<-ctx.Done()
+	return nil
+}
+
+// Stub subcommands — implemented by per-command commits further on.
+
+func runProbelMaintenance(ctx context.Context, args []string) error {
+	return fmt.Errorf("probel maintenance: not yet implemented (see #82)")
+}
+func runProbelDualStatus(ctx context.Context, args []string) error {
+	return fmt.Errorf("probel dual-status: not yet implemented (see #82)")
+}
+func runProbelTallyDump(ctx context.Context, args []string) error {
+	return fmt.Errorf("probel tally-dump: not yet implemented (see #82)")
+}
+func runProbelProtectInterrogate(ctx context.Context, args []string) error {
+	return fmt.Errorf("probel protect-interrogate: not yet implemented (see #82)")
+}
+func runProbelProtectConnect(ctx context.Context, args []string) error {
+	return fmt.Errorf("probel protect-connect: not yet implemented (see #82)")
+}
+func runProbelProtectDisconnect(ctx context.Context, args []string) error {
+	return fmt.Errorf("probel protect-disconnect: not yet implemented (see #82)")
+}
+func runProbelProtectName(ctx context.Context, args []string) error {
+	return fmt.Errorf("probel protect-name: not yet implemented (see #82)")
+}
+func runProbelProtectDump(ctx context.Context, args []string) error {
+	return fmt.Errorf("probel protect-dump: not yet implemented (see #82)")
+}
+func runProbelMasterProtect(ctx context.Context, args []string) error {
+	return fmt.Errorf("probel master-protect: not yet implemented (see #82)")
+}
+
+// splitHostPort accepts "host:port" or plain "host"; returns port=def
+// when missing. Bare IPv4 is common for small LAN matrices that run on
+// the default port.
+func splitHostPort(addr string, def int) (string, int, error) {
+	if addr == "" {
+		return "", 0, fmt.Errorf("empty address")
+	}
+	// "host:port"
+	for i := len(addr) - 1; i >= 0; i-- {
+		if addr[i] == ':' {
+			host := addr[:i]
+			var port int
+			if _, err := fmt.Sscanf(addr[i+1:], "%d", &port); err != nil {
+				return "", 0, fmt.Errorf("parse port in %q: %w", addr, err)
+			}
+			return host, port, nil
+		}
+	}
+	return addr, def, nil
+}

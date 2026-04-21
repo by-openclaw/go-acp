@@ -120,6 +120,14 @@ func (p *Plugin) getClient() (*iprobel.Client, error) {
 	return p.client, nil
 }
 
+// ExposeClient returns the underlying iprobel.Client for callers that
+// need direct Subscribe / raw frame access (e.g. the CLI's watch
+// subcommand, which just prints every async tally it sees). Returns
+// ErrNotConnected before Connect fires.
+func (p *Plugin) ExposeClient() (*iprobel.Client, error) {
+	return p.getClient()
+}
+
 // GetDeviceInfo is not applicable to SW-P-08 (no rack-controller identity
 // object). Per-command PRs may populate a synthetic DeviceInfo derived
 // from Dual-Controller-Status / Device-Name-Request replies.

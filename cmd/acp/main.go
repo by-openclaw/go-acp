@@ -72,6 +72,7 @@ var commands = []command{
 	{"stream", "subscribe to Ember+ stream parameters", helpStream, runStream},
 	{"profile", "classify Ember+ provider compliance (strict / partial)", helpProfile, runProfile},
 	{"diag", "run ACP2 diagnostic probes against a device", helpDiag, runDiag},
+	{"probel", "Probel SW-P-08 / SW-P-88 matrix controller commands", helpProbel, runProbel},
 	{"list-protocols", "list available protocol plugins", helpListProtocols, func(_ context.Context, _ []string) error { return runListProtocols() }},
 }
 
