@@ -61,7 +61,15 @@ func (s *session) run(ctx context.Context) {
 		buf = append(buf, tmp[:n]...)
 
 		for len(buf) >= 2 {
-			if iprobel.IsACK(buf) || iprobel.IsNAK(buf) {
+			if iprobel.IsACK(buf) {
+				s.srv.logger.Debug("probel session rx ACK",
+					slog.String("remote", s.remoteAddr()))
+				buf = buf[2:]
+				continue
+			}
+			if iprobel.IsNAK(buf) {
+				s.srv.logger.Warn("probel session rx NAK",
+					slog.String("remote", s.remoteAddr()))
 				buf = buf[2:]
 				continue
 			}

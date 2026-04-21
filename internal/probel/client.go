@@ -249,9 +249,15 @@ func (c *Client) Write(raw []byte) error {
 }
 
 // readLoop accumulates bytes from the connection, decodes frames via
-// Unpack, and routes them. ACK/NAK control sequences are logged and
-// swallowed (the protocol doesn't bubble them up — retransmit-on-NAK
-// is a future enhancement; current MTXs don't rely on it).
+// Unpack, and routes them. Per SW-P-88 §3.5:
+//   - well-framed inbound frame   -> emit DLE ACK back to peer
+//   - bad checksum / framing      -> emit DLE NAK back to peer
+//   - inbound DLE ACK / DLE NAK   -> log and swallow (they're confirming
+//                                    a frame WE sent, not triggering any
+//                                    reply on the wire)
+//
+// Both sides must ACK every valid frame — a matrix emitting a
+// Crosspoint Tally expects the controller to ACK it, and vice-versa.
 func (c *Client) readLoop(bufSize int) {
 	defer close(c.readerDone)
 	buf := make([]byte, 0, bufSize)
@@ -291,9 +297,11 @@ func (c *Client) readLoop(bufSize int) {
 				break // need more bytes
 			}
 			if perr != nil {
-				c.logger.Warn("probel rx decode",
+				c.logger.Warn("probel rx decode — emitting DLE NAK",
 					slog.String("err", perr.Error()),
 					slog.String("hex", HexDump(buf[:min(len(buf), 64)])))
+				// SW-P-88 §3.5 — bad frame, negative acknowledge.
+				_ = c.Write(PackNAK())
 				// Drop SOM and resync.
 				buf = buf[2:]
 				continue
@@ -306,6 +314,9 @@ func (c *Client) readLoop(bufSize int) {
 					slog.String("hex", HexDump(buf[:consumed])),
 				)
 			}
+			// SW-P-88 §3.5 — always ACK a valid frame so the peer can
+			// free its retransmit buffer.
+			_ = c.Write(PackACK())
 			buf = buf[consumed:]
 			c.dispatch(f)
 		}
