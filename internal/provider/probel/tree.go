@@ -63,6 +63,20 @@ type tree struct {
 	mu          sync.RWMutex
 	matrices    map[matrixKey]*matrixState
 	deviceNames map[uint16]string
+
+	// salvos holds the per-group salvo build-up, keyed by 7-bit salvo id
+	// (SW-P-08 §3.1.29). Populated by rx 120 Connect-On-Go; drained by
+	// rx 121 Go (op=set) or cleared by rx 121 Go (op=clear); read by
+	// rx 124 Salvo Group Interrogate.
+	salvos map[uint8][]salvoSlot
+}
+
+// salvoSlot is one stored crosspoint under a salvo group.
+type salvoSlot struct {
+	matrix uint8
+	level  uint8
+	dst    uint16
+	src    uint16
 }
 
 // newTree reduces a canonical Export to the per-(matrix,level) state the
@@ -83,6 +97,7 @@ func newTree(exp *canonical.Export) (*tree, error) {
 	t := &tree{
 		matrices:    map[matrixKey]*matrixState{},
 		deviceNames: map[uint16]string{},
+		salvos:      map[uint8][]salvoSlot{},
 	}
 	if exp == nil || exp.Root == nil {
 		return t, nil
@@ -344,6 +359,58 @@ func (t *tree) updateTargetLabels(m, l uint8, first uint16, names []string) {
 		}
 		st.targetLabels[idx] = n
 	}
+}
+
+// salvoAppend records one crosspoint under the given salvo id.
+func (t *tree) salvoAppend(id uint8, s salvoSlot) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.salvos == nil {
+		t.salvos = map[uint8][]salvoSlot{}
+	}
+	t.salvos[id] = append(t.salvos[id], s)
+}
+
+// salvoClear drops every stored crosspoint for a salvo id. Returns
+// the number of slots discarded.
+func (t *tree) salvoClear(id uint8) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	n := len(t.salvos[id])
+	delete(t.salvos, id)
+	return n
+}
+
+// salvoApply routes every stored crosspoint for id through applyConnect,
+// then clears the salvo. Returns (applied, remaining-on-error).
+// Per-slot errors are ignored (the spec has no per-slot error channel);
+// offending slots are dropped.
+func (t *tree) salvoApply(id uint8) int {
+	t.mu.Lock()
+	slots := t.salvos[id]
+	delete(t.salvos, id)
+	t.mu.Unlock()
+	applied := 0
+	for _, s := range slots {
+		if err := t.applyConnect(s.matrix, s.level, s.dst, s.src); err == nil {
+			applied++
+		}
+	}
+	return applied
+}
+
+// salvoSlotAt returns the stored slot at (id, index). Returns ok=false
+// when the salvo is empty or the index is out of range. Used by rx 124
+// Salvo Group Interrogate.
+func (t *tree) salvoSlotAt(id uint8, idx uint8) (salvoSlot, bool, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	slots, ok := t.salvos[id]
+	if !ok || int(idx) >= len(slots) {
+		return salvoSlot{}, false, false
+	}
+	last := int(idx)+1 == len(slots)
+	return slots[idx], true, last
 }
 
 // Size reports how many (matrix, level) pairs are in the tree.

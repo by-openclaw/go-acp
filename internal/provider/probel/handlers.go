@@ -64,6 +64,12 @@ func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
 		return s.handleSingleSourceAssocName(f)
 	case iprobel.RxUpdateNameRequest:
 		return s.handleUpdateNameRequest(f)
+	case iprobel.RxCrosspointConnectOnGoSalvo:
+		return s.handleSalvoConnectOnGo(f)
+	case iprobel.RxCrosspointGoSalvo:
+		return s.handleSalvoGo(f)
+	case iprobel.RxCrosspointSalvoGroupInterrogate:
+		return s.handleSalvoGroupInterrogate(f)
 	}
 	s.profile.Note(UnsupportedCommand)
 	return handlerResult{}, nil
