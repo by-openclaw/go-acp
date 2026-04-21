@@ -26,7 +26,7 @@ and CLI examples.
 | ACP2 | AN2/TCP | 2072 | done, canonical alignment pending (#32) | 🟡 PR #76, 5/6 object types Lawo-VSM-validated; Enum (pid 15) parked in #79 pending Cerebrum | [docs/protocols/acp2/consumer.md](docs/protocols/acp2/consumer.md) |
 | Ember+ | S101/TCP | 9000-9092 | consumer done (resolver + multi-level labels) | ✅ merged (#67 + #72) | [docs/protocols/emberplus/consumer.md](docs/protocols/emberplus/consumer.md) |
 | Probel SW-P-02 | TCP | — | planned (audit YELLOW) | — | [memory: project_probel_extensions.md] |
-| Probel SW-P-08+ | TCP | 2008 | 🟡 PR #77 in progress (rx/tx codec through Step 2e) | planned | [memory: project_probel_extensions.md] |
+| Probel SW-P-08+ | TCP | 2008 | 🟡 PR #84 — scaffold + 11 commands end-to-end (Crosspoint Interrogate/Connect/TallyDump, Maintenance, Dual Controller, Protect ×6) | 🟡 PR #84 — paired provider per command, demo 2×64×64 matrix | [memory: project_probel_sw08.md] |
 | TSL UMD v3.1/v4/v5 | UDP push | — | planned (audit GREEN) | — | [memory: project_tsl_extensions.md] |
 
 Canonical JSON schema shared across all protocols: [docs/protocols/schema.md](docs/protocols/schema.md).

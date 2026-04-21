@@ -56,6 +56,34 @@ Strings                 UTF-8, null-terminated
 All multi-byte          big-endian MSB first
 ```
 
+### Probel SW-P-08 (+ SW-P-88 framing)
+
+```
+Port                    2008 (TCP, IP Stream mode) — also serial at 38400 8N1
+Framing                 SOM=DLE STX, EOM=DLE ETX, DLE=0x10
+DATA                    ID(u8) + payload bytes (max 128 guaranteed, 255 custom)
+BTC                     byte count of DATA (pre-DLE-escape)
+CHK                     8-bit two's-complement of (DATA ++ BTC)
+DLE stuffing            doubled (10 → 10 10) inside DATA / BTC / CHK
+ACK / NAK               DLE ACK=10 06, DLE NAK=10 15
+                        MANDATORY per §2, within 10ms of ETX
+Retry                   1 s timeout, 5-retry on NAK or silence (§2 recommendation)
+Correlation             NO mtid — replies matched by expected CMD ID
+                        (Interrogate→Tally, Connect→Connected, etc.)
+Fan-out                 broadcasts on any mutating rx (Connect/Protect*) emit
+                        corresponding Tally to every OTHER live session
+Extended CMDs           general 0x00-0x7F ; extended 0x80+ (wider addressing)
+                        encoder auto-switches based on field ranges
+                        (mtx>15, lvl>15, dst>895, src>1023 → extended)
+Keepalive (app layer)   TX APP_KEEPALIVE_REQUEST 0x11
+                        RX APP_KEEPALIVE_RESPONSE 0x22
+                        (tracked in #91; not yet implemented)
+Keepalive (TCP layer)   SO_KEEPALIVE; consumer Client inherits OS default
+Direction convention    Rx* = matrix RECEIVES (controller sends)
+                        Tx* = matrix TRANSMITS (controller receives)
+                        (matrix-centric per spec convention)
+```
+
 ### AN2 Transport
 
 ```
@@ -85,7 +113,22 @@ acp/assets/
   emberplus/
     Ember+ Documentation.pdf  Ember+ v2.50 full spec (Lawo GmbH)
     Ember+ Formulas.pdf       Ember+ formula expressions
+  probel/
+    probel-sw08p/
+      SW-P-08 Issue 30.doc    Command & transmission-protocol spec (AUTHORITATIVE)
+      SW-P-88 Issue 3.pdf     Framing reference (pdf is corrupted; use the .doc)
+      dissector_swp08.lua     Wireshark SW-P-08 dissector (future)
+    smh-probelsw08p/          TS matrix emulator — byte-layout REFERENCE only,
+                               NOT authoritative for flow (use the .doc for flow)
 ```
+
+Extract the Probel spec:
+```
+antiword "assets/probel/probel-sw08p/SW-P-08 Issue 30.doc" > swp08.txt
+```
+
+Section §2 of SW-P-08 Issue 30 defines transmission protocol (ACK/NAK flow).
+Ignore any code / comment citing "SW-P-88 §3.5" — that was my mistake.
 
 **Rule**: before modifying any codec, read the relevant spec section.
 When spec and C# reference disagree, the spec wins.
@@ -241,6 +284,54 @@ Scope:
 - `docs/protocols/acp2/consumer.md` refreshed to Ember+/ACP1 shape
 - Unit tests (synthetic BER + AN2 frames) — offline, CI-friendly
 - User runs VM integration checks (`10.41.40.195:2072`) before merge
+
+### In progress — Probel SW-P-08 end-to-end (PR #84, master #82)
+
+Branch `feat/probel-scaffold`, 12 commits, NOT YET merged — awaiting real-MTX validation.
+
+**Shipped in this PR:**
+- `internal/probel/` byte codec — stdlib-only, lift-to-own-repo-ready (per `feedback_codec_isolation.md`)
+- `internal/probel/client.go` — TCP Client with read-loop, `Send(match)` correlation (no mtid in SW-P-08), `OnTx`/`OnRx` callback hooks
+- Per-frame DLE ACK (10 06) / DLE NAK (10 15) — **spec §2 mandates**, within 10ms of ETX
+- `internal/protocol/probel/` — consumer plugin, one consumer method per command
+- `internal/provider/probel/` — TCP provider plugin, per-session framer, dispatch switch, tally fan-out to other sessions
+- 11 commands end-to-end (Crosspoint Interrogate/Connect/TallyDump, Maintenance, Dual Controller Status, Protect Interrogate/Connect/Disconnect/DeviceName/TallyDump, Master Protect Connect)
+- `cmd/acp probel <subcommand> <host:port> [flags]` — all 11 exposed, `--capture FILE.jsonl` global flag writes JSONL same shape as `acp walk --capture`
+- `cmd/acp-provider --protocol probel --tree demo.json`
+- Demo fixture `assets/probel/demo_matrix.json` — 2 levels (Video + Audio) 64×64 with 4 labelled source/dest each
+
+**Hard rules (from `feedback_codec_isolation.md` + user direction 2026-04-21):**
+
+1. Spec-strict, no workarounds — same posture as ACP1/ACP2/Ember+. NO lenient flags (no `--skip-checksum`, no `--skip-ack`). Divergences become compliance EVENTS.
+2. `internal/probel/` is stdlib-only. Higher layers own `acp/*` coupling via callbacks.
+3. TS emulator `assets/probel/smh-probelsw08p/` is byte-layout aid only — NOT authoritative for flow. Spec `.doc` wins.
+4. Commie is an external test tool — do NOT mention it in runtime doc-comments.
+5. One primary file per command. TS structure `rx/NNN-name/` + `tx/NNN-name/` is the model; CLAUDE.md "one primary type per file" rule applies.
+
+**Open tracking:**
+
+| Issue | Status | Scope |
+|---|---|---|
+| #82 | open | master — Probel SW-P-08 end-to-end |
+| #90 | open | verify §2 ACK/NAK + retry + 1s timeout + 5-retry against real MTX (strict-spec only) |
+| #91 | open | APP_KEEPALIVE TX 0x11 / RX 0x22 command pair + DLE-ACK-keepalive variant |
+
+**Still to do:**
+
+- [ ] Split grouped handler/method files one-per-command (currently `cmd_crosspoint.go` has 3, `cmd_protect.go` has 6, `cmd_admin.go` has 2; same on consumer side)
+- [ ] `Client.Send` retry-on-NAK with 1s timeout + 5-retry (§2) — compliance events instead of flags
+- [ ] Provider-side retry on tally broadcasts (same §2 contract)
+- [ ] 128-byte DATA cap guard (§2)
+- [ ] APP_KEEPALIVE 0x11/0x22 command pair + Client keepalive scheduler
+- [ ] Source/Dest Names (rx 100-103 / tx 106), Tie-Line (rx 112 / tx 113), Salvo (rx 120-124 / tx 122-125) — encoders don't exist yet in `internal/probel/`
+
+**Authoritative spec:**
+
+```
+assets/probel/probel-sw08p/SW-P-08 Issue 30.doc  ← use antiword to extract
+```
+
+The same-folder `.pdf` is corrupted. `§2` of the doc is the Transmission Protocol section (ACK/NAK flow). Any code comment citing "SW-P-88 §3.5" is from an earlier mistake — the real section is SW-P-08 §2.
 
 ### Shipped — ACP1 canonical alignment (PR #33 on main)
 
