@@ -56,6 +56,8 @@ func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
 		return s.handleAllDestAssocNames(f)
 	case iprobel.RxSingleDestNameRequest:
 		return s.handleSingleDestAssocName(f)
+	case iprobel.RxCrosspointTieLineInterrogate:
+		return s.handleTieLineInterrogate(f)
 	}
 	s.profile.Note(UnsupportedCommand)
 	return handlerResult{}, nil
