@@ -1,4 +1,4 @@
-package probel
+package probelsw08p
 
 // Compliance event labels — per-spec named deviations the Probel
 // consumer absorbs on the wire. Every constant here maps to one code

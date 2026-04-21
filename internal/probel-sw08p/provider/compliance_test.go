@@ -1,4 +1,4 @@
-package probel
+package probelsw08p
 
 import (
 	"io"

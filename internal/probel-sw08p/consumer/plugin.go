@@ -14,7 +14,7 @@
 //
 // Wire codec lives at internal/probel-sw08p/ (stdlib-only, shared with the
 // provider plugin under internal/provider/probel/).
-package probel
+package probelsw08p
 
 import (
 	"context"

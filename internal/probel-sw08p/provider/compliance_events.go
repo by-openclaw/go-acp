@@ -1,4 +1,4 @@
-package probel
+package probelsw08p
 
 // Compliance event labels — per-spec named deviations the Probel
 // provider observes on inbound traffic. Same philosophy as the

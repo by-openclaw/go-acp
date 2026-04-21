@@ -13,7 +13,7 @@
 //	tree.go    canonical.Export -> matrix state tree (per-matrix per-level map[dst]src)
 //	server.go  TCP accept + session lifecycle
 //	session.go per-connection dispatch (stub: NAK every unknown CMD for now)
-package probel
+package probelsw08p
 
 import (
 	"log/slog"
