@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"acp/internal/export/canonical"
-	"acp/internal/protocol/emberplus/ber"
-	"acp/internal/protocol/emberplus/glow"
+	"acp/internal/emberplus/codec/ber"
+	"acp/internal/emberplus/codec/glow"
 )
 
 // encodeGetDirReply walks the tree entry e and produces the BER payload

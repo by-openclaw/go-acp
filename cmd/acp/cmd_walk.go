@@ -13,7 +13,7 @@ import (
 	"acp/internal/protocol"
 	"acp/internal/acp1/consumer"
 	"acp/internal/acp2/consumer"
-	"acp/internal/protocol/emberplus"
+	"acp/internal/emberplus/consumer"
 )
 
 func runWalk(ctx context.Context, args []string) error {

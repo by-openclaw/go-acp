@@ -26,8 +26,8 @@ import (
 
 	"acp/internal/protocol"
 	"acp/internal/protocol/compliance"
-	"acp/internal/protocol/emberplus/glow"
-	"acp/internal/protocol/emberplus/matrix"
+	"acp/internal/emberplus/codec/glow"
+	"acp/internal/emberplus/codec/matrix"
 	"acp/internal/transport"
 )
 

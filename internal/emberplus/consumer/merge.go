@@ -1,6 +1,6 @@
 package emberplus
 
-import "acp/internal/protocol/emberplus/glow"
+import "acp/internal/emberplus/codec/glow"
 
 // mergeAnnouncedParameter overlays the fields an announce actually
 // carried onto the previously-walked Parameter, preserving metadata

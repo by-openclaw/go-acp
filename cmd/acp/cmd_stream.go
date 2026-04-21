@@ -16,7 +16,7 @@ import (
 	"os"
 
 	"acp/internal/protocol"
-	emberplus "acp/internal/protocol/emberplus"
+	emberplus "acp/internal/emberplus/consumer"
 )
 
 func runStream(ctx context.Context, args []string) error {

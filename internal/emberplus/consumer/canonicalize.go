@@ -8,7 +8,7 @@ import (
 
 	"acp/internal/export/canonical"
 	"acp/internal/protocol"
-	"acp/internal/protocol/emberplus/glow"
+	"acp/internal/emberplus/codec/glow"
 )
 
 // CanonicalOptions controls which form the exporter emits for

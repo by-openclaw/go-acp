@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"acp/internal/export/canonical"
-	"acp/internal/protocol/emberplus/ber"
-	"acp/internal/protocol/emberplus/glow"
+	"acp/internal/emberplus/codec/ber"
+	"acp/internal/emberplus/codec/glow"
 )
 
 // streamEntry holds the per-parameter state needed to emit StreamEntry

@@ -11,8 +11,8 @@ import (
 	"sync"
 
 	"acp/internal/export/canonical"
-	"acp/internal/protocol/emberplus/glow"
-	"acp/internal/protocol/emberplus/s101"
+	"acp/internal/emberplus/codec/glow"
+	"acp/internal/emberplus/codec/s101"
 )
 
 // session is one live consumer connection. Single read loop; a send

@@ -17,7 +17,7 @@ import (
 	"acp/internal/acp1/consumer"
 	"acp/internal/acp2/consumer"
 	"acp/internal/protocol/compliance"
-	emberplus "acp/internal/protocol/emberplus"
+	emberplus "acp/internal/emberplus/consumer"
 )
 
 // pluginProfile returns the compliance profile attached to the given

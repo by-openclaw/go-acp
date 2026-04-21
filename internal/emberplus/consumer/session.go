@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"acp/internal/protocol/compliance"
-	"acp/internal/protocol/emberplus/glow"
-	"acp/internal/protocol/emberplus/s101"
+	"acp/internal/emberplus/codec/glow"
+	"acp/internal/emberplus/codec/s101"
 	"acp/internal/transport"
 )
 

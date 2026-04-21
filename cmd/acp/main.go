@@ -25,7 +25,7 @@ import (
 
 	_ "acp/internal/acp1/consumer"
 	_ "acp/internal/acp2/consumer"
-	_ "acp/internal/protocol/emberplus"
+	_ "acp/internal/emberplus/consumer"
 	_ "acp/internal/probel/consumer"
 )
 

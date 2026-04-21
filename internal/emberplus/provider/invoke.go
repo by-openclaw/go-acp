@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"acp/internal/export/canonical"
-	"acp/internal/protocol/emberplus/ber"
-	"acp/internal/protocol/emberplus/glow"
+	"acp/internal/emberplus/codec/ber"
+	"acp/internal/emberplus/codec/glow"
 )
 
 // FunctionImpl is a provider-side callback bound to a canonical Function.

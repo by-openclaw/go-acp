@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/protocol/emberplus/glow"
+	"acp/internal/emberplus/codec/glow"
 )
 
 // ChangeSource attributes the most recent mutation to its origin.

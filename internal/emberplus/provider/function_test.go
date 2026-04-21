@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"acp/internal/export/canonical"
-	"acp/internal/protocol/emberplus/glow"
+	"acp/internal/emberplus/codec/glow"
 )
 
 // TestRoundTrip_Function checks a Function with 2 integer args → 1 result

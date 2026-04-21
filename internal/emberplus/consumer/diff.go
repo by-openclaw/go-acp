@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"acp/internal/protocol"
-	"acp/internal/protocol/emberplus/glow"
+	"acp/internal/emberplus/codec/glow"
 )
 
 // diffParameters returns the ordered list of FieldChange entries that

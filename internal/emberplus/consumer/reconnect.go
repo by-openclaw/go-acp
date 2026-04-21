@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/protocol/emberplus/glow"
+	"acp/internal/emberplus/codec/glow"
 )
 
 // clearTree wipes every in-RAM tree index so a post-reconnect walk
