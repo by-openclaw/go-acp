@@ -2,16 +2,18 @@
 // session to a matrix controller (rx side) and exposes matrix / crosspoint
 // operations through the protocol.Protocol interface.
 //
-// This is the scaffold commit: transport + Connect / Disconnect work;
-// the matrix-oriented operations (Walk / GetValue / SetValue / Subscribe)
-// return ErrNotImplemented until their per-command PRs land.
+// Layering (mirror of acp1 / acp2 / emberplus consumer packages):
 //
-// Layering:
+//	plugin.go                    Factory + Protocol interface stubs
+//	types.go                     package-level constants (DefaultPort)
+//	crosspoint_*.go              per-command consumer methods
+//	protect_*.go                 per-command consumer methods
+//	maintenance.go               per-command consumer method
+//	dual_controller_status.go    per-command consumer method
+//	master_protect_connect.go    per-command consumer method
 //
-//	plugin.go  Factory + Protocol interface stubs  (this file)
-//	types.go   ConnectConfig + package-level helpers
-//
-// Wire codec lives at internal/probel/ (shared with the provider package).
+// Wire codec lives at internal/probel/ (stdlib-only, shared with the
+// provider plugin under internal/provider/probel/).
 package probel
 
 import (
@@ -24,11 +26,6 @@ import (
 	"acp/internal/protocol"
 	"acp/internal/transport"
 )
-
-// DefaultPort is the TCP port most Probel matrices expose for SW-P-08.
-// Mirror of internal/probel.DefaultPort so cmd/ code can import this
-// package alone.
-const DefaultPort = iprobel.DefaultPort
 
 func init() {
 	protocol.Register(&Factory{})
