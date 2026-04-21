@@ -31,15 +31,16 @@ knowledge of Go or protocol internals.
 cmd/dhs/                        single CLI binary (consumer + producer)
 internal/protocol/              neutral consumer-plugin registry + iface
 internal/provider/              neutral provider-plugin registry + iface
-internal/<proto>/               per-protocol code:
+internal/<proto>/               per-protocol self-contained subtree:
   CLAUDE.md                     atomic wire-format context (read this!)
   codec/                        stdlib-only byte codec (lift-ready)
   consumer/                     package <proto> — implements protocol.Protocol
   provider/                     package <proto> — implements provider.Provider
   wireshark/                    dissector_<proto>.lua
-assets/<proto>/                 spec PDFs + vendor tools + TS emulators
+  docs/                         consumer / provider / README per protocol
+  assets/                       spec PDFs + vendor tools + TS emulators
 tests/                          unit / integration / smoke / fixtures
-docs/                           architecture, connector, protocol refs
+docs/                           cross-cutting architecture, connector, schema
 ```
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel}`.
@@ -69,10 +70,10 @@ Producer verb is `serve` for every protocol.
 ## Specs + dissectors (authoritative references)
 
 ```
-assets/acp1/       AXON-ACP_v1_4.pdf
-assets/acp2/       acp2_protocol.pdf + an2_protocol.pdf
-assets/emberplus/  Ember+ Documentation.pdf + Ember+ Formulas.pdf
-assets/probel/probel-sw08p/SW-P-08 Issue 30.doc   (use antiword; the .pdf is corrupted)
+internal/acp1/assets/       AXON-ACP_v1_4.pdf
+internal/acp2/assets/       acp2_protocol.pdf + an2_protocol.pdf
+internal/emberplus/assets/  Ember+ Documentation.pdf + Ember+ Formulas.pdf
+internal/probel/assets/probel-sw08p/SW-P-08 Issue 30.doc   (use antiword; the .pdf is corrupted)
 
 internal/<proto>/wireshark/dissector_<proto>.lua   byte-exact reference
 ```
@@ -80,7 +81,7 @@ internal/<proto>/wireshark/dissector_<proto>.lua   byte-exact reference
 Extract the Probel spec:
 
 ```
-antiword "assets/probel/probel-sw08p/SW-P-08 Issue 30.doc" > swp08.txt
+antiword "internal/probel/assets/probel-sw08p/SW-P-08 Issue 30.doc" > swp08.txt
 ```
 
 SW-P-08 §2 defines the transmission protocol (ACK/NAK flow). Any code or

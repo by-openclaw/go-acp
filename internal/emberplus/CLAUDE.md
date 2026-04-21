@@ -5,12 +5,12 @@ first for cross-cutting rules; this file holds Ember+-specific wire + glow
 semantics.
 
 Authoritative refs:
-- `assets/emberplus/Ember+ Documentation.pdf`
-- `assets/emberplus/Ember+ Formulas.pdf`
+- `internal/emberplus/assets/Ember+ Documentation.pdf`
+- `internal/emberplus/assets/Ember+ Formulas.pdf`
 
 Wireshark dissector: `./wireshark/dissector_emberplus.lua`.
 
-Testbed emulator: `assets/smh/` (BY-RESEARCH TS emulator, port 9000/9090/9092);
+Testbed emulator: `internal/emberplus/assets/smh/` (BY-RESEARCH TS emulator, port 9000/9090/9092);
 convention — targets labeled `1`, sources labeled `2`.
 
 ---
@@ -27,7 +27,9 @@ internal/emberplus/
 │   └── matrix/  matrix/target/source encoder helpers
 ├── consumer/    package emberplus — implements protocol.Protocol
 ├── provider/    package emberplus — implements provider.Provider
-└── wireshark/   dissector_emberplus.lua
+├── wireshark/   dissector_emberplus.lua
+├── docs/        consumer.md / provider.md / README.md
+└── assets/      Ember+ PDFs + TinyEmberPlus/EmberPlusView tools + smh/ TS lib
 ```
 
 - Packages under `codec/` are stdlib-only (lift-ready).

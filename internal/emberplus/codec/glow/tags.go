@@ -3,7 +3,7 @@
 // and encode/decode routines for every element defined by the spec.
 //
 // Authoritative reference: Ember+ Protocol Specification v2.50 (rev. 15,
-// 2017-11-09), Lawo GmbH. PDF at assets/emberplus/Ember+ Documentation.pdf.
+// 2017-11-09), Lawo GmbH. PDF at internal/emberplus/assets/Ember+ Documentation.pdf.
 // The Glow DTD ASN.1 Notation (pp. 83–93) defines every type below. Each
 // constant cites the spec page where it is introduced.
 package glow

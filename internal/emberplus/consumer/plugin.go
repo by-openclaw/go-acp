@@ -11,7 +11,7 @@
 //	the label index is a many-to-one map because labels can collide inside
 //	the same provider (see Ember+ Documentation v2.50 p.74 "The identifier
 //	property"). Every entry also records a Freshness state per
-//	docs/protocols/emberplus/consumer.md A2.
+//	internal/emberplus/docs/consumer.md A2.
 package emberplus
 
 import (
@@ -56,7 +56,7 @@ func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
 
 // Freshness marks how current a treeEntry's value is believed to be.
 // Documented in CLAUDE.md (Value freshness states) and
-// docs/protocols/emberplus/consumer.md A2.
+// internal/emberplus/docs/consumer.md A2.
 type Freshness uint8
 
 const (
@@ -107,7 +107,7 @@ type Plugin struct {
 	// profile tracks tolerance events (spec deviations absorbed
 	// during this session). Exposed via ComplianceProfile(); a
 	// summary line is logged on Disconnect. See compliance/profile.go
-	// and docs/protocols/emberplus/consumer.md §A9.
+	// and internal/emberplus/docs/consumer.md §A9.
 	profile *compliance.Profile
 
 	// recorder captures raw S101 frames (tx + rx) to a JSONL file

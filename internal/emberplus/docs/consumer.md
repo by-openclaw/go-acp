@@ -8,8 +8,8 @@ Consumer connector for the Ember+ protocol (Lawo Glow DTD over S101/TCP).
 
 | Document | Path | Description |
 |---|---|---|
-| Spec (authoritative) | [assets/emberplus/Ember+ Documentation.pdf](../../../assets/emberplus/Ember+%20Documentation.pdf) | Ember+ Protocol Specification v2.50 rev.15 (2017-11-09), Lawo GmbH |
-| Formulas | [assets/emberplus/Ember+ Formulas.pdf](../../../assets/emberplus/Ember+%20Formulas.pdf) | Parameter formula syntax reference |
+| Spec (authoritative) | [internal/emberplus/assets/Ember+ Documentation.pdf](../../../internal/emberplus/assets/Ember+%20Documentation.pdf) | Ember+ Protocol Specification v2.50 rev.15 (2017-11-09), Lawo GmbH |
+| Formulas | [internal/emberplus/assets/Ember+ Formulas.pdf](../../../internal/emberplus/assets/Ember+%20Formulas.pdf) | Parameter formula syntax reference |
 | Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "Ember+" | Wire format, methods, object types |
 | Source code | [internal/protocol/emberplus/](../../../internal/protocol/emberplus/) | Plugin implementation |
 | Unit tests | [internal/protocol/emberplus/glow/glow_test.go](../../../internal/protocol/emberplus/glow/glow_test.go) | BER + element decode tests |

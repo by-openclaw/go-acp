@@ -5,7 +5,7 @@
 // layer handles framing; ACP2 messages are carried inside AN2 data
 // frames with proto=2.
 //
-// Authoritative spec: docs/protocols/acp2_protocol.pdf.
+// Authoritative spec: internal/acp2/assets/acp2_protocol.pdf.
 // Cross-reference: CLAUDE.md ACP2 section, dissector_acp2.lua.
 package acp2
 

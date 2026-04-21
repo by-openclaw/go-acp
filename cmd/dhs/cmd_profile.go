@@ -3,7 +3,7 @@
 // event that fired. Lets the user build a compatibility matrix by
 // running the same command against every provider in a fleet.
 //
-// See docs/protocols/emberplus/consumer.md §A9 for the list of event labels
+// See internal/emberplus/docs/consumer.md §A9 for the list of event labels
 // and what each one means in spec terms.
 package main
 
@@ -106,7 +106,7 @@ BEHAVIOUR
     - classification: strict (zero events) | partial (>=1 event)
     - every tolerance event that fired with its hit count
 
-  Tolerance events catalogue documented in docs/protocols/emberplus/consumer.md
+  Tolerance events catalogue documented in internal/emberplus/docs/consumer.md
   §A9. Each event names one spec deviation the decoder absorbed:
 
     non_qualified_element           Node/Parameter sent without RelOID path

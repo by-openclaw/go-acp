@@ -6,7 +6,7 @@ package acp1
 // (per memory/feedback_no_workaround.md §7–9: absorb silently = never;
 // absorb + fire event = always; spec-page cited in the comment).
 //
-// Authoritative spec: assets/acp1/AXON-ACP_v1_4.pdf.
+// Authoritative spec: internal/acp1/assets/AXON-ACP_v1_4.pdf.
 //
 // The generic Profile counter lives in internal/protocol/compliance/.
 // Classification:

@@ -26,7 +26,7 @@ type TallyDumpResult struct {
 // narrower ranges (a future API extension).
 //
 // Reference: SW-P-08 §3.2 (dump request) / §3.3 (tx 022 byte / tx 023 word).
-// TS reference: assets/probel/smh-probelsw08p/src/rx/021/ + tx/022/ + tx/023/.
+// TS reference: internal/probel/assets/smh-probelsw08p/src/rx/021/ + tx/022/ + tx/023/.
 func (p *Plugin) CrosspointTallyDump(
 	ctx context.Context,
 	matrix, level uint8,

@@ -7,7 +7,7 @@ package emberplus
 // = never; absorb + fire event = always).
 //
 // Keep this list short and stable — documented in
-// docs/protocols/emberplus/consumer.md §"compliance.Profile event labels"
+// internal/emberplus/docs/consumer.md §"compliance.Profile event labels"
 // and in docs/protocols/schema.md §6. Adding a new label is an API
 // change: downstream tooling may aggregate by key.
 //

@@ -2,4 +2,4 @@ blank_issues_enabled: false
 contact_links:
   - name: Protocol spec question
     url: https://github.com/by-openclaw/go-acp/tree/main/assets
-    about: Check the protocol specs in assets/acp1/ and assets/acp2/ before filing
+    about: Check the protocol specs in internal/acp1/assets/ and internal/acp2/assets/ before filing

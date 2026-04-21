@@ -7,9 +7,9 @@ package acp2
 // absorb + fire event = always; spec-page cited in the comment).
 //
 // Authoritative specs:
-//   - assets/acp2/acp2_protocol.pdf  (ACP2 framing, property headers,
+//   - internal/acp2/assets/acp2_protocol.pdf  (ACP2 framing, property headers,
 //     error codes, object types)
-//   - assets/acp2/an2_protocol.pdf   (AN2 transport, magic, frame
+//   - internal/acp2/assets/an2_protocol.pdf   (AN2 transport, magic, frame
 //     layout, ProtocolEvents handshake)
 //
 // The generic Profile counter lives in internal/protocol/compliance/.
@@ -19,7 +19,7 @@ package acp2
 //
 // Adding a new label is an API change — downstream tooling may
 // aggregate by key. Keep this list stable + documented in
-// docs/protocols/acp2/consumer.md §"Compliance events".
+// internal/acp2/docs/consumer.md §"Compliance events".
 const (
 	// AN2 spec §"Frame Header" (an2_protocol.pdf p.3): magic is
 	// 0xC635 on every frame. When the first two bytes received do

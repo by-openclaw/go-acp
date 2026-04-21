@@ -9,7 +9,7 @@ import "fmt"
 // |-------|-------|---------------------------|
 // | ID    | 1     | TxAppKeepaliveRequest     |
 //
-// Reference: TS assets/probel/smh-probelsw08p/src/command/application-keep-alive/
+// Reference: TS internal/probel/assets/smh-probelsw08p/src/command/application-keep-alive/
 // application-keepalive-request.ts. Not defined in SW-P-08 §3.2/§3.3 —
 // the TS module documents it as a custom application-layer liveness probe.
 func EncodeKeepaliveRequest() Frame {

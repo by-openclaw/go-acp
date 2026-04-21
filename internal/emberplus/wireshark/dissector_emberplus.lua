@@ -11,7 +11,7 @@
 --   - Glow application tag naming (Parameter, Node, Matrix, Function, ...)
 --
 -- Reference: Ember+ Protocol Specification v2.50 (Lawo, rev. 15, 2017-11-09),
---            assets/emberplus/Ember+ Documentation.pdf
+--            internal/emberplus/assets/Ember+ Documentation.pdf
 --
 -- Compatible with Wireshark 4.x
 --

@@ -4,8 +4,8 @@ Atomic per-protocol context for the ACP2 plugin. Read the root `CLAUDE.md`
 first for cross-cutting rules; this file holds the ACP2 + AN2 wire spec.
 
 Authoritative specs:
-- `assets/acp2/acp2_protocol.pdf`
-- `assets/acp2/an2_protocol.pdf` (AN2 transport)
+- `internal/acp2/assets/acp2_protocol.pdf`
+- `internal/acp2/assets/an2_protocol.pdf` (AN2 transport)
 
 Wireshark dissector (byte-exact reference): `./wireshark/dissector_acp2.lua`.
 
@@ -20,7 +20,9 @@ internal/acp2/
 ├── CLAUDE.md    ← this file
 ├── consumer/    package acp2 — implements protocol.Protocol
 ├── provider/    package acp2 — implements provider.Provider
-└── wireshark/   dissector_acp2.lua
+├── wireshark/   dissector_acp2.lua
+├── docs/        consumer.md / provider.md / README.md
+└── assets/      acp2_protocol.pdf + an2_protocol.pdf + demo_device.json
 ```
 
 ---

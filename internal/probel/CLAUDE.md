@@ -14,7 +14,8 @@ internal/probel/
 ├── codec/       stdlib-only byte codec (lift-to-own-repo ready)
 ├── consumer/    package probel — implements protocol.Protocol
 ├── provider/    package probel — implements provider.Provider
-└── wireshark/   Lua dissector (TODO — see #TBD)
+├── wireshark/   Lua dissector (TODO — see #TBD)
+└── assets/      SW-P-08 spec + Commie + TS SW-P-08 emulator
 ```
 
 - `codec/` has zero imports outside stdlib.
@@ -26,7 +27,7 @@ internal/probel/
 
 ## Authoritative spec
 
-- `assets/probel/probel-sw08p/SW-P-08 Issue 30.doc` — read via antiword; the
+- `internal/probel/assets/probel-sw08p/SW-P-08 Issue 30.doc` — read via antiword; the
   sibling `.pdf` is corrupted.
 - ACK handling lives in §2 (Transmission Protocol), NOT §3.5.
 
@@ -112,7 +113,7 @@ internal/probel/
 
 Three peers in the testbed:
 1. Commie.exe — full receiver, covers most SW-P-02/08 variants.
-2. TS server `assets/probel/smh-probelsw08p/` — full transmitter.
+2. TS server `internal/probel/assets/smh-probelsw08p/` — full transmitter.
 3. Real user device — partial transmitter; NAKs unsupported commands.
 
 ## Known deviations from spec

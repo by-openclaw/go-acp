@@ -17,7 +17,7 @@ import (
 // that need live tallies should Subscribe via the Client listener API.
 //
 // Reference: SW-P-08 §3.2 (connect) / §3.3 (connected).
-// TS reference: assets/probel/smh-probelsw08p/src/rx/002/ + tx/004/.
+// TS reference: internal/probel/assets/smh-probelsw08p/src/rx/002/ + tx/004/.
 func (p *Plugin) CrosspointConnect(
 	ctx context.Context,
 	matrix, level uint8,

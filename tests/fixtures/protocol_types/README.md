@@ -43,5 +43,5 @@ make fixtures
 ```
 
 Wireshark / tshark ≥ 4.x required. The dissector under
-`assets/emberplus/dissector_emberplus.lua` must be installed in the
+`internal/emberplus/assets/dissector_emberplus.lua` must be installed in the
 personal plugins dir (see [`docs/wireshark.md`](../../../docs/wireshark.md)).

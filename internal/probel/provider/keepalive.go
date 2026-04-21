@@ -19,7 +19,7 @@ const DefaultKeepaliveInterval = 30 * time.Second
 // answer with rx 0x22 APP_KEEPALIVE_RESPONSE (the session reader already
 // accepts those frames silently — no handler wired).
 //
-// Reference: TS assets/probel/smh-probelsw08p/src/command/application-keep-alive/.
+// Reference: TS internal/probel/assets/smh-probelsw08p/src/command/application-keep-alive/.
 // Not defined in SW-P-08 §3; this is a TS-emulator convention.
 func (s *server) SetKeepaliveInterval(d time.Duration) {
 	s.mu.Lock()

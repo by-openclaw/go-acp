@@ -8,7 +8,7 @@ One file per element type, each carrying:
 - **Consumer handling** — what resolvers do, which compliance events fire.
 
 The samples are the same style as
-[`assets/smh/emulator/ember-server/src/data-model-new.ts`](../../../assets/smh/emulator/ember-server/src/data-model-new.ts) —
+[`internal/emberplus/assets/smh/emulator/ember-server/src/data-model-new.ts`](../../../internal/emberplus/assets/smh/emulator/ember-server/src/data-model-new.ts) —
 literal JSON tree fragments you can read top-to-bottom — but split per type
 and expanded to cover every case listed below.
 

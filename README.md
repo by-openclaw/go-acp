@@ -19,9 +19,9 @@ One binary covers both directions:
 
 | Protocol        | Transport         | Port      | Consumer | Provider | Docs |
 |-----------------|-------------------|-----------|----------|----------|------|
-| ACP1            | UDP / TCP direct  | 2071      | ✅       | ✅       | [internal/acp1/CLAUDE.md](internal/acp1/CLAUDE.md) · [docs/protocols/acp1/consumer.md](docs/protocols/acp1/consumer.md) |
-| ACP2            | AN2/TCP           | 2072      | ✅       | 🟡 PR #76 (5/6 types Lawo-validated; Enum parked in #79) | [internal/acp2/CLAUDE.md](internal/acp2/CLAUDE.md) · [docs/protocols/acp2/consumer.md](docs/protocols/acp2/consumer.md) |
-| Ember+          | S101/TCP          | 9000-9092 | ✅       | ✅       | [internal/emberplus/CLAUDE.md](internal/emberplus/CLAUDE.md) · [docs/protocols/emberplus/consumer.md](docs/protocols/emberplus/consumer.md) |
+| ACP1            | UDP / TCP direct  | 2071      | ✅       | ✅       | [internal/acp1/CLAUDE.md](internal/acp1/CLAUDE.md) · [internal/acp1/docs/consumer.md](internal/acp1/docs/consumer.md) |
+| ACP2            | AN2/TCP           | 2072      | ✅       | 🟡 PR #76 (5/6 types Lawo-validated; Enum parked in #79) | [internal/acp2/CLAUDE.md](internal/acp2/CLAUDE.md) · [internal/acp2/docs/consumer.md](internal/acp2/docs/consumer.md) |
+| Ember+          | S101/TCP          | 9000-9092 | ✅       | ✅       | [internal/emberplus/CLAUDE.md](internal/emberplus/CLAUDE.md) · [internal/emberplus/docs/consumer.md](internal/emberplus/docs/consumer.md) |
 | Probel SW-P-08+ | TCP               | 2008      | 🟡 PR #84 | 🟡 PR #84 | [internal/probel/CLAUDE.md](internal/probel/CLAUDE.md) |
 | Probel SW-P-02  | TCP               | —         | planned  | —        | — |
 | TSL UMD v3.1/v4/v5 | UDP push       | —         | planned  | —        | — |
@@ -175,21 +175,25 @@ internal/
   protocol/                   neutral consumer-plugin registry + iface
   provider/                   neutral provider-plugin registry + iface
   acp1/  acp2/  emberplus/  probel/
-                              one folder per protocol, each with
-                              codec/ (optional), consumer/, provider/,
-                              wireshark/, and a CLAUDE.md
+                              one folder per protocol, self-contained:
+                              CLAUDE.md, codec/ (optional), consumer/,
+                              provider/, wireshark/, docs/, assets/
+  tsl/                        placeholder for future TSL UMD plugin
+                              (assets only; no Go code yet)
   transport/                  UDP / TCP / AN2 framer, traffic capture
   export/                     JSON / YAML / CSV export + importer
   scenario/                   scenario-driven test runner
   storage/                    file-backed persistence (planned)
-assets/
-  acp1/  acp2/  emberplus/  probel/
-                              spec PDFs + vendor tools + TS emulators
 tests/unit/                   table-driven + replay tests
 tests/integration/            real-device tests (build tag)
 tests/smoke/                  simple-path sanity per protocol
 tests/fixtures/               version-controlled test input
-docs/                         architecture, connector, protocol refs
+docs/                         cross-cutting only:
+                              ARCHITECTURE.md · CONNECTOR.md · VISION.md ·
+                              wireshark.md · protocols/schema.md ·
+                              protocols/elements/ · examples/ ·
+                              deployment/ · references/ ·
+                              fixtures-products.md · hub/ · links/
 ```
 
 ---

@@ -38,39 +38,40 @@ internal/
     _template/                copy-and-customize for a new protocol
     compliance/               absorb-and-fire-event spec-deviation hooks
   provider/                   neutral provider-plugin registry + iface
-  acp1/
-    CLAUDE.md                 atomic per-protocol context
+  acp1/                       per-protocol self-contained subtree
+    CLAUDE.md                 atomic wire-format context
     consumer/                 package acp1 — implements protocol.Protocol
     provider/                 package acp1 — implements provider.Provider
     wireshark/                dissector_acp1.lua
+    docs/                     consumer.md / provider.md / README.md
+    assets/                   spec PDFs + vendor tools (Synapse Simulator)
   acp2/
     CLAUDE.md
-    consumer/                 package acp2
-    provider/                 package acp2
-    wireshark/                dissector_acp2.lua
+    consumer/   provider/   wireshark/   docs/   assets/
   emberplus/
     CLAUDE.md
-    codec/                    stdlib-only wire codec
-      ber/  glow/  s101/  matrix/
-    consumer/                 package emberplus
-    provider/                 package emberplus
-    wireshark/                dissector_emberplus.lua
+    codec/                    stdlib-only wire codec (ber / glow / s101 / matrix)
+    consumer/   provider/   wireshark/   docs/
+    assets/                   Ember+ PDFs + TinyEmber+/EmberPlusView tools
+                              + BY-RESEARCH TS emulator (assets/smh/)
   probel/
     CLAUDE.md
     codec/                    stdlib-only wire codec (lift-ready)
-    consumer/                 package probel
-    provider/                 package probel
-    wireshark/                dissector TBD
+    consumer/   provider/   wireshark/
+    assets/                   SW-P-08 spec + Commie + TS SW-P-08 emulator
+  tsl/                        placeholder for future TSL UMD plugin
+    assets/                   TSL UMD spec
   transport/                  UDP + TCP + AN2 framer + JSONL capture
   export/                     json/yaml/csv exporter + importer
   scenario/                   scenario-driven test runner
   storage/                    file-backed persistence (planned)
 
-assets/                       spec PDFs, vendor tools, TS emulators
-  acp1/   acp2/   emberplus/   probel/
-
 tests/                        unit / integration / smoke / fixtures
-docs/                         architecture, connector, protocol refs
+docs/                         cross-cutting only:
+                                ARCHITECTURE.md · CONNECTOR.md · VISION.md
+                                wireshark.md · protocols/schema.md
+                                protocols/elements/ · examples/ · deployment/
+                                references/ · links/ · fixtures-products.md
 ```
 
 Per-protocol `internal/<proto>/CLAUDE.md` is authoritative for that

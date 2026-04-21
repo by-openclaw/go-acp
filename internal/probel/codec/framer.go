@@ -25,7 +25,7 @@ var (
 // (~sum + 1) & 0xFF. Applied by SW-P-08 over (DATA || BTC) pre-escape.
 //
 // Reference: TS BufferUtility.calculateChecksum8
-// (assets/probel/smh-probelsw08p/src/common/utility/buffer.utility.ts line 152).
+// (internal/probel/assets/smh-probelsw08p/src/common/utility/buffer.utility.ts line 152).
 func Checksum8(b []byte) byte {
 	var s uint32
 	for _, x := range b {

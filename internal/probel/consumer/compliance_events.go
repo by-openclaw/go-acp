@@ -6,7 +6,7 @@ package probel
 // (per memory/feedback_no_workaround.md §7–9: absorb silently = never;
 // absorb + fire event = always; spec-section cited in the comment).
 //
-// Authoritative spec: assets/probel/probel-sw08p/SW-P-08 Issue 30.doc.
+// Authoritative spec: internal/probel/assets/probel-sw08p/SW-P-08 Issue 30.doc.
 //
 // The generic Profile counter lives in internal/protocol/compliance/.
 // Classification:

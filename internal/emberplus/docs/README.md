@@ -12,8 +12,8 @@ Consumer + provider documentation for the Ember+ protocol
 
 | Document | Path | Description |
 |---|---|---|
-| Ember+ Protocol Specification | [Ember+ Documentation.pdf](../../../assets/emberplus/Ember+%20Documentation.pdf) | v2.50 rev.15 (2017-11-09), Lawo GmbH. Authoritative |
-| Ember+ Formulas | [Ember+ Formulas.pdf](../../../assets/emberplus/Ember+%20Formulas.pdf) | Parameter formula syntax reference |
+| Ember+ Protocol Specification | [Ember+ Documentation.pdf](../../../internal/emberplus/assets/Ember+%20Documentation.pdf) | v2.50 rev.15 (2017-11-09), Lawo GmbH. Authoritative |
+| Ember+ Formulas | [Ember+ Formulas.pdf](../../../internal/emberplus/assets/Ember+%20Formulas.pdf) | Parameter formula syntax reference |
 
 ## Quick links
 

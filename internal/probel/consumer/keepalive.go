@@ -15,7 +15,7 @@ import (
 // controller that never responds is dropped. Auto-response keeps the
 // session alive without bothering application code.
 //
-// Reference: TS assets/probel/smh-probelsw08p/src/command/application-keep-alive/.
+// Reference: TS internal/probel/assets/smh-probelsw08p/src/command/application-keep-alive/.
 func (p *Plugin) installKeepaliveAutoResponder(cli *codec.Client) {
 	cli.Subscribe(func(f codec.Frame) {
 		if f.ID != codec.TxAppKeepaliveRequest {

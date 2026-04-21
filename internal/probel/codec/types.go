@@ -2,14 +2,14 @@
 //
 // Authoritative spec:
 //
-//	assets/probel/probel-sw08p/SW-P-08 Issue 30.doc  (General Remote Control Protocol)
+//	internal/probel/assets/probel-sw08p/SW-P-08 Issue 30.doc  (General Remote Control Protocol)
 //
 // Section §2 of that document defines the transmission protocol (ACK/NAK
 // flow, retry semantics, 10ms response target, 128-byte DATA cap).
 //
 // Secondary reference for byte layouts (NOT authoritative for flow):
 //
-//	assets/probel/smh-probelsw08p/  (TypeScript matrix-side emulator — useful as
+//	internal/probel/assets/smh-probelsw08p/  (TypeScript matrix-side emulator — useful as
 //	                                 a decode/layout aid; the Go implementation
 //	                                 follows the spec, not the TS code)
 //
@@ -42,7 +42,7 @@ const (
 type CommandID byte
 
 // RX general command IDs (controller → matrix). Source: SW-P-88 §5 and TS
-// assets/probel/smh-probelsw08p/src/command/command-contract.ts RX_GENERAL.
+// internal/probel/assets/smh-probelsw08p/src/command/command-contract.ts RX_GENERAL.
 const (
 	RxCrosspointInterrogate          CommandID = 0x01 // 001 dest status request
 	RxCrosspointConnect              CommandID = 0x02 // 002 connect (route)
@@ -101,7 +101,7 @@ const (
 )
 
 // TX general command IDs (matrix → controller). Source: SW-P-88 §5 and TS
-// assets/probel/smh-probelsw08p/src/command/command-contract.ts TX_GENERAL.
+// internal/probel/assets/smh-probelsw08p/src/command/command-contract.ts TX_GENERAL.
 const (
 	TxCrosspointTally              CommandID = 0x03 // 003 async tally
 	TxCrosspointConnected          CommandID = 0x04 // 004 connect ack

@@ -5,7 +5,7 @@
 | Document                  | Path                                          |
 |---------------------------|-----------------------------------------------|
 | ACP v1.4 specification   | [docs/protocols/AXON-ACP_v1_4.pdf](../protocols/AXON-ACP_v1_4.pdf) |
-| ACP2 specification       | [docs/protocols/acp2_protocol.pdf](../protocols/acp2_protocol.pdf)   |
+| ACP2 specification       | [internal/acp2/assets/acp2_protocol.pdf](../protocols/acp2_protocol.pdf)   |
 | AN2 transport spec       | [docs/protocols/an2_protocol.pdf](../protocols/an2_protocol.pdf)     |
 
 ## Related protocols (future work)

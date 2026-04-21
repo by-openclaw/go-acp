@@ -6,9 +6,9 @@ without having to decode frames by hand.
 
 | Protocol | Transport          | Default ports | Lua file                                  |
 |----------|--------------------|---------------|-------------------------------------------|
-| ACP1     | UDP / TCP direct   | 2071          | [`assets/acp1/dissector_acpv1.lua`](../assets/acp1/dissector_acpv1.lua) |
-| ACP2     | AN2 over TCP       | 2072          | [`assets/acp2/dissector_acp2.lua`](../assets/acp2/dissector_acp2.lua)   |
-| Ember+   | S101 over TCP      | 9000 / 9090 / 9092 | [`assets/emberplus/dissector_emberplus.lua`](../assets/emberplus/dissector_emberplus.lua) |
+| ACP1     | UDP / TCP direct   | 2071          | [`internal/acp1/assets/dissector_acpv1.lua`](../internal/acp1/assets/dissector_acpv1.lua) |
+| ACP2     | AN2 over TCP       | 2072          | [`internal/acp2/assets/dissector_acp2.lua`](../internal/acp2/assets/dissector_acp2.lua)   |
+| Ember+   | S101 over TCP      | 9000 / 9090 / 9092 | [`internal/emberplus/assets/dissector_emberplus.lua`](../internal/emberplus/assets/dissector_emberplus.lua) |
 
 All three target **Wireshark 4.x** (Lua 5.2+). They install the same way.
 
@@ -35,16 +35,16 @@ From the repo root:
 
 ```bash
 # Linux / macOS
-cp assets/acp1/dissector_acpv1.lua        "$HOME/.local/lib/wireshark/plugins/"
-cp assets/acp2/dissector_acp2.lua         "$HOME/.local/lib/wireshark/plugins/"
-cp assets/emberplus/dissector_emberplus.lua "$HOME/.local/lib/wireshark/plugins/"
+cp internal/acp1/assets/dissector_acpv1.lua        "$HOME/.local/lib/wireshark/plugins/"
+cp internal/acp2/assets/dissector_acp2.lua         "$HOME/.local/lib/wireshark/plugins/"
+cp internal/emberplus/assets/dissector_emberplus.lua "$HOME/.local/lib/wireshark/plugins/"
 ```
 
 ```powershell
 # Windows PowerShell
-Copy-Item assets/acp1/dissector_acpv1.lua        $env:APPDATA\Wireshark\plugins\
-Copy-Item assets/acp2/dissector_acp2.lua         $env:APPDATA\Wireshark\plugins\
-Copy-Item assets/emberplus/dissector_emberplus.lua $env:APPDATA\Wireshark\plugins\
+Copy-Item internal/acp1/assets/dissector_acpv1.lua        $env:APPDATA\Wireshark\plugins\
+Copy-Item internal/acp2/assets/dissector_acp2.lua         $env:APPDATA\Wireshark\plugins\
+Copy-Item internal/emberplus/assets/dissector_emberplus.lua $env:APPDATA\Wireshark\plugins\
 ```
 
 Any `.lua` file dropped into that folder is auto-loaded on Wireshark start.
@@ -161,7 +161,7 @@ Plugins** (Ctrl-Shift-L). No Wireshark restart needed.
 
 ## References
 
-- ACP1 spec: [`assets/acp1/AXON-ACP_v1_4.pdf`](../assets/acp1/AXON-ACP_v1_4.pdf)
-- ACP2 + AN2 spec: [`assets/acp2/acp2_protocol.pdf`](../assets/acp2/acp2_protocol.pdf) · [`assets/acp2/an2_protocol.pdf`](../assets/acp2/an2_protocol.pdf)
-- Ember+ spec v2.50: [`assets/emberplus/Ember+ Documentation.pdf`](../assets/emberplus/Ember+ Documentation.pdf)
+- ACP1 spec: [`internal/acp1/assets/AXON-ACP_v1_4.pdf`](../internal/acp1/assets/AXON-ACP_v1_4.pdf)
+- ACP2 + AN2 spec: [`internal/acp2/assets/acp2_protocol.pdf`](../internal/acp2/assets/acp2_protocol.pdf) · [`internal/acp2/assets/an2_protocol.pdf`](../internal/acp2/assets/an2_protocol.pdf)
+- Ember+ spec v2.50: [`internal/emberplus/assets/Ember+ Documentation.pdf`](../internal/emberplus/assets/Ember+ Documentation.pdf)
 - Wire format summary: [`CLAUDE.md`](../CLAUDE.md)

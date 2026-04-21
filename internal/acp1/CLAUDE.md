@@ -3,7 +3,7 @@
 Atomic per-protocol context for the ACP1 plugin. Read the root `CLAUDE.md`
 first for cross-cutting rules; this file holds the ACP1-specific wire spec.
 
-Authoritative spec: `assets/acp1/AXON-ACP_v1_4.pdf`.
+Authoritative spec: `internal/acp1/assets/AXON-ACP_v1_4.pdf`.
 Wireshark dissector (byte-exact reference): `./wireshark/dissector_acp1.lua`.
 C# reference (Mode A only): `ByResearch.DHS.AxonACP.DeviceDriver`. C# does NOT
 implement ACP2.
@@ -19,7 +19,9 @@ internal/acp1/
 ├── CLAUDE.md    ← this file
 ├── consumer/    package acp1 — implements protocol.Protocol
 ├── provider/    package acp1 — implements provider.Provider
-└── wireshark/   dissector_acp1.lua
+├── wireshark/   dissector_acp1.lua
+├── docs/        consumer.md / provider.md / README.md
+└── assets/      AXON-ACP_v1_4.pdf + Synapse Simulator vendor tool
 ```
 
 ---

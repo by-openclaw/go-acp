@@ -6,7 +6,7 @@ package probel
 // absorb + fire event; never silently work around. See
 // memory/feedback_no_workaround.md §7–9.
 //
-// Authoritative spec: assets/probel/probel-sw08p/SW-P-08 Issue 30.doc.
+// Authoritative spec: internal/probel/assets/probel-sw08p/SW-P-08 Issue 30.doc.
 //
 // The generic Profile counter lives in internal/protocol/compliance/.
 // Aggregated across every accepted session since Serve started.

@@ -10,7 +10,7 @@ import "fmt"
 // |-------|-------|---------------------------|
 // | ID    | 1     | RxAppKeepaliveResponse    |
 //
-// Reference: TS assets/probel/smh-probelsw08p/src/command/application-keep-alive/
+// Reference: TS internal/probel/assets/smh-probelsw08p/src/command/application-keep-alive/
 // application-keepalive-response.ts.
 func EncodeKeepaliveResponse() Frame {
 	return Frame{ID: RxAppKeepaliveResponse}
