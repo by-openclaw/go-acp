@@ -4,7 +4,7 @@
 
 // Gated by ACP1_TEST_HOST env var. Skip when not set.
 //
-// Run: ACP1_TEST_HOST=10.6.239.113 go test -tags integration ./tests/integration/acp1/...
+// Run: ACP1_TEST_HOST=10.6.239.113 go test -tags integration ./internal/acp1/smoke/...
 package acp1_test
 
 import (

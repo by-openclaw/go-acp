@@ -25,7 +25,7 @@ type captureRecord struct {
 
 func loadCapture(t *testing.T, name string) []captureRecord {
 	t.Helper()
-	path := filepath.Join("..", "..", "fixtures", "acp1", name)
+	path := filepath.Join("..", "testdata", "fixtures", name)
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)

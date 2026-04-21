@@ -2,7 +2,7 @@
 //
 // These tests exercise the error-to-event mapping without a live
 // session: they load the real wire captures the CLI produced on the
-// VM (tests/fixtures/acp2/err_no_access.jsonl, err_invalid_obj.jsonl),
+// VM (internal/acp2/testdata/fixtures/err_no_access.jsonl, err_invalid_obj.jsonl),
 // find the ACP2 error reply frame in each, and assert that the pure
 // helper EventForErrStatus maps the status code to the expected
 // compliance event label.

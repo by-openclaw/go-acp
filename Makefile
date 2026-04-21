@@ -108,10 +108,10 @@ test-cover:
 test-integration: test-integration-acp1 test-integration-acp2
 
 test-integration-acp1:
-	$(GO) test -tags integration ./tests/integration/acp1/...
+	$(GO) test -tags integration ./internal/acp1/smoke/... ./internal/acp1/integration/...
 
 test-integration-acp2:
-	$(GO) test -tags integration ./tests/integration/acp2/...
+	$(GO) test -tags integration ./internal/acp2/integration/...
 
 # ---------------------------------------------------------------- Fixtures
 
@@ -119,40 +119,40 @@ test-integration-acp2:
 
 # Re-extract all per-type fixtures from bin/*.pcapng sources.
 # Requires Wireshark (tshark + editcap) on PATH. See
-# tests/fixtures/protocol_types/<proto>/README.md for the fixture maps.
+# internal/<proto>/testdata/protocol_types/README.md for the fixture maps.
 fixtures: fixtures-emberplus fixtures-acp1
 
 fixtures-emberplus:
-	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   tests/fixtures/protocol_types/emberplus/root_node              1
-	@scripts/fixturize.sh bin/emberplus_glow_mtx_labels_param_lua.pcapng   tests/fixtures/protocol_types/emberplus/qualified_node         582
-	@scripts/fixturize.sh bin/emberplus_glow_glow_lua.pcapng               tests/fixtures/protocol_types/emberplus/parameter              19
-	@scripts/fixturize.sh bin/emberplus_glow_mtx_labels_param_lua.pcapng   tests/fixtures/protocol_types/emberplus/qualified_parameter    19
-	@scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng                tests/fixtures/protocol_types/emberplus/matrix                 41
-	@scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng                tests/fixtures/protocol_types/emberplus/qualified_matrix       43
-	@scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng                tests/fixtures/protocol_types/emberplus/matrix_connection      41
-	@scripts/fixturize.sh bin/emberplus_glow_lua.pcapng                    tests/fixtures/protocol_types/emberplus/label                  127
-	@scripts/fixturize.sh bin/emberplus_glow_lua.pcapng                    tests/fixtures/protocol_types/emberplus/stream_collection      9
-	@scripts/fixturize.sh bin/emberplus_glow_lua.pcapng                    tests/fixtures/protocol_types/emberplus/command_get_directory  125
-	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   tests/fixtures/protocol_types/emberplus/command_subscribe      52
-	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   tests/fixtures/protocol_types/emberplus/command_unsubscribe    105
-	@scripts/fixturize.sh bin/emberplus_glow_functions_lua.pcapng          tests/fixtures/protocol_types/emberplus/function_invoke        346
-	@scripts/fixturize.sh bin/emberplus_glow_functions_lua.pcapng          tests/fixtures/protocol_types/emberplus/invocation_result      348
+	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   internal/emberplus/testdata/protocol_types/root_node              1
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_labels_param_lua.pcapng   internal/emberplus/testdata/protocol_types/qualified_node         582
+	@scripts/fixturize.sh bin/emberplus_glow_glow_lua.pcapng               internal/emberplus/testdata/protocol_types/parameter              19
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_labels_param_lua.pcapng   internal/emberplus/testdata/protocol_types/qualified_parameter    19
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng                internal/emberplus/testdata/protocol_types/matrix                 41
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng                internal/emberplus/testdata/protocol_types/qualified_matrix       43
+	@scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng                internal/emberplus/testdata/protocol_types/matrix_connection      41
+	@scripts/fixturize.sh bin/emberplus_glow_lua.pcapng                    internal/emberplus/testdata/protocol_types/label                  127
+	@scripts/fixturize.sh bin/emberplus_glow_lua.pcapng                    internal/emberplus/testdata/protocol_types/stream_collection      9
+	@scripts/fixturize.sh bin/emberplus_glow_lua.pcapng                    internal/emberplus/testdata/protocol_types/command_get_directory  125
+	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   internal/emberplus/testdata/protocol_types/command_subscribe      52
+	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   internal/emberplus/testdata/protocol_types/command_unsubscribe    105
+	@scripts/fixturize.sh bin/emberplus_glow_functions_lua.pcapng          internal/emberplus/testdata/protocol_types/function_invoke        346
+	@scripts/fixturize.sh bin/emberplus_glow_functions_lua.pcapng          internal/emberplus/testdata/protocol_types/invocation_result      348
 
 # Re-extract all ACP1 per-type fixtures from a Synapse-emulator walk.
 fixtures-acp1:
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/root          6
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/integer       64
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/ip_address    26
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/float         68
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/enumerated    24
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/string        8
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/frame_status  2
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/alarm         114
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/long          400
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/byte          38
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/request       1
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/reply         2
-	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  tests/fixtures/protocol_types/acp1/error         1274
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/root          6
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/integer       64
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/ip_address    26
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/float         68
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/enumerated    24
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/string        8
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/frame_status  2
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/alarm         114
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/long          400
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/byte          38
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/request       1
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/reply         2
+	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/error         1274
 
 # ---------------------------------------------------------------- Lint / vet / fmt
 

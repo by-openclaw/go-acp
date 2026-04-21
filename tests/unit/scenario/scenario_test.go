@@ -1,8 +1,8 @@
-// Scenario discovery test — walks tests/scenarios/** and runs every
-// .json file through the declarative harness. Each scenario appears
-// as its own sub-test in `go test -v` output.
+// Scenario discovery test — walks every internal/<proto>/scenarios/ tree
+// and runs every .json file through the declarative harness. Each scenario
+// appears as its own sub-test in `go test -v` output.
 //
-// Add a new scenario = drop a .json in tests/scenarios/<proto>/. No
+// Add a new scenario = drop a .json in internal/<proto>/scenarios/. No
 // test-code changes required.
 package scenario_test
 
@@ -14,16 +14,24 @@ import (
 )
 
 // TestScenarios discovers every committed scenario under
-// tests/scenarios/ and runs it. Failures are per-scenario — one green
+// internal/*/scenarios/ and runs it. Failures are per-scenario — one green
 // line per passing scenario, one red line per failing one.
 func TestScenarios(t *testing.T) {
-	root := filepath.Join("..", "..", "scenarios")
-	paths, err := scenario.Discover(root)
+	roots, err := filepath.Glob(filepath.Join("..", "..", "..", "internal", "*", "scenarios"))
 	if err != nil {
-		t.Fatalf("discover %s: %v", root, err)
+		t.Fatalf("glob scenarios: %v", err)
+	}
+
+	var paths []string
+	for _, root := range roots {
+		found, err := scenario.Discover(root)
+		if err != nil {
+			t.Fatalf("discover %s: %v", root, err)
+		}
+		paths = append(paths, found...)
 	}
 	if len(paths) == 0 {
-		t.Fatalf("no scenarios found under %s — check the layout docs", root)
+		t.Fatalf("no scenarios found under internal/*/scenarios/ — check the layout docs")
 	}
 
 	for _, p := range paths {

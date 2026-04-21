@@ -8,7 +8,7 @@ import (
 )
 
 // TestEmberPlusPerTypeFixtures asserts the integrity of per-type fixtures:
-//   - every expected type directory exists under tests/fixtures/protocol_types/emberplus/
+//   - every expected type directory exists under internal/emberplus/testdata/protocol_types/
 //   - each directory ships capture.pcapng + tshark.tree + README.md
 //   - the frozen tshark.tree contains the APPLICATION tag(s) that define the type
 //
@@ -17,7 +17,7 @@ import (
 // require a matching Wireshark install and the Lua dissector loaded, which
 // is brittle across runners.
 func TestEmberPlusPerTypeFixtures(t *testing.T) {
-	base := "../../fixtures/protocol_types/emberplus"
+	base := "../../../internal/emberplus/testdata/protocol_types"
 
 	cases := []struct {
 		dir        string

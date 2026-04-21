@@ -1,7 +1,7 @@
 {
   "name": "acp2 error: get on unknown obj-id",
   "protocol": "acp2",
-  "wire_file": "tests/fixtures/acp2/err_invalid_obj.jsonl",
+  "wire_file": "internal/acp2/testdata/fixtures/err_invalid_obj.jsonl",
   "expect_events": ["acp2_invalid_object_received"],
   "expect_error_class": "ACP2Error",
   "expect_error_status": 1
