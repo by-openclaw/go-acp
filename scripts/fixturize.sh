@@ -4,7 +4,7 @@
 # Usage:
 #   scripts/fixturize.sh <src.pcapng> <dst-dir> <frame-list>
 #   Example: scripts/fixturize.sh bin/emberplus_glow_mtx_lua.pcapng \
-#              tests/fixtures/protocol_types/emberplus/matrix 41
+#              internal/emberplus/testdata/protocol_types/matrix 41
 #
 # Layout produced under <dst-dir>:
 #   capture.pcapng   slimmed (only <frame-list>)

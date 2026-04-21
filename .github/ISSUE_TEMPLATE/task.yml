@@ -55,12 +55,12 @@ body:
         - Expected files (full paths)
         - What's IN scope and what's OUT
       placeholder: |
-        Package: internal/protocol/acp2/
+        Package: internal/acp2/consumer/
         Functions: Decode, Encode, DecodeProperty
         Files:
-          - internal/protocol/acp2/codec.go
-          - internal/protocol/acp2/property_codec.go
-          - tests/unit/acp2/codec_spec_test.go
+          - internal/acp2/consumer/codec.go
+          - internal/acp2/consumer/property_codec.go
+          - internal/acp2/consumer/codec_spec_test.go
         IN: ACP2 message + property codec
         OUT: walker, plugin wiring (separate task)
     validations:
@@ -72,8 +72,8 @@ body:
       label: Definition of Done
       placeholder: |
         - [ ] Code with all functions
-        - [ ] Unit tests in tests/unit/{proto}/ (black-box, exported API)
-        - [ ] Internal tests in internal/protocol/{proto}/ (white-box)
+        - [ ] Unit tests in internal/{proto}/consumer/*_test.go (package <proto>_test, black-box exported API)
+        - [ ] Internal tests in internal/{proto}/consumer/ (white-box, same package)
         - [ ] go vet clean
         - [ ] golangci-lint clean
         - [ ] go test -count=1 ./... passes (no regression)
@@ -86,8 +86,8 @@ body:
     attributes:
       label: Files affected (full paths)
       placeholder: |
-        - internal/protocol/acp2/codec.go (new)
-        - tests/unit/acp2/codec_spec_test.go (new)
+        - internal/acp2/consumer/codec.go (new)
+        - internal/acp2/consumer/codec_spec_test.go (new)
         - CHANGELOG.md (update)
     validations:
       required: true
