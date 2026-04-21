@@ -204,28 +204,6 @@ EXAMPLES
   acp watch 10.6.239.113 --verbose                    # + debug lines`)
 }
 
-func helpListProtocols() {
-	fmt.Println(`acp list-protocols — list available protocol plugins
-
-IN   acp list-protocols
-OUT  name        port   description
-     acp1        2071   Axon Control Protocol v1
-     acp2        2072   Axon Control Protocol v2 (AN2/TCP)
-     emberplus   9000   Ember+ v2.50 (S101/TCP)
-
-USAGE
-  acp list-protocols
-
-DESCRIPTION
-  Prints every protocol plugin that was compiled into this binary,
-  with its canonical name, default port, and one-line description.
-  The name shown here is what you pass to --protocol on other
-  commands.
-
-EXAMPLES
-  acp list-protocols`)
-}
-
 func helpExport() {
 	fmt.Println(`acp export — dump a walked device to json / yaml / csv
 
