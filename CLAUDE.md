@@ -54,7 +54,7 @@ internal/
     consumer/   provider/   wireshark/   docs/
     assets/                   Ember+ PDFs + TinyEmber+/EmberPlusView tools
                               + BY-RESEARCH TS emulator (assets/smh/)
-  probel/
+  probel-sw08p/               Probel SW-P-08 / SW-P-88 matrix control
     CLAUDE.md
     codec/                    stdlib-only wire codec (lift-ready)
     consumer/   provider/   wireshark/

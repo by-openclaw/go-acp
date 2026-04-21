@@ -40,13 +40,13 @@ import (
 	_ "acp/internal/acp1/consumer"
 	_ "acp/internal/acp2/consumer"
 	_ "acp/internal/emberplus/consumer"
-	_ "acp/internal/probel/consumer"
+	_ "acp/internal/probel-sw08p/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.
 	_ "acp/internal/acp1/provider"
 	_ "acp/internal/acp2/provider"
 	_ "acp/internal/emberplus/provider"
-	_ "acp/internal/probel/provider"
+	_ "acp/internal/probel-sw08p/provider"
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.

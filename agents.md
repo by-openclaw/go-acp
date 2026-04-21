@@ -43,7 +43,7 @@ tests/                          unit / integration / smoke / fixtures
 docs/                           cross-cutting architecture, connector, schema
 ```
 
-`<proto>` ∈ `{acp1, acp2, emberplus, probel}`.
+`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p}`.
 
 ---
 
@@ -73,7 +73,7 @@ Producer verb is `serve` for every protocol.
 internal/acp1/assets/       AXON-ACP_v1_4.pdf
 internal/acp2/assets/       acp2_protocol.pdf + an2_protocol.pdf
 internal/emberplus/assets/  Ember+ Documentation.pdf + Ember+ Formulas.pdf
-internal/probel/assets/probel-sw08p/SW-P-08 Issue 30.doc   (use antiword; the .pdf is corrupted)
+internal/probel-sw08p/assets/probel-sw08p/SW-P-08 Issue 30.doc   (use antiword; the .pdf is corrupted)
 
 internal/<proto>/wireshark/dissector_<proto>.lua   byte-exact reference
 ```
@@ -81,7 +81,7 @@ internal/<proto>/wireshark/dissector_<proto>.lua   byte-exact reference
 Extract the Probel spec:
 
 ```
-antiword "internal/probel/assets/probel-sw08p/SW-P-08 Issue 30.doc" > swp08.txt
+antiword "internal/probel-sw08p/assets/probel-sw08p/SW-P-08 Issue 30.doc" > swp08.txt
 ```
 
 SW-P-08 §2 defines the transmission protocol (ACK/NAK flow). Any code or
@@ -168,7 +168,7 @@ Co-Authored-By: Claude Opus ...
 ```
 
 Where `<type>` ∈ `{feat, fix, refactor, docs, test, chore}` and `<scope>`
-is the protocol or subsystem (`acp1`, `emberplus`, `probel`, `dhs`, etc.).
+is the protocol or subsystem (`acp1`, `emberplus`, `probel-sw08p`, `dhs`, etc.).
 
 ---
 

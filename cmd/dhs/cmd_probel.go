@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/probel/codec"
-	probelproto "acp/internal/probel/consumer"
+	"acp/internal/probel-sw08p/codec"
+	probelproto "acp/internal/probel-sw08p/consumer"
 	"acp/internal/transport"
 )
 
