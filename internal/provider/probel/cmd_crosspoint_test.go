@@ -125,6 +125,56 @@ func TestHandleCrosspointInterrogateUnit(t *testing.T) {
 	}
 }
 
+// TestCrosspointTallyDumpLoopback asserts that the byte-form dump covers
+// every destination on the requested (matrix, level) in a single frame
+// for our 16x16 demo matrix. Seeded routes should appear at their dst
+// index; unrouted dests report source=0.
+func TestCrosspointTallyDumpLoopback(t *testing.T) {
+	exp := demoMatrixExport(16, 16)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := newServer(logger, exp)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = srv.Serve(ctx, "127.0.0.1:0") }()
+	addr := waitBound(t, srv)
+	host, port := splitAddr(t, addr)
+
+	// Seed two routes via the API path.
+	if _, err := srv.SetValue(context.Background(), "0.0.2", 7); err != nil {
+		t.Fatalf("seed[2]=7: %v", err)
+	}
+	if _, err := srv.SetValue(context.Background(), "0.0.5", 11); err != nil {
+		t.Fatalf("seed[5]=11: %v", err)
+	}
+
+	f := &probelproto.Factory{}
+	plugin := f.New(logger).(*probelproto.Plugin)
+	dc, cancelDC := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelDC()
+	if err := plugin.Connect(dc, host, port); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer func() { _ = plugin.Disconnect() }()
+
+	res, err := plugin.CrosspointTallyDump(dc, 0, 0)
+	if err != nil {
+		t.Fatalf("CrosspointTallyDump: %v", err)
+	}
+	if res.IsWord {
+		t.Fatalf("want byte form for 16x16 matrix")
+	}
+	if len(res.Byte.SourceIDs) != 16 {
+		t.Fatalf("got %d tallies; want 16", len(res.Byte.SourceIDs))
+	}
+	if res.Byte.SourceIDs[2] != 7 || res.Byte.SourceIDs[5] != 11 {
+		t.Errorf("seeded tallies wrong: [2]=%d, [5]=%d; want 7, 11",
+			res.Byte.SourceIDs[2], res.Byte.SourceIDs[5])
+	}
+	if res.Byte.SourceIDs[0] != 0 {
+		t.Errorf("unrouted dst[0] source = %d; want 0", res.Byte.SourceIDs[0])
+	}
+}
+
 // TestCrosspointConnectLoopback drives a full rx 002 → tx 004 + tx 003
 // round-trip. Extra assertions: the provider's tree now reflects the
 // new routing, and a second consumer attached to the same provider

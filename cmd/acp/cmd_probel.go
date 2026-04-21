@@ -294,7 +294,37 @@ func runProbelDualStatus(ctx context.Context, args []string) error {
 	return nil
 }
 func runProbelTallyDump(ctx context.Context, args []string) error {
-	return fmt.Errorf("probel tally-dump: not yet implemented (see #82)")
+	pf, err := parseProbelFlags(args, struct{ dst, src bool }{})
+	if err != nil {
+		return err
+	}
+	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, pf.addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	res, err := p.CrosspointTallyDump(cctx, uint8(pf.matrix), uint8(pf.level))
+	if err != nil {
+		return err
+	}
+	if res.IsWord {
+		fmt.Printf("tally-dump (word) matrix=%d level=%d first_dst=%d tallies=%d\n",
+			res.Word.MatrixID, res.Word.LevelID,
+			res.Word.FirstDestinationID, len(res.Word.SourceIDs))
+		for i, src := range res.Word.SourceIDs {
+			fmt.Printf("  dst=%d → src=%d\n", int(res.Word.FirstDestinationID)+i, src)
+		}
+	} else {
+		fmt.Printf("tally-dump (byte) matrix=%d level=%d first_dst=%d tallies=%d\n",
+			res.Byte.MatrixID, res.Byte.LevelID,
+			res.Byte.FirstDestinationID, len(res.Byte.SourceIDs))
+		for i, src := range res.Byte.SourceIDs {
+			fmt.Printf("  dst=%d → src=%d\n", int(res.Byte.FirstDestinationID)+i, src)
+		}
+	}
+	return nil
 }
 func runProbelProtectInterrogate(ctx context.Context, args []string) error {
 	return fmt.Errorf("probel protect-interrogate: not yet implemented (see #82)")

@@ -34,6 +34,8 @@ func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
 		return s.handleMaintenance(f)
 	case iprobel.RxDualControllerStatusRequest:
 		return s.handleDualControllerStatus(f)
+	case iprobel.RxCrosspointTallyDumpRequest, iprobel.RxCrosspointTallyDumpRequestExt:
+		return s.handleCrosspointTallyDumpRequest(f)
 	}
 	return handlerResult{}, nil
 }

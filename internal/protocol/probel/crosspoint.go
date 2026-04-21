@@ -74,3 +74,58 @@ func (p *Plugin) CrosspointConnect(
 	}
 	return c, nil
 }
+
+// CrosspointTallyDump asks the matrix to dump the full tally table for
+// one (matrix, level). The reply is one frame — tx 022 (byte form) if
+// the matrix fits in u8 indices, tx 023 (word form) otherwise. Large
+// matrices may require multiple frames on spec; this implementation
+// currently waits for a single frame and returns its payload — which
+// is sufficient for matrices up to 191 destinations in byte form or
+// 64 in word form. For larger dumps the caller should iterate with
+// narrower ranges (a future API extension).
+//
+// Reference: SW-P-88 §5.22 / §5.23 / §5.24.
+// TS reference: assets/probel/smh-probelsw08p/src/rx/021/ + tx/022/ + tx/023/.
+type TallyDumpResult struct {
+	// Exactly one of Byte / Word is populated; Is Word indicates which.
+	Byte   iprobel.CrosspointTallyDumpByteParams
+	Word   iprobel.CrosspointTallyDumpWordParams
+	IsWord bool
+}
+
+func (p *Plugin) CrosspointTallyDump(
+	ctx context.Context,
+	matrix, level uint8,
+) (TallyDumpResult, error) {
+	cli, err := p.getClient()
+	if err != nil {
+		return TallyDumpResult{}, err
+	}
+	req := iprobel.EncodeCrosspointTallyDumpRequest(iprobel.CrosspointTallyDumpRequestParams{
+		MatrixID: matrix, LevelID: level,
+	})
+	reply, err := cli.Send(ctx, req, func(f iprobel.Frame) bool {
+		return f.ID == iprobel.TxCrosspointTallyDumpByte ||
+			f.ID == iprobel.TxCrosspointTallyDumpWord ||
+			f.ID == iprobel.TxCrosspointTallyDumpWordExt
+	})
+	if err != nil {
+		return TallyDumpResult{}, fmt.Errorf("probel tally-dump: %w", err)
+	}
+	res := TallyDumpResult{}
+	if reply.ID == iprobel.TxCrosspointTallyDumpByte {
+		b, derr := iprobel.DecodeCrosspointTallyDumpByte(reply)
+		if derr != nil {
+			return TallyDumpResult{}, &protocol.TransportError{Op: "decode", Err: derr}
+		}
+		res.Byte = b
+	} else {
+		w, derr := iprobel.DecodeCrosspointTallyDumpWord(reply)
+		if derr != nil {
+			return TallyDumpResult{}, &protocol.TransportError{Op: "decode", Err: derr}
+		}
+		res.Word = w
+		res.IsWord = true
+	}
+	return res, nil
+}
