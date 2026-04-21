@@ -18,7 +18,7 @@ func TestHexDump(t *testing.T) {
 		{nil, ""},
 		{[]byte{0x10}, "10"},
 		{[]byte{0x10, 0x02, 0x01}, "10 02 01"},
-		{[]byte{0xAB, 0xCD, 0xEF, 0x00, 0xFF}, "AB CD EF 00 FF"},
+		{[]byte{0xAB, 0xCD, 0xEF, 0x00, 0xFF}, "ab cd ef 00 ff"},
 	}
 	for _, tc := range cases {
 		got := HexDump(tc.in)

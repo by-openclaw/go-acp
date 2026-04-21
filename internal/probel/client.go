@@ -341,17 +341,17 @@ func (c *Client) failPending(err error) {
 	}
 }
 
-// HexDump formats bytes as space-separated 2-digit uppercase hex, matching
-// the form used by Commie and by the SW-P-88 spec examples. The format is
-// always-on because users copy-paste these lines into Commie for real-MTX
-// validation without toggling a debug flag.
+// HexDump formats bytes as space-separated 2-digit lowercase hex, matching
+// the form Commie shows in its byte view and the SW-P-88 spec examples.
+// The format is always-on because users copy-paste these lines into Commie
+// for real-MTX validation without toggling a debug flag.
 //
-// Example: [0x10 0x02 0x01 …] → "10 02 01 02 00 05 0C 03 1F 10 03".
+// Example: [0x10 0x02 0x01 …] → "10 02 01 02 00 05 0c 03 1f 10 03".
 func HexDump(b []byte) string {
 	if len(b) == 0 {
 		return ""
 	}
-	const hex = "0123456789ABCDEF"
+	const hex = "0123456789abcdef"
 	out := make([]byte, 0, len(b)*3-1)
 	for i, x := range b {
 		if i > 0 {
