@@ -1,0 +1,5 @@
+Probel SW-P-08 Wireshark dissector — TODO.
+Drop `dissector_probel.lua` here when the first draft lands.
+See the ACP1/ACP2/Ember+ dissectors at
+../../acp1/wireshark/, ../../acp2/wireshark/, ../../emberplus/wireshark/
+for the expected shape.

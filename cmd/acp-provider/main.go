@@ -28,7 +28,7 @@ import (
 	acp1provider "acp/internal/provider/acp1"
 	acp2provider "acp/internal/provider/acp2"
 	_ "acp/internal/provider/emberplus"
-	_ "acp/internal/provider/probel"
+	_ "acp/internal/probel/provider"
 )
 
 func main() {
