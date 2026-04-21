@@ -36,6 +36,18 @@ func (s *server) handle(f iprobel.Frame) (handlerResult, error) {
 		return s.handleDualControllerStatus(f)
 	case iprobel.RxCrosspointTallyDumpRequest, iprobel.RxCrosspointTallyDumpRequestExt:
 		return s.handleCrosspointTallyDumpRequest(f)
+	case iprobel.RxProtectInterrogate, iprobel.RxProtectInterrogateExt:
+		return s.handleProtectInterrogate(f)
+	case iprobel.RxProtectConnect, iprobel.RxProtectConnectExt:
+		return s.handleProtectConnect(f)
+	case iprobel.RxProtectDisconnect, iprobel.RxProtectDisconnectExt:
+		return s.handleProtectDisconnect(f)
+	case iprobel.RxProtectDeviceNameRequest:
+		return s.handleProtectDeviceNameRequest(f)
+	case iprobel.RxProtectTallyDumpRequest, iprobel.RxProtectTallyDumpRequestExt:
+		return s.handleProtectTallyDumpRequest(f)
+	case iprobel.RxMasterProtectConnect:
+		return s.handleMasterProtectConnect(f)
 	}
 	return handlerResult{}, nil
 }

@@ -54,9 +54,15 @@ type protectRecord struct {
 // incoming CrosspointConnect requests (wire path) — both paths pass
 // through the same applyConnect helper so announcements fan out
 // consistently.
+//
+// Device-name table lives alongside matrix state: it is a single
+// process-wide map[deviceID]name used by rx 017 Protect Device Name
+// Request. Seeded with a handful of positional defaults ("DEV 0001",
+// …) so probes against an empty provider return a stable reply.
 type tree struct {
-	mu       sync.RWMutex
-	matrices map[matrixKey]*matrixState
+	mu          sync.RWMutex
+	matrices    map[matrixKey]*matrixState
+	deviceNames map[uint16]string
 }
 
 // newTree reduces a canonical Export to the per-(matrix,level) state the
@@ -74,12 +80,96 @@ type tree struct {
 // MatrixID is derived from the element's Number (1-based canonical) minus 1
 // so SW-P-08 IDs start at 0 per spec.
 func newTree(exp *canonical.Export) (*tree, error) {
-	t := &tree{matrices: map[matrixKey]*matrixState{}}
+	t := &tree{
+		matrices:    map[matrixKey]*matrixState{},
+		deviceNames: map[uint16]string{},
+	}
 	if exp == nil || exp.Root == nil {
 		return t, nil
 	}
 	visit(exp.Root, t)
 	return t, nil
+}
+
+// setDeviceName registers a human-readable label for deviceID. Called
+// from the API path (provider.SetDeviceName) or from test helpers.
+func (t *tree) setDeviceName(device uint16, name string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.deviceNames[device] = name
+}
+
+// deviceName returns the registered name, or a positional default
+// ("DEV 0001" etc.) when unknown — mirrors the TS emulator's behaviour
+// so controllers always get a 8-char-max string back.
+func (t *tree) deviceName(device uint16) string {
+	t.mu.RLock()
+	n, ok := t.deviceNames[device]
+	t.mu.RUnlock()
+	if ok {
+		return n
+	}
+	return fmt.Sprintf("DEV %04d", device)
+}
+
+// protectAt returns the protect record for (matrix, level, dst), or
+// the zero-value record (state=ProtectNone) when no protect is held.
+func (t *tree) protectAt(m, l uint8, dst uint16) protectRecord {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok || st.protects == nil {
+		return protectRecord{}
+	}
+	return st.protects[dst]
+}
+
+// applyProtectConnect records a protect ownership on (matrix, level,
+// dst) for device. Honours one-owner-wins — a subsequent call with a
+// different device overwrites only if the current state allows it
+// (ProtectNone or ProtectProbel; ProtectProbelOver blocks). Master
+// variant (rx 029) bypasses this check by passing override=true.
+func (t *tree) applyProtectConnect(m, l uint8, dst, device uint16, state uint8, override bool) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return fmt.Errorf("probel: unknown matrix=%d level=%d", m, l)
+	}
+	if int(dst) >= st.targetCount {
+		return fmt.Errorf("probel: dst %d >= targetCount %d", dst, st.targetCount)
+	}
+	existing := st.protects[dst]
+	if !override && existing.state == uint8(2) { // ProtectProbelOver
+		return fmt.Errorf("probel: dst=%d already under override protect by device=%d", dst, existing.deviceID)
+	}
+	st.protects[dst] = protectRecord{deviceID: device, state: state}
+	return nil
+}
+
+// applyProtectDisconnect clears the protect on (matrix, level, dst)
+// when the caller is the current owner. Returns an error otherwise —
+// a Probel-Protected dst cannot be released by a different device.
+func (t *tree) applyProtectDisconnect(m, l uint8, dst, device uint16) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return fmt.Errorf("probel: unknown matrix=%d level=%d", m, l)
+	}
+	if int(dst) >= st.targetCount {
+		return fmt.Errorf("probel: dst %d >= targetCount %d", dst, st.targetCount)
+	}
+	existing, had := st.protects[dst]
+	if !had {
+		return nil // already clear, idempotent
+	}
+	if existing.deviceID != device {
+		return fmt.Errorf("probel: dst=%d owned by device=%d, not %d",
+			dst, existing.deviceID, device)
+	}
+	delete(st.protects, dst)
+	return nil
 }
 
 // visit walks any canonical Element, adding Matrix elements to the tree.

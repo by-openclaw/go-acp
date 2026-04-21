@@ -326,23 +326,176 @@ func runProbelTallyDump(ctx context.Context, args []string) error {
 	}
 	return nil
 }
+// parseProbelProtectFlags parses host:port + matrix + level + dst + device.
+// Used by the five Protect* subcommands that all take the same shape.
+func parseProbelProtectFlags(args []string) (probelFlags, int, error) {
+	fs := flag.NewFlagSet("probel-protect", flag.ContinueOnError)
+	var pf probelFlags
+	fs.IntVar(&pf.matrix, "matrix", 0, "matrix id (0-255)")
+	fs.IntVar(&pf.level, "level", 0, "level id (0-255)")
+	fs.IntVar(&pf.dst, "dst", 0, "destination id (0-65535)")
+	device := 0
+	fs.IntVar(&device, "device", 0, "device id (0-1023)")
+	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
+	if err := fs.Parse(args); err != nil {
+		return pf, 0, err
+	}
+	rest := fs.Args()
+	if len(rest) < 1 {
+		return pf, 0, fmt.Errorf("missing <host:port>")
+	}
+	pf.addr = rest[0]
+	if device < 0 || device > 0x3FF {
+		return pf, 0, fmt.Errorf("--device out of range (0-1023)")
+	}
+	return pf, device, nil
+}
+
 func runProbelProtectInterrogate(ctx context.Context, args []string) error {
-	return fmt.Errorf("probel protect-interrogate: not yet implemented (see #82)")
+	pf, device, err := parseProbelProtectFlags(args)
+	if err != nil {
+		return err
+	}
+	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, pf.addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	reply, err := p.ProtectInterrogate(cctx,
+		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("protect tally  matrix=%d level=%d dst=%d → state=%d device=%d\n",
+		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.State, reply.DeviceID)
+	return nil
 }
+
 func runProbelProtectConnect(ctx context.Context, args []string) error {
-	return fmt.Errorf("probel protect-connect: not yet implemented (see #82)")
+	pf, device, err := parseProbelProtectFlags(args)
+	if err != nil {
+		return err
+	}
+	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, pf.addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	reply, err := p.ProtectConnect(cctx,
+		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("protect connected  matrix=%d level=%d dst=%d device=%d state=%d\n",
+		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.DeviceID, reply.State)
+	return nil
 }
+
 func runProbelProtectDisconnect(ctx context.Context, args []string) error {
-	return fmt.Errorf("probel protect-disconnect: not yet implemented (see #82)")
+	pf, device, err := parseProbelProtectFlags(args)
+	if err != nil {
+		return err
+	}
+	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, pf.addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	reply, err := p.ProtectDisconnect(cctx,
+		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("protect disconnected  matrix=%d level=%d dst=%d device=%d state=%d\n",
+		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.DeviceID, reply.State)
+	return nil
 }
+
 func runProbelProtectName(ctx context.Context, args []string) error {
-	return fmt.Errorf("probel protect-name: not yet implemented (see #82)")
+	fs := flag.NewFlagSet("probel-protect-name", flag.ContinueOnError)
+	device := fs.Int("device", 0, "device id (0-1023)")
+	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	rest := fs.Args()
+	if len(rest) < 1 {
+		return fmt.Errorf("missing <host:port>")
+	}
+	cctx, cancel := context.WithTimeout(ctx, *timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, rest[0])
+	if err != nil {
+		return err
+	}
+	defer closer()
+	name, err := p.ProtectDeviceName(cctx, uint16(*device))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("device %d name=%q\n", *device, name)
+	return nil
 }
+
 func runProbelProtectDump(ctx context.Context, args []string) error {
-	return fmt.Errorf("probel protect-dump: not yet implemented (see #82)")
+	fs := flag.NewFlagSet("probel-protect-dump", flag.ContinueOnError)
+	matrix := fs.Int("matrix", 0, "matrix id (0-255)")
+	level := fs.Int("level", 0, "level id (0-255)")
+	firstDst := fs.Int("first-dst", 0, "first destination id to dump")
+	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	rest := fs.Args()
+	if len(rest) < 1 {
+		return fmt.Errorf("missing <host:port>")
+	}
+	cctx, cancel := context.WithTimeout(ctx, *timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, rest[0])
+	if err != nil {
+		return err
+	}
+	defer closer()
+	res, err := p.ProtectTallyDump(cctx, uint8(*matrix), uint8(*level), uint16(*firstDst))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("protect tally-dump matrix=%d level=%d first_dst=%d items=%d\n",
+		res.MatrixID, res.LevelID, res.FirstDestinationID, len(res.Items))
+	for i, it := range res.Items {
+		fmt.Printf("  dst=%d state=%d device=%d\n",
+			int(res.FirstDestinationID)+i, it.State, it.DeviceID)
+	}
+	return nil
 }
+
 func runProbelMasterProtect(ctx context.Context, args []string) error {
-	return fmt.Errorf("probel master-protect: not yet implemented (see #82)")
+	pf, device, err := parseProbelProtectFlags(args)
+	if err != nil {
+		return err
+	}
+	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, pf.addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	reply, err := p.MasterProtectConnect(cctx,
+		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("master-protect connected  matrix=%d level=%d dst=%d device=%d state=%d\n",
+		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.DeviceID, reply.State)
+	return nil
 }
 
 // splitHostPort accepts "host:port" or plain "host"; returns port=def
