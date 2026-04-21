@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	iprobel "acp/internal/probel"
@@ -119,14 +120,14 @@ func parseProbelFlags(args []string, want struct{ dst, src bool }) (probelFlags,
 	fs.IntVar(&pf.dst, "dst", 0, "destination id (0-65535)")
 	fs.IntVar(&pf.src, "src", 0, "source id (0-65535)")
 	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
-	if err := fs.Parse(args); err != nil {
-		return pf, err
-	}
-	rest := fs.Args()
-	if len(rest) < 1 {
+	addr, flagArgs := popPositional(args)
+	if addr == "" {
 		return pf, fmt.Errorf("missing <host:port>")
 	}
-	pf.addr = rest[0]
+	if err := fs.Parse(flagArgs); err != nil {
+		return pf, err
+	}
+	pf.addr = addr
 	if pf.matrix < 0 || pf.matrix > 255 {
 		return pf, fmt.Errorf("--matrix out of range (0-255)")
 	}
@@ -191,14 +192,13 @@ func runProbelConnect(ctx context.Context, args []string) error {
 func runProbelWatch(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-watch", flag.ContinueOnError)
 	timeout := fs.Duration("timeout", 0, "stop after this duration (0 = run until Ctrl-C)")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	rest := fs.Args()
-	if len(rest) < 1 {
+	addr, flagArgs := popPositional(args)
+	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	addr := rest[0]
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
 	if *timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, *timeout)
@@ -229,14 +229,13 @@ func runProbelMaintenance(ctx context.Context, args []string) error {
 	matrix := fs.Int("matrix", 0, "matrix id (clear-protects only; 255 = all)")
 	level := fs.Int("level", 0, "level id (clear-protects only; 255 = all)")
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	rest := fs.Args()
-	if len(rest) < 1 {
+	addr, flagArgs := popPositional(args)
+	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	addr := rest[0]
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
 	var mfn iprobel.MaintenanceFunction
 	switch *fn {
 	case "hard-reset":
@@ -267,16 +266,16 @@ func runProbelMaintenance(ctx context.Context, args []string) error {
 func runProbelDualStatus(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-dual-status", flag.ContinueOnError)
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	rest := fs.Args()
-	if len(rest) < 1 {
+	addr, flagArgs := popPositional(args)
+	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
+	}
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
-	p, closer, err := dialProbel(cctx, rest[0])
+	p, closer, err := dialProbel(cctx, addr)
 	if err != nil {
 		return err
 	}
@@ -337,14 +336,14 @@ func parseProbelProtectFlags(args []string) (probelFlags, int, error) {
 	device := 0
 	fs.IntVar(&device, "device", 0, "device id (0-1023)")
 	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
-	if err := fs.Parse(args); err != nil {
-		return pf, 0, err
-	}
-	rest := fs.Args()
-	if len(rest) < 1 {
+	addr, flagArgs := popPositional(args)
+	if addr == "" {
 		return pf, 0, fmt.Errorf("missing <host:port>")
 	}
-	pf.addr = rest[0]
+	if err := fs.Parse(flagArgs); err != nil {
+		return pf, 0, err
+	}
+	pf.addr = addr
 	if device < 0 || device > 0x3FF {
 		return pf, 0, fmt.Errorf("--device out of range (0-1023)")
 	}
@@ -421,16 +420,16 @@ func runProbelProtectName(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-protect-name", flag.ContinueOnError)
 	device := fs.Int("device", 0, "device id (0-1023)")
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	rest := fs.Args()
-	if len(rest) < 1 {
+	addr, flagArgs := popPositional(args)
+	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
+	}
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
-	p, closer, err := dialProbel(cctx, rest[0])
+	p, closer, err := dialProbel(cctx, addr)
 	if err != nil {
 		return err
 	}
@@ -449,16 +448,16 @@ func runProbelProtectDump(ctx context.Context, args []string) error {
 	level := fs.Int("level", 0, "level id (0-255)")
 	firstDst := fs.Int("first-dst", 0, "first destination id to dump")
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	rest := fs.Args()
-	if len(rest) < 1 {
+	addr, flagArgs := popPositional(args)
+	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
+	}
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
-	p, closer, err := dialProbel(cctx, rest[0])
+	p, closer, err := dialProbel(cctx, addr)
 	if err != nil {
 		return err
 	}
@@ -496,6 +495,29 @@ func runProbelMasterProtect(ctx context.Context, args []string) error {
 	fmt.Printf("master-protect connected  matrix=%d level=%d dst=%d device=%d state=%d\n",
 		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.DeviceID, reply.State)
 	return nil
+}
+
+// popPositional scans args and pulls out the first token that is NOT a
+// flag (does not start with "-" and is not a value for a previous bool-
+// less flag). That token is returned as addr; the remaining args (in
+// their original order, minus the popped one) are returned for
+// flag.Parse.
+//
+// Needed because the CLI documents `acp probel <cmd> <host:port>
+// [flags]` but flag.Parse stops at the first non-flag token — without
+// this helper, "127.0.0.1:2008 --matrix 0" would swallow every flag.
+func popPositional(args []string) (string, []string) {
+	out := make([]string, 0, len(args))
+	var addr string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if addr == "" && !strings.HasPrefix(a, "-") {
+			addr = a
+			continue
+		}
+		out = append(out, a)
+	}
+	return addr, out
 }
 
 // splitHostPort accepts "host:port" or plain "host"; returns port=def
