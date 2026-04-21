@@ -39,7 +39,7 @@ type Factory struct{}
 // Meta publishes the static descriptor used by the CLI + API.
 func (f *Factory) Meta() protocol.ProtocolMeta {
 	return protocol.ProtocolMeta{
-		Name:        "probel",
+		Name:        "probel-sw08p",
 		DefaultPort: DefaultPort,
 		Description: "Probel SW-P-08 / SW-P-88 matrix controller (TCP)",
 	}
@@ -116,8 +116,8 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 	if p.recorder != nil {
 		rec := p.recorder
-		cfg.OnTx = func(b []byte) { rec.Record("probel", "tx", b) }
-		cfg.OnRx = func(b []byte) { rec.Record("probel", "rx", b) }
+		cfg.OnTx = func(b []byte) { rec.Record("probel-sw08p", "tx", b) }
+		cfg.OnRx = func(b []byte) { rec.Record("probel-sw08p", "rx", b) }
 	}
 	cli, err := codec.Dial(ctx, addr, p.logger, cfg)
 	if err != nil {

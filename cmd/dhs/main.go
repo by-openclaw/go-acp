@@ -15,12 +15,12 @@
 //	dhs consumer acp2      diag        10.41.40.195 --slot 0
 //	dhs consumer emberplus walk        10.0.0.10:9000
 //	dhs consumer emberplus invoke      10.0.0.10:9000 --path router.salvo.fire
-//	dhs consumer probel    interrogate 127.0.0.1:2008 --matrix 0 --level 0 --dst 5
+//	dhs consumer probel-sw08p    interrogate 127.0.0.1:2008 --matrix 0 --level 0 --dst 5
 //
 //	dhs producer acp1      serve --tree tree.json --port 2071
 //	dhs producer acp2      serve --tree tree.json --port 2072
 //	dhs producer emberplus serve --tree tree.json --port 9000
-//	dhs producer probel    serve --tree matrix.json --port 2008
+//	dhs producer probel-sw08p    serve --tree matrix.json --port 2008
 //
 // The CLI is deliberately thin: it parses the consumer|producer + protocol
 // prefix, dispatches to a per-verb runner, and prints. It knows nothing
@@ -152,7 +152,7 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	verb := args[1]
 	rest := args[2:]
 
-	if proto == "probel" {
+	if proto == "probel-sw08p" {
 		return runProbel(ctx, append([]string{verb}, rest...))
 	}
 
@@ -237,13 +237,13 @@ USAGE
   dhs -h | --help                            this page
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | emberplus | probel
+  Protocols: acp1 | acp2 | emberplus | probel-sw08p
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
                                profile, diag (ACP2 only)
-  Verbs (probel):              interrogate, connect, tally-dump, watch, etc.
-                               (run 'dhs consumer probel --help' for list)
+  Verbs (probel-sw08p):        interrogate, connect, tally-dump, watch, etc.
+                               (run 'dhs consumer probel-sw08p --help' for list)
 
   Examples:
     dhs consumer acp1      walk        10.6.239.113
@@ -251,17 +251,17 @@ CONSUMER (outbound — connect to a device, query / control it)
     dhs consumer acp2      walk        10.41.40.195
     dhs consumer emberplus walk        10.0.0.10:9000
     dhs consumer emberplus invoke      10.0.0.10:9000 --path router.salvo.fire
-    dhs consumer probel    interrogate 127.0.0.1:2008 --matrix 0 --level 0 --dst 5
+    dhs consumer probel-sw08p    interrogate 127.0.0.1:2008 --matrix 0 --level 0 --dst 5
 
 PRODUCER (inbound — serve a canonical tree to consumers over the wire)
-  Protocols: acp1 | acp2 | emberplus | probel
+  Protocols: acp1 | acp2 | emberplus | probel-sw08p
   Verbs:     serve
 
   Examples:
     dhs producer acp1      serve --tree tree.json --port 2071
     dhs producer acp2      serve --tree tree.json --port 2072
     dhs producer emberplus serve --tree tree.json --port 9000
-    dhs producer probel    serve --tree matrix.json --port 2008
+    dhs producer probel-sw08p    serve --tree matrix.json --port 2008
 
 SERVE FLAGS (common to every producer)
   --tree PATH             canonical tree.json (required)
@@ -292,7 +292,7 @@ PROTOCOLS
   acp1        Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
   acp2        Axon Control Protocol v2 (AN2/TCP only)
   emberplus   Ember+ (Lawo)
-  probel      Probel SW-P-08 / SW-P-88 matrix router control
+  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
 
 GENERIC VERBS (acp1 / acp2 / emberplus)`)
 	for _, c := range commands {
@@ -300,7 +300,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)`)
 	}
 	fmt.Println(`
 PROBEL VERBS
-  run 'dhs consumer probel -h' for the Probel subcommand catalogue.
+  run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
 
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.`)
 }
@@ -312,7 +312,7 @@ USAGE
   dhs producer <protocol> serve [flags]
 
 PROTOCOLS
-  acp1 | acp2 | emberplus | probel
+  acp1 | acp2 | emberplus | probel-sw08p
 
 FLAGS (common)
   --tree PATH             canonical tree.json (required)
@@ -331,5 +331,5 @@ EXAMPLES
   dhs producer acp1      serve --tree tree.json --port 2071
   dhs producer acp2      serve --tree tree.json --port 2072
   dhs producer emberplus serve --tree tree.json --port 9000
-  dhs producer probel    serve --tree matrix.json --port 2008`)
+  dhs producer probel-sw08p    serve --tree matrix.json --port 2008`)
 }

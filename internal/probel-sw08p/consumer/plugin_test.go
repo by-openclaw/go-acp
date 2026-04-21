@@ -10,14 +10,14 @@ import (
 )
 
 // TestFactoryMeta verifies the registration contract: the plugin
-// announces itself as "probel" on the default SW-P-08 TCP port.
+// announces itself as "probel-sw08p" on the default SW-P-08 TCP port.
 func TestFactoryMeta(t *testing.T) {
-	f, err := protocol.Get("probel")
+	f, err := protocol.Get("probel-sw08p")
 	if err != nil {
 		t.Fatalf("probel plugin not registered: %v", err)
 	}
 	m := f.Meta()
-	if m.Name != "probel" {
+	if m.Name != "probel-sw08p" {
 		t.Errorf("meta.Name = %q; want probel", m.Name)
 	}
 	if m.DefaultPort != DefaultPort {

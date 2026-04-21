@@ -14,7 +14,7 @@ import (
 	"acp/internal/transport"
 )
 
-// runProbel dispatches `acp probel <subcommand>` — the Probel SW-P-08
+// runProbel dispatches `dhs consumer probel-sw08p <subcommand>` — the Probel SW-P-08
 // toolset. Each subcommand runs a single round-trip request and prints
 // the decoded reply + the wire hex on stderr (hex goes via the slog
 // INFO handler inside codec.Client).
@@ -68,15 +68,15 @@ func runProbel(ctx context.Context, args []string) error {
 }
 
 func helpProbel() {
-	fmt.Println(`acp probel — Probel SW-P-08 / SW-P-88 controller toolset
+	fmt.Println(`dhs consumer probel-sw08p — Probel SW-P-08 / SW-P-88 controller toolset
 
 USAGE
-  acp probel <subcommand> <host:port> [flags]
+  dhs consumer probel-sw08p <subcommand> <host:port> [flags]
 
 GLOBAL FLAGS (apply to every subcommand)
   --capture FILE.jsonl   record every wire frame (TX + RX, including
                          DLE ACK / DLE NAK control sequences) as JSONL;
-                         same format as acp walk / acp get --capture
+                         same format as dhs consumer <proto> walk / dhs consumer <proto> get --capture
 
 SUBCOMMANDS
   interrogate          query current source on one (matrix, level, dst)
@@ -93,10 +93,10 @@ SUBCOMMANDS
   master-protect       master-override protect connect
 
 EXAMPLES
-  acp probel interrogate         127.0.0.1:2008 --matrix 0 --level 0 --dst 5
-  acp probel connect             127.0.0.1:2008 --matrix 0 --level 0 --dst 5 --src 12
-  acp probel tally-dump          127.0.0.1:2008 --matrix 0 --level 0
-  acp probel watch               127.0.0.1:2008
+  dhs consumer probel-sw08p interrogate         127.0.0.1:2008 --matrix 0 --level 0 --dst 5
+  dhs consumer probel-sw08p connect             127.0.0.1:2008 --matrix 0 --level 0 --dst 5 --src 12
+  dhs consumer probel-sw08p tally-dump          127.0.0.1:2008 --matrix 0 --level 0
+  dhs consumer probel-sw08p watch               127.0.0.1:2008
 
 All commands log wire bytes (post-escape, post-framing) on stderr as a
 space-separated lowercase-hex line for debugging:
@@ -126,7 +126,7 @@ func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), 
 }
 
 // probelRecorderKey is the context.Context key for the optional
-// JSONL traffic recorder shared across a single `acp probel` invocation.
+// JSONL traffic recorder shared across a single `dhs consumer probel-sw08p` invocation.
 type probelRecorderKey struct{}
 
 // extractCaptureFlag scans args for "--capture FILE" or "--capture=FILE"
@@ -135,7 +135,7 @@ type probelRecorderKey struct{}
 //
 // Global flag — has to run before sub-command dispatch because each
 // sub-command has its own flag set and wouldn't otherwise know about
-// --capture. Matches the top-level --capture pattern used by acp walk /
+// --capture. Matches the top-level --capture pattern used by dhs consumer <proto> walk /
 // get / set.
 func extractCaptureFlag(args []string) ([]string, *transport.Recorder, error) {
 	out := make([]string, 0, len(args))
@@ -567,7 +567,7 @@ func runProbelMasterProtect(ctx context.Context, args []string) error {
 // their original order, minus the popped one) are returned for
 // flag.Parse.
 //
-// Needed because the CLI documents `acp probel <cmd> <host:port>
+// Needed because the CLI documents `dhs consumer probel-sw08p <cmd> <host:port>
 // [flags]` but flag.Parse stops at the first non-flag token — without
 // this helper, "127.0.0.1:2008 --matrix 0" would swallow every flag.
 func popPositional(args []string) (string, []string) {

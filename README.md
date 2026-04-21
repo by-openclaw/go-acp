@@ -60,7 +60,7 @@ diag       run ACP2 diagnostic probes against a device
 ```
 interrogate connect tally-dump watch maintenance dual-status
 protect-interrogate protect-connect protect-disconnect protect-dump
-...                                 (see `dhs consumer probel -h`)
+...                                 (see `dhs consumer probel-sw08p -h`)
 ```
 
 ### Producer
@@ -89,15 +89,15 @@ dhs consumer emberplus invoke      10.0.0.10:9000 --path router.salvo.fire
 dhs consumer emberplus stream      10.0.0.10:9000
 
 # Probel
-dhs consumer probel    interrogate 127.0.0.1:2008 --matrix 0 --level 0 --dst 5
-dhs consumer probel    connect     127.0.0.1:2008 --matrix 0 --level 0 --dst 5 --src 12
-dhs consumer probel    watch       127.0.0.1:2008
+dhs consumer probel-sw08p    interrogate 127.0.0.1:2008 --matrix 0 --level 0 --dst 5
+dhs consumer probel-sw08p    connect     127.0.0.1:2008 --matrix 0 --level 0 --dst 5 --src 12
+dhs consumer probel-sw08p    watch       127.0.0.1:2008
 
 # Producer (every protocol)
 dhs producer acp1      serve --tree tree.json --port 2071
 dhs producer acp2      serve --tree tree.json --port 2072
 dhs producer emberplus serve --tree tree.json --port 9000
-dhs producer probel    serve --tree matrix.json --port 2008
+dhs producer probel-sw08p    serve --tree matrix.json --port 2008
 ```
 
 ### Export / import

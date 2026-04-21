@@ -61,7 +61,7 @@ watch, export, import, extract, diff, convert, discover, matrix, invoke,
 stream, profile, diag.
 
 Probel has its own verb catalogue (interrogate, connect, tally-dump, watch,
-…) — see `dhs consumer probel -h`.
+…) — see `dhs consumer probel-sw08p -h`.
 
 Producer verb is `serve` for every protocol.
 

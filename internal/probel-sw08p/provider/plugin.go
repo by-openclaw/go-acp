@@ -37,7 +37,7 @@ type Factory struct{}
 // Meta publishes the static descriptor used by cmd/acp-provider.
 func (f *Factory) Meta() provider.Meta {
 	return provider.Meta{
-		Name:        "probel",
+		Name:        "probel-sw08p",
 		DefaultPort: DefaultPort,
 		Description: "Probel SW-P-08 provider — serves a canonical tree as an SW-P-88 matrix over TCP:2008",
 	}
