@@ -68,6 +68,20 @@ const (
 	RxCrosspointSalvoGroupInterrogate CommandID = 0x7C // 124 salvo query
 )
 
+// Application keepalive (TS "application-keep-alive" module, #91). The
+// matrix periodically emits TxAppKeepaliveRequest; the controller is
+// expected to reply with RxAppKeepaliveResponse. Both are zero-payload.
+//
+// NOTE: the byte 0x11 on the rx side is RxProtectDeviceNameRequest
+// (above); the same byte on the tx side is TxAppKeepaliveRequest below.
+// The bytes are direction-overloaded per the TS command catalogue —
+// consumers decode inbound 0x11 as TxAppKeepaliveRequest; providers
+// decode inbound 0x11 as RxProtectDeviceNameRequest.
+const (
+	TxAppKeepaliveRequest  CommandID = 0x11 // matrix → controller: ping
+	RxAppKeepaliveResponse CommandID = 0x22 // controller → matrix: pong
+)
+
 // RX extended command IDs (controller → matrix, wide addressing). Addresses above
 // the general-command range flip the MSB: general ID | 0x80 = extended ID.
 const (

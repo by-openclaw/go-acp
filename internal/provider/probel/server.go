@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	iprobel "acp/internal/probel"
 	"acp/internal/export/canonical"
@@ -36,6 +37,10 @@ type server struct {
 	// profile aggregates wire-tolerance events observed across every
 	// session since the server started. See compliance_events.go.
 	profile *compliance.Profile
+
+	// keepaliveInterval is the per-session ping cadence. 0 disables.
+	// Set via SetKeepaliveInterval before Serve.
+	keepaliveInterval time.Duration
 }
 
 // ComplianceProfile returns the provider-scoped compliance profile —
@@ -157,9 +162,13 @@ func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 		sess := newSession(s, conn)
 		s.mu.Lock()
 		s.sessions[sess] = struct{}{}
+		interval := s.keepaliveInterval
 		s.mu.Unlock()
 		go func() {
-			sess.run(ctx)
+			sessCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			sess.startKeepalive(sessCtx, interval)
+			sess.run(sessCtx)
 			s.mu.Lock()
 			delete(s.sessions, sess)
 			s.mu.Unlock()

@@ -127,6 +127,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.host = ip
 	p.port = port
 	p.profile = prof
+	p.installKeepaliveAutoResponder(cli)
 	p.logger.Info("probel connected",
 		slog.String("host", ip),
 		slog.Int("port", port),
