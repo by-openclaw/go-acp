@@ -128,6 +128,12 @@ func main() {
 			os.Exit(exitCode(err))
 		}
 		return
+	case "metrics":
+		if err := runMetrics(ctx, args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(exitCode(err))
+		}
+		return
 	}
 
 	fmt.Fprintf(os.Stderr, "unknown top-level command: %q\n\n", args[0])

@@ -99,8 +99,25 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 			if err := reg.AttachProcess(proc); err != nil {
 				logger.Warn("metrics attach process failed", slog.String("err", err.Error()))
 			}
+			connSnap := mp.Metrics()
 			mux := http.NewServeMux()
 			mux.Handle("/metrics", reg.Handler())
+			// /snapshot.json returns the Connector + Process snapshots
+			// as JSON so `dhs metrics export` can convert to CSV/MD
+			// without parsing Prom text.
+			mux.HandleFunc("/snapshot.json", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				payload := map[string]any{
+					"connector": connSnap.Snapshot(),
+					"process":   proc.Snapshot(),
+					"labels": map[string]string{
+						"proto": protoName,
+						"role":  "provider",
+						"addr":  addr,
+					},
+				}
+				_ = json.NewEncoder(w).Encode(payload)
+			})
 			metricsSrv := &http.Server{
 				Addr:              *metricsAddr,
 				Handler:           mux,
