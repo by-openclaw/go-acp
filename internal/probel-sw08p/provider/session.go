@@ -102,7 +102,7 @@ func (s *session) run(ctx context.Context) {
 				slog.Int("wire_len", consumed),
 				slog.String("hex", codec.HexDump(buf[:consumed])),
 			)
-			s.srv.metrics.ObserveRx(consumed)
+			s.srv.metrics.ObserveCmdRx(uint8(f.ID), consumed)
 			rxAt := time.Now()
 			buf = buf[consumed:]
 			// SW-P-08 §2 — always ACK a well-framed message, then
@@ -144,7 +144,7 @@ func (s *session) dispatch(f codec.Frame, rxAt time.Time) {
 				slog.String("remote", s.remoteAddr()),
 				slog.String("err", werr.Error()))
 		}
-		s.srv.metrics.ObserveTx(len(raw), time.Since(rxAt))
+		s.srv.metrics.ObserveCmdTx(uint8(res.reply.ID), len(raw), time.Since(rxAt))
 	}
 	for _, tally := range res.tallies {
 		s.srv.fanOutTally(s, tally)

@@ -68,13 +68,17 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		logger.Error("probel provider: tree build failed", slog.String("err", err.Error()))
 		t = &tree{matrices: map[matrixKey]*matrixState{}}
 	}
+	met := metrics.NewConnector()
+	for _, id := range codec.CommandIDs() {
+		met.RegisterCmd(uint8(id), codec.CommandName(id))
+	}
 	return &server{
 		logger:   logger,
 		tree:     t,
 		sessions: map[*session]struct{}{},
 		stopped:  make(chan struct{}),
 		profile:  &compliance.Profile{},
-		metrics:  metrics.NewConnector(),
+		metrics:  met,
 	}
 }
 

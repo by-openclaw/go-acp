@@ -123,14 +123,31 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	prof := &compliance.Profile{}
 	met := metrics.NewConnector()
+	// Register every known command byte so the metrics snapshot can
+	// pretty-print names alongside raw ids.
+	for _, id := range codec.CommandIDs() {
+		met.RegisterCmd(uint8(id), codec.CommandName(id))
+	}
 	cfg := codec.ClientConfig{
 		OnCapSoft: func(int) { prof.Note(DataFieldOversize) },
 		OnNAK:     func() { prof.Note(NAKReceived); met.ObserveNAK() },
 		OnTimeout: func() { prof.Note(ACKTimeoutElapsed); met.ObserveTimeout() },
 		OnRetry:   func(int) { prof.Note(RetryAttempted) },
 		OnNoACK:   func() { prof.Note(ReplyWithoutACK) },
-		OnTx:      func(b []byte) { met.ObserveTx(len(b), 0) },
-		OnRx:      func(b []byte) { met.ObserveRx(len(b)) },
+		OnTx: func(b []byte) {
+			if id, ok := probelCmdFromBytes(b); ok {
+				met.ObserveCmdTx(id, len(b), 0)
+			} else {
+				met.ObserveTx(len(b), 0)
+			}
+		},
+		OnRx: func(b []byte) {
+			if id, ok := probelCmdFromBytes(b); ok {
+				met.ObserveCmdRx(id, len(b))
+			} else {
+				met.ObserveRx(len(b))
+			}
+		},
 	}
 	if p.recorder != nil {
 		rec := p.recorder

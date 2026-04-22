@@ -61,6 +61,90 @@ func TestSummaryFormat(t *testing.T) {
 	}
 }
 
+func TestObserveCmdRxAndTx(t *testing.T) {
+	c := NewConnector()
+	c.RegisterCmd(0x02, "rx 002 Crosspoint Connect")
+	c.RegisterCmd(0x04, "tx 004 Crosspoint Connected")
+
+	c.ObserveCmdRx(0x02, 11)
+	c.ObserveCmdRx(0x02, 11)
+	c.ObserveCmdRx(0x02, 11)
+	c.ObserveCmdTx(0x04, 12, 50*time.Microsecond)
+	c.ObserveCmdTx(0x04, 12, 60*time.Microsecond)
+
+	s := c.Snapshot()
+	if s.RxFrames != 3 || s.TxFrames != 2 {
+		t.Errorf("aggregate wrong: rx=%d tx=%d", s.RxFrames, s.TxFrames)
+	}
+	if s.RxHitsByCmd[0x02] != 3 {
+		t.Errorf("cmd 0x02 rx hits = %d, want 3", s.RxHitsByCmd[0x02])
+	}
+	if s.TxHitsByCmd[0x04] != 2 {
+		t.Errorf("cmd 0x04 tx hits = %d, want 2", s.TxHitsByCmd[0x04])
+	}
+	if s.RxBytesByCmd[0x02] != 33 {
+		t.Errorf("cmd 0x02 rx bytes = %d, want 33", s.RxBytesByCmd[0x02])
+	}
+	if s.TxBytesByCmd[0x04] != 24 {
+		t.Errorf("cmd 0x04 tx bytes = %d, want 24", s.TxBytesByCmd[0x04])
+	}
+	if s.CmdNames[0x02] != "rx 002 Crosspoint Connect" {
+		t.Errorf("name lookup failed: %q", s.CmdNames[0x02])
+	}
+
+	top := s.TopCmdsByHits(5)
+	if len(top) != 2 {
+		t.Fatalf("TopCmdsByHits len = %d, want 2 (only registered cmds with hits)", len(top))
+	}
+	if top[0].ID != 0x02 || top[0].Hits != 3 {
+		t.Errorf("top[0] = %+v, want id=0x02 hits=3", top[0])
+	}
+}
+
+func TestTaskManagerFields(t *testing.T) {
+	c := NewConnector()
+	c.SetTreeBytes(1024)
+	c.SetPoolBytes(2048)
+	c.AddDiskBytes(512)
+	// busyNanos is accumulated via ObserveCmdTx's handlerElapsed.
+	c.ObserveCmdTx(0x01, 7, 500*time.Microsecond)
+	c.ObserveCmdTx(0x01, 7, 500*time.Microsecond)
+
+	s := c.Snapshot()
+	if s.TreeBytes != 1024 || s.PoolBytes != 2048 || s.DiskBytes != 512 {
+		t.Errorf("memory fields wrong: tree=%d pool=%d disk=%d",
+			s.TreeBytes, s.PoolBytes, s.DiskBytes)
+	}
+	if s.EstimatedBytes != 1024+2048+512 {
+		t.Errorf("EstimatedBytes = %d, want %d", s.EstimatedBytes, 1024+2048+512)
+	}
+	if s.CPUPercent < 0 || s.CPUPercent > 100 {
+		t.Errorf("CPU%% out of range: %f", s.CPUPercent)
+	}
+	// busyNanos should have accumulated 2 × 500 µs = 1 ms.
+	if c.busyNanos.Load() < 1_000_000-1000 {
+		t.Errorf("busyNanos = %d, want ~1ms", c.busyNanos.Load())
+	}
+}
+
+func TestCmdLatencyPercentiles(t *testing.T) {
+	c := NewConnector()
+	for i := 0; i < 100; i++ {
+		c.ObserveCmdTx(0x20, 5, 50*time.Microsecond) // bucket 1 ([10,100))
+	}
+	s := c.Snapshot()
+	p50, p95, p99 := s.CmdLatencyPercentiles(0x20)
+	if p50 != 10 || p95 != 10 || p99 != 10 {
+		t.Errorf("per-cmd percentiles: p50=%d p95=%d p99=%d, want 10/10/10", p50, p95, p99)
+	}
+
+	// Unregistered cmd: all zero.
+	p50z, p95z, p99z := s.CmdLatencyPercentiles(0xFF)
+	if p50z != 0 || p95z != 0 || p99z != 0 {
+		t.Errorf("unobserved cmd percentiles should be 0, got %d/%d/%d", p50z, p95z, p99z)
+	}
+}
+
 func TestLatencyPercentiles(t *testing.T) {
 	c := NewConnector()
 	for i := 0; i < 90; i++ {
