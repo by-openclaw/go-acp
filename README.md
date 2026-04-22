@@ -22,7 +22,7 @@ One binary covers both directions:
 | ACP1            | UDP / TCP direct  | 2071      | ✅       | ✅       | [internal/acp1/CLAUDE.md](internal/acp1/CLAUDE.md) · [internal/acp1/docs/consumer.md](internal/acp1/docs/consumer.md) |
 | ACP2            | AN2/TCP           | 2072      | ✅       | 🟡 PR #76 (5/6 types Lawo-validated; Enum parked in #79) | [internal/acp2/CLAUDE.md](internal/acp2/CLAUDE.md) · [internal/acp2/docs/consumer.md](internal/acp2/docs/consumer.md) |
 | Ember+          | S101/TCP          | 9000-9092 | ✅       | ✅       | [internal/emberplus/CLAUDE.md](internal/emberplus/CLAUDE.md) · [internal/emberplus/docs/consumer.md](internal/emberplus/docs/consumer.md) |
-| Probel SW-P-08+ | TCP               | 2008      | 🟡 PR #84 | 🟡 PR #84 | [internal/probel-sw08p/CLAUDE.md](internal/probel-sw08p/CLAUDE.md) |
+| Probel SW-P-08+ | TCP               | 2008      | 🟡 PR #84 (all §3.2 cmds; VSM+Commie+TS validated) | 🟡 PR #84 (all §3.2 cmds; VSM+Commie+TS validated) | [internal/probel-sw08p/CLAUDE.md](internal/probel-sw08p/CLAUDE.md) |
 | Probel SW-P-02  | TCP               | —         | planned  | —        | — |
 | TSL UMD v3.1/v4/v5 | UDP push       | —         | planned  | —        | — |
 
@@ -55,12 +55,17 @@ profile    classify provider compliance (strict / partial)
 diag       run ACP2 diagnostic probes against a device
 ```
 
-### Consumer verbs (probel)
+### Consumer verbs (probel-sw08p)
 
 ```
 interrogate connect tally-dump watch maintenance dual-status
-protect-interrogate protect-connect protect-disconnect protect-dump
-...                                 (see `dhs consumer probel-sw08p -h`)
+protect-interrogate protect-connect protect-disconnect
+protect-name protect-dump master-protect
+all-source-names single-source-name
+all-dest-names   single-dest-name
+all-source-assoc-names single-source-assoc-name
+discover   (one-shot dual-status + names + tally-dump)
+...        (see `dhs consumer probel-sw08p -h`)
 ```
 
 ### Producer
@@ -135,10 +140,32 @@ data model library, and provider architecture.
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system overview.
 
 [CLAUDE.md](CLAUDE.md) — cross-cutting Go conventions, registry pattern,
-compliance, error hierarchy, storage rules.
+compliance, error hierarchy, storage rules, **scale targets, performance
+metrics, architecture principles**.
 
 [internal/<proto>/CLAUDE.md](internal/) — atomic per-protocol wire-format
 context (one file per protocol).
+
+### Scale targets
+
+Every plugin is sized for broadcast-industry minimums: **65 535 × 65 535
+crosspoints per matrix** and **20 – 100 matrices per plant**. No dense
+arrays, no small-matrix shortcuts; sparse `(matrix, level, dst) → src`
+maps and streaming codecs across the board.
+
+### Performance metrics
+
+Every connector exposes rx/tx frame + byte rates, rx→tx handler latency
+(p50/p95/p99), NAK/decode errors, and memory + CPU attribution via a
+neutral `ConnectorMetrics` accessor. Printed at session close, emitted
+as `protocol.Event` ticks, and scrapable from the future dhs-srv.
+
+### Architecture principles
+
+Encapsulation (narrow public surface), dependency injection (no
+globals), separation of concerns (codec / consumer / provider /
+compliance / wireshark), library independence (codec is stdlib-only,
+lift-ready), no hidden state.
 
 ---
 
