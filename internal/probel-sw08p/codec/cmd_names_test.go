@@ -166,3 +166,54 @@ func TestValidateNameLengthRejectsUnknown(t *testing.T) {
 		t.Error("validateNameLength(5): want error")
 	}
 }
+
+func TestPackNameWithPadCustom(t *testing.T) {
+	tests := []struct {
+		name    string
+		in      string
+		width   int
+		pad     byte
+		wantHex string // HexDump is lowercase space-separated
+	}{
+		{"space-pad", "VTR 1", 8, 0x20, "56 54 52 20 31 20 20 20"},
+		{"nul-pad", "VTR 1", 8, 0x00, "56 54 52 20 31 00 00 00"},
+		{"dash-pad", "A", 4, '-', "41 2d 2d 2d"},
+		{"multiline-preserved", "A\r\nB", 8, 0x20, "41 0d 0a 42 20 20 20 20"},
+		{"truncated", "ABCDEFGHIJK", 4, 0x20, "41 42 43 44"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := packNameWithPad(tt.in, tt.width, tt.pad)
+			if hex := HexDump(got); hex != tt.wantHex {
+				t.Errorf("packNameWithPad(%q, %d, %#x) = %q; want %q",
+					tt.in, tt.width, tt.pad, hex, tt.wantHex)
+			}
+		})
+	}
+}
+
+func TestUnpackNameWithTrim(t *testing.T) {
+	tests := []struct {
+		name        string
+		in          []byte
+		padChar     byte
+		keepPadding bool
+		want        string
+	}{
+		{"space-trim", []byte("VTR 1   "), 0x20, false, "VTR 1"},
+		{"nul-trim-via-always-strip", []byte("VTR 1\x00\x00\x00"), 0x00, false, "VTR 1"},
+		{"nul-always-trimmed-before-padchar", []byte("VTR 1   \x00"), 0x20, false, "VTR 1"},
+		{"keep-padding", []byte("VTR 1   "), 0x20, true, "VTR 1   "},
+		{"multiline-preserved-trailing-trimmed", []byte("A\r\nB    "), 0x20, false, "A\r\nB"},
+		{"dash-trim", []byte("X---"), '-', false, "X"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := unpackNameWithTrim(tt.in, tt.padChar, tt.keepPadding)
+			if got != tt.want {
+				t.Errorf("unpackNameWithTrim(%q, %#x, %v) = %q; want %q",
+					tt.in, tt.padChar, tt.keepPadding, got, tt.want)
+			}
+		})
+	}
+}
