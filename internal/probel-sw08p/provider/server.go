@@ -219,13 +219,20 @@ func (s *server) fanOutTally(origin *session, f codec.Frame) {
 		sessions = append(sessions, sess)
 	}
 	s.mu.Unlock()
+	// Per feedback_logging.md: skip announce logs entirely. Tally
+	// fan-out runs on every connect and fires N-1 times per session,
+	// so an Info+HexDump here is ~N² work per connect at scale. Keep
+	// a Debug breadcrumb for diagnostics.
+	debug := s.logger.Enabled(context.Background(), slog.LevelDebug)
 	for _, sess := range sessions {
-		s.logger.Info("probel tally fan-out",
-			slog.String("remote", sess.remoteAddr()),
-			slog.Int("cmd", int(f.ID)),
-			slog.Int("wire_len", len(raw)),
-			slog.String("hex", codec.HexDump(raw)),
-		)
+		if debug {
+			s.logger.Debug("probel tally fan-out",
+				slog.String("remote", sess.remoteAddr()),
+				slog.Int("cmd", int(f.ID)),
+				slog.Int("wire_len", len(raw)),
+				slog.String("hex", codec.HexDump(raw)),
+			)
+		}
 		if err := sess.write(raw); err != nil {
 			s.logger.Warn("probel tally send",
 				slog.String("remote", sess.remoteAddr()),

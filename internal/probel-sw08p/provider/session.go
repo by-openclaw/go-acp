@@ -132,13 +132,19 @@ func (s *session) run(ctx context.Context) {
 				buf = buf[2:]
 				continue
 			}
-			s.srv.logger.Info("probel session rx",
-				slog.String("remote", s.remoteAddr()),
-				slog.Int("cmd", int(f.ID)),
-				slog.Int("payload_len", len(f.Payload)),
-				slog.Int("wire_len", consumed),
-				slog.String("hex", codec.HexDump(buf[:consumed])),
-			)
+			// Per-frame trace goes at Debug — 4 M Info calls with
+			// HexDump formatting was shown to be the dominant cost in
+			// the 10× scale bench (see project_scale_bench_results).
+			// feedback_logging.md: skip announce logs entirely.
+			if s.srv.logger.Enabled(context.Background(), slog.LevelDebug) {
+				s.srv.logger.Debug("probel session rx",
+					slog.String("remote", s.remoteAddr()),
+					slog.Int("cmd", int(f.ID)),
+					slog.Int("payload_len", len(f.Payload)),
+					slog.Int("wire_len", consumed),
+					slog.String("hex", codec.HexDump(buf[:consumed])),
+				)
+			}
 			s.srv.metrics.ObserveCmdRx(uint8(f.ID), consumed)
 			rxAt := time.Now()
 			buf = buf[consumed:]
@@ -198,13 +204,15 @@ func (s *session) dispatch(f codec.Frame, rxAt time.Time) {
 	}
 	if res.reply != nil {
 		raw := codec.Pack(*res.reply)
-		s.srv.logger.Info("probel session tx",
-			slog.String("remote", s.remoteAddr()),
-			slog.Int("cmd", int(res.reply.ID)),
-			slog.Int("payload_len", len(res.reply.Payload)),
-			slog.Int("wire_len", len(raw)),
-			slog.String("hex", codec.HexDump(raw)),
-		)
+		if s.srv.logger.Enabled(context.Background(), slog.LevelDebug) {
+			s.srv.logger.Debug("probel session tx",
+				slog.String("remote", s.remoteAddr()),
+				slog.Int("cmd", int(res.reply.ID)),
+				slog.Int("payload_len", len(res.reply.Payload)),
+				slog.Int("wire_len", len(raw)),
+				slog.String("hex", codec.HexDump(raw)),
+			)
+		}
 		if werr := s.write(raw); werr != nil {
 			s.srv.logger.Warn("probel session reply write",
 				slog.String("remote", s.remoteAddr()),
