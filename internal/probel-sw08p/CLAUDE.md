@@ -177,6 +177,38 @@ See root `CLAUDE.md` "Metrics surface on the producer" section +
   to CSV/MD.
 - Rationale + expected numbers in `memory/project_scale_bench_2mtx_65535.md`.
 
+### Session 2026-04-23 closeout (post-compact)
+
+- **W2 (commit `9bf57f3`)** — Wireshark Lua dissector at
+  `wireshark/dissector_probel_sw08p.lua`. Handles §2 framing + DLE
+  stuffing, DLE ACK/NAK pseudo-frames, checksum + BTC validation with
+  expert-info notes, and per-cmd decode for crosspoint interrogate /
+  connect / tally / tally-dump (byte + word) / name requests + responses
+  / salvo build+fire / protect. Pure arithmetic (no Lua 5.3 bitops) so
+  it loads on Wireshark 4.x (Lua 5.2) as well as 5.x.
+- **W4 (commit `9504441`)** — `retries_total` counter on
+  `metrics.Connector`. `ObserveRetry()` + `Snapshot.Retries` exposed as
+  `dhs_connector_retries_total` in Prom and a "Retries" row in CSV/MD.
+  Consumer wires `OnRetry → prof.Note(RetryAttempted) + met.ObserveRetry()`
+  so retry storms are alertable without parsing logs. Retry machinery
+  itself already in place since `1878e1c` (5× retry + 1 s ACK timeout +
+  NAK handling). Closes #90.
+- **W5 (commit `6a67a31`)** — `Plugin.IsOnline()` /
+  `IsOnlineWithin(stale)` on the consumer. Derived from
+  `metrics.Connector.LastRxAt`; any rx traffic (tally, name reply,
+  DLE ACK, keepalive ping) keeps us alive; silence past
+  `DefaultOnlineStaleAfter` (90 s = 3× provider keepalive cadence)
+  flips offline. This is the cross-protocol alive-bit contract — the
+  Ember+ mirror reads `IsOnline` off every plugin and pushes it into
+  `canonical.Header.IsOnline`. Closes #91.
+- **W6-A (commit `2f7797e`)** — Cross-layer integration tests at
+  `provider/integration_test.go`. Three scenarios (maintenance round-
+  trip, streaming tally-dump with 200 dsts, 3× reconnect) exercise the
+  full codec + dispatcher + handler + session stack against a real
+  TCP listener, catching regressions that net.Pipe tests miss. Retry
+  + name-size + keepalive scenarios stay at their layer (codec /
+  consumer) where peer behaviour is deterministic.
+
 ### Session 2026-04-23 refactors
 
 - **S1 (commit `5241679`)** — per-session dispatcher goroutine + bounded
