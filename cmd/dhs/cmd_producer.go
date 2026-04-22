@@ -42,6 +42,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		port          = fs.Int("port", 0, "TCP listen port (0 = plugin default)")
 		host          = fs.String("host", "0.0.0.0", "TCP listen host")
 		logLevel      = fs.String("log-level", "info", "log level: debug, info, warn, error")
+		logFormat     = fs.String("log-format", "text", "log format: text | json (json for Loki/Promtail)")
 		announceDemo  = fs.Bool("announce-demo", false, "oscillate a target value every --announce-demo-interval and broadcast announces (acp1/acp2 only)")
 		announceSlot  = fs.Int("announce-demo-slot", 1, "slot for --announce-demo target")
 		announceGroup = fs.Int("announce-demo-group", 2, "acp1: object group for --announce-demo target (2=Control)")
@@ -57,7 +58,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		return fmt.Errorf("--tree is required")
 	}
 
-	logger := newLogger(*logLevel)
+	logger := newLogger(*logLevel, *logFormat)
 
 	factory, ok := provider.Lookup(protoName)
 	if !ok {
@@ -170,7 +171,7 @@ func loadTree(path string) (*canonical.Export, error) {
 	return &exp, nil
 }
 
-func newLogger(level string) *slog.Logger {
+func newLogger(level, format string) *slog.Logger {
 	var lvl slog.Level
 	switch level {
 	case "debug":
@@ -182,5 +183,9 @@ func newLogger(level string) *slog.Logger {
 	default:
 		lvl = slog.LevelInfo
 	}
-	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: lvl}))
+	opts := &slog.HandlerOptions{Level: lvl}
+	if format == "json" {
+		return slog.New(slog.NewJSONHandler(os.Stderr, opts))
+	}
+	return slog.New(slog.NewTextHandler(os.Stderr, opts))
 }
