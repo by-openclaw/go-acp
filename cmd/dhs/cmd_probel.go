@@ -63,6 +63,20 @@ func runProbel(ctx context.Context, args []string) error {
 		return runProbelProtectDump(ctx, rest)
 	case "master-protect":
 		return runProbelMasterProtect(ctx, rest)
+	case "discover":
+		return runProbelDiscover(ctx, rest)
+	case "all-source-names":
+		return runProbelAllSourceNames(ctx, rest)
+	case "single-source-name":
+		return runProbelSingleSourceName(ctx, rest)
+	case "all-dest-names":
+		return runProbelAllDestAssocNames(ctx, rest)
+	case "single-dest-name":
+		return runProbelSingleDestAssocName(ctx, rest)
+	case "all-source-assoc-names":
+		return runProbelAllSourceAssocNames(ctx, rest)
+	case "single-source-assoc-name":
+		return runProbelSingleSourceAssocName(ctx, rest)
 	}
 	return fmt.Errorf("unknown probel subcommand %q", sub)
 }
@@ -79,18 +93,26 @@ GLOBAL FLAGS (apply to every subcommand)
                          same format as dhs consumer <proto> walk / dhs consumer <proto> get --capture
 
 SUBCOMMANDS
-  interrogate          query current source on one (matrix, level, dst)
-  connect              route a source to a destination on one (matrix, level)
-  watch                subscribe to async tallies until Ctrl-C
-  maintenance          send a maintenance message (reset / clear-protects)
-  dual-status          read 1:1 redundancy state
-  tally-dump           dump every crosspoint on (matrix, level)
-  protect-interrogate  read protect state on one (matrix, level, dst)
-  protect-connect      set a protect on (matrix, level, dst) for a device
-  protect-disconnect   clear a protect
-  protect-name         resolve device id → 8-char name
-  protect-dump         dump every protect on (matrix, level)
-  master-protect       master-override protect connect
+  discover                  one-shot discovery: dual-status + src labels + dst
+                            labels + tally-dump on (matrix, level)
+  interrogate               query current source on one (matrix, level, dst)
+  connect                   route a source to a destination on (matrix, level)
+  watch                     subscribe to async tallies until Ctrl-C
+  maintenance               send a maintenance message (reset / clear-protects)
+  dual-status               read 1:1 redundancy state
+  tally-dump                dump every crosspoint on (matrix, level)
+  all-source-names          fetch every source label on (matrix, level)
+  single-source-name        fetch one source label
+  all-dest-names            fetch every destination label on (matrix)
+  single-dest-name          fetch one destination label
+  all-source-assoc-names    fetch every source association (device) label
+  single-source-assoc-name  fetch one source association label
+  protect-interrogate       read protect state on one (matrix, level, dst)
+  protect-connect           set a protect on (matrix, level, dst) for a device
+  protect-disconnect        clear a protect
+  protect-name              resolve device id → 8-char name
+  protect-dump              dump every protect on (matrix, level)
+  master-protect            master-override protect connect
 
 EXAMPLES
   dhs consumer probel-sw08p interrogate         127.0.0.1:2008 --matrix 0 --level 0 --dst 5
