@@ -1,0 +1,39 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Tail dhs stdout log (user redirects dhs ... > /var/log/dhs.log when
+  # running outside Docker). Adjust path to match your deployment.
+  - job_name: dhs-stdout
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: dhs
+          service: dhs
+          __path__: /var/log/dhs*.log
+    pipeline_stages:
+      # dhs emits slog JSON when started with --log-format json. Each
+      # line is {time, level, msg, ...}. Promtail parses and indexes
+      # the structured fields.
+      - json:
+          expressions:
+            level: level
+            msg: msg
+            time: time
+            proto: proto
+            remote: remote
+            cmd: cmd
+      - labels:
+          level:
+          proto:
+      - timestamp:
+          source: time
+          format: RFC3339Nano

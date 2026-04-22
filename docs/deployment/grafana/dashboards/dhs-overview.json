@@ -1,0 +1,220 @@
+{
+  "title": "dhs — overview",
+  "uid": "dhs-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "",
+  "tags": ["dhs", "probel", "acp", "emberplus"],
+  "templating": {
+    "list": [
+      {
+        "name": "proto",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(dhs_connector_rx_frames_total, proto)",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "name": "role",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(dhs_connector_rx_frames_total, role)",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Process health",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Heap allocated",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 1 },
+      "targets": [
+        { "expr": "go_memstats_heap_alloc_bytes", "legendFormat": "heap_alloc" },
+        { "expr": "go_memstats_heap_sys_bytes", "legendFormat": "heap_sys" },
+        { "expr": "go_memstats_heap_idle_bytes", "legendFormat": "heap_idle" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "decbytes" } }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Goroutines",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 1 },
+      "targets": [{ "expr": "go_goroutines", "legendFormat": "{{instance}}" }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Process CPU %",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 1 },
+      "targets": [{ "expr": "rate(process_cpu_seconds_total[1m]) * 100", "legendFormat": "cpu %" }],
+      "fieldConfig": { "defaults": { "unit": "percent" } }
+    },
+    {
+      "id": 5,
+      "type": "row",
+      "title": "Connector — rates",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Rx / Tx frames per second",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum by (proto, role) (rate(dhs_connector_rx_frames_total{proto=~\"$proto\", role=~\"$role\"}[1m]))",
+          "legendFormat": "{{proto}}/{{role}} rx"
+        },
+        {
+          "expr": "sum by (proto, role) (rate(dhs_connector_tx_frames_total{proto=~\"$proto\", role=~\"$role\"}[1m]))",
+          "legendFormat": "{{proto}}/{{role}} tx"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Rx / Tx bytes per second",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum by (proto, role) (rate(dhs_connector_rx_bytes_total{proto=~\"$proto\", role=~\"$role\"}[1m]))",
+          "legendFormat": "{{proto}}/{{role}} rx"
+        },
+        {
+          "expr": "sum by (proto, role) (rate(dhs_connector_tx_bytes_total{proto=~\"$proto\", role=~\"$role\"}[1m]))",
+          "legendFormat": "{{proto}}/{{role}} tx"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } }
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "Connector — latency, errors, per-cmd",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Handler latency percentiles (p99)",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (proto, role, le_us) (rate(dhs_connector_handler_latency_us_bucket_total{proto=~\"$proto\"}[5m])))",
+          "legendFormat": "{{proto}}/{{role}} p99"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (proto, role, le_us) (rate(dhs_connector_handler_latency_us_bucket_total{proto=~\"$proto\"}[5m])))",
+          "legendFormat": "{{proto}}/{{role}} p95"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "µs" } }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Errors (decode / NAK / timeout / reconnect)",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "targets": [
+        { "expr": "sum by (proto) (rate(dhs_connector_decode_errors_total{proto=~\"$proto\"}[5m]))", "legendFormat": "{{proto}} decode" },
+        { "expr": "sum by (proto) (rate(dhs_connector_naks_total{proto=~\"$proto\"}[5m]))", "legendFormat": "{{proto}} nak" },
+        { "expr": "sum by (proto) (rate(dhs_connector_timeouts_total{proto=~\"$proto\"}[5m]))", "legendFormat": "{{proto}} timeout" },
+        { "expr": "sum by (proto) (rate(dhs_connector_reconnects_total{proto=~\"$proto\"}[5m]))", "legendFormat": "{{proto}} reconnect" }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "barchart",
+      "title": "Top commands by hit count",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 25 },
+      "targets": [
+        {
+          "expr": "topk(15, sum by (cmd_name) (dhs_connector_rx_cmd_hits_total{proto=~\"$proto\"} + dhs_connector_tx_cmd_hits_total{proto=~\"$proto\"}))",
+          "legendFormat": "{{cmd_name}}"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Connector — Task-Manager view",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Per-connector CPU %",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "dhs_connector_cpu_percent{proto=~\"$proto\", role=~\"$role\"}",
+          "legendFormat": "{{proto}}/{{role}} {{addr}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent" } }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Per-connector memory (estimated)",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "expr": "dhs_connector_memory_bytes{proto=~\"$proto\", role=~\"$role\"}",
+          "legendFormat": "{{proto}}/{{role}} {{addr}} total"
+        },
+        {
+          "expr": "dhs_connector_tree_bytes{proto=~\"$proto\"}",
+          "legendFormat": "{{proto}} tree"
+        },
+        {
+          "expr": "dhs_connector_pool_bytes{proto=~\"$proto\"}",
+          "legendFormat": "{{proto}} pool"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "decbytes" } }
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Logs (Loki)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 42 }
+    },
+    {
+      "id": 16,
+      "type": "logs",
+      "title": "dhs structured log stream",
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 43 },
+      "targets": [
+        { "expr": "{service=\"dhs\"}" }
+      ]
+    }
+  ]
+}
