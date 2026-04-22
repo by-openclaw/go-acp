@@ -36,12 +36,14 @@ func (s *server) handleCrosspointTallyDumpRequest(f codec.Frame) (handlerResult,
 	// Choose wire form based on source/dest address width.
 	needWord := st.targetCount > 255 || st.sourceCount > 255
 	if needWord {
+		// Dense wire output is spec-mandated — tally dump carries one
+		// source entry per destination from 0..targetCount-1, with
+		// unrouted destinations reported as 0. Sparse lookup fills the
+		// dense reply slice here; a streaming encoder is a follow-up.
 		srcs := make([]uint16, st.targetCount)
-		for i, v := range st.sources {
-			if v < 0 {
-				srcs[i] = 0
-			} else {
-				srcs[i] = uint16(v)
+		for dst := 0; dst < st.targetCount; dst++ {
+			if v, ok := st.sources[uint16(dst)]; ok {
+				srcs[dst] = v
 			}
 		}
 		reply := codec.EncodeCrosspointTallyDumpWord(codec.CrosspointTallyDumpWordParams{
@@ -51,11 +53,9 @@ func (s *server) handleCrosspointTallyDumpRequest(f codec.Frame) (handlerResult,
 		return handlerResult{reply: &reply}, nil
 	}
 	srcs := make([]uint8, st.targetCount)
-	for i, v := range st.sources {
-		if v < 0 {
-			srcs[i] = 0
-		} else {
-			srcs[i] = uint8(v)
+	for dst := 0; dst < st.targetCount; dst++ {
+		if v, ok := st.sources[uint16(dst)]; ok {
+			srcs[dst] = uint8(v)
 		}
 	}
 	reply := codec.EncodeCrosspointTallyDumpByte(codec.CrosspointTallyDumpByteParams{

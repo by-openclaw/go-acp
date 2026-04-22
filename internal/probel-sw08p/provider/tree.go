@@ -23,9 +23,16 @@ type matrixState struct {
 	targetCount int
 	sourceCount int
 
-	// sources maps destination (0-based) to source (0-based).
-	// -1 means "unconnected / unknown".
-	sources []int16
+	// sources maps destination (0-based) to source (0-based) for every
+	// currently-routed destination. **Sparse**: absence of a key means
+	// "unconnected / unknown". Using a map (rather than a dense slice
+	// of size targetCount) keeps the memory footprint proportional to
+	// the number of actually-routed destinations, which matters when
+	// targetCount can reach 65535 per broadcast-industry scale targets
+	// (root CLAUDE.md). Value type is uint16 so the full 0-65535 source
+	// range is representable (the previous int16 silently wrapped at
+	// 32767 — latent bug).
+	sources map[uint16]uint16
 
 	// targetLabels / sourceLabels hold the human-readable names from the
 	// canonical tree's TargetLabels / SourceLabels maps. Empty slice =
@@ -240,10 +247,7 @@ func buildState(m *canonical.Matrix, key string) *matrixState {
 		targetCount: int(m.TargetCount),
 		sourceCount: int(m.SourceCount),
 	}
-	st.sources = make([]int16, st.targetCount)
-	for i := range st.sources {
-		st.sources[i] = -1
-	}
+	st.sources = map[uint16]uint16{}
 	st.protects = map[uint16]protectRecord{}
 	if st.targetCount > 0 {
 		st.targetLabels = buildLabels(m.TargetLabels, key, st.targetCount)
@@ -291,10 +295,11 @@ func (t *tree) currentSource(m, l uint8, dst uint16) (uint16, bool) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
-	if !ok || int(dst) >= len(st.sources) || st.sources[dst] < 0 {
+	if !ok || int(dst) >= st.targetCount {
 		return 0, false
 	}
-	return uint16(st.sources[dst]), true
+	src, routed := st.sources[dst]
+	return src, routed
 }
 
 // clearProtects wipes the protect map for the given (matrix, level).
@@ -431,15 +436,15 @@ func (t *tree) applyConnect(m, l uint8, dst uint16, src uint16) error {
 	if !ok {
 		return fmt.Errorf("probel: unknown matrix=%d level=%d", m, l)
 	}
-	if int(dst) >= len(st.sources) {
+	if int(dst) >= st.targetCount {
 		return fmt.Errorf("probel: dst %d >= targetCount %d on matrix=%d level=%d",
-			dst, len(st.sources), m, l)
+			dst, st.targetCount, m, l)
 	}
 	if int(src) >= st.sourceCount {
 		return fmt.Errorf("probel: src %d >= sourceCount %d on matrix=%d level=%d",
 			src, st.sourceCount, m, l)
 	}
-	st.sources[dst] = int16(src)
+	st.sources[dst] = src
 	return nil
 }
 

@@ -86,7 +86,7 @@ func TestHandleCrosspointInterrogateUnit(t *testing.T) {
 	// Populate one (matrix, level).
 	st := &matrixState{
 		targetCount: 4, sourceCount: 4,
-		sources: []int16{-1, -1, 9, -1},
+		sources: map[uint16]uint16{2: 9},
 	}
 	srv.tree.matrices[matrixKey{matrix: 0, level: 0}] = st
 

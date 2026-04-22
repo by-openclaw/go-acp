@@ -29,14 +29,14 @@ func (s *server) handleTieLineInterrogate(f codec.Frame) (handlerResult, error) 
 		if int(p.DestAssociationID) >= st.targetCount {
 			continue
 		}
-		src := st.sources[p.DestAssociationID]
-		if src < 0 {
+		src, routed := st.sources[p.DestAssociationID]
+		if !routed {
 			continue
 		}
 		sources = append(sources, codec.TieLineSource{
 			MatrixID: key.matrix,
 			LevelID:  key.level,
-			SourceID: uint16(src),
+			SourceID: src,
 		})
 	}
 	reply := codec.EncodeTieLineTally(codec.TieLineTallyParams{

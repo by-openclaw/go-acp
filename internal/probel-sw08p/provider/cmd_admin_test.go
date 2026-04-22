@@ -21,7 +21,7 @@ func TestMaintenanceClearProtectsUnit(t *testing.T) {
 	}
 	st := &matrixState{
 		targetCount: 4, sourceCount: 4,
-		sources:  []int16{-1, -1, -1, -1},
+		sources:  map[uint16]uint16{},
 		protects: map[uint16]protectRecord{3: {deviceID: 42, state: 1}},
 	}
 	srv.tree.matrices[matrixKey{matrix: 0, level: 0}] = st
