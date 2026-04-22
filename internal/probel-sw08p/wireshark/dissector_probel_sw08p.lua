@@ -493,15 +493,42 @@ local function decode_protect_tally(tree, data)
     return string.format("mtx=%d lvl=%d dst=%d state=%s", m, l, dst, protect_state_valstr[st] or st)
 end
 
--- rx 120 / 0xF8 Salvo Build on Go, rx 124 Salvo Group Interrogate.
--- Payloads are rich (group id + element list); show top-level numbers.
--- General form: [ml, count_hi, count_lo, <element triplets>]
-local function decode_salvo_general(tree, data)
-    if #data < 3 then return "" end
+-- rx 120 CROSSPOINT CONNECT ON GO SALVO — ONE crosspoint per frame.
+-- Wire (spec §3.2.29): [ml, mult, dst_num, src_num, salvoID].
+-- Controllers send many of these to build up a salvo group, then
+-- fire the group with rx 121.
+local function decode_salvo_build(tree, data)
+    if #data < 5 then return "" end
     local m, l = decode_mtxlvl(data[1])
-    local count = data[2] * 256 + data[3]
-    tree:add(f.matrix, m); tree:add(f.level, l); tree:add(f.salvo_cnt, count)
-    return string.format("mtx=%d lvl=%d elements=%d", m, l, count)
+    local mult = data[2]
+    local dst = (math.floor(mult / 16) % 8) * 128 + data[3]
+    local src = (mult % 8) * 128 + data[4]
+    local salvo = data[5] % 128
+    tree:add(f.matrix, m); tree:add(f.level, l); tree:add(f.dst, dst); tree:add(f.src, src); tree:add(f.salvo_grp, salvo)
+    return string.format("mtx=%d lvl=%d dst=%d src=%d salvo=%d", m, l, dst, src, salvo)
+end
+
+-- rx 121 CROSSPOINT GO GROUP SALVO — [op, salvoID]. NO matrix/level.
+-- op: 0=set (apply stored routes), 1=clear (drop stored routes).
+-- Spec §3.2.30.
+local salvo_op_valstr = { [0] = "set", [1] = "clear" }
+local function decode_salvo_go(tree, data)
+    if #data < 2 then return "" end
+    local op = data[1]
+    local salvo = data[2] % 128
+    tree:add(f.salvo_grp, salvo)
+    local opName = salvo_op_valstr[op] or string.format("op=0x%02x", op)
+    return string.format("op=%s salvo=%d", opName, salvo)
+end
+
+-- rx 124 CROSSPOINT SALVO GROUP INTERROGATE — [salvoID, connectIndex].
+-- Spec §3.2.31.
+local function decode_salvo_group_interrogate(tree, data)
+    if #data < 2 then return "" end
+    local salvo = data[1] % 128
+    local idx = data[2]
+    tree:add(f.salvo_grp, salvo)
+    return string.format("salvo=%d idx=%d", salvo, idx)
 end
 
 -------------------------------------------------------------------------------
@@ -566,59 +593,63 @@ local function dissect_frame(tvbuf, pktinfo, root, start, eom)
 
     tree:add(f.eom, tvbuf:range(eom, 2))
 
+    -- Build payload view (data_bytes without the leading command byte)
+    -- so per-cmd decoders index from the first payload byte. Off-by-one
+    -- in early revisions: decoders were reading data[1] = cmd byte and
+    -- interpreting it as matrix/level. Verified by the first live VSM
+    -- capture (cmd 0x78 Salvo Build showing up as "mtx=7 lvl=8").
+    local payload = {}
+    for i = 2, data_len do payload[i - 1] = data_bytes[i] end
+
     -- Build Info-column suffix by command.
     local info_suffix = ""
 
     if cmd_byte == 0x01 then
-        info_suffix = decode_xpoint_general(tree, data_bytes, false)
+        info_suffix = decode_xpoint_general(tree, payload, false)
     elseif cmd_byte == 0x81 then
-        info_suffix = decode_xpoint_ext(tree, data_bytes, false)
+        info_suffix = decode_xpoint_ext(tree, payload, false)
     elseif cmd_byte == 0x02 then
-        info_suffix = decode_xpoint_general(tree, data_bytes, true)
+        info_suffix = decode_xpoint_general(tree, payload, true)
     elseif cmd_byte == 0x82 then
-        info_suffix = decode_xpoint_ext(tree, data_bytes, true)
+        info_suffix = decode_xpoint_ext(tree, payload, true)
     elseif cmd_byte == 0x03 then
-        info_suffix = decode_xpoint_general(tree, data_bytes, true)
+        info_suffix = decode_xpoint_general(tree, payload, true)
     elseif cmd_byte == 0x83 then
-        info_suffix = decode_xpoint_ext(tree, data_bytes, true)
+        info_suffix = decode_xpoint_ext(tree, payload, true)
     elseif cmd_byte == 0x04 then
-        info_suffix = decode_xpoint_general(tree, data_bytes, true)
+        info_suffix = decode_xpoint_general(tree, payload, true)
     elseif cmd_byte == 0x84 then
-        info_suffix = decode_xpoint_ext(tree, data_bytes, true)
+        info_suffix = decode_xpoint_ext(tree, payload, true)
     elseif cmd_byte == 0x0B or cmd_byte == 0x0D or cmd_byte == 0x0F then
-        info_suffix = decode_protect_tally(tree, data_bytes)
+        info_suffix = decode_protect_tally(tree, payload)
     elseif cmd_byte == 0x15 then
-        info_suffix = decode_dump_request(tree, data_bytes, false)
+        info_suffix = decode_dump_request(tree, payload, false)
     elseif cmd_byte == 0x95 then
-        info_suffix = decode_dump_request(tree, data_bytes, true)
+        info_suffix = decode_dump_request(tree, payload, true)
     elseif cmd_byte == 0x16 then
-        info_suffix = decode_dump_byte(tree, data_bytes)
+        info_suffix = decode_dump_byte(tree, payload)
     elseif cmd_byte == 0x17 then
-        info_suffix = decode_dump_word_general(tree, data_bytes)
+        info_suffix = decode_dump_word_general(tree, payload)
     elseif cmd_byte == 0x97 then
-        info_suffix = decode_dump_word_ext(tree, data_bytes)
+        info_suffix = decode_dump_word_ext(tree, payload)
     elseif cmd_byte == 0x64 or cmd_byte == 0x66 or cmd_byte == 0x72 then
-        info_suffix = decode_all_names_req(tree, data_bytes)
+        info_suffix = decode_all_names_req(tree, payload)
     elseif cmd_byte == 0x65 or cmd_byte == 0x73 then
-        info_suffix = decode_single_name_req(tree, data_bytes, "src")
+        info_suffix = decode_single_name_req(tree, payload, "src")
     elseif cmd_byte == 0x67 then
-        info_suffix = decode_single_name_req(tree, data_bytes, "dst")
+        info_suffix = decode_single_name_req(tree, payload, "dst")
     elseif cmd_byte == 0x6A then
-        info_suffix = decode_names_response(tree, data_bytes, "src")
+        info_suffix = decode_names_response(tree, payload, "src")
     elseif cmd_byte == 0x6B then
-        info_suffix = decode_names_response(tree, data_bytes, "dst")
+        info_suffix = decode_names_response(tree, payload, "dst")
     elseif cmd_byte == 0x74 then
-        info_suffix = decode_names_response(tree, data_bytes, "src")
-    elseif cmd_byte == 0x78 or cmd_byte == 0x7C then
-        info_suffix = decode_salvo_general(tree, data_bytes)
+        info_suffix = decode_names_response(tree, payload, "src")
+    elseif cmd_byte == 0x78 then
+        info_suffix = decode_salvo_build(tree, payload)
     elseif cmd_byte == 0x79 then
-        -- Salvo fire: [ml, group_hi, group_lo]
-        if #data_bytes >= 3 then
-            local m, l = decode_mtxlvl(data_bytes[1])
-            local grp = data_bytes[2] * 256 + data_bytes[3]
-            tree:add(f.matrix, m); tree:add(f.level, l); tree:add(f.salvo_grp, grp)
-            info_suffix = string.format("mtx=%d lvl=%d grp=%d", m, l, grp)
-        end
+        info_suffix = decode_salvo_go(tree, payload)
+    elseif cmd_byte == 0x7C then
+        info_suffix = decode_salvo_group_interrogate(tree, payload)
     elseif cmd_byte == 0x07 or cmd_byte == 0x08 or cmd_byte == 0x09 or
            cmd_byte == 0x11 or cmd_byte == 0x12 or cmd_byte == 0x22 then
         -- Commands whose payload layout is small and vendor-specific;
@@ -636,9 +667,15 @@ local function dissect_frame(tvbuf, pktinfo, root, start, eom)
         end
     end
 
+    -- Info-column format: "cmd_NNN SHORT-LABEL fields…" where NNN is the
+    -- decimal command byte zero-padded to 3 digits, matching the
+    -- cmd_rxNNN_* / cmd_txNNN_* file-naming convention in
+    -- internal/probel-sw08p/{codec,consumer,provider}/. Raw cmd id stays
+    -- visible even when the short label is obvious, so filters like
+    -- `probel.cmd_dec == 120` line up with what's in the Info column.
     local short = cmd_short[cmd_byte] or string.format("cmd=0x%02x", cmd_byte)
-    local info = string.format("%s%s",
-        short,
+    local info = string.format("cmd_%03d %s%s",
+        cmd_byte, short,
         (info_suffix ~= "" and (" " .. info_suffix) or ""))
 
     if calc ~= chk then
@@ -724,7 +761,61 @@ function p_probel.dissector(tvbuf, pktinfo, root)
 end
 
 -------------------------------------------------------------------------------
--- Register on TCP port 2008 (SW-P-08 default).
+-- Heuristic: sniff any TCP stream for a DLE STX / DLE ACK / DLE NAK at
+-- offset 0 and a known command byte right after DLE STX. Needed because
+-- vendors bind SW-P-08 to non-default ports (VSM on 7800, Snell variants
+-- on 7000s, custom appliances anywhere). The check is conservative —
+-- three independent signals must align:
+--
+--   1. First byte is DLE (0x10)
+--   2. Second byte is one of STX (0x02) / ACK (0x06) / NAK (0x15)
+--   3. For STX frames: the third byte (command) is in our known
+--      cmd_name table, AND a DLE ETX terminates within the §2 wire cap
+--      (DLE + 1 + 255 DATA + 1 BTC + 1 CHK + DLE ETX, worst case ~260 B)
+--
+-- Ephemeral client ports (53xxx etc.) that happen to start with 0x10 0x02
+-- would need the third byte to also land in cmd_name by luck — unlikely
+-- enough that false positives are rare. On doubt Wireshark discards the
+-- heuristic outcome and continues normal dispatch.
+-------------------------------------------------------------------------------
+local function probel_heuristic(tvbuf, pktinfo, root)
+    local pktlen = tvbuf:reported_length_remaining()
+    if pktlen < 2 then return false end
+    local b0 = tvbuf:range(0, 1):uint()
+    if b0 ~= DLE then return false end
+    local b1 = tvbuf:range(1, 1):uint()
+    if b1 == ACK or b1 == NAK then
+        -- Bare ACK/NAK alone in a packet — accept.
+        p_probel.dissector(tvbuf, pktinfo, root)
+        return true
+    end
+    if b1 ~= STX then return false end
+    if pktlen < 4 then return false end
+    local cmd = tvbuf:range(2, 1):uint()
+    -- DLE-stuffed cmd: if the cmd byte is DLE (0x10), the *real* cmd is
+    -- byte 3. Either way, at least one of [cmd, byte3] must be a known
+    -- command id for us to accept.
+    local cmd2 = (cmd == DLE and pktlen >= 4) and tvbuf:range(3, 1):uint() or cmd
+    if cmd_name[cmd2] == nil then return false end
+    -- Look for DLE ETX somewhere in the first 260 bytes; if the segment
+    -- is shorter, we trust the framer's reassembly path and still accept.
+    local scan = math.min(pktlen, 260)
+    local saw_etx = false
+    for i = 2, scan - 2 do
+        if tvbuf:range(i, 1):uint() == DLE and tvbuf:range(i + 1, 1):uint() == ETX then
+            saw_etx = true
+            break
+        end
+    end
+    if (not saw_etx) and pktlen >= 260 then return false end
+    p_probel.dissector(tvbuf, pktinfo, root)
+    return true
+end
+
+-------------------------------------------------------------------------------
+-- Register on TCP port 2008 (SW-P-08 default) and as a heuristic so we
+-- pick up VSM server mode (7800) and any non-default port a vendor uses.
 -------------------------------------------------------------------------------
 local tcp_port = DissectorTable.get("tcp.port")
 tcp_port:add(PROBEL_TCP_PORT, p_probel)
+p_probel:register_heuristic("tcp", probel_heuristic)
