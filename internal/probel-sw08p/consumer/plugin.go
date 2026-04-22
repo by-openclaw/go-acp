@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"acp/internal/metrics"
 	"acp/internal/probel-sw08p/codec"
@@ -28,6 +29,13 @@ import (
 	"acp/internal/protocol/compliance"
 	"acp/internal/transport"
 )
+
+// DefaultOnlineStaleAfter is the default "no rx traffic observed for
+// this long = peer is offline" threshold used by Plugin.IsOnline. Set
+// to 3× the provider's DefaultKeepaliveInterval (30 s) so a missed
+// keepalive tick does not immediately trip offline. Callers that want
+// stricter or looser liveness can use IsOnlineWithin(stale) directly.
+const DefaultOnlineStaleAfter = 90 * time.Second
 
 func init() {
 	protocol.Register(&Factory{})
@@ -82,6 +90,33 @@ func (p *Plugin) Metrics() *metrics.Connector {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.metricsConn
+}
+
+// IsOnline reports whether the plugin considers the matrix alive — true
+// if we have seen any rx frame (application or DLE ACK / NAK) within
+// DefaultOnlineStaleAfter. Mirrors the canonical.Header.IsOnline flag
+// surfaced by the Ember+ mirror: one "alive" bool, same semantics across
+// every protocol. False before Connect and after Disconnect once the
+// staleness threshold elapses.
+func (p *Plugin) IsOnline() bool {
+	return p.IsOnlineWithin(DefaultOnlineStaleAfter)
+}
+
+// IsOnlineWithin is IsOnline with an explicit staleness threshold — use
+// when the caller knows the peer's keepalive cadence (e.g. an Ember+
+// mirror polling at 5 s can pass stale=15 s).
+func (p *Plugin) IsOnlineWithin(stale time.Duration) bool {
+	p.mu.Lock()
+	met := p.metricsConn
+	p.mu.Unlock()
+	if met == nil {
+		return false
+	}
+	snap := met.Snapshot()
+	if snap.LastRxAt.IsZero() {
+		return false
+	}
+	return time.Since(snap.LastRxAt) < stale
 }
 
 // ComplianceProfile returns the session-scoped compliance profile.
