@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"acp/internal/probel-sw08p/codec"
 )
@@ -90,6 +91,7 @@ func (s *session) run(ctx context.Context) {
 					slog.String("err", derr.Error()))
 				_ = s.write(codec.PackNAK())
 				s.srv.profile.Note(InboundFrameDecodeFailed)
+				s.srv.metrics.ObserveDecodeError()
 				buf = buf[2:]
 				continue
 			}
@@ -100,19 +102,23 @@ func (s *session) run(ctx context.Context) {
 				slog.Int("wire_len", consumed),
 				slog.String("hex", codec.HexDump(buf[:consumed])),
 			)
+			s.srv.metrics.ObserveRx(consumed)
+			rxAt := time.Now()
 			buf = buf[consumed:]
 			// SW-P-08 §2 — always ACK a well-framed message, then
 			// let dispatch decide whether to also send a functional reply.
 			_ = s.write(codec.PackACK())
-			s.dispatch(f)
+			s.dispatch(f, rxAt)
 		}
 	}
 }
 
 // dispatch routes a decoded frame to the server's command handler table
 // (handlers.go), sends the reply (if any) back on the originating
-// session, and fans tallies out to every OTHER live session.
-func (s *session) dispatch(f codec.Frame) {
+// session, and fans tallies out to every OTHER live session. rxAt is
+// the timestamp at which the incoming frame finished decoding; used
+// to measure handler rx→tx turnaround for metrics.
+func (s *session) dispatch(f codec.Frame, rxAt time.Time) {
 	res, err := s.srv.handle(f)
 	if err != nil {
 		s.srv.logger.Warn("probel dispatch",
@@ -121,6 +127,7 @@ func (s *session) dispatch(f codec.Frame) {
 			slog.String("err", err.Error()),
 		)
 		s.srv.profile.Note(HandlerRejected)
+		s.srv.metrics.ObserveDecodeError()
 		return
 	}
 	if res.reply != nil {
@@ -137,6 +144,7 @@ func (s *session) dispatch(f codec.Frame) {
 				slog.String("remote", s.remoteAddr()),
 				slog.String("err", werr.Error()))
 		}
+		s.srv.metrics.ObserveTx(len(raw), time.Since(rxAt))
 	}
 	for _, tally := range res.tallies {
 		s.srv.fanOutTally(s, tally)

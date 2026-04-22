@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
 	"acp/internal/export/canonical"
+	"acp/internal/metrics"
+	"acp/internal/probel-sw08p/codec"
 	"acp/internal/protocol/compliance"
 )
 
@@ -38,10 +39,18 @@ type server struct {
 	// session since the server started. See compliance_events.go.
 	profile *compliance.Profile
 
+	// metrics aggregates rx/tx counters + error counters + handler
+	// latency buckets across every session since Serve started.
+	// Always non-nil after newServer.
+	metrics *metrics.Connector
+
 	// keepaliveInterval is the per-session ping cadence. 0 disables.
 	// Set via SetKeepaliveInterval before Serve.
 	keepaliveInterval time.Duration
 }
+
+// Metrics returns the server-wide connector metrics. Always non-nil.
+func (s *server) Metrics() *metrics.Connector { return s.metrics }
 
 // ComplianceProfile returns the provider-scoped compliance profile —
 // always non-nil once newServer has run. Safe to read from any
@@ -65,6 +74,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		sessions: map[*session]struct{}{},
 		stopped:  make(chan struct{}),
 		profile:  &compliance.Profile{},
+		metrics:  metrics.NewConnector(),
 	}
 }
 

@@ -141,6 +141,14 @@ func TestServerLoopback(t *testing.T) {
 	// Give the session goroutine a beat to log and close.
 	time.Sleep(50 * time.Millisecond)
 
+	// Provider metrics must have observed the rx frame. tx may be 0 —
+	// Maintenance is fire-and-forget with no reply.
+	if m := srv.Metrics(); m == nil {
+		t.Fatal("srv.Metrics() is nil; want non-nil after Serve")
+	} else if s := m.Snapshot(); s.RxFrames < 1 {
+		t.Errorf("metrics snapshot rx=%d, want >=1", s.RxFrames)
+	}
+
 	cancel()
 	select {
 	case <-serveErr:

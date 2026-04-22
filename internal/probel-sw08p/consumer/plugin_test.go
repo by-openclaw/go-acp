@@ -56,3 +56,13 @@ func TestDisconnectBeforeConnect(t *testing.T) {
 		t.Errorf("Disconnect on fresh plugin = %v; want nil", err)
 	}
 }
+
+// TestMetricsNilBeforeConnect pins the contract: Metrics() is nil
+// until Connect fires. Wired via Connect, preserved across Disconnect.
+func TestMetricsNilBeforeConnect(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := &Plugin{logger: logger}
+	if m := p.Metrics(); m != nil {
+		t.Errorf("Metrics() = %v before Connect; want nil", m)
+	}
+}

@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"acp/internal/metrics"
 	"acp/internal/probel-sw08p/codec"
 	"acp/internal/protocol"
 	"acp/internal/protocol/compliance"
@@ -67,6 +68,20 @@ type Plugin struct {
 	// session. See compliance_events.go for the catalog. Nil until
 	// Connect fires; callers read via ComplianceProfile().
 	profile *compliance.Profile
+
+	// metricsConn carries rx/tx counters + error counters. Nil until
+	// Connect fires; callers read via Metrics(). Preserved after
+	// Disconnect so post-mortem summaries are still available.
+	metricsConn *metrics.Connector
+}
+
+// Metrics returns the session-scoped connector metrics. Nil before
+// Connect, non-nil after (preserved across Disconnect). Safe from any
+// goroutine — metrics.Connector is internally synchronised.
+func (p *Plugin) Metrics() *metrics.Connector {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.metricsConn
 }
 
 // ComplianceProfile returns the session-scoped compliance profile.
@@ -107,17 +122,28 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	prof := &compliance.Profile{}
+	met := metrics.NewConnector()
 	cfg := codec.ClientConfig{
 		OnCapSoft: func(int) { prof.Note(DataFieldOversize) },
-		OnNAK:     func() { prof.Note(NAKReceived) },
-		OnTimeout: func() { prof.Note(ACKTimeoutElapsed) },
+		OnNAK:     func() { prof.Note(NAKReceived); met.ObserveNAK() },
+		OnTimeout: func() { prof.Note(ACKTimeoutElapsed); met.ObserveTimeout() },
 		OnRetry:   func(int) { prof.Note(RetryAttempted) },
 		OnNoACK:   func() { prof.Note(ReplyWithoutACK) },
+		OnTx:      func(b []byte) { met.ObserveTx(len(b), 0) },
+		OnRx:      func(b []byte) { met.ObserveRx(len(b)) },
 	}
 	if p.recorder != nil {
 		rec := p.recorder
-		cfg.OnTx = func(b []byte) { rec.Record("probel-sw08p", "tx", b) }
-		cfg.OnRx = func(b []byte) { rec.Record("probel-sw08p", "rx", b) }
+		wrappedTx := cfg.OnTx
+		wrappedRx := cfg.OnRx
+		cfg.OnTx = func(b []byte) {
+			wrappedTx(b)
+			rec.Record("probel-sw08p", "tx", b)
+		}
+		cfg.OnRx = func(b []byte) {
+			wrappedRx(b)
+			rec.Record("probel-sw08p", "rx", b)
+		}
 	}
 	cli, err := codec.Dial(ctx, addr, p.logger, cfg)
 	if err != nil {
@@ -127,6 +153,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.host = ip
 	p.port = port
 	p.profile = prof
+	p.metricsConn = met
 	p.installKeepaliveAutoResponder(cli)
 	p.logger.Info("probel connected",
 		slog.String("host", ip),
@@ -136,17 +163,24 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 }
 
 // Disconnect closes the TCP session. Safe to call on an unconnected plugin.
-// The compliance profile is preserved after Disconnect so callers can
-// still inspect it post-mortem.
+// Compliance profile + metrics connector are preserved after Disconnect so
+// callers can still inspect them post-mortem. Emits a one-line session
+// summary at INFO before closing.
 func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	cli := p.client
+	met := p.metricsConn
 	p.client = nil
 	p.host = ""
 	p.port = 0
 	p.mu.Unlock()
 	if cli == nil {
 		return nil
+	}
+	if met != nil {
+		p.logger.Info("probel session metrics",
+			slog.String("summary", met.Summary()),
+		)
 	}
 	return cli.Close()
 }
