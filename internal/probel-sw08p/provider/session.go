@@ -16,6 +16,14 @@ import (
 // session is one connected SW-P-08 client (typically a controller).
 // It owns the TCP socket, accumulates bytes, feeds complete frames to
 // the server's command dispatcher, and serialises writes via writeMu.
+//
+// Frames are decoded + ACK'd on the read goroutine, then handed to
+// a dedicated dispatcher goroutine via dispatchCh. The dispatcher
+// serialises handlers per-session (so reply order is preserved) while
+// freeing the read loop to keep pulling bytes off the socket. Without
+// this split the read loop would block on tree-mutex contention during
+// the connect-phase of the scale bench, producing multi-second tail
+// latency (see memory/project_scale_bench_results_2026_04_22.md).
 type session struct {
 	srv  *server
 	conn net.Conn
@@ -23,20 +31,49 @@ type session struct {
 	writeMu sync.Mutex
 	closeMu sync.Mutex
 	closed  bool
+
+	dispatchCh chan pendingFrame
+	dispatchWG sync.WaitGroup
 }
+
+// pendingFrame carries everything dispatch() needs once the read loop
+// has moved on. rxAt is captured before the ACK write so end-to-end
+// latency measurement matches what the client sees.
+type pendingFrame struct {
+	f    codec.Frame
+	rxAt time.Time
+	n    int // wire length, for metrics
+}
+
+// dispatchChanCap bounds the per-session backlog between the read loop
+// and the dispatcher. 256 frames is one ACP2 announce burst on the
+// Probel side (§3.2.29) and absorbs a full salvo-fire staging round
+// without the read loop having to block. If this ever fills up
+// repeatedly it means the handler is the bottleneck — S2 (lock split)
+// is the follow-up.
+const dispatchChanCap = 256
 
 func newSession(srv *server, conn net.Conn) *session {
-	return &session{srv: srv, conn: conn}
+	return &session{
+		srv:        srv,
+		conn:       conn,
+		dispatchCh: make(chan pendingFrame, dispatchChanCap),
+	}
 }
 
-// run reads frames until EOF or ctx cancellation. Each frame is ACK'd
-// and passed to dispatch. Dispatch is a stub in the scaffold commit:
-// every command replies with DLE NAK so controllers see the session
-// is alive but refusing until per-command handlers land.
+// run reads frames until EOF or ctx cancellation. Each frame is decoded,
+// ACK'd, then enqueued for the dispatcher goroutine (started here).
+// The read loop never waits on handler or fan-out work.
 func (s *session) run(ctx context.Context) {
 	defer func() {
 		_ = s.conn.Close()
+		// Signal dispatcher no more frames coming; drain anything queued
+		// so replies to already-ACK'd frames still land.
+		close(s.dispatchCh)
+		s.dispatchWG.Wait()
 	}()
+
+	s.startDispatcher(ctx)
 
 	s.srv.logger.Info("probel session opened",
 		slog.String("remote", s.remoteAddr()),
@@ -106,11 +143,40 @@ func (s *session) run(ctx context.Context) {
 			rxAt := time.Now()
 			buf = buf[consumed:]
 			// SW-P-08 §2 — always ACK a well-framed message, then
-			// let dispatch decide whether to also send a functional reply.
+			// hand off to the dispatcher. The handler + fan-out run on
+			// the dispatcher goroutine so the read loop stays hot.
 			_ = s.write(codec.PackACK())
-			s.dispatch(f, rxAt)
+			select {
+			case s.dispatchCh <- pendingFrame{f: f, rxAt: rxAt, n: consumed}:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}
+}
+
+// startDispatcher launches the per-session dispatcher goroutine. It
+// consumes pendingFrame values in FIFO order so reply ordering within
+// a session matches wire order — SW-P-08 controllers assume it.
+func (s *session) startDispatcher(ctx context.Context) {
+	s.dispatchWG.Add(1)
+	go func() {
+		defer s.dispatchWG.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				s.srv.logger.Error("probel dispatcher panic",
+					slog.String("remote", s.remoteAddr()),
+					slog.Any("recover", r),
+				)
+			}
+		}()
+		for pf := range s.dispatchCh {
+			if err := ctx.Err(); err != nil {
+				return
+			}
+			s.dispatch(pf.f, pf.rxAt)
+		}
+	}()
 }
 
 // dispatch routes a decoded frame to the server's command handler table
