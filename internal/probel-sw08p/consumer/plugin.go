@@ -132,7 +132,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		OnCapSoft: func(int) { prof.Note(DataFieldOversize) },
 		OnNAK:     func() { prof.Note(NAKReceived); met.ObserveNAK() },
 		OnTimeout: func() { prof.Note(ACKTimeoutElapsed); met.ObserveTimeout() },
-		OnRetry:   func(int) { prof.Note(RetryAttempted) },
+		OnRetry:   func(int) { prof.Note(RetryAttempted); met.ObserveRetry() },
 		OnNoACK:   func() { prof.Note(ReplyWithoutACK) },
 		OnTx: func(b []byte) {
 			if id, ok := probelCmdFromBytes(b); ok {

@@ -114,6 +114,7 @@ func (cc *connectorCollector) Collect(ch chan<- prometheus.Metric) {
 	counter("decode_errors_total", "Frame decode errors", s.DecodeErrors, nil, nil)
 	counter("naks_total", "NAKs received from peer", s.NAKs, nil, nil)
 	counter("timeouts_total", "ACK timeouts", s.Timeouts, nil, nil)
+	counter("retries_total", "Frame re-send attempts (after NAK or ACK timeout)", s.Retries, nil, nil)
 	counter("reconnects_total", "Session reconnects", s.Reconnects, nil, nil)
 	gauge("cpu_percent", "Handler busy time as percentage of uptime", s.CPUPercent, nil, nil)
 	gauge("memory_bytes", "Estimated memory attributed to this connector", float64(s.EstimatedBytes), nil, nil)

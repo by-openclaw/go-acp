@@ -39,6 +39,7 @@ type Connector struct {
 	decodeErrors atomic.Uint64
 	naks         atomic.Uint64
 	timeouts     atomic.Uint64
+	retries      atomic.Uint64
 	reconnects   atomic.Uint64
 
 	// Timestamps (unix nano).
@@ -187,6 +188,18 @@ func (c *Connector) ObserveTimeout() {
 	c.timeouts.Add(1)
 }
 
+// ObserveRetry bumps the per-attempt retry counter. Fires once per
+// re-send decision, regardless of whether the cause was NAK or ACK
+// timeout (both already bump their own counters). A high retries_total
+// with low naks + low timeouts indicates duplicate retries from the
+// caller layer, which is worth alerting on.
+func (c *Connector) ObserveRetry() {
+	if c == nil {
+		return
+	}
+	c.retries.Add(1)
+}
+
 // ObserveReconnect bumps the reconnect counter.
 func (c *Connector) ObserveReconnect() {
 	if c == nil {
@@ -267,7 +280,7 @@ type Snapshot struct {
 	// Aggregate.
 	RxFrames, TxFrames                       uint64
 	RxBytes, TxBytes                         uint64
-	DecodeErrors, NAKs, Timeouts, Reconnects uint64
+	DecodeErrors, NAKs, Timeouts, Retries, Reconnects uint64
 
 	// Aggregate latency: count per µs log-linear bucket.
 	LatencyBuckets [7]uint64
@@ -309,6 +322,7 @@ func (c *Connector) Snapshot() Snapshot {
 	s.DecodeErrors = c.decodeErrors.Load()
 	s.NAKs = c.naks.Load()
 	s.Timeouts = c.timeouts.Load()
+	s.Retries = c.retries.Load()
 	s.Reconnects = c.reconnects.Load()
 	for i := range c.latency {
 		s.LatencyBuckets[i] = c.latency[i].Load()
@@ -350,13 +364,13 @@ func (c *Connector) Summary() string {
 	s := c.Snapshot()
 	p50, p95, p99 := s.LatencyPercentiles()
 	return fmt.Sprintf(
-		"uptime=%s cpu=%.2f%% mem=%dB rx=%d/%dB tx=%d/%dB errs=decode:%d nak:%d to:%d rec:%d lat_us p50~%d p95~%d p99~%d",
+		"uptime=%s cpu=%.2f%% mem=%dB rx=%d/%dB tx=%d/%dB errs=decode:%d nak:%d to:%d retry:%d rec:%d lat_us p50~%d p95~%d p99~%d",
 		s.Uptime.Round(time.Millisecond),
 		s.CPUPercent,
 		s.EstimatedBytes,
 		s.RxFrames, s.RxBytes,
 		s.TxFrames, s.TxBytes,
-		s.DecodeErrors, s.NAKs, s.Timeouts, s.Reconnects,
+		s.DecodeErrors, s.NAKs, s.Timeouts, s.Retries, s.Reconnects,
 		p50, p95, p99,
 	)
 }

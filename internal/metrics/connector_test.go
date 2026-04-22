@@ -16,6 +16,9 @@ func TestConnectorObserve(t *testing.T) {
 	c.ObserveNAK()
 	c.ObserveNAK()
 	c.ObserveTimeout()
+	c.ObserveRetry()
+	c.ObserveRetry()
+	c.ObserveRetry()
 	c.ObserveReconnect()
 
 	s := c.Snapshot()
@@ -25,9 +28,9 @@ func TestConnectorObserve(t *testing.T) {
 	if s.TxFrames != 3 || s.TxBytes != 15 {
 		t.Errorf("tx counts wrong: frames=%d bytes=%d", s.TxFrames, s.TxBytes)
 	}
-	if s.DecodeErrors != 1 || s.NAKs != 2 || s.Timeouts != 1 || s.Reconnects != 1 {
-		t.Errorf("error counts wrong: decode=%d naks=%d to=%d rec=%d",
-			s.DecodeErrors, s.NAKs, s.Timeouts, s.Reconnects)
+	if s.DecodeErrors != 1 || s.NAKs != 2 || s.Timeouts != 1 || s.Retries != 3 || s.Reconnects != 1 {
+		t.Errorf("error counts wrong: decode=%d naks=%d to=%d retry=%d rec=%d",
+			s.DecodeErrors, s.NAKs, s.Timeouts, s.Retries, s.Reconnects)
 	}
 	if s.LatencyBuckets[0] != 1 { // 5µs < 10µs bucket 0
 		t.Errorf("bucket 0 (<10µs) want 1 got %d", s.LatencyBuckets[0])
@@ -47,6 +50,7 @@ func TestConnectorNilSafe(t *testing.T) {
 	c.ObserveDecodeError()
 	c.ObserveNAK()
 	c.ObserveTimeout()
+	c.ObserveRetry()
 	c.ObserveReconnect()
 	_ = c.Snapshot()
 }
