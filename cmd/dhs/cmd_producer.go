@@ -11,17 +11,26 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"acp/internal/export/canonical"
+	"acp/internal/metrics"
 	"acp/internal/provider"
 
 	acp1provider "acp/internal/acp1/provider"
 	acp2provider "acp/internal/acp2/provider"
 )
+
+// metricsExposer is the optional interface provider servers implement
+// to participate in the /metrics scrape. Probel provider's *Server
+// satisfies it today; other protocols add it in D8.
+type metricsExposer interface {
+	Metrics() *metrics.Connector
+}
 
 // runProducer is called by the top-level dispatcher with the protocol name
 // already parsed out of the argv. The remaining args follow an optional verb
@@ -39,6 +48,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		announceID    = fs.Int("announce-demo-id", 0, "acp1: object id for --announce-demo target (must be Integer type)")
 		announceObj   = fs.Int("announce-demo-obj", 18, "acp2: obj-id for --announce-demo target (must be Number+Float)")
 		announceEvery = fs.Duration("announce-demo-interval", 2*time.Second, "--announce-demo tick interval")
+		metricsAddr   = fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + Go/process collectors on this address")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -69,6 +79,51 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 
 	srvCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	// --metrics-addr mounts Prometheus /metrics if the provider
+	// exposes a *metrics.Connector (optional interface). Plugins that
+	// haven't landed metrics wiring yet silently skip with a warn.
+	if *metricsAddr != "" {
+		if mp, ok := srv.(metricsExposer); ok {
+			proc := metrics.NewProcess()
+			go proc.Run(5*time.Second, srvCtx.Done())
+			reg := metrics.NewPromRegistry()
+			if err := reg.Attach(mp.Metrics(), map[string]string{
+				"proto": protoName,
+				"role":  "provider",
+				"addr":  addr,
+			}); err != nil {
+				logger.Warn("metrics attach failed", slog.String("err", err.Error()))
+			}
+			if err := reg.AttachProcess(proc); err != nil {
+				logger.Warn("metrics attach process failed", slog.String("err", err.Error()))
+			}
+			mux := http.NewServeMux()
+			mux.Handle("/metrics", reg.Handler())
+			metricsSrv := &http.Server{
+				Addr:              *metricsAddr,
+				Handler:           mux,
+				ReadHeaderTimeout: 5 * time.Second,
+			}
+			go func() {
+				logger.Info("metrics endpoint serving",
+					slog.String("addr", *metricsAddr),
+					slog.String("path", "/metrics"))
+				if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+					logger.Error("metrics server failed", slog.String("err", err.Error()))
+				}
+			}()
+			go func() {
+				<-srvCtx.Done()
+				shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 2*time.Second)
+				defer cancelShutdown()
+				_ = metricsSrv.Shutdown(shutdownCtx)
+			}()
+		} else {
+			logger.Warn("--metrics-addr set but provider does not expose Metrics() — skipping",
+				slog.String("protocol", protoName))
+		}
+	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
