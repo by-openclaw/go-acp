@@ -177,6 +177,26 @@ See root `CLAUDE.md` "Metrics surface on the producer" section +
   to CSV/MD.
 - Rationale + expected numbers in `memory/project_scale_bench_2mtx_65535.md`.
 
+### Session 2026-04-23 refactors
+
+- **S1 (commit `5241679`)** — per-session dispatcher goroutine + bounded
+  channel; ACK fires immediately after decode so read loop never waits
+  on handler. Prereq for multi-consumer scaling.
+- **S2 (commit `ea42ca4`)** — per-frame `rx` / `tx` / `tally fan-out`
+  slog calls moved to Debug, gated by `Logger.Enabled`. Follows
+  `feedback_logging.md` "skip announce logs". Connect p50 dropped
+  2.8 ms → 1.0 ms in 10× bench.
+- **W1a (commit `3fb7d85`)** — per-level name encoding: `NameSize`,
+  `MultiLine`, `PadChar` (pointer `*uint8`), `KeepPadding` on
+  `canonical.MatrixLabel`. Codec `packNameWithPad` / `unpackNameWithTrim`
+  accept explicit padChar + trim flag; CR/LF preserved verbatim inside
+  fixed-width fields for 2-row display vendors (Calrec style).
+- **W3 (commit `0e88ca4`)** — streaming tally-dump: `handlerResult`
+  gains `streamToSender func(emit func(Frame) error) error` callback;
+  rx 021 handler emits chunks of 128 byte-form / 64 word-form tallies
+  instead of buffering the whole dump. Respects the 128-byte soft DATA
+  cap (spec §2). Memory per dump goes from O(targetCount) to O(chunk).
+
 ### Known latent bug fixed along the way
 
 `matrixState.sources []int16` silently wrapped source IDs at 32768
