@@ -77,6 +77,8 @@ func runProbel(ctx context.Context, args []string) error {
 		return runProbelAllSourceAssocNames(ctx, rest)
 	case "single-source-assoc-name":
 		return runProbelSingleSourceAssocName(ctx, rest)
+	case "bench":
+		return runProbelBench(ctx, rest)
 	}
 	return fmt.Errorf("unknown probel subcommand %q", sub)
 }
@@ -113,10 +115,15 @@ SUBCOMMANDS
   protect-name              resolve device id → 8-char name
   protect-dump              dump every protect on (matrix, level)
   master-protect            master-override protect connect
+  bench                     scale benchmark: interrogate-all + connect-all
+                            on a persistent TCP connection (see
+                            memory/project_scale_bench_2mtx_65535.md)
 
 EXAMPLES
   dhs consumer probel-sw08p interrogate         127.0.0.1:2008 --matrix 0 --level 0 --dst 5
   dhs consumer probel-sw08p connect             127.0.0.1:2008 --matrix 0 --level 0 --dst 5 --src 12
+  dhs consumer probel-sw08p bench 127.0.0.1:2008 --matrix 0,1 --size 65535 \
+    --csv bench.csv --md bench.md
   dhs consumer probel-sw08p tally-dump          127.0.0.1:2008 --matrix 0 --level 0
   dhs consumer probel-sw08p watch               127.0.0.1:2008
 
