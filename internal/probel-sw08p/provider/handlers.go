@@ -4,16 +4,24 @@ import (
 	"acp/internal/probel-sw08p/codec"
 )
 
-// handlerResult is what a per-command handler returns: an optional
-// reply sent back to the originating session, plus zero or more
-// tallies broadcast to every OTHER session (not the originator).
+// handlerResult is what a per-command handler returns:
+//   - `reply`          an optional single-frame reply to the sender
+//   - `tallies`        zero or more tallies broadcast to EVERY OTHER
+//                      session (not the originator) via fanOutTally
+//   - `streamToSender` optional callback that emits additional frames
+//                      back to THIS session only. Used by handlers
+//                      whose reply is a sequence larger than one frame
+//                      (tally-dump, name-list pagination, etc.); the
+//                      callback writes one frame at a time so the
+//                      handler never buffers the whole response.
 //
 // Handlers that cannot parse their frame payload return an error; the
 // session logs it and sends DLE NAK at the framing layer (the ACK has
 // already gone out by the time handle() runs).
 type handlerResult struct {
-	reply   *codec.Frame
-	tallies []codec.Frame
+	reply          *codec.Frame
+	tallies        []codec.Frame
+	streamToSender func(emit func(codec.Frame) error) error
 }
 
 // handle is the central command dispatcher. It is a pure function of

@@ -220,6 +220,22 @@ func (s *session) dispatch(f codec.Frame, rxAt time.Time) {
 		}
 		s.srv.metrics.ObserveCmdTx(uint8(res.reply.ID), len(raw), time.Since(rxAt))
 	}
+	if res.streamToSender != nil {
+		emit := func(f codec.Frame) error {
+			raw := codec.Pack(f)
+			if err := s.write(raw); err != nil {
+				return err
+			}
+			// Per-frame metric so the streaming emitter is visible.
+			s.srv.metrics.ObserveCmdTx(uint8(f.ID), len(raw), time.Since(rxAt))
+			return nil
+		}
+		if err := res.streamToSender(emit); err != nil {
+			s.srv.logger.Warn("probel session stream emit",
+				slog.String("remote", s.remoteAddr()),
+				slog.String("err", err.Error()))
+		}
+	}
 	for _, tally := range res.tallies {
 		s.srv.fanOutTally(s, tally)
 	}
