@@ -1,0 +1,81 @@
+ts,metric,labels,value
+2026-04-23T00:56:39.0121091+02:00,rx_frames_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",13333
+2026-04-23T00:56:39.0121091+02:00,tx_frames_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",13013
+2026-04-23T00:56:39.0121091+02:00,rx_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",127824
+2026-04-23T00:56:39.0121091+02:00,tx_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",120877
+2026-04-23T00:56:39.0121091+02:00,decode_errors_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,naks_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,timeouts_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,retries_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,reconnects_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,memory_bytes,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,tree_bytes,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,pool_bytes,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,inflight_bytes,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,disk_bytes,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",0
+2026-04-23T00:56:39.0121091+02:00,cpu_percent,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",2.3270
+2026-04-23T00:56:39.0121091+02:00,uptime_seconds,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider",202.552
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=8;cmd_name="rx 008 Dual Controller Status Request",8
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=8;cmd_name="rx 008 Dual Controller Status Request",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=8;cmd_name="rx 008 Dual Controller Status Request",56
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=8;cmd_name="rx 008 Dual Controller Status Request",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=9;cmd_name="tx 009 Dual Controller Status Response",0
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=9;cmd_name="tx 009 Dual Controller Status Response",8
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=9;cmd_name="tx 009 Dual Controller Status Response",0
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=9;cmd_name="tx 009 Dual Controller Status Response",72
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=21;cmd_name="rx 021 Crosspoint Tally Dump Request",2
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=21;cmd_name="rx 021 Crosspoint Tally Dump Request",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=21;cmd_name="rx 021 Crosspoint Tally Dump Request",17
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=21;cmd_name="rx 021 Crosspoint Tally Dump Request",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=22;cmd_name="tx 022 Crosspoint Tally Dump (byte)",0
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=22;cmd_name="tx 022 Crosspoint Tally Dump (byte)",2
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=22;cmd_name="tx 022 Crosspoint Tally Dump (byte)",0
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=22;cmd_name="tx 022 Crosspoint Tally Dump (byte)",85
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=106;cmd_name="tx 106 Source Names Response",192
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=106;cmd_name="tx 106 Source Names Response",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=106;cmd_name="tx 106 Source Names Response",4473
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=106;cmd_name="tx 106 Source Names Response",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=107;cmd_name="tx 107 Dest Assoc Names Response",128
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=107;cmd_name="tx 107 Dest Assoc Names Response",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=107;cmd_name="tx 107 Dest Assoc Names Response",2558
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=107;cmd_name="tx 107 Dest Assoc Names Response",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=120;cmd_name="rx 120 Crosspoint Connect-On-Go Salvo",1222
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=120;cmd_name="rx 120 Crosspoint Connect-On-Go Salvo",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=120;cmd_name="rx 120 Crosspoint Connect-On-Go Salvo",14691
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=120;cmd_name="rx 120 Crosspoint Connect-On-Go Salvo",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=121;cmd_name="rx 121 Crosspoint Go Salvo",11781
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=121;cmd_name="rx 121 Crosspoint Go Salvo",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=121;cmd_name="rx 121 Crosspoint Go Salvo",106029
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=121;cmd_name="rx 121 Crosspoint Go Salvo",0
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=122;cmd_name="tx 122 Salvo Connect-On-Go Ack",0
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=122;cmd_name="tx 122 Salvo Connect-On-Go Ack",1222
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=122;cmd_name="tx 122 Salvo Connect-On-Go Ack",0
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=122;cmd_name="tx 122 Salvo Connect-On-Go Ack",14691
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=123;cmd_name="",0
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_hits_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=123;cmd_name="",11781
+2026-04-23T00:56:39.0121091+02:00,rx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=123;cmd_name="",0
+2026-04-23T00:56:39.0121091+02:00,tx_cmd_bytes_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";cmd_id=123;cmd_name="",106029
+2026-04-23T00:56:39.0121091+02:00,handler_latency_us_bucket_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";le_us=10,0
+2026-04-23T00:56:39.0121091+02:00,handler_latency_us_bucket_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";le_us=100,0
+2026-04-23T00:56:39.0121091+02:00,handler_latency_us_bucket_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";le_us=1000,6533
+2026-04-23T00:56:39.0121091+02:00,handler_latency_us_bucket_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";le_us=10000,380
+2026-04-23T00:56:39.0121091+02:00,handler_latency_us_bucket_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";le_us=100000,0
+2026-04-23T00:56:39.0121091+02:00,handler_latency_us_bucket_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";le_us=1000000,0
+2026-04-23T00:56:39.0121091+02:00,handler_latency_us_bucket_total,addr="0.0.0.0:2008";proto="probel-sw08p";role="provider";le_us=4611686018427387903,0
+2026-04-23T00:56:39.0121091+02:00,process_heap_alloc_bytes,,7235096
+2026-04-23T00:56:39.0121091+02:00,process_heap_sys_bytes,,16154624
+2026-04-23T00:56:39.0121091+02:00,process_heap_inuse_bytes,,8536064
+2026-04-23T00:56:39.0121091+02:00,process_heap_idle_bytes,,7618560
+2026-04-23T00:56:39.0121091+02:00,process_heap_released_bytes,,6356992
+2026-04-23T00:56:39.0121091+02:00,process_stack_inuse_bytes,,622592
+2026-04-23T00:56:39.0121091+02:00,process_total_alloc_bytes,,29232280
+2026-04-23T00:56:39.0121091+02:00,process_mallocs,,263559
+2026-04-23T00:56:39.0121091+02:00,process_frees,,226690
+2026-04-23T00:56:39.0121091+02:00,process_num_gc,,7
+2026-04-23T00:56:39.0121091+02:00,process_pause_total_ns,,6282100
+2026-04-23T00:56:39.0121091+02:00,process_gc_cpu_fraction,,0.000029
+2026-04-23T00:56:39.0121091+02:00,process_next_gc_bytes,,10280194
+2026-04-23T00:56:39.0121091+02:00,process_goroutines,,11
+2026-04-23T00:56:39.0121091+02:00,process_gomaxprocs,,12
+2026-04-23T00:56:39.0121091+02:00,process_num_cpu,,12
+2026-04-23T00:56:39.0121091+02:00,process_uptime_seconds,,202.553

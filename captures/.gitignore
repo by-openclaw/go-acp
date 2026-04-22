@@ -1,0 +1,5 @@
+# Bench + live-interop captures — keep named reports, drop raw JSONL/csv logs
+# so the repo stays lean. Add explicit exceptions below when a run is
+# worth pinning to a commit.
+*.jsonl
+*.log
