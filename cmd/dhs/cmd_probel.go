@@ -79,6 +79,8 @@ func runProbel(ctx context.Context, args []string) error {
 		return runProbelSingleSourceAssocName(ctx, rest)
 	case "bench":
 		return runProbelBench(ctx, rest)
+	case "salvo-connect":
+		return runProbelSalvoConnect(ctx, rest)
 	}
 	return fmt.Errorf("unknown probel subcommand %q", sub)
 }
