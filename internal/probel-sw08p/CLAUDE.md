@@ -111,10 +111,36 @@ internal/probel-sw08p/
 
 ## Testbed
 
-Three peers in the testbed:
-1. Commie.exe — full receiver, covers most SW-P-02/08 variants.
-2. TS server `internal/probel-sw08p/assets/smh-probelsw08p/` — full transmitter.
+Four peers in the testbed:
+1. Commie.exe — full receiver. **UI is 1-based across the board**:
+   "Matrix: 0001" = wire MatrixID 0, dest columns "0001..2048" = wire
+   0..2047, reply numbers displayed +1. UI "0000" underflows to
+   all-1s wildcard on the wire (`FF 70 7F` = matrix 15 / level 15 /
+   dst 1023). Supports up to 2048×2048, not limited to §3.1.2 caps.
+   Interactive Parameters dialog drives Salvo testing via F1..F4.
+2. TS server `internal/probel-sw08p/assets/smh-probelsw08p/` — full
+   transmitter, byte-exact spec reference.
 3. Real user device — partial transmitter; NAKs unsupported commands.
+4. **Lawo VSM Studio** — both directions:
+   - Controller mode: connects outbound to our `:2008`. Drives
+     cmd 2/120/121 (connect + salvos) en masse. Ignores levels
+     (Matrix-only navigation). Locks local-only unless forward
+     configured. **Label push is unsolicited** — with Auto-Transmit
+     attribute on, VSM emits `cmd 106` / `cmd 107` directly on
+     connect without waiting for `cmd 100` / `cmd 102` requests.
+     Registry `Source Label <N>` / `Target Label <N>` (REG_SZ) maps
+     a SW-P-08 level index to a VSM label column.
+   - Server mode: exposes its own 8×8 matrix at user-configurable
+     port (validated at `10.6.239.153:7800`). **Read-only** — rejects
+     `cmd 2` writes. Doesn't reply to `cmd 8` dual-status (only
+     sends as keepalive probe). Labels returned space-padded. See
+     `memory/project_probel_vsm_validation.md`.
+
+A DLE ACK (`10 06`) from any peer is §2 frame-level only — it does NOT
+imply the peer's application layer processed the command. VSM ACKs
+every well-framed packet regardless. Infer "supported" only from a
+follow-up app-layer reply (e.g. `cmd 11` after `cmd 12`) or a visible
+UI change.
 
 ## Known deviations from spec
 

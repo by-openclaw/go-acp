@@ -126,6 +126,87 @@ See `internal/protocol/compliance/` and each protocol's
 
 ---
 
+## Scale targets (broadcast industry baseline)
+
+Size every data structure and algorithm for these minimums. They drive
+codec choices (extended form always available), tree shape (sparse
+maps, never dense arrays), and the roadmap to dhs-srv (multi-matrix
+sharding, not single-process state).
+
+| Target | Minimum |
+|---|---:|
+| Crosspoints per matrix | **65 535 × 65 535** (≈ 4.3 B) |
+| Matrices per plant | **20 – 100** simultaneously |
+| Levels per matrix | 4 – 16 typical (SW-P-08 ext up to 256) |
+
+Consequences:
+
+- Codec 16-bit wire fields are first-class, not an edge case. Auto-escalate
+  to extended form (Probel `needsExtended()` pattern) everywhere.
+- Tally dumps at 65 535 entries stream-process — decoder emits events as
+  dests are decoded, never buffers the whole dump.
+- Provider trees use `map[(matrix, level, dst)] → src`, not `[matrix][level][]src`.
+- Benchmarks include a worst-case 65535² tally-dump decode per protocol.
+
+See [project_scale_requirements] in memory.
+
+---
+
+## Performance + metrics (every protocol)
+
+Every protocol's transport / session layer MUST expose live metrics on
+its connector:
+
+- **Frames**: rx/sec, tx/sec, rx total, tx total
+- **Bytes**: rx/sec, tx/sec, rx total, tx total
+- **Latency**: rx→tx handler turnaround p50/p95/p99 (µs)
+- **Errors**: NAK count, frame-decode errors, reconnect count
+- **Memory**: bytes attributable to connector buffers + tree
+- **CPU %**: share of process CPU in this connector's goroutines
+- **Uptime**: last-frame timestamp per direction
+
+Neutral `ConnectorMetrics` struct defined in `internal/protocol/` (for
+consumer) and `internal/provider/` (for provider); each plugin exposes
+`Metrics() ConnectorMetrics` on its session. Use `atomic.Uint64` for
+counters (no mutex on the hot path); HDR/log-linear histogram for
+latency. Do not pull in Prometheus client-libs until dhs-srv wires a
+scrape endpoint.
+
+Surfaces:
+
+1. Printed on session close in debug mode.
+2. Emitted as a `protocol.Event` tick every ~10 s in watch mode.
+3. Reachable via HTTP from dhs-srv when that lands.
+
+See [feedback_transport_metrics] in memory.
+
+---
+
+## Architecture principles
+
+Rules every plugin + transport layer follows. Violations require
+explicit sign-off.
+
+1. **Encapsulation.** Plugin exposes `Protocol` / `Provider` interface +
+   Factory + Metrics accessor. Everything else is package-private.
+2. **Dependency injection.** Connectors take transport, logger, tree,
+   clock as constructor parameters — no globals, no singletons outside
+   the compile-time registries. Tests substitute in-memory impls
+   without mocking libs.
+3. **Separation of concerns.** `codec/` (bytes), `consumer/` (outbound
+   session + API), `provider/` (inbound server + tree), `compliance/`
+   (spec-deviation absorption), `wireshark/` (Lua only). No cross-imports
+   between consumer and provider.
+4. **Library independence.** `internal/<proto>/codec/` is stdlib-only
+   and lift-to-own-repo ready. Codec never imports `acp/*`.
+5. **No hidden state.** No package-level mutable vars outside the
+   compile-time registries; cross-cutting concerns thread through
+   constructors or `context.Context`.
+
+See [feedback_architecture_principles] in memory.
+
+---
+
 ## Error hierarchy
 
 ```
@@ -252,6 +333,12 @@ See [feedback_no_workaround, feedback_spec_table_literal] in memory.
 - Never skip `AN2 EnableProtocolEvents` before expecting ACP2 announces.
 - Never reuse a live mtid for a new ACP2 request.
 - Never import `acp/*` from `internal/<proto>/codec/` packages.
+- Never assume a matrix is small — every plugin must cope with 65535×65535
+  per matrix and 100 matrices per fleet; use sparse maps, stream decoders,
+  and extended wire forms unconditionally.
+- Never silently skip latency / memory / throughput instrumentation in a
+  connector; if the metric can't be measured today, log the gap rather
+  than pretending it's zero.
 
 ---
 
