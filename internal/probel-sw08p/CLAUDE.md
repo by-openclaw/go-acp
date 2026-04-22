@@ -166,6 +166,17 @@ UI change.
 See root `CLAUDE.md` "Metrics surface on the producer" section +
 `memory/project_connector_metrics_v2.md` for the full plan.
 
+### Scale bench (2 mtx × 65535 × 1 level)
+
+- Tree generator: `tools/gen-probel-tree/main.go` emits labelled JSON at
+  `internal/probel-sw08p/assets/scale_2mtx_65535_1lvl.json` — 2 matrices,
+  single level, every src/dst labelled, sparse crosspoints.
+- Bench subcommand: `dhs consumer probel-sw08p bench <host:port>` keeps
+  one long-lived TCP connection, runs interrogate-all + connect-all with
+  `src = 1 + (dst / 16)` across both matrices. Captures per-cmd latency
+  to CSV/MD.
+- Rationale + expected numbers in `memory/project_scale_bench_2mtx_65535.md`.
+
 ### Known latent bug fixed along the way
 
 `matrixState.sources []int16` silently wrapped source IDs at 32768
