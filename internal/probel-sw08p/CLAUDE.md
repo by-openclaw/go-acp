@@ -147,6 +147,32 @@ UI change.
 - Viewer on user device sometimes returns short frames for tally dumps —
   absorbed via `compliance.Profile`, event fired, no silent workaround.
 
+## Metrics + observability (landed 2026-04-22)
+
+- Consumer `Plugin` and provider `server` each embed a
+  `*metrics.Connector`; call `Metrics()` to read it.
+- `codec.CommandName(id)` + `codec.CommandIDs()` give the plugin a
+  static catalogue for registering cmd names on the Connector. Call
+  `RegisterCmd(id, name)` once per command byte at plugin init.
+- Consumer wires per-cmd counters by parsing the wire header in the
+  OnTx/OnRx callbacks via `probelCmdFromBytes`; bare ACK/NAK fall
+  through to the aggregate path.
+- Provider wires per-cmd counters using `f.ID` directly after Unpack
+  in `session.run`, plus `ObserveCmdTx(id, n, time.Since(rxAt))` on
+  reply emission so handler latency is attributable per-cmd.
+- Producer CLI exposes `--metrics-addr :9100 --log-format json` to
+  mount Prom `/metrics` + `/snapshot.json` and emit JSON logs.
+
+See root `CLAUDE.md` "Metrics surface on the producer" section +
+`memory/project_connector_metrics_v2.md` for the full plan.
+
+### Known latent bug fixed along the way
+
+`matrixState.sources []int16` silently wrapped source IDs at 32768
+(int16 overflow). Source=40000 became int16(-25536) = "unrouted"
+sentinel. Fixed by switching to `map[uint16]uint16` in commit
+`c495fa3` — sparse storage AND correct 0-65535 source range.
+
 ## What NOT to do
 
 - Do NOT use positional byte offsets outside the codec package — everyone

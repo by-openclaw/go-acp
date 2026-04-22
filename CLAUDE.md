@@ -178,7 +178,51 @@ Surfaces:
 2. Emitted as a `protocol.Event` tick every ~10 s in watch mode.
 3. Reachable via HTTP from dhs-srv when that lands.
 
-See [feedback_transport_metrics] in memory.
+See [feedback_transport_metrics] and [project_connector_metrics_v2]
+in memory.
+
+### Metrics surface on the producer (landed 2026-04-22)
+
+`internal/metrics/` package provides:
+- `Connector` — per-session counters: rx/tx frames + bytes, per-cmd
+  `[256]atomic.Uint64` hit counts (rx and tx split), latency histogram
+  (7 log-linear µs buckets), errors (decode, NAK, timeout, reconnect),
+  Task-Manager fields (CPU%, treeBytes, poolBytes, inflightBytes,
+  diskBytes).
+- `Process` — runtime.MemStats + NumGoroutine + GC snapshot with a
+  periodic sampler.
+- `PromRegistry` — wires `prometheus/client_golang` GoCollector +
+  ProcessCollector + custom `dhs_connector_*` / `dhs_process_*`
+  collectors.
+- `WriteCSV` / `WriteMarkdown` — snapshot renderers for the CLI
+  export subcommand.
+
+Producer wiring:
+```
+dhs producer <proto> serve --tree ... --port N \
+    --metrics-addr :9100 \
+    --log-format json
+```
+- `/metrics` serves Prom text exposition + OpenMetrics.
+- `/snapshot.json` serves Snapshot + ProcessSnapshot JSON.
+- `--log-format json` emits `slog.NewJSONHandler` output for
+  Loki/Promtail.
+
+Consumer CLI:
+```
+dhs metrics show                  # live Task-Manager view (MD)
+dhs metrics export --format csv   # dump snapshot to CSV
+dhs metrics export --format md --file report.md
+```
+
+Every protocol plugin satisfies the optional `metricsExposer`
+interface (`Metrics() *metrics.Connector`) to participate in
+`--metrics-addr`. Probel is wired today; ACP1 / ACP2 / Ember+
+roll in D8 of the v2 chain.
+
+Full Grafana + Prometheus + Loki stack under
+`docs/deployment/grafana/`: docker-compose, alert rules YAML,
+pre-provisioned dashboard JSON.
 
 ---
 
