@@ -45,8 +45,9 @@
   // Note: UDP forwarding from Windows host into the container is flaky;
   // for real device traffic use --network=host on Linux, or connect the
   // container directly to your Windows LAN with a published UDP port.
-  "forwardPorts": [8080],
+  "forwardPorts": [8080, 9100],
   "portsAttributes": {
-    "8080": { "label": "acp-srv" }
+    "8080": { "label": "acp-srv" },
+    "9100": { "label": "dhs /metrics (Prom scrape)" }
   }
 }

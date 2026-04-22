@@ -1,5 +1,3 @@
-version: "3.8"
-
 # Standalone observability stack for dhs.
 #
 # Run from this directory:
