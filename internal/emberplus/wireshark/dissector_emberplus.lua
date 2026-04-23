@@ -1154,7 +1154,12 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
         return 0
     end
     local start = off
-    local endpos = off + avail
+    -- Clamp endpos to the actual ByteArray length. Callers occasionally
+    -- pass `avail` larger than what the buffer holds (truncated or
+    -- shorter-than-declared assembled payloads), and every downstream
+    -- ba:get_index that uses endpos as its bound would throw "index out
+    -- of range". One clamp here covers every check inside walk_ber.
+    local endpos = math.min(off + avail, ba:len())
     while off < endpos do
         local first, class, cons, tag_num, t_consumed = read_tag(ba, off)
         if not first then break end
