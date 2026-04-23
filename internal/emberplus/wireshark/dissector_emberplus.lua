@@ -41,10 +41,58 @@ local s101_reassembly_state = {}
 -- Value: { assembled = bool, payload = ByteArray, fragment_kind = "first"|"middle"|"last"|"orphan" }
 local s101_packet_cache = {}
 
+-- Per-conversation OID→identifier cache (issue #59, part 1).
+-- Populated by element_summary whenever a leaf carries both a path and an
+-- identifier; consumed when rendering the Info column to show the dotted
+-- identifier chain (e.g. `1.2.3 router.oneToN.nToN`).
+-- Keyed by "<conv_key>|<dotted_path>" — flat string to avoid nested-table
+-- lookup cost in the hot summarize path.
+local emberplus_id_cache = {}
+
+-- Current-frame conversation key, set by the main S101 dissector right
+-- before calling summarize_glow. Same side-channel pattern ACP2 uses
+-- for acp2_current_slot — summarize_glow and element_summary are invoked
+-- deep in the BER walker and cannot take pktinfo as a parameter without
+-- threading it through many call sites.
+local emberplus_current_conv_key = ""
+
 local function s101_conv_key(pktinfo)
     return string.format("%s:%d>%s:%d",
         tostring(pktinfo.src), pktinfo.src_port,
         tostring(pktinfo.dst), pktinfo.dst_port)
+end
+
+local function cache_identifier(path, ident)
+    if path == nil or path == "" or ident == nil or ident == "" then return end
+    if emberplus_current_conv_key == "" then return end
+    emberplus_id_cache[emberplus_current_conv_key .. "|" .. path] = ident
+end
+
+-- Resolve a dotted OID like "1.2.3" to the chain of cached identifiers
+-- ("router.oneToN.nToN") by looking up every prefix. Returns nil if no
+-- prefix has a cached identifier yet. Returns a partial chain (dots
+-- for missing segments) when only some prefixes are cached, so the user
+-- still sees progress as the walk accumulates.
+local function resolve_identifier_chain(path)
+    if emberplus_current_conv_key == "" or path == nil or path == "" then
+        return nil
+    end
+    local segments = {}
+    local parts = {}
+    for seg in string.gmatch(path, "[^.]+") do
+        table.insert(segments, seg)
+        local prefix = table.concat(segments, ".")
+        local id = emberplus_id_cache[emberplus_current_conv_key .. "|" .. prefix]
+        table.insert(parts, id or "?")
+    end
+    -- Only return a chain when at least one segment resolves, otherwise
+    -- the "?.?.?" noise is worse than showing no chain at all.
+    local any_resolved = false
+    for _, p in ipairs(parts) do
+        if p ~= "?" then any_resolved = true; break end
+    end
+    if not any_resolved then return nil end
+    return table.concat(parts, ".")
 end
 
 -- Default TCP ports where Ember+ providers listen. Multiple known vendor
@@ -758,8 +806,24 @@ local function element_summary(ba, app_tag, off, endpos)
         walk = v_off + l
     end
 
+    -- Cache this leaf's (path, identifier) so subsequent frames
+    -- referencing the same path — or children that include it as a
+    -- prefix — can render the dotted identifier chain in Info. Issue #59
+    -- part 1.
+    if path and identifier then
+        cache_identifier(path, identifier)
+    end
+
     local parts = {}
-    if path then table.insert(parts, path)
+    if path then
+        table.insert(parts, path)
+        local chain = resolve_identifier_chain(path)
+        if chain and chain ~= identifier then
+            -- Show the resolved dotted chain only when it adds something
+            -- beyond the leaf's own identifier (which is already emitted
+            -- below). Avoids `1.2.3 'nToN' router.oneToN.nToN` noise.
+            table.insert(parts, chain)
+        end
     elseif number then table.insert(parts, "#" .. tostring(number)) end
     if identifier then table.insert(parts, "'" .. identifier .. "'") end
     if access then table.insert(parts, access) end
@@ -1261,6 +1325,10 @@ local function dissect_s101_frame(tvbuf, pktinfo, root, frame_start, frame_end)
             if cache and cache.assembled then
                 local full     = cache.payload
                 local full_len = full:len()
+                -- Publish the conversation key for summarize_glow and its
+                -- descendants (element_summary) to use when caching /
+                -- resolving OID→identifier chains. Issue #59 part 1.
+                emberplus_current_conv_key = s101_conv_key(pktinfo)
                 local summary  = (full_len > 0) and summarize_glow(full, 0, full_len) or nil
                 local label    = string.format("Glow Payload (%d bytes reassembled)%s",
                                                full_len, summary and (" — " .. summary) or "")
