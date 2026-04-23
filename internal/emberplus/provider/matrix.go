@@ -49,6 +49,22 @@ func (s *server) encodeQualifiedMatrix(e *entry, m *canonical.Matrix) (ber.TLV, 
 // encodeMatrixContents builds the [UNIVERSAL SET] inside [CTX 1] contents.
 // Field order is ascending CTX tag; optional fields absent when the
 // canonical value is zero / nil / default (type=oneToN, mode=linear).
+//
+//	| Context Tag | Field                    | Type         | Notes         |
+//	|-------------|--------------------------|--------------|---------------|
+//	|   [0]       | identifier               | EmberString  | required      |
+//	|   [1]       | description              | EmberString  | optional      |
+//	|   [2]       | type                     | MatrixType   | skip if oneToN|
+//	|   [3]       | addressingMode           | AddressMode  | skip if linear|
+//	|   [4]       | targetCount              | INTEGER      | required      |
+//	|   [5]       | sourceCount              | INTEGER      | required      |
+//	|   [6]       | maximumTotalConnects     | INTEGER      | optional      |
+//	|   [7]       | maximumConnectsPerTarget | INTEGER      | optional      |
+//	|   [8]       | parametersLocation       | RELATIVE-OID | optional      |
+//	|   [9]       | gainParameterNumber      | INTEGER      | optional      |
+//	|   [10]      | labels                   | SEQUENCE OF  | Label APP[18] |
+//
+// Spec reference: Ember+ Documentation.pdf §MatrixContents p. 88.
 func encodeMatrixContents(m *canonical.Matrix) (ber.TLV, error) {
 	var kids []ber.TLV
 	kids = append(kids,
@@ -105,6 +121,13 @@ func encodeMatrixContents(m *canonical.Matrix) (ber.TLV, error) {
 }
 
 // encodeLabel emits one [APPLICATION 18] Label. Both fields are CTX-wrapped.
+//
+//	| Context Tag | Field       | Type         | Notes                |
+//	|-------------|-------------|--------------|----------------------|
+//	|   [0]       | basePath    | RELATIVE-OID | path of label param  |
+//	|   [1]       | description | EmberString  | optional             |
+//
+// Spec reference: Ember+ Documentation.pdf §Label p. 89.
 func encodeLabel(l canonical.MatrixLabel) (ber.TLV, error) {
 	parts, err := parseOID(l.BasePath)
 	if err != nil {
@@ -123,6 +146,15 @@ func encodeLabel(l canonical.MatrixLabel) (ber.TLV, error) {
 // encodeTargets / encodeSources emit a TargetCollection / SourceCollection
 // ([UNIVERSAL SEQUENCE] holding [CTX 0] { [APP 14|15] Signal }). Each
 // signal carries just its number.
+//
+//	| Context Tag | Field      | Type        | Notes                         |
+//	|-------------|------------|-------------|-------------------------------|
+//	|   SEQUENCE  | collection | SEQUENCE OF | per-signal items              |
+//	|     └─[0]   | item       | CTX wrapper | per the spec grammar          |
+//	|      APP[14]| Target     | SEQUENCE    | APP[15] for Source            |
+//	|       └─[0] | number     | INTEGER     | SignalNumber                  |
+//
+// Spec reference: Ember+ Documentation.pdf §Target/Source p. 89.
 func encodeTargets(targets []canonical.MatrixTarget) ber.TLV {
 	items := make([]ber.TLV, 0, len(targets))
 	for _, t := range targets {
@@ -146,6 +178,14 @@ func encodeSources(sources []canonical.MatrixSource) ber.TLV {
 // encodeConnections emits a ConnectionCollection inside [CTX 5] of the
 // QualifiedMatrix wrapper. Each Connection is CTX[0]-wrapped per the spec
 // grammar `SEQUENCE OF [0] Connection`.
+//
+//	| Context Tag | Field       | Type        | Notes                        |
+//	|-------------|-------------|-------------|------------------------------|
+//	|   SEQUENCE  | collection  | SEQUENCE OF | per spec grammar             |
+//	|     └─[0]   | item        | CTX wrapper | one per Connection           |
+//	|      APP[16]| Connection  | SEQUENCE    | see encodeConnection         |
+//
+// Spec reference: Ember+ Documentation.pdf §ConnectionCollection p. 89.
 func encodeConnections(conns []canonical.MatrixConnection) ber.TLV {
 	items := make([]ber.TLV, 0, len(conns))
 	for _, c := range conns {
@@ -163,6 +203,15 @@ func encodeConnections(conns []canonical.MatrixConnection) ber.TLV {
 // rather than "disconnected"; the last-crosspoint-disconnect click
 // leaves the cell lit unless the provider sends an explicit empty
 // RelOID tally. See router oneToOne disconnect regression on #69.
+//
+//	| Context Tag | Field       | Type         | Notes                     |
+//	|-------------|-------------|--------------|---------------------------|
+//	|   [0]       | target      | INTEGER      | target number             |
+//	|   [1]       | sources     | RELATIVE-OID | always emitted (empty OK) |
+//	|   [2]       | operation   | INTEGER      | skip if absolute (default)|
+//	|   [3]       | disposition | INTEGER      | skip if tally (default)   |
+//
+// Spec reference: Ember+ Documentation.pdf §Connection p. 89.
 func encodeConnection(c canonical.MatrixConnection) ber.TLV {
 	parts := make([]uint32, len(c.Sources))
 	for i, v := range c.Sources {

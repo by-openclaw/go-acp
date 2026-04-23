@@ -31,6 +31,16 @@ func wrapRoot(child ber.TLV) ber.TLV {
 // Sparse(-2, Glow 2.50+). All is the most common consumer choice — it
 // asks the provider to return every property. Older providers
 // (TinyEmber+ DTD 2.31) ignore the field; strict providers require it.
+//
+// Wire shape (inside the Root + RootElementCollection + CTX[0] wrapper):
+//
+//	| Context Tag | Field        | Type      | Notes                        |
+//	|-------------|--------------|-----------|------------------------------|
+//	| APP[2]      | Command      | SEQUENCE  | glow.TagCommand              |
+//	|  ├─ [0]     | number       | INTEGER   | 32 = GetDirectory            |
+//	|  └─ [1]     | dirFieldMask | INTEGER   | -1 = DirFieldMaskAll         |
+//
+// Spec reference: Ember+ Documentation.pdf §Command p. 86.
 func EncodeGetDirectory() []byte {
 	cmd := ber.AppConstructed(TagCommand,
 		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
@@ -42,6 +52,16 @@ func EncodeGetDirectory() []byte {
 // EncodeGetDirectoryFor builds a GetDirectory for a specific node path.
 // Pattern: QualifiedNode(path) → children → ElementCollection → Context(0) → Command(32)
 // dirFieldMask=All (-1) per spec p.31.
+//
+//	| Context Tag | Field             | Type         | Notes                |
+//	|-------------|-------------------|--------------|----------------------|
+//	| APP[10]     | QualifiedNode     | SEQUENCE     | glow.TagQualifiedNode|
+//	|  ├─ [0]     | path              | RELATIVE-OID | target node OID      |
+//	|  └─ [2]     | children          | ElementColl. | wrapped Command(32)  |
+//	|      └─[0]  | child             | CTX wrapper  | nests the Command    |
+//	|       APP[2]| Command           | SEQUENCE     | as in GetDirectory   |
+//
+// Spec reference: Ember+ Documentation.pdf §QualifiedNode p. 87, Command p. 86.
 func EncodeGetDirectoryFor(path []int32) []byte {
 	cmd := ber.AppConstructed(TagCommand,
 		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
@@ -62,6 +82,15 @@ func EncodeGetDirectoryFor(path []int32) []byte {
 
 // EncodeSetValue builds a set-value for a parameter.
 // Pattern: QualifiedParameter(path) → contents(SET(value))
+//
+//	| Context Tag | Field       | Type         | Notes                       |
+//	|-------------|-------------|--------------|-----------------------------|
+//	| APP[9]      | QualParam   | SEQUENCE     | glow.TagQualifiedParameter  |
+//	|  ├─ [0]     | path        | RELATIVE-OID | parameter OID               |
+//	|  └─ [1]     | contents    | SET          | wraps [2] value             |
+//	|      └─[2]  | value       | Value CHOICE | int/real/str/bool/octets    |
+//
+// Spec reference: Ember+ Documentation.pdf §QualifiedParameter p. 85.
 func EncodeSetValue(path []int32, value interface{}) []byte {
 	valTLV := encodeAnyValue(value)
 	param := ber.AppConstructed(TagQualifiedParameter,
@@ -75,6 +104,16 @@ func EncodeSetValue(path []int32, value interface{}) []byte {
 
 // EncodeSubscribe builds a Subscribe command for a parameter path.
 // Pattern: QualifiedParameter(path) → children → ElementCollection → Context(0) → Command(30)
+//
+//	| Context Tag | Field      | Type         | Notes                       |
+//	|-------------|------------|--------------|-----------------------------|
+//	| APP[9]      | QualParam  | SEQUENCE     | glow.TagQualifiedParameter  |
+//	|  ├─ [0]     | path       | RELATIVE-OID | parameter OID               |
+//	|  └─ [2]     | children   | ElementColl. | wraps the Command           |
+//	|      └─[0]  | child      | CTX wrapper  | nests the Command           |
+//	|       APP[2]| Command    | SEQUENCE     | number [0] = 30 Subscribe   |
+//
+// Spec reference: Ember+ Documentation.pdf §Command Subscribe p. 86.
 func EncodeSubscribe(path []int32) []byte {
 	cmd := ber.AppConstructed(TagCommand,
 		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdSubscribe)),
@@ -91,6 +130,17 @@ func EncodeSubscribe(path []int32) []byte {
 }
 
 // EncodeUnsubscribe builds an Unsubscribe command for a parameter path.
+//
+// Same layout as EncodeSubscribe with Command.number [0] = 31 Unsubscribe:
+//
+//	| Context Tag | Field      | Type         | Notes                      |
+//	|-------------|------------|--------------|----------------------------|
+//	| APP[9]      | QualParam  | SEQUENCE     | glow.TagQualifiedParameter |
+//	|  ├─ [0]     | path       | RELATIVE-OID | parameter OID              |
+//	|  └─ [2]     | children   | ElementColl. | wraps the Command          |
+//	|       APP[2]| Command    | SEQUENCE     | number [0] = 31 Unsubscribe|
+//
+// Spec reference: Ember+ Documentation.pdf §Command Unsubscribe p. 86.
 func EncodeUnsubscribe(path []int32) []byte {
 	cmd := ber.AppConstructed(TagCommand,
 		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdUnsubscribe)),
@@ -111,6 +161,19 @@ func EncodeUnsubscribe(path []int32) []byte {
 // EncodeMatrixConnect builds a matrix connection command.
 // Pattern: QualifiedMatrix(path) → connections(SEQUENCE(Context(0)(Connection)))
 // Spec p42: Connection inside ConnectionCollection.
+//
+//	| Context Tag | Field        | Type         | Notes                        |
+//	|-------------|--------------|--------------|------------------------------|
+//	| APP[17]     | QualMatrix   | SEQUENCE     | glow.TagQualifiedMatrix      |
+//	|  ├─ [0]     | path         | RELATIVE-OID | matrix OID                   |
+//	|  └─ [5]     | connections  | SEQUENCE OF  | ConnectionCollection         |
+//	|      └─[0]  | item         | CTX wrapper  | per-connection               |
+//	|       APP[16]| Connection  | SEQUENCE     | glow.TagConnection           |
+//	|        ├─[0]| target       | INTEGER      | target number                |
+//	|        ├─[1]| sources      | RELATIVE-OID | concatenated source numbers  |
+//	|        └─[2]| operation    | INTEGER      | 0=absolute, 1=connect, 2=disc|
+//
+// Spec reference: Ember+ Documentation.pdf §Matrix Connection p. 89, §Connection p. 42.
 func EncodeMatrixConnect(matrixPath []int32, target int32, sources []int32, operation int64) []byte {
 	conn := ber.AppConstructed(TagConnection,
 		ber.ContextConstructed(ConnTarget, ber.Integer(int64(target))),
@@ -131,6 +194,15 @@ func EncodeMatrixConnect(matrixPath []int32, target int32, sources []int32, oper
 // EncodeMatrixGetDirectory builds a GetDirectory on a matrix to fetch connections.
 // Spec p42: "As soon as a consumer issues a GetDirectory on a matrix, it implicitly
 // subscribes to matrix connection changes."
+//
+//	| Context Tag | Field      | Type         | Notes                       |
+//	|-------------|------------|--------------|-----------------------------|
+//	| APP[17]     | QualMatrix | SEQUENCE     | glow.TagQualifiedMatrix     |
+//	|  ├─ [0]     | path       | RELATIVE-OID | matrix OID                  |
+//	|  └─ [2]     | children   | ElementColl. | wraps the Command           |
+//	|       APP[2]| Command    | SEQUENCE     | number [0] = 32 GetDirectory|
+//
+// Spec reference: Ember+ Documentation.pdf §Matrix GetDirectory p. 42.
 func EncodeMatrixGetDirectory(matrixPath []int32) []byte {
 	cmd := ber.AppConstructed(TagCommand,
 		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
@@ -151,6 +223,19 @@ func EncodeMatrixGetDirectory(matrixPath []int32) []byte {
 // EncodeInvoke builds a function invocation message.
 // Pattern: QualifiedFunction(path) → children → ElementCollection → Context(0) → Command(33) → Invocation
 // Spec p50: Command(33) contains Invocation at Context(2).
+//
+//	| Context Tag | Field         | Type         | Notes                      |
+//	|-------------|---------------|--------------|----------------------------|
+//	| APP[20]     | QualFunction  | SEQUENCE     | glow.TagQualifiedFunction  |
+//	|  ├─ [0]     | path          | RELATIVE-OID | function OID               |
+//	|  └─ [2]     | children      | ElementColl. | wraps the Command          |
+//	|       APP[2]| Command       | SEQUENCE     |                            |
+//	|        ├─[0]| number        | INTEGER      | 33 = Invoke                |
+//	|        └─[2]| invocation    | Invocation   | APP[22]                    |
+//	|         ├─[0]|invocationId  | INTEGER      | echoed in result           |
+//	|         └─[1]|arguments     | SEQUENCE OF  | each arg wrapped in CTX[0] |
+//
+// Spec reference: Ember+ Documentation.pdf §Function Invoke p. 50, §Invocation p. 91.
 func EncodeInvoke(funcPath []int32, invocationID int32, args []interface{}) []byte {
 	// Each argument wrapped in Context(0) per Dufour ContentParameter.Encode(0, writer).
 	var argTLVs []ber.TLV

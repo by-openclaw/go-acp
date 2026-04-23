@@ -66,6 +66,19 @@ type State struct {
 
 // NewStateFromGlow builds a fresh State from a decoded Glow Matrix. Call
 // once per walk; replace wholesale when MatrixContents changes.
+//
+// Fields mirrored from the decoded glow.Matrix Context-tagged SET:
+//
+//	| Context Tag | Field                    | Type         | Notes         |
+//	|-------------|--------------------------|--------------|---------------|
+//	|   [2]       | type                     | MatrixType   | 1-to-N / N-N  |
+//	|   [3]       | addressingMode           | AddressMode  | linear default|
+//	|   [4]       | targetCount              | INTEGER      |               |
+//	|   [5]       | sourceCount              | INTEGER      |               |
+//	|   [6]       | maximumTotalConnects     | INTEGER      | nToN cap      |
+//	|   [7]       | maximumConnectsPerTarget | INTEGER      | nToN cap      |
+//
+// Spec reference: Ember+ Documentation.pdf §MatrixContents pp. 88-89.
 func NewStateFromGlow(m *glow.Matrix) *State {
 	s := &State{
 		Type:                 m.MatrixType,
@@ -92,6 +105,17 @@ func NewStateFromGlow(m *glow.Matrix) *State {
 // ApplyConnection merges an incoming announcement into the state. source
 // == ChangeAnnounce updates the tally; anything else records the request
 // as sent. Respects ConnectionOperation semantics (spec p.89).
+//
+// Fields consumed from the decoded glow.Connection (APPLICATION[16]):
+//
+//	| Context Tag | Field       | Type         | Semantics                 |
+//	|-------------|-------------|--------------|---------------------------|
+//	|   [0]       | target      | INTEGER      | target number             |
+//	|   [1]       | sources     | RELATIVE-OID | source-number list        |
+//	|   [2]       | operation   | INTEGER      | 0=absolute/1=conn/2=disc. |
+//	|   [3]       | disposition | INTEGER      | 0=tally/1=mod/2=pend/3=lck|
+//
+// Spec reference: Ember+ Documentation.pdf §Connection p. 89.
 func (s *State) ApplyConnection(c glow.Connection, source ChangeSource) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

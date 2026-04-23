@@ -8,6 +8,18 @@ type TLV struct {
 }
 
 // EncodeTLV encodes a TLV element to bytes.
+//
+// Every BER TLV is the concatenation of three fields:
+//
+//	| Tag | Field   | Encoding                | Notes                      |
+//	|-----|---------|-------------------------|----------------------------|
+//	|  T  | tag     | EncodeTag               | 1+ octets, class+form+num  |
+//	|  L  | length  | EncodeLength            | 1+ octets, short or long   |
+//	|  V  | value   | raw / recursive(TLV...) | primitive: t.Value bytes;  |
+//	|     |         |                         | constructed: concatenated  |
+//	|     |         |                         | EncodeTLV(child) bodies    |
+//
+// Spec reference: ITU-T X.690 §8.1.1 (General rules for BER).
 func EncodeTLV(t TLV) []byte {
 	tag := EncodeTag(t.Tag)
 
@@ -36,6 +48,18 @@ func EncodeTLV(t TLV) []byte {
 
 // DecodeTLV reads one TLV element from buf. Returns the TLV and total
 // bytes consumed (tag + length + value).
+//
+// Layout parsed (inverse of EncodeTLV):
+//
+//	| Tag | Field   | Encoding     | Notes                                |
+//	|-----|---------|--------------|--------------------------------------|
+//	|  T  | tag     | DecodeTag    | identifier octets (1+)               |
+//	|  L  | length  | DecodeLength | length octets (1+); -1 = indefinite  |
+//	|  V  | value   | L bytes      | primitive: raw; constructed: TLVs    |
+//	|     |         |              | until L reached OR EOC 0x00 0x00     |
+//	|     |         |              | sentinel for indefinite length       |
+//
+// Spec reference: ITU-T X.690 §8.1.1 (General rules for BER).
 func DecodeTLV(buf []byte) (TLV, int, error) {
 	if len(buf) == 0 {
 		return TLV{}, 0, errTruncated

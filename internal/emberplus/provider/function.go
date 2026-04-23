@@ -38,6 +38,16 @@ func (s *server) encodeQualifiedFunction(e *entry, f *canonical.Function) ber.TL
 
 // encodeTupleDescription emits a SEQUENCE OF [0] TupleItemDescription
 // (spec p.91). Each item is [APP 21] SEQUENCE { [0] type, [1] name }.
+//
+//	| Context Tag | Field | Type        | Notes                             |
+//	|-------------|-------|-------------|-----------------------------------|
+//	|   SEQUENCE  | list  | SEQUENCE OF | one wrapper per item              |
+//	|     └─[0]   | item  | CTX wrapper |                                   |
+//	|      APP[21]| Tuple | SEQUENCE    | TagTupleItemDescription           |
+//	|       ├─[0] | type  | ParameterType| INTEGER 1..7                     |
+//	|       └─[1] | name  | EmberString | optional                          |
+//
+// Spec reference: Ember+ Documentation.pdf §TupleItemDescription p. 91.
 func encodeTupleDescription(items []canonical.TupleItem) ber.TLV {
 	out := make([]ber.TLV, 0, len(items))
 	for _, t := range items {
@@ -94,6 +104,13 @@ func (s *server) encodeInvocationResult(invID int32, success bool, result []any)
 // (SEQUENCE OF [0] Value). Each value uses its Go type to pick the BER
 // primitive — int/int64 → INTEGER, float → REAL, string → UTF8,
 // bool → BOOLEAN, []byte → OCTET STRING, nil → NULL.
+//
+//	| Context Tag | Field | Type         | Notes                          |
+//	|-------------|-------|--------------|--------------------------------|
+//	|   SEQUENCE  | tuple | SEQUENCE OF  | per spec `Tuple ::= SEQ OF [0]`|
+//	|     └─[0]   | value | Value CHOICE | UNIVERSAL primitive per type   |
+//
+// Spec reference: Ember+ Documentation.pdf §Tuple p. 92.
 func encodeTupleValues(values []any) ber.TLV {
 	items := make([]ber.TLV, 0, len(values))
 	for _, v := range values {

@@ -55,6 +55,20 @@ type Tag struct {
 }
 
 // EncodeTag writes a BER tag to bytes.
+//
+// First identifier octet layout (X.690 §8.1.2):
+//
+//	| Bit(s) | Field       | Width | Notes                                   |
+//	|--------|-------------|-------|-----------------------------------------|
+//	|  7..6  | class       |   2   | 00=UNIV, 01=APP, 10=CTX, 11=PRIV        |
+//	|   5    | constructed |   1   | 0=primitive, 1=constructed              |
+//	|  4..0  | tag number  |   5   | short form (0..30); 31 = long-form flag |
+//
+// When the tag number is >= 31 the low 5 bits are set to 0x1F and the
+// real number follows as base-128 octets (MSB first, continuation bit 7
+// set on every octet except the last).
+//
+// Spec reference: ITU-T X.690 §8.1.2 (Identifier octets).
 func EncodeTag(t Tag) []byte {
 	first := byte(t.Class) << 6
 	if t.Constructed {
@@ -73,6 +87,19 @@ func EncodeTag(t Tag) []byte {
 }
 
 // DecodeTag reads a BER tag from buf, returning the tag and bytes consumed.
+//
+// Inverse of EncodeTag — parses the first identifier octet:
+//
+//	| Bit(s) | Field       | Width | Notes                                   |
+//	|--------|-------------|-------|-----------------------------------------|
+//	|  7..6  | class       |   2   | 00=UNIV, 01=APP, 10=CTX, 11=PRIV        |
+//	|   5    | constructed |   1   | 0=primitive, 1=constructed              |
+//	|  4..0  | tag number  |   5   | short form or 0x1F sentinel = long form |
+//
+// When the sentinel is seen, decodeBase128 reads the continuation-bit
+// chain that carries the real tag number.
+//
+// Spec reference: ITU-T X.690 §8.1.2 (Identifier octets).
 func DecodeTag(buf []byte) (Tag, int, error) {
 	if len(buf) == 0 {
 		return Tag{}, 0, errTruncated
