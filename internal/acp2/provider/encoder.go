@@ -108,6 +108,16 @@ func buildProperties(e *entry) ([]iacp2.Property, error) {
 // propStringData0 builds a string property with data byte = 0 per spec
 // §5.4 (pid 2 label, pid 13 unit). Body is a NUL-terminated UTF-8 string;
 // plen = 4 + len(string+NUL). EncodeProperty adds 4-byte alignment pad.
+//
+//	| Offset | Field | Width    | Notes                                   |
+//	|--------|-------|----------|-----------------------------------------|
+//	| 0      | pid   | u8       | caller-supplied (pid 2 label / 13 unit) |
+//	| 1      | data  | u8       | 0 per spec §5.4                         |
+//	| 2-3    | plen  | u16 BE   | 4 + len(s) + 1                          |
+//	| 4..    | utf8  | len(s)   | UTF-8 string body                       |
+//	| 4+len  | NUL   | 1        | 0x00 terminator                         |
+//
+// Spec reference: acp2_protocol.pdf §5.4 (pid 2 label, pid 13 unit)
 func propStringData0(pid uint8, s string) iacp2.Property {
 	body := make([]byte, len(s)+1) // +1 for NUL terminator
 	copy(body, s)
@@ -123,6 +133,14 @@ func propStringData0(pid uint8, s string) iacp2.Property {
 // data byte (pid=1 object_type, pid=3 access, pid=5 number_type per
 // spec §5.4 table: "data: obj type | access | number type — plen: 4").
 // There is no body.
+//
+//	| Offset | Field | Width  | Notes                                     |
+//	|--------|-------|--------|-------------------------------------------|
+//	| 0      | pid   | u8     | 1=object_type, 3=access, 5=number_type    |
+//	| 1      | data  | u8     | the value itself (inline, no body)        |
+//	| 2-3    | plen  | u16 BE | 4 (header only)                           |
+//
+// Spec reference: acp2_protocol.pdf §5.4 (inline-data properties)
 func propInline(pid uint8, val uint8) iacp2.Property {
 	return iacp2.Property{
 		PID:   pid,
@@ -136,6 +154,16 @@ func propInline(pid uint8, val uint8) iacp2.Property {
 // ("data: 0 — plen: 6 — body: u16 value + u16 pad"). The 2-byte body is
 // the u16 length; EncodeProperty will tack on the u16 padding to reach
 // the next 4-byte boundary.
+//
+//	| Offset | Field | Width  | Notes                                     |
+//	|--------|-------|--------|-------------------------------------------|
+//	| 0      | pid   | u8     | 6 = string_max_length                     |
+//	| 1      | data  | u8     | 0 per spec §5.4                           |
+//	| 2-3    | plen  | u16 BE | 6 (excludes the 2-byte alignment pad)     |
+//	| 4-5    | value | u16 BE | max length                                |
+//	| 6-7    | pad   | 2      | zero bytes added by EncodeProperty        |
+//
+// Spec reference: acp2_protocol.pdf §5.4 pid=6 string_max_length
 func propU16Pad(pid uint8, v uint16) iacp2.Property {
 	body := make([]byte, 2)
 	binary.BigEndian.PutUint16(body, v)
@@ -149,6 +177,15 @@ func propU16Pad(pid uint8, v uint16) iacp2.Property {
 
 // propChildren builds the pid=14 (children) property: u32[] of direct
 // child obj-ids, big-endian, packed contiguously.
+//
+//	| Offset    | Field   | Width    | Notes                              |
+//	|-----------|---------|----------|------------------------------------|
+//	| 0         | pid     | u8       | 14 = children                      |
+//	| 1         | data    | u8       | 0                                  |
+//	| 2-3       | plen    | u16 BE   | 4 + 4*len(ids)                     |
+//	| 4 + 4*i   | child_i | u32 BE   | one entry per child obj-id         |
+//
+// Spec reference: acp2_protocol.pdf §5.4 pid=14 children
 func propChildren(ids []uint32) iacp2.Property {
 	data := make([]byte, 4*len(ids))
 	for i, id := range ids {
@@ -174,6 +211,16 @@ const acp2OptionSize = 72
 //
 // Matches real Axon firmware; Lawo VSM's driver parses with this layout.
 // Index 0..N-1 matches EnumMap ordering.
+//
+//	| Offset          | Field   | Width  | Notes                         |
+//	|-----------------|---------|--------|-------------------------------|
+//	| 0               | pid     | u8     | 15 = options                  |
+//	| 1               | data    | u8     | num options (N) — inline count|
+//	| 2-3             | plen    | u16 BE | 4 + 72*N                      |
+//	| 4 + 72*i        | idx_i   | u32 BE | option index (0..N-1)         |
+//	| 8 + 72*i        | name_i  | 68     | UTF-8, zero-padded, truncates |
+//
+// Spec reference: acp2_protocol.pdf §5.4 pid=15 options
 func propOptions(opts []string) iacp2.Property {
 	n := len(opts)
 	data := make([]byte, acp2OptionSize*n)
@@ -199,6 +246,17 @@ func propOptions(opts []string) iacp2.Property {
 
 // encodeValueProp builds the pid=8 (value) property for one entry,
 // pulling the typed Value off the canonical.Parameter.
+//
+// Output layout depends on objType:
+//
+//	| objType | vtype                 | Value width | Notes                 |
+//	|---------|-----------------------|-------------|-----------------------|
+//	| Number  | e.numType             | 4 or 8      | via encodeNumericProp |
+//	| Enum    | NumTypePreset (9)     | 4           | u32 option index      |
+//	| IPv4    | NumTypeIPv4  (10)     | 4           | packed octets         |
+//	| String  | NumTypeString (11)    | len(s)+1    | UTF-8 + NUL + pad     |
+//
+// Spec reference: acp2_protocol.pdf §5.2.x (per-type value)
 func encodeValueProp(pid uint8, e *entry) (iacp2.Property, error) {
 	switch e.objType {
 	case iacp2.ObjTypeNumber:
@@ -243,6 +301,17 @@ func encodeOptionalConstraint(pid uint8, nt iacp2.NumberType, v any) (iacp2.Prop
 
 // encodeNumericProp serialises a numeric constraint or value per its
 // NumberType into the ACP2 wire form (4 or 8 bytes).
+//
+// Emitted property layout:
+//
+//	| Offset | Field | Width      | Notes                                 |
+//	|--------|-------|------------|---------------------------------------|
+//	| 0      | pid   | u8         | caller-supplied (pid 8/9/10/11/12)    |
+//	| 1      | vtype | u8         | NumberType (drives body width)        |
+//	| 2-3    | plen  | u16 BE     | 4 + body width (8 or 12 total)        |
+//	| 4..    | value | 4 or 8     | big-endian per §Number Types table    |
+//
+// Spec reference: acp2_protocol.pdf §Number Types, §Wire Sizes
 func encodeNumericProp(pid uint8, nt iacp2.NumberType, v any) (iacp2.Property, error) {
 	switch nt {
 	case iacp2.NumTypeS8, iacp2.NumTypeS16, iacp2.NumTypeS32:

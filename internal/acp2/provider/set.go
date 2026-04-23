@@ -16,6 +16,21 @@ import (
 // those constraints are present. Enum writes are rejected with
 // ErrInvalidValue when the index is out of range. String writes are
 // truncated to pid=6 max_length.
+//
+// Incoming property (set_property body, after obj-id + idx):
+//
+//	| Offset | Field | Width  | Notes                                     |
+//	|--------|-------|--------|-------------------------------------------|
+//	| 0      | pid   | u8     | must be 8 (PIDValue); otherwise InvalidPID|
+//	| 1      | vtype | u8     | interpreted via e.numType, not in.VType   |
+//	| 2-3    | plen  | u16 BE | 4 + len(in.Data)                          |
+//	| 4..    | value | varies | decoded per objType by applySet* helpers  |
+//
+// Error mapping: no write access -> ErrNoAccess; pid != 8 -> ErrInvalidPID;
+// numeric decode / enum range / type mismatch -> ErrInvalidValue.
+// idx=0 is ACTIVE INDEX on preset children; never "first preset slot".
+//
+// Spec reference: acp2_protocol.pdf §set_property (func=3), §Error stat codes
 func (s *server) applySet(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
 	if e.access&0x02 == 0 {
 		return iacp2.Property{}, iacp2.ErrNoAccess, fmt.Errorf("no write access")
@@ -46,6 +61,17 @@ func (s *server) applySet(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.A
 // applySetNumber decodes the incoming numeric bytes per the entry's
 // NumberType, clamps to declared min/max, and persists to
 // canonical.Parameter.Value.
+//
+// Reply property (and announce body) shape:
+//
+//	| Offset | Field | Width  | Notes                                     |
+//	|--------|-------|--------|-------------------------------------------|
+//	| 0      | pid   | u8     | 8 = value                                 |
+//	| 1      | vtype | u8     | e.numType (S8..U64, Float)                |
+//	| 2-3    | plen  | u16 BE | 4 + 4 (32-bit types) or 4 + 8 (S64/U64)   |
+//	| 4..    | value | 4 or 8 | clamped to [Minimum, Maximum] when set    |
+//
+// Spec reference: acp2_protocol.pdf §Number Types, §set_property clamping
 func (s *server) applySetNumber(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
 	nt := e.numType
 	iv, uv, fv, err := iacp2.DecodeNumericValue(nt, in.Data)
@@ -99,6 +125,19 @@ func (s *server) applySetNumber(e *entry, in *iacp2.Property) (iacp2.Property, i
 	return iacp2.Property{}, iacp2.ErrInvalidValue, fmt.Errorf("number_type %d not writable", nt)
 }
 
+// applySetEnum validates the incoming index against the entry's options
+// and persists it as int64 in canonical.Parameter.Value.
+//
+// Incoming / reply body:
+//
+//	| Offset | Field | Width  | Notes                                     |
+//	|--------|-------|--------|-------------------------------------------|
+//	| 0      | pid   | u8     | 8 = value                                 |
+//	| 1      | vtype | u8     | reply uses NumTypeU32 (6)                 |
+//	| 2-3    | plen  | u16 BE | 8                                         |
+//	| 4-7    | idx   | u32 BE | option index; >= len(options) -> Invalid  |
+//
+// Spec reference: acp2_protocol.pdf §5.2.2 enum value
 func (s *server) applySetEnum(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
 	if len(in.Data) < 4 {
 		return iacp2.Property{}, iacp2.ErrInvalidValue, fmt.Errorf("enum needs u32")
@@ -112,6 +151,19 @@ func (s *server) applySetEnum(e *entry, in *iacp2.Property) (iacp2.Property, iac
 	return numericProp(iacp2.PIDValue, iacp2.NumTypeU32, u32Data(idx)), 0, nil
 }
 
+// applySetIPv4 decodes four packed octets and stores them as a dotted-quad
+// string on canonical.Parameter.Value.
+//
+// Incoming / reply body:
+//
+//	| Offset | Field | Width  | Notes                                     |
+//	|--------|-------|--------|-------------------------------------------|
+//	| 0      | pid   | u8     | 8 = value                                 |
+//	| 1      | vtype | u8     | NumTypeIPv4 (10)                          |
+//	| 2-3    | plen  | u16 BE | 8                                         |
+//	| 4-7    | octets| 4      | d[0].d[1].d[2].d[3] big-endian packed     |
+//
+// Spec reference: acp2_protocol.pdf §Number Types (ipv4), §Wire Sizes
 func (s *server) applySetIPv4(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
 	if len(in.Data) < 4 {
 		return iacp2.Property{}, iacp2.ErrInvalidValue, fmt.Errorf("ipv4 needs 4 bytes")
@@ -121,6 +173,20 @@ func (s *server) applySetIPv4(e *entry, in *iacp2.Property) (iacp2.Property, iac
 	return numericProp(iacp2.PIDValue, iacp2.NumTypeIPv4, d[:4]), 0, nil
 }
 
+// applySetString strips the trailing NUL, truncates to the per-entry
+// pid=6 max_length hint, and persists the resulting UTF-8 string.
+//
+// Incoming / reply body:
+//
+//	| Offset | Field | Width    | Notes                                   |
+//	|--------|-------|----------|-----------------------------------------|
+//	| 0      | pid   | u8       | 8 = value                               |
+//	| 1      | vtype | u8       | NumTypeString (11)                      |
+//	| 2-3    | plen  | u16 BE   | 4 + len(utf8) + 1                       |
+//	| 4..    | utf8  | len(raw) | UTF-8 bytes; truncated to maxLenHint    |
+//	| end    | NUL   | 1        | 0x00 terminator                         |
+//
+// Spec reference: acp2_protocol.pdf §Wire Sizes (string), §5.4 pid=6
 func (s *server) applySetString(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
 	raw := in.Data
 	if n := len(raw); n > 0 && raw[n-1] == 0 {
