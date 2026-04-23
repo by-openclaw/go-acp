@@ -387,25 +387,18 @@ func (t *tree) salvoClear(id uint8) int {
 }
 
 // salvoApply routes every stored crosspoint for id through applyConnect,
-// then clears the salvo. Returns the slots that actually applied so the
-// caller can emit per-slot tx 003 Crosspoint Tally notifications (spec
-// §3.2.30 suppresses tx 004 Connected replies but the state-change
-// Tally broadcast is required — without it controllers like Lawo VSM
-// can't reconcile per-slot state after a batch connect and flip-flop
-// between old/new state in their UI until a tally-dump races).
-//
-// Per-slot errors (unknown matrix/level, dst or src out of range) are
-// dropped silently — SW-P-08 has no per-slot error channel, matching
-// the historical behavior of this function.
-func (t *tree) salvoApply(id uint8) []salvoSlot {
+// then clears the salvo. Returns (applied, remaining-on-error).
+// Per-slot errors are ignored (the spec has no per-slot error channel);
+// offending slots are dropped.
+func (t *tree) salvoApply(id uint8) int {
 	t.mu.Lock()
 	slots := t.salvos[id]
 	delete(t.salvos, id)
 	t.mu.Unlock()
-	applied := make([]salvoSlot, 0, len(slots))
+	applied := 0
 	for _, s := range slots {
 		if err := t.applyConnect(s.matrix, s.level, s.dst, s.src); err == nil {
-			applied = append(applied, s)
+			applied++
 		}
 	}
 	return applied
