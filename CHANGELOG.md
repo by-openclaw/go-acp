@@ -16,6 +16,34 @@ anywhere. Workflow:
 
 ---
 
+## [0.3.0](https://github.com/by-openclaw/go-acp/compare/v0.2.0...v0.3.0) (2026-04-23)
+
+
+### Features
+
+* **diff:** acp diff — semantic tree.json comparison + CHANGELOG generator ([#50](https://github.com/by-openclaw/go-acp/issues/50)) ([54fd9c6](https://github.com/by-openclaw/go-acp/commit/54fd9c6934bd640807d88e811eab970d15c72775)), closes [#49](https://github.com/by-openclaw/go-acp/issues/49)
+* **emberplus:** Wireshark dissector + unified install docs ([#36](https://github.com/by-openclaw/go-acp/issues/36).e) ([#55](https://github.com/by-openclaw/go-acp/issues/55)) ([1833a9d](https://github.com/by-openclaw/go-acp/commit/1833a9d57e601bbf71638f271149b7235c38800a))
+* **export:** CSV lossless round-trip with oid + path columns ([#39](https://github.com/by-openclaw/go-acp/issues/39)) ([39b88d5](https://github.com/by-openclaw/go-acp/commit/39b88d5f02246615f73d3ef4d15a26e2b832c3ab)), closes [#38](https://github.com/by-openclaw/go-acp/issues/38)
+* **extract:** acp extract — per-product DM triple into fixture layout ([#48](https://github.com/by-openclaw/go-acp/issues/48)) ([1eb8e83](https://github.com/by-openclaw/go-acp/commit/1eb8e83af32e76f5e772a432af176e3fc901c3a2))
+* **fixtures:** ACP1 per-type README + capture + frozen tree ([#63](https://github.com/by-openclaw/go-acp/issues/63)) ([559b67b](https://github.com/by-openclaw/go-acp/commit/559b67bc3f2169684849ce35b5624b8ae7cf01ee))
+* **fixtures:** ACP1 per-type README + capture + frozen tree ([#63](https://github.com/by-openclaw/go-acp/issues/63)) ([#65](https://github.com/by-openclaw/go-acp/issues/65)) ([559b67b](https://github.com/by-openclaw/go-acp/commit/559b67bc3f2169684849ce35b5624b8ae7cf01ee))
+* **fixtures:** Ember+ per-type README + capture + frozen tree ([#60](https://github.com/by-openclaw/go-acp/issues/60)) ([1140ca6](https://github.com/by-openclaw/go-acp/commit/1140ca66e7f1055d7ab9780cd0b4549f54343177))
+* **fixtures:** Ember+ per-type README + capture + frozen tree ([#60](https://github.com/by-openclaw/go-acp/issues/60)) ([#61](https://github.com/by-openclaw/go-acp/issues/61)) ([1140ca6](https://github.com/by-openclaw/go-acp/commit/1140ca66e7f1055d7ab9780cd0b4549f54343177))
+* **import:** selective --id / --path filters (mutually exclusive) ([#46](https://github.com/by-openclaw/go-acp/issues/46)) ([7bfc8ab](https://github.com/by-openclaw/go-acp/commit/7bfc8ab59413f3deea6a1c4946e0d098bf67fe69)), closes [#45](https://github.com/by-openclaw/go-acp/issues/45)
+* **probel:** SW-P-08 end-to-end — scaffold + 11 commands ([#83](https://github.com/by-openclaw/go-acp/issues/83)–89) ([#84](https://github.com/by-openclaw/go-acp/issues/84)) ([326a21e](https://github.com/by-openclaw/go-acp/commit/326a21ee9303fc3fdba43dc84933b5d5e0ae6da9))
+* **provider:** ACP1 announce-demo ticker + datagram + broadcast logs ([#81](https://github.com/by-openclaw/go-acp/issues/81)) ([36b9eb2](https://github.com/by-openclaw/go-acp/commit/36b9eb274b65777771afd4109688c86404e0b4b8))
+* **provider:** ACP1 provider plugin — UDP:2071 MVP ([#74](https://github.com/by-openclaw/go-acp/issues/74)) ([144c4fe](https://github.com/by-openclaw/go-acp/commit/144c4fecd3f20b9049d4b18b4e827d69f43a22f6))
+* **provider:** ACP2 provider plugin — AN2/TCP:2072 MVP ([#75](https://github.com/by-openclaw/go-acp/issues/75)) ([#76](https://github.com/by-openclaw/go-acp/issues/76)) ([94dcba5](https://github.com/by-openclaw/go-acp/commit/94dcba596b33b326d78b21ccbea9a90f6ce8d1ff))
+* **provider:** Ember+ provider plugin — MVP serve tree.json on :9010 ([#66](https://github.com/by-openclaw/go-acp/issues/66)) ([#67](https://github.com/by-openclaw/go-acp/issues/67)) ([1f331e5](https://github.com/by-openclaw/go-acp/commit/1f331e5e8f35c5fe218a78da3bf817a402a038a7))
+* **provider:** Matrix + Function + Labels + Streams + Lock (spec-compliant) ([#72](https://github.com/by-openclaw/go-acp/issues/72)) ([44e9757](https://github.com/by-openclaw/go-acp/commit/44e97570119738c5f95c42d31986aac87dfbf0e4))
+* **scenario:** declarative error-path test harness (replay-only MVP) ([#52](https://github.com/by-openclaw/go-acp/issues/52)) ([40654be](https://github.com/by-openclaw/go-acp/commit/40654bed998a18e6e05d818c00a80dedd0894db1)), closes [#51](https://github.com/by-openclaw/go-acp/issues/51)
+* **wireshark:** ACP1 + ACP2 dissector Info column — richer details ([#80](https://github.com/by-openclaw/go-acp/issues/80)) ([aa1d627](https://github.com/by-openclaw/go-acp/commit/aa1d627b9ddf9c64f36d3b6242daa2a16e1eaffa))
+
+
+### Bug Fixes
+
+* **capture:** name raw frame file after the wire transport per protocol ([#42](https://github.com/by-openclaw/go-acp/issues/42)) ([7db5149](https://github.com/by-openclaw/go-acp/commit/7db5149c65b62255a0d0764132321166bf494ccc)), closes [#41](https://github.com/by-openclaw/go-acp/issues/41)
+
 ## [0.2.0](https://github.com/by-openclaw/go-acp/compare/v0.1.1...v0.2.0) (2026-04-19)
 
 
