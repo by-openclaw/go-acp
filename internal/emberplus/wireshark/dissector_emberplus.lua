@@ -1175,9 +1175,14 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
         if indefinite then
             -- scan forward to find matching EoC (00 00) at this depth.
             -- Use a simple sub-scan; malformed -> consume to endpos.
+            -- Bound the scan by the actual ByteArray length as well as
+            -- endpos — callers sometimes pass endpos > ba:len() when the
+            -- assembled payload is shorter than declared, and ba:get_index
+            -- throws "index out of range" rather than returning nil.
             local scan = value_off
             local closed = false
-            while scan < endpos - 1 do
+            local ba_end = math.min(endpos, ba:len())
+            while scan < ba_end - 1 do
                 if ba:get_index(scan) == 0 and ba:get_index(scan + 1) == 0 then
                     value_len = scan - value_off
                     closed = true
