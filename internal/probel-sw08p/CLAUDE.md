@@ -177,6 +177,27 @@ See root `CLAUDE.md` "Metrics surface on the producer" section +
   to CSV/MD.
 - Rationale + expected numbers in `memory/project_scale_bench_2mtx_65535.md`.
 
+### Session 2026-04-23 late — salvo flip-flop investigation (issue #92)
+
+- VSM with "salvo attribute" ON shows UI flip-flop during batch connects
+  against our matrix. With salvo OFF (cmd 002 path) UI is clean.
+- Wire pcaps (under `captures/`): VSM sends **one-crosspoint-per-salvo-cycle**
+  at ~30 ms/dst (clear → build 1 dst → set → clear → next dst), so a
+  64-dst batch takes ~2 s of staggered state. Real XD/ECLIPSE matrices
+  must signal some capability to VSM that makes it stage multi-dst
+  salvos then fire one atomic GO — we apparently don't.
+- Tested + ruled out:
+  - `tx 003 Crosspoint Tally` broadcast per applied slot on GO-set
+    (commit `514f7c5`, reverted) — VSM batching unchanged.
+  - Omitting `tx 123` Go-Done — VSM disconnects; cmd 123 **is** required.
+  - Byte-layout cmp against TS emulator tx 122/123 tests — identical.
+- TS reference emulator (`smh-probelsw08p`) defines tx 122/123 but
+  server code never emits either; it's a codec-only decoder.
+- Issue #92 created with full investigation log + next-step proposal
+  (capture VSM against real XD/ECLIPSE router, diff handshake).
+- `handleSalvoGo` kept spec-strict (tx 123 emission restored after
+  diagnostic revert); no code change landed for this issue.
+
 ### Session 2026-04-23 closeout (post-compact)
 
 - **W2 (commit `9bf57f3`)** — Wireshark Lua dissector at
