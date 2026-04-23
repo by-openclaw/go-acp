@@ -27,6 +27,19 @@ func (r *Reader) SetTap(fn func([]byte)) {
 
 // ReadFrame reads the next complete S101 frame from the stream.
 // Blocks until a complete BOF...EOF sequence is received.
+//
+// Framing scan (byte-by-byte, pre-decode):
+//
+//	| Offset | Field      | Width | Notes                                    |
+//	|--------|------------|-------|------------------------------------------|
+//	|   0    | BOF        |   1   | 0xFE; bytes before this are discarded    |
+//	|  1..N  | content    |   N   | escaped inner bytes (0xFD XOR-0x20)      |
+//	|  N+1   | EOF        |   1   | 0xFF; terminates the frame               |
+//
+// The collected buffer (BOF..EOF inclusive) is handed to the optional tap
+// and then to Decode for unescape/CRC-check/header-parse.
+//
+// Spec reference: Ember+ Documentation.pdf §S101 Framing p. 94.
 func (r *Reader) ReadFrame() (*Frame, error) {
 	// Scan for BOF.
 	for {

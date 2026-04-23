@@ -18,6 +18,15 @@ import (
 // APPLICATION[6], or InvocationResult APPLICATION[23]. Real-world
 // providers also emit bare RootElementCollection without the [APP 0]
 // wrapper, so we flatten both shapes here.
+//
+//	| Context Tag | Field                   | Type         | Notes             |
+//	|-------------|-------------------------|--------------|-------------------|
+//	| APP[0]      | Root (optional wrapper) | CHOICE       | TagRoot           |
+//	| APP[11]     | RootElementCollection   | SEQUENCE OF  | TagRootElementColl|
+//	| APP[6]      | StreamCollection        | SEQUENCE OF  | StreamEntry       |
+//	| APP[23]     | InvocationResult        | SEQUENCE     | see decodeInv...  |
+//
+// Spec reference: Ember+ Documentation.pdf §Root p. 93.
 func DecodeRoot(data []byte) ([]Element, error) {
 	tlvs, err := ber.DecodeAll(data)
 	if err != nil {
@@ -134,6 +143,15 @@ func decodeElement(tlv ber.TLV) (*Element, error) {
 
 // --- Node / QualifiedNode (spec p.87) ---
 
+// decodeNode parses a relative-form Node APPLICATION[3].
+//
+//	| Context Tag | Field     | Type         | Notes                   |
+//	|-------------|-----------|--------------|-------------------------|
+//	|   [0]       | number    | INTEGER      | NodeNumber              |
+//	|   [1]       | contents  | NodeContents | SET via decodeNodeCont. |
+//	|   [2]       | children  | ElementColl. | nested Elements         |
+//
+// Spec reference: Ember+ Documentation.pdf §Node p. 87.
 func decodeNode(tlv ber.TLV) (*Element, error) {
 	n := &Node{}
 	for _, child := range tlv.Children {
@@ -152,6 +170,15 @@ func decodeNode(tlv ber.TLV) (*Element, error) {
 	return &Element{Node: n}, nil
 }
 
+// decodeQualifiedNode parses a QualifiedNode APPLICATION[10].
+//
+//	| Context Tag | Field     | Type         | Notes                   |
+//	|-------------|-----------|--------------|-------------------------|
+//	|   [0]       | path      | RELATIVE-OID | QNodePath               |
+//	|   [1]       | contents  | NodeContents | SET via decodeNodeCont. |
+//	|   [2]       | children  | ElementColl. | nested Elements         |
+//
+// Spec reference: Ember+ Documentation.pdf §QualifiedNode p. 87.
 func decodeQualifiedNode(tlv ber.TLV) (*Element, error) {
 	n := &Node{}
 	for _, child := range tlv.Children {
@@ -199,6 +226,15 @@ func decodeNodeContents(n *Node, tlv ber.TLV) {
 
 // --- Parameter / QualifiedParameter (spec p.85) ---
 
+// decodeParameter parses a relative-form Parameter APPLICATION[1].
+//
+//	| Context Tag | Field    | Type             | Notes                |
+//	|-------------|----------|------------------|----------------------|
+//	|   [0]       | number   | INTEGER          | ParamNumber          |
+//	|   [1]       | contents | ParameterContents| SET — see below      |
+//	|   [2]       | children | ElementColl.     | nested Elements      |
+//
+// Spec reference: Ember+ Documentation.pdf §Parameter p. 85.
 func decodeParameter(tlv ber.TLV) (*Element, error) {
 	p := &Parameter{}
 	for _, child := range tlv.Children {
@@ -217,6 +253,15 @@ func decodeParameter(tlv ber.TLV) (*Element, error) {
 	return &Element{Parameter: p}, nil
 }
 
+// decodeQualifiedParameter parses a QualifiedParameter APPLICATION[9].
+//
+//	| Context Tag | Field    | Type             | Notes                |
+//	|-------------|----------|------------------|----------------------|
+//	|   [0]       | path     | RELATIVE-OID     | QParamPath           |
+//	|   [1]       | contents | ParameterContents| SET — see below      |
+//	|   [2]       | children | ElementColl.     | nested Elements      |
+//
+// Spec reference: Ember+ Documentation.pdf §QualifiedParameter p. 85.
 func decodeQualifiedParameter(tlv ber.TLV) (*Element, error) {
 	p := &Parameter{}
 	for _, child := range tlv.Children {
@@ -239,6 +284,30 @@ func decodeQualifiedParameter(tlv ber.TLV) (*Element, error) {
 }
 
 // decodeParamContents covers all 18 optional ParameterContents fields.
+//
+//	| Context Tag | Field              | Type          | Notes                |
+//	|-------------|--------------------|---------------|----------------------|
+//	|   [0]       | identifier         | EmberString   | required             |
+//	|   [1]       | description        | EmberString   | optional             |
+//	|   [2]       | value              | Value CHOICE  | int/real/str/bool/oct|
+//	|   [3]       | minimum            | Value CHOICE  | optional             |
+//	|   [4]       | maximum            | Value CHOICE  | optional             |
+//	|   [5]       | access             | INTEGER       | ro/rw/wo             |
+//	|   [6]       | format             | EmberString   | printf-style         |
+//	|   [7]       | enumeration        | EmberString   | \n-separated         |
+//	|   [8]       | factor             | INTEGER       | display scaling      |
+//	|   [9]       | isOnline           | BOOLEAN       |                      |
+//	|   [10]      | formula            | EmberString   | see Formulas.pdf     |
+//	|   [11]      | step               | Value CHOICE  |                      |
+//	|   [12]      | default            | Value CHOICE  |                      |
+//	|   [13]      | type               | ParameterType | 1..7                 |
+//	|   [14]      | streamIdentifier   | INTEGER       |                      |
+//	|   [15]      | enumMap            | StringInt.Coll| APP[8]               |
+//	|   [16]      | streamDescriptor   | StreamDesc.   | APP[12]              |
+//	|   [17]      | schemaIdentifiers  | EmberString   | \n-separated         |
+//	|   [18]      | templateReference  | RELATIVE-OID  |                      |
+//
+// Spec reference: Ember+ Documentation.pdf §ParameterContents p. 85-86.
 func decodeParamContents(p *Parameter, tlv ber.TLV) {
 	for _, child := range unwrapSet(tlv) {
 		if child.Tag.Class != ber.ClassContext {
@@ -289,6 +358,18 @@ func decodeParamContents(p *Parameter, tlv ber.TLV) {
 
 // --- Matrix / QualifiedMatrix (spec p.88) ---
 
+// decodeMatrix parses a relative-form Matrix APPLICATION[13].
+//
+//	| Context Tag | Field       | Type            | Notes                 |
+//	|-------------|-------------|-----------------|-----------------------|
+//	|   [0]       | number      | INTEGER         | MatrixNumber          |
+//	|   [1]       | contents    | MatrixContents  | SET — see below       |
+//	|   [2]       | children    | ElementColl.    | nested Elements       |
+//	|   [3]       | targets     | TargetColl.     | [APP 14] signals      |
+//	|   [4]       | sources     | SourceColl.     | [APP 15] signals      |
+//	|   [5]       | connections | ConnectionColl. | SEQUENCE OF Connection|
+//
+// Spec reference: Ember+ Documentation.pdf §Matrix p. 88.
 func decodeMatrix(tlv ber.TLV) (*Element, error) {
 	m := &Matrix{}
 	for _, child := range tlv.Children {
@@ -313,6 +394,18 @@ func decodeMatrix(tlv ber.TLV) (*Element, error) {
 	return &Element{Matrix: m}, nil
 }
 
+// decodeQualifiedMatrix parses a QualifiedMatrix APPLICATION[17].
+//
+//	| Context Tag | Field       | Type            | Notes                 |
+//	|-------------|-------------|-----------------|-----------------------|
+//	|   [0]       | path        | RELATIVE-OID    | matrix OID            |
+//	|   [1]       | contents    | MatrixContents  | SET                   |
+//	|   [2]       | children    | ElementColl.    | nested Elements       |
+//	|   [3]       | targets     | TargetColl.     |                       |
+//	|   [4]       | sources     | SourceColl.     |                       |
+//	|   [5]       | connections | ConnectionColl. | SEQUENCE OF Connection|
+//
+// Spec reference: Ember+ Documentation.pdf §QualifiedMatrix p. 88.
 func decodeQualifiedMatrix(tlv ber.TLV) (*Element, error) {
 	m := &Matrix{}
 	for _, child := range tlv.Children {
@@ -341,6 +434,24 @@ func decodeQualifiedMatrix(tlv ber.TLV) (*Element, error) {
 }
 
 // decodeMatrixContents covers all 12 MatrixContents CTX fields.
+//
+//	| Context Tag | Field                    | Type         | Notes            |
+//	|-------------|--------------------------|--------------|------------------|
+//	|   [0]       | identifier               | EmberString  |                  |
+//	|   [1]       | description              | EmberString  |                  |
+//	|   [2]       | type                     | MatrixType   | 0=oneToN default |
+//	|   [3]       | addressingMode           | AddressMode  | 0=linear default |
+//	|   [4]       | targetCount              | INTEGER      | required         |
+//	|   [5]       | sourceCount              | INTEGER      | required         |
+//	|   [6]       | maximumTotalConnects     | INTEGER      |                  |
+//	|   [7]       | maximumConnectsPerTarget | INTEGER      |                  |
+//	|   [8]       | parametersLocation       | CHOICE       | RelOID or INTEGER|
+//	|   [9]       | gainParameterNumber      | INTEGER      |                  |
+//	|   [10]      | labels                   | LabelColl.   | [APP 18]         |
+//	|   [11]      | schemaIdentifiers        | EmberString  |                  |
+//	|   [12]      | templateReference        | RELATIVE-OID |                  |
+//
+// Spec reference: Ember+ Documentation.pdf §MatrixContents p. 88.
 func decodeMatrixContents(m *Matrix, tlv ber.TLV) {
 	for _, child := range unwrapSet(tlv) {
 		if child.Tag.Class != ber.ClassContext {
@@ -469,6 +580,17 @@ func decodeSignalCollection(tlv ber.TLV) []int32 {
 
 // --- Connections (spec p.89) ---
 
+// decodeConnectionCollection walks a ConnectionCollection and returns every
+// Connection APPLICATION[16] found inside.
+//
+//	| Context Tag | Field       | Type         | Notes                   |
+//	|-------------|-------------|--------------|-------------------------|
+//	|   [0]       | target      | INTEGER      | target number           |
+//	|   [1]       | sources     | RELATIVE-OID | concatenated source nums|
+//	|   [2]       | operation   | INTEGER      | 0=absolute default      |
+//	|   [3]       | disposition | INTEGER      | 0=tally default         |
+//
+// Spec reference: Ember+ Documentation.pdf §Connection p. 89.
 func decodeConnectionCollection(tlv ber.TLV) []Connection {
 	var out []Connection
 	for _, container := range flattenForApp(tlv, TagConnection) {
@@ -498,6 +620,15 @@ func decodeConnectionCollection(tlv ber.TLV) []Connection {
 
 // --- Function / QualifiedFunction (spec p.91) ---
 
+// decodeFunction parses a relative-form Function APPLICATION[19].
+//
+//	| Context Tag | Field    | Type            | Notes           |
+//	|-------------|----------|-----------------|-----------------|
+//	|   [0]       | number   | INTEGER         | FuncNumber      |
+//	|   [1]       | contents | FunctionContents| SET             |
+//	|   [2]       | children | ElementColl.    | nested Elements |
+//
+// Spec reference: Ember+ Documentation.pdf §Function p. 91.
 func decodeFunction(tlv ber.TLV) (*Element, error) {
 	f := &Function{}
 	for _, child := range tlv.Children {
@@ -516,6 +647,15 @@ func decodeFunction(tlv ber.TLV) (*Element, error) {
 	return &Element{Function: f}, nil
 }
 
+// decodeQualifiedFunction parses a QualifiedFunction APPLICATION[20].
+//
+//	| Context Tag | Field    | Type            | Notes           |
+//	|-------------|----------|-----------------|-----------------|
+//	|   [0]       | path     | RELATIVE-OID    | QFuncPath       |
+//	|   [1]       | contents | FunctionContents| SET             |
+//	|   [2]       | children | ElementColl.    | nested Elements |
+//
+// Spec reference: Ember+ Documentation.pdf §QualifiedFunction p. 91.
 func decodeQualifiedFunction(tlv ber.TLV) (*Element, error) {
 	f := &Function{}
 	for _, child := range tlv.Children {
@@ -537,6 +677,17 @@ func decodeQualifiedFunction(tlv ber.TLV) (*Element, error) {
 	return &Element{Function: f}, nil
 }
 
+// decodeFuncContents fills Function contents fields per spec p.91.
+//
+//	| Context Tag | Field             | Type             | Notes            |
+//	|-------------|-------------------|------------------|------------------|
+//	|   [0]       | identifier        | EmberString      | required         |
+//	|   [1]       | description       | EmberString      | optional         |
+//	|   [2]       | arguments         | TupleDescription | SEQUENCE OF item |
+//	|   [3]       | result            | TupleDescription |                  |
+//	|   [4]       | templateReference | RELATIVE-OID     |                  |
+//
+// Spec reference: Ember+ Documentation.pdf §FunctionContents p. 91.
 func decodeFuncContents(f *Function, tlv ber.TLV) {
 	for _, child := range unwrapSet(tlv) {
 		if child.Tag.Class != ber.ClassContext {
@@ -559,6 +710,16 @@ func decodeFuncContents(f *Function, tlv ber.TLV) {
 
 // --- Command (spec p.86) ---
 
+// decodeCommand parses a Command APPLICATION[2].
+//
+//	| Context Tag | Field        | Type       | Notes                      |
+//	|-------------|--------------|------------|----------------------------|
+//	|   [0]       | number       | INTEGER    | 30 Sub/31 Unsub/32 GetDir  |
+//	|             |              |            | 33 Invoke                  |
+//	|   [1]       | dirFieldMask | INTEGER    | GetDirectory only          |
+//	|   [2]       | invocation   | Invocation | Invoke only (APP[22])      |
+//
+// Spec reference: Ember+ Documentation.pdf §Command p. 86.
 func decodeCommand(tlv ber.TLV) (*Element, error) {
 	c := &Command{}
 	for _, child := range tlv.Children {
@@ -579,6 +740,13 @@ func decodeCommand(tlv ber.TLV) (*Element, error) {
 
 // decodeInvocation handles Invocation APPLICATION[22] (spec p.91). The CTX[2]
 // option slot may wrap the APP tag, or emit fields directly — both accepted.
+//
+//	| Context Tag | Field        | Type         | Notes                 |
+//	|-------------|--------------|--------------|-----------------------|
+//	|   [0]       | invocationId | INTEGER      | echoed in result      |
+//	|   [1]       | arguments    | Tuple        | SEQUENCE OF [0] Value |
+//
+// Spec reference: Ember+ Documentation.pdf §Invocation p. 91.
 func decodeInvocation(tlv ber.TLV) *Invocation {
 	inv := &Invocation{}
 	children := tlv.Children
@@ -604,6 +772,14 @@ func decodeInvocation(tlv ber.TLV) *Invocation {
 
 // decodeInvocationResult handles APPLICATION[23] (spec p.92).
 // success defaults to true when the field is omitted.
+//
+//	| Context Tag | Field        | Type    | Notes                       |
+//	|-------------|--------------|---------|-----------------------------|
+//	|   [0]       | invocationId | INTEGER | echoes Invocation [0]       |
+//	|   [1]       | success      | BOOLEAN | optional, default true      |
+//	|   [2]       | result       | Tuple   | SEQUENCE OF [0] Value       |
+//
+// Spec reference: Ember+ Documentation.pdf §InvocationResult p. 92.
 func decodeInvocationResult(tlv ber.TLV) (*Element, error) {
 	r := &InvocationResult{Success: true}
 	for _, child := range tlv.Children {
@@ -665,6 +841,15 @@ func decodeTupleDescription(tlv ber.TLV) []TupleItem {
 
 // --- StreamEntry / StreamCollection (spec p.93) ---
 
+// decodeStreamCollection walks StreamCollection APPLICATION[6] and returns
+// every StreamEntry APPLICATION[5] found.
+//
+//	| Context Tag | Field            | Type         | Notes              |
+//	|-------------|------------------|--------------|--------------------|
+//	|   [0]       | streamIdentifier | INTEGER      | maps to Parameter  |
+//	|   [1]       | value            | Value CHOICE | current stream val |
+//
+// Spec reference: Ember+ Documentation.pdf §StreamCollection p. 93.
 func decodeStreamCollection(tlv ber.TLV) []StreamEntry {
 	var out []StreamEntry
 	for _, container := range flattenForApp(tlv, TagStreamEntry) {
@@ -719,6 +904,16 @@ func decodeStreamDescription(tlv ber.TLV) *StreamDescription {
 
 // --- Template / QualifiedTemplate (spec p.84) ---
 
+// decodeTemplate parses Template APPLICATION[24] (relative) or
+// QualifiedTemplate APPLICATION[25] (absolute) per the qualified flag.
+//
+//	| Context Tag | Field       | Type             | Notes                 |
+//	|-------------|-------------|------------------|-----------------------|
+//	|   [0]       | number/path | INTEGER / RelOID | chosen by qualified   |
+//	|   [1]       | element     | CHOICE           | Param/Node/Matrix/Func|
+//	|   [2]       | description | EmberString      | optional              |
+//
+// Spec reference: Ember+ Documentation.pdf §Template p. 84.
 func decodeTemplate(tlv ber.TLV, qualified bool) (*Element, error) {
 	t := &Template{Qualified: qualified}
 	for _, child := range tlv.Children {

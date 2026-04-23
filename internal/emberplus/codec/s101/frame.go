@@ -63,6 +63,31 @@ type Frame struct {
 }
 
 // Encode builds an S101 wire frame: BOF + header + escaped payload + CRC + EOF.
+//
+// Wire layout (EmBER frame before BOF/escape/CRC/EOF wrapping):
+//
+//	| Offset | Field           | Width | Notes                                   |
+//	|--------|-----------------|-------|-----------------------------------------|
+//	|   0    | BOF             |   1   | 0xFE start-of-frame (wrapper, post-esc) |
+//	|   1    | slot            |   1   | always 0x00                             |
+//	|   2    | message type    |   1   | 0x0E MsgEmBER                           |
+//	|   3    | command         |   1   | 0x00 EmBER / 0x01 KA req / 0x02 KA resp |
+//	|   4    | version         |   1   | 0x01 S101 version                       |
+//	|   5    | flags           |   1   | 0xC0 Single / 0x80 First / 0x40 Last    |
+//	|   6    | DTD             |   1   | 0x01 Glow                               |
+//	|   7    | appBytesLen     |   1   | 0x02 (length of following DTD version)  |
+//	|   8    | DTD minor ver   |   1   | 0x1F (=31)                              |
+//	|   9    | DTD major ver   |   1   | 0x02 (=2)                               |
+//	|  10..  | BER payload     |   N   | Glow TLV tree                           |
+//	|  N+10  | CRC-CCITT16     |   2   | little-endian, over unescaped content   |
+//	|  N+12  | EOF             |   1   | 0xFF end-of-frame (wrapper, post-esc)   |
+//
+// Keep-alive frames compress to a 4-byte content [slot, msgType=0x0E, cmd,
+// version] plus CRC; no flags/DTD/payload. After header assembly the whole
+// unescaped buffer is byte-escaped (0xFD prefix, XOR 0x20) for any byte
+// >= 0xF8, then wrapped with BOF/EOF markers.
+//
+// Spec reference: Ember+ Documentation.pdf §S101 Framing p. 94.
 func Encode(f *Frame) []byte {
 	var raw []byte
 
@@ -106,6 +131,24 @@ func Encode(f *Frame) []byte {
 }
 
 // Decode parses an S101 frame from wire bytes (including BOF/EOF).
+//
+// Inverse of Encode — strips BOF/EOF, unescapes 0xFD sequences, verifies the
+// little-endian CRC-CCITT16 trailer, then reads the header fields:
+//
+//	| Offset | Field         | Width | Notes                               |
+//	|--------|---------------|-------|-------------------------------------|
+//	|   0    | slot          |   1   | 0x00                                |
+//	|   1    | message type  |   1   | 0x0E (MsgEmBER)                     |
+//	|   2    | command       |   1   | 0x00 EmBER / 0x01 KA req / 0x02 resp|
+//	|   3    | version       |   1   | 0x01                                |
+//	|   4    | flags         |   1   | only on EmBER frames                |
+//	|   5    | DTD           |   1   | 0x01 Glow                           |
+//	|   6    | appBytesLen   |   1   | 0x02                                |
+//	|   7    | DTD minor ver |   1   | 31                                  |
+//	|   8    | DTD major ver |   1   | 2                                   |
+//	|   9..  | payload       |   N   | BER Glow TLVs                       |
+//
+// Spec reference: Ember+ Documentation.pdf §S101 Framing p. 94.
 func Decode(data []byte) (*Frame, error) {
 	if len(data) < 2 || data[0] != BOF || data[len(data)-1] != EOF {
 		return nil, ErrBadFrame

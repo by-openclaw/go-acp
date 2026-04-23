@@ -25,6 +25,17 @@ func (w *Writer) SetTap(fn func([]byte)) {
 }
 
 // WriteFrame encodes and writes an S101 frame to the stream.
+//
+// Produces the wire shape of frame.Encode:
+//
+//	| Offset | Field       | Width | Notes                                  |
+//	|--------|-------------|-------|----------------------------------------|
+//	|   0    | BOF         |   1   | 0xFE                                   |
+//	|   1..  | header+data |   N   | slot+msgType+cmd+ver (+flags+DTD+body) |
+//	|  N+1   | CRC16       |   2   | little-endian CCITT                    |
+//	|  N+3   | EOF         |   1   | 0xFF                                   |
+//
+// Spec reference: Ember+ Documentation.pdf §S101 Framing p. 94.
 func (w *Writer) WriteFrame(f *Frame) error {
 	data := Encode(f)
 	if w.tap != nil {

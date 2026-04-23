@@ -24,6 +24,17 @@ import (
 //
 // isRoot and isOnline are intentionally omitted: TinyEmber+ does not
 // emit them, and EmberViewer treats extra content as schema deviation.
+//
+// Envelope the reply always emits:
+//
+//	| Context Tag | Field                 | Type         | Notes          |
+//	|-------------|-----------------------|--------------|----------------|
+//	| APP[0]      | Root                  | CHOICE       | TagRoot        |
+//	|  └ APP[11]  | RootElementCollection | SEQUENCE OF  | one per child  |
+//	|     └─[0]   | child wrapper         | CTX wrapper  | per-element    |
+//	|       APP[X]| QualifiedX            | SEQUENCE     | X=9/10/17/20   |
+//
+// Spec reference: Ember+ Documentation.pdf §Root + RootElementCollection p. 93.
 func (s *server) encodeGetDirReply(e *entry, bareRoot bool) ([]byte, error) {
 	hdr := e.el.Common()
 
@@ -55,6 +66,20 @@ func (s *server) encodeGetDirReply(e *entry, bareRoot bool) ([]byte, error) {
 // encodeElementMinimal emits a qualified element with just the identifier
 // (and description if present) — the shape TinyEmber+ uses for the
 // initial root reply.
+//
+// Always-present slots (within the chosen APP tag):
+//
+//	| Context Tag | Field       | Type         | Notes                      |
+//	|-------------|-------------|--------------|----------------------------|
+//	|   [0]       | path        | RELATIVE-OID | absolute OID               |
+//	|   [1]       | contents    | SET          | identifier + description   |
+//	|     └─[0]   | identifier  | EmberString  | always present             |
+//	|     └─[1]   | description | EmberString  | when non-empty             |
+//
+// APP tag chosen by element kind: Parameter=9, Matrix=17, Function=20,
+// Node=10 (default).
+//
+// Spec reference: Ember+ Documentation.pdf §QualifiedX contents pp. 85-91.
 func (s *server) encodeElementMinimal(e *entry) ber.TLV {
 	hdr := e.el.Common()
 	var setChildren []ber.TLV
@@ -111,6 +136,17 @@ func (s *server) encodeQualifiedElement(e *entry) (ber.TLV, error) {
 	}
 }
 
+// encodeQualifiedNode emits a QualifiedNode APPLICATION[10] with only the
+// fields TinyEmber+ tolerates on per-child walk replies.
+//
+//	| Context Tag | Field       | Type         | Notes                  |
+//	|-------------|-------------|--------------|------------------------|
+//	|   [0]       | path        | RELATIVE-OID | absolute OID           |
+//	|   [1]       | contents    | NodeContents | SET of identifier +... |
+//	|     └─[0]   | identifier  | EmberString  |                        |
+//	|     └─[1]   | description | EmberString  | optional               |
+//
+// Spec reference: Ember+ Documentation.pdf §QualifiedNode p. 87.
 func (s *server) encodeQualifiedNode(e *entry, n *canonical.Node) ber.TLV {
 	// Minimal NodeContents — identifier + optional description. Matches
 	// TinyEmber+'s shape; strict viewers reject isRoot/isOnline padding
@@ -128,6 +164,30 @@ func (s *server) encodeQualifiedNode(e *entry, n *canonical.Node) ber.TLV {
 	)
 }
 
+// encodeQualifiedParameter emits a QualifiedParameter APPLICATION[9] with
+// every defined ParameterContents field in ascending CTX-tag order (DER).
+//
+//	| Context Tag | Field             | Type         | Notes              |
+//	|-------------|-------------------|--------------|--------------------|
+//	|   [0]       | path              | RELATIVE-OID | absolute OID       |
+//	|   [1]       | contents          | SET          | fields in order:   |
+//	|     ├─[0]   | identifier        | EmberString  |                    |
+//	|     ├─[1]   | description       | EmberString  | optional           |
+//	|     ├─[2]   | value             | Value CHOICE | optional           |
+//	|     ├─[3]   | minimum           | Value CHOICE | optional           |
+//	|     ├─[4]   | maximum           | Value CHOICE | optional           |
+//	|     ├─[5]   | access            | INTEGER      |                    |
+//	|     ├─[6]   | format            | EmberString  | printf-style       |
+//	|     ├─[7]   | enumeration       | EmberString  | \n-separated       |
+//	|     ├─[8]   | factor            | INTEGER      | skipped if 0 or 1  |
+//	|     ├─[10]  | formula           | EmberString  | see Formulas.pdf   |
+//	|     ├─[11]  | step              | Value CHOICE | optional           |
+//	|     ├─[12]  | default           | Value CHOICE | optional           |
+//	|     ├─[13]  | type              | ParameterType| 1..7 if mapped     |
+//	|     ├─[14]  | streamIdentifier  | INTEGER      | optional           |
+//	|     └─[15]  | enumMap           | StringIntColl| APP[8]             |
+//
+// Spec reference: Ember+ Documentation.pdf §ParameterContents p. 85.
 func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.TLV {
 	// ParameterContents SET — fields in ASCENDING context tag order
 	// (DER requirement + EmberViewer enforces it). Spec p.85:
@@ -227,6 +287,17 @@ func encodeEnumMap(entries []canonical.EnumEntry) ber.TLV {
 // encodeParamAnnouncement produces a value-change announcement — same
 // shape as a walk reply for a single QualifiedParameter, so consumers
 // with a subscribe-only path treat it as an update.
+//
+// Envelope layout:
+//
+//	| Context Tag | Field              | Type           | Notes         |
+//	|-------------|--------------------|----------------|---------------|
+//	| APP[0]      | Root               | CHOICE         | TagRoot       |
+//	|  └ APP[11]  | RootElementColl    | SEQUENCE OF    | one child     |
+//	|     └─[0]   | child wrapper      | CTX wrapper    | single        |
+//	|       APP[9]| QualifiedParameter | SEQUENCE       | full contents |
+//
+// Spec reference: Ember+ Documentation.pdf §Root + RootElementCollection p. 93.
 func (s *server) encodeParamAnnouncement(e *entry, p *canonical.Parameter) []byte {
 	qp := s.encodeQualifiedParameter(e, p)
 	root := ber.AppConstructed(glow.TagRoot,

@@ -8,6 +8,14 @@ import (
 // --- Encode value types ---
 
 // EncodeBoolean returns BER BOOLEAN value bytes.
+//
+//	| Offset | Field | Width | Notes                                  |
+//	|--------|-------|-------|----------------------------------------|
+//	|   0    | flag  |   1   | 0x00 = FALSE; any non-zero = TRUE      |
+//	|        |       |       | (this encoder emits 0xFF for TRUE as   |
+//	|        |       |       | DER §11.1 mandates)                    |
+//
+// Spec reference: ITU-T X.690 §8.2 (Encoding of a boolean value).
 func EncodeBoolean(v bool) []byte {
 	if v {
 		return []byte{0xFF}
@@ -17,6 +25,18 @@ func EncodeBoolean(v bool) []byte {
 
 // EncodeInteger returns BER INTEGER value bytes (two's complement, big-endian).
 // Uses minimum number of octets.
+//
+//	| Offset | Field    | Width | Notes                                     |
+//	|--------|----------|-------|-------------------------------------------|
+//	|   0    | MSB      |   1   | sign-significant byte; two's-complement   |
+//	|  1..N  | low bytes|  N-1  | big-endian remaining payload              |
+//
+// Shortest form rule (X.690 §8.3.2): the first nine bits must not all be
+// the same — the codec prepends 0x00 for positive values whose top bit
+// would otherwise flip the sign, and prepends 0xFF for negative values
+// whose top bit would be cleared.
+//
+// Spec reference: ITU-T X.690 §8.3 (Encoding of an integer value).
 func EncodeInteger(v int64) []byte {
 	if v == 0 {
 		return []byte{0x00}
@@ -60,6 +80,16 @@ func EncodeInteger(v int64) []byte {
 // Such that  value = (-1)^S * mantissa * 2^exponent.
 //
 // Special values: zero → empty; ±∞ → 0x40 / 0x41; NaN → 0x42.
+//
+//	| Offset | Field        | Width | Notes                                    |
+//	|--------|--------------|-------|------------------------------------------|
+//	|   0    | first octet  |   1   | bit7=1 binary; bit6 sign; 5-4 base;      |
+//	|        |              |       | 3-2 scale; 1-0 exponent length code      |
+//	|   1    | exp-len ext  | 0/1   | only when bits 1-0 = 11 (long form)      |
+//	|  1..E  | exponent     |   E   | two's-complement, big-endian             |
+//	| E+1..N | mantissa     |   M   | unsigned, big-endian, LSB-trimmed        |
+//
+// Spec reference: ITU-T X.690 §8.5 (Encoding of a real value).
 func EncodeReal(v float64) []byte {
 	if v == 0 {
 		return nil
@@ -161,11 +191,23 @@ func encodeUnsignedInt(v uint64) []byte {
 }
 
 // EncodeUTF8String returns BER UTF8String value bytes (raw UTF-8).
+//
+//	| Offset | Field   | Width | Notes                            |
+//	|--------|---------|-------|----------------------------------|
+//	|  0..N  | UTF-8   |   N   | raw UTF-8 code units (no BOM)    |
+//
+// Spec reference: ITU-T X.690 §8.21 / X.680 §41 (RestrictedString).
 func EncodeUTF8String(s string) []byte {
 	return []byte(s)
 }
 
 // EncodeOctetString returns BER OCTET STRING value bytes.
+//
+//	| Offset | Field  | Width | Notes                                    |
+//	|--------|--------|-------|------------------------------------------|
+//	|  0..N  | octets |   N   | raw opaque bytes, copied to new buffer   |
+//
+// Spec reference: ITU-T X.690 §8.7 (Encoding of an octetstring value).
 func EncodeOctetString(b []byte) []byte {
 	out := make([]byte, len(b))
 	copy(out, b)
@@ -175,6 +217,12 @@ func EncodeOctetString(b []byte) []byte {
 // --- Decode value types ---
 
 // DecodeBoolean reads a BER BOOLEAN from value bytes.
+//
+//	| Offset | Field | Width | Notes                                |
+//	|--------|-------|-------|--------------------------------------|
+//	|   0    | flag  |   1   | 0x00 = false, anything else = true   |
+//
+// Spec reference: ITU-T X.690 §8.2 (Encoding of a boolean value).
 func DecodeBoolean(data []byte) (bool, error) {
 	if len(data) != 1 {
 		return false, errTruncated
@@ -183,6 +231,16 @@ func DecodeBoolean(data []byte) (bool, error) {
 }
 
 // DecodeInteger reads a BER INTEGER from value bytes (two's complement).
+//
+//	| Offset | Field    | Width | Notes                                     |
+//	|--------|----------|-------|-------------------------------------------|
+//	|   0    | MSB      |   1   | sign bit in bit 7; drives 64-bit sign-pad |
+//	|  1..N  | low bytes|  N-1  | big-endian remainder                      |
+//
+// Rejects encodings longer than 8 octets (errOverflow); the Glow subset
+// never emits INTEGER wider than int64 in practice.
+//
+// Spec reference: ITU-T X.690 §8.3 (Encoding of an integer value).
 func DecodeInteger(data []byte) (int64, error) {
 	if len(data) == 0 {
 		return 0, errTruncated
@@ -207,6 +265,21 @@ func DecodeInteger(data []byte) (int64, error) {
 // DecodeReal reads an ITU-T X.690 §8.5 BER REAL from value bytes.
 // Supports the binary form (base 2, base 8, base 16) with scale 0 —
 // which covers every REAL shape Glow actually emits.
+//
+// Value-octets layout (binary form, first octet bit 7 = 1):
+//
+//	| Offset | Field        | Width | Notes                                    |
+//	|--------|--------------|-------|------------------------------------------|
+//	|   0    | first octet  |   1   | sign/base/scale/exp-len code             |
+//	|   1    | exp-len ext  | 0/1   | present iff bits 1-0 of first = 11       |
+//	|  1..E  | exponent     |   E   | signed two's-complement, big-endian      |
+//	| E+1..N | mantissa     |   M   | unsigned, big-endian                     |
+//
+// Special first-octet sentinels (§8.5.9): 0x40=+∞, 0x41=-∞, 0x42=NaN,
+// empty = 0. Decimal form (bit 7 = 0) is not emitted by Glow and is
+// rejected here.
+//
+// Spec reference: ITU-T X.690 §8.5 (Encoding of a real value).
 func DecodeReal(data []byte) (float64, error) {
 	if len(data) == 0 {
 		return 0.0, nil
@@ -293,6 +366,12 @@ func DecodeReal(data []byte) (float64, error) {
 }
 
 // DecodeUTF8String reads a BER UTF8String from value bytes.
+//
+//	| Offset | Field | Width | Notes                            |
+//	|--------|-------|-------|----------------------------------|
+//	|  0..N  | UTF-8 |   N   | raw UTF-8 code units (no BOM)    |
+//
+// Spec reference: ITU-T X.690 §8.21 / X.680 §41 (RestrictedString).
 func DecodeUTF8String(data []byte) string {
 	return string(data)
 }
