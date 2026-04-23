@@ -24,6 +24,19 @@ import (
 // Errors returned when a canonical value is out of spec range for its
 // ACP1 type (e.g. int16 value 40000) so the provider never emits
 // malformed bytes. Never silently clamps.
+//
+// Common prefix (all object types):
+//
+//	| Byte | Field       | Notes                                          |
+//	|------|-------------|------------------------------------------------|
+//	|  0   | object_type |  0=Root, 1=Integer, 2=IPAddr, 3=Float, 4=Enum  |
+//	|      |             |  5=String, 6=Frame, 7=Alarm, 8=File, 9=Long,   |
+//	|      |             |  10=Byte                                       |
+//	|  1   | num_props   | number of properties emitted                   |
+//	| 2..  | (type-specific fields — see per-type encoders) |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" pp. 21–27.
 func encodeObject(e *entry) ([]byte, error) {
 	if e == nil || e.param == nil {
 		return nil, fmt.Errorf("encodeObject: nil entry")
@@ -70,6 +83,24 @@ func encodeObject(e *entry) ([]byte, error) {
 //	File       -> num_fragments (i16)
 //	Long       -> value (i32)
 //	Byte       -> value (u8)
+//
+// Per-type raw-value layout on the wire:
+//
+//	| ACP1 type | Width | Wire layout                                   |
+//	|-----------|-------|-----------------------------------------------|
+//	| Integer   |   2   | int16 big-endian                              |
+//	| IPAddr    |   4   | uint32 big-endian (4 octets a.b.c.d)          |
+//	| Float     |   4   | IEEE-754 float32 big-endian                   |
+//	| Enum      |   1   | u8 index into item list                       |
+//	| String    | len+1 | bytes + NUL terminator                        |
+//	| Alarm     |   1   | u8 (0 = idle, 1 = active)                     |
+//	| Long      |   4   | int32 big-endian                              |
+//	| Byte      |   1   | u8                                            |
+//	| File      |   2   | int16 big-endian num_fragments                |
+//	| Frame     |  1+N  | u8 num_slots + N × u8 slot_status             |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" pp. 21–27.
 func encodeValue(e *entry) ([]byte, error) {
 	if e == nil || e.param == nil {
 		return nil, fmt.Errorf("encodeValue: nil entry")
@@ -140,6 +171,24 @@ func encodeValue(e *entry) ([]byte, error) {
 
 // encodeRoot — spec p.21. Root has 9 properties; object_type(0) and
 // num_props(9) are part of the header.
+//
+// Wire layout after the common prefix (7 bytes):
+//
+//	| Byte | Field         | Width | Notes                                |
+//	|------|---------------|-------|--------------------------------------|
+//	|  0   | access        |   1   | bit0=r, bit1=w, bit2=setDef          |
+//	|  1   | boot_mode     |   1   | Root's "value" property              |
+//	|  2   | num_identity  |   1   | count of Identity objects            |
+//	|  3   | num_control   |   1   | count of Control objects             |
+//	|  4   | num_status    |   1   | count of Status objects              |
+//	|  5   | num_alarm     |   1   | count of Alarm objects               |
+//	|  6   | num_file      |   1   | count of File objects                |
+//
+// Note: Root objects are synthesised by session.go from tree.slots and
+// never stored in the canonical tree; this function is a stub that
+// returns an error so callers route through the session layer.
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 21.
 func encodeRoot(e *entry) ([]byte, error) {
 	// Root props: access, boot_mode, num_identity, num_control,
 	// num_status, num_alarm, num_file. The canonical tree doesn't store
@@ -149,6 +198,23 @@ func encodeRoot(e *entry) ([]byte, error) {
 	return nil, fmt.Errorf("encodeRoot: Root objects are synthesised by session.go, not stored as tree entries")
 }
 
+// encodeInteger — inverse of consumer's decodeInteger. Integer Object
+// (type=1, 10 props).
+//
+// Wire layout after the common prefix:
+//
+//	| Byte   | Field   | Width | Notes                                   |
+//	|--------|---------|-------|-----------------------------------------|
+//	|  0     | access  |   1   | bit0=r, bit1=w, bit2=setDef             |
+//	|  1..2  | value   |   2   | int16 big-endian                        |
+//	|  3..4  | default |   2   | int16 big-endian                        |
+//	|  5..6  | step    |   2   | int16 big-endian                        |
+//	|  7..8  | min     |   2   | int16 big-endian                        |
+//	|  9..10 | max     |   2   | int16 big-endian                        |
+//	| 11..   | label   |  ≤17  | NUL-terminated ASCII (max 16 + \0)      |
+//	|  ...   | unit    |  ≤5   | NUL-terminated ASCII (max 4 + \0)       |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 22.
 func encodeInteger(e *entry) ([]byte, error) {
 	p := e.param
 	value, err := asInt16(p.Value, "value")
@@ -183,6 +249,23 @@ func encodeInteger(e *entry) ([]byte, error) {
 	return buf.bytes(), nil
 }
 
+// encodeLong — inverse of consumer's decodeLong. Long Object (type=9,
+// 10 props). Same layout as Integer but int32 numerics.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte    | Field   | Width | Notes                                  |
+//	|---------|---------|-------|----------------------------------------|
+//	|  0      | access  |   1   | bit0=r, bit1=w, bit2=setDef            |
+//	|  1..4   | value   |   4   | int32 big-endian                       |
+//	|  5..8   | default |   4   | int32 big-endian                       |
+//	|  9..12  | step    |   4   | int32 big-endian                       |
+//	| 13..16  | min     |   4   | int32 big-endian                       |
+//	| 17..20  | max     |   4   | int32 big-endian                       |
+//	| 21..    | label   |  ≤17  | NUL-terminated ASCII                   |
+//	|  ...    | unit    |  ≤5   | NUL-terminated ASCII                   |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 26.
 func encodeLong(e *entry) ([]byte, error) {
 	p := e.param
 	value, err := asInt32(p.Value, "value")
@@ -217,6 +300,23 @@ func encodeLong(e *entry) ([]byte, error) {
 	return buf.bytes(), nil
 }
 
+// encodeByte — inverse of consumer's decodeByte. Byte Object (type=10,
+// 10 props). Same layout as Integer but u8 numerics.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte | Field   | Width | Notes                                     |
+//	|------|---------|-------|-------------------------------------------|
+//	|  0   | access  |   1   | bit0=r, bit1=w, bit2=setDef               |
+//	|  1   | value   |   1   | u8                                        |
+//	|  2   | default |   1   | u8                                        |
+//	|  3   | step    |   1   | u8                                        |
+//	|  4   | min     |   1   | u8                                        |
+//	|  5   | max     |   1   | u8                                        |
+//	|  6.. | label   |  ≤17  | NUL-terminated ASCII                      |
+//	|  ... | unit    |  ≤5   | NUL-terminated ASCII                      |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 27.
 func encodeByte(e *entry) ([]byte, error) {
 	p := e.param
 	value, err := asUint8(p.Value, "value")
@@ -251,6 +351,23 @@ func encodeByte(e *entry) ([]byte, error) {
 	return buf.bytes(), nil
 }
 
+// encodeFloat — inverse of consumer's decodeFloat. Float Object (type=3,
+// 10 props).
+//
+// Wire layout after the common prefix:
+//
+//	| Byte    | Field   | Width | Notes                                  |
+//	|---------|---------|-------|----------------------------------------|
+//	|  0      | access  |   1   | bit0=r, bit1=w, bit2=setDef            |
+//	|  1..4   | value   |   4   | IEEE-754 float32 big-endian            |
+//	|  5..8   | default |   4   | IEEE-754 float32 big-endian            |
+//	|  9..12  | step    |   4   | IEEE-754 float32 big-endian            |
+//	| 13..16  | min     |   4   | IEEE-754 float32 big-endian            |
+//	| 17..20  | max     |   4   | IEEE-754 float32 big-endian            |
+//	| 21..    | label   |  ≤17  | NUL-terminated ASCII                   |
+//	|  ...    | unit    |  ≤5   | NUL-terminated ASCII                   |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 23.
 func encodeFloat(e *entry) ([]byte, error) {
 	p := e.param
 	value, err := asFloat32(p.Value, "value")
@@ -285,6 +402,23 @@ func encodeFloat(e *entry) ([]byte, error) {
 	return buf.bytes(), nil
 }
 
+// encodeIPAddr — inverse of consumer's decodeIPAddr. IPAddr Object
+// (type=2, 10 props). Same layout as Integer but uint32 numerics.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte    | Field   | Width | Notes                                  |
+//	|---------|---------|-------|----------------------------------------|
+//	|  0      | access  |   1   | bit0=r, bit1=w, bit2=setDef            |
+//	|  1..4   | value   |   4   | uint32 big-endian (4 octets a.b.c.d)   |
+//	|  5..8   | default |   4   | uint32 big-endian                      |
+//	|  9..12  | step    |   4   | uint32 big-endian                      |
+//	| 13..16  | min     |   4   | uint32 big-endian                      |
+//	| 17..20  | max     |   4   | uint32 big-endian                      |
+//	| 21..    | label   |  ≤17  | NUL-terminated ASCII                   |
+//	|  ...    | unit    |  ≤5   | NUL-terminated ASCII                   |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 22.
 func encodeIPAddr(e *entry) ([]byte, error) {
 	p := e.param
 	value, err := ipv4ToUint32(p.Value)
@@ -319,6 +453,22 @@ func encodeIPAddr(e *entry) ([]byte, error) {
 	return buf.bytes(), nil
 }
 
+// encodeEnum — inverse of consumer's decodeEnum. Enum Object (type=4,
+// 8 props).
+//
+// Wire layout after the common prefix:
+//
+//	| Byte | Field      | Width | Notes                                     |
+//	|------|------------|-------|-------------------------------------------|
+//	|  0   | access     |   1   | bit0=r, bit1=w, bit2=setDef               |
+//	|  1   | value      |   1   | u8 index into item_list                   |
+//	|  2   | num_items  |   1   | number of items emitted                   |
+//	|  3   | default    |   1   | u8 index                                  |
+//	|  4.. | label      |  ≤17  | NUL-terminated ASCII                      |
+//	|  ... | item_list  |   ?   | comma-delimited NUL-terminated, e.g.      |
+//	|      |            |       | "Off,On,Auto\0"                           |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 23.
 func encodeEnum(e *entry) ([]byte, error) {
 	p := e.param
 	value, err := asUint8(p.Value, "value")
@@ -348,6 +498,19 @@ func encodeEnum(e *entry) ([]byte, error) {
 	return buf.bytes(), nil
 }
 
+// encodeString — inverse of consumer's decodeString. String Object
+// (type=5, 6 props). Order on the wire: Value, then MaxLen, then Label.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte | Field    | Width | Notes                                       |
+//	|------|----------|-------|---------------------------------------------|
+//	|  0   | access   |   1   | bit0=r, bit1=w, bit2=setDef                 |
+//	|  1.. | value    |   ?   | NUL-terminated ASCII, bounded by max_len+\0 |
+//	|  ... | max_len  |   1   | u8; declared buffer size (bytes)            |
+//	|  ... | label    |  ≤17  | NUL-terminated ASCII                        |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 24.
 func encodeString(e *entry) ([]byte, error) {
 	p := e.param
 	value, err := asString(p.Value, "value")
@@ -363,6 +526,21 @@ func encodeString(e *entry) ([]byte, error) {
 	return buf.bytes(), nil
 }
 
+// encodeAlarm — inverse of consumer's decodeAlarm. Alarm Object (type=7,
+// 8 props).
+//
+// Wire layout after the common prefix:
+//
+//	| Byte | Field         | Width | Notes                                |
+//	|------|---------------|-------|--------------------------------------|
+//	|  0   | access        |   1   | bit0=r, bit1=w, bit2=setDef          |
+//	|  1   | priority      |   1   | u8; 0 = alarm disabled               |
+//	|  2   | tag           |   1   | u8; device-assigned identifier       |
+//	|  3.. | label         |  ≤17  | NUL-terminated ASCII (max 16 + \0)   |
+//	|  ... | event_on_msg  |  ≤33  | NUL-terminated ASCII (max 32 + \0)   |
+//	|  ... | event_off_msg |  ≤33  | NUL-terminated ASCII (max 32 + \0)   |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 25.
 func encodeAlarm(e *entry) ([]byte, error) {
 	p := e.param
 	// priority/tag live as inline property fields of a real Axon alarm
@@ -382,6 +560,18 @@ func encodeAlarm(e *entry) ([]byte, error) {
 	return buf.bytes(), nil
 }
 
+// encodeFile — inverse of consumer's decodeFile. File Object (type=8,
+// 5 props). Fragment property is engineer-mode only and NOT emitted.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte   | Field         | Width | Notes                              |
+//	|--------|---------------|-------|------------------------------------|
+//	|  0     | access        |   1   | bit0=r, bit1=w, bit2=setDef        |
+//	|  1..2  | num_fragments |   2   | int16 big-endian                   |
+//	|  3..   | file_name     |  ≤17  | NUL-terminated ASCII (max 16 + \0) |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 26.
 func encodeFile(e *entry) ([]byte, error) {
 	p := e.param
 	// Canonical carries the file name in Value; num_fragments in Default
@@ -402,6 +592,21 @@ func encodeFile(e *entry) ([]byte, error) {
 	return buf.bytes(), nil
 }
 
+// encodeFrame — inverse of consumer's decodeFrame. Frame Status Object
+// (type=6, 4 props, read-only; rack-controller only).
+//
+// Wire layout after the common prefix:
+//
+//	| Byte      | Field         | Width | Notes                           |
+//	|-----------|---------------|-------|---------------------------------|
+//	|  0        | access        |   1   | read-only (bit0 set, 1)         |
+//	|  1        | num_slots     |   1   | u8; number of cards in frame    |
+//	|  2..n+1   | slot_status[] |   n   | one u8 per slot:                |
+//	|           |               |       |  0=no-card, 1=powerup,          |
+//	|           |               |       |  2=present, 3=error,            |
+//	|           |               |       |  4=removed, 5=boot              |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 24.
 func encodeFrame(e *entry) ([]byte, error) {
 	slots, err := frameSlotStatuses(e.param)
 	if err != nil {

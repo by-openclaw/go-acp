@@ -97,6 +97,19 @@ var ErrBadProperty = errors.New("acp1: property decode out of bounds")
 //
 // Defensive: every read is bounds-checked. A truncated or malformed reply
 // returns ErrBadProperty with an offset/length context.
+//
+// Common prefix (all object types):
+//
+//	| Byte | Field       | Notes                                          |
+//	|------|-------------|------------------------------------------------|
+//	|  0   | object_type |  0=Root, 1=Integer, 2=IPAddr, 3=Float, 4=Enum  |
+//	|      |             |  5=String, 6=Frame, 7=Alarm, 8=File, 9=Long,   |
+//	|      |             |  10=Byte, 11=Reserved                          |
+//	|  1   | num_props   | number of properties following                 |
+//	| 2..  | (type-specific fields — see per-type decoders) |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Property Object Type" p. 19 and
+// §"Objects by Type" pp. 21–27.
 func DecodeObject(value []byte) (*DecodedObject, error) {
 	r := &reader{buf: value}
 
@@ -154,6 +167,20 @@ func DecodeObject(value []byte) (*DecodedObject, error) {
 //	pid 6  num_status    byte
 //	pid 7  num_alarm     byte
 //	pid 8  num_file      byte
+//
+// Wire layout after the common prefix (7 bytes):
+//
+//	| Byte | Field         | Width | Notes                                |
+//	|------|---------------|-------|--------------------------------------|
+//	|  0   | access        |   1   | bit0=r, bit1=w, bit2=setDef          |
+//	|  1   | boot_mode     |   1   | Root's "value" property              |
+//	|  2   | num_identity  |   1   | count of Identity objects            |
+//	|  3   | num_control   |   1   | count of Control objects             |
+//	|  4   | num_status    |   1   | count of Status objects              |
+//	|  5   | num_alarm     |   1   | count of Alarm objects               |
+//	|  6   | num_file      |   1   | count of File objects                |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 21.
 func decodeRoot(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -184,6 +211,21 @@ func decodeRoot(o *DecodedObject, r *reader) (*DecodedObject, error) {
 //
 //	access, value(int16), default(int16), step(int16), min(int16),
 //	max(int16), label(string), unit(string)
+//
+// Wire layout after the common prefix:
+//
+//	| Byte   | Field   | Width | Notes                                   |
+//	|--------|---------|-------|-----------------------------------------|
+//	|  0     | access  |   1   | bit0=r, bit1=w, bit2=setDef             |
+//	|  1..2  | value   |   2   | int16 big-endian                        |
+//	|  3..4  | default |   2   | int16 big-endian                        |
+//	|  5..6  | step    |   2   | int16 big-endian                        |
+//	|  7..8  | min     |   2   | int16 big-endian                        |
+//	|  9..10 | max     |   2   | int16 big-endian                        |
+//	| 11..   | label   |  ≤17  | NUL-terminated ASCII (max 16 + \0)      |
+//	|  ...   | unit    |  ≤5   | NUL-terminated ASCII (max 4 + \0); opt. |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 22.
 func decodeInteger(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -219,6 +261,21 @@ func decodeInteger(o *DecodedObject, r *reader) (*DecodedObject, error) {
 
 // decodeIPAddr — Spec p. 22. Layout identical to Integer but all numeric
 // properties are uint32 (big-endian, MSB first).
+//
+// Wire layout after the common prefix:
+//
+//	| Byte    | Field   | Width | Notes                                  |
+//	|---------|---------|-------|----------------------------------------|
+//	|  0      | access  |   1   | bit0=r, bit1=w, bit2=setDef            |
+//	|  1..4   | value   |   4   | uint32 big-endian (4 octets a.b.c.d)   |
+//	|  5..8   | default |   4   | uint32 big-endian                      |
+//	|  9..12  | step    |   4   | uint32 big-endian                      |
+//	| 13..16  | min     |   4   | uint32 big-endian                      |
+//	| 17..20  | max     |   4   | uint32 big-endian                      |
+//	| 21..    | label   |  ≤17  | NUL-terminated ASCII                   |
+//	|  ...    | unit    |  ≤5   | NUL-terminated ASCII; optional         |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 22.
 func decodeIPAddr(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -249,6 +306,21 @@ func decodeIPAddr(o *DecodedObject, r *reader) (*DecodedObject, error) {
 }
 
 // decodeFloat — Spec p. 23. IEEE-754 single-precision, MSB first.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte    | Field   | Width | Notes                                  |
+//	|---------|---------|-------|----------------------------------------|
+//	|  0      | access  |   1   | bit0=r, bit1=w, bit2=setDef            |
+//	|  1..4   | value   |   4   | IEEE-754 float32 big-endian            |
+//	|  5..8   | default |   4   | IEEE-754 float32 big-endian            |
+//	|  9..12  | step    |   4   | IEEE-754 float32 big-endian            |
+//	| 13..16  | min     |   4   | IEEE-754 float32 big-endian            |
+//	| 17..20  | max     |   4   | IEEE-754 float32 big-endian            |
+//	| 21..    | label   |  ≤17  | NUL-terminated ASCII                   |
+//	|  ...    | unit    |  ≤5   | NUL-terminated ASCII; optional         |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 23.
 func decodeFloat(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -281,6 +353,20 @@ func decodeFloat(o *DecodedObject, r *reader) (*DecodedObject, error) {
 // decodeEnum — Spec p. 23. Value is a 1-byte index into a comma-delimited
 // NUL-terminated item list. The item list is the last field and may be
 // empty. Label precedes the item list.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte | Field      | Width | Notes                                     |
+//	|------|------------|-------|-------------------------------------------|
+//	|  0   | access     |   1   | bit0=r, bit1=w, bit2=setDef               |
+//	|  1   | value      |   1   | u8 index into item_list                   |
+//	|  2   | num_items  |   1   | number of items declared                  |
+//	|  3   | default    |   1   | u8 index                                  |
+//	|  4.. | label      |  ≤17  | NUL-terminated ASCII                      |
+//	|  ... | item_list  |   ?   | comma-delimited NUL-terminated, e.g.      |
+//	|      |            |       | "Off,On,Auto\0"; may be empty             |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 23.
 func decodeEnum(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -341,6 +427,17 @@ func splitEnumItems(raw string, n int) []string {
 // decodeString — Spec p. 24. Value(string[MaxLen]) + MaxLen(byte) + Label.
 // Order on the wire: Value, then MaxLen, then Label. The spec puts MaxLen
 // AFTER the value, not before — verified against the C# reference parser.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte | Field    | Width | Notes                                       |
+//	|------|----------|-------|---------------------------------------------|
+//	|  0   | access   |   1   | bit0=r, bit1=w, bit2=setDef                 |
+//	|  1.. | value    |   ?   | NUL-terminated ASCII, bounded by max_len+\0 |
+//	|  ... | max_len  |   1   | u8; declared buffer size (bytes)            |
+//	|  ... | label    |  ≤17  | NUL-terminated ASCII; optional on wire      |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 24.
 func decodeString(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -360,6 +457,19 @@ func decodeString(o *DecodedObject, r *reader) (*DecodedObject, error) {
 
 // decodeFrame — Spec p. 24. Frame Status Object (type=6, 4 props).
 // Access byte then NumOfSlots + SlotStatus array packed into one field.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte      | Field         | Width | Notes                           |
+//	|-----------|---------------|-------|---------------------------------|
+//	|  0        | access        |   1   | read-only (bit0 set, 1)         |
+//	|  1        | num_slots     |   1   | u8; number of cards in frame    |
+//	|  2..n+1   | slot_status[] |   n   | one u8 per slot:                |
+//	|           |               |       |  0=no-card, 1=powerup,          |
+//	|           |               |       |  2=present, 3=error,            |
+//	|           |               |       |  4=removed, 5=boot              |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 24.
 func decodeFrame(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -382,6 +492,19 @@ func decodeFrame(o *DecodedObject, r *reader) (*DecodedObject, error) {
 // decodeAlarm — Spec p. 25. 8 properties (since rev 1.2 added Event Off):
 //
 //	access, priority, tag, label, event_on_msg, event_off_msg
+//
+// Wire layout after the common prefix:
+//
+//	| Byte | Field         | Width | Notes                                |
+//	|------|---------------|-------|--------------------------------------|
+//	|  0   | access        |   1   | bit0=r, bit1=w, bit2=setDef          |
+//	|  1   | priority      |   1   | u8; 0 = alarm disabled               |
+//	|  2   | tag           |   1   | u8; device-assigned identifier       |
+//	|  3.. | label         |  ≤17  | NUL-terminated ASCII (max 16 + \0)   |
+//	|  ... | event_on_msg  |  ≤33  | NUL-terminated ASCII (max 32 + \0)   |
+//	|  ... | event_off_msg |  ≤33  | NUL-terminated ASCII; optional       |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 25.
 func decodeAlarm(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -407,6 +530,19 @@ func decodeAlarm(o *DecodedObject, r *reader) (*DecodedObject, error) {
 
 // decodeFile — Spec p. 26. File Object (type=8, 5 props). The Fragment
 // property is not returned by getObject per the spec note on p. 26.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte   | Field         | Width | Notes                              |
+//	|--------|---------------|-------|------------------------------------|
+//	|  0     | access        |   1   | bit0=r, bit1=w, bit2=setDef        |
+//	|  1..2  | num_fragments |   2   | int16 big-endian                   |
+//	|  3..   | file_name     |  ≤17  | NUL-terminated ASCII (max 16 + \0) |
+//
+// Note: Fragment property is engineer-mode only and never returned by
+// getObject on real Synapse firmware.
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 26.
 func decodeFile(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -424,6 +560,21 @@ func decodeFile(o *DecodedObject, r *reader) (*DecodedObject, error) {
 }
 
 // decodeLong — Spec p. 26. Layout identical to Integer but int32 values.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte    | Field   | Width | Notes                                  |
+//	|---------|---------|-------|----------------------------------------|
+//	|  0      | access  |   1   | bit0=r, bit1=w, bit2=setDef            |
+//	|  1..4   | value   |   4   | int32 big-endian                       |
+//	|  5..8   | default |   4   | int32 big-endian                       |
+//	|  9..12  | step    |   4   | int32 big-endian                       |
+//	| 13..16  | min     |   4   | int32 big-endian                       |
+//	| 17..20  | max     |   4   | int32 big-endian                       |
+//	| 21..    | label   |  ≤17  | NUL-terminated ASCII                   |
+//	|  ...    | unit    |  ≤5   | NUL-terminated ASCII; optional         |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 26.
 func decodeLong(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
@@ -454,6 +605,21 @@ func decodeLong(o *DecodedObject, r *reader) (*DecodedObject, error) {
 }
 
 // decodeByte — Spec p. 27. Layout identical to Integer but u8 values.
+//
+// Wire layout after the common prefix:
+//
+//	| Byte | Field   | Width | Notes                                     |
+//	|------|---------|-------|-------------------------------------------|
+//	|  0   | access  |   1   | bit0=r, bit1=w, bit2=setDef               |
+//	|  1   | value   |   1   | u8                                        |
+//	|  2   | default |   1   | u8                                        |
+//	|  3   | step    |   1   | u8                                        |
+//	|  4   | min     |   1   | u8                                        |
+//	|  5   | max     |   1   | u8                                        |
+//	|  6.. | label   |  ≤17  | NUL-terminated ASCII                      |
+//	|  ... | unit    |  ≤5   | NUL-terminated ASCII; optional            |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Objects by Type" p. 27.
 func decodeByte(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	var err error
 	if o.Access, err = r.u8(); err != nil {
