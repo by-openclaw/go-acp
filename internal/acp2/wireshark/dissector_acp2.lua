@@ -29,6 +29,48 @@ local acp2_last_info = ""
 -- — matches the Ember+ OID-dotted Info column style.
 local acp2_current_slot = 0
 
+-- Per-conversation label cache for Info-column resolution (issue #58).
+-- Keyed by "conv_id|slot|obj_id" → label string. Populated whenever a
+-- pid=2 (label) property value flows by as a reply or announce payload;
+-- read on every subsequent frame that references the same (slot, obj_id)
+-- so the Info column can show `0.5.value "Input A"` rather than `0.5`.
+-- Keyed by a composite string to avoid Lua table-key weirdness with
+-- nested tables. Scoped per-conversation so two concurrent Axon captures
+-- do not cross-pollute.
+local acp2_label_cache = {}
+
+local function conv_key(pktinfo)
+    -- Wireshark's pinfo.conversation_id is not universally exposed in
+    -- Lua 5.2. Fall back to src+dst+ports which are stable per TCP
+    -- conversation within a capture.
+    return tostring(pktinfo.src) .. ":" .. tostring(pktinfo.src_port) ..
+        "->" .. tostring(pktinfo.dst) .. ":" .. tostring(pktinfo.dst_port)
+end
+
+local function label_key(pktinfo, slot, obj_id)
+    return conv_key(pktinfo) .. "|" .. slot .. "|" .. obj_id
+end
+
+local function cache_label(pktinfo, slot, obj_id, label)
+    if label == nil or label == "" then return end
+    acp2_label_cache[label_key(pktinfo, slot, obj_id)] = label
+end
+
+local function lookup_label(pktinfo, slot, obj_id)
+    return acp2_label_cache[label_key(pktinfo, slot, obj_id)]
+end
+
+-- Format the dotted slot.obj_id path for the Info column, appending a
+-- quoted label if one was cached by an earlier frame in this conversation.
+local function path_with_label(pktinfo, slot, obj_id)
+    local path = string.format("%d.%d", slot, obj_id)
+    local lbl = lookup_label(pktinfo, slot, obj_id)
+    if lbl ~= nil and lbl ~= "" then
+        path = path .. " \"" .. lbl .. "\""
+    end
+    return path
+end
+
 -------------------------------------------------------------------------------
 -- Value-string tables
 -------------------------------------------------------------------------------
@@ -549,7 +591,7 @@ end
 -- return a short text summary for the Info column: `value=42`,
 -- `value="ACP2-Frame"`, `value=10.4.210.100`, etc. Returns "" when
 -- nothing meaningful can be extracted.
-local function summarize_first_prop(tvbuf, offset)
+local function summarize_first_prop(tvbuf, offset, pktinfo, slot, obj_id)
     local remaining = tvbuf:reported_length_remaining(offset)
     if remaining < 4 then return "" end
     local pid = tvbuf:range(offset, 1):uint()
@@ -582,7 +624,14 @@ local function summarize_first_prop(tvbuf, offset)
             if tvbuf:range(voff + i, 1):uint() == 0 then strlen = i; break end
         end
         if strlen == 0 then return "" end
-        return "\"" .. tvbuf:range(voff, strlen):string() .. "\""
+        local s = tvbuf:range(voff, strlen):string()
+        -- Cache labels (pid=2) keyed by (conversation, slot, obj_id) so
+        -- subsequent frames referring to the same (slot, obj_id) can show
+        -- the human-readable label in the Info column (issue #58).
+        if pid == 2 and pktinfo ~= nil and slot ~= nil and obj_id ~= nil then
+            cache_label(pktinfo, slot, obj_id, s)
+        end
+        return "\"" .. s .. "\""
     elseif pid == 6 then
         if vlen >= 2 then
             return "maxlen=" .. tvbuf:range(voff, 2):uint()
@@ -666,7 +715,9 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
                 -- Dotted slot.obj path per issue #58 (match Ember+ OID style).
-                table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
+                -- path_with_label substitutes the cached label when one was
+                -- learned earlier in this TCP conversation.
+                table.insert(info_parts, path_with_label(pktinfo, acp2_current_slot, obj_id))
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
                 end
@@ -684,14 +735,13 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 local idx    = tvbuf:range(8, 4):uint()
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-                -- Dotted slot.obj path per issue #58 (match Ember+ OID style).
-                table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
+                table.insert(info_parts, path_with_label(pktinfo, acp2_current_slot, obj_id))
                 table.insert(info_parts, "pid=" .. pid_name)
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
                 end
                 if type_val == 1 and pktlen > 12 then
-                    local vs = summarize_first_prop(tvbuf, 12)
+                    local vs = summarize_first_prop(tvbuf, 12, pktinfo, acp2_current_slot, obj_id)
                     if vs ~= "" then table.insert(info_parts, vs) end
                     parse_properties(tvbuf, pktinfo, tree, 12)
                 end
@@ -706,14 +756,13 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
                 local idx    = tvbuf:range(8, 4):uint()
                 tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
                 tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-                -- Dotted slot.obj path per issue #58 (match Ember+ OID style).
-                table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
+                table.insert(info_parts, path_with_label(pktinfo, acp2_current_slot, obj_id))
                 table.insert(info_parts, "pid=" .. pid_name)
                 if idx ~= 0 then
                     table.insert(info_parts, "idx=" .. idx)
                 end
                 if pktlen > 12 then
-                    local vs = summarize_first_prop(tvbuf, 12)
+                    local vs = summarize_first_prop(tvbuf, 12, pktinfo, acp2_current_slot, obj_id)
                     if vs ~= "" then table.insert(info_parts, vs) end
                     parse_properties(tvbuf, pktinfo, tree, 12)
                 end
@@ -733,12 +782,12 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
             local idx    = tvbuf:range(8, 4):uint()
             tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
             tree:add(acp2_f.idx,    tvbuf:range(8, 4))
-            table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
+            table.insert(info_parts, path_with_label(pktinfo, acp2_current_slot, obj_id))
             if idx ~= 0 then
                 table.insert(info_parts, "idx=" .. idx)
             end
             if pktlen > 12 then
-                local vs = summarize_first_prop(tvbuf, 12)
+                local vs = summarize_first_prop(tvbuf, 12, pktinfo, acp2_current_slot, obj_id)
                 if vs ~= "" then table.insert(info_parts, vs) end
                 parse_properties(tvbuf, pktinfo, tree, 12)
             end
@@ -756,7 +805,7 @@ function acp2_proto.dissector(tvbuf, pktinfo, root)
             tree:add(acp2_f.obj_id, tvbuf:range(4, 4))
             tree:add(acp2_f.idx,    tvbuf:range(8, 4))
             local obj_id = tvbuf:range(4, 4):uint()
-            table.insert(info_parts, string.format("%d.%d", acp2_current_slot, obj_id))
+            table.insert(info_parts, path_with_label(pktinfo, acp2_current_slot, obj_id))
         end
     end
 
