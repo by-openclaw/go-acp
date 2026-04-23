@@ -1165,7 +1165,8 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
         if not first then break end
 
         -- End-of-contents sentinel (for indefinite-length parents).
-        if first == 0 and off + 1 < endpos and ba:get_index(off + 1) == 0 then
+        if first == 0 and (off + 1) < endpos and (off + 1) < ba:len()
+            and ba:get_index(off + 1) == 0 then
             -- Caller is responsible for detecting EoC; stop here.
             return off - start + 2
         end
@@ -1186,8 +1187,15 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
             -- throws "index out of range" rather than returning nil.
             local scan = value_off
             local closed = false
-            local ba_end = math.min(endpos, ba:len())
-            while scan < ba_end - 1 do
+            local ba_len = ba:len()
+            local ba_end = math.min(endpos, ba_len)
+            while scan >= 0 and (scan + 1) < ba_end do
+                -- Belt-and-braces: direct index check on each get_index
+                -- call. Some Wireshark builds throw "index out of range"
+                -- even when the loop bound arithmetic should prevent it
+                -- (observed in live captures on Windows); a local guard
+                -- costs nothing and eliminates the class of error.
+                if scan >= ba_len or (scan + 1) >= ba_len then break end
                 if ba:get_index(scan) == 0 and ba:get_index(scan + 1) == 0 then
                     value_len = scan - value_off
                     closed = true
