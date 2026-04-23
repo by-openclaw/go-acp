@@ -671,7 +671,22 @@ local ACCESS_NAMES  = { [0] = "--", [1] = "R-", [2] = "-W", [3] = "RW" }
 local CONN_OPS      = { [0] = "absolute", [1] = "connect", [2] = "disconnect" }
 local CONN_DISPS    = { [0] = "tally", [1] = "modified", [2] = "pending", [3] = "locked" }
 
+-- ParameterContents and NodeContents are BER SET OF { CTX-tagged fields }.
+-- The CTX[1] contents wrapper holds a universal SET (tag 17) as its
+-- immediate child, and the CTX-tagged identifier/value/access fields live
+-- INSIDE that SET. Without descending into the SET, peek_app_tag sees a
+-- universal constructed tag and the walk skips straight past the whole
+-- block — so identifier/value/access come back nil.
+local function step_through_set_wrapper(ba, off, endpos)
+    local c, cn, t, h, l = peek_app_tag(ba, off, endpos)
+    if c == 0 and cn == true and t == 17 and l ~= nil and l >= 0 then
+        return off + h, math.min(off + h + l, endpos)
+    end
+    return off, endpos
+end
+
 local function decode_parameter_contents(ba, off, endpos)
+    off, endpos = step_through_set_wrapper(ba, off, endpos)
     local out = {}
     local walk = off
     while walk < endpos do
@@ -692,6 +707,7 @@ local function decode_parameter_contents(ba, off, endpos)
 end
 
 local function decode_node_contents(ba, off, endpos)
+    off, endpos = step_through_set_wrapper(ba, off, endpos)
     local out = {}
     local walk = off
     while walk < endpos do
