@@ -21,10 +21,60 @@ const (
 	ConnDispLocked   = "locked"
 )
 
-// MatrixLabel is one row of Matrix.Labels (pointer form).
+// MatrixLabel is one row of Matrix.Labels (pointer form). A matrix can
+// expose multiple levels (Video / Audio / UMD etc.); each level gets one
+// MatrixLabel entry. Absence of a level in the slice = that level is not
+// exposed by this device.
+//
+// Name encoding fields (NameSize / MultiLine / PadChar / KeepPadding)
+// control how source, destination, and association labels for THIS level
+// are packed onto the wire and unpacked off it. Zero-values map to
+// sensible defaults at the schema→codec boundary (see probel provider
+// tree.go), so a minimal tree fixture does not have to state them.
 type MatrixLabel struct {
 	BasePath    string  `json:"basePath"`
 	Description *string `json:"description"`
+
+	// NameSize in bytes (4 / 8 / 12 / 16 per SW-P-08 §5.1; other values
+	// legal but rare). 0 = "don't override; handlers fall back to the
+	// NameLength value carried in each request frame".
+	NameSize uint8 `json:"nameSize,omitempty"`
+
+	// MultiLine marks names that encode a two-line display as
+	// "<line1>\r\n<line2>" inside a fixed-width field (Calrec + some
+	// Imagine hardware). Wire codec preserves CR/LF verbatim; UI
+	// layer decides whether to render as two rows.
+	MultiLine bool `json:"multiLine,omitempty"`
+
+	// PadChar is the byte used to right-pad short names on encode and
+	// strip on decode. nil = use the codec default (ASCII space, 0x20).
+	// A non-nil pointer lets operators/config distinguish "use default"
+	// from "use NUL (0x00)" or any other explicit byte.
+	PadChar *uint8 `json:"padChar,omitempty"`
+
+	// KeepPadding, when true, skips the trim step on decode — callers
+	// get the raw fixed-width bytes as a string. Default (false) trims
+	// trailing pad + NUL bytes for display-friendly output.
+	KeepPadding bool `json:"keepPadding,omitempty"`
+}
+
+// EffectiveNameSize returns NameSize if explicitly set, otherwise the
+// fallback (typically 8 for SW-P-08). Keeps the schema→codec adapter
+// in one place.
+func (ml MatrixLabel) EffectiveNameSize(fallback uint8) uint8 {
+	if ml.NameSize > 0 {
+		return ml.NameSize
+	}
+	return fallback
+}
+
+// EffectivePadChar returns the configured PadChar, falling back to
+// codec.DefaultPadChar (ASCII space) when the pointer is nil.
+func (ml MatrixLabel) EffectivePadChar() uint8 {
+	if ml.PadChar != nil {
+		return *ml.PadChar
+	}
+	return 0x20 // codec.DefaultPadChar — duplicated to avoid import cycle
 }
 
 // MatrixTarget / MatrixSource represent declared target / source

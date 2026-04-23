@@ -268,8 +268,8 @@ git push origin v0.1.0
 Each protocol has its own README with CLI examples, integration test
 instructions, and known limitations:
 
-- [ACP1](docs/protocols/acp1/README.md) — implemented, UDP/TCP direct
-- [ACP2](docs/protocols/acp2/README.md) — not yet implemented, AN2/TCP
+- [ACP1](internal/acp1/docs/README.md) — implemented, UDP/TCP direct
+- [ACP2](internal/acp2/docs/README.md) — not yet implemented, AN2/TCP
 
 ---
 
@@ -280,5 +280,5 @@ instructions, and known limitations:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — three-layer architecture overview
 - [docs/deployment/README.md](docs/deployment/README.md) — cross-compile and firewall rules
 - `docs/protocols/AXON-ACP_v1_4.pdf` — authoritative ACP1 spec
-- `docs/protocols/acp2_protocol.pdf` — authoritative ACP2 spec
+- `internal/acp2/assets/acp2_protocol.pdf` — authoritative ACP2 spec
 - `docs/protocols/an2_protocol.pdf` — AN2 transport spec

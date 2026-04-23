@@ -1,0 +1,101 @@
+groups:
+  - name: dhs.process
+    interval: 30s
+    rules:
+      - alert: DhsMemoryLeakSuspected
+        expr: deriv(go_memstats_heap_alloc_bytes[30m]) > 0
+        for: 30m
+        labels:
+          severity: warning
+          service: dhs
+        annotations:
+          summary: "heap monotonically growing — possible leak"
+          description: "go_memstats_heap_alloc_bytes has a positive 30m derivative for 30 min on {{ $labels.instance }}"
+
+      - alert: DhsGoroutineLeakSuspected
+        expr: deriv(go_goroutines[15m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+          service: dhs
+        annotations:
+          summary: "goroutine count monotonically growing"
+          description: "go_goroutines has positive 15m derivative for 15 min on {{ $labels.instance }}"
+
+      - alert: DhsHighCPU
+        expr: rate(process_cpu_seconds_total[1m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: dhs
+        annotations:
+          summary: "dhs pinned on CPU"
+          description: "process CPU rate > 80% for 5 min on {{ $labels.instance }}"
+
+      - alert: DhsGCPressure
+        expr: rate(go_gc_duration_seconds_sum[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          service: dhs
+        annotations:
+          summary: "excessive GC time — allocation churn"
+          description: "Go spends >10% wall time in GC pauses on {{ $labels.instance }}"
+
+  - name: dhs.connector
+    interval: 30s
+    rules:
+      - alert: DhsConnectorLatencyP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum by (proto, role, addr, le_us) (
+              rate(dhs_connector_handler_latency_us_bucket_total[5m])
+            )
+          ) > 100000
+        for: 5m
+        labels:
+          severity: warning
+          service: dhs
+        annotations:
+          summary: "connector p99 handler latency > 100ms"
+          description: "{{ $labels.proto }}/{{ $labels.role }} p99 > 100ms on {{ $labels.addr }}"
+
+      - alert: DhsConnectorStalled
+        expr: time() - dhs_connector_last_rx_timestamp_seconds > 120
+        for: 2m
+        labels:
+          severity: critical
+          service: dhs
+        annotations:
+          summary: "connector silent for 2 minutes"
+          description: "no rx frames on {{ $labels.proto }}/{{ $labels.role }}/{{ $labels.addr }} for 2 min"
+
+      - alert: DhsNakSurge
+        expr: rate(dhs_connector_naks_total[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+          service: dhs
+        annotations:
+          summary: "peer NAKing our frames"
+          description: "NAK rate > 1/s for 2 min on {{ $labels.proto }}/{{ $labels.addr }}"
+
+      - alert: DhsReconnectStorm
+        expr: rate(dhs_connector_reconnects_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: dhs
+        annotations:
+          summary: "frequent reconnects — flaky link or broken keepalive"
+          description: "reconnect rate > 0.1/s for 5 min on {{ $labels.proto }}/{{ $labels.addr }}"
+
+      - alert: DhsConnectorMemoryGrowth
+        expr: deriv(dhs_connector_memory_bytes[30m]) > 0
+        for: 30m
+        labels:
+          severity: info
+          service: dhs
+        annotations:
+          summary: "connector memory estimate growing"
+          description: "per-connector memory attribution monotonically up for 30 min — tree or pool leak?"

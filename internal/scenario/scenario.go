@@ -8,9 +8,9 @@
 //     emit for the first error reply in the capture.
 //
 // The harness is consumed by tests/unit/scenario/scenario_test.go,
-// which walks tests/scenarios/** and runs every file it finds. New
-// scenarios are added by dropping a JSON file in place — no Go code
-// changes required.
+// which walks every internal/<proto>/scenarios/ directory and runs
+// every file it finds. New scenarios are added by dropping a JSON
+// file in place — no Go code changes required.
 package scenario
 
 import (
