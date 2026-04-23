@@ -17,6 +17,8 @@ func runGet(ctx context.Context, args []string) error {
 	label := fs.String("label", "", "object label (preferred over --id, requires prior walk context)")
 	id := fs.Int("id", -1, "object id within group (alternative to --label)")
 	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
+	idx := fs.Int("idx", 0, "ACP2 preset idx (0 = ACTIVE INDEX; default)")
+	pid := fs.Int("pid", 0, "ACP2 property id to read (0 = default pid=8 value; set to read object_type/label/access/etc.)")
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: acp get <host> --slot N (--path P | --label L | --id I)")
@@ -65,6 +67,8 @@ func runGet(ctx context.Context, args []string) error {
 		Group: *group,
 		Label: *label,
 		ID:    *id,
+		Idx:   *idx,
+		PID:   *pid,
 	}
 	val, err := plug.GetValue(opCtx, req)
 	if err != nil {

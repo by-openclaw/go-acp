@@ -25,6 +25,12 @@ type entry struct {
 	children []uint32           // pid=14 u32[] — direct child obj-ids
 	node     *canonical.Node    // set when objType=node
 	param    *canonical.Parameter // set for leaf types
+	// presetDepth is the N of a preset child's idx list (pid 7). Zero
+	// means "not a preset" — every other object type leaves this at 0.
+	// Populated from the canonical `format` hint "depth=N" alongside
+	// the bare "preset" token. Used to emit pid 7 and to size the
+	// per-idx repetition of pids 8/9/10/11 in get_object replies.
+	presetDepth uint32
 }
 
 // tree is the obj-id indexed snapshot the provider serves. ACP2 obj-ids
@@ -145,14 +151,21 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			return fmt.Errorf("obj %d (%q): %w", id, x.Identifier, err)
 		}
 		e := &entry{
-			objID:   id,
-			slot:    slot,
-			parent:  parent,
-			label:   x.Identifier,
-			access:  deriveAccess(x.Access),
-			objType: objType,
-			numType: numType,
-			param:   x,
+			objID:       id,
+			slot:        slot,
+			parent:      parent,
+			label:       x.Identifier,
+			access:      deriveAccess(x.Access),
+			objType:     objType,
+			numType:     numType,
+			param:       x,
+			presetDepth: presetDepthHint(x),
+		}
+		if objType == iacp2.ObjTypePreset && e.presetDepth == 0 {
+			// Spec §5 requires at least one idx in pid 7 for preset children.
+			// Default to depth=1 (single ACTIVE INDEX slot) when the
+			// canonical format omits "depth=N".
+			e.presetDepth = 1
 		}
 		index[id] = e
 		return nil
@@ -224,7 +237,34 @@ func deriveACP2Type(p *canonical.Parameter) (iacp2.ACP2ObjType, iacp2.NumberType
 	parts := formatParts(p.Format)
 	hint, known := pickTypeHint(parts)
 	if !known {
-		return 0, 0, fmt.Errorf("unrecognised format type-hint %q (valid: s8|s16|s32|s64|u8|u16|u32|u64|float|ipv4)", hint)
+		return 0, 0, fmt.Errorf("unrecognised format type-hint %q (valid: s8|s16|s32|s64|u8|u16|u32|u64|float|ipv4|preset)", hint)
+	}
+
+	// "preset" token → obj_type=1 regardless of the canonical Type. The
+	// numeric wire type is picked from the same format hints as a plain
+	// Number (s8..u64, float); absent → NumTypeS32.
+	if hasPreset(parts) {
+		switch hint {
+		case "", "s32":
+			return iacp2.ObjTypePreset, iacp2.NumTypeS32, nil
+		case "s8":
+			return iacp2.ObjTypePreset, iacp2.NumTypeS8, nil
+		case "s16":
+			return iacp2.ObjTypePreset, iacp2.NumTypeS16, nil
+		case "s64":
+			return iacp2.ObjTypePreset, iacp2.NumTypeS64, nil
+		case "u8":
+			return iacp2.ObjTypePreset, iacp2.NumTypeU8, nil
+		case "u16":
+			return iacp2.ObjTypePreset, iacp2.NumTypeU16, nil
+		case "u32":
+			return iacp2.ObjTypePreset, iacp2.NumTypeU32, nil
+		case "u64":
+			return iacp2.ObjTypePreset, iacp2.NumTypeU64, nil
+		case "float":
+			return iacp2.ObjTypePreset, iacp2.NumTypeFloat, nil
+		}
+		return 0, 0, fmt.Errorf("preset: unknown number type %q", hint)
 	}
 
 	switch p.Type {
@@ -288,7 +328,10 @@ func formatParts(f *string) []string {
 }
 
 // pickTypeHint scans for the one bare token that identifies an ACP2
-// wire type; tokens with "=" are attributes (maxLen=N) and ignored.
+// wire type; tokens with "=" are attributes (maxLen=N, depth=N) and
+// ignored. The bare token "preset" is also skipped here — it is an
+// object-type modifier, orthogonal to the numeric wire type, handled
+// in deriveACP2Type via hasPreset().
 // Returns (hint, true) on hit or no bare token; (badToken, false) on
 // a typo.
 func pickTypeHint(parts []string) (string, bool) {
@@ -304,12 +347,44 @@ func pickTypeHint(parts []string) (string, bool) {
 		if strings.ContainsRune(p, '=') {
 			continue
 		}
+		if p == "preset" {
+			continue
+		}
 		if _, ok := known[p]; ok {
 			return p, true
 		}
 		return p, false
 	}
 	return "", true
+}
+
+// hasPreset reports whether the canonical format carries the bare
+// "preset" token. A preset in ACP2 is obj_type=1 — an orthogonal
+// modifier on a leaf parameter: pid 7 preset_depth lists valid idx
+// values and pids 8/9/10/11 are repeated once per idx.
+func hasPreset(parts []string) bool {
+	for _, p := range parts {
+		if p == "preset" {
+			return true
+		}
+	}
+	return false
+}
+
+// presetDepthHint extracts the "depth=N" attribute from
+// Parameter.Format, returning 0 when absent. Used only for preset
+// children; non-presets leave presetDepth at 0.
+func presetDepthHint(p *canonical.Parameter) uint32 {
+	for _, kv := range formatParts(p.Format) {
+		if strings.HasPrefix(kv, "depth=") {
+			var n int
+			_, err := fmt.Sscanf(kv, "depth=%d", &n)
+			if err == nil && n > 0 && n <= 65535 {
+				return uint32(n)
+			}
+		}
+	}
+	return 0
 }
 
 // maxLenHint extracts the "maxLen=N" attribute from Parameter.Format,

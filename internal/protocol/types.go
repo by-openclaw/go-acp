@@ -296,6 +296,16 @@ type ValueRequest struct {
 	// Group + ID address an ACP1 object when Label and Path are empty.
 	Group string
 	ID    int
+
+	// Idx selects a preset index on a preset child. Zero (default) means
+	// ACTIVE INDEX for preset objects and is ignored by non-preset objects.
+	// ACP2-specific; other plugins ignore this.
+	Idx int
+
+	// PID selects a property to read on get_property. Zero (default)
+	// means "the plugin's default property" — ACP2 reads pid=8 (value).
+	// Pass 1 to read object_type, 2 label, 3 access, etc. ACP2-specific.
+	PID int
 }
 
 // Value is a decoded object value. Exactly one of the typed fields is set

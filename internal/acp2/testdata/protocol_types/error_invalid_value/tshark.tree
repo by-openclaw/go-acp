@@ -1,0 +1,209 @@
+Frame 1: Packet, 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface \Device\NPF_Loopback, id 0
+    Section number: 1
+    Interface id: 0 (\Device\NPF_Loopback)
+        Interface name: \Device\NPF_Loopback
+        Interface description: Adapter for loopback traffic capture
+    Encapsulation type: NULL/Loopback (15)
+    Arrival Time: [frozen]
+    UTC Arrival Time: [frozen]
+    Epoch Arrival Time: [frozen]
+    [Time shift for this packet: [frozen]
+    [Time since ref: [frozen]
+    Frame Number: 1
+    Frame Length: 72 bytes (576 bits)
+    Capture Length: 72 bytes (576 bits)
+    [Frame is marked: False]
+    [Frame is ignored: False]
+    [Protocols in frame: null:ip:tcp:an2_acp2:acp2_msg]
+    Character encoding: ASCII (0)
+Null/Loopback
+    Family: IP (2)
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+    0100 .... = Version: 4
+    .... 0101 = Header Length: 20 bytes (5)
+    Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)
+        0000 00.. = Differentiated Services Codepoint: Default (0)
+        .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
+    Total Length: 68
+    Identification: 0x6e9d (28317)
+    010. .... = Flags: 0x2, Don't fragment
+        0... .... = Reserved bit: Not set
+        .1.. .... = Don't fragment: Set
+        ..0. .... = More fragments: Not set
+    ...0 0000 0000 0000 = Fragment Offset: 0
+    Time to Live: 128
+    Protocol: TCP (6)
+    Header Checksum: 0x8e14 [validation disabled]
+    [Header checksum status: Unverified]
+    Source Address: 127.0.0.1
+    Destination Address: 127.0.0.1
+    [Stream index: 0]
+Transmission Control Protocol, Src Port: 56679, Dst Port: 2072, Seq: 1, Ack: 1, Len: 28
+    Source Port: 56679
+    Destination Port: 2072
+    [Stream index: 0]
+    [Stream Packet Number: 1]
+    [Conversation completeness: Incomplete (0)]
+        ..0. .... = RST: Absent
+        ...0 .... = FIN: Absent
+        .... 0... = Data: Absent
+        .... .0.. = ACK: Absent
+        .... ..0. = SYN-ACK: Absent
+        .... ...0 = SYN: Absent
+        [Completeness Flags: [ Null ]]
+    [TCP Segment Len: 28]
+    Sequence Number: 1    (relative sequence number)
+    Sequence Number (raw): 434995389
+    [Next Sequence Number: 29    (relative sequence number)]
+    Acknowledgment Number: 1    (relative ack number)
+    Acknowledgment number (raw): 3450503220
+    0101 .... = Header Length: 20 bytes (5)
+    Flags: 0x018 (PSH, ACK)
+        000. .... .... = Reserved: Not set
+        ...0 .... .... = Accurate ECN: Not set
+        .... 0... .... = Congestion Window Reduced: Not set
+        .... .0.. .... = ECN-Echo: Not set
+        .... ..0. .... = Urgent: Not set
+        .... ...1 .... = Acknowledgment: Set
+        .... .... 1... = Push: Set
+        .... .... .0.. = Reset: Not set
+        .... .... ..0. = Syn: Not set
+        .... .... ...0 = Fin: Not set
+        [TCP Flags: ·······AP···]
+    Window: 253
+    [Calculated window size: 253]
+    [Window size scaling factor: -1 (unknown)]
+    Checksum: 0x0ee0 [unverified]
+    [Checksum Status: Unverified]
+    Urgent Pointer: 0
+    [Timestamps]
+        [Time since first frame in this TCP stream: 0.000000000 seconds]
+        [Time since previous frame in this TCP stream: 0.000000000 seconds]
+    [Client Contiguous Streams: 0]
+    [Server Contiguous Streams: 1]
+    TCP payload (28 bytes)
+AN2 [ACP2] Data slot=1 dlen=20
+    Magic: 0xc635
+    Protocol: ACP2 (2)
+    Slot: 1
+    MTID: 0
+    Type: Data (4)
+    Data Length: 20
+    ACP2 Protocol
+        Type: Request (0)
+        MTID: 1
+        Function: SetProperty (3)
+        PID: value (8)
+        Object ID: 5
+        Index: 0
+        Property: value (pid=8, plen=8) [Number.s8]
+            Property ID: value (8)
+            Data/VType: 0
+            Length (plen): 8
+            Object Category (derived): Number
+            Value (s8): 99
+
+Frame 2: Packet, 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface \Device\NPF_Loopback, id 0
+    Section number: 1
+    Interface id: 0 (\Device\NPF_Loopback)
+        Interface name: \Device\NPF_Loopback
+        Interface description: Adapter for loopback traffic capture
+    Encapsulation type: NULL/Loopback (15)
+    Arrival Time: [frozen]
+    UTC Arrival Time: [frozen]
+    Epoch Arrival Time: [frozen]
+    [Time shift for this packet: [frozen]
+    [Time delta: [frozen]
+    [Time delta: [frozen]
+    [Time since ref: [frozen]
+    Frame Number: 2
+    Frame Length: 60 bytes (480 bits)
+    Capture Length: 60 bytes (480 bits)
+    [Frame is marked: False]
+    [Frame is ignored: False]
+    [Protocols in frame: null:ip:tcp:an2_acp2:acp2_msg]
+    Character encoding: ASCII (0)
+Null/Loopback
+    Family: IP (2)
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+    0100 .... = Version: 4
+    .... 0101 = Header Length: 20 bytes (5)
+    Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)
+        0000 00.. = Differentiated Services Codepoint: Default (0)
+        .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
+    Total Length: 56
+    Identification: 0x6e9f (28319)
+    010. .... = Flags: 0x2, Don't fragment
+        0... .... = Reserved bit: Not set
+        .1.. .... = Don't fragment: Set
+        ..0. .... = More fragments: Not set
+    ...0 0000 0000 0000 = Fragment Offset: 0
+    Time to Live: 128
+    Protocol: TCP (6)
+    Header Checksum: 0x8e1e [validation disabled]
+    [Header checksum status: Unverified]
+    Source Address: 127.0.0.1
+    Destination Address: 127.0.0.1
+    [Stream index: 0]
+Transmission Control Protocol, Src Port: 2072, Dst Port: 56679, Seq: 1, Ack: 29, Len: 16
+    Source Port: 2072
+    Destination Port: 56679
+    [Stream index: 0]
+    [Stream Packet Number: 2]
+    [Conversation completeness: Incomplete (8)]
+        ..0. .... = RST: Absent
+        ...0 .... = FIN: Absent
+        .... 1... = Data: Present
+        .... .0.. = ACK: Absent
+        .... ..0. = SYN-ACK: Absent
+        .... ...0 = SYN: Absent
+        [Completeness Flags: ··D···]
+    [TCP Segment Len: 16]
+    Sequence Number: 1    (relative sequence number)
+    Sequence Number (raw): 3450503220
+    [Next Sequence Number: 17    (relative sequence number)]
+    Acknowledgment Number: 29    (relative ack number)
+    Acknowledgment number (raw): 434995417
+    0101 .... = Header Length: 20 bytes (5)
+    Flags: 0x018 (PSH, ACK)
+        000. .... .... = Reserved: Not set
+        ...0 .... .... = Accurate ECN: Not set
+        .... 0... .... = Congestion Window Reduced: Not set
+        .... .0.. .... = ECN-Echo: Not set
+        .... ..0. .... = Urgent: Not set
+        .... ...1 .... = Acknowledgment: Set
+        .... .... 1... = Push: Set
+        .... .... .0.. = Reset: Not set
+        .... .... ..0. = Syn: Not set
+        .... .... ...0 = Fin: Not set
+        [TCP Flags: ·······AP···]
+    Window: 255
+    [Calculated window size: 255]
+    [Window size scaling factor: -1 (unknown)]
+    Checksum: 0x124d [unverified]
+    [Checksum Status: Unverified]
+    Urgent Pointer: 0
+    [Timestamps]
+        [Time since first frame in this TCP stream: 71.300 microseconds]
+        [Time since previous frame in this TCP stream: 71.300 microseconds]
+    [SEQ/ACK analysis]
+        [This is an ACK to the segment in frame: 1]
+        [The RTT to ACK the segment was: 71.300 microseconds]
+        [Bytes in flight: 16]
+        [Bytes sent since last PSH flag: 16]
+    [Client Contiguous Streams: 1]
+    [Server Contiguous Streams: 1]
+    TCP payload (16 bytes)
+AN2 [ACP2] Data slot=1 dlen=8
+    Magic: 0xc635
+    Protocol: ACP2 (2)
+    Slot: 1
+    MTID: 0
+    Type: Data (4)
+    Data Length: 8
+    ACP2 Protocol
+        Type: Error (3)
+        MTID: 1
+        Status: Invalid value (5)
+        Padding: 0x00
+

@@ -217,6 +217,20 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 		}
 	})
 
+	// Round-trip a Maintenance on the secondary so that by the time
+	// Send returns (DLE ACK received), the provider's accept loop has
+	// finished registering this session in the fan-out list. Windows
+	// CI used to race primary.Connect against secondary's session
+	// registration, leaving the fan-out invisible.
+	syncCtx, cancelSync := context.WithTimeout(context.Background(), 2*time.Second)
+	if _, err := secondary.Send(syncCtx,
+		codec.Frame{ID: codec.RxMaintenance, Payload: []byte{byte(codec.MaintSoftReset)}},
+		nil); err != nil {
+		cancelSync()
+		t.Fatalf("secondary maintenance sync: %v", err)
+	}
+	cancelSync()
+
 	// Send Connect on primary.
 	callCtx, cancelCall := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelCall()
@@ -234,14 +248,15 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 		t.Errorf("tree[0,0,5] = (%d,%v); want (12,true)", src, ok)
 	}
 
-	// Secondary should have received the tally fan-out.
+	// Secondary should have received the tally fan-out. 3 s to stay
+	// robust on slower CI runners — Windows hit the previous 1 s floor.
 	select {
 	case fr := <-tallyCh:
 		tally, _ := codec.DecodeCrosspointTally(fr)
 		if tally.DestinationID != 5 || tally.SourceID != 12 {
 			t.Errorf("fan-out tally = %+v; want dst=5 src=12", tally)
 		}
-	case <-time.After(1 * time.Second):
+	case <-time.After(3 * time.Second):
 		t.Error("secondary never saw the tally fan-out")
 	}
 

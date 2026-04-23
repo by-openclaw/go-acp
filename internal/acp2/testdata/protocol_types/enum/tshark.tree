@@ -1,0 +1,128 @@
+Frame 1: Packet, 240 bytes on wire (1920 bits), 240 bytes captured (1920 bits) on interface \Device\NPF_Loopback, id 0
+    Section number: 1
+    Interface id: 0 (\Device\NPF_Loopback)
+        Interface name: \Device\NPF_Loopback
+        Interface description: Adapter for loopback traffic capture
+    Encapsulation type: NULL/Loopback (15)
+    Arrival Time: [frozen]
+    UTC Arrival Time: [frozen]
+    Epoch Arrival Time: [frozen]
+    [Time shift for this packet: [frozen]
+    [Time since ref: [frozen]
+    Frame Number: 1
+    Frame Length: 240 bytes (1920 bits)
+    Capture Length: 240 bytes (1920 bits)
+    [Frame is marked: False]
+    [Frame is ignored: False]
+    [Protocols in frame: null:ip:tcp:an2_acp2:acp2_msg]
+    Character encoding: ASCII (0)
+Null/Loopback
+    Family: IP (2)
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+    0100 .... = Version: 4
+    .... 0101 = Header Length: 20 bytes (5)
+    Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)
+        0000 00.. = Differentiated Services Codepoint: Default (0)
+        .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
+    Total Length: 236
+    Identification: 0x6ca2 (27810)
+    010. .... = Flags: 0x2, Don't fragment
+        0... .... = Reserved bit: Not set
+        .1.. .... = Don't fragment: Set
+        ..0. .... = More fragments: Not set
+    ...0 0000 0000 0000 = Fragment Offset: 0
+    Time to Live: 128
+    Protocol: TCP (6)
+    Header Checksum: 0x8f67 [validation disabled]
+    [Header checksum status: Unverified]
+    Source Address: 127.0.0.1
+    Destination Address: 127.0.0.1
+    [Stream index: 0]
+Transmission Control Protocol, Src Port: 2072, Dst Port: 56670, Seq: 1, Ack: 1, Len: 196
+    Source Port: 2072
+    Destination Port: 56670
+    [Stream index: 0]
+    [Stream Packet Number: 1]
+    [Conversation completeness: Incomplete (0)]
+        ..0. .... = RST: Absent
+        ...0 .... = FIN: Absent
+        .... 0... = Data: Absent
+        .... .0.. = ACK: Absent
+        .... ..0. = SYN-ACK: Absent
+        .... ...0 = SYN: Absent
+        [Completeness Flags: [ Null ]]
+    [TCP Segment Len: 196]
+    Sequence Number: 1    (relative sequence number)
+    Sequence Number (raw): 1537571671
+    [Next Sequence Number: 197    (relative sequence number)]
+    Acknowledgment Number: 1    (relative ack number)
+    Acknowledgment number (raw): 1197206100
+    0101 .... = Header Length: 20 bytes (5)
+    Flags: 0x018 (PSH, ACK)
+        000. .... .... = Reserved: Not set
+        ...0 .... .... = Accurate ECN: Not set
+        .... 0... .... = Congestion Window Reduced: Not set
+        .... .0.. .... = ECN-Echo: Not set
+        .... ..0. .... = Urgent: Not set
+        .... ...1 .... = Acknowledgment: Set
+        .... .... 1... = Push: Set
+        .... .... .0.. = Reset: Not set
+        .... .... ..0. = Syn: Not set
+        .... .... ...0 = Fin: Not set
+        [TCP Flags: ·······AP···]
+    Window: 255
+    [Calculated window size: 255]
+    [Window size scaling factor: -1 (unknown)]
+    Checksum: 0x227f [unverified]
+    [Checksum Status: Unverified]
+    Urgent Pointer: 0
+    [Timestamps]
+        [Time since first frame in this TCP stream: 0.000000000 seconds]
+        [Time since previous frame in this TCP stream: 0.000000000 seconds]
+    [Client Contiguous Streams: 0]
+    [Server Contiguous Streams: 1]
+    TCP payload (196 bytes)
+AN2 [ACP2] Data slot=1 dlen=188
+    Magic: 0xc635
+    Protocol: ACP2 (2)
+    Slot: 1
+    MTID: 0
+    Type: Data (4)
+    Data Length: 188
+    ACP2 Protocol
+        Type: Reply (1)
+        MTID: 1
+        Function: GetObject (1)
+        Padding: 0x00
+        Object ID: 5
+        Index: 0
+        Property: object_type (pid=1, plen=4)
+            Property ID: object_type (1)
+            Data/VType: 2
+            Length (plen): 4
+            Object Type: enum (2)
+        Property: label (pid=2, plen=9)
+            Property ID: label (2)
+            Data/VType: 0
+            Length (plen): 9
+            Value (string): Mode
+            Alignment Padding: 000000
+        Property: access (pid=3, plen=4)
+            Property ID: access (3)
+            Data/VType: 3
+            Length (plen): 4
+            Access: read-write (3)
+        Property: value (pid=8, plen=8) [Enum/Preset.preset/enum]
+            Property ID: value (8)
+            Data/VType: 9
+            Length (plen): 8
+            Object Category (derived): Enum/Preset
+            Value (enum/preset index): 0
+        Property: options (pid=15, plen=148) (2 options)
+            Property ID: options (15)
+            Data/VType: 2
+            Length (plen): 148
+            Option Index: 0
+            Option String: Off
+            Option Index: 0
+
