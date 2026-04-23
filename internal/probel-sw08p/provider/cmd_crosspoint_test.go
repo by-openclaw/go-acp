@@ -217,6 +217,20 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 		}
 	})
 
+	// Round-trip a Maintenance on the secondary so that by the time
+	// Send returns (DLE ACK received), the provider's accept loop has
+	// finished registering this session in the fan-out list. Windows
+	// CI used to race primary.Connect against secondary's session
+	// registration, leaving the fan-out invisible.
+	syncCtx, cancelSync := context.WithTimeout(context.Background(), 2*time.Second)
+	if _, err := secondary.Send(syncCtx,
+		codec.Frame{ID: codec.RxMaintenance, Payload: []byte{byte(codec.MaintSoftReset)}},
+		nil); err != nil {
+		cancelSync()
+		t.Fatalf("secondary maintenance sync: %v", err)
+	}
+	cancelSync()
+
 	// Send Connect on primary.
 	callCtx, cancelCall := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelCall()
