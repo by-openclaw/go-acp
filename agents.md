@@ -90,6 +90,17 @@ comment citing "SW-P-88 §3.5" is wrong — the real section is SW-P-08 §2.
 Rule: before modifying any codec, read the relevant spec section. When the
 spec and a reference implementation disagree, the spec wins.
 
+Exception — "spec vs. every shipping controller" (rare, documented): if two
+or more independent production controllers consistently contradict the spec
+on the same point, follow the controllers AND fire a compliance event that
+names the deviation. Do NOT silently conform to the controllers. Lab
+emulators don't count; live interop against real devices does. Example:
+SW-P-08 §3.2.30 tells listeners to use cmd 122+123 for salvo tally, but no
+shipping controller implements that path — all update from cmd 04 per
+§3.2.3, so the matrix must emit cmd 04 on salvo Set + fire
+`probel_salvo_emitted_connected` (see
+`internal/probel-sw08p/CLAUDE.md` "Known deviations from spec").
+
 ---
 
 ## Task patterns

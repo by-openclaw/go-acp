@@ -229,6 +229,184 @@ func TestIntegrationStreamingTallyDump(t *testing.T) {
 	}
 }
 
+// TestIntegrationSalvoBroadcastsConnectedToAllSessions (S-Int-D):
+// Opens two real TCP sessions (A + B). Session A fires a batched salvo:
+// one cmd 121 Clear, three cmd 120 Build frames (dst=0/1/2, src=9,
+// sid=5), then one cmd 121 Set. On the Set:
+//
+//   - A (originator) receives exactly 1 × cmd 123 GoDoneAck(Set) +
+//     3 × cmd 04 Connected (one per applied slot).
+//   - B (non-originator) receives exactly 3 × cmd 04 Connected
+//     (fanned out via tallies).
+//   - Neither session receives any NAK.
+//
+// Locks the §3.2.3-over-§3.2.30 interpretation: the matrix MUST emit
+// cmd 04 per applied slot on salvo commit so every connected
+// controller's tally UI stays in sync. Regression guard for #92.
+func TestIntegrationSalvoBroadcastsConnectedToAllSessions(t *testing.T) {
+	exp := &canonical.Export{
+		Root: &canonical.Node{
+			Header: canonical.Header{Number: 1, Identifier: "router", OID: "1",
+				Children: []canonical.Element{
+					&canonical.Matrix{
+						Header: canonical.Header{Number: 1, Identifier: "matrix-0", OID: "1.1"},
+						Type:   canonical.MatrixOneToN, Mode: canonical.ModeLinear,
+						TargetCount: 16, SourceCount: 16,
+						Labels: []canonical.MatrixLabel{{BasePath: "router.matrix-0.level-0"}},
+					},
+				},
+			},
+		},
+	}
+	addr, stop := startProvider(t, exp)
+	defer stop()
+
+	// Session A — the salvo originator.
+	pA := newConsumer()
+	ctxA, cancelA := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancelA()
+	if err := pA.Connect(ctxA, "127.0.0.1", portOf(addr)); err != nil {
+		t.Fatalf("A Connect: %v", err)
+	}
+	defer func() { _ = pA.Disconnect() }()
+
+	// Session B — a passive listener.
+	pB := newConsumer()
+	ctxB, cancelB := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancelB()
+	if err := pB.Connect(ctxB, "127.0.0.1", portOf(addr)); err != nil {
+		t.Fatalf("B Connect: %v", err)
+	}
+	defer func() { _ = pB.Disconnect() }()
+
+	// Count incoming cmd 04 Connected + cmd 123 GoDoneAck on both
+	// sides. Payloads captured so the test asserts dst/src correctness,
+	// not just the count.
+	var (
+		aMu            sync.Mutex
+		aConnected     []codec.CrosspointConnectedParams
+		aGoDoneStatus  []codec.SalvoGoDoneStatus
+		bMu            sync.Mutex
+		bConnected     []codec.CrosspointConnectedParams
+	)
+	cliA, err := pA.ExposeClient()
+	if err != nil {
+		t.Fatalf("A ExposeClient: %v", err)
+	}
+	cliA.Subscribe(func(f codec.Frame) {
+		switch f.ID {
+		case codec.TxCrosspointConnected:
+			if dec, err := codec.DecodeCrosspointConnected(f); err == nil {
+				aMu.Lock()
+				aConnected = append(aConnected, dec)
+				aMu.Unlock()
+			}
+		case codec.TxSalvoGoDoneAck:
+			if dec, err := codec.DecodeSalvoGoDoneAck(f); err == nil {
+				aMu.Lock()
+				aGoDoneStatus = append(aGoDoneStatus, dec.Status)
+				aMu.Unlock()
+			}
+		}
+	})
+
+	cliB, err := pB.ExposeClient()
+	if err != nil {
+		t.Fatalf("B ExposeClient: %v", err)
+	}
+	cliB.Subscribe(func(f codec.Frame) {
+		if f.ID != codec.TxCrosspointConnected {
+			return
+		}
+		if dec, err := codec.DecodeCrosspointConnected(f); err == nil {
+			bMu.Lock()
+			bConnected = append(bConnected, dec)
+			bMu.Unlock()
+		}
+	})
+
+	// Build the salvo from A — Clear first to guarantee slot 5 is empty,
+	// then 3 Builds, then Set.
+	sendCtx, cancelSend := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelSend()
+
+	if _, err := cliA.Send(sendCtx,
+		codec.EncodeSalvoGo(codec.SalvoGoParams{Op: codec.SalvoOpClear, SalvoID: 5}),
+		nil); err != nil {
+		t.Fatalf("A Clear: %v", err)
+	}
+	for i := 0; i < 3; i++ {
+		if _, err := cliA.Send(sendCtx, codec.EncodeSalvoConnectOnGo(codec.SalvoConnectOnGoParams{
+			MatrixID: 0, LevelID: 0, DestinationID: uint16(i), SourceID: 9, SalvoID: 5,
+		}), nil); err != nil {
+			t.Fatalf("A Build dst=%d: %v", i, err)
+		}
+	}
+	if _, err := cliA.Send(sendCtx,
+		codec.EncodeSalvoGo(codec.SalvoGoParams{Op: codec.SalvoOpSet, SalvoID: 5}),
+		nil); err != nil {
+		t.Fatalf("A Set: %v", err)
+	}
+
+	// Wait until B has observed all 3 cmd 04s (the tail of the fan-out).
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		bMu.Lock()
+		n := len(bConnected)
+		bMu.Unlock()
+		if n >= 3 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Session A (originator) — 1 × GoDoneAck Set + 3 × cmd 04.
+	aMu.Lock()
+	gotA := append([]codec.CrosspointConnectedParams(nil), aConnected...)
+	gotAStatus := append([]codec.SalvoGoDoneStatus(nil), aGoDoneStatus...)
+	aMu.Unlock()
+	// GoDoneAck: Clear (empty → None) + Set (applied → Set).
+	if len(gotAStatus) < 2 {
+		t.Fatalf("A received %d GoDoneAcks; want at least 2 (Clear+Set)", len(gotAStatus))
+	}
+	if gotAStatus[len(gotAStatus)-1] != codec.SalvoDoneSet {
+		t.Errorf("A last GoDoneAck = %#x; want SalvoDoneSet", gotAStatus[len(gotAStatus)-1])
+	}
+	if len(gotA) != 3 {
+		t.Fatalf("A received %d cmd 04 Connected; want 3 (one per applied slot)",
+			len(gotA))
+	}
+	for i, dec := range gotA {
+		if dec.DestinationID != uint16(i) || dec.SourceID != 9 {
+			t.Errorf("A cmd 04 #%d = (dst=%d, src=%d); want (%d, 9)",
+				i, dec.DestinationID, dec.SourceID, i)
+		}
+	}
+
+	// Session B (non-originator) — 3 × cmd 04, same contents.
+	bMu.Lock()
+	gotB := append([]codec.CrosspointConnectedParams(nil), bConnected...)
+	bMu.Unlock()
+	if len(gotB) != 3 {
+		t.Fatalf("B received %d cmd 04 Connected; want 3 (fan-out to listener)",
+			len(gotB))
+	}
+	for i, dec := range gotB {
+		if dec.DestinationID != uint16(i) || dec.SourceID != 9 {
+			t.Errorf("B cmd 04 #%d = (dst=%d, src=%d); want (%d, 9)",
+				i, dec.DestinationID, dec.SourceID, i)
+		}
+	}
+
+	// Zero NAKs on either side.
+	if s := pA.Metrics().Snapshot(); s.NAKs != 0 {
+		t.Errorf("A NAKs = %d; want 0", s.NAKs)
+	}
+	if s := pB.Metrics().Snapshot(); s.NAKs != 0 {
+		t.Errorf("B NAKs = %d; want 0", s.NAKs)
+	}
+}
+
 // TestIntegrationReconnect (S-Int-C): Disconnect and immediately
 // re-Connect — the second Connect must succeed and the new session
 // must pass traffic end-to-end. Exercises the Plugin's connection-
