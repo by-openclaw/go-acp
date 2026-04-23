@@ -63,6 +63,22 @@ var ErrBadPVer = errors.New("acp1: unsupported PVER (expected 1)")
 //   - For MType < 3: MDATA = [MCODE, ObjGroup, ObjID, Value...]
 //   - For MType = 3: MDATA = [MCode] only (caller supplies the error code
 //     via MCode and leaves Value nil)
+//
+// Output wire layout (≤ 141 bytes total):
+//
+//	| Offset | Field    | Width | Notes                                      |
+//	|--------|----------|-------|--------------------------------------------|
+//	|   0    | MTID     |   4   | u32 big-endian; 0 = announcement           |
+//	|   4    | PVER     |   1   | 1 (ACP1 v1.4); forced if caller passes 0   |
+//	|   5    | MTYPE    |   1   | 0=announce, 1=request, 2=reply, 3=error    |
+//	|   6    | MADDR    |   1   | slot 0..31 (0 = rack controller)           |
+//	|   7    | MCODE    |   1   | method id (MTYPE<3) or error code (MTYPE=3)|
+//	|   8    | ObjGroup |   1   | present only when MTYPE < 3                |
+//	|   9    | ObjID    |   1   | present only when MTYPE < 3                |
+//	|  10..  | Value    |  ≤131 | method args / return value (MTYPE < 3)     |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"ACP Header" p. 9 and
+// §"AxonNet - ACP mapping" p. 32.
 func (m *Message) Encode() ([]byte, error) {
 	if m == nil {
 		return nil, errors.New("acp1: Encode nil message")
@@ -120,6 +136,22 @@ func (m *Message) Encode() ([]byte, error) {
 
 // Decode parses one ACP1 datagram. Safe for garbled input — every length
 // check is explicit and every return path sets a non-nil error on failure.
+//
+// Input wire layout (minimum 8 bytes, maximum 141 bytes):
+//
+//	| Offset | Field    | Width | Notes                                      |
+//	|--------|----------|-------|--------------------------------------------|
+//	|   0    | MTID     |   4   | u32 big-endian; 0 = announcement           |
+//	|   4    | PVER     |   1   | must be 1; otherwise ErrBadPVer            |
+//	|   5    | MTYPE    |   1   | 0..3; otherwise "invalid MType"            |
+//	|   6    | MADDR    |   1   | slot id (0..31)                            |
+//	|   7    | MCODE    |   1   | always present (method id or error code)   |
+//	|   8    | ObjGroup |   1   | required for MTYPE<3; optional on error    |
+//	|   9    | ObjID    |   1   | required for MTYPE<3; optional on error    |
+//	|  10..  | Value    |  ≤131 | present only for MTYPE < 3                 |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"ACP Header" p. 9 and
+// §"AxonNet - ACP mapping" p. 32.
 func Decode(buf []byte) (*Message, error) {
 	if len(buf) < HeaderSize+1 {
 		// Smallest valid ACP1 datagram: 7-byte header + 1-byte MDATA (an

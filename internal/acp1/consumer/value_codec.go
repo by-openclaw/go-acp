@@ -36,6 +36,24 @@ import (
 // The fine-grained ACP1 type is passed in explicitly because the widened
 // protocol.ValueKind cannot distinguish Integer (int16) from Long (int32)
 // — both surface as KindInt to the rest of the system.
+//
+// Per-type raw-value layout (no type/num_props prefix — scoped by object):
+//
+//	| ACP1 type | Width | Wire layout                                    |
+//	|-----------|-------|------------------------------------------------|
+//	| Integer   |   2   | int16 big-endian                               |
+//	| Long      |   4   | int32 big-endian                               |
+//	| Byte      |   1   | u8                                             |
+//	| Float     |   4   | IEEE-754 float32 big-endian                    |
+//	| IPAddr    |   4   | uint32 big-endian (4 octets a.b.c.d)           |
+//	| Enum      |   1   | u8 index into item list                        |
+//	| String    |   ?   | NUL-terminated ASCII; terminator optional      |
+//	| Alarm     |   1   | u8 priority (0 = disabled)                     |
+//	| Frame     |  1+N  | u8 num_slots then N × u8 slot_status           |
+//	| Root/File |   ?   | raw bytes pass-through                         |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" pp. 21–27.
 func DecodeValueBytes(obj protocol.Object, acpType ObjectType, raw []byte) (protocol.Value, error) {
 	v := protocol.Value{
 		Kind: obj.Kind,
@@ -156,6 +174,21 @@ func DecodeValueBytes(obj protocol.Object, acpType ObjectType, raw []byte) (prot
 // This is the inverse of DecodeValueBytes with a forgiving input policy:
 // Value.Str takes precedence when present so CLI users can type
 // `--value "On"` or `--value "192.168.1.5"` regardless of object kind.
+//
+// Per-type raw-value layout produced on the wire:
+//
+//	| ACP1 type | Width  | Wire layout                                   |
+//	|-----------|--------|-----------------------------------------------|
+//	| Integer   |   2    | int16 big-endian; range [-32768..32767]       |
+//	| Long      |   4    | int32 big-endian; range [MinInt32..MaxInt32]  |
+//	| Byte      |   1    | u8; range [0..255]                            |
+//	| Float     |   4    | IEEE-754 float32 big-endian                   |
+//	| IPAddr    |   4    | uint32 big-endian (4 octets a.b.c.d)          |
+//	| Enum      |   1    | u8 index (validated against item list)        |
+//	| String    | len+1  | bytes + NUL terminator; bounded by MaxLen     |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" pp. 21–27.
 func EncodeValueBytes(obj protocol.Object, acpType ObjectType, val protocol.Value) ([]byte, error) {
 	switch acpType {
 	case TypeInteger:

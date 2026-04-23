@@ -27,6 +27,29 @@ import (
 // are what getValue would return *after* the change. The ACP1 spec
 // requires the reply to carry the confirmed-stored value, not the
 // requested one.
+//
+// Incoming / outgoing value-bytes layout by method + type:
+//
+//	| Method        | Incoming bytes        | Outgoing (reply/announce)     |
+//	|---------------|-----------------------|-------------------------------|
+//	| setValue      | raw value bytes       | confirmed stored value bytes  |
+//	| setIncValue   | (none)                | post-increment value bytes    |
+//	| setDecValue   | (none)                | post-decrement value bytes    |
+//	| setDefValue   | (none)                | default value bytes           |
+//
+// Per-type width (both incoming and outgoing):
+//
+//	| ACP1 type | Width | Wire layout                                   |
+//	|-----------|-------|-----------------------------------------------|
+//	| Integer   |   2   | int16 big-endian                              |
+//	| Long      |   4   | int32 big-endian                              |
+//	| Byte      |   1   | u8                                            |
+//	| Float     |   4   | IEEE-754 float32 big-endian                   |
+//	| IPAddr    |   4   | uint32 big-endian                             |
+//	| Enum      |   1   | u8 index (setValue + setDefValue only)        |
+//	| String    | len+1 | NUL-terminated bytes (setValue only)          |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28.
 func (s *server) applyMutation(e *entry, method iacp1.Method, incoming []byte) ([]byte, error) {
 	s.tree.mu.Lock()
 	defer s.tree.mu.Unlock()
@@ -52,6 +75,20 @@ func (s *server) applyMutation(e *entry, method iacp1.Method, incoming []byte) (
 
 // ----------------------------------------------------------------- Integer
 
+// mutateInteger applies one of the four mutating methods to an Integer
+// object (type=1) and returns the post-state value bytes.
+//
+// Incoming / outgoing layout:
+//
+//	| Method        | Incoming bytes | Outgoing (2 bytes)                |
+//	|---------------|----------------|-----------------------------------|
+//	| setValue      | 2 (int16 BE)   | int16 BE clamped to [min,max]     |
+//	| setIncValue   | (none)         | int16 BE of (value + step)        |
+//	| setDecValue   | (none)         | int16 BE of (value - step)        |
+//	| setDefValue   | (none)         | int16 BE of default               |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" p. 22.
 func (s *server) mutateInteger(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := asInt16(p.Value, "value")
@@ -87,6 +124,20 @@ func (s *server) mutateInteger(e *entry, m iacp1.Method, incoming []byte) ([]byt
 
 // ----------------------------------------------------------------- Long
 
+// mutateLong applies one of the four mutating methods to a Long object
+// (type=9) and returns the post-state value bytes.
+//
+// Incoming / outgoing layout:
+//
+//	| Method        | Incoming bytes | Outgoing (4 bytes)                |
+//	|---------------|----------------|-----------------------------------|
+//	| setValue      | 4 (int32 BE)   | int32 BE clamped to [min,max]     |
+//	| setIncValue   | (none)         | int32 BE of (value + step)        |
+//	| setDecValue   | (none)         | int32 BE of (value - step)        |
+//	| setDefValue   | (none)         | int32 BE of default               |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" p. 26.
 func (s *server) mutateLong(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := asInt32(p.Value, "value")
@@ -122,6 +173,20 @@ func (s *server) mutateLong(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 
 // ----------------------------------------------------------------- Byte
 
+// mutateByte applies one of the four mutating methods to a Byte object
+// (type=10) and returns the post-state value bytes.
+//
+// Incoming / outgoing layout:
+//
+//	| Method        | Incoming bytes | Outgoing (1 byte)                 |
+//	|---------------|----------------|-----------------------------------|
+//	| setValue      | 1 (u8)         | u8 clamped to [min,max]           |
+//	| setIncValue   | (none)         | u8 of (value + step)              |
+//	| setDecValue   | (none)         | u8 of (value - step)              |
+//	| setDefValue   | (none)         | u8 of default                     |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" p. 27.
 func (s *server) mutateByte(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := asUint8(p.Value, "value")
@@ -157,6 +222,20 @@ func (s *server) mutateByte(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 
 // ----------------------------------------------------------------- Float
 
+// mutateFloat applies one of the four mutating methods to a Float object
+// (type=3) and returns the post-state value bytes.
+//
+// Incoming / outgoing layout:
+//
+//	| Method        | Incoming bytes | Outgoing (4 bytes)                |
+//	|---------------|----------------|-----------------------------------|
+//	| setValue      | 4 (f32 BE)     | f32 BE clamped to [min,max]       |
+//	| setIncValue   | (none)         | f32 BE of (value + step)          |
+//	| setDecValue   | (none)         | f32 BE of (value - step)          |
+//	| setDefValue   | (none)         | f32 BE of default                 |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" p. 23.
 func (s *server) mutateFloat(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := asFloat32(p.Value, "value")
@@ -192,6 +271,20 @@ func (s *server) mutateFloat(e *entry, m iacp1.Method, incoming []byte) ([]byte,
 
 // ----------------------------------------------------------------- IPAddr
 
+// mutateIPAddr applies one of the four mutating methods to an IPAddr
+// object (type=2) and returns the post-state value bytes.
+//
+// Incoming / outgoing layout:
+//
+//	| Method        | Incoming bytes | Outgoing (4 bytes)                |
+//	|---------------|----------------|-----------------------------------|
+//	| setValue      | 4 (u32 BE)     | u32 BE clamped to [min,max]       |
+//	| setIncValue   | (none)         | u32 BE of (value + step)          |
+//	| setDecValue   | (none)         | u32 BE of (value - step); floors 0|
+//	| setDefValue   | (none)         | u32 BE of default                 |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" p. 22.
 func (s *server) mutateIPAddr(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := ipv4ToUint32(p.Value)
@@ -237,6 +330,19 @@ func (s *server) mutateIPAddr(e *entry, m iacp1.Method, incoming []byte) ([]byte
 
 // ----------------------------------------------------------------- Enum
 
+// mutateEnum applies setValue or setDefValue to an Enum object (type=4)
+// and returns the post-state value bytes. setIncValue / setDecValue are
+// not supported for enums per spec §"Method support matrix".
+//
+// Incoming / outgoing layout:
+//
+//	| Method        | Incoming bytes | Outgoing (1 byte)                 |
+//	|---------------|----------------|-----------------------------------|
+//	| setValue      | 1 (u8 index)   | u8 echo (validated ≤ num_items-1) |
+//	| setDefValue   | (none)         | u8 default (0 if default invalid) |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" p. 23.
 func (s *server) mutateEnum(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	items := enumItems(p)
@@ -273,6 +379,19 @@ func (s *server) mutateEnum(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 
 // ----------------------------------------------------------------- String
 
+// mutateString applies setValue to a String object (type=5) and returns
+// the post-state value bytes. Only setValue is supported per spec
+// §"Method support matrix".
+//
+// Incoming / outgoing layout:
+//
+//	| Method        | Incoming bytes          | Outgoing                 |
+//	|---------------|-------------------------|--------------------------|
+//	| setValue      | NUL-terminated (len+1)  | NUL-terminated (len+1);  |
+//	|               | truncated to max_len    | confirmed stored string  |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" p. 24.
 func (s *server) mutateString(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
 	if m != iacp1.MethodSetValue {
 		return nil, fmt.Errorf("string %q: only setValue supported", e.param.Identifier)
@@ -336,6 +455,21 @@ func uint32ToDottedQuad(v uint32) string {
 //
 // Used by server.SetValue (API-driven writes) to route through the same
 // mutation pipeline as the wire handlers.
+//
+// Per-type outgoing wire layout (setValue bytes):
+//
+//	| ACP1 type | Width  | Wire layout                                  |
+//	|-----------|--------|----------------------------------------------|
+//	| Integer   |   2    | int16 big-endian                             |
+//	| Long      |   4    | int32 big-endian                             |
+//	| Byte      |   1    | u8                                           |
+//	| Float     |   4    | IEEE-754 float32 big-endian                  |
+//	| IPAddr    |   4    | uint32 big-endian (from dotted-quad)         |
+//	| Enum      |   1    | u8 index                                     |
+//	| String    | len+1  | bytes + NUL terminator                       |
+//
+// Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
+// §"Objects by Type" pp. 21–27.
 func (s *server) encodeIncomingFromAny(e *entry, val any) ([]byte, error) {
 	switch e.acpType {
 	case iacp1.TypeInteger:
