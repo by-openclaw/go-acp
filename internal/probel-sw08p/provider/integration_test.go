@@ -348,13 +348,20 @@ func TestIntegrationSalvoBroadcastsConnectedToAllSessions(t *testing.T) {
 		t.Fatalf("A Set: %v", err)
 	}
 
-	// Wait until B has observed all 3 cmd 04s (the tail of the fan-out).
+	// Wait until BOTH A (via streamToSender) and B (via fanOutTally)
+	// have observed their 3 cmd 04s. On fast kernels this races the
+	// assertions below — Linux CI hit "A received 1 cmd 04; want 3"
+	// because the streamToSender delivery was still in flight when the
+	// test snapshotted aConnected.
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
+		aMu.Lock()
+		nA := len(aConnected)
+		aMu.Unlock()
 		bMu.Lock()
-		n := len(bConnected)
+		nB := len(bConnected)
 		bMu.Unlock()
-		if n >= 3 {
+		if nA >= 3 && nB >= 3 {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
