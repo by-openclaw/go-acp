@@ -95,6 +95,89 @@ local function resolve_identifier_chain(path)
     return table.concat(parts, ".")
 end
 
+-- Per-conversation last-seen parameter value cache (issue #59 part 4).
+-- Keyed by "<conv_key>|<path>" → the raw value string rendered by
+-- decode_value_field. On every sighting, note_value_diff returns the
+-- PREVIOUS value (or nil) and stores the new one. When they differ the
+-- Info column shows `= new (was old)`.
+local emberplus_value_cache = {}
+
+local function note_value_diff(path, new_val)
+    if emberplus_current_conv_key == "" then return nil end
+    if path == nil or path == "" or new_val == nil or new_val == "" then return nil end
+    local k = emberplus_current_conv_key .. "|" .. path
+    local prev = emberplus_value_cache[k]
+    emberplus_value_cache[k] = new_val
+    return prev
+end
+
+-- Per-conversation matrix label cache (issue #59 part 2).
+-- Structure (flat string key for speed):
+--   emberplus_matrix_labels[conv_key .. "|" .. matrix_path] = {
+--     targets = { [idx] = "name", ... },
+--     sources = { [idx] = "name", ... },
+--   }
+-- Populated when a label-looking Parameter flows by (identifier matches
+-- "t-N" or "s-N", has a string value). Consumed when a Matrix
+-- Connection is rendered — the matrix's t=X ← [Y] gets enriched to
+-- `target "name" (t=X) ← source "name" [Y]`.
+local emberplus_matrix_labels = {}
+
+-- parse_label_path extracts (matrix_path, kind, idx) from a label
+-- parameter's (path, identifier). Only matches the `.labels.<level>.
+-- (targets|sources).<idx>` convention used by TinyEmber+, our provider
+-- fixture, and typical Lawo trees. Returns nil when the shape doesn't fit.
+--
+-- Example: path="1.2.1.1.1.0" identifier="t-0"
+--   strip last 4 segments (.labels.Primary.targets.0) → "1.2"
+--   kind = "targets", idx = 0
+-- That "1.2" is usually the PARENT node of both the matrix and the
+-- labels container, not the matrix itself. cache/lookup below handle
+-- the fallback from matrix path → parent path.
+local function parse_label_path(path, identifier)
+    if identifier == nil or path == nil then return nil end
+    local idx_str, kind
+    idx_str = identifier:match("^t%-(%d+)$")
+    if idx_str then
+        kind = "targets"
+    else
+        idx_str = identifier:match("^s%-(%d+)$")
+        if idx_str then kind = "sources" end
+    end
+    if idx_str == nil then return nil end
+    local segs = {}
+    for s in string.gmatch(path, "[^.]+") do table.insert(segs, s) end
+    if #segs < 5 then return nil end
+    for _ = 1, 4 do table.remove(segs) end
+    return table.concat(segs, "."), kind, tonumber(idx_str)
+end
+
+local function cache_matrix_label(parent_path, kind, idx, label)
+    if emberplus_current_conv_key == "" then return end
+    if parent_path == nil or kind == nil or idx == nil or label == nil then return end
+    local k = emberplus_current_conv_key .. "|" .. parent_path
+    local bucket = emberplus_matrix_labels[k]
+    if bucket == nil then
+        bucket = { targets = {}, sources = {} }
+        emberplus_matrix_labels[k] = bucket
+    end
+    bucket[kind][idx] = label
+end
+
+local function lookup_matrix_label(matrix_path, kind, idx)
+    if emberplus_current_conv_key == "" or matrix_path == nil then return nil end
+    -- Try matrix's own path first (Labels nested under the matrix).
+    local b = emberplus_matrix_labels[emberplus_current_conv_key .. "|" .. matrix_path]
+    if b and b[kind] and b[kind][idx] then return b[kind][idx] end
+    -- Fall back to the matrix's parent (sibling `.labels` layout).
+    local parent = matrix_path:match("^(.*)%.[^.]+$")
+    if parent then
+        b = emberplus_matrix_labels[emberplus_current_conv_key .. "|" .. parent]
+        if b and b[kind] and b[kind][idx] then return b[kind][idx] end
+    end
+    return nil
+end
+
 -- Default TCP ports where Ember+ providers listen. Multiple known vendor
 -- defaults; adjust via Decode As if needed.
 local DEFAULT_TCP_PORTS = { 9000, 9090, 9092 }
@@ -124,8 +207,11 @@ local s101_cmd_valstr = {
 local s101_flags_valstr = {
     [0x20] = "Empty",
     [0x40] = "Last multi-packet",
+    [0x60] = "Last multi-packet (empty)",  -- FLAG_LAST | FLAG_EMPTY, used by our provider to close sequences
     [0x80] = "First multi-packet",
+    [0xA0] = "First multi-packet (empty)",
     [0xC0] = "Single packet",
+    [0xE0] = "Single packet (empty)",
 }
 
 local s101_dtd_valstr = {
@@ -822,12 +908,32 @@ local function element_summary(ba, app_tag, off, endpos)
         walk = v_off + l
     end
 
+    -- Issue #59 part 3: non-qualified Parameter / Node / Matrix / Function
+    -- carry `number` instead of `path`. At the root level of a Glow payload
+    -- their OID is literally the number (children of device-root). Promote
+    -- `number` → synthetic `path` so parts 1, 2, 4 (which key on path)
+    -- pick them up. Nested non-qualified elements (rare in modern trees)
+    -- still get the `#N` fallback in the render block below.
+    if path == nil and number ~= nil then
+        path = tostring(number)
+    end
+
     -- Cache this leaf's (path, identifier) so subsequent frames
     -- referencing the same path — or children that include it as a
     -- prefix — can render the dotted identifier chain in Info. Issue #59
     -- part 1.
     if path and identifier then
         cache_identifier(path, identifier)
+    end
+
+    -- Issue #59 part 2: label parameters cache into the per-matrix
+    -- label table. Strip surrounding quotes decode_value_field renders.
+    if path and identifier and value and is_param then
+        local parent_path, kind, idx = parse_label_path(path, identifier)
+        if parent_path then
+            local stripped = value:match('^"(.-)"$') or value
+            cache_matrix_label(parent_path, kind, idx, stripped)
+        end
     end
 
     local parts = {}
@@ -840,14 +946,48 @@ local function element_summary(ba, app_tag, off, endpos)
             -- below). Avoids `1.2.3 'nToN' router.oneToN.nToN` noise.
             table.insert(parts, chain)
         end
-    elseif number then table.insert(parts, "#" .. tostring(number)) end
+    end
     if identifier then table.insert(parts, "'" .. identifier .. "'") end
     if access then table.insert(parts, access) end
-    if value then table.insert(parts, "= " .. value) end
+    if value then
+        -- Issue #59 part 4: diff against the last-seen value for this
+        -- path. First sighting renders as plain `= X`; subsequent
+        -- sightings of a different value render as `= new (was old)`.
+        if path then
+            local prev = note_value_diff(path, value)
+            if prev and prev ~= value then
+                table.insert(parts, "= " .. value .. " (was " .. prev .. ")")
+            else
+                table.insert(parts, "= " .. value)
+            end
+        else
+            table.insert(parts, "= " .. value)
+        end
+    end
     if conn then
-        local cparts = { string.format("t=%s←[%s]",
-            tostring(conn.target or "?"),
-            tostring(conn.sources or "")) }
+        -- Issue #59 part 2: look up target + first-source labels from the
+        -- per-matrix cache populated earlier in this conversation. Keeps
+        -- the positional form `t=X` / `[Y]` alongside the resolved label
+        -- so users can cross-reference and we never lose information.
+        local t_num = tonumber(conn.target)
+        local t_lbl
+        if path and t_num ~= nil then
+            t_lbl = lookup_matrix_label(path, "targets", t_num)
+        end
+        local s_lbl
+        if path and conn.sources then
+            local s_first = tonumber(conn.sources:match("^%s*(%-?%d+)"))
+            if s_first ~= nil then
+                s_lbl = lookup_matrix_label(path, "sources", s_first)
+            end
+        end
+        local tgt_part = t_lbl
+            and string.format("target \"%s\" (t=%s)", t_lbl, tostring(conn.target or "?"))
+            or string.format("t=%s", tostring(conn.target or "?"))
+        local src_part = s_lbl
+            and string.format("← source \"%s\" [%s]", s_lbl, tostring(conn.sources or ""))
+            or string.format("← [%s]", tostring(conn.sources or ""))
+        local cparts = { tgt_part .. " " .. src_part }
         if conn.op   then table.insert(cparts, conn.op)   end
         if conn.disp then table.insert(cparts, conn.disp) end
         table.insert(parts, table.concat(cparts, " "))
@@ -865,6 +1005,14 @@ local LEAF_TAGS = {
     [19] = "Function", [20] = "QFunction",
     [24] = "Template", [25] = "QTemplate",
     [23] = "InvocationResult",
+    -- Issue #59 part 1: include Node / QualifiedNode so their
+    -- (path, identifier) populate the OID cache. Our provider (and every
+    -- spec-compliant one) sends nested GetDirectory replies FLAT at the
+    -- root — children of a node come as sibling root elements, not as
+    -- nested children of a QNode. So treating Node / QNode as "leaves"
+    -- here loses no nested-children count in practice, and gains the
+    -- identifier resolution that would otherwise never reach the cache.
+    [3]  = "Node",     [10] = "QNode",
 }
 
 local function count_leaves(ba, off, endpos, counts, highlight, depth)
@@ -882,6 +1030,14 @@ local function count_leaves(ba, off, endpos, counts, highlight, depth)
                 highlight.set  = true
                 highlight.kind = name
                 highlight.text = (s ~= "") and (name .. " " .. s) or name
+            else
+                -- Issue #59 parts 1, 2, 4: element_summary populates the
+                -- OID → identifier cache, the matrix-label cache, and the
+                -- value-diff cache. Call it on every leaf (not just the
+                -- first) so multi-leaf frames — label batches, value
+                -- dumps — populate the caches for later frames to use.
+                -- Return value discarded.
+                element_summary(ba, t, val_off, val_end)
             end
         else
             count_leaves(ba, val_off, val_end, counts, highlight, depth + 1)
@@ -998,13 +1154,19 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
         return 0
     end
     local start = off
-    local endpos = off + avail
+    -- Clamp endpos to the actual ByteArray length. Callers occasionally
+    -- pass `avail` larger than what the buffer holds (truncated or
+    -- shorter-than-declared assembled payloads), and every downstream
+    -- ba:get_index that uses endpos as its bound would throw "index out
+    -- of range". One clamp here covers every check inside walk_ber.
+    local endpos = math.min(off + avail, ba:len())
     while off < endpos do
         local first, class, cons, tag_num, t_consumed = read_tag(ba, off)
         if not first then break end
 
         -- End-of-contents sentinel (for indefinite-length parents).
-        if first == 0 and off + 1 < endpos and ba:get_index(off + 1) == 0 then
+        if first == 0 and (off + 1) < endpos and (off + 1) < ba:len()
+            and ba:get_index(off + 1) == 0 then
             -- Caller is responsible for detecting EoC; stop here.
             return off - start + 2
         end
@@ -1019,9 +1181,21 @@ local function walk_ber(ba, unesc_tvb, off, avail, tree, scope, depth)
         if indefinite then
             -- scan forward to find matching EoC (00 00) at this depth.
             -- Use a simple sub-scan; malformed -> consume to endpos.
+            -- Bound the scan by the actual ByteArray length as well as
+            -- endpos — callers sometimes pass endpos > ba:len() when the
+            -- assembled payload is shorter than declared, and ba:get_index
+            -- throws "index out of range" rather than returning nil.
             local scan = value_off
             local closed = false
-            while scan < endpos - 1 do
+            local ba_len = ba:len()
+            local ba_end = math.min(endpos, ba_len)
+            while scan >= 0 and (scan + 1) < ba_end do
+                -- Belt-and-braces: direct index check on each get_index
+                -- call. Some Wireshark builds throw "index out of range"
+                -- even when the loop bound arithmetic should prevent it
+                -- (observed in live captures on Windows); a local guard
+                -- costs nothing and eliminates the class of error.
+                if scan >= ba_len or (scan + 1) >= ba_len then break end
                 if ba:get_index(scan) == 0 and ba:get_index(scan + 1) == 0 then
                     value_len = scan - value_off
                     closed = true
@@ -1303,31 +1477,48 @@ local function dissect_s101_frame(tvbuf, pktinfo, root, frame_start, frame_end)
             -- Multi-packet S101 reassembly. Fragment accumulator runs only on
             -- first dissection pass; re-dissection (scroll / filter) reads
             -- from the per-packet cache.
+            --
+            -- Flag bits are independent: FIRST (0x80) and LAST (0x40) mark
+            -- the sequence boundaries, EMPTY (0x20) is an orthogonal "no
+            -- payload" marker that can combine with any boundary. Strict
+            -- equality on the whole byte misses e.g. LAST+EMPTY (0x60)
+            -- which providers use to close a multi-packet sequence with
+            -- an empty tail frame. Use bitmask checks instead.
             local key = s101_conv_key(pktinfo)
+            local has_first = band(flags, FLAG_FIRST) ~= 0
+            local has_last  = band(flags, FLAG_LAST)  ~= 0
+            local append_payload = function(buf)
+                if payload_len > 0 then
+                    buf:append(unesc_bytes:subset(payload_off, payload_len))
+                end
+            end
             if not pktinfo.visited then
-                if flags == FLAG_SINGLE or flags == FLAG_EMPTY then
+                if has_first and has_last then
+                    -- Single-packet message (FIRST+LAST). Payload may be
+                    -- empty (FLAG_EMPTY additionally set) which is still a
+                    -- valid complete message — e.g. a bare keep-alive.
                     s101_packet_cache[pktinfo.number] = {
                         assembled = true,
                         payload   = (payload_len > 0) and unesc_bytes:subset(payload_off, payload_len) or ByteArray.new(),
                     }
-                elseif flags == FLAG_FIRST then
+                elseif has_first then
                     local frag = (payload_len > 0) and unesc_bytes:subset(payload_off, payload_len) or ByteArray.new()
                     s101_reassembly_state[key] = { payload = frag }
                     s101_packet_cache[pktinfo.number] = { fragment_kind = "first" }
-                elseif flags == FLAG_LAST then
+                elseif has_last then
                     local rb = s101_reassembly_state[key]
                     if rb then
-                        if payload_len > 0 then rb.payload:append(unesc_bytes:subset(payload_off, payload_len)) end
+                        append_payload(rb.payload)
                         s101_packet_cache[pktinfo.number] = { assembled = true, payload = rb.payload }
                         s101_reassembly_state[key] = nil
                     else
                         s101_packet_cache[pktinfo.number] = { fragment_kind = "last (orphan)" }
                     end
                 else
-                    -- Middle (0x00) or unknown flags — append if we have a buffer.
+                    -- Middle fragment — append to the buffer if we have one.
                     local rb = s101_reassembly_state[key]
                     if rb then
-                        if payload_len > 0 then rb.payload:append(unesc_bytes:subset(payload_off, payload_len)) end
+                        append_payload(rb.payload)
                         s101_packet_cache[pktinfo.number] = { fragment_kind = "middle" }
                     else
                         s101_packet_cache[pktinfo.number] = { fragment_kind = "orphan" }
