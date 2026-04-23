@@ -33,6 +33,18 @@ var (
 //	offset 5     type    u8
 //	offset 6-7   dlen    u16 BE  len(payload)
 //	offset 8+    payload
+//
+//	| Offset | Field   | Width | Notes                                      |
+//	|--------|---------|-------|--------------------------------------------|
+//	| 0-1    | magic   | u16   | 0xC635, big-endian, validated on receive   |
+//	| 2      | proto   | u8    | 0=AN2-internal, 1=ACP1, 2=ACP2, 3=ACMP     |
+//	| 3      | slot    | u8    | 0-254 endpoint, 255 = broadcast            |
+//	| 4      | mtid    | u8    | 0 for data/events, 1-255 req/reply corr.   |
+//	| 5      | type    | u8    | 0=req, 1=reply, 2=event, 3=error, 4=data   |
+//	| 6-7    | dlen    | u16   | big-endian payload length (excl. header)   |
+//	| 8+     | payload | dlen  | bytes                                      |
+//
+// Spec reference: an2_protocol.pdf §AN2 Frame Header
 func EncodeAN2Frame(f *AN2Frame) ([]byte, error) {
 	if f == nil {
 		return nil, errors.New("an2: encode nil frame")
@@ -54,6 +66,18 @@ func EncodeAN2Frame(f *AN2Frame) ([]byte, error) {
 
 // DecodeAN2Frame decodes an AN2 frame from a byte slice that must start
 // at the magic bytes. Returns the frame and the total bytes consumed.
+//
+//	| Offset | Field   | Width | Notes                                      |
+//	|--------|---------|-------|--------------------------------------------|
+//	| 0-1    | magic   | u16   | big-endian 0xC635; ErrBadMagic otherwise   |
+//	| 2      | proto   | u8    | 0=AN2-internal, 1=ACP1, 2=ACP2, 3=ACMP     |
+//	| 3      | slot    | u8    | 0-254 endpoint, 255 = broadcast            |
+//	| 4      | mtid    | u8    | 0 for data/events, 1-255 req/reply corr.   |
+//	| 5      | type    | u8    | 0=req, 1=reply, 2=event, 3=error, 4=data   |
+//	| 6-7    | dlen    | u16   | big-endian; > MaxPayload -> ErrFrameTooBig |
+//	| 8+     | payload | dlen  | bytes; short buffer -> truncated error     |
+//
+// Spec reference: an2_protocol.pdf §AN2 Frame Header
 func DecodeAN2Frame(buf []byte) (*AN2Frame, int, error) {
 	if len(buf) < AN2HeaderSize {
 		return nil, 0, fmt.Errorf("an2: buffer too short for header: %d < %d", len(buf), AN2HeaderSize)
@@ -88,6 +112,18 @@ func DecodeAN2Frame(buf []byte) (*AN2Frame, int, error) {
 
 // ReadAN2Frame reads exactly one AN2 frame from a stream reader.
 // Validates magic on every receive per spec requirement.
+//
+//	| Offset | Field   | Width | Notes                                      |
+//	|--------|---------|-------|--------------------------------------------|
+//	| 0-1    | magic   | u16   | big-endian 0xC635; ErrBadMagic otherwise   |
+//	| 2      | proto   | u8    | 0=AN2-internal, 1=ACP1, 2=ACP2, 3=ACMP     |
+//	| 3      | slot    | u8    | 0-254 endpoint, 255 = broadcast            |
+//	| 4      | mtid    | u8    | 0 for data/events, 1-255 req/reply corr.   |
+//	| 5      | type    | u8    | 0=req, 1=reply, 2=event, 3=error, 4=data   |
+//	| 6-7    | dlen    | u16   | big-endian; > MaxPayload -> ErrFrameTooBig |
+//	| 8+     | payload | dlen  | io.ReadFull; any read error propagated     |
+//
+// Spec reference: an2_protocol.pdf §AN2 Frame Header
 func ReadAN2Frame(r io.Reader) (*AN2Frame, error) {
 	var hdr [AN2HeaderSize]byte
 	if _, err := io.ReadFull(r, hdr[:]); err != nil {

@@ -23,6 +23,20 @@ func propertyPadding(plen uint16) int {
 
 // DecodeProperties parses a sequence of ACP2 property headers from a byte
 // buffer. Each property is 4-byte aligned with padding after.
+//
+// Per-property layout:
+//
+//	| Offset | Field   | Width | Notes                                     |
+//	|--------|---------|-------|-------------------------------------------|
+//	| 0      | pid     | u8    | property id (1-20)                        |
+//	| 1      | data    | u8    | vtype, inline small value, or padding     |
+//	| 2-3    | plen    | u16   | big-endian; total hdr+value, excl. pad    |
+//	| 4..    | value   | plen-4| raw bytes; absent when plen == 4          |
+//	| plen.. | padding | 0-3   | (4 - (plen % 4)) % 4 zero bytes           |
+//
+// pid=4 is announce_delay — never "event_delay".
+//
+// Spec reference: acp2_protocol.pdf §Property Header, §Property IDs
 func DecodeProperties(data []byte) ([]Property, error) {
 	var props []Property
 	offset := 0
@@ -62,6 +76,16 @@ func DecodeProperties(data []byte) ([]Property, error) {
 }
 
 // EncodeProperty serialises one Property into wire bytes including padding.
+//
+//	| Offset | Field   | Width  | Notes                                    |
+//	|--------|---------|--------|------------------------------------------|
+//	| 0      | pid     | u8     | property id                              |
+//	| 1      | data    | u8     | vtype or inline small value              |
+//	| 2-3    | plen    | u16    | big-endian; 4 + len(p.Data), excl. pad   |
+//	| 4..    | value   | len(d) | copied from p.Data                       |
+//	| plen.. | padding | 0-3    | zero bytes to next 4-byte boundary       |
+//
+// Spec reference: acp2_protocol.pdf §Property Header
 func EncodeProperty(p *Property) ([]byte, error) {
 	if p == nil {
 		return nil, fmt.Errorf("acp2: encode nil property")
@@ -83,6 +107,16 @@ func EncodeProperty(p *Property) ([]byte, error) {
 }
 
 // EncodeProperties serialises multiple properties into a single buffer.
+//
+// Emits each property back-to-back; the per-property padding produced by
+// EncodeProperty places the next property on a 4-byte boundary.
+//
+//	| Segment | Field       | Width  | Notes                              |
+//	|---------|-------------|--------|------------------------------------|
+//	| 0..     | property[0] | varies | pid/data/plen + value + padding    |
+//	| ...     | property[n] | varies | repeated per spec §Property IDs    |
+//
+// Spec reference: acp2_protocol.pdf §Property Header
 func EncodeProperties(props []Property) ([]byte, error) {
 	var out []byte
 	for i := range props {
@@ -204,6 +238,24 @@ func PropertyEventMessages(p *Property) (onMsg, offMsg string) {
 
 // DecodeNumericValue decodes a numeric property value based on its NumberType.
 // Returns (intVal, uintVal, floatVal) with only the relevant one set.
+//
+// Wire storage per NumberType (value portion, after the 4-byte property hdr):
+//
+//	| NumType | Name   | Width | Notes                                    |
+//	|---------|--------|-------|------------------------------------------|
+//	| 0       | S8     | 4     | sign-extended from low byte              |
+//	| 1       | S16    | 4     | sign-extended from low 16 bits           |
+//	| 2       | S32    | 4     | big-endian int32                         |
+//	| 3       | S64    | 8     | big-endian int64                         |
+//	| 4       | U8     | 4     | low byte carries value                   |
+//	| 5       | U16    | 4     | low 16 bits carry value                  |
+//	| 6       | U32    | 4     | big-endian uint32                        |
+//	| 7       | U64    | 8     | big-endian uint64                        |
+//	| 8       | Float  | 4     | IEEE-754 big-endian float32              |
+//	| 9       | Preset | 4     | big-endian u32 preset/enum index         |
+//	| 10      | IPv4   | 4     | packed big-endian octets                 |
+//
+// Spec reference: acp2_protocol.pdf §Number Types, §Wire Sizes
 func DecodeNumericValue(nt NumberType, data []byte) (int64, uint64, float64, error) {
 	switch nt {
 	case NumTypeS8:
@@ -278,6 +330,18 @@ func DecodeNumericValue(nt NumberType, data []byte) (int64, uint64, float64, err
 }
 
 // EncodeNumericValue encodes a value to wire bytes based on NumberType.
+//
+// Output width by NumberType:
+//
+//	| NumType | Name   | Width | Source field                             |
+//	|---------|--------|-------|------------------------------------------|
+//	| 0-2     | S8/16/32| 4    | intVal cast to int32, big-endian         |
+//	| 3       | S64    | 8     | intVal big-endian                        |
+//	| 4-6,9,10| U/enum/IP | 4  | uintVal cast to uint32, big-endian       |
+//	| 7       | U64    | 8     | uintVal big-endian                       |
+//	| 8       | Float  | 4     | floatVal -> IEEE-754 big-endian float32  |
+//
+// Spec reference: acp2_protocol.pdf §Number Types, §Wire Sizes
 func EncodeNumericValue(nt NumberType, intVal int64, uintVal uint64, floatVal float64) ([]byte, error) {
 	switch nt {
 	case NumTypeS8, NumTypeS16, NumTypeS32:
@@ -306,6 +370,15 @@ func EncodeNumericValue(nt NumberType, intVal int64, uintVal uint64, floatVal fl
 }
 
 // EncodeStringValue encodes a string value with null terminator and padding.
+//
+//	| Offset | Field | Width   | Notes                                     |
+//	|--------|-------|---------|-------------------------------------------|
+//	| 0..    | utf8  | len(s)  | UTF-8 bytes (ACP2 strings are UTF-8)      |
+//	| len(s) | NUL   | 1       | 0x00 terminator                           |
+//
+// Alignment padding is added by EncodeProperty, not here.
+//
+// Spec reference: acp2_protocol.pdf §Wire Sizes (string)
 func EncodeStringValue(s string) []byte {
 	raw := append([]byte(s), 0)
 	return raw
