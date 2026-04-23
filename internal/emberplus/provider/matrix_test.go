@@ -199,6 +199,89 @@ func TestApplyConnection_OneToN_SingleSource(t *testing.T) {
 	}
 }
 
+// TestApplyConnection_OneToN_ConnectOp_Replaces: EmberViewer (and most
+// Ember+ clients) send Operation=Connect on user clicks. For a oneToN
+// matrix, Connect MUST replace the target's single source — not union.
+// Without the coercion, mergeSources([0], [2]) = [0, 2] and the target
+// ends up with 2 sources, violating the oneToN invariant.
+func TestApplyConnection_OneToN_ConnectOp_Replaces(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixOneToN,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0}}, // t-0 currently ← s-0
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 0, Sources: []int64{2}, Operation: canonical.ConnOpConnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post[0].Sources) != 1 {
+		t.Fatalf("oneToN + Connect must keep exactly 1 source, got %v", post[0].Sources)
+	}
+	if post[0].Sources[0] != 2 {
+		t.Errorf("oneToN + Connect must replace, got src=%d want 2", post[0].Sources[0])
+	}
+}
+
+// TestApplyConnection_OneToOne_ConnectOp_ReplacesAndSteals: on a user
+// click, Operation=Connect against a oneToOne matrix must replace the
+// target's source AND strip the newly-bound source from any other
+// target that held it (source-exclusivity / loser tally).
+func TestApplyConnection_OneToOne_ConnectOp_ReplacesAndSteals(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixOneToOne,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0}}, // t-0 ← s-0
+			{Target: 1, Sources: []int64{1}}, // t-1 ← s-1
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	// User routes s-0 onto t-1 via EmberViewer → Operation=Connect.
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 1, Sources: []int64{0}, Operation: canonical.ConnOpConnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	byT := map[int64][]int64{}
+	for _, c := range post {
+		byT[c.Target] = c.Sources
+	}
+	if got := byT[1]; len(got) != 1 || got[0] != 0 {
+		t.Errorf("t-1 post=%v want [0] (Connect replaces, keeps exactly 1 src)", got)
+	}
+	if _, seen := byT[0]; !seen {
+		t.Fatal("t-0 loser tally not emitted — consumer won't redraw")
+	}
+	if got := byT[0]; len(got) != 0 {
+		t.Errorf("t-0 post=%v want [] (s-0 stolen by t-1)", got)
+	}
+}
+
+// TestApplyConnection_NToN_ConnectOp_Unions confirms nToN is NOT
+// coerced — Connect on nToN still unions (many-to-many is the point).
+func TestApplyConnection_NToN_ConnectOp_Unions(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixNToN,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0}},
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 0, Sources: []int64{1}, Operation: canonical.ConnOpConnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post[0].Sources) != 2 {
+		t.Fatalf("nToN + Connect must union, got %v want [0 1]", post[0].Sources)
+	}
+}
+
 // TestApplyConnection_ConnectAndDisconnect exercises the nToN additive ops.
 func TestApplyConnection_ConnectAndDisconnect(t *testing.T) {
 	m := &canonical.Matrix{
