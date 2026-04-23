@@ -87,13 +87,19 @@ echo ">>> set slot 1 UserLabel (set_property on string, RW) — slot 1 has two U
 echo ">>> set slot 1 Gateway (RO target -> error stat=4 no_access)"
 "$DHS" consumer acp2 set 127.0.0.1 --port "$PORT" --slot 1 --label Gateway --value 10.0.0.1 || true
 
-echo ">>> set slot 1 Mode=99 (enum out-of-range -> error stat=5 invalid_value)"
-"$DHS" consumer acp2 set 127.0.0.1 --port "$PORT" --slot 1 --label Mode --value 99 || true
+echo ">>> set slot 1 Mode=99 by --raw (u32=0x63 bypasses client-side coercion -> error stat=5 invalid_value)"
+"$DHS" consumer acp2 set 127.0.0.1 --port "$PORT" --slot 1 --label Mode --raw 00000063 || true
 
-echo ">>> diag slot 99 (raw probes -> several error frames incl. stat=0 / stat=1 / stat=3)"
+echo ">>> get slot 1 GainS32 with --idx 99 (non-preset -> error stat=2 invalid_idx)"
+"$DHS" consumer acp2 get 127.0.0.1 --port "$PORT" --slot 1 --label GainS32 --idx 99 || true
+
+echo ">>> get slot 1 GainS32 with --pid 99 (unknown pid -> error stat=3 invalid_pid)"
+"$DHS" consumer acp2 get 127.0.0.1 --port "$PORT" --slot 1 --label GainS32 --pid 99 || true
+
+echo ">>> diag slot 99 (raw probes -> stat=1 invalid_obj_id + stat=0 protocol-error on unknown func)"
 "$DHS" consumer acp2 diag 127.0.0.1 --port "$PORT" --slot 99 || true
 
-echo ">>> diag slot 1 (covers stat=3 invalid_pid on unknown pid probe)"
+echo ">>> diag slot 1 (same probes on valid slot, confirms stat=0 on unknown func=0xFF)"
 "$DHS" consumer acp2 diag 127.0.0.1 --port "$PORT" --slot 1 || true
 
 sleep 1

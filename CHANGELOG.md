@@ -20,13 +20,30 @@ anywhere. Workflow:
 
 ### Added
 
-* **fixtures(acp2):** per-type README + capture + frozen tree for 5 object
-  types (node/string/number/enum/ipv4), 4 functions (get_version/get_object/
-  get_property/set_property), announce (type=2), and 2 error codes
-  (invalid_obj_id/no_access). Captures are self-driven via `dhs producer` +
+* **fixtures(acp2):** per-type README + capture + frozen tree for every
+  ACP2 wire element — all 6 object types (node/preset/enum/number/ipv4/
+  string), all 4 functions (get_version/get_object/get_property/
+  set_property), announce (type=2), and all 6 error codes
+  (protocol/invalid_obj_id/invalid_idx/invalid_pid/no_access/
+  invalid_value). Captures are self-driven via `dhs producer` +
   `dhs consumer` + tshark on loopback — no external hardware. Regenerate
-  with `make fixtures-acp2`. Partially closes #64 — obj_type 1 preset and
-  stat codes 0/2/3/5 documented as follow-ups in the fixture README.
+  with `make fixtures-acp2`. Closes #64.
+* **consumer(acp2):** `--idx N` and `--pid N` flags on
+  `dhs consumer acp2 get`, letting operators read arbitrary pids and
+  preset idx values (defaults preserve the historical pid=8 / idx=0
+  behaviour).
+* **provider(acp2):** preset (obj_type 1) encoder — pid 7 preset_depth +
+  depth-indexed pids 8/9/10/11. Driven by a `preset` token in the
+  canonical `Parameter.format` string alongside a numeric wire type and
+  optional `depth=N`.
+* **consumer(acp2):** `diag` now probes an unknown func code (0xFF) to
+  exercise the provider's stat=0 protocol-error path.
+
+### Fixed
+
+* **provider(acp2):** handleGetProperty rejects `idx != 0` on non-preset
+  objects with stat=2 `invalid_idx`, per spec §4. Previously silently
+  ignored.
 
 ## [0.3.1](https://github.com/by-openclaw/go-acp/compare/v0.3.0...v0.3.1) (2026-04-23)
 

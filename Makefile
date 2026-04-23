@@ -166,13 +166,18 @@ fixtures-acp2:
 	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/number                46
 	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/enum                  50
 	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/ipv4                  54
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/preset                58
 	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/get_version           28 30
 	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/get_object            44 46
-	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/get_property          217 219
-	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/set_property          280 282
-	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/announce              284
-	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_invalid_obj_id  558 560
-	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_no_access       453 455
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/get_property          229 231
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/set_property          296 298
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/announce              300
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_protocol        741 743
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_invalid_obj_id  721 723
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_invalid_idx     611 613
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_invalid_pid     678 680
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_no_access       477 479
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_invalid_value   544 546
 
 # ---------------------------------------------------------------- Lint / vet / fmt
 

@@ -25,7 +25,7 @@ Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
         0000 00.. = Differentiated Services Codepoint: Default (0)
         .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
     Total Length: 236
-    Identification: 0x3753 (14163)
+    Identification: 0x6ca2 (27810)
     010. .... = Flags: 0x2, Don't fragment
         0... .... = Reserved bit: Not set
         .1.. .... = Don't fragment: Set
@@ -33,14 +33,14 @@ Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
     ...0 0000 0000 0000 = Fragment Offset: 0
     Time to Live: 128
     Protocol: TCP (6)
-    Header Checksum: 0xc4b6 [validation disabled]
+    Header Checksum: 0x8f67 [validation disabled]
     [Header checksum status: Unverified]
     Source Address: 127.0.0.1
     Destination Address: 127.0.0.1
     [Stream index: 0]
-Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 1, Len: 196
+Transmission Control Protocol, Src Port: 2072, Dst Port: 56670, Seq: 1, Ack: 1, Len: 196
     Source Port: 2072
-    Destination Port: 62716
+    Destination Port: 56670
     [Stream index: 0]
     [Stream Packet Number: 1]
     [Conversation completeness: Incomplete (0)]
@@ -53,10 +53,10 @@ Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 1, 
         [Completeness Flags: [ Null ]]
     [TCP Segment Len: 196]
     Sequence Number: 1    (relative sequence number)
-    Sequence Number (raw): 1765011117
+    Sequence Number (raw): 1537571671
     [Next Sequence Number: 197    (relative sequence number)]
     Acknowledgment Number: 1    (relative ack number)
-    Acknowledgment number (raw): 4159345638
+    Acknowledgment number (raw): 1197206100
     0101 .... = Header Length: 20 bytes (5)
     Flags: 0x018 (PSH, ACK)
         000. .... .... = Reserved: Not set
@@ -73,7 +73,7 @@ Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 1, 
     Window: 255
     [Calculated window size: 255]
     [Window size scaling factor: -1 (unknown)]
-    Checksum: 0x2fdb [unverified]
+    Checksum: 0x227f [unverified]
     [Checksum Status: Unverified]
     Urgent Pointer: 0
     [Timestamps]

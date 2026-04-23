@@ -12,8 +12,8 @@ import (
 // capture.pcapng + tshark.tree + README.md, and the frozen tshark.tree
 // contains the marker strings that define the element type.
 //
-// Gaps (obj_type 1 preset, stat 0/2/3/5) are documented in
-// internal/acp2/testdata/protocol_types/README.md "Not covered".
+// Full coverage of the ACP2 spec elements: 6 obj types, 4 functions,
+// announce, 6 error codes.
 func TestACP2PerTypeFixtures(t *testing.T) {
 	base := "../testdata/protocol_types"
 
@@ -23,10 +23,11 @@ func TestACP2PerTypeFixtures(t *testing.T) {
 	}{
 		// Object types — acp2_protocol.pdf §2
 		{"node", []string{"Object Type: node (0)"}},
-		{"string", []string{"Object Type: string (5)"}},
-		{"number", []string{"Object Type: number (3)", "Number Type: s32 (2)"}},
+		{"preset", []string{"Object Type: preset (1)"}},
 		{"enum", []string{"Object Type: enum (2)"}},
+		{"number", []string{"Object Type: number (3)", "Number Type: s32 (2)"}},
 		{"ipv4", []string{"Object Type: ipv4 (4)"}},
+		{"string", []string{"Object Type: string (5)"}},
 
 		// Functions — acp2_protocol.pdf §3
 		{"get_version", []string{"Function: GetVersion (0)"}},
@@ -38,8 +39,12 @@ func TestACP2PerTypeFixtures(t *testing.T) {
 		{"announce", []string{"Type: Announce (2)"}},
 
 		// Error codes — acp2_protocol.pdf §4
+		{"error_protocol", []string{"Type: Error (3)", "Status: Protocol error (0)"}},
 		{"error_invalid_obj_id", []string{"Type: Error (3)", "Status: Invalid obj-id (1)"}},
+		{"error_invalid_idx", []string{"Type: Error (3)", "Status: Invalid idx (2)"}},
+		{"error_invalid_pid", []string{"Type: Error (3)", "Status: Invalid pid (3)"}},
 		{"error_no_access", []string{"Type: Error (3)", "Status: No access (4)"}},
+		{"error_invalid_value", []string{"Type: Error (3)", "Status: Invalid value (5)"}},
 	}
 
 	for _, tc := range cases {

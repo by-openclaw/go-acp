@@ -25,7 +25,7 @@ Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
         0000 00.. = Differentiated Services Codepoint: Default (0)
         .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
     Total Length: 60
-    Identification: 0x374d (14157)
+    Identification: 0x6c9c (27804)
     010. .... = Flags: 0x2, Don't fragment
         0... .... = Reserved bit: Not set
         .1.. .... = Don't fragment: Set
@@ -33,13 +33,13 @@ Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
     ...0 0000 0000 0000 = Fragment Offset: 0
     Time to Live: 128
     Protocol: TCP (6)
-    Header Checksum: 0xc56c [validation disabled]
+    Header Checksum: 0x901d [validation disabled]
     [Header checksum status: Unverified]
     Source Address: 127.0.0.1
     Destination Address: 127.0.0.1
     [Stream index: 0]
-Transmission Control Protocol, Src Port: 62716, Dst Port: 2072, Seq: 1, Ack: 1, Len: 20
-    Source Port: 62716
+Transmission Control Protocol, Src Port: 56670, Dst Port: 2072, Seq: 1, Ack: 1, Len: 20
+    Source Port: 56670
     Destination Port: 2072
     [Stream index: 0]
     [Stream Packet Number: 1]
@@ -53,10 +53,10 @@ Transmission Control Protocol, Src Port: 62716, Dst Port: 2072, Seq: 1, Ack: 1, 
         [Completeness Flags: [ Null ]]
     [TCP Segment Len: 20]
     Sequence Number: 1    (relative sequence number)
-    Sequence Number (raw): 4159345598
+    Sequence Number (raw): 1197206060
     [Next Sequence Number: 21    (relative sequence number)]
     Acknowledgment Number: 1    (relative ack number)
-    Acknowledgment number (raw): 1765011025
+    Acknowledgment number (raw): 1537571579
     0101 .... = Header Length: 20 bytes (5)
     Flags: 0x018 (PSH, ACK)
         000. .... .... = Reserved: Not set
@@ -73,7 +73,7 @@ Transmission Control Protocol, Src Port: 62716, Dst Port: 2072, Seq: 1, Ack: 1, 
     Window: 254
     [Calculated window size: 254]
     [Window size scaling factor: -1 (unknown)]
-    Checksum: 0x0729 [unverified]
+    Checksum: 0xf9cc [unverified]
     [Checksum Status: Unverified]
     Urgent Pointer: 0
     [Timestamps]
@@ -126,7 +126,7 @@ Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
         0000 00.. = Differentiated Services Codepoint: Default (0)
         .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
     Total Length: 132
-    Identification: 0x374f (14159)
+    Identification: 0x6c9e (27806)
     010. .... = Flags: 0x2, Don't fragment
         0... .... = Reserved bit: Not set
         .1.. .... = Don't fragment: Set
@@ -134,14 +134,14 @@ Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
     ...0 0000 0000 0000 = Fragment Offset: 0
     Time to Live: 128
     Protocol: TCP (6)
-    Header Checksum: 0xc522 [validation disabled]
+    Header Checksum: 0x8fd3 [validation disabled]
     [Header checksum status: Unverified]
     Source Address: 127.0.0.1
     Destination Address: 127.0.0.1
     [Stream index: 0]
-Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 21, Len: 92
+Transmission Control Protocol, Src Port: 2072, Dst Port: 56670, Seq: 1, Ack: 21, Len: 92
     Source Port: 2072
-    Destination Port: 62716
+    Destination Port: 56670
     [Stream index: 0]
     [Stream Packet Number: 2]
     [Conversation completeness: Incomplete (8)]
@@ -154,10 +154,10 @@ Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 21,
         [Completeness Flags: ··D···]
     [TCP Segment Len: 92]
     Sequence Number: 1    (relative sequence number)
-    Sequence Number (raw): 1765011025
+    Sequence Number (raw): 1537571579
     [Next Sequence Number: 93    (relative sequence number)]
     Acknowledgment Number: 21    (relative ack number)
-    Acknowledgment number (raw): 4159345618
+    Acknowledgment number (raw): 1197206080
     0101 .... = Header Length: 20 bytes (5)
     Flags: 0x018 (PSH, ACK)
         000. .... .... = Reserved: Not set
@@ -174,15 +174,15 @@ Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 21,
     Window: 255
     [Calculated window size: 255]
     [Window size scaling factor: -1 (unknown)]
-    Checksum: 0x210b [unverified]
+    Checksum: 0x13af [unverified]
     [Checksum Status: Unverified]
     Urgent Pointer: 0
     [Timestamps]
-        [Time since first frame in this TCP stream: 85.300 microseconds]
-        [Time since previous frame in this TCP stream: 85.300 microseconds]
+        [Time since first frame in this TCP stream: 133.100 microseconds]
+        [Time since previous frame in this TCP stream: 133.100 microseconds]
     [SEQ/ACK analysis]
         [This is an ACK to the segment in frame: 1]
-        [The RTT to ACK the segment was: 85.300 microseconds]
+        [The RTT to ACK the segment was: 133.100 microseconds]
         [Bytes in flight: 92]
         [Bytes sent since last PSH flag: 92]
     [Client Contiguous Streams: 1]

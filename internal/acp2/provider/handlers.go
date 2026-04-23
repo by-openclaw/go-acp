@@ -193,6 +193,13 @@ func (s *session) handleGetProperty(slot uint8, msg *iacp2.ACP2Message) {
 		s.replyACP2(slot, errorACP2(msg, iacp2.ErrInvalidObjID))
 		return
 	}
+	// Spec §4: idx != 0 on a non-preset object is stat=2 invalid_idx.
+	// Preset objects carry pid 7 preset_depth; everything else is flat
+	// and only accepts idx=0 (ACTIVE INDEX).
+	if msg.Idx != 0 && e.objType != iacp2.ObjTypePreset {
+		s.replyACP2(slot, errorACP2(msg, iacp2.ErrInvalidIdx))
+		return
+	}
 	all, err := buildProperties(e)
 	if err != nil {
 		s.replyACP2(slot, errorACP2(msg, iacp2.ErrProtocol))

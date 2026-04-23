@@ -240,22 +240,35 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 		tree = miniTree
 	}
 
+	// req.PID overrides pid=8 (value); req.Idx overrides idx=0 (active).
+	// Zero defaults preserve historical behaviour.
+	targetPID := uint8(PIDValue)
+	if req.PID > 0 {
+		targetPID = uint8(req.PID)
+	}
+	targetIdx := uint32(req.Idx)
+
 	msg, err := s.DoACP2(ctx, uint8(req.Slot), &ACP2Message{
 		Type:  ACP2TypeRequest,
 		Func:  ACP2FuncGetProperty,
-		PID:   PIDValue,
+		PID:   targetPID,
 		ObjID: objID,
-		Idx:   0, // active index
+		Idx:   targetIdx,
 	})
 	if err != nil {
 		return protocol.Value{}, err
 	}
 
-	// Decode the value property from the reply.
+	// Decode the targeted property from the reply. Fall back to the raw
+	// body when the reply does not carry targetPID (e.g. probes that
+	// asked for an unusual pid).
 	for i := range msg.Properties {
 		prop := &msg.Properties[i]
-		if prop.PID == PIDValue {
-			return decodePropertyValue(prop, objType, numType, tree, objID)
+		if prop.PID == targetPID {
+			if targetPID == PIDValue {
+				return decodePropertyValue(prop, objType, numType, tree, objID)
+			}
+			return protocol.Value{Kind: protocol.KindRaw, Raw: prop.Data}, nil
 		}
 	}
 

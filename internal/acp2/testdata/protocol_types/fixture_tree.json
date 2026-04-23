@@ -87,6 +87,16 @@
                 "enumeration": null, "enumMap": null,
                 "streamIdentifier": null, "streamDescriptor": null,
                 "templateReference": null, "schemaIdentifiers": null
+              },
+              {
+                "number": 7, "identifier": "PresetGain", "path": "device.slot-1.ROOT_NODE_V2.PresetGain", "oid": "1.1.7",
+                "description": "Preset child (ACP2 obj_type 1) — pid 7 preset_depth + pid 8 repeated per idx. Depth=1 for fixture coverage.",
+                "isOnline": true, "access": "read", "children": [],
+                "type": "integer", "value": 0, "default": 0, "minimum": -60, "maximum": 20, "step": 1,
+                "unit": "dB", "format": "preset,s32,depth=1", "factor": null, "formula": null,
+                "enumeration": null, "enumMap": null,
+                "streamIdentifier": null, "streamDescriptor": null,
+                "templateReference": null, "schemaIdentifiers": null
               }
             ]
           }

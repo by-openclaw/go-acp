@@ -85,6 +85,49 @@ func buildProperties(e *entry) ([]iacp2.Property, error) {
 		}
 		props = append(props, val)
 		props = append(props, propOptions(enumOptions(e.param)))
+	case iacp2.ObjTypePreset:
+		// Preset child per spec §5: pid 7 preset_depth lists the N valid
+		// idx values; pids 8/9/10/11 each appear N times in the reply,
+		// once per idx. Number-style numeric fields (pid 5, 12, 13) are
+		// emitted once. For N=1 the shape degenerates to "Number + pid 7".
+		props = append(props, propInline(iacp2.PIDNumberType, uint8(e.numType)))
+		props = append(props, propPresetDepth(e.presetDepth))
+		for i := uint32(0); i < e.presetDepth; i++ {
+			val, err := encodeValueProp(iacp2.PIDValue, e)
+			if err != nil {
+				return nil, err
+			}
+			props = append(props, val)
+		}
+		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDDefaultValue, e.numType, e.param.Default); err != nil {
+			return nil, err
+		} else if ok {
+			for i := uint32(0); i < e.presetDepth; i++ {
+				props = append(props, cp)
+			}
+		}
+		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDMinValue, e.numType, e.param.Minimum); err != nil {
+			return nil, err
+		} else if ok {
+			for i := uint32(0); i < e.presetDepth; i++ {
+				props = append(props, cp)
+			}
+		}
+		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDMaxValue, e.numType, e.param.Maximum); err != nil {
+			return nil, err
+		} else if ok {
+			for i := uint32(0); i < e.presetDepth; i++ {
+				props = append(props, cp)
+			}
+		}
+		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDStepSize, e.numType, e.param.Step); err != nil {
+			return nil, err
+		} else if ok {
+			props = append(props, cp)
+		}
+		if e.param.Unit != nil && *e.param.Unit != "" {
+			props = append(props, propStringData0(iacp2.PIDUnit, *e.param.Unit))
+		}
 	case iacp2.ObjTypeIPv4:
 		val, err := encodeValueProp(iacp2.PIDValue, e)
 		if err != nil {
@@ -199,6 +242,33 @@ func propChildren(ids []uint32) iacp2.Property {
 	}
 }
 
+// propPresetDepth builds the pid=7 (preset_depth) property per spec §5
+// "Preset depth". Body is a u32[] big-endian list of valid preset idx
+// values — consumers then know how many times pids 8/9/10/11 repeat in
+// the same get_object reply (once per idx listed here).
+//
+//	| Offset    | Field   | Width    | Notes                              |
+//	|-----------|---------|----------|------------------------------------|
+//	| 0         | pid     | u8       | 7 = preset_depth                   |
+//	| 1         | data    | u8       | 0                                  |
+//	| 2-3       | plen    | u16 BE   | 4 + 4*depth                        |
+//	| 4 + 4*i   | idx_i   | u32 BE   | valid preset idx value, 0..depth-1 |
+//
+// Spec reference: acp2_protocol.pdf §5 Preset depth,
+// internal/acp2/CLAUDE.md "Preset depth".
+func propPresetDepth(depth uint32) iacp2.Property {
+	data := make([]byte, 4*depth)
+	for i := uint32(0); i < depth; i++ {
+		binary.BigEndian.PutUint32(data[i*4:], i)
+	}
+	return iacp2.Property{
+		PID:   iacp2.PIDPresetDepth,
+		VType: 0,
+		PLen:  uint16(4 + len(data)),
+		Data:  data,
+	}
+}
+
 // acp2OptionSize is the fixed on-wire size of one enum option (pid 15
 // entry) per spec §5.4: plen = 4 + (72 * option), so each option is
 // exactly 72 bytes: 4-byte u32 index + 68-byte NUL-padded UTF-8 name.
@@ -259,7 +329,10 @@ func propOptions(opts []string) iacp2.Property {
 // Spec reference: acp2_protocol.pdf §5.2.x (per-type value)
 func encodeValueProp(pid uint8, e *entry) (iacp2.Property, error) {
 	switch e.objType {
-	case iacp2.ObjTypeNumber:
+	case iacp2.ObjTypeNumber, iacp2.ObjTypePreset:
+		// Preset children reuse the Number wire shape per depth slot
+		// (pid 8/9/10/11 typed by e.numType). pid 7 preset_depth is
+		// emitted separately in buildProperties.
 		return encodeNumericProp(pid, e.numType, e.param.Value)
 	case iacp2.ObjTypeEnum:
 		v, err := asUint32(e.param.Value, "value")

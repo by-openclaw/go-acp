@@ -151,6 +151,17 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		))
 	}
 
+	// --- Probe 8: unknown function code -> stat=0 protocol-error ---
+	// func=0xFF is outside the spec's {0, 1, 2, 3} range. The provider's
+	// dispatch falls through to the default case in handlers.go and
+	// replies with ErrProtocol. Covers the stat=0 fixture that no
+	// legal-framed probe can produce.
+	results = append(results, sendRaw(
+		"unknown func=0xFF (AN2 data, 4 bytes)",
+		slot, AN2TypeData,
+		[]byte{0x00, 0x00, 0xFF, 0x00},
+	))
+
 	// === ACMP probes (proto=3) ===
 	// The device supports ACMP on both slots. Cerebrum might use ACMP
 	// instead of ACP2 to browse the object tree.

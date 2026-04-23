@@ -1,4 +1,4 @@
-Frame 1: Packet, 112 bytes on wire (896 bits), 112 bytes captured (896 bits) on interface \Device\NPF_Loopback, id 0
+Frame 1: Packet, 116 bytes on wire (928 bits), 116 bytes captured (928 bits) on interface \Device\NPF_Loopback, id 0
     Section number: 1
     Interface id: 0 (\Device\NPF_Loopback)
         Interface name: \Device\NPF_Loopback
@@ -10,8 +10,8 @@ Frame 1: Packet, 112 bytes on wire (896 bits), 112 bytes captured (896 bits) on 
     [Time shift for this packet: [frozen]
     [Time since ref: [frozen]
     Frame Number: 1
-    Frame Length: 112 bytes (896 bits)
-    Capture Length: 112 bytes (896 bits)
+    Frame Length: 116 bytes (928 bits)
+    Capture Length: 116 bytes (928 bits)
     [Frame is marked: False]
     [Frame is ignored: False]
     [Protocols in frame: null:ip:tcp:an2_acp2:acp2_msg]
@@ -24,8 +24,8 @@ Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
     Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)
         0000 00.. = Differentiated Services Codepoint: Default (0)
         .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
-    Total Length: 108
-    Identification: 0x3743 (14147)
+    Total Length: 112
+    Identification: 0x6c92 (27794)
     010. .... = Flags: 0x2, Don't fragment
         0... .... = Reserved bit: Not set
         .1.. .... = Don't fragment: Set
@@ -33,14 +33,14 @@ Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
     ...0 0000 0000 0000 = Fragment Offset: 0
     Time to Live: 128
     Protocol: TCP (6)
-    Header Checksum: 0xc546 [validation disabled]
+    Header Checksum: 0x8ff3 [validation disabled]
     [Header checksum status: Unverified]
     Source Address: 127.0.0.1
     Destination Address: 127.0.0.1
     [Stream index: 0]
-Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 1, Len: 68
+Transmission Control Protocol, Src Port: 2072, Dst Port: 56670, Seq: 1, Ack: 1, Len: 72
     Source Port: 2072
-    Destination Port: 62716
+    Destination Port: 56670
     [Stream index: 0]
     [Stream Packet Number: 1]
     [Conversation completeness: Incomplete (0)]
@@ -51,12 +51,12 @@ Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 1, 
         .... ..0. = SYN-ACK: Absent
         .... ...0 = SYN: Absent
         [Completeness Flags: [ Null ]]
-    [TCP Segment Len: 68]
+    [TCP Segment Len: 72]
     Sequence Number: 1    (relative sequence number)
-    Sequence Number (raw): 1765010833
-    [Next Sequence Number: 69    (relative sequence number)]
+    Sequence Number (raw): 1537571383
+    [Next Sequence Number: 73    (relative sequence number)]
     Acknowledgment Number: 1    (relative ack number)
-    Acknowledgment number (raw): 4159345558
+    Acknowledgment number (raw): 1197206020
     0101 .... = Header Length: 20 bytes (5)
     Flags: 0x018 (PSH, ACK)
         000. .... .... = Reserved: Not set
@@ -73,7 +73,7 @@ Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 1, 
     Window: 255
     [Calculated window size: 255]
     [Window size scaling factor: -1 (unknown)]
-    Checksum: 0x06ac [unverified]
+    Checksum: 0xf940 [unverified]
     [Checksum Status: Unverified]
     Urgent Pointer: 0
     [Timestamps]
@@ -81,14 +81,14 @@ Transmission Control Protocol, Src Port: 2072, Dst Port: 62716, Seq: 1, Ack: 1, 
         [Time since previous frame in this TCP stream: 0.000000000 seconds]
     [Client Contiguous Streams: 0]
     [Server Contiguous Streams: 1]
-    TCP payload (68 bytes)
-AN2 [ACP2] Data slot=1 dlen=60
+    TCP payload (72 bytes)
+AN2 [ACP2] Data slot=1 dlen=64
     Magic: 0xc635
     Protocol: ACP2 (2)
     Slot: 1
     MTID: 0
     Type: Data (4)
-    Data Length: 60
+    Data Length: 64
     ACP2 Protocol
         Type: Reply (1)
         MTID: 1
@@ -112,12 +112,13 @@ AN2 [ACP2] Data slot=1 dlen=60
             Data/VType: 1
             Length (plen): 4
             Access: read-only (1)
-        Property: children (pid=14, plen=20) (4 children)
+        Property: children (pid=14, plen=24) (5 children)
             Property ID: children (14)
             Data/VType: 0
-            Length (plen): 20
+            Length (plen): 24
             Child Object ID: 2
             Child Object ID: 4
             Child Object ID: 5
             Child Object ID: 6
+            Child Object ID: 7
 
