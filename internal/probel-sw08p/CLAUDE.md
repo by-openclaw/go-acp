@@ -147,6 +147,23 @@ UI change.
 - Viewer on user device sometimes returns short frames for tally dumps —
   absorbed via `compliance.Profile`, event fired, no silent workaround.
 
+- **Salvo commit emits cmd 04 Connected (issue #92 resolution).**
+  §3.2.30 says "No individual CONNECTED messages (Command Byte 04) are
+  issued" on the salvo path and that listeners should keep their tally
+  from cmd 122 BuildAck + cmd 123 GoDoneAck instead. Neither Commie nor
+  Lawo VSM implement that path — both update their tally UI exclusively
+  from cmd 04 broadcasts (per §3.2.3 "issued spontaneously by the
+  controller on all ports after it has confirmation that a route has
+  been made"). To match the de-facto contract real SW-P-08 controllers
+  depend on, `handleSalvoGo` on `SalvoOpSet` emits one tx 04 Crosspoint
+  Connected per applied slot:
+    * to the originator via `handlerResult.streamToSender`
+    * to every other session via `handlerResult.tallies` → `fanOutTally`
+  The deviation fires `probel_salvo_emitted_connected` once per slot so
+  every occurrence is auditable. Unit test `TestSalvoSetEmitsConnectedPerSlot`
+  + integration test `TestIntegrationSalvoBroadcastsConnectedToAllSessions`
+  lock the behaviour.
+
 ## Metrics + observability (landed 2026-04-22)
 
 - Consumer `Plugin` and provider `server` each embed a

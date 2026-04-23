@@ -124,4 +124,134 @@ func TestSalvoGoNoneWhenEmpty(t *testing.T) {
 	if done.Status != codec.SalvoDoneNone {
 		t.Errorf("status = %#x; want SalvoDoneNone", done.Status)
 	}
+	if len(res.tallies) != 0 {
+		t.Errorf("empty salvo must not fan out tallies; got %d", len(res.tallies))
+	}
+	if res.streamToSender != nil {
+		t.Error("empty salvo must not echo cmd 04 to originator")
+	}
+}
+
+// TestSalvoClearOnEmptyReportsNone: rx 121 op=Clear on an empty slot
+// returns tx 123 status=None (0x02) per spec §3.3.25. This is the
+// spec-strict behaviour — no coerce to Cleared — the revert that kept
+// the handler aligned with the letter of the spec.
+func TestSalvoClearOnEmptyReportsNone(t *testing.T) {
+	srv := newComplianceServer(t)
+	res, err := srv.handle(codec.EncodeSalvoGo(codec.SalvoGoParams{
+		Op: codec.SalvoOpClear, SalvoID: 42,
+	}))
+	if err != nil {
+		t.Fatalf("clear-empty: %v", err)
+	}
+	done, _ := codec.DecodeSalvoGoDoneAck(*res.reply)
+	if done.Status != codec.SalvoDoneNone {
+		t.Errorf("status = %#x; want SalvoDoneNone (0x02) on Clear of empty slot",
+			done.Status)
+	}
+}
+
+// TestSalvoSetEmitsConnectedPerSlot: rx 121 op=Set must, in addition
+// to the tx 123 reply, emit one tx 004 Crosspoint Connected per applied
+// slot (both via streamToSender to the originator and via tallies to
+// other sessions). Pins the §3.2.3-over-§3.2.30 interpretation that
+// makes VSM and Commie's tally UIs refresh on salvo commit.
+//
+// The test populates slot 7 with three distinct crosspoints on matrix 0
+// level 0, fires Set, and asserts:
+//   - reply.Status == SalvoDoneSet
+//   - res.tallies has exactly 3 frames, each a well-formed tx 004 with
+//     matching (dst, src)
+//   - res.streamToSender is non-nil and, when invoked, emits the same 3
+//     frames in the same order
+//   - the compliance profile ticks SalvoEmittedConnected exactly 3 times
+//   - the tree reflects the applied crosspoints
+func TestSalvoSetEmitsConnectedPerSlot(t *testing.T) {
+	srv := newComplianceServer(t)
+	slots := []codec.SalvoConnectOnGoParams{
+		{MatrixID: 0, LevelID: 0, DestinationID: 0, SourceID: 1, SalvoID: 7},
+		{MatrixID: 0, LevelID: 0, DestinationID: 1, SourceID: 2, SalvoID: 7},
+		{MatrixID: 0, LevelID: 0, DestinationID: 2, SourceID: 3, SalvoID: 7},
+	}
+	for i, s := range slots {
+		if _, err := srv.handle(codec.EncodeSalvoConnectOnGo(s)); err != nil {
+			t.Fatalf("build #%d: %v", i, err)
+		}
+	}
+
+	res, err := srv.handle(codec.EncodeSalvoGo(codec.SalvoGoParams{
+		Op: codec.SalvoOpSet, SalvoID: 7,
+	}))
+	if err != nil {
+		t.Fatalf("fire: %v", err)
+	}
+	done, _ := codec.DecodeSalvoGoDoneAck(*res.reply)
+	if done.Status != codec.SalvoDoneSet {
+		t.Fatalf("status = %#x; want SalvoDoneSet", done.Status)
+	}
+
+	// Tallies go to every OTHER session via fanOutTally.
+	if got, want := len(res.tallies), len(slots); got != want {
+		t.Fatalf("tallies length = %d; want %d (one tx 004 per applied slot)",
+			got, want)
+	}
+	for i, tally := range res.tallies {
+		if tally.ID != codec.TxCrosspointConnected {
+			t.Errorf("tally #%d id = %#x; want TxCrosspointConnected (0x04)",
+				i, tally.ID)
+		}
+		dec, err := codec.DecodeCrosspointConnected(tally)
+		if err != nil {
+			t.Fatalf("decode tally #%d: %v", i, err)
+		}
+		if dec.DestinationID != slots[i].DestinationID || dec.SourceID != slots[i].SourceID {
+			t.Errorf("tally #%d = (dst=%d, src=%d); want (%d, %d)",
+				i, dec.DestinationID, dec.SourceID,
+				slots[i].DestinationID, slots[i].SourceID)
+		}
+	}
+
+	// streamToSender replays the same frames to the originator.
+	if res.streamToSender == nil {
+		t.Fatal("streamToSender must be set so the originator receives tx 004")
+	}
+	var echoed []codec.Frame
+	if err := res.streamToSender(func(f codec.Frame) error {
+		echoed = append(echoed, f)
+		return nil
+	}); err != nil {
+		t.Fatalf("streamToSender: %v", err)
+	}
+	if got, want := len(echoed), len(slots); got != want {
+		t.Fatalf("streamToSender emitted %d frames; want %d", got, want)
+	}
+	for i := range echoed {
+		if echoed[i].ID != codec.TxCrosspointConnected {
+			t.Errorf("echoed #%d id = %#x; want TxCrosspointConnected (0x04)",
+				i, echoed[i].ID)
+		}
+		dec, err := codec.DecodeCrosspointConnected(echoed[i])
+		if err != nil {
+			t.Fatalf("decode echoed #%d: %v", i, err)
+		}
+		if dec.DestinationID != slots[i].DestinationID || dec.SourceID != slots[i].SourceID {
+			t.Errorf("echoed #%d = (dst=%d, src=%d); want (%d, %d)",
+				i, dec.DestinationID, dec.SourceID,
+				slots[i].DestinationID, slots[i].SourceID)
+		}
+	}
+
+	// Compliance profile tick count.
+	snap := srv.ComplianceProfile().Snapshot()
+	if got := snap[SalvoEmittedConnected]; got != int64(len(slots)) {
+		t.Errorf("SalvoEmittedConnected = %d; want %d", got, len(slots))
+	}
+
+	// Tree reflects the applied crosspoints.
+	for _, s := range slots {
+		if src, ok := srv.tree.currentSource(s.MatrixID, s.LevelID, s.DestinationID); !ok || src != s.SourceID {
+			t.Errorf("tree dst %d = (%d, %v); want (%d, true)",
+				s.DestinationID, src, ok, s.SourceID)
+		}
+	}
 }

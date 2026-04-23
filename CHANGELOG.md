@@ -150,6 +150,23 @@ anywhere. Workflow:
 
 _Changes on main not yet tagged._
 
+### Fixed
+
+- **probel-sw08p (provider):** salvo commit (rx 121 op=Set) now emits one
+  tx 04 Crosspoint Connected per applied slot to every session (originator
+  via `streamToSender`, others via `tallies` fan-out), fires
+  `probel_salvo_emitted_connected` per slot. Follows §3.2.3 literally over
+  §3.2.30's unreachable "listeners use cmd 122+123" advice — no shipping
+  SW-P-08 controller (Commie, Lawo VSM, and by inference real XD/ECLIPSE
+  matrices they were built against) implements that path. Live-verified:
+  both Commie (originator) and VSM (second session) tally UIs refresh on
+  salvo commit. Regression guards: `TestSalvoSetEmitsConnectedPerSlot`
+  (unit) + `TestIntegrationSalvoBroadcastsConnectedToAllSessions`
+  (two real TCP sessions). Closes #92.
+- **probel-sw08p (provider):** rx 121 op=Clear on an empty salvo slot now
+  replies `tx 123 status=0x02 SalvoDoneNone` per §3.3.25 (spec-strict).
+  Interim diagnostic coerce to status=0x01 `SalvoDoneCleared` reverted.
+
 ---
 
 ## [0.1.0] — 2026-04-16

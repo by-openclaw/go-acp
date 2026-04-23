@@ -387,18 +387,18 @@ func (t *tree) salvoClear(id uint8) int {
 }
 
 // salvoApply routes every stored crosspoint for id through applyConnect,
-// then clears the salvo. Returns (applied, remaining-on-error).
-// Per-slot errors are ignored (the spec has no per-slot error channel);
-// offending slots are dropped.
-func (t *tree) salvoApply(id uint8) int {
+// then clears the salvo. Returns the slots that applied cleanly; per-slot
+// errors (unknown matrix/level, dst/src out of range) drop the offending
+// slot since the spec has no per-slot error channel.
+func (t *tree) salvoApply(id uint8) []salvoSlot {
 	t.mu.Lock()
 	slots := t.salvos[id]
 	delete(t.salvos, id)
 	t.mu.Unlock()
-	applied := 0
+	applied := make([]salvoSlot, 0, len(slots))
 	for _, s := range slots {
 		if err := t.applyConnect(s.matrix, s.level, s.dst, s.src); err == nil {
-			applied++
+			applied = append(applied, s)
 		}
 	}
 	return applied

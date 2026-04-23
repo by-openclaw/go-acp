@@ -359,7 +359,30 @@ When the spec and a device disagree:
 3. If the device is wrong, absorb + fire event. Don't change the codec.
 4. If the spec is ambiguous, ask; don't iterate through encodings.
 
-See [feedback_no_workaround, feedback_spec_table_literal] in memory.
+**Exception — when every shipping controller contradicts the spec.** Very
+rarely the spec describes a behaviour no production device actually
+implements, and every controller instead depends on a different documented
+clause. Criteria to invoke this exception — all must hold:
+
+- At least two independent, in-the-field controllers (not lab emulators)
+  verified live to contradict the spec on the same point.
+- A separate spec clause justifies the alternative behaviour when read
+  literally (the matrix still follows the spec, just a different clause
+  than the one the controller community ignores).
+- A compliance event NAMES the deviation so every occurrence is auditable.
+- A unit test AND an integration test pin the behaviour against regression.
+
+Worked example: SW-P-08 §3.2.30 tells listeners to track salvo-applied
+tally via cmd 122 + cmd 123 and tells the matrix NOT to emit cmd 04 on
+the salvo path. Neither Commie nor Lawo VSM implement that listener path;
+both update tally exclusively from §3.2.3 cmd 04 broadcasts. Our provider
+emits N × cmd 04 on salvo Set (§3.2.3 literal) and fires
+`probel_salvo_emitted_connected` per slot. Documented in
+`internal/probel-sw08p/CLAUDE.md` "Known deviations from spec" + memory
+entry `feedback_probel_salvo_connected`.
+
+See [feedback_no_workaround, feedback_spec_table_literal,
+feedback_probel_salvo_connected] in memory.
 
 ---
 

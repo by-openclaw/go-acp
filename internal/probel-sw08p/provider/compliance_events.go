@@ -39,4 +39,17 @@ const (
 	// layer and silently ignore the payload. Informational — frequent
 	// occurrences suggest a new command worth implementing.
 	UnsupportedCommand = "probel_unsupported_command"
+
+	// Deliberate interpretation of §3.2.3 over §3.2.30: on rx 121 Set,
+	// the matrix fans out one tx 004 Crosspoint Connected per applied
+	// slot to every session. §3.2.3 states cmd 04 is "issued
+	// spontaneously by the controller on all ports after confirmation
+	// that a route has been made" — which we honour for the salvo path
+	// too, matching observed XD/ECLIPSE behaviour and the de-facto
+	// contract real SW-P-08 controllers (VSM, Commie) rely on to keep
+	// their tally UI in sync. §3.2.30's "No individual CONNECTED
+	// messages" advice is unreachable in practice because listeners
+	// don't implement the cmd 122/123 tally-tracking path it names.
+	// Fires once per applied slot; every firing is logged and countable.
+	SalvoEmittedConnected = "probel_salvo_emitted_connected"
 )
