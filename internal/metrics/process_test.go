@@ -19,8 +19,8 @@ func TestProcessSnapshot(t *testing.T) {
 	if s.NumCPU != int64(runtime.NumCPU()) {
 		t.Errorf("NumCPU = %d, want %d", s.NumCPU, runtime.NumCPU())
 	}
-	if s.Uptime <= 0 {
-		t.Errorf("Uptime should be positive")
+	if s.Uptime < 0 {
+		t.Errorf("Uptime should be non-negative, got %v", s.Uptime)
 	}
 	if s.LastSampleAt.IsZero() {
 		t.Errorf("LastSampleAt should be set")

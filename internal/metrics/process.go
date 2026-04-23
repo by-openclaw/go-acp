@@ -135,7 +135,11 @@ func (p *Process) Snapshot() ProcessSnapshot {
 	if v := p.lastSampleAt.Load(); v > 0 {
 		s.LastSampleAt = time.Unix(0, v)
 	}
-	s.Uptime = time.Since(s.StartedAt)
+	// Compute Uptime from raw nanos, not time.Since(StartedAt): the
+	// StartedAt value reconstructed via time.Unix has no monotonic
+	// reading, so time.Since can return 0 when the wall clock has not
+	// advanced between NewProcess and Snapshot.
+	s.Uptime = time.Duration(time.Now().UnixNano() - p.startedAt)
 	s.HeapAllocBytes = p.heapAlloc.Load()
 	s.HeapSysBytes = p.heapSys.Load()
 	s.HeapIdleBytes = p.heapIdle.Load()

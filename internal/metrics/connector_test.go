@@ -114,6 +114,12 @@ func TestTaskManagerFields(t *testing.T) {
 	c.ObserveCmdTx(0x01, 7, 500*time.Microsecond)
 	c.ObserveCmdTx(0x01, 7, 500*time.Microsecond)
 
+	// Let wall-clock uptime grow past accumulated busyNanos so the
+	// busy/uptime ratio stays within [0, 100]. Synthetic handlerElapsed
+	// injected above does not advance the clock, so without this pause
+	// the connector can appear >100% busy on fast CI runners.
+	time.Sleep(10 * time.Millisecond)
+
 	s := c.Snapshot()
 	if s.TreeBytes != 1024 || s.PoolBytes != 2048 || s.DiskBytes != 512 {
 		t.Errorf("memory fields wrong: tree=%d pool=%d disk=%d",
