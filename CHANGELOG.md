@@ -16,6 +16,18 @@ anywhere. Workflow:
 
 ---
 
+## Unreleased
+
+### Added
+
+* **fixtures(acp2):** per-type README + capture + frozen tree for 5 object
+  types (node/string/number/enum/ipv4), 4 functions (get_version/get_object/
+  get_property/set_property), announce (type=2), and 2 error codes
+  (invalid_obj_id/no_access). Captures are self-driven via `dhs producer` +
+  `dhs consumer` + tshark on loopback — no external hardware. Regenerate
+  with `make fixtures-acp2`. Partially closes #64 — obj_type 1 preset and
+  stat codes 0/2/3/5 documented as follow-ups in the fixture README.
+
 ## [0.3.1](https://github.com/by-openclaw/go-acp/compare/v0.3.0...v0.3.1) (2026-04-23)
 
 

@@ -115,12 +115,12 @@ test-integration-acp2:
 
 # ---------------------------------------------------------------- Fixtures
 
-.PHONY: fixtures-emberplus fixtures-acp1 fixtures
+.PHONY: fixtures-emberplus fixtures-acp1 fixtures-acp2 fixtures
 
 # Re-extract all per-type fixtures from bin/*.pcapng sources.
 # Requires Wireshark (tshark + editcap) on PATH. See
 # internal/<proto>/testdata/protocol_types/README.md for the fixture maps.
-fixtures: fixtures-emberplus fixtures-acp1
+fixtures: fixtures-emberplus fixtures-acp1 fixtures-acp2
 
 fixtures-emberplus:
 	@scripts/fixturize.sh bin/emberplus_glow_stream_subscribe_lua.pcapng   internal/emberplus/testdata/protocol_types/root_node              1
@@ -153,6 +153,26 @@ fixtures-acp1:
 	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/request       1
 	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/reply         2
 	@scripts/fixturize.sh bin/acp1_walk_slot0_slot1.pcapng  internal/acp1/testdata/protocol_types/error         1274
+
+# Re-extract all ACP2 per-type fixtures from a self-driven loopback capture.
+# Run scripts/capture-acp2-fixtures.sh first to regenerate bin/acp2_fixtures.pcapng,
+# then this target slims each fixture to its frame-list. Frame numbers are
+# deterministic for a given fixture_tree.json + capture script pair; if they
+# drift after editing either file, re-read the capture with tshark -V and
+# update this list.
+fixtures-acp2:
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/node                  34
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/string                42
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/number                46
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/enum                  50
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/ipv4                  54
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/get_version           28 30
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/get_object            44 46
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/get_property          217 219
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/set_property          280 282
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/announce              284
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_invalid_obj_id  558 560
+	@scripts/fixturize.sh bin/acp2_fixtures.pcapng  internal/acp2/testdata/protocol_types/error_no_access       453 455
 
 # ---------------------------------------------------------------- Lint / vet / fmt
 
