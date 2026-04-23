@@ -207,8 +207,11 @@ local s101_cmd_valstr = {
 local s101_flags_valstr = {
     [0x20] = "Empty",
     [0x40] = "Last multi-packet",
+    [0x60] = "Last multi-packet (empty)",  -- FLAG_LAST | FLAG_EMPTY, used by our provider to close sequences
     [0x80] = "First multi-packet",
+    [0xA0] = "First multi-packet (empty)",
     [0xC0] = "Single packet",
+    [0xE0] = "Single packet (empty)",
 }
 
 local s101_dtd_valstr = {
@@ -1456,31 +1459,48 @@ local function dissect_s101_frame(tvbuf, pktinfo, root, frame_start, frame_end)
             -- Multi-packet S101 reassembly. Fragment accumulator runs only on
             -- first dissection pass; re-dissection (scroll / filter) reads
             -- from the per-packet cache.
+            --
+            -- Flag bits are independent: FIRST (0x80) and LAST (0x40) mark
+            -- the sequence boundaries, EMPTY (0x20) is an orthogonal "no
+            -- payload" marker that can combine with any boundary. Strict
+            -- equality on the whole byte misses e.g. LAST+EMPTY (0x60)
+            -- which providers use to close a multi-packet sequence with
+            -- an empty tail frame. Use bitmask checks instead.
             local key = s101_conv_key(pktinfo)
+            local has_first = band(flags, FLAG_FIRST) ~= 0
+            local has_last  = band(flags, FLAG_LAST)  ~= 0
+            local append_payload = function(buf)
+                if payload_len > 0 then
+                    buf:append(unesc_bytes:subset(payload_off, payload_len))
+                end
+            end
             if not pktinfo.visited then
-                if flags == FLAG_SINGLE or flags == FLAG_EMPTY then
+                if has_first and has_last then
+                    -- Single-packet message (FIRST+LAST). Payload may be
+                    -- empty (FLAG_EMPTY additionally set) which is still a
+                    -- valid complete message — e.g. a bare keep-alive.
                     s101_packet_cache[pktinfo.number] = {
                         assembled = true,
                         payload   = (payload_len > 0) and unesc_bytes:subset(payload_off, payload_len) or ByteArray.new(),
                     }
-                elseif flags == FLAG_FIRST then
+                elseif has_first then
                     local frag = (payload_len > 0) and unesc_bytes:subset(payload_off, payload_len) or ByteArray.new()
                     s101_reassembly_state[key] = { payload = frag }
                     s101_packet_cache[pktinfo.number] = { fragment_kind = "first" }
-                elseif flags == FLAG_LAST then
+                elseif has_last then
                     local rb = s101_reassembly_state[key]
                     if rb then
-                        if payload_len > 0 then rb.payload:append(unesc_bytes:subset(payload_off, payload_len)) end
+                        append_payload(rb.payload)
                         s101_packet_cache[pktinfo.number] = { assembled = true, payload = rb.payload }
                         s101_reassembly_state[key] = nil
                     else
                         s101_packet_cache[pktinfo.number] = { fragment_kind = "last (orphan)" }
                     end
                 else
-                    -- Middle (0x00) or unknown flags — append if we have a buffer.
+                    -- Middle fragment — append to the buffer if we have one.
                     local rb = s101_reassembly_state[key]
                     if rb then
-                        if payload_len > 0 then rb.payload:append(unesc_bytes:subset(payload_off, payload_len)) end
+                        append_payload(rb.payload)
                         s101_packet_cache[pktinfo.number] = { fragment_kind = "middle" }
                     else
                         s101_packet_cache[pktinfo.number] = { fragment_kind = "orphan" }
