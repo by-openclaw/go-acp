@@ -16,6 +16,16 @@ anywhere. Workflow:
 
 ---
 
+## [0.3.1](https://github.com/by-openclaw/go-acp/compare/v0.3.0...v0.3.1) (2026-04-23)
+
+
+### Bug Fixes
+
+* **emberplus/provider:** coerce Connect/Disconnect to Absolute on oneToN / oneToOne ([#98](https://github.com/by-openclaw/go-acp/issues/98)) ([d1c342c](https://github.com/by-openclaw/go-acp/commit/d1c342ce442fae64cc5c8ad41633c538d3a97006))
+* **emberplus/provider:** matrix Connect/Disconnect semantics. ([d1c342c](https://github.com/by-openclaw/go-acp/commit/d1c342ce442fae64cc5c8ad41633c538d3a97006))
+* **emberplus/wireshark:** descend SET wrapper in Parameter/NodeContents. ([d926a24](https://github.com/by-openclaw/go-acp/commit/d926a244118bf73df1dd941720b46b2a3a9adce9))
+* **emberplus/wireshark:** descend universal SET wrapper in ParameterContents / NodeContents ([#99](https://github.com/by-openclaw/go-acp/issues/99)) ([d926a24](https://github.com/by-openclaw/go-acp/commit/d926a244118bf73df1dd941720b46b2a3a9adce9))
+
 ## [0.3.0](https://github.com/by-openclaw/go-acp/compare/v0.2.0...v0.3.0) (2026-04-23)
 
 
