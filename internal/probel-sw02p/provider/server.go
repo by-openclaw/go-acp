@@ -42,6 +42,35 @@ type server struct {
 	// latency buckets across every session. Always non-nil after
 	// newServer.
 	metrics *metrics.Connector
+
+	// selfDeviceNumber + selfDeviceName configure how this matrix
+	// responds to rx 103 PROTECT DEVICE NAME REQUEST (§3.2.67) — a
+	// controller asking "what's your device name?" gets back tx 099
+	// with these values. Defaults chosen in newServer match the
+	// project "DHS" branding; callers can override via SetSelfDevice.
+	selfDeviceNumber uint16
+	selfDeviceName   string
+}
+
+// DefaultSelfDeviceName is the tx 099 device name emitted by an
+// un-configured SW-P-02 provider. 8-char ASCII per §3.2.63 width.
+const DefaultSelfDeviceName = "DHS-SW02"
+
+// DefaultSelfDeviceNumber is the tx 099 Device Number emitted by an
+// un-configured SW-P-02 provider. 0 mirrors "no specific address /
+// anonymous device" — controllers that require non-zero identity
+// should call SetSelfDevice to override.
+const DefaultSelfDeviceNumber uint16 = 0
+
+// SetSelfDevice configures the (Device Number, 8-char ASCII name)
+// pair this matrix reports when answering rx 103 PROTECT DEVICE
+// NAME REQUEST. Name is coerced to 8 characters on the wire
+// (space-padded / truncated) by the codec.
+func (s *server) SetSelfDevice(num uint16, name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.selfDeviceNumber = num
+	s.selfDeviceName = name
 }
 
 // Metrics returns the server-wide connector metrics. Always non-nil.
@@ -67,12 +96,14 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
 	return &server{
-		logger:   logger,
-		tree:     t,
-		sessions: map[*session]struct{}{},
-		stopped:  make(chan struct{}),
-		profile:  &compliance.Profile{},
-		metrics:  met,
+		logger:           logger,
+		tree:             t,
+		sessions:         map[*session]struct{}{},
+		stopped:          make(chan struct{}),
+		profile:          &compliance.Profile{},
+		metrics:          met,
+		selfDeviceNumber: DefaultSelfDeviceNumber,
+		selfDeviceName:   DefaultSelfDeviceName,
 	}
 }
 

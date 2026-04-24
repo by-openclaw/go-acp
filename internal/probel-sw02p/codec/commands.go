@@ -191,6 +191,16 @@ const (
 	// broadcast fan-out.
 	RxExtendedProtectDisconnect CommandID = 0x68 // 104 dec
 
+	// TxProtectDeviceNameResponse — §3.2.63. 10-byte MESSAGE reply to
+	// rx 103 carrying the 8-char ASCII name of the device protecting
+	// a destination. Space-padded to the fixed 8-byte field width.
+	TxProtectDeviceNameResponse CommandID = 0x63 // 99 dec
+
+	// RxProtectDeviceNameRequest — §3.2.67. Either peer issues this
+	// to resolve the 8-char ASCII name protecting a Device Number.
+	// Bidirectional per §3.2.67 ("Any device issues this message").
+	RxProtectDeviceNameRequest CommandID = 0x67 // 103 dec
+
 	// TxExtendedProtectTallyDump — §3.2.64. Variable-length dump of
 	// protect-tally entries. Count byte 127 signals "controller reset"
 	// (no entries follow); 0-32 reports that many 4-byte entries. The
@@ -273,6 +283,10 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenExtendedProtectConnect, true
 	case RxExtendedProtectDisconnect:
 		return PayloadLenExtendedProtectDisconnect, true
+	case RxProtectDeviceNameRequest:
+		return PayloadLenProtectDeviceNameRequest, true
+	case TxProtectDeviceNameResponse:
+		return PayloadLenProtectDeviceNameResponse, true
 	}
 	return 0, false
 }

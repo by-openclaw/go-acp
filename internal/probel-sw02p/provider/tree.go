@@ -382,6 +382,28 @@ func (t *tree) protectClear(dst uint16, device uint16) (protectEntry, protectApp
 	}
 }
 
+// protectEntriesByDevice returns every stored protect entry whose
+// OwnerDevice matches device. Used by handleProtectDeviceNameRequest
+// to discover the OwnerName string (if any) associated with a
+// Device Number — the name layer is best-effort since the name
+// handshake is asynchronous from the rx 102 CONNECT that registered
+// the owner.
+func (t *tree) protectEntriesByDevice(device uint16) []protectEntry {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: 0, level: 0}]
+	if !ok || st.protect == nil {
+		return nil
+	}
+	out := make([]protectEntry, 0)
+	for _, e := range st.protect {
+		if e.OwnerDevice == device {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 // protectLookup returns the current protect entry for (matrix=0, dst).
 // Returns (zero entry, false) when no entry exists — callers treat
 // that as ProtectNone semantically.
