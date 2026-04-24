@@ -36,6 +36,10 @@ func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 		return s.handleConnect(f)
 	case codec.RxStatusRequest:
 		return s.handleStatusRequest(f)
+	case codec.RxExtendedInterrogate:
+		return s.handleExtendedInterrogate(f)
+	case codec.RxExtendedConnect:
+		return s.handleExtendedConnect(f)
 	case codec.RxConnectOnGo:
 		return s.handleConnectOnGo(f)
 	case codec.RxGo:

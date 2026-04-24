@@ -79,6 +79,25 @@ const (
 	// over tx 13.
 	TxGoDoneGroupSalvoAck CommandID = 0x26 // 38 dec
 
+	// RxExtendedInterrogate — §3.2.47, "Extended INTERROGATE Message".
+	// Destination-only query extended to 16383; matrix replies with
+	// tx 67 Extended TALLY.
+	RxExtendedInterrogate CommandID = 0x41 // 65 dec
+
+	// RxExtendedConnect — §3.2.48, "Extended CONNECT Message".
+	// Extended addressing (0-16383) equivalent of rx 02; applied
+	// immediately and confirmed via tx 68 Extended CONNECTED broadcast.
+	RxExtendedConnect CommandID = 0x42 // 66 dec
+
+	// TxExtendedTally — §3.2.49, "Extended TALLY Message". Matrix
+	// reply to rx 65; carries the extended Multiplier pair + Status byte.
+	TxExtendedTally CommandID = 0x43 // 67 dec
+
+	// TxExtendedConnected — §3.2.50, "Extended CONNECTED Message".
+	// Broadcast on all ports after an extended route is made. Same
+	// layout as tx 67.
+	TxExtendedConnected CommandID = 0x44 // 68 dec
+
 	// RxExtendedConnectOnGoGroupSalvo — §3.2.53, "Extended CONNECT
 	// ON GO GROUP SALVO Message". Like rx 35 but dst / src ranges
 	// extend to 16383 via separate Destination Multiplier (§3.2.47)
@@ -127,6 +146,14 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenGoGroupSalvo, true
 	case TxGoDoneGroupSalvoAck:
 		return PayloadLenGoDoneGroupSalvoAck, true
+	case RxExtendedInterrogate:
+		return PayloadLenExtendedInterrogate, true
+	case RxExtendedConnect:
+		return PayloadLenExtendedConnect, true
+	case TxExtendedTally:
+		return PayloadLenExtendedTally, true
+	case TxExtendedConnected:
+		return PayloadLenExtendedConnected, true
 	case RxExtendedConnectOnGoGroupSalvo:
 		return PayloadLenExtendedConnectOnGoGroupSalvo, true
 	case TxExtendedConnectOnGoGroupSalvoAck:
