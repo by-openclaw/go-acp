@@ -1,250 +1,315 @@
 # Cerebrum Northbound API 0.13 — wire-key catalogue
 
-Scope: every XML **element name**, **attribute name**, and **enum value**
-we know is used on the wire, grouped by role. Fact-only; no verbatim
-third-party material. When the OCR'd spec and the Skyline DataMiner
-driver disagree, the spec wins here — the driver is listed alongside as
-independent corroboration.
+Authoritative, fact-only catalogue of every element name, attribute
+name, and enum value on the Cerebrum Northbound v0.13 wire. Derived
+from the EVS spec text; cross-referenced against the Skyline
+DataMiner driver where useful.
 
-**Sources** (in priority order):
+**Sources**
 
-1. **Primary.** EVS *Cerebrum Northbound API 0.13* PDF — see
-   [../assets/Cerebrum Northbound API 0v13.pdf](../assets/Cerebrum Northbound API 0v13.pdf) and the matching
-   [../assets/Cerebrum Northbound API 0v13.docx](../assets/Cerebrum Northbound API 0v13.docx).
-2. **Secondary (NDA-gated, reference only).** Skyline Communications
-   DataMiner driver DMS-DRV-7371 *EVS Cerebrum* v1.1.0.2. Held under
-   Skyline licence. **Not committed** to this repo — see
-   `.gitignore` (`/tmp/`). Driver XML at
-   `tmp/cerebrum-docx/cerebrum.xml` when present locally. This page
-   lists the **facts** derived from that driver (names, shapes, enum
-   values) — never verbatim XML.
-3. **Tertiary.** OCR extract at
-   [../assets/cerebrum-nb-api-ocr.txt](../assets/cerebrum-nb-api-ocr.txt) — useful for
-   prose paragraphs the driver omits.
+1. **Primary.** EVS *Cerebrum Northbound API 0.13* — full text extracted
+   from [../assets/cerebrum_northbound_api_full_v0_13.docx](../assets/cerebrum_northbound_api_full_v0_13.docx).
+   Also present: image-heavy PDF/DOCX originals at
+   [../assets/Cerebrum Northbound API 0v13.pdf](../assets/Cerebrum%20Northbound%20API%200v13.pdf) and [../assets/Cerebrum Northbound API 0v13.docx](../assets/Cerebrum%20Northbound%20API%200v13.docx).
+2. **Secondary (NDA, reference-only, never committed).** Skyline
+   Communications DataMiner driver DMS-DRV-7371 *EVS Cerebrum* v1.1.0.2.
+   Held under Skyline licence; XML ignored via `.gitignore`.
 
 ---
 
-## Transport envelope
+## Transport
 
 | Fact | Value |
 |---|---|
-| Transport | XML over WebSocket (`ws://` / `wss://`) |
+| Transport | WebSocket — `ws://` or `wss://` (TLS configurable) |
+| URL path | **none** — `wss://host:port` only; no HTTP path |
+| Default port | **40007** (configurable in the Cerebrum app) |
 | Framing | One XML document per WebSocket text message |
-| Concurrency | Each WebSocket connection is an independent session |
-| Character set | UTF-8 |
-| Declaration | Commands serialise as an `XElement.ToString()` — no XML prolog required on the wire |
+| Encoding | **UTF-8** (unless specified differently) |
+| Licensing | One northbound license per WebSocket connection |
+| Pre-requisites | (1) northbound licence count sufficient; (2) API enabled in Cerebrum; (3) user account enabled for NB access with username + password |
+
+Product aliases: EVS also brands the same API **"Neuron Bridge"** (appears
+as page-header text throughout the spec).
 
 ---
 
-## Top-level messages
+## Element case on the wire
 
-Requests — sent from consumer → Cerebrum:
+Spec examples are **inconsistent**:
 
-| Root element | Purpose |
+| Section | Case observed |
 |---|---|
-| `LOGIN` | Open a session, authenticate |
-| `SUBSCRIBE` | Register one or more subscription filters (children describe what to subscribe to) |
-| `ACTION` | Perform a mutation — routing change, salvo run, category edit, etc. Body carries the per-topic element. |
+| §2 Commands | lowercase roots: `<login>`, `<poll>`, `<action>`, `<subscribe>`, `<obtain>`, `<unsubscribe>`, `<unsubscribe_all>` |
+| §2 attributes | lowercase: `username`, `password`, `mtid` |
+| §4.1 Routing | UPPERCASE attrs: `TYPE`, `DEVICE_NAME`, `SRCE_NAME`, etc. |
+| §4.2-4.4, §5.* | lowercase attrs: `type`, `category`, `group`, `device_name` |
 
-Responses + notifications — sent from Cerebrum → consumer:
+Skyline driver emits **UPPERCASE** element + attribute names
+throughout. Real-world Cerebrum servers must therefore be
+**case-insensitive** on XML matching (otherwise the driver wouldn't
+work). We will:
 
-| Root element | Purpose |
+- **Emit lowercase** on the wire in dhs to match the v0.13 spec
+  examples (normative source).
+- **Accept any case** on receive; fire a `cerebrum_case_normalized`
+  compliance event if a peer sends non-lowercase.
+- Do NOT rely on case-insensitivity as a portability guarantee; treat
+  lowercase as the canonical form.
+
+---
+
+## Top-level commands (§2)
+
+All requests carry `mtid` (Message Transaction ID — 32-bit unsigned,
+wrapping, string-formatted on the wire).
+
+| Root | TX body | RX | Notes |
+|---|---|---|---|
+| `<login>` | `username`, `password`, `mtid` | `<login_reply mtid api_ver>` | Must succeed before any other command (§1.1) |
+| `<poll>` | `mtid` | `<poll_reply mtid CONNECTED_SERVER_ACTIVE PRIMARY_SERVER_STATE SECONDARY_SERVER_STATE>` | Keep-alive + redundancy probe |
+| `<action>` | `mtid`, one child action element (§4) | `<ack>` / `<nack>` / `<busy>` | Mutations |
+| `<subscribe>` | `mtid`, one or more subscription children (§5) | `<ack>` / `<nack>` / `<busy>` | Register for events |
+| `<obtain>` | `mtid`, one or more obtain children (§5) | `<ack>` / `<nack>` / `<busy>` + event(s) | One-shot read; children same shape as subscribe |
+| `<unsubscribe>` | `mtid`, children matching prior subscribe | `<ack>` / `<nack>` / `<busy>` | Remove specific subscriptions |
+| `<unsubscribe_all>` | `mtid` | `<ack>` / `<nack>` / `<busy>` | Remove every active subscription |
+
+**TX/RX symmetry rule (§5 preamble):** `subscribe` / `obtain` /
+`unsubscribe` bodies and the resulting event payloads share the same
+XML element shape — the server echoes the element structure back on
+change.
+
+### `<poll_reply>` attributes
+
+| Attr | Meaning |
 |---|---|
-| `LOGIN_REPLY` | Result of LOGIN. Carries `API_VER`. |
-| `ACK` | Generic success ack for a request |
-| `NACK` | Generic failure ack; carries `ERROR` attribute |
-| `BUSY` | Temporary-failure ack; retry expected |
-| `WILDCARD_COMPLETE` | End-of-stream marker when a `*`-wildcard subscription has finished its initial fan-out |
-| `CATEGORY_CHANGE` | Category subscription update; discriminated by `TYPE` |
-| `DEVICE_CHANGE` | Device subscription update; discriminated by `TYPE` |
-| `ROUTING_CHANGE` | Routing subscription update; discriminated by `TYPE` |
-| `SALVO_CHANGE` | Salvo subscription update; discriminated by `TYPE` |
+| `mtid` | echo of the request mtid |
+| `CONNECTED_SERVER_ACTIVE` | `1` if this server is active, `0` if inactive |
+| `PRIMARY_SERVER_STATE` | `0` / `1` |
+| `SECONDARY_SERVER_STATE` | `0` / `1` |
 
-> **Not exercised by the Skyline driver** but present in the PDF spec:
-> `LOGOUT`, `POLL`, `OBTAIN`, `UNSUBSCRIBE`, `UNSUBSCRIBE_ALL`. Treat
-> these as spec-defined but needing fixture-level confirmation before
-> we implement them.
+Redundancy (§1.5): Cerebrum deployments usually have Primary +
+Secondary; exactly one is active at any time. `poll` surfaces this.
 
 ---
 
-## Universal attributes
+## Standard responses (§1.4)
 
-| Attribute | Used on | Meaning |
-|---|---|---|
-| `MTID` | Every request + reply root | Message Transaction ID — unsigned 32-bit integer, correlates request and reply |
-| `TYPE` | `ACTION`, `CATEGORY_CHANGE`, `DEVICE_CHANGE`, `ROUTING_CHANGE`, `SALVO_CHANGE` | Discriminator for the child-action / child-notification variant |
-| `ERROR` | `NACK` | Error code — string, see [Error codes](#error-codes) |
-| `API_VER` | `LOGIN_REPLY` | Server-reported API version string |
-
----
-
-## LOGIN
-
-| Attribute | Direction | Notes |
-|---|---|---|
-| `MTID` | req | transaction id |
-| `USERNAME` | req | credential |
-| `PASSWORD` | req | credential |
-| `API_VER` | reply | version advertised by the server |
-
-Login errors (in `NACK ERROR` on a LOGIN request):
-
-- `INVALID_USER_OR_PASS`
-- `NOT_LOGGED_IN`
-- `NO_LICENCE_AVAILABLE`  (note British spelling — spec wire form)
-
----
-
-## SUBSCRIBE
-
-Body contains one child element per subscription. Child elements come
-from the subscription catalogues below:
-
-- Category subscriptions → filter `CATEGORY_CHANGE` fan-out
-- Device subscriptions → filter `DEVICE_CHANGE` fan-out
-- Routing subscriptions → filter `ROUTING_CHANGE` fan-out
-- Salvo subscriptions → filter `SALVO_CHANGE` fan-out
-
-Common addressing idiom across subscriptions: `"*"` as a wildcard on
-any `*_ID` or `LEVEL_ID` attribute; server responds with matching
-elements followed by a `WILDCARD_COMPLETE` terminator.
-
----
-
-## ACTION
-
-`ACTION` carries `MTID` + one child element whose name is the action
-verb and whose attributes are the action parameters. Known action
-verbs observed in the driver:
-
-### Category actions
-
-| TYPE value (on child) | Attributes |
+| Root | Meaning |
 |---|---|
-| `MODIFY_ITEM` | `CATEGORY` (or `ParentCategory` field → `CATEGORY`), `INDEX`, `ITEM_TYPE`, `VALUE` |
-| `CREATE` | `NAME`, `LABEL`, `INHERITS`, `DESCRIPTION` |
-| `DELETE` | `CATEGORY` |
-| `DELETE_ITEM` | `CATEGORY`, `INDEX` |
-| `MODIFY_DESC` | `CATEGORY`, `DESCRIPTION` |
+| `<ack>` | Success |
+| `<nack>` | Failure — carries an error attribute (see §6 table) |
+| `<busy>` | Temporary — retry expected |
 
-### Routing actions
-
-| TYPE value | Attributes |
-|---|---|
-| `DEST_ASSOC` | `LOGICAL_DEST_ID`, `LOGICAL_LEVEL_ID`, optional `TARGET_DEVICE_NAME`, optional `TARGET_DEVICE_TYPE`, optional `TARGET_LEVEL_ID`, `TARGET_DEST_ID` |
-| `SRCE_ASSOC` | `LOGICAL_SRCE_ID`, `LOGICAL_LEVEL_ID`, optional `TARGET_DEVICE_NAME`, optional `TARGET_DEVICE_TYPE`, optional `TARGET_LEVEL_ID`, `TARGET_SRCE_ID` |
-| `DEST_MNE` | `IP_ADDRESS`, `DEVICE_TYPE`, `DEST_ID`, `MNEMONIC`, optional `ALT_MNE`, optional `ON_DEVICE` |
-| `LEVEL_MNE` | `IP_ADDRESS`, `DEVICE_TYPE`, `LEVEL_ID`, `MNEMONIC`, optional `ALT_MNE`, optional `ON_DEVICE` |
-| `SRCE_MNE` | `IP_ADDRESS`, `DEVICE_TYPE`, `SRCE_ID`, `MNEMONIC`, optional `ALT_MNE`, optional `ON_DEVICE` |
-| `DEST_LOCK` | `IP_ADDRESS`, `DEST_ID`, `LEVEL_ID`, `LOCK` |
-| `SRCE_LOCK` | `IP_ADDRESS`, `SRCE_ID`, `LEVEL_ID`, `LOCK` |
-| `ROUTE` | `IP_ADDRESS`, `DEVICE_TYPE`; variable: `SRCE_ID` / `SRCE_NAME`, `DEST_ID` / `DEST_NAME`, `SRCE_LEVEL_ID` / `SRCE_LEVEL_NAME`, `DEST_LEVEL_ID` / `DEST_LEVEL_NAME`, optional `USE_TAGS` |
-| `RM_DEST_TAGS` | `DEST_ID`, `LEVEL_ID`, `TAGS` |
-| `RM_SRCE_TAGS` | `SRCE_ID`, `LEVEL_ID`, `TAGS` |
-
-### Salvo actions
-
-Salvo actions share a `GROUP` attribute and (except for the group-level
-`SAVE`) an `INSTANCE`:
-
-| TYPE value | Attributes |
-|---|---|
-| `DELETE`   | `GROUP`, `INSTANCE` |
-| `RENAME`   | `GROUP`, `INSTANCE`, `NEW_NAME` |
-| `RUN`      | `GROUP`, `INSTANCE` |
-| `SAVE`     | `GROUP`, optional `INSTANCE` |
-| `DESCRIPTION` | `GROUP`, `INSTANCE`, `DESCRIPTION` |
+All three echo the original `mtid`.
 
 ---
 
-## Subscription child elements (sent inside SUBSCRIBE body)
+## Definitions (§3)
 
-| Subscription kind | Child `TYPE` values |
+### DEVICE_TYPE (§3.1)
+
+Three device classes:
+
+| Value | Meaning |
 |---|---|
-| Category | `CATEGORY_DETAILS` (with `CATEGORY`), `CATEGORY_LIST` |
-| Device | `DETAILS` (with `IP_ADDRESS`, `DEVICE_TYPE`), `LIST` |
-| Routing | `DEST_MNE`, `DEST_LOCK`, `LEVEL_MNE`, `ROUTE`, `RM_DEST_TAGS`, `RM_SRCE_TAGS`, `SRCE_MNE`, `SRCE_LOCK` — each with `IP_ADDRESS` + `DEVICE_TYPE` + the relevant `*_ID` / `LEVEL_ID` (any of which may be `"*"`) |
-| Salvo | `GROUP_LIST`, `INSTANCE_DETAILS` (with `GROUP`, `INSTANCE`), `INSTANCE_LIST` (with `GROUP`) |
+| `Router` | Routing-capable device (includes ROUTER route-master) |
+| `SNMP` | SNMP-managed device |
+| `Device` | Generic non-router, non-SNMP device |
 
----
+### LOCK (§3.2)
 
-## Notification discriminators
+Valid values for the `LOCK` / `lock` attribute on routing
+actions/events. Observed from spec examples:
 
-Every `*_CHANGE` root reuses the same `TYPE` values as its
-subscription counterpart:
-
-| Root | TYPE values |
+| Value | Meaning |
 |---|---|
-| `CATEGORY_CHANGE` | `CATEGORY_DETAILS`, `CATEGORY_LIST` |
-| `DEVICE_CHANGE`   | `DETAILS`, `LIST` |
-| `ROUTING_CHANGE`  | `DEST_MNE`, `DEST_LOCK`, `LEVEL_MNE`, `ROUTE`, `SRCE_MNE`, `SRCE_LOCK` |
-| `SALVO_CHANGE`    | `GROUP_LIST`, `INSTANCE_DETAILS`, `INSTANCE_LIST` |
+| `PROTECT` | Soft reservation |
+| `RELEASE` | Clear an existing lock/protect |
 
----
+`DURATION` attribute (in ms) accompanies timed locks (e.g.
+`lock='PROTECT' duration='1000'`).
 
-## Enumerations
+### ITEM_TYPE (§3.3)
 
-### `ITEM_TYPE`
+Value enum for category items. Confirmed from driver — **spec §3.3 is
+image-based** so these come from `Api/Definitions/ItemType.cs`:
 
 | Wire value | Meaning |
 |---|---|
-| `BLANK`    | unused / placeholder |
-| `SRCE`     | source (short form) |
-| `SOURCE`   | source (long form) |
-| `DEST`     | destination |
-| `CATEGORY` | category |
-| `SALVO`    | salvo |
-| `INHERIT`  | inherit parent |
-| `TEXT`     | text entry |
-| `FILE`     | file reference |
-| `CUSTOM`   | custom entry |
-
-### `LOCK`
-
-Options observed: `AVAILABLE`, `LOCKED`, plus a server-reported
-`UNLOCK_TIME` attribute when locked.
-
-### Route-master constants
-
-Special "any / router" addresses used on routing actions:
-
-- `IP_ADDRESS = "0.0.0.0"` → route-master
-- `DEVICE_TYPE = "ROUTER"` → route-master
-
-### Common device elements inside `DETAILS`
-
-Nested `<SERVICE IP=...>` and `<INSTANCE DEVICE_ID NAME TYPE>` children
-are returned inside `DEVICE_CHANGE` `TYPE="DETAILS"`. Enumerated
-device states (from OCR): `None`, `Up`, `Active`.
+| `BLANK` | Empty slot |
+| `SRCE` | Source (short form) |
+| `SOURCE` | Source (long form) |
+| `DEST` | Destination |
+| `CATEGORY` | Nested category |
+| `SALVO` | Salvo instance |
+| `INHERIT` | Inherit from parent category |
+| `TEXT` | Text entry |
+| `FILE` | File reference |
+| `CUSTOM` | Custom entry |
 
 ---
 
-## Error codes (`NACK ERROR`)
+## Actions (§4)
 
-Confirmed from the driver:
+Always wrapped in `<action mtid='…'>…</action>`. Body is one of:
 
-- `INVALID_USER_OR_PASS`
-- `NOT_LOGGED_IN`
-- `NO_LICENCE_AVAILABLE` (note spec British spelling)
+### §4.1 Routing — `<routing TYPE='…' …/>`
 
-The spec PDF §6 lists the full catalogue — when those pages are OCR'd
-completely, extend this table. Every error code lands as
-`compliance.Event` with a fixed event name `cerebrum_nack_<code>`.
+| TYPE | Key attrs (from spec examples) |
+|---|---|
+| `ROUTE` | `DEVICE_NAME`, `DEVICE_TYPE`, `SRCE_NAME` / `SRCE_ID`, `DEST_NAME` / `DEST_ID`, `SRCE_LEVEL_NAME` / `SRCE_LEVEL_ID`, `DEST_LEVEL_NAME` / `DEST_LEVEL_ID`, optional `USE_TAGS` |
+| `SRCE_LOCK` | `DEVICE_NAME`, `DEVICE_TYPE`, `SRCE_NAME` / `SRCE_ID`, `LEVEL_NAME` / `LEVEL_ID`, `LOCK`, optional `DURATION` |
+| `DEST_LOCK` | `DEVICE_NAME`, `DEVICE_TYPE`, `DEST_NAME` / `DEST_ID`, `LEVEL_NAME` / `LEVEL_ID`, `LOCK`, optional `DURATION` |
+| `LEVEL_MNE` | `DEVICE_NAME`, `DEVICE_TYPE`, `LEVEL_ID`, `MNEMONIC`, optional `ALT_MNE`, optional `ON_DEVICE` |
+| `SRCE_MNE` | `DEVICE_NAME`, `DEVICE_TYPE`, `SRCE_ID`, `MNEMONIC`, optional `ALT_MNE`, optional `ON_DEVICE` |
+| `DEST_MNE` | `DEVICE_NAME`, `DEVICE_TYPE`, `DEST_ID`, `MNEMONIC`, optional `ALT_MNE`, optional `ON_DEVICE` |
+| `SRCE_ASSOC` | `LOGICAL_SRCE_ID`, `LOGICAL_LEVEL_ID`, optional `TARGET_DEVICE_NAME`, optional `TARGET_DEVICE_TYPE`, optional `TARGET_LEVEL_ID`, `TARGET_SRCE_ID` |
+| `DEST_ASSOC` | `LOGICAL_DEST_ID`, `LOGICAL_LEVEL_ID`, optional `TARGET_DEVICE_NAME`, optional `TARGET_DEVICE_TYPE`, optional `TARGET_LEVEL_ID`, `TARGET_DEST_ID` |
+| `SRCE_ASSOC_IP` | `LOGICAL_SRCE_ID`, `LOGICAL_LEVEL_ID`, `TARGET_DEVICE_NAME`, `TARGET_SENDER_NAME`, `SUB_DEVICE` |
+| `DEST_ASSOC_IP` | `LOGICAL_DEST_ID`, `LOGICAL_LEVEL_ID`, `TARGET_DEVICE_NAME`, `TARGET_RECEIVER_NAME`, `SUB_DEVICE` |
+| `RM_SRCE_TAGS` | `SRCE_ID`, `LEVEL_ID`, `TAGS` |
+| `RM_DEST_TAGS` | `DEST_ID`, `LEVEL_ID`, `TAGS` |
+
+Devices may be addressed by either **IP address** or **name** (§1.7);
+routes may be expressed by either **ID** or **name** (§1.8). Use `*` for
+wildcard subscriptions (§1.6).
+
+### §4.2 Categories — `<category type='…' …/>`
+
+| type | Attrs |
+|---|---|
+| `MODIFY_ITEM` | `category`, `index`, `item_type`, `value` |
+| `MODIFY_ALL` | `category`, `item_type`, `value` (comma-separated list) |
+| `MODIFY_DESC` | `category`, `description` |
+| `CREATE` | `name`, `label`, `inherits` (parent category), `description` |
+| `DELETE` | `category` |
+| `DELETE_ITEM` | `category`, `index` |
+
+### §4.3 Salvos — `<salvo type='…' …/>`
+
+| type | Attrs |
+|---|---|
+| `RUN` | `group`, `instance` |
+| `SAVE` | `group`, `instance` |
+| `RENAME` | `group`, `instance`, `new_name` |
+| `DESCRIPTION` | `group`, `instance`, `description` |
+| `DELETE` | `group`, `instance` |
+
+### §4.4 Device — `<device type='…' …/>`
+
+| type | Attrs |
+|---|---|
+| `SET_VALUE` | `device_name`, `sub_device`, `object` (dotted path, e.g. `Status.Connected`), `value` |
 
 ---
 
-## What we still need from the spec PDF
+## Subscriptions / Obtains / Events (§5)
 
-Items the driver does not cover but the OCR mentions:
+TX children sent inside `<subscribe>` / `<obtain>` / `<unsubscribe>`;
+RX events carry the same element shape back.
 
-1. `LOGOUT`, `POLL`, `OBTAIN`, `UNSUBSCRIBE`, `UNSUBSCRIBE_ALL` — full
-   attribute list + reply shape
-2. Keep-alive / heartbeat cadence (if any — the WebSocket layer may
-   handle this)
-3. Reconnect / session-resume semantics
-4. TLS requirement + default port (driver defaults are data points on
-   `ElementConnections`, not wire-level)
-5. Redundancy wire details — the driver exposes rich primary /
-   secondary server telemetry but the wire flow that delivers it
-   needs a dedicated pcap
-6. Full error-code catalogue from §6
+### §5.1 Routing — `<routing_change type='…' …/>`
+
+| type | Addressing attrs |
+|---|---|
+| `ROUTE` | `device_name`, `device_type`, `dest_name` / `dest_id`, `level_name` / `level_id` |
+| `SRCE_LOCK` | `device_name`, `device_type`, `srce_name` / `srce_id`, `level_name` / `level_id` |
+| `DEST_LOCK` | `device_name`, `device_type`, `dest_name` / `dest_id`, `level_name` / `level_id` |
+| `LEVEL_MNE` | `device_name`, `device_type`, `level_id` |
+| `SRCE_MNE` | `device_name`, `device_type`, `srce_name`, `level_id` |
+| `DEST_MNE` | `device_name`, `device_type`, `dest_name`, `level_id` |
+| `RM_SRCE_TAGS` | `srce_id`, `level_id` |
+| `RM_DEST_TAGS` | `dest_id`, `level_id` |
+
+### §5.2 Categories — `<category_change type='…' …/>`
+
+| type | Attrs |
+|---|---|
+| `CATEGORY_LIST` | none |
+| `CATEGORY_DETAILS` | `category` |
+
+### §5.3 Salvos — `<salvo_change type='…' …/>`
+
+| type | Attrs |
+|---|---|
+| `GROUP_LIST` | none |
+| `INSTANCE_LIST` | `group` |
+| `INSTANCE_DETAILS` | `group`, `instance` |
+
+### §5.4 Devices — `<device_change type='…' …/>`
+
+| type | Attrs |
+|---|---|
+| `LIST` | none |
+| `DETAILS` | `ip_address`, `device_type` |
+| `VALUE` | `device_name`, `sub_device`, `object` |
+
+### §5.5 Data Stores — `<datastore_change …/>`
+
+Subscription/obtain by file path inside a Cerebrum data store; events
+echo the element back with a `type` attribute.
+
+| Role | Wire |
+|---|---|
+| TX | `<datastore_change name='Global Data Files\Index.xml'/>` |
+| RX | `<datastore_change name='Global Data Files\Index.xml' type='ATTRIBUTE'/>` |
+
+---
+
+## Error codes (§6, `<nack>` payload)
+
+Complete table from the spec:
+
+| ID | Code | Description |
+|---:|---|---|
+| 0 | `INVALID_USER_OR_PASS` | specified username or password is invalid |
+| 1 | `MTID_ERROR` | a message type identifier was not specified |
+| 2 | `UNKNOWN_COMMAND` | an unknown command has been specified |
+| 3 | `INVALID_XML` | the message XML from a client cannot be loaded |
+| 4 | `SERVER_INACTIVE` | the connected server is inactive |
+| 5 | `UNKNOWN_CONNECTION` | the connection is unrecognized — a new one must be established |
+| 6 | `NOT_LOGGED_IN` | a successful login is required |
+| 7 | `COMMAND_MISSING_PARAMETERS` | both a username and password must be specified |
+| 8 | `ONE_OR_MORE_ACTIONS_INVALID` | the specified action failed to complete |
+| 9 | `ONE_OR_MORE_EVENTS_INVALID` | the specified event subscription failed to complete |
+| 10 | `ONE_OR_MORE_OBTAINS_INVALID` | the specified obtain failed to complete |
+| 11 | `RESPONSE_TOO_LARGE` | the XML message is too large to be sent to a client |
+| 12 | `NO_LICENCE_AVAILABLE` | the Cerebrum server has no licences available (note British spelling) |
+| 13 | `OK` | the request completed successfully |
+
+> Every NACK code becomes a `compliance.Event` named `cerebrum_nack_<code>`.
+
+---
+
+## Change history (§7)
+
+| Ver | Date | Change |
+|---|---|---|
+| 0.01 | 14/09/2021 | First release (V2.2.14538) |
+| 0.02 | 08/12/2021 | Correct attribute names (DEST, LEVEL) in §5.1.1 / §5.1.4 / §5.1.6 |
+| 0.03 | 18/02/2022 | Added change/obtain/subscribe for generic device values |
+| 0.04 | 18/03/2022 | Added missing *Delete Category Item* |
+| 0.05 | 05/04/2022 | Source/destination protect/lock now allows "all level" |
+| 0.06 | 24/05/2022 | Source mnemonic obtain/subscribe includes `RM_TAGS` |
+| 0.07 | 30/05/2022 | Destination mnemonic obtain/subscribe includes `RM_TAGS` |
+| 0.08 | 31/05/2022 | Semantic mistakes / examples corrected |
+| 0.09 | 15/02/2023 | Data Stores added |
+| 0.10 | 15/11/2023 | Text-encoding method documented in intro |
+| 0.11 | 02/08/2024 | `SRCE_ASSOC_IP` + `DEST_ASSOC_IP` added |
+| 0.12 | 13/02/2025 | Error-code list added |
+| 0.13 | 18/02/2025 | Error-code IDs added |
+
+---
+
+## Compliance events to surface
+
+Every deviation fires a named compliance event rather than being
+silently absorbed. Planned names:
+
+- `cerebrum_case_normalized` — peer sent a non-lowercase element/attribute
+- `cerebrum_nack_<code>` — one per error code in §6
+- `cerebrum_busy_received` — server returned BUSY
+- `cerebrum_unknown_notification` — notification root / TYPE we don't recognise
+- `cerebrum_mtid_reused` — the same mtid arrived on two different in-flight requests
+- `cerebrum_server_inactive` — `CONNECTED_SERVER_ACTIVE='0'` seen on poll_reply
