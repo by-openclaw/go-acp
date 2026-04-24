@@ -43,7 +43,24 @@ tests/                          unit / integration / smoke / fixtures
 docs/                           cross-cutting architecture, connector, schema
 ```
 
-`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p}`.
+`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, osc}` on this branch.
+Other feature branches add more: `tsl` on `feat/tsl-umd-plugin` and
+`probel-sw02p` on `feat/probel-sw02p-commands`. See
+`memory/project_protocol_backlog.md` for the full queue.
+
+The **OSC plugin** on this branch registers two wire versions as
+separate entries per the `feedback_protocol_versioning.md` Pattern A
+rule:
+
+- `osc-v10` — UDP + TCP/int32-length-prefix; core types i/f/s/b
+- `osc-v11` — UDP + TCP/SLIP (RFC 1055 double-END); adds T/F/N/I + arrays
+
+Both share `internal/osc/codec/` (stdlib-only). Wireshark support is
+one supplementary Lua script at `internal/osc/wireshark/
+dissector_osc_slip.lua` that un-stuffs SLIP then delegates to
+Wireshark's built-in OSC dissector for the actual parse. UDP + 1.0
+length-prefix TCP are handled by Wireshark's built-in directly — no
+custom Lua needed for those cases.
 
 ---
 
