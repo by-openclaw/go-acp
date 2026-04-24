@@ -60,6 +60,16 @@ const (
 	// confirms that a rx 06 GO was executed; emits on all ports.
 	TxGoDoneAck CommandID = 0x0D // 13 dec
 
+	// RxDualControllerStatusRequest — §3.2.45. Controller asks a
+	// dual-router-controller system for the current master/slave +
+	// idle-controller status. No MESSAGE bytes.
+	RxDualControllerStatusRequest CommandID = 0x32 // 50 dec
+
+	// TxDualControllerStatusResponse — §3.2.46. Active controller
+	// replies with (Active Controller, Idle Controller Status) —
+	// 2-byte MESSAGE.
+	TxDualControllerStatusResponse CommandID = 0x33 // 51 dec
+
 	// RxConnectOnGoGroupSalvo — §3.2.36, "CONNECT ON GO GROUP SALVO
 	// Message". Like rx 05 but slot is stored under a SalvoID
 	// (0-127) instead of the single unnamed buffer.
@@ -161,6 +171,10 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenConnectOnGoAck, true
 	case TxGoDoneAck:
 		return PayloadLenGoDoneAck, true
+	case RxDualControllerStatusRequest:
+		return PayloadLenDualControllerStatusRequest, true
+	case TxDualControllerStatusResponse:
+		return PayloadLenDualControllerStatusResponse, true
 	case RxConnectOnGoGroupSalvo:
 		return PayloadLenConnectOnGoGroupSalvo, true
 	case TxConnectOnGoGroupSalvoAck:

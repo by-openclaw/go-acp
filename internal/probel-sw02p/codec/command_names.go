@@ -30,6 +30,10 @@ func CommandName(id CommandID) string {
 		return "connect_on_go_ack"
 	case TxGoDoneAck:
 		return "go_done_ack"
+	case RxDualControllerStatusRequest:
+		return "dual_controller_status_request"
+	case TxDualControllerStatusResponse:
+		return "dual_controller_status_response"
 	case RxConnectOnGoGroupSalvo:
 		return "connect_on_go_group_salvo"
 	case TxConnectOnGoGroupSalvoAck:
@@ -77,6 +81,8 @@ func CommandIDs() []CommandID {
 		RxGo,
 		TxConnectOnGoAck,
 		TxGoDoneAck,
+		RxDualControllerStatusRequest,
+		TxDualControllerStatusResponse,
 		RxConnectOnGoGroupSalvo,
 		RxGoGroupSalvo,
 		TxConnectOnGoGroupSalvoAck,
