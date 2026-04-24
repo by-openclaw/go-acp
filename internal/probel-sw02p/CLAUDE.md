@@ -16,7 +16,7 @@ internal/probel-sw02p/
 ├── consumer/    package probelsw02p — implements protocol.Protocol
 ├── provider/    package probelsw02p — implements provider.Provider
 ├── wireshark/   Lua dissector (TODO — scaffold pending)
-└── assets/      placeholder (spec lives under sw08p assets; see below)
+└── assets/      SW-P-02 spec (Issue 26 .doc + antiword-extracted .txt)
 ```
 
 - `codec/` has zero imports outside stdlib.
@@ -30,10 +30,9 @@ internal/probel-sw02p/
 
 ## Authoritative spec
 
-- `internal/probel-sw08p/assets/probel-sw02/SW-P-02_issue_26.txt` —
-  Issue 26 of the SW-P-02 General Remote Control Protocol. Lives under
-  the SW-P-08 assets tree by project convention; SW-P-02 and SW-P-08
-  are sibling Probel protocols and share the asset directory.
+- `internal/probel-sw02p/assets/probel-sw02/SW-P-02_issue_26.txt` —
+  antiword-extracted text of Issue 26 of the SW-P-02 General Remote
+  Control Protocol. The sibling `.doc` is the original Word document.
 
 ## Transport — SW-P-02 §3.1
 

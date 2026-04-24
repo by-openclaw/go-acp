@@ -5,7 +5,7 @@
 //
 // Authoritative spec:
 //
-//	internal/probel-sw08p/assets/probel-sw02/SW-P-02_issue_26.txt
+//	internal/probel-sw02p/assets/probel-sw02/SW-P-02_issue_26.txt
 //	(General Remote Control Protocol — SW-P-02 Issue 26)
 //
 // Section §3.1 of that document defines the framing:
