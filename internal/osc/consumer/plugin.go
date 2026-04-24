@@ -97,14 +97,14 @@ type Plugin struct {
 	logger  *slog.Logger
 
 	udp *udpSession
+	tcp *tcpSession
 }
 
-// Connect binds a UDP listener on (ip, port). For TSL there is no
-// handshake — the listener is ready immediately after Connect returns.
-// SO_REUSEADDR is set so multi-listener deployments work (same
-// behaviour as ACP1 / TSL).
+// Connect binds a UDP listener on (ip, port). For TCP, use ConnectTCP
+// (both v1.0 and v1.1). OSC has no handshake — the listener is ready
+// immediately after Connect returns.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
-	if p.udp != nil {
+	if p.udp != nil || p.tcp != nil {
 		return fmt.Errorf("osc %s: already connected", p.version.name())
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
@@ -116,18 +116,47 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	return nil
 }
 
-// Disconnect closes the UDP listener and stops the read loop.
-func (p *Plugin) Disconnect() error {
-	if p.udp == nil {
-		return nil
+// ConnectTCP binds a TCP listener on (ip, port) using the framing
+// dictated by this Plugin's version: length-prefix for v1.0, SLIP
+// double-END for v1.1. Each accepted connection runs a per-conn
+// packet-read loop that dispatches via SubscribePattern.
+func (p *Plugin) ConnectTCP(ctx context.Context, ip string, port int) error {
+	if p.udp != nil || p.tcp != nil {
+		return fmt.Errorf("osc %s: already connected", p.version.name())
 	}
-	err := p.udp.close()
-	p.udp = nil
+	var framer framerKind
+	switch p.version {
+	case V10:
+		framer = framerLenPrefix
+	case V11:
+		framer = framerSLIP
+	}
+	addr := fmt.Sprintf("%s:%d", ip, port)
+	s := newTCPSession(framer)
+	if err := s.listen(ctx, addr); err != nil {
+		return err
+	}
+	p.tcp = s
+	return nil
+}
+
+// Disconnect closes the active listener.
+func (p *Plugin) Disconnect() error {
+	var err error
+	if p.udp != nil {
+		err = p.udp.close()
+		p.udp = nil
+	}
+	if p.tcp != nil {
+		if e := p.tcp.close(); e != nil && err == nil {
+			err = e
+		}
+		p.tcp = nil
+	}
 	return err
 }
 
-// BoundAddr returns the actual UDP listen address (ephemeral-port
-// resolution when (ip, port) had port==0).
+// BoundAddr returns the UDP listen address (nil if in TCP mode).
 func (p *Plugin) BoundAddr() *net.UDPAddr {
 	if p.udp == nil {
 		return nil
@@ -135,15 +164,25 @@ func (p *Plugin) BoundAddr() *net.UDPAddr {
 	return p.udp.boundAddr()
 }
 
+// BoundTCPAddr returns the TCP listen address (nil if not in TCP mode).
+func (p *Plugin) BoundTCPAddr() *net.TCPAddr {
+	if p.tcp == nil {
+		return nil
+	}
+	return p.tcp.boundAddr()
+}
+
 // SubscribePattern registers a handler for messages whose address
-// matches the pattern. Empty pattern matches any address; exact
-// addresses and `/prefix/*` glob are supported. The full OSC pattern
-// language is a follow-up.
+// matches the pattern. Works for both UDP and TCP sessions.
 func (p *Plugin) SubscribePattern(pattern string, h Handler) error {
-	if p.udp == nil {
+	switch {
+	case p.udp != nil:
+		p.udp.subscribe(pattern, h)
+	case p.tcp != nil:
+		p.tcp.subscribe(pattern, h)
+	default:
 		return fmt.Errorf("osc %s: not connected", p.version.name())
 	}
-	p.udp.subscribe(pattern, h)
 	return nil
 }
 

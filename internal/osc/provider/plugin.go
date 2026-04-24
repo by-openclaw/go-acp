@@ -88,6 +88,17 @@ type Server struct {
 	tree    *canonical.Export
 
 	sender *udpSender
+	tcp    *tcpDialer
+}
+
+// framerForVersion returns the TCP framing kind for this Server's version.
+func (s *Server) framerForVersion() framerKind {
+	switch s.version {
+	case V11:
+		return framerSLIP
+	default:
+		return framerLenPrefix
+	}
 }
 
 var errNotImplemented = errors.New("osc: provider operation not implemented in this phase")
@@ -102,12 +113,20 @@ func (s *Server) Serve(ctx context.Context, addr string) error {
 	return s.sender.serveBlock(ctx, addr)
 }
 
-// Stop closes the UDP socket.
+// Stop closes the UDP socket and any pending TCP connections.
 func (s *Server) Stop() error {
-	if s.sender == nil {
-		return nil
+	var first error
+	if s.sender != nil {
+		if err := s.sender.close(); err != nil {
+			first = err
+		}
 	}
-	return s.sender.close()
+	if s.tcp != nil {
+		if err := s.tcp.close(); err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
 }
 
 // SetValue is the canonical-tree write hook. Not wired for OSC in this
@@ -161,4 +180,23 @@ func (s *Server) SendBundle(b codec.Bundle) error {
 		return fmt.Errorf("osc %s: not bound (call Bind or Serve first)", s.version.name())
 	}
 	return s.sender.sendBundle(b)
+}
+
+// SendMessageTCP dials (or reuses) a TCP connection to (host, port) and
+// writes the Message framed per this version (length-prefix for v1.0,
+// SLIP double-END for v1.1).
+func (s *Server) SendMessageTCP(host string, port int, m codec.Message) error {
+	if s.tcp == nil {
+		s.tcp = newTCPDialer(s.framerForVersion())
+	}
+	return s.tcp.sendMessage(host, port, m)
+}
+
+// SendBundleTCP dials (or reuses) a TCP connection and writes a framed
+// Bundle.
+func (s *Server) SendBundleTCP(host string, port int, b codec.Bundle) error {
+	if s.tcp == nil {
+		s.tcp = newTCPDialer(s.framerForVersion())
+	}
+	return s.tcp.sendBundle(host, port, b)
 }
