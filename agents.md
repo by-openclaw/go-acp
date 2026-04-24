@@ -45,13 +45,18 @@ docs/                           cross-cutting architecture, connector, schema
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p}`.
 
-The `probel-sw02p` plugin is partial — PR #106 ships the salvo
-family only. The rest of the VSM-supported command set lands as a
-follow-up bulk drop; every command OUTSIDE the VSM set needs
+The `probel-sw02p` plugin is partial — branch
+`feat/probel-sw02p-commands` (PR #106, NOT yet pushed/merged) holds
+33 command bytes + Wireshark dissector: the salvo family (10 bytes),
+the VSM-supported bulk set (14 bytes), and non-VSM seqs 5, 6, 30-33,
+36-38, 39-44 (17 bytes). Every command OUTSIDE the VSM set needs
 explicit per-command user approval from the numbered queue in
 `memory/project_probel_sw02p_cmd_queue.md`. Never write code for
 any non-VSM SW-P-02 command without a `approve seq N` from the
-user. See `internal/probel-sw02p/CLAUDE.md` for the scope table.
+user. See `internal/probel-sw02p/CLAUDE.md` for the full landed
+tables + owner-only protect authority rule. Codec hardening gaps
+(no auto-retry / reconnect / keepalive) tracked in
+`memory/project_probel_sw02p_client_hardening.md`.
 
 ---
 
