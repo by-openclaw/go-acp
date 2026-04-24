@@ -23,4 +23,11 @@ echo ">>> Node version"
 node --version
 npm --version
 
+echo ">>> Installing Node test-harness deps (any internal/**/test-harness/package.json)"
+while IFS= read -r -d '' pkg; do
+    dir="$(dirname "$pkg")"
+    echo "    npm install in $dir"
+    (cd "$dir" && npm install --silent) || echo "    (failed in $dir — continuing)"
+done < <(find internal -type f -name package.json -not -path '*/node_modules/*' -print0)
+
 echo ">>> Done."
