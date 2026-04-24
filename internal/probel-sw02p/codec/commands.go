@@ -16,6 +16,11 @@ const (
 	// replies with tx 03 TALLY.
 	RxInterrogate CommandID = 0x01
 
+	// RxConnect — §3.2.4, "CONNECT Message". Controller requests a
+	// route through the matrix; applied immediately (no salvo buffer)
+	// and confirmed via tx 04 CROSSPOINT CONNECTED broadcast.
+	RxConnect CommandID = 0x02
+
 	// TxTally — §3.2.5, "TALLY Message". Matrix replies to rx 01
 	// INTERROGATE. Source = 1023 signals "destination out of range"
 	// per §3.2.5.
@@ -84,6 +89,8 @@ func PayloadLen(id CommandID) (int, bool) {
 	switch id {
 	case RxInterrogate:
 		return PayloadLenInterrogate, true
+	case RxConnect:
+		return PayloadLenConnect, true
 	case TxTally:
 		return PayloadLenTally, true
 	case TxCrosspointConnected:

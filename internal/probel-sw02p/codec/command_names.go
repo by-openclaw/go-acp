@@ -12,6 +12,8 @@ func CommandName(id CommandID) string {
 	switch id {
 	case RxInterrogate:
 		return "interrogate"
+	case RxConnect:
+		return "connect"
 	case TxTally:
 		return "tally"
 	case TxCrosspointConnected:
@@ -46,6 +48,7 @@ func CommandName(id CommandID) string {
 func CommandIDs() []CommandID {
 	return []CommandID{
 		RxInterrogate,
+		RxConnect,
 		TxTally,
 		TxCrosspointConnected,
 		RxConnectOnGo,
