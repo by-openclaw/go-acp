@@ -42,6 +42,8 @@ func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 		return s.handleExtendedConnect(f)
 	case codec.RxDualControllerStatusRequest:
 		return s.handleDualControllerStatusRequest(f)
+	case codec.RxExtendedConnectOnGo:
+		return s.handleExtendedConnectOnGo(f)
 	case codec.RxConnectOnGo:
 		return s.handleConnectOnGo(f)
 	case codec.RxGo:

@@ -108,6 +108,17 @@ const (
 	// layout as tx 67.
 	TxExtendedConnected CommandID = 0x44 // 68 dec
 
+	// RxExtendedConnectOnGo — §3.2.51, "Extended CONNECT ON GO
+	// Message". Extended-addressing counterpart to rx 005: one
+	// crosspoint staged into the unnamed salvo buffer until rx 006
+	// GO fires. Range per axis: 0-16383.
+	RxExtendedConnectOnGo CommandID = 0x45 // 69 dec
+
+	// TxExtendedConnectOnGoAck — §3.2.52, "Extended CONNECT ON GO
+	// ACKNOWLEDGE Message". Matrix confirms rx 069 was stored; echoes
+	// dst / src in extended form.
+	TxExtendedConnectOnGoAck CommandID = 0x46 // 70 dec
+
 	// RxExtendedConnectOnGoGroupSalvo — §3.2.53, "Extended CONNECT
 	// ON GO GROUP SALVO Message". Like rx 35 but dst / src ranges
 	// extend to 16383 via separate Destination Multiplier (§3.2.47)
@@ -191,6 +202,10 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenExtendedTally, true
 	case TxExtendedConnected:
 		return PayloadLenExtendedConnected, true
+	case RxExtendedConnectOnGo:
+		return PayloadLenExtendedConnectOnGo, true
+	case TxExtendedConnectOnGoAck:
+		return PayloadLenExtendedConnectOnGoAck, true
 	case RxExtendedConnectOnGoGroupSalvo:
 		return PayloadLenExtendedConnectOnGoGroupSalvo, true
 	case TxExtendedConnectOnGoGroupSalvoAck:

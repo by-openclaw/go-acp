@@ -22,6 +22,7 @@ func (s *server) handleExtendedConnectOnGoGroupSalvo(f codec.Frame) (handlerResu
 	s.tree.appendPendingGroup(0, 0, p.SalvoID, pendingSlot{
 		Destination: p.Destination,
 		Source:      p.Source,
+		Extended:    true,
 	})
 	// Request and ack share an identical layout (§3.2.53 == §3.2.54):
 	// same 5 bytes, same field widths, different cmd ID. A direct

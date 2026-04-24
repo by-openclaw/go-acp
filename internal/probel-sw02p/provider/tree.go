@@ -57,11 +57,18 @@ type matrixState struct {
 	sourceLabels []string
 }
 
-// pendingSlot is one crosspoint staged by rx 05 CONNECT ON GO,
-// waiting for rx 06 GO to commit or clear.
+// pendingSlot is one crosspoint staged by rx 05 / rx 69 CONNECT ON GO
+// or rx 35 / rx 71 CONNECT ON GO GROUP SALVO, waiting for rx 06 /
+// rx 36 GO to commit or clear. Extended marks slots staged via the
+// extended-addressing variants (rx 069 / rx 071); commit emits tx 068
+// Extended CONNECTED for those and tx 004 CONNECTED for narrow ones
+// so the CONNECTED form on the wire always matches the addressing
+// range the controller used to stage it (§3.2.51 + §3.2.50 vs.
+// §3.2.7 + §3.2.6).
 type pendingSlot struct {
 	Destination uint16
 	Source      uint16
+	Extended    bool
 }
 
 // tree is the in-memory state indexed by (matrix, level). Built from a

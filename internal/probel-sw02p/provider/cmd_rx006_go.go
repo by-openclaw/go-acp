@@ -37,10 +37,7 @@ func (s *server) handleGo(f codec.Frame) (handlerResult, error) {
 				continue
 			}
 			s.profile.Note(SalvoEmittedConnected)
-			broadcast = append(broadcast, codec.EncodeConnected(codec.ConnectedParams{
-				Destination: slot.Destination,
-				Source:      slot.Source,
-			}))
+			broadcast = append(broadcast, salvoConnectedFrame(slot))
 		}
 		broadcast = append(broadcast, codec.EncodeGoDoneAck(codec.GoDoneAckParams{
 			Operation: codec.GoOpSet,
