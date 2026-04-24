@@ -42,6 +42,14 @@ type matrixState struct {
 	// the same pending buffer.
 	pending []pendingSlot
 
+	// pendingGroups holds the per-SalvoID buffers fed by §3.2.36
+	// CONNECT ON GO GROUP SALVO. Populated by rx 35, drained by
+	// rx 36 GO GROUP SALVO. Keyed by SalvoID (0-127); up to 128
+	// groups can be staged simultaneously on the same matrix. Sparse
+	// — a SalvoID with no staged slots simply does not appear in
+	// the map.
+	pendingGroups map[uint8][]pendingSlot
+
 	// targetLabels / sourceLabels hold the human-readable names from
 	// the canonical tree's TargetLabels / SourceLabels maps. Empty
 	// slice = names not declared in the tree.
@@ -218,6 +226,27 @@ func (t *tree) drainPending(m, l uint8) []pendingSlot {
 	out := st.pending
 	st.pending = nil
 	return out
+}
+
+// appendPendingGroup stages one crosspoint into the SalvoID-keyed
+// pending buffer on (matrix, level). Auto-creates the matrixState and
+// the per-salvo slice on first use.
+//
+// drainPendingGroup lives with the rx 36 GO GROUP SALVO handler in a
+// follow-up commit so the unused-symbol lint stays clean until pair 4.
+func (t *tree) appendPendingGroup(m, l uint8, salvoID uint8, slot pendingSlot) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: m, level: l}
+	st, ok := t.matrices[key]
+	if !ok {
+		st = &matrixState{sources: map[uint16]uint16{}}
+		t.matrices[key] = st
+	}
+	if st.pendingGroups == nil {
+		st.pendingGroups = map[uint8][]pendingSlot{}
+	}
+	st.pendingGroups[salvoID] = append(st.pendingGroups[salvoID], slot)
 }
 
 // applyConnectLenient records a crosspoint on (matrix, level, dst)

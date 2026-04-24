@@ -34,6 +34,8 @@ func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 		return s.handleConnectOnGo(f)
 	case codec.RxGo:
 		return s.handleGo(f)
+	case codec.RxConnectOnGoGroupSalvo:
+		return s.handleConnectOnGoGroupSalvo(f)
 	}
 	return handlerResult{}, nil
 }

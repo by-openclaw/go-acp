@@ -242,3 +242,58 @@ func TestEncodeGoDoneAckByteLayout(t *testing.T) {
 		t.Errorf("op = %#x; want GoOpSet", got.Operation)
 	}
 }
+
+// TestEncodeConnectOnGoGroupSalvoByteLayout pins the wire layout of
+// rx 35 against §3.2.36. Adds the SalvoID byte on top of the rx 05
+// shape.
+func TestEncodeConnectOnGoGroupSalvoByteLayout(t *testing.T) {
+	// Narrow addressing, salvo=5, no bad-source flag.
+	f := EncodeConnectOnGoGroupSalvo(ConnectOnGoGroupSalvoParams{
+		Destination: 1, Source: 2, SalvoID: 5,
+	})
+	wire := Pack(f)
+	// Multiplier=0x00 Dst=0x01 Src=0x02 Salvo=0x05.
+	// checksum7({23, 00, 01, 02, 05}) = (-0x2B) & 0x7F = 0x55.
+	want := []byte{SOM, 0x23, 0x00, 0x01, 0x02, 0x05, 0x55}
+	if !bytes.Equal(wire, want) {
+		t.Fatalf("wire\n got %X\nwant %X", wire, want)
+	}
+	parsed, _, err := Unpack(wire)
+	if err != nil {
+		t.Fatalf("Unpack: %v", err)
+	}
+	got, err := DecodeConnectOnGoGroupSalvo(parsed)
+	if err != nil {
+		t.Fatalf("DecodeConnectOnGoGroupSalvo: %v", err)
+	}
+	if got.Destination != 1 || got.Source != 2 || got.SalvoID != 5 {
+		t.Errorf("decoded = %+v; want dst=1 src=2 salvo=5", got)
+	}
+}
+
+// TestEncodeConnectOnGoGroupSalvoAckByteLayout pins the wire layout
+// of tx 37 against §3.2.38. Bit 3 of Multiplier (bad source) must
+// always be 0 on the ack.
+func TestEncodeConnectOnGoGroupSalvoAckByteLayout(t *testing.T) {
+	f := EncodeConnectOnGoGroupSalvoAck(ConnectOnGoGroupSalvoAckParams{
+		Destination: 1, Source: 2, SalvoID: 5,
+	})
+	wire := Pack(f)
+	// Multiplier=0x00 Dst=0x01 Src=0x02 Salvo=0x05.
+	// checksum7({25, 00, 01, 02, 05}) = (-0x2D) & 0x7F = 0x53.
+	want := []byte{SOM, 0x25, 0x00, 0x01, 0x02, 0x05, 0x53}
+	if !bytes.Equal(wire, want) {
+		t.Fatalf("wire\n got %X\nwant %X", wire, want)
+	}
+	parsed, _, err := Unpack(wire)
+	if err != nil {
+		t.Fatalf("Unpack: %v", err)
+	}
+	got, err := DecodeConnectOnGoGroupSalvoAck(parsed)
+	if err != nil {
+		t.Fatalf("DecodeConnectOnGoGroupSalvoAck: %v", err)
+	}
+	if got.Destination != 1 || got.Source != 2 || got.SalvoID != 5 {
+		t.Errorf("decoded = %+v; want dst=1 src=2 salvo=5", got)
+	}
+}

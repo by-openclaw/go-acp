@@ -207,6 +207,53 @@ func TestGoSetEmitsConnectedPerSlotAndAck(t *testing.T) {
 	}
 }
 
+// TestConnectOnGoGroupSalvoAppendsPerGroupAndAcks locks in the rx 35
+// contract: one slot per frame, stashed under the declared SalvoID,
+// ack echoes dst / src / SalvoID with bad-source bit clamped to 0.
+func TestConnectOnGoGroupSalvoAppendsPerGroupAndAcks(t *testing.T) {
+	srv := newTestServer(t)
+
+	in := codec.EncodeConnectOnGoGroupSalvo(codec.ConnectOnGoGroupSalvoParams{
+		Destination: 130, Source: 260, SalvoID: 7, BadSource: true,
+	})
+	res, err := srv.dispatch(in)
+	if err != nil {
+		t.Fatalf("dispatch rx 35: %v", err)
+	}
+	if res.reply == nil || res.reply.ID != codec.TxConnectOnGoGroupSalvoAck {
+		t.Fatalf("reply missing / wrong ID: %+v", res.reply)
+	}
+	if res.reply.Payload[0]&0x08 != 0 {
+		t.Errorf("ack Multiplier bit 3 = 1; §3.2.38 requires 0")
+	}
+
+	// Tree has the slot under salvo 7.
+	state := srv.tree.matrices[matrixKey{matrix: 0, level: 0}]
+	if state == nil || state.pendingGroups == nil {
+		t.Fatal("tree has no pendingGroups after rx 35")
+	}
+	slots := state.pendingGroups[7]
+	if len(slots) != 1 {
+		t.Fatalf("pendingGroups[7] len = %d; want 1", len(slots))
+	}
+	if slots[0] != (pendingSlot{Destination: 130, Source: 260}) {
+		t.Errorf("pendingGroups[7][0] = %+v; want {130 260}", slots[0])
+	}
+	// A second slot under a different SalvoID stays separate.
+	if _, err := srv.dispatch(codec.EncodeConnectOnGoGroupSalvo(codec.ConnectOnGoGroupSalvoParams{
+		Destination: 5, Source: 6, SalvoID: 8,
+	})); err != nil {
+		t.Fatalf("dispatch rx 35 #2: %v", err)
+	}
+	if len(state.pendingGroups[7]) != 1 {
+		t.Errorf("salvo 7 contaminated after salvo 8 stage: %d slots",
+			len(state.pendingGroups[7]))
+	}
+	if len(state.pendingGroups[8]) != 1 {
+		t.Errorf("salvo 8 = %d slots; want 1", len(state.pendingGroups[8]))
+	}
+}
+
 // TestGoClearDropsPendingAndAcks exercises the op=Clear path:
 // pending buffer is drained without any tree mutation or tx 04
 // broadcast, and the only broadcast frame is a tx 13 with op=Clear.

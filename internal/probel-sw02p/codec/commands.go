@@ -32,6 +32,15 @@ const (
 	// TxGoDoneAck — §3.2.15, "GO DONE ACKNOWLEDGE Message". Matrix
 	// confirms that a rx 06 GO was executed; emits on all ports.
 	TxGoDoneAck CommandID = 0x0D // 13 dec
+
+	// RxConnectOnGoGroupSalvo — §3.2.36, "CONNECT ON GO GROUP SALVO
+	// Message". Like rx 05 but slot is stored under a SalvoID
+	// (0-127) instead of the single unnamed buffer.
+	RxConnectOnGoGroupSalvo CommandID = 0x23 // 35 dec
+
+	// TxConnectOnGoGroupSalvoAck — §3.2.38. Ack for rx 35 — echoes
+	// dst / src / SalvoID.
+	TxConnectOnGoGroupSalvoAck CommandID = 0x25 // 37 dec
 )
 
 // PayloadLen returns the expected MESSAGE byte count for command id.
@@ -53,6 +62,10 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenConnectOnGoAck, true
 	case TxGoDoneAck:
 		return PayloadLenGoDoneAck, true
+	case RxConnectOnGoGroupSalvo:
+		return PayloadLenConnectOnGoGroupSalvo, true
+	case TxConnectOnGoGroupSalvoAck:
+		return PayloadLenConnectOnGoGroupSalvoAck, true
 	}
 	return 0, false
 }
