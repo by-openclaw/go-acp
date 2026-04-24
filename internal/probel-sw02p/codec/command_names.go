@@ -56,6 +56,8 @@ func CommandName(id CommandID) string {
 		return "extended_protect_connected"
 	case TxExtendedProtectDisconnected:
 		return "extended_protect_disconnected"
+	case TxExtendedProtectTallyDump:
+		return "extended_protect_tally_dump"
 	}
 	return ""
 }
@@ -88,5 +90,6 @@ func CommandIDs() []CommandID {
 		TxExtendedProtectTally,
 		TxExtendedProtectConnected,
 		TxExtendedProtectDisconnected,
+		TxExtendedProtectTallyDump,
 	}
 }

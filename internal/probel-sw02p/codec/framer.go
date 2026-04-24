@@ -135,8 +135,18 @@ func Unpack(buf []byte) (Frame, int, error) {
 		return Frame{}, 0, ErrBadSOM
 	}
 	id := CommandID(buf[1])
-	plen, ok := PayloadLen(id)
+	// PayloadSize consults the buffered MESSAGE bytes for variable-
+	// length commands; for fixed-length commands the peek is ignored.
+	plen, ok := PayloadSize(id, buf[2:])
 	if !ok {
+		// Two cases: (a) unknown command id (no entry in PayloadLen
+		// or variable-length table) — return ErrUnknownCommand so the
+		// session can resync; (b) known variable-length command but
+		// not enough bytes buffered yet to compute the length —
+		// return io.ErrUnexpectedEOF so the session keeps reading.
+		if isVariableLenCommand(id) {
+			return Frame{}, 0, io.ErrUnexpectedEOF
+		}
 		return Frame{}, 0, ErrUnknownCommand
 	}
 	want := 1 + 1 + plen + 1 // SOM + cmd + payload + checksum

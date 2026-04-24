@@ -122,6 +122,14 @@ const (
 	// when a destination is unprotected as a result of EXTENDED
 	// PROTECT DIS-CONNECT (§3.2.68). Same layout as tx 96.
 	TxExtendedProtectDisconnected CommandID = 0x62 // 98 dec
+
+	// TxExtendedProtectTallyDump — §3.2.64. Variable-length dump of
+	// protect-tally entries. Count byte 127 signals "controller reset"
+	// (no entries follow); 0-32 reports that many 4-byte entries. The
+	// only SW-P-02 command with a variable MESSAGE length — the stream
+	// scanner peeks at the Count byte via PayloadSize to derive the
+	// total frame size.
+	TxExtendedProtectTallyDump CommandID = 0x64 // 100 dec
 )
 
 // PayloadLen returns the expected MESSAGE byte count for command id.
@@ -181,4 +189,41 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenExtendedProtectDisconnected, true
 	}
 	return 0, false
+}
+
+// PayloadSize returns the MESSAGE byte count for the command at id
+// given a peek at buffered MESSAGE bytes (after the COMMAND byte,
+// before the CHECKSUM). Subsumes both the fixed-length PayloadLen
+// registry and the variable-length tally-dump sizer.
+//
+// Returns:
+//   - (n, true)  — MESSAGE is exactly n bytes; the scanner can peel
+//     `SOM + cmd + n + checksum` off the wire.
+//   - (0, false) — id unknown OR not enough bytes buffered yet for
+//     a variable-length command to compute its length.
+//
+// Variable-length commands MUST be listed in the switch below
+// alongside their fixed-length siblings; PayloadLen alone returns
+// false for them.
+func PayloadSize(id CommandID, peek []byte) (int, bool) {
+	if n, ok := PayloadLen(id); ok {
+		return n, true
+	}
+	switch id {
+	case TxExtendedProtectTallyDump:
+		return tallyDumpPayloadSize(peek)
+	}
+	return 0, false
+}
+
+// isVariableLenCommand reports whether id has a MESSAGE length that
+// depends on the MESSAGE content (i.e. PayloadSize consults `peek`).
+// Used by the stream scanner to distinguish "unknown command" from
+// "variable-length command, need more bytes".
+func isVariableLenCommand(id CommandID) bool {
+	switch id {
+	case TxExtendedProtectTallyDump:
+		return true
+	}
+	return false
 }
