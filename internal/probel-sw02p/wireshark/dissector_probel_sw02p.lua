@@ -45,20 +45,35 @@ local cmd_name = {
     [0x09] = "tx 009 Status Response - 2",
     [0x0C] = "tx 012 Connect On Go Ack",
     [0x0D] = "tx 013 Go Done Ack",
+    [0x0E] = "rx 014 Source Lock Status Request",
+    [0x0F] = "tx 015 Source Lock Status Response",
     [0x23] = "rx 035 Connect On Go Group Salvo",
     [0x24] = "rx 036 Go Group Salvo",
     [0x25] = "tx 037 Connect On Go Group Salvo Ack",
     [0x26] = "tx 038 Go Done Group Salvo Ack",
+    [0x32] = "rx 050 Dual Controller Status Request",
+    [0x33] = "tx 051 Dual Controller Status Response",
     [0x41] = "rx 065 Extended Interrogate",
     [0x42] = "rx 066 Extended Connect",
     [0x43] = "tx 067 Extended Tally",
     [0x44] = "tx 068 Extended Connected",
+    [0x45] = "rx 069 Extended Connect On Go",
+    [0x46] = "tx 070 Extended Connect On Go Ack",
     [0x47] = "rx 071 Extended Connect On Go Group Salvo",
     [0x48] = "tx 072 Extended Connect On Go Group Salvo Ack",
+    [0x4B] = "rx 075 Router Config Request",
+    [0x4C] = "tx 076 Router Config Response - 1",
+    [0x4D] = "tx 077 Router Config Response - 2",
     [0x60] = "tx 096 Extended Protect Tally",
     [0x61] = "tx 097 Extended Protect Connected",
     [0x62] = "tx 098 Extended Protect Disconnected",
+    [0x63] = "tx 099 Protect Device Name Response",
     [0x64] = "tx 100 Extended Protect Tally Dump",
+    [0x65] = "rx 101 Extended Protect Interrogate",
+    [0x66] = "rx 102 Extended Protect Connect",
+    [0x67] = "rx 103 Protect Device Name Request",
+    [0x68] = "rx 104 Extended Protect Disconnect",
+    [0x69] = "rx 105 Extended Protect Tally Dump Request",
 }
 
 -- Fixed MESSAGE byte counts per command. Variable-length commands
@@ -85,10 +100,25 @@ local payload_len = {
     [0x44] = 5,  -- tx 068 Extended Connected
     [0x47] = 5,  -- rx 071 Extended Connect On Go Group Salvo
     [0x48] = 5,  -- tx 072 Extended Connect On Go Group Salvo Ack
+    [0x0E] = 1,  -- rx 014 Source Lock Status Request
+    -- 0x0F tx 015 Source Lock Status Response — variable, see below
+    [0x32] = 0,  -- rx 050 Dual Controller Status Request (no MESSAGE)
+    [0x33] = 2,  -- tx 051 Dual Controller Status Response
+    [0x45] = 4,  -- rx 069 Extended Connect On Go
+    [0x46] = 4,  -- tx 070 Extended Connect On Go Ack
+    [0x4B] = 0,  -- rx 075 Router Config Request (no MESSAGE)
+    -- 0x4C tx 076 Router Config Response - 1 — variable, see below
+    -- 0x4D tx 077 Router Config Response - 2 — variable, see below
     [0x60] = 5,  -- tx 096 Extended PROTECT TALLY
     [0x61] = 5,  -- tx 097 Extended PROTECT CONNECTED
     [0x62] = 5,  -- tx 098 Extended PROTECT DIS-CONNECTED
+    [0x63] = 10, -- tx 099 Protect Device Name Response (2 hdr + 8 ASCII)
     -- 0x64 tx 100 Extended PROTECT TALLY DUMP — variable, see below
+    [0x65] = 2,  -- rx 101 Extended PROTECT INTERROGATE
+    [0x66] = 4,  -- rx 102 Extended PROTECT CONNECT
+    [0x67] = 2,  -- rx 103 PROTECT DEVICE NAME REQUEST
+    [0x68] = 4,  -- rx 104 Extended PROTECT DIS-CONNECT
+    [0x69] = 3,  -- rx 105 Extended PROTECT TALLY DUMP REQUEST
 }
 
 local protect_state_name = {
@@ -405,6 +435,28 @@ end
 -- need more bytes to decide.
 -------------------------------------------------------------------------------
 
+-- Count set bits in the low 28 bits of n using pure arithmetic (no
+-- Lua 5.3 bitops). Used by the tx 076 / tx 077 variable sizers.
+local function popcount28(n)
+    local c = 0
+    for i = 0, 27 do
+        if math.floor(n / 2 ^ i) % 2 == 1 then
+            c = c + 1
+        end
+    end
+    return c
+end
+
+-- Parse the 4-byte level bitmap used by tx 076 / tx 077. Returns
+-- the 28-bit value as a plain integer (bits 0-27 significant).
+local function level_bitmap(tvb, off)
+    local b1 = tvb(off, 1):uint() % 128
+    local b2 = tvb(off + 1, 1):uint() % 128
+    local b3 = tvb(off + 2, 1):uint() % 128
+    local b4 = tvb(off + 3, 1):uint() % 128
+    return b1 * (2 ^ 21) + b2 * (2 ^ 14) + b3 * (2 ^ 7) + b4
+end
+
 local function full_frame_len(tvb, off)
     -- Need SOM + CMD minimum to classify.
     if tvb:len() < off + 2 then return 0 end
@@ -412,6 +464,29 @@ local function full_frame_len(tvb, off)
     local plen = payload_len[cmd]
     if plen ~= nil then
         return 1 + 1 + plen + 1
+    end
+    if cmd == 0x0F then
+        -- tx 015 Source Lock Status Response: self-declared 2-byte
+        -- length header (bytes 1-2 = MESSAGE DIV 128 + MOD 128).
+        if tvb:len() < off + 4 then return 0 end
+        local msg = tvb(off + 2, 1):uint() * 128 + tvb(off + 3, 1):uint()
+        return 1 + 1 + msg + 1
+    end
+    if cmd == 0x4C then
+        -- tx 076 Router Config Response - 1: 4-byte bitmap + 4 bytes
+        -- per set bit.
+        if tvb:len() < off + 2 + 4 then return 0 end
+        local m = level_bitmap(tvb, off + 2)
+        local n = popcount28(m)
+        return 1 + 1 + 4 + 4 * n + 1
+    end
+    if cmd == 0x4D then
+        -- tx 077 Router Config Response - 2: 4-byte bitmap + 10 bytes
+        -- per set bit.
+        if tvb:len() < off + 2 + 4 then return 0 end
+        local m = level_bitmap(tvb, off + 2)
+        local n = popcount28(m)
+        return 1 + 1 + 4 + 10 * n + 1
     end
     if cmd == 0x64 then
         if tvb:len() < off + 3 then return 0 end
@@ -456,6 +531,15 @@ local function dissect_one_frame(tvb, pinfo, tree)
     local msg_len
     if plen ~= nil then
         msg_len = plen
+    elseif cmd == 0x0F then
+        -- tx 015 self-declared 2-byte length header.
+        msg_len = tvb(2, 1):uint() * 128 + tvb(3, 1):uint()
+    elseif cmd == 0x4C then
+        -- tx 076: 4-byte bitmap + 4 bytes per set bit.
+        msg_len = 4 + 4 * popcount28(level_bitmap(tvb, 2))
+    elseif cmd == 0x4D then
+        -- tx 077: 4-byte bitmap + 10 bytes per set bit.
+        msg_len = 4 + 10 * popcount28(level_bitmap(tvb, 2))
     elseif cmd == 0x64 then
         -- tx 100 variable
         local count = tvb(2, 1):uint()
