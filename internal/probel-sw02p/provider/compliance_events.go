@@ -7,7 +7,7 @@ package probelsw02p
 //
 // Authoritative spec:
 //
-//	internal/probel-sw08p/assets/probel-sw02/SW-P-02_issue_26.txt
+//	internal/probel-sw02p/assets/probel-sw02/SW-P-02_issue_26.txt
 //
 // The generic Profile counter lives in internal/protocol/compliance/.
 // Aggregated across every accepted session since Serve started.
@@ -21,4 +21,16 @@ const (
 	// commands the matrix chose not to support. Informational —
 	// frequent occurrences suggest a new command worth implementing.
 	UnsupportedCommand = "probel_sw02p_unsupported_command"
+
+	// A handler existed for the inbound cmd id but the per-command
+	// Decode* helper rejected the MESSAGE (short payload, wrong
+	// command id, etc.). Informational — a well-behaved controller
+	// never emits these; repeated occurrences indicate wire corruption
+	// or a peer with a divergent spec interpretation.
+	HandlerDecodeFailed = "probel_sw02p_handler_decode_failed"
+
+	// A handler ran successfully but emitting the reply failed because
+	// the session's write returned an error. Non-fatal: the session
+	// logs + drops; the server keeps accepting new connections.
+	OutboundWriteFailed = "probel_sw02p_outbound_write_failed"
 )

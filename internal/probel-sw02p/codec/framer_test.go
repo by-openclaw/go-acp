@@ -159,9 +159,9 @@ func TestDecodeTooShort(t *testing.T) {
 }
 
 // TestPackUnpackFrame verifies Pack + Unpack (Frame-level wrappers)
-// agree with EncodeFrame + DecodeFrame.
+// agree with EncodeFrame + DecodeFrame on a registered command.
 func TestPackUnpackFrame(t *testing.T) {
-	f := Frame{ID: CommandID(0x10), Payload: []byte{0x00, 0x01}}
+	f := Frame{ID: RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}}
 	raw := Pack(f)
 	got, n, err := Unpack(raw)
 	if err != nil {
@@ -175,5 +175,48 @@ func TestPackUnpackFrame(t *testing.T) {
 	}
 	if !bytes.Equal(got.Payload, f.Payload) {
 		t.Errorf("payload = %X; want %X", got.Payload, f.Payload)
+	}
+}
+
+// TestUnpackRejectsUnknownCommand confirms the length-aware scanner
+// returns ErrUnknownCommand for a command byte that has no registered
+// MESSAGE length — caller (session) treats this as a decode error so
+// it can fire a compliance event and drop a byte to resync.
+func TestUnpackRejectsUnknownCommand(t *testing.T) {
+	raw := EncodeFrame(0xAA, []byte{0x01})
+	_, _, err := Unpack(raw)
+	if !errors.Is(err, ErrUnknownCommand) {
+		t.Errorf("got %v; want ErrUnknownCommand", err)
+	}
+}
+
+// TestUnpackStreamsTwoFrames exercises the length-aware decoder across
+// a concatenation of two complete frames — the session scanner relies
+// on Unpack consuming exactly one frame per call.
+func TestUnpackStreamsTwoFrames(t *testing.T) {
+	a := Pack(Frame{ID: RxConnectOnGo, Payload: []byte{0x11, 0x22, 0x33}})
+	b := Pack(Frame{ID: TxConnectOnGoAck, Payload: []byte{0x44, 0x55, 0x66}})
+	buf := append(append([]byte{}, a...), b...)
+
+	f1, n1, err := Unpack(buf)
+	if err != nil {
+		t.Fatalf("first Unpack: %v", err)
+	}
+	if n1 != len(a) {
+		t.Errorf("first consumed = %d; want %d", n1, len(a))
+	}
+	if f1.ID != RxConnectOnGo {
+		t.Errorf("first ID = %#x; want %#x", f1.ID, RxConnectOnGo)
+	}
+
+	f2, n2, err := Unpack(buf[n1:])
+	if err != nil {
+		t.Fatalf("second Unpack: %v", err)
+	}
+	if n2 != len(b) {
+		t.Errorf("second consumed = %d; want %d", n2, len(b))
+	}
+	if f2.ID != TxConnectOnGoAck {
+		t.Errorf("second ID = %#x; want %#x", f2.ID, TxConnectOnGoAck)
 	}
 }

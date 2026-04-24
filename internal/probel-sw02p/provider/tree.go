@@ -20,10 +20,9 @@ type matrixKey struct {
 // SW-P-02 is destination-driven — one source per destination per
 // level.
 //
-// Protect and salvo state that exist on SW-P-08 are omitted from this
-// scaffold — those fields will be re-added alongside the per-command
-// commits that use them, so the structure stays minimal until there is
-// something to store.
+// Protect state from SW-P-08 is omitted from this scaffold — those
+// fields will be re-added alongside the per-command commits that use
+// them. Salvo "pending" storage lands here with rx 05 / 35.
 type matrixState struct {
 	targetCount int
 	sourceCount int
@@ -34,11 +33,27 @@ type matrixState struct {
 	// targets in root CLAUDE.md (65535×65535 per matrix).
 	sources map[uint16]uint16
 
+	// pending is the server-wide salvo buffer for §3.2.7 CONNECT ON GO
+	// messages. Each rx 05 appends one slot; the next rx 06 GO either
+	// applies every slot to the sources map (set) or drops the whole
+	// list (clear). A single slot list per (matrix, level) pair mirrors
+	// the SW-P-02 §3.2.7 / §3.2.8 flow and the real-world router
+	// behaviour — multiple controllers feeding the same matrix share
+	// the same pending buffer.
+	pending []pendingSlot
+
 	// targetLabels / sourceLabels hold the human-readable names from
 	// the canonical tree's TargetLabels / SourceLabels maps. Empty
 	// slice = names not declared in the tree.
 	targetLabels []string
 	sourceLabels []string
+}
+
+// pendingSlot is one crosspoint staged by rx 05 CONNECT ON GO,
+// waiting for rx 06 GO to commit or clear.
+type pendingSlot struct {
+	Destination uint16
+	Source      uint16
 }
 
 // tree is the in-memory state indexed by (matrix, level). Built from a
@@ -167,4 +182,23 @@ func (t *tree) applyConnect(m, l uint8, dst uint16, src uint16) error {
 	}
 	st.sources[dst] = src
 	return nil
+}
+
+// appendPending stages one crosspoint into (matrix, level)'s pending
+// salvo buffer. Auto-creates the matrixState for (m, l) if the tree
+// has no canonical entry — SW-P-02 is single-matrix / single-level on
+// the wire, so a controller can legitimately issue CONNECT ON GO
+// before any canonical tree has been loaded. The count fields stay 0
+// until a tree is declared; applyPending honours those zero counts by
+// skipping out-of-range slots.
+func (t *tree) appendPending(m, l uint8, slot pendingSlot) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: m, level: l}
+	st, ok := t.matrices[key]
+	if !ok {
+		st = &matrixState{sources: map[uint16]uint16{}}
+		t.matrices[key] = st
+	}
+	st.pending = append(st.pending, slot)
 }

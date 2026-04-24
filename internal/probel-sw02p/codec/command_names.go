@@ -6,15 +6,24 @@ package codec
 // exports) and by log lines that want a symbolic name instead of raw
 // hex.
 //
-// Source of truth: §3 of SW-P-02 Issue 26. The catalogue is populated
-// per-command in follow-up commits; the scaffold defines none.
+// Source of truth: §3 of SW-P-02 Issue 26. Keep the switch in
+// command-byte order.
 func CommandName(id CommandID) string {
-	_ = id
+	switch id {
+	case RxConnectOnGo:
+		return "connect_on_go"
+	case TxConnectOnGoAck:
+		return "connect_on_go_ack"
+	}
 	return ""
 }
 
 // CommandIDs returns every SW-P-02 command byte this codec knows. The
 // order is not guaranteed; callers that need to iterate for
-// registration should treat the result as a set. Empty until per-
-// command files land.
-func CommandIDs() []CommandID { return nil }
+// registration should treat the result as a set.
+func CommandIDs() []CommandID {
+	return []CommandID{
+		RxConnectOnGo,
+		TxConnectOnGoAck,
+	}
+}

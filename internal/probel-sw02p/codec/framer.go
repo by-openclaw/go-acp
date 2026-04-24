@@ -108,16 +108,51 @@ func DecodeFrame(buf []byte) (cmd byte, payload []byte, consumed int, err error)
 // provider code can treat both codecs symmetrically.
 func Pack(f Frame) []byte { return EncodeFrame(byte(f.ID), f.Payload) }
 
-// Unpack parses one complete SW-P-02 frame from buf. On success returns
-// the Frame and the number of bytes consumed from buf (always len(buf)
-// for this primitive implementation — stream decoders live in per-
-// command files).
+// Unpack parses one complete SW-P-02 frame from the start of buf. The
+// decoder is length-aware: it reads the command byte, looks the
+// expected MESSAGE length up via PayloadLen, then consumes exactly
+// `SOM + cmd + payload + checksum` bytes. Returns the Frame plus the
+// byte count consumed so the caller can slice buf = buf[n:] and scan
+// the next frame.
+//
+// Error paths:
+//
+//   - (Frame{}, 0, io.ErrUnexpectedEOF) — buf lacks the 3-byte minimum
+//     OR the full frame has not arrived yet. Caller accumulates more
+//     bytes and retries.
+//   - (Frame{}, 0, ErrBadSOM) — leading byte is not 0xFF. Session
+//     code should drop one byte and resync.
+//   - (Frame{}, 0, ErrUnknownCommand) — command byte not in the
+//     registry. Caller treats as a decode error (no way to peel the
+//     MESSAGE without knowing its length).
+//   - (Frame{}, 0, ErrBadChecksum) — checksum mismatch. Caller drops
+//     the frame and resyncs.
 func Unpack(buf []byte) (Frame, int, error) {
-	cmd, payload, n, err := DecodeFrame(buf)
-	if err != nil {
-		return Frame{}, 0, err
+	if len(buf) < 3 {
+		return Frame{}, 0, io.ErrUnexpectedEOF
 	}
-	return Frame{ID: CommandID(cmd), Payload: payload}, n, nil
+	if buf[0] != SOM {
+		return Frame{}, 0, ErrBadSOM
+	}
+	id := CommandID(buf[1])
+	plen, ok := PayloadLen(id)
+	if !ok {
+		return Frame{}, 0, ErrUnknownCommand
+	}
+	want := 1 + 1 + plen + 1 // SOM + cmd + payload + checksum
+	if len(buf) < want {
+		return Frame{}, 0, io.ErrUnexpectedEOF
+	}
+	payload := append([]byte(nil), buf[2:2+plen]...)
+	chk := buf[2+plen]
+
+	sumInput := make([]byte, 0, 1+plen)
+	sumInput = append(sumInput, byte(id))
+	sumInput = append(sumInput, payload...)
+	if checksum7(sumInput) != chk {
+		return Frame{}, 0, ErrBadChecksum
+	}
+	return Frame{ID: id, Payload: payload}, want, nil
 }
 
 // HexDump formats bytes as space-separated 2-digit lowercase hex — the

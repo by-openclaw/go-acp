@@ -43,13 +43,17 @@ func TestClientLoopback(t *testing.T) {
 	defer func() { _ = clientB.Close() }()
 
 	// A subscribes to events so B's unsolicited frame is captured.
+	// Use a registered command (RxConnectOnGo, 3-byte payload) so the
+	// length-aware Unpack scanner can peel the frame. Using an
+	// unregistered id here would trip ErrUnknownCommand on A's read
+	// loop and the listener would never fire.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	const tallyCmd = CommandID(0x03)
+	const sampleCmd = RxConnectOnGo
 	clientA.Subscribe(func(f Frame) {
 		defer wg.Done()
-		if f.ID != tallyCmd {
-			t.Errorf("listener got cmd %02x; want %02x", f.ID, tallyCmd)
+		if f.ID != sampleCmd {
+			t.Errorf("listener got cmd %02x; want %02x", f.ID, sampleCmd)
 		}
 		if len(f.Payload) != 3 {
 			t.Errorf("listener got payload len %d; want 3", len(f.Payload))
@@ -59,7 +63,7 @@ func TestClientLoopback(t *testing.T) {
 	// B sends an unsolicited frame to A.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	unsolicited := Frame{ID: tallyCmd, Payload: []byte{0x00, 0x01, 0x05}}
+	unsolicited := Frame{ID: sampleCmd, Payload: []byte{0x00, 0x01, 0x05}}
 	if _, err := clientB.Send(ctx, unsolicited, nil); err != nil {
 		t.Fatalf("B.Send: %v", err)
 	}

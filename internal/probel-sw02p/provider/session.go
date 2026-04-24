@@ -8,18 +8,21 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"acp/internal/probel-sw02p/codec"
 )
 
 // session is one connected SW-P-02 client. It owns the TCP socket,
 // accumulates bytes, and feeds complete frames to the server's command
-// dispatcher (a no-op in the scaffold). Reply-emitting machinery
-// (write serialiser, close-state check) is added alongside the first
-// command commit that needs it.
+// dispatcher. Reply bytes (when a handler returns a non-nil frame) are
+// serialised through writeMu so concurrent paths (future tally fan-out,
+// keepalive pings) cannot interleave on the same socket.
 type session struct {
 	srv  *server
 	conn net.Conn
+
+	writeMu sync.Mutex
 
 	closeMu sync.Mutex
 	closed  bool
@@ -27,6 +30,17 @@ type session struct {
 
 func newSession(srv *server, conn net.Conn) *session {
 	return &session{srv: srv, conn: conn}
+}
+
+// write serialises an outbound Pack(frame) onto the session's socket.
+// Safe for concurrent callers (dispatcher goroutine, future fan-out).
+// Returns the raw net.Conn.Write error untouched so callers can
+// distinguish transient vs permanent failures.
+func (s *session) write(b []byte) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	_, err := s.conn.Write(b)
+	return err
 }
 
 // run reads frames until EOF or ctx cancellation. Each decoded frame
@@ -93,11 +107,38 @@ func (s *session) run(ctx context.Context) {
 					slog.String("hex", codec.HexDump(buf[:consumed])),
 				)
 			}
+			rxAt := time.Now()
 			s.srv.metrics.ObserveCmdRx(uint8(f.ID), consumed)
 			buf = buf[consumed:]
-			// Scaffold dispatcher: every command is "unsupported" until
-			// per-command commits wire real handlers.
-			s.srv.profile.Note(UnsupportedCommand)
+
+			res, herr := s.srv.dispatch(f)
+			if herr != nil {
+				s.srv.logger.Warn("probel-sw02p handler decode",
+					slog.String("remote", s.remoteAddr()),
+					slog.Int("cmd", int(f.ID)),
+					slog.String("err", herr.Error()))
+				s.srv.profile.Note(HandlerDecodeFailed)
+				s.srv.metrics.ObserveDecodeError()
+				continue
+			}
+			if res.reply == nil {
+				// No handler (or handler declined to reply) — spec §3
+				// permits matrices to ignore unknown commands. Fire
+				// the informational event so repeated occurrences are
+				// visible.
+				s.srv.profile.Note(UnsupportedCommand)
+				continue
+			}
+
+			replyBytes := codec.Pack(*res.reply)
+			if werr := s.write(replyBytes); werr != nil {
+				s.srv.logger.Debug("probel-sw02p session write",
+					slog.String("remote", s.remoteAddr()),
+					slog.String("err", werr.Error()))
+				s.srv.profile.Note(OutboundWriteFailed)
+				return
+			}
+			s.srv.metrics.ObserveCmdTx(uint8(res.reply.ID), len(replyBytes), time.Since(rxAt))
 		}
 	}
 }
