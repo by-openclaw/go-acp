@@ -15,7 +15,9 @@ package tsl
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"net"
 
 	"acp/internal/protocol"
 )
@@ -88,18 +90,81 @@ func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
 	return &Plugin{version: f.version, logger: logger}
 }
 
-// Plugin implements protocol.Protocol for one TSL version. Scaffolding —
-// all methods return ErrNotImplemented until wire support lands.
+// NewPluginV31 constructs a v3.1-bound Plugin directly (used by tests and
+// by callers that want the concrete type rather than the interface).
+func NewPluginV31(logger *slog.Logger) *Plugin {
+	return &Plugin{version: V31, logger: logger}
+}
+
+// NewPluginV40 constructs a v4.0-bound Plugin directly.
+func NewPluginV40(logger *slog.Logger) *Plugin {
+	return &Plugin{version: V40, logger: logger}
+}
+
+// NewPluginV50 constructs a v5.0-bound Plugin directly.
+func NewPluginV50(logger *slog.Logger) *Plugin {
+	return &Plugin{version: V50, logger: logger}
+}
+
+// Plugin implements protocol.Protocol for one TSL version. For v3.1 and
+// v4.0 it opens a UDP listener; v5.0 additionally supports TCP with
+// DLE/STX wrapper (wired alongside v5 codec).
 type Plugin struct {
 	version Version
 	logger  *slog.Logger
+
+	session *udpSession
 }
 
+// Connect binds a UDP listener on (ip, port). ip may be empty for
+// bind-all. For TSL there is no handshake — the listener is ready
+// immediately after Connect returns.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
-	return protocol.ErrNotImplemented
+	if p.session != nil {
+		return fmt.Errorf("tsl %s: already connected", p.version.name())
+	}
+	addr := fmt.Sprintf("%s:%d", ip, port)
+	s := newUDPSession()
+	decode := decodeV31Payload // v3.1/v4.0 share fixed-size frame boundary; v4.0 decoder switches later
+	if p.version == V50 {
+		return fmt.Errorf("tsl v5.0 consumer: not implemented in this phase (tracked by #121)")
+	}
+	if err := s.listen(ctx, addr, decode); err != nil {
+		return err
+	}
+	p.session = s
+	return nil
 }
 
+// Disconnect closes the UDP socket and stops the read loop.
 func (p *Plugin) Disconnect() error {
+	if p.session == nil {
+		return nil
+	}
+	err := p.session.close()
+	p.session = nil
+	return err
+}
+
+// BoundAddr returns the actual listen address (useful when port 0 was
+// requested for ephemeral).
+func (p *Plugin) BoundAddr() *net.UDPAddr {
+	if p.session == nil {
+		return nil
+	}
+	return p.session.boundAddr()
+}
+
+// SubscribeV31 registers a handler for v3.1 frames. For the generic
+// protocol.Protocol.Subscribe path, see Subscribe.
+func (p *Plugin) SubscribeV31(h V31Handler) error {
+	if p.session == nil {
+		return fmt.Errorf("tsl %s: not connected", p.version.name())
+	}
+	if p.version != V31 {
+		return fmt.Errorf("tsl %s: SubscribeV31 only valid for v3.1 plugin", p.version.name())
+	}
+	p.session.subscribeV31(h)
 	return nil
 }
 
