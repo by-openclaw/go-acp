@@ -45,6 +45,13 @@ desktop.ini
 # Temp
 /tmp/
 
+# NDA-gated third-party reference — Skyline DataMiner driver XML for EVS
+# Cerebrum (DMS-DRV-7371, Copyright © Skyline Communications NV). Kept
+# locally for fact-extraction only; never committed. See
+# internal/cerebrum-northbound-api/docs/keys.md for the paraphrased,
+# NDA-safe catalogue derived from it.
+internal/cerebrum-northbound-api/assets/cerebrum.xml
+
 # Ember+ reference material (user's TypeScript lib with nested git repos)
 internal/emberplus/assets/smh/
 
