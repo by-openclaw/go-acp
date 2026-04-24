@@ -176,6 +176,15 @@ const (
 	// for the current protect status; router replies with tx 096.
 	RxExtendedProtectInterrogate CommandID = 0x65 // 101 dec
 
+	// RxExtendedProtectConnect — §3.2.66. Remote device asks the
+	// matrix to protect a destination on behalf of a given Device
+	// Number. The matrix replies with tx 097 broadcast fan-out.
+	// Authority rule (owner-only): once a destination is protected
+	// by Device N, only Device N (or a local-admin path) can modify
+	// or clear it (§3.2.60 table). ProbelOverride is remotely
+	// immutable.
+	RxExtendedProtectConnect CommandID = 0x66 // 102 dec
+
 	// TxExtendedProtectTallyDump — §3.2.64. Variable-length dump of
 	// protect-tally entries. Count byte 127 signals "controller reset"
 	// (no entries follow); 0-32 reports that many 4-byte entries. The
@@ -254,6 +263,8 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenExtendedProtectDisconnected, true
 	case RxExtendedProtectInterrogate:
 		return PayloadLenExtendedProtectInterrogate, true
+	case RxExtendedProtectConnect:
+		return PayloadLenExtendedProtectConnect, true
 	}
 	return 0, false
 }

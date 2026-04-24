@@ -290,6 +290,68 @@ func (t *tree) drainPendingGroup(m, l uint8, salvoID uint8) []pendingSlot {
 	return out
 }
 
+// protectApplyResult reports what protectApply / protectClear did.
+// Callers translate this into the tx 097 / tx 098 "Protect details"
+// byte and into compliance-event emission.
+type protectApplyResult int
+
+const (
+	// protectApplyAccepted — state updated + owner recorded. Emit
+	// tx 097 / tx 098 fan-out with the new state.
+	protectApplyAccepted protectApplyResult = iota
+	// protectApplyRejectedOwner — a different device owns this
+	// destination. Fire the unauthorized compliance event; emit
+	// tx 097 / tx 098 with the *existing* state so peers observe
+	// no-change.
+	protectApplyRejectedOwner
+	// protectApplyRejectedOverride — current state is ProbelOverride
+	// (§3.2.60 "Cannot be altered remotely"). Same observable
+	// behaviour as RejectedOwner (emit unchanged state) but the
+	// semantic is distinct for audit.
+	protectApplyRejectedOverride
+)
+
+// protectApply implements the rx 102 state machine per
+// memory/project_probel_extensions.md and §3.2.60:
+//   - current=ProbelOverride → reject (protectApplyRejectedOverride)
+//   - current=None → accept, owner=device, state=ProtectProBel (on newState)
+//   - current=Probel|OEM & device==owner → accept, update state
+//   - current=Probel|OEM & device!=owner → reject (RejectedOwner)
+//
+// newState is what the caller wants on accept (rx 102 always passes
+// ProtectProBel; admin paths can pass other states). Returns the
+// entry that should be echoed on the wire (either the updated one
+// on accept or the unchanged existing one on reject).
+func (t *tree) protectApply(dst uint16, device uint16, newState codec.ProtectState) (protectEntry, protectApplyResult) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: 0, level: 0}
+	st, ok := t.matrices[key]
+	if !ok {
+		st = &matrixState{sources: map[uint16]uint16{}}
+		t.matrices[key] = st
+	}
+	if st.protect == nil {
+		st.protect = map[uint16]protectEntry{}
+	}
+	cur, exists := st.protect[dst]
+	switch {
+	case exists && cur.State == codec.ProtectProBelOverride:
+		return cur, protectApplyRejectedOverride
+	case !exists || cur.State == codec.ProtectNone:
+		next := protectEntry{State: newState, OwnerDevice: device}
+		st.protect[dst] = next
+		return next, protectApplyAccepted
+	case cur.OwnerDevice == device:
+		next := cur
+		next.State = newState
+		st.protect[dst] = next
+		return next, protectApplyAccepted
+	default:
+		return cur, protectApplyRejectedOwner
+	}
+}
+
 // protectLookup returns the current protect entry for (matrix=0, dst).
 // Returns (zero entry, false) when no entry exists — callers treat
 // that as ProtectNone semantically.

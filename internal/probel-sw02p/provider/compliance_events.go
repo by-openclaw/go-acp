@@ -44,4 +44,23 @@ const (
 	// auditable in metrics and logs. See SW-P-08 issue #92 for the
 	// precedent on the sibling protocol.
 	SalvoEmittedConnected = "probel_sw02p_salvo_emitted_connected"
+
+	// An rx 102 PROTECT CONNECT or rx 104 PROTECT DIS-CONNECT was
+	// rejected because the requesting Device Number did not match
+	// the stored owner of the destination. Owner-only authority is
+	// defined in memory/project_probel_extensions.md: a destination
+	// protected by Device N can only be modified or cleared by
+	// Device N. The reject path still emits tx 097 / tx 098 with
+	// the unchanged state per §3.2.61 / §3.2.62 (which say the
+	// broadcast fires on both successful and unsuccessful attempts).
+	ProtectUnauthorized = "probel_sw02p_protect_unauthorized"
+
+	// An rx 102 / rx 104 targeted a destination whose current state
+	// is ProbelOverride (§3.2.60 "Cannot be altered remotely").
+	// Observable behaviour matches ProtectUnauthorized (echo
+	// unchanged state via tx 097 / tx 098), but the semantic is
+	// distinct — this is a spec-mandated hard block, not an
+	// authority mismatch. Only a local-admin path (ServerOption or
+	// REST API) can ever clear a ProbelOverride.
+	ProtectOverrideImmutable = "probel_sw02p_protect_override_immutable"
 )

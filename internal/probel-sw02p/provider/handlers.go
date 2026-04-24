@@ -48,6 +48,8 @@ func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 		return s.handleRouterConfigRequest(f)
 	case codec.RxExtendedProtectInterrogate:
 		return s.handleExtendedProtectInterrogate(f)
+	case codec.RxExtendedProtectConnect:
+		return s.handleExtendedProtectConnect(f)
 	case codec.RxExtendedConnectOnGo:
 		return s.handleExtendedConnectOnGo(f)
 	case codec.RxConnectOnGo:
