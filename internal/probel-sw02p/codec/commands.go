@@ -201,6 +201,14 @@ const (
 	// Bidirectional per §3.2.67 ("Any device issues this message").
 	RxProtectDeviceNameRequest CommandID = 0x67 // 103 dec
 
+	// RxExtendedProtectTallyDumpRequest — §3.2.69. Router asks a
+	// controller for all protect information (typically on router
+	// reinitialisation). Controller replies with one or more tx 100
+	// Extended PROTECT TALLY DUMP messages (§3.2.64) covering the
+	// requested count; the §3.2.64 per-message 32-entry cap drives
+	// multi-message fan-out for large counts.
+	RxExtendedProtectTallyDumpRequest CommandID = 0x69 // 105 dec
+
 	// TxExtendedProtectTallyDump — §3.2.64. Variable-length dump of
 	// protect-tally entries. Count byte 127 signals "controller reset"
 	// (no entries follow); 0-32 reports that many 4-byte entries. The
@@ -287,6 +295,8 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenProtectDeviceNameRequest, true
 	case TxProtectDeviceNameResponse:
 		return PayloadLenProtectDeviceNameResponse, true
+	case RxExtendedProtectTallyDumpRequest:
+		return PayloadLenExtendedProtectTallyDumpRequest, true
 	}
 	return 0, false
 }

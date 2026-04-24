@@ -86,6 +86,8 @@ func CommandName(id CommandID) string {
 		return "protect_device_name_request"
 	case TxProtectDeviceNameResponse:
 		return "protect_device_name_response"
+	case RxExtendedProtectTallyDumpRequest:
+		return "extended_protect_tally_dump_request"
 	}
 	return ""
 }
@@ -133,5 +135,6 @@ func CommandIDs() []CommandID {
 		RxExtendedProtectDisconnect,
 		RxProtectDeviceNameRequest,
 		TxProtectDeviceNameResponse,
+		RxExtendedProtectTallyDumpRequest,
 	}
 }

@@ -382,6 +382,47 @@ func (t *tree) protectClear(dst uint16, device uint16) (protectEntry, protectApp
 	}
 }
 
+// protectDumpEntry is one tuple returned by protectDump — ordered
+// pair of destination + state + owner metadata.
+type protectDumpEntry struct {
+	Destination uint16
+	Entry       protectEntry
+}
+
+// protectDump returns every (dst, entry) pair currently stored on
+// matrix 0 filtered by [startDest, ...), limited to at most count
+// entries. Used by rx 105 TALLY DUMP REQUEST to emit tx 100
+// chunks. Ordering is ascending-destination so successive calls
+// stay deterministic. count <= 0 means "all from startDest".
+func (t *tree) protectDump(startDest uint16, count int) []protectDumpEntry {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: 0, level: 0}]
+	if !ok || st.protect == nil {
+		return nil
+	}
+	keys := make([]uint16, 0, len(st.protect))
+	for k := range st.protect {
+		if k >= startDest {
+			keys = append(keys, k)
+		}
+	}
+	// Simple insertion sort — protect map stays small in practice.
+	for i := 1; i < len(keys); i++ {
+		for j := i; j > 0 && keys[j] < keys[j-1]; j-- {
+			keys[j], keys[j-1] = keys[j-1], keys[j]
+		}
+	}
+	if count > 0 && len(keys) > count {
+		keys = keys[:count]
+	}
+	out := make([]protectDumpEntry, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, protectDumpEntry{Destination: k, Entry: st.protect[k]})
+	}
+	return out
+}
+
 // protectEntriesByDevice returns every stored protect entry whose
 // OwnerDevice matches device. Used by handleProtectDeviceNameRequest
 // to discover the OwnerName string (if any) associated with a

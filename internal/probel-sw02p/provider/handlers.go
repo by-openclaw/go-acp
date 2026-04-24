@@ -54,6 +54,8 @@ func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 		return s.handleExtendedProtectDisconnect(f)
 	case codec.RxProtectDeviceNameRequest:
 		return s.handleProtectDeviceNameRequest(f)
+	case codec.RxExtendedProtectTallyDumpRequest:
+		return s.handleExtendedProtectTallyDumpRequest(f)
 	case codec.RxExtendedConnectOnGo:
 		return s.handleExtendedConnectOnGo(f)
 	case codec.RxConnectOnGo:
