@@ -251,6 +251,57 @@ See [feedback_architecture_principles] in memory.
 
 ---
 
+## Wireshark dissectors (every protocol, no exceptions)
+
+**Rule.** Every plugin MUST ship a Wireshark dissector at
+`internal/<proto>/wireshark/dissector_<proto>.lua` that **fully decodes
+every transport and every wire version the plugin implements**. Never
+delegate to Wireshark's built-in dissector for a protocol that also
+ships one of ours — consistency across protocols matters more than
+avoiding duplication with upstream. Users need to see the same
+`Protocol | Info` shape in Wireshark regardless of which dhs protocol
+they're looking at.
+
+Required coverage:
+
+1. **Every transport we implement** — UDP, TCP (length-prefix), TCP
+   (SLIP), S101, AN2, whatever the protocol uses. One dissector file,
+   multiple registrations.
+2. **Every wire version** — if the plugin registers `osc-v10` +
+   `osc-v11` or `tsl-v31` + `tsl-v40` + `tsl-v50`, the single dissector
+   decodes all of them and surfaces the version in the `Protocol`
+   column.
+3. **Every type tag / command byte / message kind** — the dissector
+   knows the full command catalogue. An unknown byte / tag fires a
+   Wireshark expert warning (`ef.ty = ftypes.EF_ERROR`), not a silent
+   fallthrough.
+4. **Per-command Info column detail** — not just the command name.
+   Show the key arguments that identify the message: for Probel SW-P-08
+   that's `matrix/level/dest/src`, for OSC that's `address | type-tag |
+   arg-count`, for ACP2 that's `slot | type | pid | stat`. If you could
+   tell two frames apart by eye in Wireshark, the Info column proves
+   it.
+
+The dissector is the **byte-exact reference** for the protocol. When
+the spec, the device, and the codec disagree, the dissector breaks the
+tie first — it's what you open before you open the Go code.
+
+Install path (manual, one-time per dev machine):
+
+| OS | Personal Lua plugin dir |
+|---|---|
+| Windows | `%APPDATA%\Wireshark\plugins\` |
+| macOS | `~/.local/lib/wireshark/plugins/` |
+| Linux | `~/.local/lib/wireshark/plugins/` |
+
+Install + filter guide in [docs/wireshark.md](docs/wireshark.md). A
+`make install-dissectors` target that copies every
+`internal/*/wireshark/*.lua` into the right place is on the backlog.
+
+See [feedback_wireshark_fully_implemented] in memory.
+
+---
+
 ## Error hierarchy
 
 ```
@@ -420,7 +471,11 @@ feedback_probel_salvo_connected] in memory.
    with `provider.Register`.
 4. Create `internal/<name>/CLAUDE.md` — wire format, command catalog,
    quirks, "what NOT to do".
-5. Drop the Wireshark dissector in `internal/<name>/wireshark/`.
+5. Write the Wireshark dissector in `internal/<name>/wireshark/dissector_<name>.lua`
+   — FULL implementation covering every transport + every wire version + every
+   command / type tag, with a per-command Info column that uniquely identifies
+   each frame. Never delegate to Wireshark's built-in, even if one exists. See
+   "Wireshark dissectors" above.
 6. Add `import _ "acp/internal/<name>/consumer"` and
    `import _ "acp/internal/<name>/provider"` to `cmd/dhs/main.go`.
 7. Unit tests live inside the package (`internal/<name>/*/*_test.go`).
