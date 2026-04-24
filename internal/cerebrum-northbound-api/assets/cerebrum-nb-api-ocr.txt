@@ -1,0 +1,905 @@
+﻿
+
+
+ [IMG] 'CEREBÄÜM¯////} 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ïƒ“ 
+ [IMG] research and development all specifications and features described in this document are subject to change without notice. MI does not warrant or assume any legal liability or responsibility for the accuracy, completeness, availability and/or delivery of the products 
+
+Contents
+		Introduction	4
+		Getting Started	4
+		Basic Commands	4
+		Message Transaction IDs	5
+		Standard Message Responses	5
+		Redundancy	5
+		Wildcard Events	6
+		IP Address or Device Name	6
+		Routing by ID or by name	6
+		Commands	7
+		LOGIN	7
+		POLL	7
+		ACTION	7
+		SUBSCRIBE/OBTAIN/UNSUBSCRIBE	8
+		UNSUBSCRIBE_ALL	8
+		DEFINITIONS	9
+		DEVICE_TYPE	9
+		LOCK	9
+		ITEM_TYPE	9
+		ACTIONS	11
+		Routing	11
+
+
+
+
+
+
+
+
+
+
+
+
+		Categories	16
+
+
+
+
+
+
+		Salvos	18
+
+
+
+
+		Device	19
+		SUBSCRIPTIONS/Obtains and EVENTS	20
+		Routing	20
+
+
+
+
+
+
+		Categories	24
+		Salvos	24
+		Devices	25
+		Data Stores	27
+		ERROR CODES	28
+		CHANGE HISTORY	29
+
+
+
+ [IMG] Before a connection can be established, several pre-requisites must be fulfilled: I. Cerebrum must be licensed for sufficient northbound connections; each websocket connection  [IMG] required functionality being absent, as a later document may be available, as the feature-set is will expand ï‚·
+ï‚·
+
+
+
+
+
+
+
+
+
+ï‚·
+
+ï‚·
+
+ï‚·
+
+
+
+
+ï‚·
+
+
+
+ï‚·
+
+ï‚·
+
+
+
+ [IMG] Implemented by the server. Additionally, requests. IDs will only be sent by Cerebrum in direct response to client ï‚·
+ï‚·
+
+
+
+
+ï‚·
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | [IMG] The server handling this message in inactive and cannot handle this command
+--END--
+
+
+ï‚·
+
+
+
+
+
+
+
+
+
+
+ [IMG] of names and IDs as is convenient for the client. Additionally, any updates will always provide both the name 
+
+
+
+
+
+
+
+
+
+
+ [IMG] This attribute will be "1" if the server 
+
+
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+--END--
+
+ [IMG] In the case of an invalid user/password or missing attributes, a possible response could be:  [IMG] <DATASTORE Files\Device.xml" / 
+
+
+
+
+
+
+
+
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+--END--
+
+ [IMG] response may be received: 
+
+
+
+
+
+
+
+
+
+ [IMG] 2.4 SUBSCRIBE/OBTAIN/UNSUBSCRIBE 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+--END--
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+--END--
+
+
+
+ [IMG] Make Route <ROUTING 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | [IMG] specified, it will assume that an "all level" route request is required, multiple route updates may be sent because of this single request. "All level" requests are not permitted on generic
+ | 
+--END--
+ [IMG] Lock Source 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | [IMG] Optional — Specify either the level name or numeric level ID. If not specified. it will assume that an "all level" request is required, multiple updates may be sent because of this single request. All level" requests are not permitted on generic devices.
+ | [IMG] The mode to set the source lock to
+ | 
+--END--
+
+ [IMG] mean Cerebrum will try to push the mnemonic to the device itself, rather than the mnemonic 
+ [IMG] Lock Destination 
+ [IMG] DEST  [IMG] LOCK=" PROTECT" 
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | [IMG] Optional — Specify either the level name or numeric level ID. If not specified, it will assume that an "all level" request is required, multiple updates may be sent because of this single request. All level" requests are not permitted on generic devices.
+ | [IMG] The mode to set the source lock to
+ | 
+--END--
+ [IMG] Level Mnemonic  [IMG] LEVEL ALT 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Source Mnemonic  [IMG] SRCE  [IMG] ON 
+
+
+ [IMG] mean Cerebrum will try to push the mnemonic to the device itself, rather than the mnemonic  [IMG] mean Cerebrum will try to push the mnemonic to the device itself, rather than the mnemonic 
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Destination Mnemonic  [IMG] DEST  [IMG] ALT 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Source Association 
+
+
+--TABLE--
+ | 
+--END--
+
+ [IMG] Optional The device type of the device in Cerebrum this source will control See DEVICE TYPE  [IMG] Optional The device type of the device in Cerebrum this source will control See DEVICE TYPE 
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Destination Association 
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+
+
+ [IMG] Source Association IP  [IMG] TARGET SENDER 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Destination Association IP 
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+
+ [IMG] Routemaster Source Tags 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Routemaster Destination Tags  [IMG] DEST LEVEL 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+
+
+
+ [IMG] Odlfy Item 
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Modi <O.ATEG tems 
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Modify Description 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Create Category <CATEGORY  [IMG] Servers "I > 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+
+
+ [IMG] Delete Category <CATEGORY 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+--END--
+ [IMG] Delete Category Item 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+--END--
+
+
+
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Save <SALVO  [IMG] GROUP="Multiviewer ' up 
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | [IMG] f this attribute is not specified a unique name will be automatically generated, such as 'Salvo 001"
+--END--
+ [IMG] Rename <SALVO  [IMG] INSTANCE—"Llne up ' 
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] Set Description  [IMG] STANCE-"Llne up" layout for line 
+
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] <SALVO 
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+--END--
+
+ [IMG] Optional Boolean to indicate whether the value attribute is a string representation of an enumeration (1 or 0, 0 by default) 
+
+
+ [IMG] T "PSU.Fan Control" VALUE="Automatic"  [IMG] MODES 
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | [IMG] Optional The CSV mode with which to modify the value if in CSV format (SET, ADD_TAIL, INSERT AT HEAD and REMOVE). SET by default
+--END--
+
+
+
+The following section details the information which can be obtained from the Cerebrum system. The TX section should be sent within a SUBSCRIBE, OBTAIN or UNSUBSCRIBE. The RX section will be received in a returned XML element, which is the same as the one sent in the TX section.
+ [IMG] DEST 
+
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+--END--
+
+
+
+--TABLE--
+ |  |  | 
+ |  |  | 
+ |  |  | 
+ |  |  | 
+ |  |  | 
+ |  |  | 
+--END--
+ [IMG] Source oc Change  [IMG] SRCE 
+
+
+--TABLE--
+ |  | 
+ |  | 
+--END--
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+--END--
+ [IMG] {Attributes as per TX} > <VALUE LOCK LOCKED UNLOCK TIME="" UNLOCK  [IMG] Destination Lock Change 
+
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+--END--
+ [IMG] <ROUTING_CHANGE {Attributes as per TX} > <LOCK AVAILABLE-"1" LOCK LOCKED UNLOCK TIME="" UNLOCK  [IMG] evel Mnemonic Change 
+
+
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+--END--
+
+
+
+ [IMG] {Attributes as per TX} > <MNE  [IMG] announced, with that alternate mnemonic level now absent, which the client should treat as mnemonic  [IMG] Source Mnemonic Change 
+
+
+
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ | [IMG] Optional - The level name or numeric level ID DEVICE) | 
+--END--
+ [IMG] <ROUTING_CHANGE {Attributes as per TX} > <MNE " 1  [IMG] 'Hybrid Router" RM LEVEL RM RM RM IP  [IMG] Destination Mnemonic Change 
+
+
+
+
+
+
+
+
+
+ [IMG] DEST 
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+--END--
+ [IMG] {Attributes as per TX} > <MNE "  [IMG] Desk"  [IMG] E NAME "Hybrid Router" 
+
+
+
+
+
+
+ [IMG] Routemaster Source Tags 
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+--END--
+ [IMG] {Attributes as per TX} > <TAGS ,Tag2"  [IMG] Routemaster Destination Tags 
+
+
+
+
+
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+--END--
+ [IMG] {Attributes as per TX} > <TAGS ,Tag2" 
+
+
+
+
+--TABLE--
+ |  | 
+ |  | 
+--END--
+ [IMG] {Attributes as per TX} > <CATEGORY LIST=" EVS,VTRs, 
+
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+--END--
+ [IMG] {Attributes as per TX} > <DETAILS AVAILABLE-"1" Sources" EVS  [IMG] <ITEM 15 
+
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+--END--
+
+
+
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+--END--
+ [IMG] T" GROUP="Multiviewer I <DETAILS layout for line up" " 
+
+
+
+
+
+
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+--END--
+ [IMG] <INSTANCE DEVICE  [IMG] <INSTANCE DEVICE 
+
+
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+--END--
+
+
+
+ [IMG] 2" NAME-"Synapse-126" TYPE-"Synapse ' <SERVICE 72.10.1.100"  [IMG] <CONNECTION PRIMARY <SUB DEVICES> //None, Up, Active 
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+ | 
+ | 
+--END--
+ [IMG] If the target object is a table, you can either index into the table in the standard way, e.g., Devices.[l], or you can specify a wildcard,  [IMG] group or table has further children. these will be ignored. The same rule applies when subscribing to objects. Using the above X as an example. if you subscribe to all table elements (using a wildcard) in the Devices table and the value of a child of a table 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--TABLE--
+ | 
+ | 
+ | 
+--END--
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ [IMG] A message type identifier was not specified 
+		
+
+--TABLE--
+ |  | 
+ |  | [IMG] he specified username or password
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | [IMG] he specified action has failed to complete
+ |  | 
+ |  | [IMG] he specified obtain has failed to complete
+ |  | 
+ |  | 
+ |  | 
+--END--
+
+
+
+
+--TABLE--
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+ |  | 
+--END--

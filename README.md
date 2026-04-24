@@ -25,6 +25,7 @@ One binary covers both directions:
 | Probel SW-P-08+ | TCP               | 2008      | 🟡 PR #84 (all §3.2 cmds; VSM+Commie+TS validated) | 🟡 PR #84 (all §3.2 cmds; multi-session tally + salvo fan-out live-validated against VSM + Commie; #92 resolved) | [internal/probel-sw08p/CLAUDE.md](internal/probel-sw08p/CLAUDE.md) |
 | Probel SW-P-02  | TCP               | —         | planned  | —        | — |
 | TSL UMD v3.1/v4/v5 | UDP push       | —         | planned  | —        | — |
+| EVS Cerebrum NB | XML over WebSocket (ws/wss) | configurable | planned (consumer-first) | deferred | [internal/cerebrum-northbound-api/assets/](internal/cerebrum-northbound-api/assets/) |
 
 Canonical JSON schema shared across all protocols:
 [docs/protocols/schema.md](docs/protocols/schema.md).
