@@ -46,6 +46,8 @@ func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 		return s.handleDualControllerStatusRequest(f)
 	case codec.RxRouterConfigRequest:
 		return s.handleRouterConfigRequest(f)
+	case codec.RxExtendedProtectInterrogate:
+		return s.handleExtendedProtectInterrogate(f)
 	case codec.RxExtendedConnectOnGo:
 		return s.handleExtendedConnectOnGo(f)
 	case codec.RxConnectOnGo:

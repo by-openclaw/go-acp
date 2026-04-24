@@ -172,6 +172,10 @@ const (
 	// PROTECT DIS-CONNECT (§3.2.68). Same layout as tx 96.
 	TxExtendedProtectDisconnected CommandID = 0x62 // 98 dec
 
+	// RxExtendedProtectInterrogate — §3.2.65. Destination-only query
+	// for the current protect status; router replies with tx 096.
+	RxExtendedProtectInterrogate CommandID = 0x65 // 101 dec
+
 	// TxExtendedProtectTallyDump — §3.2.64. Variable-length dump of
 	// protect-tally entries. Count byte 127 signals "controller reset"
 	// (no entries follow); 0-32 reports that many 4-byte entries. The
@@ -248,6 +252,8 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenExtendedProtectConnected, true
 	case TxExtendedProtectDisconnected:
 		return PayloadLenExtendedProtectDisconnected, true
+	case RxExtendedProtectInterrogate:
+		return PayloadLenExtendedProtectInterrogate, true
 	}
 	return 0, false
 }

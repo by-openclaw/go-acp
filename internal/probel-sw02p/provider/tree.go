@@ -56,6 +56,26 @@ type matrixState struct {
 	// slice = names not declared in the tree.
 	targetLabels []string
 	sourceLabels []string
+
+	// protect holds the current protect state keyed by destination.
+	// Sparse: destinations with no entry are implicitly ProtectNone.
+	// Updated by rx 102 / rx 104 handlers (enforcing the owner-only
+	// authority rule per memory/project_probel_extensions.md) and
+	// read by rx 101 / rx 105 handlers that surface the state back
+	// to controllers. OwnerName is populated lazily via the rx 103 /
+	// tx 099 name handshake — until that round-trip completes the
+	// name is "" but OwnerDevice is always set on a protected entry.
+	protect map[uint16]protectEntry
+}
+
+// protectEntry is one destination's protect state — the 2-bit state
+// from §3.2.60 plus the owner's Device Number (§3.2.66 byte 3-4) used
+// as the identity key for authority checks, and the optional human-
+// readable owner name resolved via §3.2.67 / §3.2.63.
+type protectEntry struct {
+	State       codec.ProtectState
+	OwnerDevice uint16 // Device Number used for owner-only authority checks
+	OwnerName   string // 8-char ASCII device name from tx 099, "" until handshake completes
 }
 
 // pendingSlot is one crosspoint staged by rx 05 / rx 69 CONNECT ON GO
@@ -268,6 +288,20 @@ func (t *tree) drainPendingGroup(m, l uint8, salvoID uint8) []pendingSlot {
 	out := st.pendingGroups[salvoID]
 	delete(st.pendingGroups, salvoID)
 	return out
+}
+
+// protectLookup returns the current protect entry for (matrix=0, dst).
+// Returns (zero entry, false) when no entry exists — callers treat
+// that as ProtectNone semantically.
+func (t *tree) protectLookup(dst uint16) (protectEntry, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: 0, level: 0}]
+	if !ok || st.protect == nil {
+		return protectEntry{}, false
+	}
+	e, ok := st.protect[dst]
+	return e, ok
 }
 
 // sourceLockSnapshot returns a per-source lock bitmap sized to the
