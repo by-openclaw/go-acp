@@ -107,6 +107,21 @@ const (
 	// TxExtendedConnectOnGoGroupSalvoAck — §3.2.54. Ack for rx 71,
 	// echoes the extended dst / src / SalvoID.
 	TxExtendedConnectOnGoGroupSalvoAck CommandID = 0x48 // 72 dec
+
+	// TxExtendedProtectTally — §3.2.60. Controller / router response
+	// to EXTENDED PROTECT INTERROGATE (§3.2.65) reporting the current
+	// protect status of a destination.
+	TxExtendedProtectTally CommandID = 0x60 // 96 dec
+
+	// TxExtendedProtectConnected — §3.2.61. Broadcast on all ports
+	// when protect data is altered as a result of EXTENDED PROTECT
+	// CONNECT (§3.2.66). Same layout as tx 96.
+	TxExtendedProtectConnected CommandID = 0x61 // 97 dec
+
+	// TxExtendedProtectDisconnected — §3.2.62. Broadcast on all ports
+	// when a destination is unprotected as a result of EXTENDED
+	// PROTECT DIS-CONNECT (§3.2.68). Same layout as tx 96.
+	TxExtendedProtectDisconnected CommandID = 0x62 // 98 dec
 )
 
 // PayloadLen returns the expected MESSAGE byte count for command id.
@@ -158,6 +173,12 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenExtendedConnectOnGoGroupSalvo, true
 	case TxExtendedConnectOnGoGroupSalvoAck:
 		return PayloadLenExtendedConnectOnGoGroupSalvoAck, true
+	case TxExtendedProtectTally:
+		return PayloadLenExtendedProtectTally, true
+	case TxExtendedProtectConnected:
+		return PayloadLenExtendedProtectConnected, true
+	case TxExtendedProtectDisconnected:
+		return PayloadLenExtendedProtectDisconnected, true
 	}
 	return 0, false
 }

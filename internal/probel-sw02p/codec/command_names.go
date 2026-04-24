@@ -50,6 +50,12 @@ func CommandName(id CommandID) string {
 		return "extended_connect_on_go_group_salvo"
 	case TxExtendedConnectOnGoGroupSalvoAck:
 		return "extended_connect_on_go_group_salvo_ack"
+	case TxExtendedProtectTally:
+		return "extended_protect_tally"
+	case TxExtendedProtectConnected:
+		return "extended_protect_connected"
+	case TxExtendedProtectDisconnected:
+		return "extended_protect_disconnected"
 	}
 	return ""
 }
@@ -79,5 +85,8 @@ func CommandIDs() []CommandID {
 		TxExtendedConnected,
 		RxExtendedConnectOnGoGroupSalvo,
 		TxExtendedConnectOnGoGroupSalvoAck,
+		TxExtendedProtectTally,
+		TxExtendedProtectConnected,
+		TxExtendedProtectDisconnected,
 	}
 }
