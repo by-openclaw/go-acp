@@ -51,6 +51,16 @@ const (
 	// byte adds a 3rd value (02 = no crosspoints to set / clear)
 	// over tx 13.
 	TxGoDoneGroupSalvoAck CommandID = 0x26 // 38 dec
+
+	// RxExtendedConnectOnGoGroupSalvo — §3.2.53, "Extended CONNECT
+	// ON GO GROUP SALVO Message". Like rx 35 but dst / src ranges
+	// extend to 16383 via separate Destination Multiplier (§3.2.47)
+	// + Source Multiplier (§3.2.48) bytes.
+	RxExtendedConnectOnGoGroupSalvo CommandID = 0x47 // 71 dec
+
+	// TxExtendedConnectOnGoGroupSalvoAck — §3.2.54. Ack for rx 71,
+	// echoes the extended dst / src / SalvoID.
+	TxExtendedConnectOnGoGroupSalvoAck CommandID = 0x48 // 72 dec
 )
 
 // PayloadLen returns the expected MESSAGE byte count for command id.
@@ -80,6 +90,10 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenGoGroupSalvo, true
 	case TxGoDoneGroupSalvoAck:
 		return PayloadLenGoDoneGroupSalvoAck, true
+	case RxExtendedConnectOnGoGroupSalvo:
+		return PayloadLenExtendedConnectOnGoGroupSalvo, true
+	case TxExtendedConnectOnGoGroupSalvoAck:
+		return PayloadLenExtendedConnectOnGoGroupSalvoAck, true
 	}
 	return 0, false
 }

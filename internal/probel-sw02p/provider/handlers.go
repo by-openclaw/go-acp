@@ -38,6 +38,8 @@ func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 		return s.handleConnectOnGoGroupSalvo(f)
 	case codec.RxGoGroupSalvo:
 		return s.handleGoGroupSalvo(f)
+	case codec.RxExtendedConnectOnGoGroupSalvo:
+		return s.handleExtendedConnectOnGoGroupSalvo(f)
 	}
 	return handlerResult{}, nil
 }

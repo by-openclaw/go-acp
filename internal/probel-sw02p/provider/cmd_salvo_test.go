@@ -343,6 +343,46 @@ func TestConnectOnGoGroupSalvoAppendsPerGroupAndAcks(t *testing.T) {
 	}
 }
 
+// TestExtendedConnectOnGoGroupSalvoUsesExtendedRange verifies rx 71
+// accepts dst/src > 1023 and stages them into the same SalvoID-keyed
+// buffer as rx 35, so a subsequent rx 36 GO GROUP SALVO fires both
+// narrow and extended stages together.
+func TestExtendedConnectOnGoGroupSalvoUsesExtendedRange(t *testing.T) {
+	srv := newTestServer(t)
+
+	// rx 35 (narrow, dst=5 src=6) under salvo 9.
+	if _, err := srv.dispatch(codec.EncodeConnectOnGoGroupSalvo(codec.ConnectOnGoGroupSalvoParams{
+		Destination: 5, Source: 6, SalvoID: 9,
+	})); err != nil {
+		t.Fatalf("stage narrow: %v", err)
+	}
+	// rx 71 (extended, dst=5000 src=10000) under the same salvo 9.
+	in := codec.EncodeExtendedConnectOnGoGroupSalvo(codec.ExtendedConnectOnGoGroupSalvoParams{
+		Destination: 5000, Source: 10000, SalvoID: 9,
+	})
+	res, err := srv.dispatch(in)
+	if err != nil {
+		t.Fatalf("dispatch rx 71: %v", err)
+	}
+	if res.reply == nil || res.reply.ID != codec.TxExtendedConnectOnGoGroupSalvoAck {
+		t.Fatalf("reply missing / wrong ID: %+v", res.reply)
+	}
+	ack, _ := codec.DecodeExtendedConnectOnGoGroupSalvoAck(*res.reply)
+	if ack.Destination != 5000 || ack.Source != 10000 || ack.SalvoID != 9 {
+		t.Errorf("ack = %+v; want dst=5000 src=10000 salvo=9", ack)
+	}
+
+	// Shared buffer: salvo 9 has both the narrow + extended slots.
+	state := srv.tree.matrices[matrixKey{matrix: 0, level: 0}]
+	slots := state.pendingGroups[9]
+	if len(slots) != 2 {
+		t.Fatalf("pendingGroups[9] len = %d; want 2", len(slots))
+	}
+	if slots[0].Destination != 5 || slots[1].Destination != 5000 {
+		t.Errorf("shared buffer = %+v; want [narrow dst=5, extended dst=5000]", slots)
+	}
+}
+
 // TestGoClearDropsPendingAndAcks exercises the op=Clear path:
 // pending buffer is drained without any tree mutation or tx 04
 // broadcast, and the only broadcast frame is a tx 13 with op=Clear.

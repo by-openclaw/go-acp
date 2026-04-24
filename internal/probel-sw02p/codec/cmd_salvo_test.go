@@ -321,6 +321,60 @@ func TestEncodeGoGroupSalvoByteLayout(t *testing.T) {
 	}
 }
 
+// TestEncodeExtendedConnectOnGoGroupSalvoByteLayout pins the wire
+// layout of rx 71 against §3.2.53 + §3.2.47/48. Exercises the
+// 16384-range addressing path with dst/src > 1023.
+func TestEncodeExtendedConnectOnGoGroupSalvoByteLayout(t *testing.T) {
+	// dst=5000 (DIV128=39 MOD128=8)  src=10000 (DIV128=78 MOD128=16)
+	f := EncodeExtendedConnectOnGoGroupSalvo(ExtendedConnectOnGoGroupSalvoParams{
+		Destination: 5000, Source: 10000, SalvoID: 7,
+	})
+	wire := Pack(f)
+	// DestMult=0x27 DestMod=0x08 SrcMult=0x4E SrcMod=0x10 Salvo=0x07.
+	// checksum7({47, 27, 08, 4E, 10, 07}) = (-0xDB) & 0x7F = 0x25.
+	want := []byte{SOM, 0x47, 0x27, 0x08, 0x4E, 0x10, 0x07, 0x25}
+	if !bytes.Equal(wire, want) {
+		t.Fatalf("wire\n got %X\nwant %X", wire, want)
+	}
+	parsed, _, err := Unpack(wire)
+	if err != nil {
+		t.Fatalf("Unpack: %v", err)
+	}
+	got, err := DecodeExtendedConnectOnGoGroupSalvo(parsed)
+	if err != nil {
+		t.Fatalf("DecodeExtendedConnectOnGoGroupSalvo: %v", err)
+	}
+	if got.Destination != 5000 || got.Source != 10000 || got.SalvoID != 7 {
+		t.Errorf("decoded = %+v; want dst=5000 src=10000 salvo=7", got)
+	}
+}
+
+// TestEncodeExtendedConnectOnGoGroupSalvoAckByteLayout pins tx 72
+// layout against §3.2.54 — same structure as rx 71.
+func TestEncodeExtendedConnectOnGoGroupSalvoAckByteLayout(t *testing.T) {
+	f := EncodeExtendedConnectOnGoGroupSalvoAck(ExtendedConnectOnGoGroupSalvoAckParams{
+		Destination: 5000, Source: 10000, SalvoID: 7,
+	})
+	wire := Pack(f)
+	// Same bytes as rx 71 except cmd byte 0x48 vs 0x47.
+	// checksum7({48, 27, 08, 4E, 10, 07}) = (-0xDC) & 0x7F = 0x24.
+	want := []byte{SOM, 0x48, 0x27, 0x08, 0x4E, 0x10, 0x07, 0x24}
+	if !bytes.Equal(wire, want) {
+		t.Fatalf("wire\n got %X\nwant %X", wire, want)
+	}
+	parsed, _, err := Unpack(wire)
+	if err != nil {
+		t.Fatalf("Unpack: %v", err)
+	}
+	got, err := DecodeExtendedConnectOnGoGroupSalvoAck(parsed)
+	if err != nil {
+		t.Fatalf("DecodeExtendedConnectOnGoGroupSalvoAck: %v", err)
+	}
+	if got.Destination != 5000 || got.Source != 10000 || got.SalvoID != 7 {
+		t.Errorf("decoded = %+v; want dst=5000 src=10000 salvo=7", got)
+	}
+}
+
 // TestEncodeGoDoneGroupSalvoAckByteLayout pins the wire layout of
 // tx 38 against §3.2.39. Exercises all three Result values.
 func TestEncodeGoDoneGroupSalvoAckByteLayout(t *testing.T) {
