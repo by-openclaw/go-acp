@@ -297,3 +297,70 @@ func TestEncodeConnectOnGoGroupSalvoAckByteLayout(t *testing.T) {
 		t.Errorf("decoded = %+v; want dst=1 src=2 salvo=5", got)
 	}
 }
+
+// TestEncodeGoGroupSalvoByteLayout pins the wire layout of rx 36
+// against §3.2.37. Two-byte MESSAGE: op + SalvoID.
+func TestEncodeGoGroupSalvoByteLayout(t *testing.T) {
+	f := EncodeGoGroupSalvo(GoGroupSalvoParams{Operation: GoOpSet, SalvoID: 5})
+	wire := Pack(f)
+	// checksum7({24, 00, 05}) = (-0x29) & 0x7F = 0x57.
+	want := []byte{SOM, 0x24, 0x00, 0x05, 0x57}
+	if !bytes.Equal(wire, want) {
+		t.Fatalf("wire\n got %X\nwant %X", wire, want)
+	}
+	parsed, _, err := Unpack(wire)
+	if err != nil {
+		t.Fatalf("Unpack: %v", err)
+	}
+	got, err := DecodeGoGroupSalvo(parsed)
+	if err != nil {
+		t.Fatalf("DecodeGoGroupSalvo: %v", err)
+	}
+	if got.Operation != GoOpSet || got.SalvoID != 5 {
+		t.Errorf("decoded = %+v; want op=Set salvo=5", got)
+	}
+}
+
+// TestEncodeGoDoneGroupSalvoAckByteLayout pins the wire layout of
+// tx 38 against §3.2.39. Exercises all three Result values.
+func TestEncodeGoDoneGroupSalvoAckByteLayout(t *testing.T) {
+	cases := []struct {
+		name     string
+		result   GoGroupResult
+		salvoID  uint8
+		wantWire []byte
+	}{
+		{"set", GoGroupResultSet, 5,
+			// checksum7({26, 00, 05}) = (-0x2B) & 0x7F = 0x55.
+			[]byte{SOM, 0x26, 0x00, 0x05, 0x55}},
+		{"cleared", GoGroupResultCleared, 5,
+			// checksum7({26, 01, 05}) = (-0x2C) & 0x7F = 0x54.
+			[]byte{SOM, 0x26, 0x01, 0x05, 0x54}},
+		{"empty", GoGroupResultEmpty, 5,
+			// checksum7({26, 02, 05}) = (-0x2D) & 0x7F = 0x53.
+			[]byte{SOM, 0x26, 0x02, 0x05, 0x53}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := EncodeGoDoneGroupSalvoAck(GoDoneGroupSalvoAckParams{
+				Result: tc.result, SalvoID: tc.salvoID,
+			})
+			wire := Pack(f)
+			if !bytes.Equal(wire, tc.wantWire) {
+				t.Fatalf("wire\n got %X\nwant %X", wire, tc.wantWire)
+			}
+			parsed, _, err := Unpack(wire)
+			if err != nil {
+				t.Fatalf("Unpack: %v", err)
+			}
+			got, err := DecodeGoDoneGroupSalvoAck(parsed)
+			if err != nil {
+				t.Fatalf("DecodeGoDoneGroupSalvoAck: %v", err)
+			}
+			if got.Result != tc.result || got.SalvoID != tc.salvoID {
+				t.Errorf("decoded = %+v; want result=%#x salvo=%d",
+					got, tc.result, tc.salvoID)
+			}
+		})
+	}
+}

@@ -231,9 +231,6 @@ func (t *tree) drainPending(m, l uint8) []pendingSlot {
 // appendPendingGroup stages one crosspoint into the SalvoID-keyed
 // pending buffer on (matrix, level). Auto-creates the matrixState and
 // the per-salvo slice on first use.
-//
-// drainPendingGroup lives with the rx 36 GO GROUP SALVO handler in a
-// follow-up commit so the unused-symbol lint stays clean until pair 4.
 func (t *tree) appendPendingGroup(m, l uint8, salvoID uint8, slot pendingSlot) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -247,6 +244,22 @@ func (t *tree) appendPendingGroup(m, l uint8, salvoID uint8, slot pendingSlot) {
 		st.pendingGroups = map[uint8][]pendingSlot{}
 	}
 	st.pendingGroups[salvoID] = append(st.pendingGroups[salvoID], slot)
+}
+
+// drainPendingGroup atomically empties (matrix, level)'s SalvoID-keyed
+// pending buffer and returns its contents. Returns nil if the SalvoID
+// has no staged slots — a spurious GO GROUP SALVO on an empty group
+// is legal per §3.2.37 (tx 38 ack still fires with Result=Empty).
+func (t *tree) drainPendingGroup(m, l uint8, salvoID uint8) []pendingSlot {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok || st.pendingGroups == nil {
+		return nil
+	}
+	out := st.pendingGroups[salvoID]
+	delete(st.pendingGroups, salvoID)
+	return out
 }
 
 // applyConnectLenient records a crosspoint on (matrix, level, dst)

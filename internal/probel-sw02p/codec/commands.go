@@ -41,6 +41,16 @@ const (
 	// TxConnectOnGoGroupSalvoAck — §3.2.38. Ack for rx 35 — echoes
 	// dst / src / SalvoID.
 	TxConnectOnGoGroupSalvoAck CommandID = 0x25 // 37 dec
+
+	// RxGoGroupSalvo — §3.2.37, "GO GROUP SALVO Message". Commits
+	// (op=00) or clears (op=01) the SalvoID-keyed pending buffer.
+	RxGoGroupSalvo CommandID = 0x24 // 36 dec
+
+	// TxGoDoneGroupSalvoAck — §3.2.39, "GO DONE GROUP SALVO
+	// ACKNOWLEDGE Message". Matrix confirms rx 36 execution; status
+	// byte adds a 3rd value (02 = no crosspoints to set / clear)
+	// over tx 13.
+	TxGoDoneGroupSalvoAck CommandID = 0x26 // 38 dec
 )
 
 // PayloadLen returns the expected MESSAGE byte count for command id.
@@ -66,6 +76,10 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenConnectOnGoGroupSalvo, true
 	case TxConnectOnGoGroupSalvoAck:
 		return PayloadLenConnectOnGoGroupSalvoAck, true
+	case RxGoGroupSalvo:
+		return PayloadLenGoGroupSalvo, true
+	case TxGoDoneGroupSalvoAck:
+		return PayloadLenGoDoneGroupSalvoAck, true
 	}
 	return 0, false
 }

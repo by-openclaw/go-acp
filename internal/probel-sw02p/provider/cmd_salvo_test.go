@@ -207,6 +207,95 @@ func TestGoSetEmitsConnectedPerSlotAndAck(t *testing.T) {
 	}
 }
 
+// TestGoGroupSalvoSetEmitsConnectedPerSlotAndAck exercises rx 36
+// op=Set against a populated SalvoID — every slot applied, tx 04
+// broadcast per slot, tx 38 trailer with Result=Set. Also verifies
+// the SalvoID-keyed drain doesn't touch other groups.
+func TestGoGroupSalvoSetEmitsConnectedPerSlotAndAck(t *testing.T) {
+	srv := newTestServer(t)
+
+	// Stage 2 slots under salvo 5, 1 slot under salvo 6.
+	for _, s := range []struct {
+		dst, src uint16
+		salvo    uint8
+	}{{0, 1, 5}, {1, 2, 5}, {2, 3, 6}} {
+		if _, err := srv.dispatch(codec.EncodeConnectOnGoGroupSalvo(codec.ConnectOnGoGroupSalvoParams{
+			Destination: s.dst, Source: s.src, SalvoID: s.salvo,
+		})); err != nil {
+			t.Fatalf("stage (%d,%d)@salvo%d: %v", s.dst, s.src, s.salvo, err)
+		}
+	}
+	beforeEmit := srv.profile.Snapshot()[SalvoEmittedConnected]
+
+	// Fire salvo 5 only.
+	res, err := srv.dispatch(codec.EncodeGoGroupSalvo(codec.GoGroupSalvoParams{
+		Operation: codec.GoOpSet, SalvoID: 5,
+	}))
+	if err != nil {
+		t.Fatalf("dispatch rx 36: %v", err)
+	}
+
+	// 2 × tx 04 + 1 × tx 38 = 3 broadcasts.
+	if len(res.broadcast) != 3 {
+		t.Fatalf("broadcast len = %d; want 3", len(res.broadcast))
+	}
+	for i, want := range []struct{ dst, src uint16 }{{0, 1}, {1, 2}} {
+		bf := res.broadcast[i]
+		if bf.ID != codec.TxCrosspointConnected {
+			t.Errorf("broadcast[%d] ID = %#x; want TxCrosspointConnected", i, bf.ID)
+			continue
+		}
+		got, _ := codec.DecodeConnected(bf)
+		if got.Destination != want.dst || got.Source != want.src {
+			t.Errorf("broadcast[%d] = (dst=%d src=%d); want (%d, %d)",
+				i, got.Destination, got.Source, want.dst, want.src)
+		}
+	}
+	tail := res.broadcast[2]
+	if tail.ID != codec.TxGoDoneGroupSalvoAck {
+		t.Errorf("broadcast[2] ID = %#x; want TxGoDoneGroupSalvoAck", tail.ID)
+	}
+	ack, _ := codec.DecodeGoDoneGroupSalvoAck(tail)
+	if ack.Result != codec.GoGroupResultSet || ack.SalvoID != 5 {
+		t.Errorf("ack = %+v; want Result=Set SalvoID=5", ack)
+	}
+
+	// Salvo 6 untouched — still has 1 pending slot.
+	state := srv.tree.matrices[matrixKey{matrix: 0, level: 0}]
+	if len(state.pendingGroups[6]) != 1 {
+		t.Errorf("salvo 6 touched: %d pending", len(state.pendingGroups[6]))
+	}
+	// Salvo 5 drained.
+	if _, ok := state.pendingGroups[5]; ok {
+		t.Errorf("salvo 5 not removed from map after drain")
+	}
+	afterEmit := srv.profile.Snapshot()[SalvoEmittedConnected]
+	if afterEmit != beforeEmit+2 {
+		t.Errorf("SalvoEmittedConnected %d -> %d; want +2",
+			beforeEmit, afterEmit)
+	}
+}
+
+// TestGoGroupSalvoSetEmptyReturnsEmptyResult covers the §3.2.39 third
+// status: firing an empty salvo returns Result=Empty and emits no
+// tx 04 broadcasts.
+func TestGoGroupSalvoSetEmptyReturnsEmptyResult(t *testing.T) {
+	srv := newTestServer(t)
+	res, err := srv.dispatch(codec.EncodeGoGroupSalvo(codec.GoGroupSalvoParams{
+		Operation: codec.GoOpSet, SalvoID: 99,
+	}))
+	if err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if len(res.broadcast) != 1 {
+		t.Fatalf("broadcast len = %d; want 1 (ack only)", len(res.broadcast))
+	}
+	ack, _ := codec.DecodeGoDoneGroupSalvoAck(res.broadcast[0])
+	if ack.Result != codec.GoGroupResultEmpty {
+		t.Errorf("Result = %#x; want GoGroupResultEmpty", ack.Result)
+	}
+}
+
 // TestConnectOnGoGroupSalvoAppendsPerGroupAndAcks locks in the rx 35
 // contract: one slot per frame, stashed under the declared SalvoID,
 // ack echoes dst / src / SalvoID with bad-source bit clamped to 0.
