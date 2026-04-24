@@ -32,6 +32,18 @@ const (
 	// see probel_sw02p_salvo_emitted_connected compliance event).
 	TxCrosspointConnected CommandID = 0x04
 
+	// RxStatusRequest — §3.2.9, "STATUS REQUEST Message". Controller
+	// asks the matrix for its current hardware status (LH or RH
+	// controller targeted). Matrix replies with one of the §§3.2.10-
+	// 3.2.19 status-response shapes; this plugin ships tx 09 STATUS
+	// RESPONSE - 2 (§3.2.11).
+	RxStatusRequest CommandID = 0x07
+
+	// TxStatusResponse2 — §3.2.11, "STATUS RESPONSE - 2 Message".
+	// Issued by a 5007/5107 TDM controller card in response to rx 07.
+	// Single-byte status: bit 6 idle, bit 5 bus fault, bit 4 overheat.
+	TxStatusResponse2 CommandID = 0x09
+
 	// RxConnectOnGo — §3.2.7, "CONNECT ON Go Message". Controller
 	// stages one crosspoint into the matrix's pending salvo buffer.
 	RxConnectOnGo CommandID = 0x05
@@ -95,6 +107,10 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenTally, true
 	case TxCrosspointConnected:
 		return PayloadLenConnected, true
+	case RxStatusRequest:
+		return PayloadLenStatusRequest, true
+	case TxStatusResponse2:
+		return PayloadLenStatusResponse2, true
 	case RxConnectOnGo:
 		return PayloadLenConnectOnGo, true
 	case RxGo:
