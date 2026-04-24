@@ -55,6 +55,10 @@ func (s *server) fanOut(b []byte, id codec.CommandID) {
 		targets = append(targets, sess)
 	}
 	s.mu.Unlock()
+	s.logger.Debug("probel-sw02p fanOut",
+		slog.Int("cmd", int(id)),
+		slog.Int("targets", len(targets)),
+		slog.Int("bytes", len(b)))
 	for _, sess := range targets {
 		if werr := sess.write(b); werr != nil {
 			s.logger.Debug("probel-sw02p fanOut write",

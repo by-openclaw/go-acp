@@ -121,11 +121,14 @@ func (s *session) run(ctx context.Context) {
 				s.srv.metrics.ObserveDecodeError()
 				continue
 			}
-			if res.reply == nil {
-				// No handler (or handler declined to reply) — spec §3
-				// permits matrices to ignore unknown commands. Fire
+			if res.reply == nil && len(res.broadcast) == 0 {
+				// No handler (or handler declined to respond) — spec
+				// §3 permits matrices to ignore unknown commands. Fire
 				// the informational event so repeated occurrences are
-				// visible.
+				// visible, then move on. Broadcast-only handlers (rx 06
+				// GO, rx 36 GO GROUP SALVO) legitimately have reply=nil
+				// with non-empty broadcast — those must NOT be treated
+				// as unsupported.
 				s.srv.profile.Note(UnsupportedCommand)
 				continue
 			}
