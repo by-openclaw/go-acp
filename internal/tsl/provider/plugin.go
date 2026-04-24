@@ -177,3 +177,14 @@ func (s *Server) SendV31(frame codec.V31Frame) error {
 	}
 	return s.sender.encodeAndSendV31(frame)
 }
+
+// SendV40 encodes and sends a v4.0 frame to all configured destinations.
+func (s *Server) SendV40(frame codec.V40Frame) error {
+	if s.version != V40 {
+		return fmt.Errorf("tsl %s: SendV40 only valid for v4.0 plugin", s.version.name())
+	}
+	if s.sender == nil {
+		return errors.New("tsl v4.0: not bound (call Bind or Serve first)")
+	}
+	return s.sender.encodeAndSendV40(frame)
+}

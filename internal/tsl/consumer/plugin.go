@@ -125,9 +125,16 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	s := newUDPSession()
-	decode := decodeV31Payload // v3.1/v4.0 share fixed-size frame boundary; v4.0 decoder switches later
-	if p.version == V50 {
+	var decode func(*net.UDPAddr, []byte, *udpSession)
+	switch p.version {
+	case V31:
+		decode = decodeV31Payload
+	case V40:
+		decode = decodeV40Payload
+	case V50:
 		return fmt.Errorf("tsl v5.0 consumer: not implemented in this phase (tracked by #121)")
+	default:
+		return fmt.Errorf("tsl consumer: unknown version %v", p.version)
 	}
 	if err := s.listen(ctx, addr, decode); err != nil {
 		return err
@@ -165,6 +172,18 @@ func (p *Plugin) SubscribeV31(h V31Handler) error {
 		return fmt.Errorf("tsl %s: SubscribeV31 only valid for v3.1 plugin", p.version.name())
 	}
 	p.session.subscribeV31(h)
+	return nil
+}
+
+// SubscribeV40 registers a handler for v4.0 frames.
+func (p *Plugin) SubscribeV40(h V40Handler) error {
+	if p.session == nil {
+		return fmt.Errorf("tsl %s: not connected", p.version.name())
+	}
+	if p.version != V40 {
+		return fmt.Errorf("tsl %s: SubscribeV40 only valid for v4.0 plugin", p.version.name())
+	}
+	p.session.subscribeV40(h)
 	return nil
 }
 

@@ -150,3 +150,12 @@ func (s *udpSender) encodeAndSendV31(f codec.V31Frame) error {
 	return s.sendBytes(payload)
 }
 
+// encodeAndSendV40 encodes a v4.0 frame and fans it out.
+func (s *udpSender) encodeAndSendV40(f codec.V40Frame) error {
+	payload, err := f.Encode()
+	if err != nil {
+		return fmt.Errorf("tsl v4.0 encode: %w", err)
+	}
+	return s.sendBytes(payload)
+}
+

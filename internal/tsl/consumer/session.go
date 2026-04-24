@@ -11,17 +11,26 @@ import (
 	"acp/internal/tsl/codec"
 )
 
-// FrameV31Event is delivered to registered handlers for v3.1/v4.0 frames.
-// (v4.0 frames carry a nested V31 part plus XDATA — v4.0 handlers subscribe
-// via a different callback once the v4.0 codec lands.)
+// FrameV31Event is delivered to registered v3.1 handlers.
 type FrameV31Event struct {
 	Remote *net.UDPAddr
 	Frame  codec.V31Frame
 	Raw    []byte
 }
 
+// FrameV40Event is delivered to registered v4.0 handlers. v4.0 wire
+// frames are 20-22 bytes; the nested V31 part lives on Frame.V31.
+type FrameV40Event struct {
+	Remote *net.UDPAddr
+	Frame  codec.V40Frame
+	Raw    []byte
+}
+
 // V31Handler is invoked for each received v3.1 frame.
 type V31Handler func(FrameV31Event)
+
+// V40Handler is invoked for each received v4.0 frame.
+type V40Handler func(FrameV40Event)
 
 // udpSession is a UDP listener shared across versions. Each TSL version
 // owns a decode function and a version-specific handler channel; the
@@ -32,6 +41,7 @@ type udpSession struct {
 
 	mu        sync.RWMutex
 	v31Subs   []V31Handler
+	v40Subs   []V40Handler
 	closeOnce sync.Once
 }
 
@@ -113,11 +123,29 @@ func (s *udpSession) subscribeV31(h V31Handler) {
 	s.v31Subs = append(s.v31Subs, h)
 }
 
+// subscribeV40 registers a handler for v4.0 frames.
+func (s *udpSession) subscribeV40(h V40Handler) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.v40Subs = append(s.v40Subs, h)
+}
+
 // dispatchV31 fans an event out to all v3.1 subscribers.
 func (s *udpSession) dispatchV31(ev FrameV31Event) {
 	s.mu.RLock()
 	subs := make([]V31Handler, len(s.v31Subs))
 	copy(subs, s.v31Subs)
+	s.mu.RUnlock()
+	for _, h := range subs {
+		h(ev)
+	}
+}
+
+// dispatchV40 fans an event out to all v4.0 subscribers.
+func (s *udpSession) dispatchV40(ev FrameV40Event) {
+	s.mu.RLock()
+	subs := make([]V40Handler, len(s.v40Subs))
+	copy(subs, s.v40Subs)
 	s.mu.RUnlock()
 	for _, h := range subs {
 		h(ev)
@@ -136,6 +164,26 @@ func (s *udpSession) close() error {
 		}
 	})
 	return err
+}
+
+// decodeV40Payload decodes a v4.0 frame and dispatches. Minimum size 20
+// bytes (v3.1 + CHKSUM + VBC), extra XDATA appended.
+func decodeV40Payload(remote *net.UDPAddr, pkt []byte, s *udpSession) {
+	frame, err := codec.DecodeV40(pkt)
+	if err != nil {
+		s.dispatchV40(FrameV40Event{
+			Remote: remote,
+			Frame: codec.V40Frame{
+				Notes: []codec.ComplianceNote{{
+					Kind:   "tsl_decode_error",
+					Detail: err.Error(),
+				}},
+			},
+			Raw: pkt,
+		})
+		return
+	}
+	s.dispatchV40(FrameV40Event{Remote: remote, Frame: frame, Raw: pkt})
 }
 
 // decodeV31Payload validates size + decodes a v3.1 frame and dispatches
