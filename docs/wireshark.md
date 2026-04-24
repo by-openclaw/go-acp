@@ -1,14 +1,23 @@
-# Wireshark Dissectors for ACP1, ACP2, and Ember+
+# Wireshark Dissectors for ACP1, ACP2, Ember+, and OSC (SLIP)
 
-This repository ships three Lua dissectors so you can inspect live or captured
-traffic from the CLI (`acp walk`, `acp extract`, `acp watch`, ...) in Wireshark
-without having to decode frames by hand.
+This repository ships Lua dissectors so you can inspect live or captured
+traffic from the CLI (`dhs consumer <proto> walk`, `dhs producer serve`, ...)
+in Wireshark without having to decode frames by hand.
 
 | Protocol | Transport          | Default ports | Lua file                                  |
 |----------|--------------------|---------------|-------------------------------------------|
 | ACP1     | UDP / TCP direct   | 2071          | [`internal/acp1/assets/dissector_acpv1.lua`](../internal/acp1/assets/dissector_acpv1.lua) |
 | ACP2     | AN2 over TCP       | 2072          | [`internal/acp2/assets/dissector_acp2.lua`](../internal/acp2/assets/dissector_acp2.lua)   |
 | Ember+   | S101 over TCP      | 9000 / 9090 / 9092 | [`internal/emberplus/assets/dissector_emberplus.lua`](../internal/emberplus/assets/dissector_emberplus.lua) |
+| OSC 1.1 SLIP (TCP) | DLE/STX-free, RFC 1055 double-END | 8000 (configurable) | [`internal/osc/wireshark/dissector_osc_slip.lua`](../internal/osc/wireshark/dissector_osc_slip.lua) |
+
+**OSC UDP + OSC 1.0 TCP (length-prefix)** are handled by Wireshark's built-in
+`osc` dissector — no custom Lua needed. Enable via **Analyze → Decode As…**
+or Wireshark **Preferences → Protocols → OSC** (set the UDP/TCP ports).
+The supplementary `dissector_osc_slip.lua` only handles the OSC 1.1 SLIP
+framing on TCP (which Wireshark built-in does not unstuff); it un-stuffs
+then delegates to the built-in OSC dissector for the actual message/bundle
+parse.
 
 All three target **Wireshark 4.x** (Lua 5.2+). They install the same way.
 
