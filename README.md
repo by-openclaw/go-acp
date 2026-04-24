@@ -23,7 +23,7 @@ One binary covers both directions:
 | ACP2            | AN2/TCP           | 2072      | ✅       | 🟡 PR #76 (5/6 types Lawo-validated; Enum parked in #79) | [internal/acp2/CLAUDE.md](internal/acp2/CLAUDE.md) · [internal/acp2/docs/consumer.md](internal/acp2/docs/consumer.md) |
 | Ember+          | S101/TCP          | 9000-9092 | ✅       | ✅       | [internal/emberplus/CLAUDE.md](internal/emberplus/CLAUDE.md) · [internal/emberplus/docs/consumer.md](internal/emberplus/docs/consumer.md) |
 | Probel SW-P-08+ | TCP               | 2008      | 🟡 PR #84 (all §3.2 cmds; VSM+Commie+TS validated) | 🟡 PR #84 (all §3.2 cmds; multi-session tally + salvo fan-out live-validated against VSM + Commie; #92 resolved) | [internal/probel-sw08p/CLAUDE.md](internal/probel-sw08p/CLAUDE.md) |
-| Probel SW-P-02  | TCP               | —         | planned  | —        | — |
+| Probel SW-P-02  | TCP               | 2002      | 🟡 PR #106 (salvo §3.2.7/8/14/15/36-39/53/54 + tx 04 fan-out; VSM-supported bulk + Wireshark pending; non-VSM cmds gated per-seq) | 🟡 PR #106 (same) | [internal/probel-sw02p/CLAUDE.md](internal/probel-sw02p/CLAUDE.md) |
 | TSL UMD v3.1/v4/v5 | UDP push       | —         | planned  | —        | — |
 
 Canonical JSON schema shared across all protocols:

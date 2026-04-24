@@ -43,7 +43,15 @@ tests/                          unit / integration / smoke / fixtures
 docs/                           cross-cutting architecture, connector, schema
 ```
 
-`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p}`.
+`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p}`.
+
+The `probel-sw02p` plugin is partial — PR #106 ships the salvo
+family only. The rest of the VSM-supported command set lands as a
+follow-up bulk drop; every command OUTSIDE the VSM set needs
+explicit per-command user approval from the numbered queue in
+`memory/project_probel_sw02p_cmd_queue.md`. Never write code for
+any non-VSM SW-P-02 command without a `approve seq N` from the
+user. See `internal/probel-sw02p/CLAUDE.md` for the scope table.
 
 ---
 

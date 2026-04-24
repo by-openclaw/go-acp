@@ -56,13 +56,56 @@ SOM  COMMAND  MESSAGE  CHECKSUM
   does not auto-emit control bytes. Any peer confirmation is delivered
   via regular application commands registered per-command.
 
-## Commands implemented
+## Implementation scope (locked 2026-04-24)
 
-Empty table for now — commands land in subsequent per-command commits.
+The SW-P-02 plugin ships **only the commands VSM's SW-P-02 driver
+supports**, bilaterally (codec + consumer rx + provider tx). Every
+command **outside** the VSM set needs explicit per-command approval
+from the user before code lands, referenced by sequence number from
+`memory/project_probel_sw02p_cmd_queue.md`.
 
-| Dec | Dir | Name |
-|----:|:---:|------|
-|  —  |  —  | —    |
+Authoritative VSM driver page:
+https://docs.lawo.com/vsm-ip-broadcast-control-system/vsm-interface-driver-and-application-details/driver-supported-protocol-driver/driver-pro-bel-sw-p-02-generic
+
+### VSM-supported bytes (approved bulk)
+
+| Byte | § | Name | PR |
+|-----:|---|------|:--:|
+|  01 | 3.2.3 | INTERROGATE | ⏳ |
+|  02 | 3.2.4 | CONNECT | ⏳ |
+|  03 | 3.2.5 | TALLY | ⏳ |
+|  04 | 3.2.6 | CONNECTED | #106 (salvo fan-out) |
+|  07 | 3.2.9 | STATUS REQUEST | ⏳ |
+|  09 | 3.2.11 | STATUS RESPONSE - 2 | ⏳ |
+|  65 | 3.2.47 | Extended INTERROGATE | ⏳ |
+|  66 | 3.2.48 | Extended CONNECT | ⏳ |
+|  67 | 3.2.49 | Extended TALLY | ⏳ |
+|  68 | 3.2.50 | Extended CONNECTED | ⏳ |
+|  96 | 3.2.60 | Extended PROTECT TALLY | ⏳ |
+|  97 | 3.2.61 | Extended PROTECT CONNECTED | ⏳ |
+|  98 | 3.2.62 | Extended PROTECT DIS-CONNECTED | ⏳ |
+| 100 | 3.2.64 | Extended PROTECT TALLY DUMP | ⏳ |
+
+### Already landed (salvo — approved via "take salvo" directive)
+
+| Byte | § | Name | PR |
+|-----:|---|------|:--:|
+|  05 | 3.2.7 | CONNECT ON GO | #106 |
+|  06 | 3.2.8 | GO | #106 |
+|  12 | 3.2.14 | CONNECT ON GO ACKNOWLEDGE | #106 |
+|  13 | 3.2.15 | GO DONE ACKNOWLEDGE | #106 |
+|  35 | 3.2.36 | CONNECT ON GO GROUP SALVO | #106 |
+|  36 | 3.2.37 | GO GROUP SALVO | #106 |
+|  37 | 3.2.38 | CONNECT ON GO GROUP SALVO ACKNOWLEDGE | #106 |
+|  38 | 3.2.39 | GO DONE GROUP SALVO ACKNOWLEDGE | #106 |
+|  71 | 3.2.53 | Extended CONNECT ON GO GROUP SALVO | #106 |
+|  72 | 3.2.54 | Extended CONNECT ON GO GROUP SALVO ACKNOWLEDGE | #106 |
+
+### Non-VSM queue (per-command approval required)
+
+50 numbered commands not in the VSM set. See
+`memory/project_probel_sw02p_cmd_queue.md`. Never write code for any
+of these without explicit `approve seq N` from the user.
 
 ## Testbed
 
