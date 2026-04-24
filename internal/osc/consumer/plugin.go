@@ -16,7 +16,9 @@ package osc
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"net"
 
 	"acp/internal/protocol"
 )
@@ -87,18 +89,61 @@ func NewPluginV11(logger *slog.Logger) *Plugin {
 	return &Plugin{version: V11, logger: logger}
 }
 
-// Plugin implements protocol.Protocol for one OSC version. Scaffolding —
-// wire implementations land per-phase on feat/osc-plugin.
+// Plugin implements protocol.Protocol for one OSC version. Connect
+// opens a UDP listener on (ip, port); TCP transports (length-prefix for
+// v1.0, SLIP for v1.1) are wired via separate ConnectTCP* methods.
 type Plugin struct {
 	version Version
 	logger  *slog.Logger
+
+	udp *udpSession
 }
 
+// Connect binds a UDP listener on (ip, port). For TSL there is no
+// handshake — the listener is ready immediately after Connect returns.
+// SO_REUSEADDR is set so multi-listener deployments work (same
+// behaviour as ACP1 / TSL).
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
-	return protocol.ErrNotImplemented
+	if p.udp != nil {
+		return fmt.Errorf("osc %s: already connected", p.version.name())
+	}
+	addr := fmt.Sprintf("%s:%d", ip, port)
+	s := newUDPSession()
+	if err := s.listen(ctx, addr); err != nil {
+		return err
+	}
+	p.udp = s
+	return nil
 }
 
+// Disconnect closes the UDP listener and stops the read loop.
 func (p *Plugin) Disconnect() error {
+	if p.udp == nil {
+		return nil
+	}
+	err := p.udp.close()
+	p.udp = nil
+	return err
+}
+
+// BoundAddr returns the actual UDP listen address (ephemeral-port
+// resolution when (ip, port) had port==0).
+func (p *Plugin) BoundAddr() *net.UDPAddr {
+	if p.udp == nil {
+		return nil
+	}
+	return p.udp.boundAddr()
+}
+
+// SubscribePattern registers a handler for messages whose address
+// matches the pattern. Empty pattern matches any address; exact
+// addresses and `/prefix/*` glob are supported. The full OSC pattern
+// language is a follow-up.
+func (p *Plugin) SubscribePattern(pattern string, h Handler) error {
+	if p.udp == nil {
+		return fmt.Errorf("osc %s: not connected", p.version.name())
+	}
+	p.udp.subscribe(pattern, h)
 	return nil
 }
 
