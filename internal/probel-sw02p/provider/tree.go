@@ -262,6 +262,21 @@ func (t *tree) drainPendingGroup(m, l uint8, salvoID uint8) []pendingSlot {
 	return out
 }
 
+// lookupSource returns the currently-routed source for (matrix, level,
+// dst). The second return is true when the tree has a recorded route;
+// callers encode the §3.2.5 "destination out of range" sentinel
+// (codec.DestOutOfRangeSource) when ok = false.
+func (t *tree) lookupSource(m, l uint8, dst uint16) (uint16, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return 0, false
+	}
+	src, ok := st.sources[dst]
+	return src, ok
+}
+
 // applyConnectLenient records a crosspoint on (matrix, level, dst)
 // without rejecting out-of-range indices — used by the salvo commit
 // path where the tree may not have declared target/source counts yet.

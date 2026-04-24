@@ -11,6 +11,16 @@ package codec
 // All constants are decimal per §3 ("command byte numbers are in
 // decimal" — spec §3, issue 26 change log note 4).
 const (
+	// RxInterrogate — §3.2.3, "INTERROGATE Message". Controller asks
+	// the matrix which source is routed to a destination; the matrix
+	// replies with tx 03 TALLY.
+	RxInterrogate CommandID = 0x01
+
+	// TxTally — §3.2.5, "TALLY Message". Matrix replies to rx 01
+	// INTERROGATE. Source = 1023 signals "destination out of range"
+	// per §3.2.5.
+	TxTally CommandID = 0x03
+
 	// TxCrosspointConnected — §3.2.6, "CONNECTED Message". Matrix
 	// broadcasts on all ports after a route is set, including one per
 	// slot on salvo commit (§3.2.8 "no CONNECTED" note is overridden;
@@ -72,6 +82,10 @@ const (
 // in command-byte order.
 func PayloadLen(id CommandID) (int, bool) {
 	switch id {
+	case RxInterrogate:
+		return PayloadLenInterrogate, true
+	case TxTally:
+		return PayloadLenTally, true
 	case TxCrosspointConnected:
 		return PayloadLenConnected, true
 	case RxConnectOnGo:

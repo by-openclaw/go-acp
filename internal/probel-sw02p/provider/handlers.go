@@ -30,6 +30,8 @@ type handlerResult struct {
 // §3.2 table. Every new cmd_rxNNN_xxx.go adds one case here.
 func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 	switch f.ID {
+	case codec.RxInterrogate:
+		return s.handleInterrogate(f)
 	case codec.RxConnectOnGo:
 		return s.handleConnectOnGo(f)
 	case codec.RxGo:
