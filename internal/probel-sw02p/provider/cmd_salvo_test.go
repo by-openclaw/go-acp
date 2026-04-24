@@ -116,3 +116,134 @@ func TestDispatchUnsupportedCommandNoop(t *testing.T) {
 		t.Errorf("got reply for unsupported cmd; want none")
 	}
 }
+
+// TestGoSetEmitsConnectedPerSlotAndAck is the behavioural contract
+// for rx 06 GO op=Set (§3.2.8) on this provider:
+//
+//  1. Every staged (dst, src) in the pending buffer is applied to the
+//     tree via applyConnectLenient.
+//  2. Every APPLIED slot yields one tx 04 CONNECTED broadcast frame.
+//  3. A trailing tx 13 GO DONE ACKNOWLEDGE with op=Set completes the
+//     broadcast. No per-originator reply — broadcast goes to all.
+//  4. Pending buffer is drained (empty afterwards).
+//  5. Profile.SalvoEmittedConnected increments once per applied slot
+//     to mark the §3.2.8 deviation.
+//
+// This is the SW-P-08 issue #92 pattern applied to SW-P-02 — real
+// controllers never implement the §3.2.8 listener path; they rely on
+// tx 04 broadcasts per §3.2.6.
+func TestGoSetEmitsConnectedPerSlotAndAck(t *testing.T) {
+	srv := newTestServer(t)
+
+	// Stage three crosspoints on the default (matrix=0, level=0).
+	for _, s := range []struct{ dst, src uint16 }{{0, 1}, {1, 2}, {2, 3}} {
+		if _, err := srv.dispatch(codec.EncodeConnectOnGo(codec.ConnectOnGoParams{
+			Destination: s.dst, Source: s.src,
+		})); err != nil {
+			t.Fatalf("stage slot (%d,%d): %v", s.dst, s.src, err)
+		}
+	}
+	beforeEmit := srv.profile.Snapshot()[SalvoEmittedConnected]
+
+	// rx 06 GO op=Set.
+	res, err := srv.dispatch(codec.EncodeGo(codec.GoParams{Operation: codec.GoOpSet}))
+	if err != nil {
+		t.Fatalf("dispatch rx 06: %v", err)
+	}
+	if res.reply != nil {
+		t.Errorf("GO returned a point-to-point reply; §3.2.15 requires broadcast only")
+	}
+
+	// 3 × tx 04 + 1 × tx 13 = 4 broadcast frames, in order.
+	if len(res.broadcast) != 4 {
+		t.Fatalf("broadcast len = %d; want 4 (3 tx04 + 1 tx13)", len(res.broadcast))
+	}
+	wantDstSrc := []struct{ dst, src uint16 }{{0, 1}, {1, 2}, {2, 3}}
+	for i, want := range wantDstSrc {
+		bf := res.broadcast[i]
+		if bf.ID != codec.TxCrosspointConnected {
+			t.Errorf("broadcast[%d] ID = %#x; want TxCrosspointConnected", i, bf.ID)
+			continue
+		}
+		got, derr := codec.DecodeConnected(bf)
+		if derr != nil {
+			t.Errorf("broadcast[%d] decode: %v", i, derr)
+			continue
+		}
+		if got.Destination != want.dst || got.Source != want.src {
+			t.Errorf("broadcast[%d] = (dst=%d src=%d); want (dst=%d src=%d)",
+				i, got.Destination, got.Source, want.dst, want.src)
+		}
+	}
+
+	tail := res.broadcast[3]
+	if tail.ID != codec.TxGoDoneAck {
+		t.Errorf("broadcast[3] ID = %#x; want TxGoDoneAck", tail.ID)
+	}
+	ack, err := codec.DecodeGoDoneAck(tail)
+	if err != nil {
+		t.Fatalf("decode tx 13: %v", err)
+	}
+	if ack.Operation != codec.GoOpSet {
+		t.Errorf("tx 13 op = %#x; want GoOpSet", ack.Operation)
+	}
+
+	// Tree reflects the applied crosspoints.
+	state := srv.tree.matrices[matrixKey{matrix: 0, level: 0}]
+	for _, want := range wantDstSrc {
+		if got, ok := state.sources[want.dst]; !ok || got != want.src {
+			t.Errorf("tree[%d] = (%d, ok=%v); want (%d, true)", want.dst, got, ok, want.src)
+		}
+	}
+	if len(state.pending) != 0 {
+		t.Errorf("pending not drained: %d slots remain", len(state.pending))
+	}
+
+	// Compliance counter moved by exactly 3.
+	afterEmit := srv.profile.Snapshot()[SalvoEmittedConnected]
+	if afterEmit != beforeEmit+3 {
+		t.Errorf("SalvoEmittedConnected %d -> %d; want +3",
+			beforeEmit, afterEmit)
+	}
+}
+
+// TestGoClearDropsPendingAndAcks exercises the op=Clear path:
+// pending buffer is drained without any tree mutation or tx 04
+// broadcast, and the only broadcast frame is a tx 13 with op=Clear.
+func TestGoClearDropsPendingAndAcks(t *testing.T) {
+	srv := newTestServer(t)
+
+	// Stage one slot.
+	if _, err := srv.dispatch(codec.EncodeConnectOnGo(codec.ConnectOnGoParams{
+		Destination: 0, Source: 1,
+	})); err != nil {
+		t.Fatalf("stage: %v", err)
+	}
+	beforeEmit := srv.profile.Snapshot()[SalvoEmittedConnected]
+
+	res, err := srv.dispatch(codec.EncodeGo(codec.GoParams{Operation: codec.GoOpClear}))
+	if err != nil {
+		t.Fatalf("dispatch rx 06 clear: %v", err)
+	}
+	if len(res.broadcast) != 1 {
+		t.Fatalf("broadcast len = %d; want 1 (tx13 only)", len(res.broadcast))
+	}
+	if res.broadcast[0].ID != codec.TxGoDoneAck {
+		t.Errorf("broadcast ID = %#x; want TxGoDoneAck", res.broadcast[0].ID)
+	}
+	ack, _ := codec.DecodeGoDoneAck(res.broadcast[0])
+	if ack.Operation != codec.GoOpClear {
+		t.Errorf("tx 13 op = %#x; want GoOpClear", ack.Operation)
+	}
+
+	state := srv.tree.matrices[matrixKey{matrix: 0, level: 0}]
+	if len(state.sources) != 0 {
+		t.Errorf("clear path mutated tree: %d crosspoints", len(state.sources))
+	}
+	if len(state.pending) != 0 {
+		t.Errorf("pending not drained: %d slots", len(state.pending))
+	}
+	if afterEmit := srv.profile.Snapshot()[SalvoEmittedConnected]; afterEmit != beforeEmit {
+		t.Errorf("SalvoEmittedConnected moved on clear: %d -> %d", beforeEmit, afterEmit)
+	}
+}

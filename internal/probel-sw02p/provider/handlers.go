@@ -1,16 +1,23 @@
 package probelsw02p
 
 import (
+	"log/slog"
+
 	"acp/internal/probel-sw02p/codec"
 )
 
 // handlerResult is what a per-command handler returns. The dispatcher
-// writes `reply` back to the originating session when non-nil. Future
-// commands (salvo GO, tally-dump) may add broadcast / streaming
-// fields; keep them off this struct until the first commit that needs
-// them, mirroring SW-P-08's incremental growth.
+// writes `reply` back to the originating session when non-nil, then
+// fan-outs every frame in `broadcast` to every connected session
+// (including the originator — §3.2.6 CONNECTED is "issued on ALL
+// ports", which includes the one that sent the triggering command).
 type handlerResult struct {
-	reply *codec.Frame // non-nil → session writes Pack(reply) back to the peer
+	reply *codec.Frame // non-nil → session writes Pack(reply) to the peer
+
+	// broadcast frames are emitted to every connected session via
+	// server.fanOut. Used for tx 04 CONNECTED emissions on salvo
+	// commit, tx 13 GO DONE, and future tally paths.
+	broadcast []codec.Frame
 }
 
 // dispatch routes a decoded Frame to its per-command handler. Unknown
@@ -25,6 +32,32 @@ func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 	switch f.ID {
 	case codec.RxConnectOnGo:
 		return s.handleConnectOnGo(f)
+	case codec.RxGo:
+		return s.handleGo(f)
 	}
 	return handlerResult{}, nil
+}
+
+// fanOut writes raw wire bytes to every live session. Used by the
+// dispatcher after a handler's broadcast field is populated. Write
+// failures are logged but never abort the fan-out — one slow peer
+// must not block broadcast delivery to healthy peers.
+func (s *server) fanOut(b []byte, id codec.CommandID) {
+	s.mu.Lock()
+	targets := make([]*session, 0, len(s.sessions))
+	for sess := range s.sessions {
+		targets = append(targets, sess)
+	}
+	s.mu.Unlock()
+	for _, sess := range targets {
+		if werr := sess.write(b); werr != nil {
+			s.logger.Debug("probel-sw02p fanOut write",
+				slog.String("remote", sess.remoteAddr()),
+				slog.Int("cmd", int(id)),
+				slog.String("err", werr.Error()))
+			s.profile.Note(OutboundWriteFailed)
+			continue
+		}
+		s.metrics.ObserveCmdTx(uint8(id), len(b), 0)
+	}
 }

@@ -151,3 +151,94 @@ func TestDecodeConnectOnGoAckRejectsWrongID(t *testing.T) {
 		t.Errorf("got %v; want ErrWrongCommand", err)
 	}
 }
+
+// TestEncodeConnectedByteLayout pins the wire layout of tx 04
+// CONNECTED against SW-P-02 §3.2.6 + §3.2.3. Same Multiplier layout
+// as rx 05 / tx 12 — cross-check with those tests.
+func TestEncodeConnectedByteLayout(t *testing.T) {
+	f := EncodeConnected(ConnectedParams{Destination: 1, Source: 2})
+	wire := Pack(f)
+	// Multiplier=0x00 Dst=0x01 Src=0x02.
+	// checksum7({04, 00, 01, 02}) = (-0x07) & 0x7F = 0x79.
+	want := []byte{SOM, 0x04, 0x00, 0x01, 0x02, 0x79}
+	if !bytes.Equal(wire, want) {
+		t.Fatalf("wire\n got %X\nwant %X", wire, want)
+	}
+	parsed, _, err := Unpack(wire)
+	if err != nil {
+		t.Fatalf("Unpack: %v", err)
+	}
+	got, err := DecodeConnected(parsed)
+	if err != nil {
+		t.Fatalf("DecodeConnected: %v", err)
+	}
+	if got.Destination != 1 || got.Source != 2 {
+		t.Errorf("decoded = %+v; want dst=1 src=2", got)
+	}
+}
+
+// TestEncodeGoByteLayout pins the wire layout of rx 06 GO against
+// §3.2.8. One-byte MESSAGE: 00 = set, 01 = clear.
+func TestEncodeGoByteLayout(t *testing.T) {
+	cases := []struct {
+		name     string
+		op       GoOperation
+		wantWire []byte
+	}{
+		{
+			name: "set",
+			op:   GoOpSet,
+			// checksum7({06, 00}) = (-0x06) & 0x7F = 0x7A.
+			wantWire: []byte{SOM, 0x06, 0x00, 0x7A},
+		},
+		{
+			name: "clear",
+			op:   GoOpClear,
+			// checksum7({06, 01}) = (-0x07) & 0x7F = 0x79.
+			wantWire: []byte{SOM, 0x06, 0x01, 0x79},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := EncodeGo(GoParams{Operation: tc.op})
+			wire := Pack(f)
+			if !bytes.Equal(wire, tc.wantWire) {
+				t.Fatalf("wire\n got %X\nwant %X", wire, tc.wantWire)
+			}
+			parsed, _, err := Unpack(wire)
+			if err != nil {
+				t.Fatalf("Unpack: %v", err)
+			}
+			got, err := DecodeGo(parsed)
+			if err != nil {
+				t.Fatalf("DecodeGo: %v", err)
+			}
+			if got.Operation != tc.op {
+				t.Errorf("op = %#x; want %#x", got.Operation, tc.op)
+			}
+		})
+	}
+}
+
+// TestEncodeGoDoneAckByteLayout pins the wire layout of tx 13 GO DONE
+// ACKNOWLEDGE against §3.2.15. One-byte MESSAGE mirrors rx 06 op.
+func TestEncodeGoDoneAckByteLayout(t *testing.T) {
+	f := EncodeGoDoneAck(GoDoneAckParams{Operation: GoOpSet})
+	wire := Pack(f)
+	// checksum7({0D, 00}) = (-0x0D) & 0x7F = 0x73.
+	want := []byte{SOM, 0x0D, 0x00, 0x73}
+	if !bytes.Equal(wire, want) {
+		t.Fatalf("wire\n got %X\nwant %X", wire, want)
+	}
+	parsed, _, err := Unpack(wire)
+	if err != nil {
+		t.Fatalf("Unpack: %v", err)
+	}
+	got, err := DecodeGoDoneAck(parsed)
+	if err != nil {
+		t.Fatalf("DecodeGoDoneAck: %v", err)
+	}
+	if got.Operation != GoOpSet {
+		t.Errorf("op = %#x; want GoOpSet", got.Operation)
+	}
+}

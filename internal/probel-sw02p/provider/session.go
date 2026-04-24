@@ -130,15 +130,25 @@ func (s *session) run(ctx context.Context) {
 				continue
 			}
 
-			replyBytes := codec.Pack(*res.reply)
-			if werr := s.write(replyBytes); werr != nil {
-				s.srv.logger.Debug("probel-sw02p session write",
-					slog.String("remote", s.remoteAddr()),
-					slog.String("err", werr.Error()))
-				s.srv.profile.Note(OutboundWriteFailed)
-				return
+			if res.reply != nil {
+				replyBytes := codec.Pack(*res.reply)
+				if werr := s.write(replyBytes); werr != nil {
+					s.srv.logger.Debug("probel-sw02p session write",
+						slog.String("remote", s.remoteAddr()),
+						slog.String("err", werr.Error()))
+					s.srv.profile.Note(OutboundWriteFailed)
+					return
+				}
+				s.srv.metrics.ObserveCmdTx(uint8(res.reply.ID), len(replyBytes), time.Since(rxAt))
 			}
-			s.srv.metrics.ObserveCmdTx(uint8(res.reply.ID), len(replyBytes), time.Since(rxAt))
+
+			// Broadcast frames go to every connected session, including
+			// this one. §3.2.6 CONNECTED + §3.2.15 GO DONE ACK both
+			// require "all ports" delivery.
+			for i := range res.broadcast {
+				bf := &res.broadcast[i]
+				s.srv.fanOut(codec.Pack(*bf), bf.ID)
+			}
 		}
 	}
 }

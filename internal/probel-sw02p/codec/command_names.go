@@ -10,10 +10,16 @@ package codec
 // command-byte order.
 func CommandName(id CommandID) string {
 	switch id {
+	case TxCrosspointConnected:
+		return "crosspoint_connected"
 	case RxConnectOnGo:
 		return "connect_on_go"
+	case RxGo:
+		return "go"
 	case TxConnectOnGoAck:
 		return "connect_on_go_ack"
+	case TxGoDoneAck:
+		return "go_done_ack"
 	}
 	return ""
 }
@@ -23,7 +29,10 @@ func CommandName(id CommandID) string {
 // registration should treat the result as a set.
 func CommandIDs() []CommandID {
 	return []CommandID{
+		TxCrosspointConnected,
 		RxConnectOnGo,
+		RxGo,
 		TxConnectOnGoAck,
+		TxGoDoneAck,
 	}
 }

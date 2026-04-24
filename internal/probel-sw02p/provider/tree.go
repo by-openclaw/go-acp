@@ -202,3 +202,46 @@ func (t *tree) appendPending(m, l uint8, slot pendingSlot) {
 	}
 	st.pending = append(st.pending, slot)
 }
+
+// drainPending atomically empties (matrix, level)'s pending buffer and
+// returns its contents. Used by handleGo on both op=set (apply each
+// slot and broadcast) and op=clear (just discard). Returns nil if no
+// matrixState exists for the key — a spurious GO on an unknown matrix
+// is a no-op rather than an error.
+func (t *tree) drainPending(m, l uint8) []pendingSlot {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return nil
+	}
+	out := st.pending
+	st.pending = nil
+	return out
+}
+
+// applyConnectLenient records a crosspoint on (matrix, level, dst)
+// without rejecting out-of-range indices — used by the salvo commit
+// path where the tree may not have declared target/source counts yet.
+// When the matrix is unknown, auto-creates it; when target/source
+// counts are non-zero, silently skips slots outside those counts so a
+// rogue CONNECT ON GO cannot corrupt the state of a well-defined
+// tree. Returns true if the crosspoint was recorded, false if skipped.
+func (t *tree) applyConnectLenient(m, l uint8, dst, src uint16) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: m, level: l}
+	st, ok := t.matrices[key]
+	if !ok {
+		st = &matrixState{sources: map[uint16]uint16{}}
+		t.matrices[key] = st
+	}
+	if st.targetCount > 0 && int(dst) >= st.targetCount {
+		return false
+	}
+	if st.sourceCount > 0 && int(src) >= st.sourceCount {
+		return false
+	}
+	st.sources[dst] = src
+	return true
+}

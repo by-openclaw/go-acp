@@ -33,4 +33,15 @@ const (
 	// the session's write returned an error. Non-fatal: the session
 	// logs + drops; the server keeps accepting new connections.
 	OutboundWriteFailed = "probel_sw02p_outbound_write_failed"
+
+	// Fired once per slot when handleGo / handleGroupGo emits tx 04
+	// CROSSPOINT CONNECTED on salvo commit. §3.2.8 / §3.2.37 both
+	// specify "No individual CONNECTED messages are issued" and ask
+	// controllers to re-INTERROGATE, but no real controller (Lawo VSM,
+	// Commie) implements that listener path — both update their
+	// tally UI exclusively from tx 04 broadcasts per §3.2.6. The
+	// deviation fires once per emitted slot so every occurrence is
+	// auditable in metrics and logs. See SW-P-08 issue #92 for the
+	// precedent on the sibling protocol.
+	SalvoEmittedConnected = "probel_sw02p_salvo_emitted_connected"
 )

@@ -11,13 +11,27 @@ package codec
 // All constants are decimal per §3 ("command byte numbers are in
 // decimal" — spec §3, issue 26 change log note 4).
 const (
+	// TxCrosspointConnected — §3.2.6, "CONNECTED Message". Matrix
+	// broadcasts on all ports after a route is set, including one per
+	// slot on salvo commit (§3.2.8 "no CONNECTED" note is overridden;
+	// see probel_sw02p_salvo_emitted_connected compliance event).
+	TxCrosspointConnected CommandID = 0x04
+
 	// RxConnectOnGo — §3.2.7, "CONNECT ON Go Message". Controller
 	// stages one crosspoint into the matrix's pending salvo buffer.
 	RxConnectOnGo CommandID = 0x05
 
+	// RxGo — §3.2.8, "GO Message". Commits (op=00) or clears (op=01)
+	// every previously received CONNECT ON GO slot.
+	RxGo CommandID = 0x06
+
 	// TxConnectOnGoAck — §3.2.14, "CONNECT ON GO ACKNOWLEDGE Message".
 	// Matrix confirms that a single RxConnectOnGo was stored.
 	TxConnectOnGoAck CommandID = 0x0C // 12 dec
+
+	// TxGoDoneAck — §3.2.15, "GO DONE ACKNOWLEDGE Message". Matrix
+	// confirms that a rx 06 GO was executed; emits on all ports.
+	TxGoDoneAck CommandID = 0x0D // 13 dec
 )
 
 // PayloadLen returns the expected MESSAGE byte count for command id.
@@ -29,10 +43,16 @@ const (
 // in command-byte order.
 func PayloadLen(id CommandID) (int, bool) {
 	switch id {
+	case TxCrosspointConnected:
+		return PayloadLenConnected, true
 	case RxConnectOnGo:
 		return PayloadLenConnectOnGo, true
+	case RxGo:
+		return PayloadLenGo, true
 	case TxConnectOnGoAck:
 		return PayloadLenConnectOnGoAck, true
+	case TxGoDoneAck:
+		return PayloadLenGoDoneAck, true
 	}
 	return 0, false
 }
