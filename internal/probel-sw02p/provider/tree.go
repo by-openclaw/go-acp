@@ -270,6 +270,34 @@ func (t *tree) drainPendingGroup(m, l uint8, salvoID uint8) []pendingSlot {
 	return out
 }
 
+// sourceLockSnapshot returns a per-source lock bitmap sized to the
+// widest declared sourceCount across matrix 0. Per §3.2.17 note 2 a
+// zero bit is ambiguous (card absent OR signal lost) — this plugin
+// runs as software with no physical input cards to monitor, so every
+// declared source reports "locked = true" (clean signal) by default.
+// Future HW-monitor integration can swap this out via a ServerOption.
+func (t *tree) sourceLockSnapshot() []bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	maxSrc := 0
+	for key, st := range t.matrices {
+		if key.matrix != 0 {
+			continue
+		}
+		if st.sourceCount > maxSrc {
+			maxSrc = st.sourceCount
+		}
+	}
+	if maxSrc == 0 {
+		return nil
+	}
+	out := make([]bool, maxSrc)
+	for i := range out {
+		out[i] = true
+	}
+	return out
+}
+
 // buildRouterConfigResponse1 derives the tx 076 RESPONSE-1 payload
 // from the canonical tree. All levels registered on matrix 0 are
 // emitted in ascending level order with the shared target/source

@@ -18,6 +18,10 @@ func CommandName(id CommandID) string {
 		return "tally"
 	case TxCrosspointConnected:
 		return "crosspoint_connected"
+	case RxSourceLockStatusRequest:
+		return "source_lock_status_request"
+	case TxSourceLockStatusResponse:
+		return "source_lock_status_response"
 	case RxStatusRequest:
 		return "status_request"
 	case TxStatusResponse2:
@@ -85,6 +89,8 @@ func CommandIDs() []CommandID {
 		RxConnect,
 		TxTally,
 		TxCrosspointConnected,
+		RxSourceLockStatusRequest,
+		TxSourceLockStatusResponse,
 		RxStatusRequest,
 		TxStatusResponse2,
 		RxConnectOnGo,

@@ -32,6 +32,19 @@ const (
 	// see probel_sw02p_salvo_emitted_connected compliance event).
 	TxCrosspointConnected CommandID = 0x04
 
+	// RxSourceLockStatusRequest — §3.2.16. HD-router-only query for
+	// input signal-health bits. "Source Lock" is NOT a write-
+	// protection — it is a read-only indicator of carrier presence
+	// on each input module, distinct from the Extended PROTECT
+	// family (§3.2.60+) which guards write access. Both are
+	// orthogonal per memory/project_probel_extensions.md.
+	RxSourceLockStatusRequest CommandID = 0x0E // 14 dec
+
+	// TxSourceLockStatusResponse — §3.2.17. Variable-length reply: 2
+	// self-declared length bytes + N bitmap bytes (4 sources / byte,
+	// low nibble only).
+	TxSourceLockStatusResponse CommandID = 0x0F // 15 dec
+
 	// RxStatusRequest — §3.2.9, "STATUS REQUEST Message". Controller
 	// asks the matrix for its current hardware status (LH or RH
 	// controller targeted). Matrix replies with one of the §§3.2.10-
@@ -185,6 +198,8 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenTally, true
 	case TxCrosspointConnected:
 		return PayloadLenConnected, true
+	case RxSourceLockStatusRequest:
+		return PayloadLenSourceLockStatusRequest, true
 	case RxStatusRequest:
 		return PayloadLenStatusRequest, true
 	case TxStatusResponse2:
@@ -262,6 +277,8 @@ func PayloadSize(id CommandID, peek []byte) (int, bool) {
 		return routerConfigResponse1PayloadSize(peek)
 	case TxRouterConfigResponse2:
 		return routerConfigResponse2PayloadSize(peek)
+	case TxSourceLockStatusResponse:
+		return sourceLockStatusResponsePayloadSize(peek)
 	}
 	return 0, false
 }
@@ -274,7 +291,8 @@ func isVariableLenCommand(id CommandID) bool {
 	switch id {
 	case TxExtendedProtectTallyDump,
 		TxRouterConfigResponse1,
-		TxRouterConfigResponse2:
+		TxRouterConfigResponse2,
+		TxSourceLockStatusResponse:
 		return true
 	}
 	return false
