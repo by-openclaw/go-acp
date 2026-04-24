@@ -254,13 +254,28 @@ See [feedback_architecture_principles] in memory.
 ## Wireshark dissectors (every protocol, no exceptions)
 
 **Rule.** Every plugin MUST ship a Wireshark dissector at
-`internal/<proto>/wireshark/dissector_<proto>.lua` that **fully decodes
+`internal/<proto>/wireshark/dhs_<proto>.lua` that **fully decodes
 every transport and every wire version the plugin implements**. Never
 delegate to Wireshark's built-in dissector for a protocol that also
 ships one of ours — consistency across protocols matters more than
 avoiding duplication with upstream. Users need to see the same
 `Protocol | Info` shape in Wireshark regardless of which dhs protocol
 they're looking at.
+
+**Naming convention (required to avoid clashes with Wireshark
+built-ins).** All three names use a `dhs_` prefix:
+
+| Item | Pattern | Examples |
+|---|---|---|
+| Lua filename | `dhs_<proto>.lua` | `dhs_osc.lua`, `dhs_acpv1.lua`, `dhs_acpv2.lua`, `dhs_emberplus.lua`, `dhs_probel_sw08p.lua`, `dhs_probel_sw02p.lua`, `dhs_tsl.lua` |
+| Proto name | `Proto("dhs_<proto>", ...)` | `dhs_osc`, `dhs_acpv1`, `dhs_emberplus` |
+| Field abbrev | `dhs_<proto>.<field>` | `dhs_osc.address`, `dhs_acpv1.mcode` |
+| Protocol column | typically the human form (e.g. `"OSC/1.1"`) — set via `pinfo.cols.protocol` |
+
+Wireshark built-ins own `osc.*`, `acp.*`, etc. — using a bare `<proto>.*`
+field abbrev raises `bad argument #1 to '<ftype>' (A field of an
+incompatible ftype with this abbrev already exists)` at load time.
+The `dhs_` prefix avoids the clash globally.
 
 Required coverage:
 
@@ -471,10 +486,12 @@ feedback_probel_salvo_connected] in memory.
    with `provider.Register`.
 4. Create `internal/<name>/CLAUDE.md` — wire format, command catalog,
    quirks, "what NOT to do".
-5. Write the Wireshark dissector in `internal/<name>/wireshark/dissector_<name>.lua`
+5. Write the Wireshark dissector in `internal/<name>/wireshark/dhs_<name>.lua`
    — FULL implementation covering every transport + every wire version + every
    command / type tag, with a per-command Info column that uniquely identifies
-   each frame. Never delegate to Wireshark's built-in, even if one exists. See
+   each frame. Never delegate to Wireshark's built-in, even if one exists.
+   Use `Proto("dhs_<name>", ...)` and `dhs_<name>.<field>` abbrevs throughout
+   to avoid namespace clashes with Wireshark built-ins. See
    "Wireshark dissectors" above.
 6. Add `import _ "acp/internal/<name>/consumer"` and
    `import _ "acp/internal/<name>/provider"` to `cmd/dhs/main.go`.

@@ -14,7 +14,7 @@ internal/osc/
 ├── codec/           stdlib-only byte codec (lift-ready)
 ├── consumer/        package osc — implements protocol.Protocol (both versions)
 ├── provider/        package osc — implements provider.Provider (both versions)
-└── wireshark/       dissector_osc.lua — full dhs dissector covering
+└── wireshark/       dhs_osc.lua — full dhs dissector covering
                      UDP + TCP/length-prefix (1.0) + TCP/SLIP (1.1);
                      every type tag including 1.1 payload-less and
                      array markers; recursive bundle decode; per-message

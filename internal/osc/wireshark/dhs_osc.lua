@@ -26,7 +26,7 @@
 --
 -------------------------------------------------------------------------------
 
-local osc = Proto("osc_dhs", "OSC (dhs — Open Sound Control 1.0 + 1.1)")
+local osc = Proto("dhs_osc", "OSC (dhs — Open Sound Control 1.0 + 1.1)")
 
 osc.prefs.udp_port      = Pref.uint("UDP port", 8000, "UDP port carrying OSC packets")
 osc.prefs.tcp_len_port  = Pref.uint("TCP port (length-prefix, 1.0)", 8000, "TCP port carrying OSC 1.0 length-prefix frames")
@@ -40,74 +40,74 @@ osc.prefs.heuristic     = Pref.bool("Enable heuristic TCP dispatch", true, "Also
 local f = osc.fields
 
 -- Envelope
-f.version       = ProtoField.string("osc.version", "Wire version")
-f.transport     = ProtoField.string("osc.transport", "Transport framing")
-f.kind          = ProtoField.string("osc.kind", "Packet kind")
+f.version       = ProtoField.string("dhs_osc.version", "Wire version")
+f.transport     = ProtoField.string("dhs_osc.transport", "Transport framing")
+f.kind          = ProtoField.string("dhs_osc.kind", "Packet kind")
 
 -- Bundle
-f.bundle_head   = ProtoField.string("osc.bundle.head", "Bundle header")
-f.bundle_tt     = ProtoField.uint64("osc.bundle.timetag", "Timetag (NTP u64)", base.HEX)
-f.bundle_tt_sec = ProtoField.uint32("osc.bundle.timetag.secs", "Timetag seconds since 1900", base.DEC)
-f.bundle_tt_fr  = ProtoField.uint32("osc.bundle.timetag.frac", "Timetag fraction", base.DEC)
-f.bundle_tt_imm = ProtoField.bool("osc.bundle.timetag.immediate", "Immediate (raw 0x0000000000000001)")
-f.bundle_count  = ProtoField.uint32("osc.bundle.element_count", "Element count (direct children)", base.DEC)
+f.bundle_head   = ProtoField.string("dhs_osc.bundle.head", "Bundle header")
+f.bundle_tt     = ProtoField.uint64("dhs_osc.bundle.timetag", "Timetag (NTP u64)", base.HEX)
+f.bundle_tt_sec = ProtoField.uint32("dhs_osc.bundle.timetag.secs", "Timetag seconds since 1900", base.DEC)
+f.bundle_tt_fr  = ProtoField.uint32("dhs_osc.bundle.timetag.frac", "Timetag fraction", base.DEC)
+f.bundle_tt_imm = ProtoField.bool("dhs_osc.bundle.timetag.immediate", "Immediate (raw 0x0000000000000001)")
+f.bundle_count  = ProtoField.uint32("dhs_osc.bundle.element_count", "Element count (direct children)", base.DEC)
 
 -- Element (nested inside bundle)
-f.element_size  = ProtoField.uint32("osc.element.size", "Element size (bytes)", base.DEC)
-f.element_kind  = ProtoField.string("osc.element.kind", "Element kind")
+f.element_size  = ProtoField.uint32("dhs_osc.element.size", "Element size (bytes)", base.DEC)
+f.element_kind  = ProtoField.string("dhs_osc.element.kind", "Element kind")
 
 -- Message
-f.msg_address   = ProtoField.string("osc.address", "Address")
-f.msg_tagstr    = ProtoField.string("osc.type_tag", "Type-tag string")
-f.msg_argcount  = ProtoField.uint32("osc.arg_count", "Arg count", base.DEC)
+f.msg_address   = ProtoField.string("dhs_osc.address", "Address")
+f.msg_tagstr    = ProtoField.string("dhs_osc.type_tag", "Type-tag string")
+f.msg_argcount  = ProtoField.uint32("dhs_osc.arg_count", "Arg count", base.DEC)
 
 -- Args — per-type
-f.arg_i = ProtoField.int32 ("osc.arg.i", "i  int32",    base.DEC)
-f.arg_f = ProtoField.float ("osc.arg.f", "f  float32")
-f.arg_s = ProtoField.string("osc.arg.s", "s  OSC-string")
-f.arg_b = ProtoField.bytes ("osc.arg.b", "b  OSC-blob", base.NONE)
-f.arg_h = ProtoField.int64 ("osc.arg.h", "h  int64",    base.DEC)
-f.arg_d = ProtoField.double("osc.arg.d", "d  float64")
-f.arg_t = ProtoField.uint64("osc.arg.t", "t  timetag",  base.HEX)
-f.arg_S = ProtoField.string("osc.arg.S", "S  symbol")
-f.arg_c = ProtoField.string("osc.arg.c", "c  char")
-f.arg_r = ProtoField.uint32("osc.arg.r", "r  RGBA",     base.HEX)
-f.arg_m = ProtoField.bytes ("osc.arg.m", "m  MIDI 4 bytes", base.NONE)
-f.arg_T = ProtoField.string("osc.arg.T", "T  true (no payload)")
-f.arg_F = ProtoField.string("osc.arg.F", "F  false (no payload)")
-f.arg_N = ProtoField.string("osc.arg.N", "N  nil (no payload)")
-f.arg_I = ProtoField.string("osc.arg.I", "I  infinitum (no payload)")
-f.arg_lb= ProtoField.string("osc.arg.array_begin", "[  array begin (no payload)")
-f.arg_rb= ProtoField.string("osc.arg.array_end",   "]  array end (no payload)")
+f.arg_i = ProtoField.int32 ("dhs_osc.arg.i", "i  int32",    base.DEC)
+f.arg_f = ProtoField.float ("dhs_osc.arg.f", "f  float32")
+f.arg_s = ProtoField.string("dhs_osc.arg.s", "s  OSC-string")
+f.arg_b = ProtoField.bytes ("dhs_osc.arg.b", "b  OSC-blob", base.NONE)
+f.arg_h = ProtoField.int64 ("dhs_osc.arg.h", "h  int64",    base.DEC)
+f.arg_d = ProtoField.double("dhs_osc.arg.d", "d  float64")
+f.arg_t = ProtoField.uint64("dhs_osc.arg.t", "t  timetag",  base.HEX)
+f.arg_S = ProtoField.string("dhs_osc.arg.S", "S  symbol")
+f.arg_c = ProtoField.string("dhs_osc.arg.c", "c  char")
+f.arg_r = ProtoField.uint32("dhs_osc.arg.r", "r  RGBA",     base.HEX)
+f.arg_m = ProtoField.bytes ("dhs_osc.arg.m", "m  MIDI 4 bytes", base.NONE)
+f.arg_T = ProtoField.string("dhs_osc.arg.T", "T  true (no payload)")
+f.arg_F = ProtoField.string("dhs_osc.arg.F", "F  false (no payload)")
+f.arg_N = ProtoField.string("dhs_osc.arg.N", "N  nil (no payload)")
+f.arg_I = ProtoField.string("dhs_osc.arg.I", "I  infinitum (no payload)")
+f.arg_lb= ProtoField.string("dhs_osc.arg.array_begin", "[  array begin (no payload)")
+f.arg_rb= ProtoField.string("dhs_osc.arg.array_end",   "]  array end (no payload)")
 
 -- SLIP framing
-f.slip_end_start = ProtoField.uint8 ("osc.slip.start", "SLIP END (start)", base.HEX)
-f.slip_end_tail  = ProtoField.uint8 ("osc.slip.end",   "SLIP END (tail)",  base.HEX)
-f.slip_stuffed   = ProtoField.uint32("osc.slip.stuffed_bytes", "ESC-stuffed bytes", base.DEC)
-f.slip_body_len  = ProtoField.uint32("osc.slip.body_len", "Unstuffed body size", base.DEC)
+f.slip_end_start = ProtoField.uint8 ("dhs_osc.slip.start", "SLIP END (start)", base.HEX)
+f.slip_end_tail  = ProtoField.uint8 ("dhs_osc.slip.end",   "SLIP END (tail)",  base.HEX)
+f.slip_stuffed   = ProtoField.uint32("dhs_osc.slip.stuffed_bytes", "ESC-stuffed bytes", base.DEC)
+f.slip_body_len  = ProtoField.uint32("dhs_osc.slip.body_len", "Unstuffed body size", base.DEC)
 
 -- TCP length-prefix
-f.lp_size        = ProtoField.uint32("osc.len_prefix.size", "Frame size (int32 BE)", base.DEC)
+f.lp_size        = ProtoField.uint32("dhs_osc.len_prefix.size", "Frame size (int32 BE)", base.DEC)
 
 -------------------------------------------------------------------------------
 -- Expert info
 -------------------------------------------------------------------------------
 
-local ef_alignment   = ProtoExpert.new("osc.alignment",   "OSC-string / OSC-blob not padded to 4-byte multiple",
+local ef_alignment   = ProtoExpert.new("dhs_osc.alignment",   "OSC-string / OSC-blob not padded to 4-byte multiple",
                                         expert.group.MALFORMED, expert.severity.WARN)
-local ef_comma       = ProtoExpert.new("osc.comma_missing", "Type-tag string does not begin with ',' — ill-formed",
+local ef_comma       = ProtoExpert.new("dhs_osc.comma_missing", "Type-tag string does not begin with ',' — ill-formed",
                                         expert.group.MALFORMED, expert.severity.ERROR)
-local ef_truncated   = ProtoExpert.new("osc.truncated",    "Packet ends before expected argument boundary",
+local ef_truncated   = ProtoExpert.new("dhs_osc.truncated",    "Packet ends before expected argument boundary",
                                         expert.group.MALFORMED, expert.severity.WARN)
-local ef_unknown_tag = ProtoExpert.new("osc.tag_unknown",  "Unknown type tag — decoder does not know how to skip this arg",
+local ef_unknown_tag = ProtoExpert.new("dhs_osc.tag_unknown",  "Unknown type tag — decoder does not know how to skip this arg",
                                         expert.group.MALFORMED, expert.severity.ERROR)
-local ef_arr_unbal   = ProtoExpert.new("osc.array_unbalanced", "'[' without matching ']' — unbalanced array markers",
+local ef_arr_unbal   = ProtoExpert.new("dhs_osc.array_unbalanced", "'[' without matching ']' — unbalanced array markers",
                                         expert.group.PROTOCOL, expert.severity.WARN)
-local ef_slip_trunc  = ProtoExpert.new("osc.slip_truncated", "SLIP frame incomplete — desegmenting",
+local ef_slip_trunc  = ProtoExpert.new("dhs_osc.slip_truncated", "SLIP frame incomplete — desegmenting",
                                         expert.group.MALFORMED, expert.severity.NOTE)
-local ef_slip_bad    = ProtoExpert.new("osc.slip_bad_escape", "SLIP ESC not followed by ESC_END or ESC_ESC",
+local ef_slip_bad    = ProtoExpert.new("dhs_osc.slip_bad_escape", "SLIP ESC not followed by ESC_END or ESC_ESC",
                                         expert.group.MALFORMED, expert.severity.ERROR)
-local ef_lp_size     = ProtoExpert.new("osc.lp_size_unreasonable", "TCP length-prefix size looks unreasonable (> 1 MiB)",
+local ef_lp_size     = ProtoExpert.new("dhs_osc.lp_size_unreasonable", "TCP length-prefix size looks unreasonable (> 1 MiB)",
                                         expert.group.PROTOCOL, expert.severity.WARN)
 
 osc.experts = {
@@ -637,17 +637,17 @@ end
 -- Registration
 -------------------------------------------------------------------------------
 
-local slip_dissector = Proto("osc_slip_dhs", "OSC 1.1 SLIP framing (dhs)")
+local slip_dissector = Proto("dhs_osc_slip", "OSC 1.1 SLIP framing (dhs)")
 function slip_dissector.dissector(tvb, pinfo, tree)
     return dissect_tcp_slip(tvb, pinfo, tree)
 end
 
-local lp_dissector = Proto("osc_lp_dhs", "OSC 1.0 length-prefix (dhs)")
+local lp_dissector = Proto("dhs_osc_lp", "OSC 1.0 length-prefix (dhs)")
 function lp_dissector.dissector(tvb, pinfo, tree)
     return dissect_tcp_lenprefix(tvb, pinfo, tree)
 end
 
-local udp_dissector = Proto("osc_udp_dhs", "OSC UDP (dhs)")
+local udp_dissector = Proto("dhs_osc_udp", "OSC UDP (dhs)")
 function udp_dissector.dissector(tvb, pinfo, tree)
     return dissect_udp(tvb, pinfo, tree)
 end

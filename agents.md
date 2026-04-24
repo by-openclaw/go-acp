@@ -57,7 +57,7 @@ rule:
 
 Both share `internal/osc/codec/` (stdlib-only). Wireshark support is
 a full from-scratch dissector at
-`internal/osc/wireshark/dissector_osc.lua` covering UDP + TCP
+`internal/osc/wireshark/dhs_osc.lua` covering UDP + TCP
 length-prefix (1.0) + TCP SLIP (1.1), every type tag including 1.1
 payload-less (T/F/N/I) and array markers ([, ]), and recursive
 bundle decoding. Per-message Info column shows address, type-tag
