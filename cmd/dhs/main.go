@@ -43,6 +43,7 @@ import (
 	_ "acp/internal/osc/consumer"
 	_ "acp/internal/probel-sw02p/consumer"
 	_ "acp/internal/probel-sw08p/consumer"
+	_ "acp/internal/tsl/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.
 	_ "acp/internal/acp1/provider"
@@ -51,6 +52,7 @@ import (
 	_ "acp/internal/osc/provider"
 	_ "acp/internal/probel-sw02p/provider"
 	_ "acp/internal/probel-sw08p/provider"
+	_ "acp/internal/tsl/provider"
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.
