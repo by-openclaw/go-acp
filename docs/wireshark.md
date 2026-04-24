@@ -1,23 +1,18 @@
-# Wireshark Dissectors for ACP1, ACP2, Ember+, and OSC (SLIP)
+# Wireshark Dissectors for ACP1, ACP2, Ember+, OSC, and Probel SW-P-08
 
 This repository ships Lua dissectors so you can inspect live or captured
 traffic from the CLI (`dhs consumer <proto> walk`, `dhs producer serve`, ...)
-in Wireshark without having to decode frames by hand.
+in Wireshark without having to decode frames by hand. Every dhs plugin
+carries a from-scratch dissector — we never delegate to Wireshark
+built-ins, so `Protocol | Info` shape stays consistent across protocols.
 
 | Protocol | Transport          | Default ports | Lua file                                  |
 |----------|--------------------|---------------|-------------------------------------------|
 | ACP1     | UDP / TCP direct   | 2071          | [`internal/acp1/assets/dissector_acpv1.lua`](../internal/acp1/assets/dissector_acpv1.lua) |
 | ACP2     | AN2 over TCP       | 2072          | [`internal/acp2/assets/dissector_acp2.lua`](../internal/acp2/assets/dissector_acp2.lua)   |
 | Ember+   | S101 over TCP      | 9000 / 9090 / 9092 | [`internal/emberplus/assets/dissector_emberplus.lua`](../internal/emberplus/assets/dissector_emberplus.lua) |
-| OSC 1.1 SLIP (TCP) | DLE/STX-free, RFC 1055 double-END | 8000 (configurable) | [`internal/osc/wireshark/dissector_osc_slip.lua`](../internal/osc/wireshark/dissector_osc_slip.lua) |
-
-**OSC UDP + OSC 1.0 TCP (length-prefix)** are handled by Wireshark's built-in
-`osc` dissector — no custom Lua needed. Enable via **Analyze → Decode As…**
-or Wireshark **Preferences → Protocols → OSC** (set the UDP/TCP ports).
-The supplementary `dissector_osc_slip.lua` only handles the OSC 1.1 SLIP
-framing on TCP (which Wireshark built-in does not unstuff); it un-stuffs
-then delegates to the built-in OSC dissector for the actual message/bundle
-parse.
+| OSC 1.0 + 1.1 | UDP + TCP length-prefix + TCP SLIP | UDP 8000, TCP 8000 (length-prefix), TCP 8001 (SLIP) — all configurable | [`internal/osc/wireshark/dissector_osc.lua`](../internal/osc/wireshark/dissector_osc.lua) |
+| Probel SW-P-08 | TCP         | 2008          | [`internal/probel-sw08p/wireshark/dissector_probel_sw08p.lua`](../internal/probel-sw08p/wireshark/dissector_probel_sw08p.lua) |
 
 All three target **Wireshark 4.x** (Lua 5.2+). They install the same way.
 

@@ -56,11 +56,12 @@ rule:
 - `osc-v11` — UDP + TCP/SLIP (RFC 1055 double-END); adds T/F/N/I + arrays
 
 Both share `internal/osc/codec/` (stdlib-only). Wireshark support is
-one supplementary Lua script at `internal/osc/wireshark/
-dissector_osc_slip.lua` that un-stuffs SLIP then delegates to
-Wireshark's built-in OSC dissector for the actual parse. UDP + 1.0
-length-prefix TCP are handled by Wireshark's built-in directly — no
-custom Lua needed for those cases.
+a full from-scratch dissector at
+`internal/osc/wireshark/dissector_osc.lua` covering UDP + TCP
+length-prefix (1.0) + TCP SLIP (1.1), every type tag including 1.1
+payload-less (T/F/N/I) and array markers ([, ]), and recursive
+bundle decoding. Per-message Info column shows address, type-tag
+string, and arg count.
 
 ---
 

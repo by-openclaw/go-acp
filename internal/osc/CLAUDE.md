@@ -14,9 +14,12 @@ internal/osc/
 ├── codec/           stdlib-only byte codec (lift-ready)
 ├── consumer/        package osc — implements protocol.Protocol (both versions)
 ├── provider/        package osc — implements provider.Provider (both versions)
-└── wireshark/       empty — Wireshark ships an official OSC dissector;
-                     no custom .lua needed. Prefs in Wireshark: Edit →
-                     Preferences → Protocols → OSC (set ports).
+└── wireshark/       dissector_osc.lua — full dhs dissector covering
+                     UDP + TCP/length-prefix (1.0) + TCP/SLIP (1.1);
+                     every type tag including 1.1 payload-less and
+                     array markers; recursive bundle decode; per-message
+                     Info column with address + type-tag + arg count.
+                     Prefs: UDP port 8000, TCP-LP 8000, TCP-SLIP 8001.
 ```
 
 ## Authoritative specs
