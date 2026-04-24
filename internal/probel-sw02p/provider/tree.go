@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"acp/internal/export/canonical"
+	"acp/internal/probel-sw02p/codec"
 )
 
 // matrixKey identifies one (matrix, level) pair within an SW-P-02
@@ -267,6 +268,31 @@ func (t *tree) drainPendingGroup(m, l uint8, salvoID uint8) []pendingSlot {
 	out := st.pendingGroups[salvoID]
 	delete(st.pendingGroups, salvoID)
 	return out
+}
+
+// buildRouterConfigResponse1 derives the tx 076 RESPONSE-1 payload
+// from the canonical tree. All levels registered on matrix 0 are
+// emitted in ascending level order with the shared target/source
+// counts drawn from their matrixState. Up to RouterConfigMaxLevels
+// (28) are reported — levels beyond that are silently dropped
+// because the §3.2.58 bit map cannot encode them.
+func (t *tree) buildRouterConfigResponse1() codec.RouterConfigResponse1Params {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	var bitmap uint32
+	levels := make([]codec.RouterConfigResponse1LevelEntry, 0)
+	for lvl := uint8(0); int(lvl) < codec.RouterConfigMaxLevels; lvl++ {
+		st, ok := t.matrices[matrixKey{matrix: 0, level: lvl}]
+		if !ok {
+			continue
+		}
+		bitmap |= 1 << uint(lvl)
+		levels = append(levels, codec.RouterConfigResponse1LevelEntry{
+			NumDestinations: uint16(st.targetCount),
+			NumSources:      uint16(st.sourceCount),
+		})
+	}
+	return codec.RouterConfigResponse1Params{LevelMap: bitmap, Levels: levels}
 }
 
 // lookupSource returns the currently-routed source for (matrix, level,

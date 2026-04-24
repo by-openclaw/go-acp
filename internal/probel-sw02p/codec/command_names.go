@@ -58,6 +58,12 @@ func CommandName(id CommandID) string {
 		return "extended_connect_on_go_group_salvo"
 	case TxExtendedConnectOnGoGroupSalvoAck:
 		return "extended_connect_on_go_group_salvo_ack"
+	case RxRouterConfigRequest:
+		return "router_config_request"
+	case TxRouterConfigResponse1:
+		return "router_config_response_1"
+	case TxRouterConfigResponse2:
+		return "router_config_response_2"
 	case TxExtendedProtectTally:
 		return "extended_protect_tally"
 	case TxExtendedProtectConnected:
@@ -99,6 +105,9 @@ func CommandIDs() []CommandID {
 		TxExtendedConnectOnGoAck,
 		RxExtendedConnectOnGoGroupSalvo,
 		TxExtendedConnectOnGoGroupSalvoAck,
+		RxRouterConfigRequest,
+		TxRouterConfigResponse1,
+		TxRouterConfigResponse2,
 		TxExtendedProtectTally,
 		TxExtendedProtectConnected,
 		TxExtendedProtectDisconnected,

@@ -129,6 +129,21 @@ const (
 	// echoes the extended dst / src / SalvoID.
 	TxExtendedConnectOnGoGroupSalvoAck CommandID = 0x48 // 72 dec
 
+	// RxRouterConfigRequest — §3.2.57, "ROUTER CONFIGURATION REQUEST
+	// Message". Zero-MESSAGE query; matrix replies with tx 076
+	// RESPONSE-1 (§3.2.58) or tx 077 RESPONSE-2 (§3.2.59).
+	RxRouterConfigRequest CommandID = 0x4B // 75 dec
+
+	// TxRouterConfigResponse1 — §3.2.58. Variable-length response
+	// carrying a 28-bit level bit map + per-level (dest count,
+	// source count) entries.
+	TxRouterConfigResponse1 CommandID = 0x4C // 76 dec
+
+	// TxRouterConfigResponse2 — §3.2.59. Variable-length response
+	// extending RESPONSE-1 with Start Destination / Start Source
+	// (non-contiguous level addressing) + 2 reserved bytes per level.
+	TxRouterConfigResponse2 CommandID = 0x4D // 77 dec
+
 	// TxExtendedProtectTally — §3.2.60. Controller / router response
 	// to EXTENDED PROTECT INTERROGATE (§3.2.65) reporting the current
 	// protect status of a destination.
@@ -210,6 +225,8 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenExtendedConnectOnGoGroupSalvo, true
 	case TxExtendedConnectOnGoGroupSalvoAck:
 		return PayloadLenExtendedConnectOnGoGroupSalvoAck, true
+	case RxRouterConfigRequest:
+		return PayloadLenRouterConfigRequest, true
 	case TxExtendedProtectTally:
 		return PayloadLenExtendedProtectTally, true
 	case TxExtendedProtectConnected:
@@ -241,6 +258,10 @@ func PayloadSize(id CommandID, peek []byte) (int, bool) {
 	switch id {
 	case TxExtendedProtectTallyDump:
 		return tallyDumpPayloadSize(peek)
+	case TxRouterConfigResponse1:
+		return routerConfigResponse1PayloadSize(peek)
+	case TxRouterConfigResponse2:
+		return routerConfigResponse2PayloadSize(peek)
 	}
 	return 0, false
 }
@@ -251,7 +272,9 @@ func PayloadSize(id CommandID, peek []byte) (int, bool) {
 // "variable-length command, need more bytes".
 func isVariableLenCommand(id CommandID) bool {
 	switch id {
-	case TxExtendedProtectTallyDump:
+	case TxExtendedProtectTallyDump,
+		TxRouterConfigResponse1,
+		TxRouterConfigResponse2:
 		return true
 	}
 	return false
