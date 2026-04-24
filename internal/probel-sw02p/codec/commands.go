@@ -185,6 +185,12 @@ const (
 	// immutable.
 	RxExtendedProtectConnect CommandID = 0x66 // 102 dec
 
+	// RxExtendedProtectDisconnect — §3.2.68. Remote device asks the
+	// matrix to remove protection from a destination. Same owner-
+	// only authority rule as rx 102; matrix replies with tx 098
+	// broadcast fan-out.
+	RxExtendedProtectDisconnect CommandID = 0x68 // 104 dec
+
 	// TxExtendedProtectTallyDump — §3.2.64. Variable-length dump of
 	// protect-tally entries. Count byte 127 signals "controller reset"
 	// (no entries follow); 0-32 reports that many 4-byte entries. The
@@ -265,6 +271,8 @@ func PayloadLen(id CommandID) (int, bool) {
 		return PayloadLenExtendedProtectInterrogate, true
 	case RxExtendedProtectConnect:
 		return PayloadLenExtendedProtectConnect, true
+	case RxExtendedProtectDisconnect:
+		return PayloadLenExtendedProtectDisconnect, true
 	}
 	return 0, false
 }

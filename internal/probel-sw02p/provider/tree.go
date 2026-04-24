@@ -352,6 +352,36 @@ func (t *tree) protectApply(dst uint16, device uint16, newState codec.ProtectSta
 	}
 }
 
+// protectClear implements the rx 104 state machine:
+//   - current=None → accept (no-op), emit tx 098 with State=None
+//   - current=ProbelOverride → reject (protectApplyRejectedOverride)
+//   - current=Probel|OEM & device==owner → accept, delete entry
+//   - current=Probel|OEM & device!=owner → reject (RejectedOwner)
+//
+// Returns the entry observable on the wire (cleared entry + State=None
+// on accept, or the unchanged existing one on reject).
+func (t *tree) protectClear(dst uint16, device uint16) (protectEntry, protectApplyResult) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: 0, level: 0}
+	st, ok := t.matrices[key]
+	if !ok || st.protect == nil {
+		return protectEntry{}, protectApplyAccepted
+	}
+	cur, exists := st.protect[dst]
+	switch {
+	case !exists || cur.State == codec.ProtectNone:
+		return protectEntry{}, protectApplyAccepted
+	case cur.State == codec.ProtectProBelOverride:
+		return cur, protectApplyRejectedOverride
+	case cur.OwnerDevice == device:
+		delete(st.protect, dst)
+		return protectEntry{}, protectApplyAccepted
+	default:
+		return cur, protectApplyRejectedOwner
+	}
+}
+
 // protectLookup returns the current protect entry for (matrix=0, dst).
 // Returns (zero entry, false) when no entry exists — callers treat
 // that as ProtectNone semantically.
