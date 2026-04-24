@@ -106,7 +106,8 @@ type Server struct {
 	logger  *slog.Logger
 	tree    *canonical.Export
 
-	sender *udpSender
+	sender    *udpSender
+	tcpDialer *tcpDialer
 }
 
 // errNotImplemented is the scaffolding sentinel for operations that are
@@ -116,22 +117,30 @@ var errNotImplemented = errors.New("tsl: provider operation not implemented in t
 // Serve binds a local UDP socket and blocks on ctx. addr is the local
 // egress bind (empty / ":0" → ephemeral). Destinations are added via
 // AddDestination before or after Serve starts.
+//
+// For v5.0 TCP mode, Serve is a no-op (the TCP dialer dials out on
+// demand via SendV50TCP); callers who only use TCP can skip Serve.
 func (s *Server) Serve(ctx context.Context, addr string) error {
-	if s.version == V50 {
-		return errNotImplemented
-	}
 	if s.sender == nil {
 		s.sender = newUDPSender()
 	}
 	return s.sender.serveBlock(ctx, addr)
 }
 
-// Stop closes the UDP socket.
+// Stop closes the UDP socket and any pending TCP connections.
 func (s *Server) Stop() error {
-	if s.sender == nil {
-		return nil
+	var first error
+	if s.sender != nil {
+		if err := s.sender.close(); err != nil {
+			first = err
+		}
 	}
-	return s.sender.close()
+	if s.tcpDialer != nil {
+		if err := s.tcpDialer.close(); err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
 }
 
 // SetValue is the canonical-tree write hook. Not wired for TSL in this
@@ -187,4 +196,29 @@ func (s *Server) SendV40(frame codec.V40Frame) error {
 		return errors.New("tsl v4.0: not bound (call Bind or Serve first)")
 	}
 	return s.sender.encodeAndSendV40(frame)
+}
+
+// SendV50 encodes and sends a v5.0 packet via UDP to all configured
+// destinations. Use SendV50TCP for DLE/STX-wrapped TCP delivery.
+func (s *Server) SendV50(pkt codec.V50Packet) error {
+	if s.version != V50 {
+		return fmt.Errorf("tsl %s: SendV50 only valid for v5.0 plugin", s.version.name())
+	}
+	if s.sender == nil {
+		return errors.New("tsl v5.0: not bound (call Bind or Serve first)")
+	}
+	return s.sender.encodeAndSendV50UDP(pkt)
+}
+
+// SendV50TCP dials (or reuses) a TCP connection to (host, port) and
+// writes a DLE/STX-wrapped v5.0 packet. The producer initiates the
+// connection; the consumer (MV) listens. Matches Miranda + TallyArbiter.
+func (s *Server) SendV50TCP(host string, port int, pkt codec.V50Packet) error {
+	if s.version != V50 {
+		return fmt.Errorf("tsl %s: SendV50TCP only valid for v5.0 plugin", s.version.name())
+	}
+	if s.tcpDialer == nil {
+		s.tcpDialer = newTCPDialer()
+	}
+	return s.tcpDialer.sendV50TCP(host, port, pkt)
 }

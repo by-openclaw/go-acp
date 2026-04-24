@@ -113,14 +113,16 @@ type Plugin struct {
 	version Version
 	logger  *slog.Logger
 
-	session *udpSession
+	session    *udpSession // set for v3.1, v4.0, or v5.0-UDP
+	tcpSession *tcpSession // set for v5.0-TCP
 }
 
 // Connect binds a UDP listener on (ip, port). ip may be empty for
-// bind-all. For TSL there is no handshake — the listener is ready
+// bind-all. For v5.0 this opens the UDP mode; TCP mode is available via
+// ConnectV50TCP. For TSL there is no handshake — the listener is ready
 // immediately after Connect returns.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
-	if p.session != nil {
+	if p.session != nil || p.tcpSession != nil {
 		return fmt.Errorf("tsl %s: already connected", p.version.name())
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
@@ -132,7 +134,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	case V40:
 		decode = decodeV40Payload
 	case V50:
-		return fmt.Errorf("tsl v5.0 consumer: not implemented in this phase (tracked by #121)")
+		decode = decodeV50Payload
 	default:
 		return fmt.Errorf("tsl consumer: unknown version %v", p.version)
 	}
@@ -143,23 +145,56 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	return nil
 }
 
-// Disconnect closes the UDP socket and stops the read loop.
-func (p *Plugin) Disconnect() error {
-	if p.session == nil {
-		return nil
+// ConnectV50TCP binds a TCP listener on (ip, port) that accepts v5.0
+// streams wrapped in DLE/STX per spec §Phy. Each accepted connection
+// gets a DLE-stream decoder; frames are dispatched via SubscribeV50.
+func (p *Plugin) ConnectV50TCP(ctx context.Context, ip string, port int) error {
+	if p.version != V50 {
+		return fmt.Errorf("tsl %s: ConnectV50TCP only valid for v5.0 plugin", p.version.name())
 	}
-	err := p.session.close()
-	p.session = nil
+	if p.session != nil || p.tcpSession != nil {
+		return fmt.Errorf("tsl %s: already connected", p.version.name())
+	}
+	addr := fmt.Sprintf("%s:%d", ip, port)
+	ts := newTCPSession()
+	if err := ts.listen(ctx, addr); err != nil {
+		return err
+	}
+	p.tcpSession = ts
+	return nil
+}
+
+// Disconnect closes the active listener and stops the read loop.
+func (p *Plugin) Disconnect() error {
+	var err error
+	if p.session != nil {
+		err = p.session.close()
+		p.session = nil
+	}
+	if p.tcpSession != nil {
+		if e := p.tcpSession.close(); e != nil && err == nil {
+			err = e
+		}
+		p.tcpSession = nil
+	}
 	return err
 }
 
-// BoundAddr returns the actual listen address (useful when port 0 was
-// requested for ephemeral).
+// BoundAddr returns the actual UDP listen address (v3.1/v4.0/v5.0-UDP).
+// For TCP mode see BoundTCPAddr.
 func (p *Plugin) BoundAddr() *net.UDPAddr {
 	if p.session == nil {
 		return nil
 	}
 	return p.session.boundAddr()
+}
+
+// BoundTCPAddr returns the TCP listen address when v5.0 is in TCP mode.
+func (p *Plugin) BoundTCPAddr() *net.TCPAddr {
+	if p.tcpSession == nil {
+		return nil
+	}
+	return p.tcpSession.boundAddr()
 }
 
 // SubscribeV31 registers a handler for v3.1 frames. For the generic
@@ -184,6 +219,24 @@ func (p *Plugin) SubscribeV40(h V40Handler) error {
 		return fmt.Errorf("tsl %s: SubscribeV40 only valid for v4.0 plugin", p.version.name())
 	}
 	p.session.subscribeV40(h)
+	return nil
+}
+
+// SubscribeV50 registers a handler for v5.0 packets. Works for both UDP
+// and TCP sessions — the handler fires on frames received via whichever
+// transport is active.
+func (p *Plugin) SubscribeV50(h V50Handler) error {
+	if p.version != V50 {
+		return fmt.Errorf("tsl %s: SubscribeV50 only valid for v5.0 plugin", p.version.name())
+	}
+	switch {
+	case p.session != nil:
+		p.session.subscribeV50(h)
+	case p.tcpSession != nil:
+		p.tcpSession.subscribeV50(h)
+	default:
+		return fmt.Errorf("tsl %s: not connected", p.version.name())
+	}
 	return nil
 }
 

@@ -159,3 +159,13 @@ func (s *udpSender) encodeAndSendV40(f codec.V40Frame) error {
 	return s.sendBytes(payload)
 }
 
+// encodeAndSendV50UDP encodes a v5.0 packet and fans it out via UDP.
+// No DLE/STX wrapper (UDP is self-framed per spec §Phy).
+func (s *udpSender) encodeAndSendV50UDP(p codec.V50Packet) error {
+	payload, err := p.Encode()
+	if err != nil {
+		return fmt.Errorf("tsl v5.0 encode: %w", err)
+	}
+	return s.sendBytes(payload)
+}
+

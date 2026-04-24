@@ -26,11 +26,23 @@ type FrameV40Event struct {
 	Raw    []byte
 }
 
+// FrameV50Event is delivered to registered v5.0 handlers. Remote is a
+// *net.UDPAddr when the packet came over UDP or a *net.TCPAddr when it
+// came over a DLE/STX-wrapped TCP stream.
+type FrameV50Event struct {
+	Remote net.Addr
+	Frame  codec.V50Packet
+	Raw    []byte
+}
+
 // V31Handler is invoked for each received v3.1 frame.
 type V31Handler func(FrameV31Event)
 
 // V40Handler is invoked for each received v4.0 frame.
 type V40Handler func(FrameV40Event)
+
+// V50Handler is invoked for each received v5.0 packet.
+type V50Handler func(FrameV50Event)
 
 // udpSession is a UDP listener shared across versions. Each TSL version
 // owns a decode function and a version-specific handler channel; the
@@ -42,6 +54,7 @@ type udpSession struct {
 	mu        sync.RWMutex
 	v31Subs   []V31Handler
 	v40Subs   []V40Handler
+	v50Subs   []V50Handler
 	closeOnce sync.Once
 }
 
@@ -130,6 +143,24 @@ func (s *udpSession) subscribeV40(h V40Handler) {
 	s.v40Subs = append(s.v40Subs, h)
 }
 
+// subscribeV50 registers a handler for v5.0 packets.
+func (s *udpSession) subscribeV50(h V50Handler) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.v50Subs = append(s.v50Subs, h)
+}
+
+// dispatchV50 fans a v5.0 packet out to all subscribers.
+func (s *udpSession) dispatchV50(ev FrameV50Event) {
+	s.mu.RLock()
+	subs := make([]V50Handler, len(s.v50Subs))
+	copy(subs, s.v50Subs)
+	s.mu.RUnlock()
+	for _, h := range subs {
+		h(ev)
+	}
+}
+
 // dispatchV31 fans an event out to all v3.1 subscribers.
 func (s *udpSession) dispatchV31(ev FrameV31Event) {
 	s.mu.RLock()
@@ -164,6 +195,26 @@ func (s *udpSession) close() error {
 		}
 	})
 	return err
+}
+
+// decodeV50Payload decodes a v5.0 UDP datagram and dispatches. Each UDP
+// packet carries exactly one v5.0 frame (spec §5.0 "Physical Layer").
+func decodeV50Payload(remote *net.UDPAddr, pkt []byte, s *udpSession) {
+	frame, err := codec.DecodeV50(pkt)
+	if err != nil {
+		s.dispatchV50(FrameV50Event{
+			Remote: remote,
+			Frame: codec.V50Packet{
+				Notes: []codec.ComplianceNote{{
+					Kind:   "tsl_decode_error",
+					Detail: err.Error(),
+				}},
+			},
+			Raw: pkt,
+		})
+		return
+	}
+	s.dispatchV50(FrameV50Event{Remote: remote, Frame: frame, Raw: pkt})
 }
 
 // decodeV40Payload decodes a v4.0 frame and dispatches. Minimum size 20
