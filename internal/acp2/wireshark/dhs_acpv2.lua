@@ -177,25 +177,25 @@ local acp2_numtype_valstr = {
 -- Protocol declarations
 -------------------------------------------------------------------------------
 
-local an2_proto  = Proto("an2_acp2", "AN2 Transport (ACP2)")
-local acp2_proto = Proto("acp2_msg", "ACP2 Protocol")
-local acp2_prop_proto = Proto("acp2_prop", "ACP2 Property")
+local an2_proto  = Proto("dhs_acpv2_an2",  "AN2 Transport (ACP2)")
+local acp2_proto = Proto("dhs_acpv2",      "ACP2 Protocol")
+local acp2_prop_proto = Proto("dhs_acpv2_prop", "ACP2 Property")
 
 -------------------------------------------------------------------------------
 -- AN2 ProtoFields
 -------------------------------------------------------------------------------
 
 local an2_f = {
-    magic = ProtoField.uint16("an2.magic",  "Magic",    base.HEX),
-    proto = ProtoField.uint8 ("an2.proto",  "Protocol", base.DEC, an2_proto_valstr),
-    slot  = ProtoField.uint8 ("an2.slot",   "Slot",     base.DEC),
-    mtid  = ProtoField.uint8 ("an2.mtid",   "MTID",     base.DEC),
-    type  = ProtoField.uint8 ("an2.type",   "Type",     base.DEC, an2_type_valstr),
-    dlen  = ProtoField.uint16("an2.dlen",   "Data Length", base.DEC),
+    magic = ProtoField.uint16("dhs_acpv2_an2.magic",  "Magic",    base.HEX),
+    proto = ProtoField.uint8 ("dhs_acpv2_an2.proto",  "Protocol", base.DEC, an2_proto_valstr),
+    slot  = ProtoField.uint8 ("dhs_acpv2_an2.slot",   "Slot",     base.DEC),
+    mtid  = ProtoField.uint8 ("dhs_acpv2_an2.mtid",   "MTID",     base.DEC),
+    type  = ProtoField.uint8 ("dhs_acpv2_an2.type",   "Type",     base.DEC, an2_type_valstr),
+    dlen  = ProtoField.uint16("dhs_acpv2_an2.dlen",   "Data Length", base.DEC),
     -- AN2 internal fields
-    func     = ProtoField.uint8 ("an2.func",     "Function",  base.DEC, an2_func_valstr),
-    version  = ProtoField.uint8 ("an2.version",  "Version",   base.DEC),
-    payload  = ProtoField.bytes ("an2.payload",  "Payload"),
+    func     = ProtoField.uint8 ("dhs_acpv2_an2.func",     "Function",  base.DEC, an2_func_valstr),
+    version  = ProtoField.uint8 ("dhs_acpv2_an2.version",  "Version",   base.DEC),
+    payload  = ProtoField.bytes ("dhs_acpv2_an2.payload",  "Payload"),
 }
 an2_proto.fields = an2_f
 
@@ -204,15 +204,15 @@ an2_proto.fields = an2_f
 -------------------------------------------------------------------------------
 
 local acp2_f = {
-    type    = ProtoField.uint8 ("acp2.type",   "Type",     base.DEC, acp2_type_valstr),
-    mtid    = ProtoField.uint8 ("acp2.mtid",   "MTID",     base.DEC),
-    func    = ProtoField.uint8 ("acp2.func",   "Function", base.DEC, acp2_func_valstr),
-    stat    = ProtoField.uint8 ("acp2.stat",   "Status",   base.DEC, acp2_error_valstr),
-    pid     = ProtoField.uint8 ("acp2.pid",    "PID",      base.DEC, acp2_pid_valstr),
-    pad     = ProtoField.uint8 ("acp2.pad",    "Padding",  base.HEX),
-    version = ProtoField.uint8 ("acp2.version","Version",  base.DEC),
-    obj_id  = ProtoField.uint32("acp2.obj_id", "Object ID",base.DEC),
-    idx     = ProtoField.uint32("acp2.idx",    "Index",    base.DEC),
+    type    = ProtoField.uint8 ("dhs_acpv2.type",   "Type",     base.DEC, acp2_type_valstr),
+    mtid    = ProtoField.uint8 ("dhs_acpv2.mtid",   "MTID",     base.DEC),
+    func    = ProtoField.uint8 ("dhs_acpv2.func",   "Function", base.DEC, acp2_func_valstr),
+    stat    = ProtoField.uint8 ("dhs_acpv2.stat",   "Status",   base.DEC, acp2_error_valstr),
+    pid     = ProtoField.uint8 ("dhs_acpv2.pid",    "PID",      base.DEC, acp2_pid_valstr),
+    pad     = ProtoField.uint8 ("dhs_acpv2.pad",    "Padding",  base.HEX),
+    version = ProtoField.uint8 ("dhs_acpv2.version","Version",  base.DEC),
+    obj_id  = ProtoField.uint32("dhs_acpv2.obj_id", "Object ID",base.DEC),
+    idx     = ProtoField.uint32("dhs_acpv2.idx",    "Index",    base.DEC),
 }
 acp2_proto.fields = acp2_f
 
@@ -221,32 +221,32 @@ acp2_proto.fields = acp2_f
 -------------------------------------------------------------------------------
 
 local prop_f = {
-    pid       = ProtoField.uint8 ("acp2.prop.pid",       "Property ID",      base.DEC, acp2_pid_valstr),
-    data_byte = ProtoField.uint8 ("acp2.prop.data",      "Data/VType",       base.DEC),
-    plen      = ProtoField.uint16("acp2.prop.plen",      "Length (plen)",    base.DEC),
-    padding   = ProtoField.bytes ("acp2.prop.padding",   "Alignment Padding"),
+    pid       = ProtoField.uint8 ("dhs_acpv2.prop.pid",       "Property ID",      base.DEC, acp2_pid_valstr),
+    data_byte = ProtoField.uint8 ("dhs_acpv2.prop.data",      "Data/VType",       base.DEC),
+    plen      = ProtoField.uint16("dhs_acpv2.prop.plen",      "Length (plen)",    base.DEC),
+    padding   = ProtoField.bytes ("dhs_acpv2.prop.padding",   "Alignment Padding"),
     -- typed value fields
-    obj_type  = ProtoField.uint8 ("acp2.prop.obj_type",  "Object Type",   base.DEC, acp2_objtype_valstr),
-    access    = ProtoField.uint8 ("acp2.prop.access",    "Access",        base.DEC, acp2_access_valstr),
-    numtype   = ProtoField.uint8 ("acp2.prop.numtype",   "Number Type",   base.DEC, acp2_numtype_valstr),
-    delay     = ProtoField.uint32("acp2.prop.delay",     "Announce Delay (ms)", base.DEC),
-    strmax    = ProtoField.uint16("acp2.prop.strmax",    "String Max Length",   base.DEC),
-    val_s32   = ProtoField.int32 ("acp2.prop.val_s32",   "Value (s32)",   base.DEC),
-    val_u32   = ProtoField.uint32("acp2.prop.val_u32",   "Value (u32)",   base.DEC),
-    val_s64   = ProtoField.int64 ("acp2.prop.val_s64",   "Value (s64)",   base.DEC),
-    val_u64   = ProtoField.uint64("acp2.prop.val_u64",   "Value (u64)",   base.DEC),
-    val_float = ProtoField.float ("acp2.prop.val_float", "Value (float)"),
-    val_ipv4  = ProtoField.ipv4  ("acp2.prop.val_ipv4",  "Value (IPv4)"),
-    val_str   = ProtoField.string("acp2.prop.val_str",   "Value (string)"),
-    child_id  = ProtoField.uint32("acp2.prop.child_id",  "Child Object ID", base.DEC),
-    opt_idx   = ProtoField.uint32("acp2.prop.opt_idx",   "Option Index",    base.DEC),
-    opt_str   = ProtoField.string("acp2.prop.opt_str",   "Option String"),
-    tag       = ProtoField.uint16("acp2.prop.tag",       "Event Tag",     base.DEC),
-    prio      = ProtoField.uint8 ("acp2.prop.prio",      "Event Priority",base.DEC),
-    state     = ProtoField.uint8 ("acp2.prop.state",     "Event State",   base.DEC),
-    parent_id = ProtoField.uint32("acp2.prop.parent_id", "Preset Parent", base.DEC),
-    depth_val = ProtoField.uint32("acp2.prop.depth_val", "Preset Index",  base.DEC),
-    raw       = ProtoField.bytes ("acp2.prop.raw",       "Raw Value"),
+    obj_type  = ProtoField.uint8 ("dhs_acpv2.prop.obj_type",  "Object Type",   base.DEC, acp2_objtype_valstr),
+    access    = ProtoField.uint8 ("dhs_acpv2.prop.access",    "Access",        base.DEC, acp2_access_valstr),
+    numtype   = ProtoField.uint8 ("dhs_acpv2.prop.numtype",   "Number Type",   base.DEC, acp2_numtype_valstr),
+    delay     = ProtoField.uint32("dhs_acpv2.prop.delay",     "Announce Delay (ms)", base.DEC),
+    strmax    = ProtoField.uint16("dhs_acpv2.prop.strmax",    "String Max Length",   base.DEC),
+    val_s32   = ProtoField.int32 ("dhs_acpv2.prop.val_s32",   "Value (s32)",   base.DEC),
+    val_u32   = ProtoField.uint32("dhs_acpv2.prop.val_u32",   "Value (u32)",   base.DEC),
+    val_s64   = ProtoField.int64 ("dhs_acpv2.prop.val_s64",   "Value (s64)",   base.DEC),
+    val_u64   = ProtoField.uint64("dhs_acpv2.prop.val_u64",   "Value (u64)",   base.DEC),
+    val_float = ProtoField.float ("dhs_acpv2.prop.val_float", "Value (float)"),
+    val_ipv4  = ProtoField.ipv4  ("dhs_acpv2.prop.val_ipv4",  "Value (IPv4)"),
+    val_str   = ProtoField.string("dhs_acpv2.prop.val_str",   "Value (string)"),
+    child_id  = ProtoField.uint32("dhs_acpv2.prop.child_id",  "Child Object ID", base.DEC),
+    opt_idx   = ProtoField.uint32("dhs_acpv2.prop.opt_idx",   "Option Index",    base.DEC),
+    opt_str   = ProtoField.string("dhs_acpv2.prop.opt_str",   "Option String"),
+    tag       = ProtoField.uint16("dhs_acpv2.prop.tag",       "Event Tag",     base.DEC),
+    prio      = ProtoField.uint8 ("dhs_acpv2.prop.prio",      "Event Priority",base.DEC),
+    state     = ProtoField.uint8 ("dhs_acpv2.prop.state",     "Event State",   base.DEC),
+    parent_id = ProtoField.uint32("dhs_acpv2.prop.parent_id", "Preset Parent", base.DEC),
+    depth_val = ProtoField.uint32("dhs_acpv2.prop.depth_val", "Preset Index",  base.DEC),
+    raw       = ProtoField.bytes ("dhs_acpv2.prop.raw",       "Raw Value"),
 }
 acp2_prop_proto.fields = prop_f
 

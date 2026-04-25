@@ -223,15 +223,19 @@ When touching the ACP1 codec, capture real traffic and compare bytes
 against your unit-test expectations.
 
 1. Install Wireshark (see section 1).
-2. Copy the Lua dissectors from `assets/` to your Wireshark init path:
-   - Windows: `%APPDATA%\Wireshark\init.lua`
-3. Append:
-   ```lua
-   local axon_dir = "C:/Users/BY-SYSTEMSSRLBoujraf/Downloads/acp/assets/"
-   dofile(axon_dir .. "dissector_acpv1.lua")
-   dofile(axon_dir .. "dissector_acp2.lua")
-   ```
-4. Capture on your device-facing interface, filter `udp.port == 2071 || tcp.port == 2071 || tcp.port == 2072`.
+2. Copy each plugin's Lua dissector into your Wireshark personal plugins
+   directory (`%APPDATA%\Wireshark\plugins\` on Windows,
+   `~/.local/lib/wireshark/plugins/` on Linux/macOS):
+   - `internal/acp1/wireshark/dhs_acpv1.lua`
+   - `internal/acp2/wireshark/dhs_acpv2.lua`
+   - `internal/emberplus/wireshark/dhs_emberplus.lua`
+   - `internal/osc/wireshark/dhs_osc.lua`
+   - `internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua`
+3. Restart Wireshark. Dissectors auto-load from the plugins directory; no
+   `init.lua` edits are needed.
+4. Capture on your device-facing interface, filter by any of the
+   `dhs_<proto>` display filters (e.g. `dhs_acpv1`, `dhs_acpv2`,
+   `dhs_emberplus`, `dhs_osc`, `dhs_probel_sw08p`).
 
 ---
 

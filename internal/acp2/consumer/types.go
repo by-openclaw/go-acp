@@ -6,7 +6,7 @@
 // frames with proto=2.
 //
 // Authoritative spec: internal/acp2/assets/acp2_protocol.pdf.
-// Cross-reference: CLAUDE.md ACP2 section, dissector_acp2.lua.
+// Cross-reference: CLAUDE.md ACP2 section, dhs_acpv2.lua.
 package acp2
 
 import "fmt"
