@@ -120,6 +120,18 @@ func main() {
 			os.Exit(1)
 		}
 		return
+	case "list-commands":
+		if err := runListCommands(args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+		return
+	case "help-cmd":
+		if err := runHelpCmd(args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+		return
 	case "consumer":
 		if err := dispatchConsumer(ctx, args[1:]); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
