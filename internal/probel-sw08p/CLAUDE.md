@@ -218,7 +218,7 @@ See root `CLAUDE.md` "Metrics surface on the producer" section +
 ### Session 2026-04-23 closeout (post-compact)
 
 - **W2 (commit `9bf57f3`)** — Wireshark Lua dissector at
-  `wireshark/dissector_probel_sw08p.lua`. Handles §2 framing + DLE
+  `wireshark/dhs_probel_sw08p.lua`. Handles §2 framing + DLE
   stuffing, DLE ACK/NAK pseudo-frames, checksum + BTC validation with
   expert-info notes, and per-cmd decode for crosspoint interrogate /
   connect / tally / tally-dump (byte + word) / name requests + responses

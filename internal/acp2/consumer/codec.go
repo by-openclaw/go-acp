@@ -72,7 +72,7 @@ func EncodeACP2Message(m *ACP2Message) ([]byte, error) {
 
 	case ACP2FuncGetObject:
 		// get_object: header(4) + obj-id(4) + idx(4) = 12 bytes.
-		// Confirmed by Wireshark dissector (dissector_acp2.lua lines 301-307):
+		// Confirmed by Wireshark dissector (dhs_acpv2.lua lines 301-307):
 		// obj-id at offset 4, idx at offset 8 for both request and reply.
 		buf := make([]byte, ACP2HeaderSize+8)
 		buf[0] = byte(m.Type)

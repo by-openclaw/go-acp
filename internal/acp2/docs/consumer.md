@@ -10,7 +10,7 @@ Consumer connector for ACP v2 (Axon Neuron protocol) over AN2 transport.
 |---|---|---|
 | ACP2 spec (authoritative) | [internal/acp2/assets/acp2_protocol.pdf](../../../internal/acp2/assets/acp2_protocol.pdf) | ACP v2 full specification |
 | AN2 spec (authoritative) | [internal/acp2/assets/an2_protocol.pdf](../../../internal/acp2/assets/an2_protocol.pdf) | AN2 transport specification |
-| Wireshark dissector | [internal/acp2/assets/dissector_acp2.lua](../../../internal/acp2/assets/dissector_acp2.lua) | AN2 + ACP2 byte-exact reference |
+| Wireshark dissector | [internal/acp2/wireshark/dhs_acpv2.lua](../../../internal/acp2/wireshark/dhs_acpv2.lua) | AN2 + ACP2 byte-exact reference |
 | Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "ACP2" | Wire format, functions, properties |
 | Testdata captures | [tests/fixtures/acp2/](../../../tests/fixtures/acp2/) | Raw JSONL captures from real device |
 | Export fixtures | [tests/fixtures/exports/acp2/](../../../tests/fixtures/exports/acp2/) | JSON/YAML/CSV per slot |

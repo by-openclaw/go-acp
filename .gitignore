@@ -41,6 +41,11 @@ desktop.ini
 # Temp
 /tmp/
 
+# Node.js test-harness installs (internal/**/test-harness/node_modules).
+# Dependencies are pinned via package.json + package-lock.json and
+# re-installed by .devcontainer/post-create.sh on container build.
+**/node_modules/
+
 # Ember+ reference material (user's TypeScript lib with nested git repos)
 internal/emberplus/assets/smh/
 

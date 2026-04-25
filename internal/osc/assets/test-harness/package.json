@@ -1,0 +1,14 @@
+{
+  "name": "dhs-osc-test-harness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OSC reference peer (osc.js) for byte-exact validation of the dhs OSC codec. Test-only; not linked into the Go build.",
+  "main": "harness.js",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "osc": "^2.4.5"
+  }
+}
