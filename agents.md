@@ -71,10 +71,14 @@ Never write code for any non-VSM SW-P-02 command without an
 `approve seq N` from the user. See
 `internal/probel-sw02p/CLAUDE.md` for the full landed tables +
 owner-only protect authority rule + protect-blocks-connect
-state-echo deviation. Consumer matrix-config flags + bootstrap
-sweep + keep-alive ping parked in #128. TCP `SO_KEEPALIVE`
-cross-protocol parked in #129. sw08p parity flags parked in
-#130. HA / multi-instance parked under epic #127 (see
+state-echo deviation. Consumer matrix-config flags
+(`--mtx-id --level --dsts --srcs`) + bootstrap rx 01 sweep +
+rotating 2 s keep-alive ping landed via PR #132 (closed #128;
+mirrors VSM observed behaviour since SW-P-02 has no in-protocol
+keep-alive command). PR #132 also added default TCP
+`SO_KEEPALIVE` across sw02p / sw08p / osc TCP codecs (#129) and
+mirrored matrix-config flags onto sw08p (#130). HA / multi-
+instance parked under epic #127 (see
 `memory/project_ha_architecture.md`).
 
 ---
