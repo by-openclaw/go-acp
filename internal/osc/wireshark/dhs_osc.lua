@@ -130,17 +130,14 @@ local MAX_FRAME = 1024 * 1024  -- 1 MiB — anything larger is almost certainly 
 -- Primitive helpers
 -------------------------------------------------------------------------------
 
--- pad4 returns number of pad bytes needed after `n` data bytes of an
--- OSC-string / OSC-blob to reach the next 4-byte boundary.
-local function pad4(n)
-    local r = n % 4
-    if r == 0 then return 4 end
-    return 4 - r
-end
-
--- read_osc_string reads a NUL-terminated ASCII string starting at `off`
--- inside tvb, padded to 4 bytes. Returns (value, consumed_bytes) or
--- (nil, reason).
+-- read_osc_string reads a NUL-terminated ASCII string starting at `off`,
+-- padded with NULs to the next 4-byte boundary. Returns
+-- (value, consumed_bytes, aligned_ok) on success or (nil, reason) where
+-- reason ∈ { "truncated" }.
+--
+-- OSC §"OSC-string": "A sequence of non-null ASCII characters followed
+-- by a null, followed by 0-3 additional null characters to make the
+-- total number of bits a multiple of 32."
 local function read_osc_string(tvb, off, limit)
     if off >= limit then return nil, "truncated" end
     local nul = nil
@@ -151,30 +148,25 @@ local function read_osc_string(tvb, off, limit)
         end
     end
     if nul == nil then return nil, "truncated" end
-    local data_len = nul - off               -- bytes before NUL
-    local pad      = pad4(data_len + 1)      -- pad AFTER the NUL to reach 4-byte boundary
-    -- Per OSC spec, the NUL counts toward the unit we align; the pad makes the total length a
-    -- multiple of 4. data_len+1 includes the NUL, pad4() computes extra NULs needed.
-    local consumed = data_len + 1 + pad - 1  -- -1 because pad4() returns 4 if n%4==0
-    if off + consumed > limit then return nil, "truncated" end
-    -- Actually compute consumed cleanly: the full field ends at the next 4-byte boundary after nul+1.
-    -- Recompute:
+    local data_len = nul - off
     local end_after_nul = nul + 1
-    local rem = end_after_nul % 4
-    local true_end
-    if rem == 0 then
-        true_end = end_after_nul          -- no pad needed
-    else
+    local rem = (end_after_nul - off) % 4
+    local true_end = end_after_nul
+    if rem ~= 0 then
         true_end = end_after_nul + (4 - rem)
     end
     if true_end > limit then return nil, "truncated" end
-    local value = tvb(off, data_len):string()
-    -- alignment sanity check (should already be 4-byte aligned by construction above)
-    local aligned_ok = ((true_end - off) % 4 == 0)
-    return value, (true_end - off), aligned_ok
+    local value = data_len > 0 and tvb(off, data_len):string() or ""
+    -- Aligned by construction (we just rounded true_end to next 4-byte
+    -- boundary). aligned_ok is always true here; surface it false only
+    -- if a future codec change relaxes the rounding.
+    return value, (true_end - off), true
 end
 
--- read_osc_blob: int32 BE size + data + pad.
+-- read_osc_blob: int32 BE size + data + pad. The blob is always 4-byte
+-- aligned by construction (we add `pad_after` so total is a multiple of
+-- 4), so aligned_ok is always true here. Caller still receives the
+-- value to keep the API symmetric with read_osc_string.
 local function read_osc_blob(tvb, off, limit)
     if off + 4 > limit then return nil, "truncated" end
     local sz = tvb(off, 4):uint()
@@ -183,7 +175,7 @@ local function read_osc_blob(tvb, off, limit)
     local pad_after = (4 - (sz % 4)) % 4
     local total = 4 + sz + pad_after
     if off + total > limit then return nil, "truncated" end
-    return tvb(data_start, sz), total, (sz % 4 == 0)
+    return tvb(data_start, sz), total, true
 end
 
 -------------------------------------------------------------------------------
