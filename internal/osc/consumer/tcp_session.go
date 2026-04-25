@@ -7,9 +7,15 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"acp/internal/osc/codec"
 )
+
+// tcpKeepalivePeriod sets SO_KEEPALIVE on accepted TCP connections.
+// OSC carries no in-protocol keep-alive, so the OS-layer probe is the
+// dead-socket detector for half-open sessions.
+const tcpKeepalivePeriod = 30 * time.Second
 
 // packetReader abstracts over the two TCP framings we support:
 //
@@ -76,6 +82,10 @@ func (s *tcpSession) acceptLoop(ctx context.Context) {
 				return
 			}
 			continue
+		}
+		if tc, ok := conn.(*net.TCPConn); ok {
+			_ = tc.SetKeepAlive(true)
+			_ = tc.SetKeepAlivePeriod(tcpKeepalivePeriod)
 		}
 		s.wg.Add(1)
 		go s.connLoop(ctx, conn)

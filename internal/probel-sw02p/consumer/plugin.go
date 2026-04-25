@@ -36,6 +36,19 @@ import (
 // protocol alive-bit contract stays consistent.
 const DefaultOnlineStaleAfter = 90 * time.Second
 
+// DefaultAppKeepaliveSpacing is the rotation spacing between rx 01
+// keep-alive pings — one ping every this much wall-clock, advancing
+// the dst cursor by 1 (modulo Plugin.Dsts). 2 s mirrors what live VSM
+// does in the testbed (~721 × rx 01 sweep at ~2 s/dst). SW-P-02 has
+// no in-protocol keep-alive command, so the rx 01 / tx 03 round-trip
+// IS the keep-alive.
+const DefaultAppKeepaliveSpacing = 2 * time.Second
+
+// DefaultBootstrapSpacing is the spacing between rx 01 sweep frames
+// at (re)connect. 10 ms keeps a 1024-dst sweep under ~10 s; tunable
+// via MatrixConfig.BootstrapSpacing.
+const DefaultBootstrapSpacing = 10 * time.Millisecond
+
 func init() {
 	protocol.Register(&Factory{})
 }
@@ -58,6 +71,40 @@ func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
 	return &Plugin{logger: logger}
 }
 
+// MatrixConfig holds the externally-supplied matrix shape. SW-P-02
+// has no wire-side discovery primitive that all controllers honour —
+// VSM and Commie both configure size + mtxid + level per matrix in
+// their UI. Our consumer follows that pattern: caller sets these via
+// SetMatrixConfig before Connect.
+type MatrixConfig struct {
+	// MatrixID is the wire matrix identifier (0-15 in narrow §3.2.3,
+	// 0-127 in extended). Default 0.
+	MatrixID uint8
+	// Level is the wire level identifier (0-15 narrow, 0-27 extended).
+	// Default 0.
+	Level uint8
+	// Dsts is the destination count on this (matrix, level). Required
+	// non-zero for InitialPoll / AppKeepalive to do anything.
+	Dsts uint16
+	// Srcs is the source count on this (matrix, level). Used for
+	// validation + label config lookup; not required by the rx 01
+	// poll itself.
+	Srcs uint16
+
+	// InitialPoll, when true, fires a one-shot rx 01 sweep at every
+	// (re)Connect over dst=0..Dsts-1. Default true.
+	InitialPoll bool
+	// BootstrapSpacing is the wall-clock pacing between rx 01 frames
+	// during the bootstrap sweep. Zero = DefaultBootstrapSpacing.
+	BootstrapSpacing time.Duration
+	// AppKeepaliveSpacing controls the rotating rx 01 keep-alive ping
+	// after the bootstrap sweep finishes. Zero =
+	// DefaultAppKeepaliveSpacing; negative = disable. SW-P-02 has no
+	// keep-alive command in spec, so this is how we mirror the
+	// VSM-style continuous-poll heartbeat.
+	AppKeepaliveSpacing time.Duration
+}
+
 // Plugin is the SW-P-02 Protocol implementation. One instance talks to
 // one matrix (host:port). Per-command state (name caches, tally cache,
 // etc.) is added as subsequent commits land their PRs.
@@ -70,6 +117,15 @@ type Plugin struct {
 	client   *codec.Client
 	recorder *transport.Recorder
 
+	// matrixCfg holds caller-supplied matrix shape + bootstrap/keep-
+	// alive knobs. Set via SetMatrixConfig before Connect; defaults
+	// applied at Connect time.
+	matrixCfg MatrixConfig
+
+	// keepaliveCancel stops the per-session bootstrap + keep-alive
+	// goroutine. Nil unless one is running.
+	keepaliveCancel context.CancelFunc
+
 	// profile aggregates wire-tolerance events observed during this
 	// session. See compliance_events.go for the catalog. Nil until
 	// Connect fires; callers read via ComplianceProfile().
@@ -79,6 +135,23 @@ type Plugin struct {
 	// Connect fires; callers read via Metrics(). Preserved after
 	// Disconnect so post-mortem summaries are still available.
 	metricsConn *metrics.Connector
+}
+
+// SetMatrixConfig records the caller-supplied matrix shape + poll
+// knobs. Call before Connect. After Connect, changes take effect at
+// the next Connect / Disconnect cycle.
+func (p *Plugin) SetMatrixConfig(cfg MatrixConfig) {
+	p.mu.Lock()
+	p.matrixCfg = cfg
+	p.mu.Unlock()
+}
+
+// MatrixConfig returns the currently-set matrix config (zero value if
+// SetMatrixConfig was never called).
+func (p *Plugin) MatrixConfig() MatrixConfig {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.matrixCfg
 }
 
 // Metrics returns the session-scoped connector metrics. Nil before
@@ -198,6 +271,12 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		slog.String("host", ip),
 		slog.Int("port", port),
 	)
+	// Bootstrap sweep + keep-alive ping — fired in the background.
+	// Lifetime bound to a fresh context so Disconnect can cancel
+	// independently of the caller's connect ctx.
+	kaCtx, kaCancel := context.WithCancel(context.Background())
+	p.keepaliveCancel = kaCancel
+	p.startKeepalive(kaCtx, cli)
 	return nil
 }
 
@@ -208,10 +287,15 @@ func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	cli := p.client
 	met := p.metricsConn
+	cancel := p.keepaliveCancel
 	p.client = nil
 	p.host = ""
 	p.port = 0
+	p.keepaliveCancel = nil
 	p.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 	if cli == nil {
 		return nil
 	}
