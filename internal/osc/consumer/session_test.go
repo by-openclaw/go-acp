@@ -92,7 +92,7 @@ func TestAddressMatches(t *testing.T) {
 		{"/exact", "/exact/nope", false},
 		{"/foo/*", "/foo/bar", true},
 		{"/foo/*", "/foo/bar/baz", false},
-		{"/foo/*", "/foo/", false},
+		{"/foo/*", "/foo/", true}, // spec: '*' matches zero or more chars including empty
 		{"/foo/*", "/bar/x", false},
 	}
 	for _, c := range cases {

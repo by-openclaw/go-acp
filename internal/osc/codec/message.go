@@ -72,6 +72,8 @@ func True() Arg              { return Arg{Tag: TagTrue} }
 func False() Arg             { return Arg{Tag: TagFalse} }
 func Nil() Arg               { return Arg{Tag: TagNil} }
 func Infinitum() Arg         { return Arg{Tag: TagInfinitum} }
+func ArrayBegin() Arg        { return Arg{Tag: TagArrayBegin} }
+func ArrayEnd() Arg          { return Arg{Tag: TagArrayEnd} }
 
 // Message is a decoded OSC Message. Address is the OSC address
 // (typically begins with '/'), Args are the decoded arguments.

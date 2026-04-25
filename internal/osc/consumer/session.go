@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -183,25 +182,5 @@ func (s *udpSession) close() error {
 	return err
 }
 
-// addressMatches implements a minimal OSC address-pattern test:
-//   - empty pattern (`""`) matches anything
-//   - exact equality matches
-//   - trailing `/*` glob matches any single-segment extension under the prefix
-//
-// The full OSC pattern language (`?`, `*`, `[...]`, `{...}`) is a
-// follow-up; keep v1.0 lean.
-func addressMatches(pattern, addr string) bool {
-	if pattern == "" || pattern == addr {
-		return true
-	}
-	if strings.HasSuffix(pattern, "/*") {
-		prefix := strings.TrimSuffix(pattern, "/*")
-		if !strings.HasPrefix(addr, prefix+"/") {
-			return false
-		}
-		// Exactly one segment beyond the prefix.
-		rest := addr[len(prefix)+1:]
-		return !strings.Contains(rest, "/") && len(rest) > 0
-	}
-	return false
-}
+// addressMatches lives in pattern.go — implements the full OSC 1.0
+// address-pattern language.
