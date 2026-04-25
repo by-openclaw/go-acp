@@ -43,7 +43,25 @@ tests/                          unit / integration / smoke / fixtures
 docs/                           cross-cutting architecture, connector, schema
 ```
 
-`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p}`.
+`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, osc}` on this branch.
+Other feature branches add more: `tsl` on `feat/tsl-umd-plugin` and
+`probel-sw02p` on `feat/probel-sw02p-commands`. See
+`memory/project_protocol_backlog.md` for the full queue.
+
+The **OSC plugin** on this branch registers two wire versions as
+separate entries per the `feedback_protocol_versioning.md` Pattern A
+rule:
+
+- `osc-v10` — UDP + TCP/int32-length-prefix; core types i/f/s/b
+- `osc-v11` — UDP + TCP/SLIP (RFC 1055 double-END); adds T/F/N/I + arrays
+
+Both share `internal/osc/codec/` (stdlib-only). Wireshark support is
+a full from-scratch dissector at
+`internal/osc/wireshark/dhs_osc.lua` covering UDP + TCP
+length-prefix (1.0) + TCP SLIP (1.1), every type tag including 1.1
+payload-less (T/F/N/I) and array markers ([, ]), and recursive
+bundle decoding. Per-message Info column shows address, type-tag
+string, and arg count.
 
 ---
 
@@ -63,7 +81,18 @@ stream, profile, diag.
 Probel has its own verb catalogue (interrogate, connect, tally-dump, watch,
 …) — see `dhs consumer probel-sw08p -h`.
 
-Producer verb is `serve` for every protocol.
+OSC has its own symmetric-peer verbs:
+- `dhs consumer osc-vXX watch --listen <udp|tcp-len|tcp-slip>:<port> [--pattern PAT]`
+- `dhs producer osc-vXX send --to HOST:PORT --transport KIND --address /A --types TAGS [args...]`
+- `dhs producer osc-vXX fader --to HOST:PORT [--rate N] [--duration D] [--min --max] [--pattern ramp|sine|random]`
+- `dhs producer osc-vXX serve --bind <transport>:<port>`
+
+Type-tag tokens for `--types`: `i f s b h d t S c r m T F N I [ ]`. The
+watcher's per-frame line shape (`/addr ,tags v1 v2 v3`) matches the
+`dhs_osc.lua` Wireshark Info column verbatim, so a live `watch`
+terminal and a tshark capture can be diffed line-for-line.
+
+Producer verb is `serve` for the slot-based protocols.
 
 ---
 
@@ -75,8 +104,16 @@ internal/acp2/assets/       acp2_protocol.pdf + an2_protocol.pdf
 internal/emberplus/assets/  Ember+ Documentation.pdf + Ember+ Formulas.pdf
 internal/probel-sw08p/assets/probel-sw08p/SW-P-08 Issue 30.doc   (use antiword; the .pdf is corrupted)
 
-internal/<proto>/wireshark/dissector_<proto>.lua   byte-exact reference
+internal/<proto>/wireshark/dhs_<proto>.lua         byte-exact reference
 ```
+
+Naming convention is `dhs_<proto>` for the file, the Proto, and the
+field-abbrev prefix (e.g. `dhs_osc.address`). The `dhs_` prefix avoids
+clashes with Wireshark built-ins that own bare `<proto>.*` namespaces
+(notably `osc.*`). A regression fixture is checked in at
+`tests/fixtures/osc/battery.pcapng` (343 KB, 88 frames across all OSC
+transports) — `dissector_replay_test.go` runs tshark on it under the
+`integration` build tag.
 
 Extract the Probel spec:
 

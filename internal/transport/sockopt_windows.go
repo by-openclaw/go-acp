@@ -18,3 +18,9 @@ func setReuseAddr(fd uintptr) error {
 func SetSocketBroadcast(fd uintptr) error {
 	return syscall.SetsockoptInt(syscall.Handle(fd), syscall.SOL_SOCKET, syscall.SO_BROADCAST, 1)
 }
+
+// SetSocketReuseAddr is the exported wrapper for cross-package use.
+// Behaviour matches the unexported setReuseAddr.
+func SetSocketReuseAddr(fd uintptr) error {
+	return setReuseAddr(fd)
+}
