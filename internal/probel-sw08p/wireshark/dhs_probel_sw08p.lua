@@ -168,49 +168,49 @@ local protect_state_valstr = {
 -- Protocol declaration
 -------------------------------------------------------------------------------
 
-local p_probel = Proto("probel_sw08p", "Probel SW-P-08/88")
+local p_probel = Proto("dhs_probel_sw08p", "Probel SW-P-08/88")
 
 local f = {
-    som        = ProtoField.bytes  ("probel.som",        "Start-of-Message (DLE STX)"),
-    eom        = ProtoField.bytes  ("probel.eom",        "End-of-Message (DLE ETX)"),
-    data       = ProtoField.bytes  ("probel.data",       "DATA (unescaped)"),
-    raw        = ProtoField.bytes  ("probel.raw",        "Raw frame (on-wire, escaped)"),
-    cmd        = ProtoField.uint8  ("probel.cmd",        "Command",      base.HEX, cmd_name),
-    cmd_dec    = ProtoField.uint8  ("probel.cmd_dec",    "Command (dec)",base.DEC),
-    btc        = ProtoField.uint8  ("probel.btc",        "Byte Count",   base.DEC),
-    chk        = ProtoField.uint8  ("probel.chk",        "Checksum",     base.HEX),
-    chk_good   = ProtoField.bool   ("probel.chk_good",   "Checksum OK"),
-    chk_calc   = ProtoField.uint8  ("probel.chk_calc",   "Checksum (calc)", base.HEX),
-    btc_good   = ProtoField.bool   ("probel.btc_good",   "BTC OK"),
-    extended   = ProtoField.bool   ("probel.extended",   "Extended command"),
-    matrix     = ProtoField.uint8  ("probel.matrix",     "Matrix ID",    base.DEC),
-    level      = ProtoField.uint8  ("probel.level",      "Level ID",     base.DEC),
-    dst        = ProtoField.uint16 ("probel.dst",        "Destination",  base.DEC),
-    src        = ProtoField.uint16 ("probel.src",        "Source",       base.DEC),
-    first_dst  = ProtoField.uint16 ("probel.first_dst",  "First Destination",  base.DEC),
-    first_src  = ProtoField.uint16 ("probel.first_src",  "First Source",       base.DEC),
-    tally_n    = ProtoField.uint16 ("probel.tallies",    "Tallies",      base.DEC),
-    namelen    = ProtoField.uint8  ("probel.namelen",    "Name Length",  base.DEC, namelen_valstr),
-    name_count = ProtoField.uint8  ("probel.names",      "Names",        base.DEC),
-    name_item  = ProtoField.string ("probel.name",       "Name"),
-    protect    = ProtoField.uint8  ("probel.protect",    "Protect State",base.DEC, protect_state_valstr),
-    status     = ProtoField.uint8  ("probel.status",     "Status",       base.HEX),
-    salvo_grp  = ProtoField.uint16 ("probel.salvo.grp",  "Salvo Group",  base.DEC),
-    salvo_cnt  = ProtoField.uint16 ("probel.salvo.count","Salvo Elements",base.DEC),
-    payload    = ProtoField.bytes  ("probel.payload",    "Payload"),
-    ackframe   = ProtoField.bool   ("probel.ack",        "DLE ACK"),
-    nakframe   = ProtoField.bool   ("probel.nak",        "DLE NAK"),
+    som        = ProtoField.bytes  ("dhs_probel_sw08p.som",        "Start-of-Message (DLE STX)"),
+    eom        = ProtoField.bytes  ("dhs_probel_sw08p.eom",        "End-of-Message (DLE ETX)"),
+    data       = ProtoField.bytes  ("dhs_probel_sw08p.data",       "DATA (unescaped)"),
+    raw        = ProtoField.bytes  ("dhs_probel_sw08p.raw",        "Raw frame (on-wire, escaped)"),
+    cmd        = ProtoField.uint8  ("dhs_probel_sw08p.cmd",        "Command",      base.HEX, cmd_name),
+    cmd_dec    = ProtoField.uint8  ("dhs_probel_sw08p.cmd_dec",    "Command (dec)",base.DEC),
+    btc        = ProtoField.uint8  ("dhs_probel_sw08p.btc",        "Byte Count",   base.DEC),
+    chk        = ProtoField.uint8  ("dhs_probel_sw08p.chk",        "Checksum",     base.HEX),
+    chk_good   = ProtoField.bool   ("dhs_probel_sw08p.chk_good",   "Checksum OK"),
+    chk_calc   = ProtoField.uint8  ("dhs_probel_sw08p.chk_calc",   "Checksum (calc)", base.HEX),
+    btc_good   = ProtoField.bool   ("dhs_probel_sw08p.btc_good",   "BTC OK"),
+    extended   = ProtoField.bool   ("dhs_probel_sw08p.extended",   "Extended command"),
+    matrix     = ProtoField.uint8  ("dhs_probel_sw08p.matrix",     "Matrix ID",    base.DEC),
+    level      = ProtoField.uint8  ("dhs_probel_sw08p.level",      "Level ID",     base.DEC),
+    dst        = ProtoField.uint16 ("dhs_probel_sw08p.dst",        "Destination",  base.DEC),
+    src        = ProtoField.uint16 ("dhs_probel_sw08p.src",        "Source",       base.DEC),
+    first_dst  = ProtoField.uint16 ("dhs_probel_sw08p.first_dst",  "First Destination",  base.DEC),
+    first_src  = ProtoField.uint16 ("dhs_probel_sw08p.first_src",  "First Source",       base.DEC),
+    tally_n    = ProtoField.uint16 ("dhs_probel_sw08p.tallies",    "Tallies",      base.DEC),
+    namelen    = ProtoField.uint8  ("dhs_probel_sw08p.namelen",    "Name Length",  base.DEC, namelen_valstr),
+    name_count = ProtoField.uint8  ("dhs_probel_sw08p.names",      "Names",        base.DEC),
+    name_item  = ProtoField.string ("dhs_probel_sw08p.name",       "Name"),
+    protect    = ProtoField.uint8  ("dhs_probel_sw08p.protect",    "Protect State",base.DEC, protect_state_valstr),
+    status     = ProtoField.uint8  ("dhs_probel_sw08p.status",     "Status",       base.HEX),
+    salvo_grp  = ProtoField.uint16 ("dhs_probel_sw08p.salvo.grp",  "Salvo Group",  base.DEC),
+    salvo_cnt  = ProtoField.uint16 ("dhs_probel_sw08p.salvo.count","Salvo Elements",base.DEC),
+    payload    = ProtoField.bytes  ("dhs_probel_sw08p.payload",    "Payload"),
+    ackframe   = ProtoField.bool   ("dhs_probel_sw08p.ack",        "DLE ACK"),
+    nakframe   = ProtoField.bool   ("dhs_probel_sw08p.nak",        "DLE NAK"),
 }
 p_probel.fields = f
 
 -- Expert infos
-local ef_bad_chk = ProtoExpert.new("probel.bad_checksum.expert",
+local ef_bad_chk = ProtoExpert.new("dhs_probel_sw08p.bad_checksum.expert",
     "Checksum mismatch", expert.group.CHECKSUM, expert.severity.ERROR)
-local ef_bad_btc = ProtoExpert.new("probel.bad_btc.expert",
+local ef_bad_btc = ProtoExpert.new("dhs_probel_sw08p.bad_btc.expert",
     "BTC mismatch", expert.group.MALFORMED, expert.severity.ERROR)
-local ef_nak = ProtoExpert.new("probel.nak.expert",
+local ef_nak = ProtoExpert.new("dhs_probel_sw08p.nak.expert",
     "Peer NAK", expert.group.RESPONSE_CODE, expert.severity.NOTE)
-local ef_unsupported = ProtoExpert.new("probel.unsupported.expert",
+local ef_unsupported = ProtoExpert.new("dhs_probel_sw08p.unsupported.expert",
     "Unknown command byte", expert.group.PROTOCOL, expert.severity.NOTE)
 p_probel.experts = { ef_bad_chk, ef_bad_btc, ef_nak, ef_unsupported }
 

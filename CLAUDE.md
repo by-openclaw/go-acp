@@ -42,7 +42,7 @@ internal/
     CLAUDE.md                 atomic wire-format context
     consumer/                 package acp1 — implements protocol.Protocol
     provider/                 package acp1 — implements provider.Provider
-    wireshark/                dissector_acp1.lua
+    wireshark/                dhs_acpv1.lua
     docs/                     consumer.md / provider.md / README.md
     assets/                   spec PDFs + vendor tools (Synapse Simulator)
   acp2/

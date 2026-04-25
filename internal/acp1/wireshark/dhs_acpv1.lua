@@ -98,105 +98,105 @@ local pver_valstr = {
 -- Protocol declaration
 -------------------------------------------------------------------------------
 
-local acpv1 = Proto("acpv1_full", "Axon Control Protocol V1")
+local acpv1 = Proto("dhs_acpv1", "Axon Control Protocol V1")
 
 -------------------------------------------------------------------------------
 -- ProtoFields
 -------------------------------------------------------------------------------
 
 -- TCP framing
-local f_mlen = ProtoField.uint32("acpv1.mlen", "Message Length", base.DEC)
+local f_mlen = ProtoField.uint32("dhs_acpv1.mlen", "Message Length", base.DEC)
 
 -- ACP1 header
-local f_mtid   = ProtoField.uint32("acpv1.mtid",  "Transaction ID", base.HEX)
-local f_pver   = ProtoField.uint8("acpv1.pver",   "Protocol Version", base.DEC, pver_valstr)
-local f_mtype  = ProtoField.uint8("acpv1.mtype",  "Message Type", base.DEC, mtype_valstr)
-local f_maddr  = ProtoField.uint8("acpv1.maddr",  "Slot Address", base.DEC)
+local f_mtid   = ProtoField.uint32("dhs_acpv1.mtid",  "Transaction ID", base.HEX)
+local f_pver   = ProtoField.uint8("dhs_acpv1.pver",   "Protocol Version", base.DEC, pver_valstr)
+local f_mtype  = ProtoField.uint8("dhs_acpv1.mtype",  "Message Type", base.DEC, mtype_valstr)
+local f_maddr  = ProtoField.uint8("dhs_acpv1.maddr",  "Slot Address", base.DEC)
 
 -- MDATA common
-local f_mcode  = ProtoField.uint8("acpv1.mcode",  "Method/Error Code", base.DEC)
-local f_objgrp = ProtoField.uint8("acpv1.objgrp", "Object Group", base.DEC, objgrp_valstr)
-local f_objid  = ProtoField.uint8("acpv1.objid",  "Object ID", base.DEC)
-local f_value  = ProtoField.bytes("acpv1.value",   "Value")
+local f_mcode  = ProtoField.uint8("dhs_acpv1.mcode",  "Method/Error Code", base.DEC)
+local f_objgrp = ProtoField.uint8("dhs_acpv1.objgrp", "Object Group", base.DEC, objgrp_valstr)
+local f_objid  = ProtoField.uint8("dhs_acpv1.objid",  "Object ID", base.DEC)
+local f_value  = ProtoField.bytes("dhs_acpv1.value",   "Value")
 
 -- Error fields
-local f_err_transport = ProtoField.uint8("acpv1.err_transport", "Transport Error", base.DEC, transport_error_valstr)
-local f_err_object    = ProtoField.uint8("acpv1.err_object",    "Object Error", base.DEC, object_error_valstr)
+local f_err_transport = ProtoField.uint8("dhs_acpv1.err_transport", "Transport Error", base.DEC, transport_error_valstr)
+local f_err_object    = ProtoField.uint8("dhs_acpv1.err_object",    "Object Error", base.DEC, object_error_valstr)
 
 -- Object property fields (getObject decode)
-local f_obj_type       = ProtoField.uint8("acpv1.obj.type",       "Object Type", base.DEC, objtype_valstr)
-local f_obj_numprops   = ProtoField.uint8("acpv1.obj.numprops",   "Num Properties", base.DEC)
-local f_obj_access     = ProtoField.uint8("acpv1.obj.access",     "Access", base.HEX)
-local f_obj_access_r   = ProtoField.bool("acpv1.obj.access.read",      "Read",       8, nil, 0x01)
-local f_obj_access_w   = ProtoField.bool("acpv1.obj.access.write",     "Write",      8, nil, 0x02)
-local f_obj_access_d   = ProtoField.bool("acpv1.obj.access.setdef",    "SetDefault", 8, nil, 0x04)
+local f_obj_type       = ProtoField.uint8("dhs_acpv1.obj.type",       "Object Type", base.DEC, objtype_valstr)
+local f_obj_numprops   = ProtoField.uint8("dhs_acpv1.obj.numprops",   "Num Properties", base.DEC)
+local f_obj_access     = ProtoField.uint8("dhs_acpv1.obj.access",     "Access", base.HEX)
+local f_obj_access_r   = ProtoField.bool("dhs_acpv1.obj.access.read",      "Read",       8, nil, 0x01)
+local f_obj_access_w   = ProtoField.bool("dhs_acpv1.obj.access.write",     "Write",      8, nil, 0x02)
+local f_obj_access_d   = ProtoField.bool("dhs_acpv1.obj.access.setdef",    "SetDefault", 8, nil, 0x04)
 
 -- Root
-local f_root_bootmode   = ProtoField.uint8("acpv1.obj.root.bootmode",    "Boot Mode", base.DEC)
-local f_root_numident   = ProtoField.uint8("acpv1.obj.root.numident",    "Num Identity", base.DEC)
-local f_root_numcontrol = ProtoField.uint8("acpv1.obj.root.numcontrol",  "Num Control", base.DEC)
-local f_root_numstatus  = ProtoField.uint8("acpv1.obj.root.numstatus",   "Num Status", base.DEC)
-local f_root_numalarm   = ProtoField.uint8("acpv1.obj.root.numalarm",    "Num Alarm", base.DEC)
-local f_root_numfile    = ProtoField.uint8("acpv1.obj.root.numfile",     "Num File", base.DEC)
+local f_root_bootmode   = ProtoField.uint8("dhs_acpv1.obj.root.bootmode",    "Boot Mode", base.DEC)
+local f_root_numident   = ProtoField.uint8("dhs_acpv1.obj.root.numident",    "Num Identity", base.DEC)
+local f_root_numcontrol = ProtoField.uint8("dhs_acpv1.obj.root.numcontrol",  "Num Control", base.DEC)
+local f_root_numstatus  = ProtoField.uint8("dhs_acpv1.obj.root.numstatus",   "Num Status", base.DEC)
+local f_root_numalarm   = ProtoField.uint8("dhs_acpv1.obj.root.numalarm",    "Num Alarm", base.DEC)
+local f_root_numfile    = ProtoField.uint8("dhs_acpv1.obj.root.numfile",     "Num File", base.DEC)
 
 -- Integer / Long / Byte / IPAddr / Float common numeric fields
-local f_int_value_s16   = ProtoField.int16("acpv1.obj.int.value",       "Value", base.DEC)
-local f_int_default_s16 = ProtoField.int16("acpv1.obj.int.default",     "Default Value", base.DEC)
-local f_int_step_s16    = ProtoField.int16("acpv1.obj.int.step",        "Step Size", base.DEC)
-local f_int_min_s16     = ProtoField.int16("acpv1.obj.int.min",         "Min Value", base.DEC)
-local f_int_max_s16     = ProtoField.int16("acpv1.obj.int.max",         "Max Value", base.DEC)
+local f_int_value_s16   = ProtoField.int16("dhs_acpv1.obj.int.value",       "Value", base.DEC)
+local f_int_default_s16 = ProtoField.int16("dhs_acpv1.obj.int.default",     "Default Value", base.DEC)
+local f_int_step_s16    = ProtoField.int16("dhs_acpv1.obj.int.step",        "Step Size", base.DEC)
+local f_int_min_s16     = ProtoField.int16("dhs_acpv1.obj.int.min",         "Min Value", base.DEC)
+local f_int_max_s16     = ProtoField.int16("dhs_acpv1.obj.int.max",         "Max Value", base.DEC)
 
-local f_long_value_s32   = ProtoField.int32("acpv1.obj.long.value",     "Value", base.DEC)
-local f_long_default_s32 = ProtoField.int32("acpv1.obj.long.default",   "Default Value", base.DEC)
-local f_long_step_s32    = ProtoField.int32("acpv1.obj.long.step",      "Step Size", base.DEC)
-local f_long_min_s32     = ProtoField.int32("acpv1.obj.long.min",       "Min Value", base.DEC)
-local f_long_max_s32     = ProtoField.int32("acpv1.obj.long.max",       "Max Value", base.DEC)
+local f_long_value_s32   = ProtoField.int32("dhs_acpv1.obj.long.value",     "Value", base.DEC)
+local f_long_default_s32 = ProtoField.int32("dhs_acpv1.obj.long.default",   "Default Value", base.DEC)
+local f_long_step_s32    = ProtoField.int32("dhs_acpv1.obj.long.step",      "Step Size", base.DEC)
+local f_long_min_s32     = ProtoField.int32("dhs_acpv1.obj.long.min",       "Min Value", base.DEC)
+local f_long_max_s32     = ProtoField.int32("dhs_acpv1.obj.long.max",       "Max Value", base.DEC)
 
-local f_byte_value_u8   = ProtoField.uint8("acpv1.obj.byte.value",     "Value", base.DEC)
-local f_byte_default_u8 = ProtoField.uint8("acpv1.obj.byte.default",   "Default Value", base.DEC)
-local f_byte_step_u8    = ProtoField.uint8("acpv1.obj.byte.step",      "Step Size", base.DEC)
-local f_byte_min_u8     = ProtoField.uint8("acpv1.obj.byte.min",       "Min Value", base.DEC)
-local f_byte_max_u8     = ProtoField.uint8("acpv1.obj.byte.max",       "Max Value", base.DEC)
+local f_byte_value_u8   = ProtoField.uint8("dhs_acpv1.obj.byte.value",     "Value", base.DEC)
+local f_byte_default_u8 = ProtoField.uint8("dhs_acpv1.obj.byte.default",   "Default Value", base.DEC)
+local f_byte_step_u8    = ProtoField.uint8("dhs_acpv1.obj.byte.step",      "Step Size", base.DEC)
+local f_byte_min_u8     = ProtoField.uint8("dhs_acpv1.obj.byte.min",       "Min Value", base.DEC)
+local f_byte_max_u8     = ProtoField.uint8("dhs_acpv1.obj.byte.max",       "Max Value", base.DEC)
 
-local f_ip_value_u32   = ProtoField.ipv4("acpv1.obj.ip.value",         "Value")
-local f_ip_default_u32 = ProtoField.ipv4("acpv1.obj.ip.default",       "Default Value")
-local f_ip_step_u32    = ProtoField.uint32("acpv1.obj.ip.step",        "Step Size", base.HEX)
-local f_ip_min_u32     = ProtoField.ipv4("acpv1.obj.ip.min",           "Min Value")
-local f_ip_max_u32     = ProtoField.ipv4("acpv1.obj.ip.max",           "Max Value")
+local f_ip_value_u32   = ProtoField.ipv4("dhs_acpv1.obj.ip.value",         "Value")
+local f_ip_default_u32 = ProtoField.ipv4("dhs_acpv1.obj.ip.default",       "Default Value")
+local f_ip_step_u32    = ProtoField.uint32("dhs_acpv1.obj.ip.step",        "Step Size", base.HEX)
+local f_ip_min_u32     = ProtoField.ipv4("dhs_acpv1.obj.ip.min",           "Min Value")
+local f_ip_max_u32     = ProtoField.ipv4("dhs_acpv1.obj.ip.max",           "Max Value")
 
-local f_float_value    = ProtoField.float("acpv1.obj.float.value",     "Value")
-local f_float_default  = ProtoField.float("acpv1.obj.float.default",   "Default Value")
-local f_float_step     = ProtoField.float("acpv1.obj.float.step",      "Step Size")
-local f_float_min      = ProtoField.float("acpv1.obj.float.min",       "Min Value")
-local f_float_max      = ProtoField.float("acpv1.obj.float.max",       "Max Value")
+local f_float_value    = ProtoField.float("dhs_acpv1.obj.float.value",     "Value")
+local f_float_default  = ProtoField.float("dhs_acpv1.obj.float.default",   "Default Value")
+local f_float_step     = ProtoField.float("dhs_acpv1.obj.float.step",      "Step Size")
+local f_float_min      = ProtoField.float("dhs_acpv1.obj.float.min",       "Min Value")
+local f_float_max      = ProtoField.float("dhs_acpv1.obj.float.max",       "Max Value")
 
 -- Enum
-local f_enum_value     = ProtoField.uint8("acpv1.obj.enum.value",      "Value (index)", base.DEC)
-local f_enum_numitems  = ProtoField.uint8("acpv1.obj.enum.numitems",   "Num Items", base.DEC)
-local f_enum_default   = ProtoField.uint8("acpv1.obj.enum.default",    "Default Value", base.DEC)
-local f_enum_items     = ProtoField.string("acpv1.obj.enum.items",     "Item List")
+local f_enum_value     = ProtoField.uint8("dhs_acpv1.obj.enum.value",      "Value (index)", base.DEC)
+local f_enum_numitems  = ProtoField.uint8("dhs_acpv1.obj.enum.numitems",   "Num Items", base.DEC)
+local f_enum_default   = ProtoField.uint8("dhs_acpv1.obj.enum.default",    "Default Value", base.DEC)
+local f_enum_items     = ProtoField.string("dhs_acpv1.obj.enum.items",     "Item List")
 
 -- String
-local f_str_value      = ProtoField.string("acpv1.obj.str.value",      "Value")
-local f_str_maxlen     = ProtoField.uint8("acpv1.obj.str.maxlen",      "Max Length", base.DEC)
+local f_str_value      = ProtoField.string("dhs_acpv1.obj.str.value",      "Value")
+local f_str_maxlen     = ProtoField.uint8("dhs_acpv1.obj.str.maxlen",      "Max Length", base.DEC)
 
 -- Labels and units (shared)
-local f_label          = ProtoField.string("acpv1.obj.label",          "Label")
-local f_unit           = ProtoField.string("acpv1.obj.unit",           "Unit")
+local f_label          = ProtoField.string("dhs_acpv1.obj.label",          "Label")
+local f_unit           = ProtoField.string("dhs_acpv1.obj.unit",           "Unit")
 
 -- Frame status
-local f_frame_numslots = ProtoField.uint8("acpv1.obj.frame.numslots",  "Num Slots", base.DEC)
-local f_frame_slot     = ProtoField.uint8("acpv1.obj.frame.slot",      "Slot Status", base.DEC, slot_status_valstr)
+local f_frame_numslots = ProtoField.uint8("dhs_acpv1.obj.frame.numslots",  "Num Slots", base.DEC)
+local f_frame_slot     = ProtoField.uint8("dhs_acpv1.obj.frame.slot",      "Slot Status", base.DEC, slot_status_valstr)
 
 -- Alarm
-local f_alarm_priority = ProtoField.uint8("acpv1.obj.alarm.priority",  "Priority", base.DEC)
-local f_alarm_tag      = ProtoField.uint8("acpv1.obj.alarm.tag",       "Tag", base.DEC)
-local f_alarm_on_msg   = ProtoField.string("acpv1.obj.alarm.on_msg",   "Event On Message")
-local f_alarm_off_msg  = ProtoField.string("acpv1.obj.alarm.off_msg",  "Event Off Message")
+local f_alarm_priority = ProtoField.uint8("dhs_acpv1.obj.alarm.priority",  "Priority", base.DEC)
+local f_alarm_tag      = ProtoField.uint8("dhs_acpv1.obj.alarm.tag",       "Tag", base.DEC)
+local f_alarm_on_msg   = ProtoField.string("dhs_acpv1.obj.alarm.on_msg",   "Event On Message")
+local f_alarm_off_msg  = ProtoField.string("dhs_acpv1.obj.alarm.off_msg",  "Event Off Message")
 
 -- File
-local f_file_numfrags  = ProtoField.int16("acpv1.obj.file.numfrags",   "Num Fragments", base.DEC)
-local f_file_name      = ProtoField.string("acpv1.obj.file.name",      "File Name")
+local f_file_numfrags  = ProtoField.int16("dhs_acpv1.obj.file.numfrags",   "Num Fragments", base.DEC)
+local f_file_name      = ProtoField.string("dhs_acpv1.obj.file.name",      "File Name")
 
 acpv1.fields = {
     f_mlen,
