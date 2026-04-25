@@ -148,21 +148,33 @@ func main() {
 // the generic verb table. Probel has its own verb catalogue and dispatches
 // directly to runProbel.
 func dispatchConsumer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	if len(args) == 0 {
 		printConsumerHelp()
 		return nil
 	}
-	if len(args) < 2 {
+	// Top-level help (no protocol given): print the consumer index.
+	if isHelpToken(args[0]) {
 		printConsumerHelp()
-		return fmt.Errorf("consumer: need <protocol> <verb>")
+		return nil
 	}
 	proto := args[0]
-	verb := args[1]
-	rest := args[2:]
+	rest := args[1:]
 
+	// Per-protocol dispatchers handle their own help so users can run
+	// `dhs consumer <proto> -h` and see protocol-specific verbs.
 	if proto == "probel-sw08p" {
-		return runProbel(ctx, append([]string{verb}, rest...))
+		return runProbel(ctx, rest)
 	}
+	if proto == "osc-v10" || proto == "osc-v11" {
+		return runOSCConsumer(ctx, proto, rest)
+	}
+
+	if len(rest) == 0 || hasHelpFlag(rest) {
+		printConsumerHelp()
+		return nil
+	}
+	verb := rest[0]
+	rest = rest[1:]
 
 	c := findCommand(verb)
 	if c == nil {
@@ -179,23 +191,40 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 // dispatchProducer routes `dhs producer <proto> <verb> [args...]`.
 // Currently only <verb>=serve is defined.
 func dispatchProducer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	if len(args) == 0 {
 		printProducerHelp()
 		return nil
 	}
-	if len(args) < 2 {
+	if isHelpToken(args[0]) {
 		printProducerHelp()
-		return fmt.Errorf("producer: need <protocol> <verb>")
+		return nil
 	}
 	proto := args[0]
-	verb := args[1]
-	rest := args[2:]
+	rest := args[1:]
 
+	if proto == "osc-v10" || proto == "osc-v11" {
+		return runOSCProducer(ctx, proto, rest)
+	}
+	if len(rest) == 0 || hasHelpFlag(rest) {
+		printProducerHelp()
+		return nil
+	}
+	verb := rest[0]
+	rest = rest[1:]
 	switch verb {
 	case "serve":
 		return runProducer(ctx, proto, rest)
 	}
 	return fmt.Errorf("producer %s: unknown verb %q (expected: serve)", proto, verb)
+}
+
+// isHelpToken returns true for the help tokens we accept at any level.
+func isHelpToken(s string) bool {
+	switch s {
+	case "-h", "--h", "--help", "help":
+		return true
+	}
+	return false
 }
 
 // findCommand looks up a consumer-verb by name.
@@ -297,10 +326,12 @@ USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
 PROTOCOLS
-  acp1        Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2        Axon Control Protocol v2 (AN2/TCP only)
-  emberplus   Ember+ (Lawo)
+  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
+  acp2          Axon Control Protocol v2 (AN2/TCP only)
+  emberplus     Ember+ (Lawo)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
+  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
+  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
 
 GENERIC VERBS (acp1 / acp2 / emberplus)`)
 	for _, c := range commands {
@@ -309,6 +340,10 @@ GENERIC VERBS (acp1 / acp2 / emberplus)`)
 	fmt.Println(`
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
+
+OSC VERBS
+  watch  bind a port and print every received message
+  run 'dhs consumer osc-v10 -h' (or osc-v11) for full flags.
 
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.`)
 }
@@ -321,8 +356,9 @@ USAGE
 
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw08p
+  osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
 
-FLAGS (common)
+FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
   --port N                TCP listen port (0 = plugin default)
   --host ADDR             TCP listen host (default 0.0.0.0)
@@ -335,9 +371,17 @@ FLAGS (common)
   --announce-demo-obj OBJ            acp2: obj-id (must be Number+Float)
   --announce-demo-interval DURATION  tick interval (default 2s)
 
+OSC VERBS (osc-v10 / osc-v11)
+  send    emit one OSC message and exit
+  fader   continuous high-rate fader simulator (perf measurement)
+  serve   bind a port and log incoming messages
+
 EXAMPLES
   dhs producer acp1      serve --tree tree.json --port 2071
   dhs producer acp2      serve --tree tree.json --port 2072
   dhs producer emberplus serve --tree tree.json --port 9000
-  dhs producer probel-sw08p    serve --tree matrix.json --port 2008`)
+  dhs producer probel-sw08p    serve --tree matrix.json --port 2008
+  dhs producer osc-v10  send  --to 127.0.0.1:8000 --address /test --types ifs --args 42 3.14 hi
+  dhs producer osc-v11  fader --to 127.0.0.1:8000 --rate 1000 --duration 5s --pattern sine
+  dhs producer osc-v10  serve --bind udp:8000`)
 }
