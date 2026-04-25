@@ -90,3 +90,79 @@ func TestExtendedConnectAppliesRouteAndBroadcastsExtendedConnected(t *testing.T)
 		t.Errorf("tree[5000] = (%d, ok=%v); want (10000, true)", got, ok)
 	}
 }
+
+// TestExtendedConnectRejectedWhenDstProtected_NoExistingRoute mirrors
+// the §3.2.60 silent-drop branch on the rx 66 / tx 68 path.
+func TestExtendedConnectRejectedWhenDstProtected_NoExistingRoute(t *testing.T) {
+	srv := newBareTestServer(t)
+
+	if _, res := srv.tree.protectApply(5000, 42, codec.ProtectProBel); res != protectApplyAccepted {
+		t.Fatalf("protectApply seed: result = %v; want protectApplyAccepted", res)
+	}
+
+	in := codec.EncodeExtendedConnect(codec.ExtendedConnectParams{
+		Destination: 5000, Source: 10000,
+	})
+	res, err := srv.dispatch(in)
+	if err != nil {
+		t.Fatalf("dispatch rx 66: %v", err)
+	}
+	if res.reply != nil || len(res.broadcast) != 0 {
+		t.Errorf("protected-dst rx 66 (no route): reply=%+v broadcast=%d; want both empty", res.reply, len(res.broadcast))
+	}
+	if _, ok := srv.tree.matrices[matrixKey{matrix: 0, level: 0}].sources[5000]; ok {
+		t.Errorf("tree[5000] populated after blocked extended connect; want absent")
+	}
+	snap := srv.profile.Snapshot()
+	if got := snap[ProtectBlocksConnect]; got != 1 {
+		t.Errorf("ProtectBlocksConnect = %d; want 1", got)
+	}
+	if got := snap[ProtectBlocksConnectStateEchoed]; got != 0 {
+		t.Errorf("ProtectBlocksConnectStateEchoed = %d; want 0 (no existing route)", got)
+	}
+}
+
+// TestExtendedConnectRejectedWhenDstProtected_StateEchoed mirrors the
+// state-echo branch on the rx 66 / tx 68 path.
+func TestExtendedConnectRejectedWhenDstProtected_StateEchoed(t *testing.T) {
+	srv := newBareTestServer(t)
+
+	// Seed dst=5000 → src=1234, then protect dst=5000.
+	if !srv.tree.applyConnectLenient(0, 0, 5000, 1234) {
+		t.Fatal("seed applyConnectLenient(5000 -> 1234) failed")
+	}
+	if _, res := srv.tree.protectApply(5000, 42, codec.ProtectProBel); res != protectApplyAccepted {
+		t.Fatalf("protectApply seed: result = %v; want protectApplyAccepted", res)
+	}
+
+	in := codec.EncodeExtendedConnect(codec.ExtendedConnectParams{
+		Destination: 5000, Source: 9999,
+	})
+	res, err := srv.dispatch(in)
+	if err != nil {
+		t.Fatalf("dispatch rx 66: %v", err)
+	}
+	if res.reply != nil {
+		t.Errorf("protected-dst rx 66 returned a reply; want broadcast-only state echo")
+	}
+	if len(res.broadcast) != 1 || res.broadcast[0].ID != codec.TxExtendedConnected {
+		t.Fatalf("broadcast = %+v; want 1 x tx 68 (state echo)", res.broadcast)
+	}
+	echo, err := codec.DecodeExtendedConnected(res.broadcast[0])
+	if err != nil {
+		t.Fatalf("decode tx 68 echo: %v", err)
+	}
+	if echo.Destination != 5000 || echo.Source != 1234 {
+		t.Errorf("tx 68 echo = (dst=%d src=%d); want (5000, 1234) — existing route", echo.Destination, echo.Source)
+	}
+	if got, ok := srv.tree.matrices[matrixKey{matrix: 0, level: 0}].sources[5000]; !ok || got != 1234 {
+		t.Errorf("tree[5000] = (%d, ok=%v); want (1234, true) — unchanged", got, ok)
+	}
+	snap := srv.profile.Snapshot()
+	if got := snap[ProtectBlocksConnect]; got != 1 {
+		t.Errorf("ProtectBlocksConnect = %d; want 1", got)
+	}
+	if got := snap[ProtectBlocksConnectStateEchoed]; got != 1 {
+		t.Errorf("ProtectBlocksConnectStateEchoed = %d; want 1", got)
+	}
+}

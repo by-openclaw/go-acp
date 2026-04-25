@@ -141,8 +141,8 @@ local f = {
     cksum    = ProtoField.uint8("dhs_probel_sw02p.cksum", "Checksum", base.HEX),
     cksum_ok = ProtoField.bool("dhs_probel_sw02p.cksum_ok", "Checksum OK"),
 
-    -- Narrow §3.2.3 Multiplier
-    mult_n        = ProtoField.uint8("dhs_probel_sw02p.mult",         "Multiplier (§3.2.3)", base.HEX),
+    -- Narrow Multiplier byte: bits 6-4 = Dest DIV128, bit 3 = BadSrc, bits 2-0 = Src DIV128 (spec §3.2.3).
+    mult_n        = ProtoField.uint8("dhs_probel_sw02p.mult",         "Multiplier (Dest hi3 / BadSrc / Src hi3)", base.HEX),
     mult_dest_div = ProtoField.uint8("dhs_probel_sw02p.mult.dest_div", "Dest DIV 128", base.DEC, nil, 0x70),
     mult_bad_src  = ProtoField.bool ("dhs_probel_sw02p.mult.bad_src",  "Bad Source / Update Disabled", 8, nil, 0x08),
     mult_src_div  = ProtoField.uint8("dhs_probel_sw02p.mult.src_div",  "Src DIV 128",  base.DEC, nil, 0x07),
@@ -153,12 +153,12 @@ local f = {
     dest_mod   = ProtoField.uint8 ("dhs_probel_sw02p.dest_mod", "Dest MOD 128", base.DEC),
     src_mod    = ProtoField.uint8 ("dhs_probel_sw02p.src_mod",  "Src MOD 128",  base.DEC),
 
-    -- Extended §3.2.47 / §3.2.48 Multiplier bytes
-    dest_mult_ext = ProtoField.uint8("dhs_probel_sw02p.dest_mult_ext", "Dest Mult (§3.2.47)", base.HEX, nil, 0x7F),
-    src_mult_ext  = ProtoField.uint8("dhs_probel_sw02p.src_mult_ext",  "Src Mult (§3.2.48)",  base.HEX, nil, 0x7F),
+    -- Extended Multiplier bytes — 7-bit per axis, dst/src independently 0-16383 (spec §3.2.47/§3.2.48).
+    dest_mult_ext = ProtoField.uint8("dhs_probel_sw02p.dest_mult_ext", "Dest Multiplier (extended, 7-bit)", base.HEX, nil, 0x7F),
+    src_mult_ext  = ProtoField.uint8("dhs_probel_sw02p.src_mult_ext",  "Src Multiplier (extended, 7-bit)",  base.HEX, nil, 0x7F),
 
-    -- Status byte (§3.2.49 / §3.2.50)
-    status_ext      = ProtoField.uint8("dhs_probel_sw02p.status_ext", "Status", base.HEX),
+    -- Status byte on extended replies (spec §3.2.49 / §3.2.50)
+    status_ext      = ProtoField.uint8("dhs_probel_sw02p.status_ext", "Status (UpdDisabled / BadSrc bits)", base.HEX),
     status_upd_off  = ProtoField.bool ("dhs_probel_sw02p.status_ext.upd_off",  "Crosspoint update disabled", 8, nil, 0x01),
     status_bad_src  = ProtoField.bool ("dhs_probel_sw02p.status_ext.bad_src",  "Bad Source",                 8, nil, 0x02),
 
@@ -166,8 +166,8 @@ local f = {
     go_op   = ProtoField.uint8("dhs_probel_sw02p.go_op",  "Operation", base.HEX, {[0x00]="Set", [0x01]="Clear"}),
     go_res  = ProtoField.uint8("dhs_probel_sw02p.go_res", "Result",    base.HEX, {[0x00]="Set", [0x01]="Cleared", [0x02]="Empty"}),
 
-    -- SalvoID (§3.2.36 / §3.2.53)
-    salvo_id = ProtoField.uint8("dhs_probel_sw02p.salvo_id", "SalvoID", base.DEC, nil, 0x7F),
+    -- SalvoID — group identifier 0-127 carried by salvo commands (spec §3.2.36 / §3.2.53)
+    salvo_id = ProtoField.uint8("dhs_probel_sw02p.salvo_id", "SalvoID (group 0-127)", base.DEC, nil, 0x7F),
 
     -- rx 007 Status Request controller
     controller = ProtoField.uint8("dhs_probel_sw02p.controller", "Controller", base.HEX, {[0]="LH", [1]="RH"}),
@@ -423,6 +423,54 @@ local function dissect_message(tree, tvb, cmd, msg_off, msg_len)
         return string.format("%s salvo=%d", desc, tvb(msg_off + 4, 1):uint() % 128)
     elseif cmd == 0x60 or cmd == 0x61 or cmd == 0x62 then -- tx 096 / 097 / 098
         return dissect_extended_protect(tree, tvb, msg_off)
+    elseif cmd == 0x63 then -- tx 099 PROTECT DEVICE NAME RESPONSE: DevMult + DevMod + 8-byte ASCII name
+        local dv_d = tvb(msg_off, 1):uint()
+        local dv_o = tvb(msg_off + 1, 1):uint()
+        local device = (dv_d % 8) * 128 + (dv_o % 128)
+        tree:add(f.dest_mult_ext, tvb(msg_off, 1))
+        tree:add(f.device,        tvb(msg_off, 2), device):set_generated()
+        local raw_name = tvb(msg_off + 2, 8):string()
+        -- Trim trailing spaces + NULs for display.
+        local trimmed = raw_name:gsub("[%z ]+$", "")
+        return string.format('device=%d name="%s"', device, trimmed)
+    elseif cmd == 0x65 then -- rx 101 PROTECT INTERROGATE: DestMult + DestMod (just dest)
+        local dm_d = tvb(msg_off, 1):uint()
+        local dm_o = tvb(msg_off + 1, 1):uint()
+        local dest = ext_mult(dm_d) * 128 + dm_o
+        tree:add(f.dest_mult_ext, tvb(msg_off, 1))
+        tree:add(f.dest_mod,      tvb(msg_off + 1, 1))
+        tree:add(f.dest,          tvb(msg_off, 2), dest):set_generated()
+        return string.format("dst=%d", dest)
+    elseif cmd == 0x66 or cmd == 0x68 then -- rx 102 / rx 104: DestMult + DestMod + DevMult + DevMod
+        local dm_d = tvb(msg_off, 1):uint()
+        local dm_o = tvb(msg_off + 1, 1):uint()
+        local dest = ext_mult(dm_d) * 128 + dm_o
+        local dv_d = tvb(msg_off + 2, 1):uint()
+        local dv_o = tvb(msg_off + 3, 1):uint()
+        local device = ext_mult(dv_d) * 128 + dv_o
+        tree:add(f.dest_mult_ext, tvb(msg_off, 1))
+        tree:add(f.dest_mod,      tvb(msg_off + 1, 1))
+        tree:add(f.dest,          tvb(msg_off, 2), dest):set_generated()
+        tree:add(f.dest_mult_ext, tvb(msg_off + 2, 1))  -- same field class, different role
+        tree:add(f.device,        tvb(msg_off + 2, 2), device):set_generated()
+        return string.format("dst=%d device=%d", dest, device)
+    elseif cmd == 0x67 then -- rx 103 PROTECT DEVICE NAME REQUEST: DevMult + DevMod
+        local dv_d = tvb(msg_off, 1):uint()
+        local dv_o = tvb(msg_off + 1, 1):uint()
+        local device = (dv_d % 8) * 128 + (dv_o % 128)
+        tree:add(f.dest_mult_ext, tvb(msg_off, 1))
+        tree:add(f.device,        tvb(msg_off, 2), device):set_generated()
+        return string.format("device=%d", device)
+    elseif cmd == 0x69 then -- rx 105 PROTECT TALLY DUMP REQUEST: DestMult + DestMod + Count
+        local dm_d = tvb(msg_off, 1):uint()
+        local dm_o = tvb(msg_off + 1, 1):uint()
+        local dest = ext_mult(dm_d) * 128 + dm_o
+        local count = tvb(msg_off + 2, 1):uint()
+        tree:add(f.dest_mult_ext, tvb(msg_off, 1))
+        tree:add(f.dest_mod,      tvb(msg_off + 1, 1))
+        tree:add(f.dest,          tvb(msg_off, 2), dest):set_generated()
+        tree:add(f.dump_count,    tvb(msg_off + 2, 1))
+        return string.format("start_dst=%d count=%d", dest, count)
     elseif cmd == 0x64 then -- tx 100 variable
         return dissect_tally_dump(tree, tvb, msg_off, msg_len)
     end

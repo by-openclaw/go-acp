@@ -63,4 +63,26 @@ const (
 	// authority mismatch. Only a local-admin path (ServerOption or
 	// REST API) can ever clear a ProbelOverride.
 	ProtectOverrideImmutable = "probel_sw02p_protect_override_immutable"
+
+	// An rx 02 CONNECT or rx 66 Extended CONNECT targeted a
+	// destination whose current protect state is non-None. Per
+	// §3.2.60 a Pro-Bel-protected crosspoint cannot be altered by any
+	// device other than the protecting device, and rx 02 / rx 66
+	// carry no Device Number, so any caller is treated as anonymous
+	// and rejected. The handler drops the requested route change,
+	// leaves the existing crosspoint intact, and fires this event so
+	// every blocked connect is auditable.
+	ProtectBlocksConnect = "probel_sw02p_protect_blocks_connect"
+
+	// Companion to ProtectBlocksConnect: when the rejected destination
+	// already has a route on (matrix=0, level=0), the handler echoes
+	// the EXISTING (dst, src) back as a tx 04 / tx 68 broadcast so
+	// every connected controller sees that the crosspoint state did
+	// NOT change. Same precedent as SalvoEmittedConnected — spec
+	// §3.2.6 wording is "issued ... after a route has been made", but
+	// real-world controllers (Lawo VSM, Commie) need an immediate
+	// signal that their requested route did not take effect; without
+	// it they only learn via the next periodic rx 01 INTERROGATE
+	// sweep. Fired once per emitted echo.
+	ProtectBlocksConnectStateEchoed = "probel_sw02p_protect_blocks_connect_state_echoed"
 )
