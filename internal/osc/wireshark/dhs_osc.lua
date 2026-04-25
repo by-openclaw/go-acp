@@ -206,14 +206,14 @@ local function add_arg(tree, tvb, off, limit, tag, pinfo)
         local v, n, aligned = read_osc_string(tvb, off, limit)
         if v == nil then return nil, n end
         local ti = tree:add(tag == "s" and f.arg_s or f.arg_S, tvb(off, n), v)
-        if not aligned then ti:add_expert_info(ef_alignment) end
+        if not aligned then ti:add_proto_expert_info(ef_alignment) end
         return n, false
     elseif tag == "b" then
         local bytes_tvb, n, aligned = read_osc_blob(tvb, off, limit)
         if bytes_tvb == nil then return nil, n end
         local ti = tree:add(f.arg_b, tvb(off, n))
         ti:append_text(string.format("  (%d bytes)", bytes_tvb:len()))
-        if not aligned then ti:add_expert_info(ef_alignment) end
+        if not aligned then ti:add_proto_expert_info(ef_alignment) end
         return n, false
     elseif tag == "h" then
         if off + 8 > limit then return nil, "truncated" end
@@ -275,15 +275,15 @@ local function dissect_message(tvb, off, limit, tree, pinfo)
     if addr == nil then return nil, addr_n end
     local sub = tree:add(f.kind, tvb(off, 0), "message"):set_generated()
     local ti_addr = tree:add(f.msg_address, tvb(off, addr_n), addr)
-    if not addr_aligned then ti_addr:add_expert_info(ef_alignment) end
+    if not addr_aligned then ti_addr:add_proto_expert_info(ef_alignment) end
     off = off + addr_n
 
     local tag, tag_n, tag_aligned = read_osc_string(tvb, off, limit)
     if tag == nil then return nil, tag_n end
     local ti_tag = tree:add(f.msg_tagstr, tvb(off, tag_n), tag)
-    if not tag_aligned then ti_tag:add_expert_info(ef_alignment) end
+    if not tag_aligned then ti_tag:add_proto_expert_info(ef_alignment) end
     if #tag == 0 or tag:sub(1, 1) ~= "," then
-        ti_tag:add_expert_info(ef_comma)
+        ti_tag:add_proto_expert_info(ef_comma)
     end
     off = off + tag_n
 
@@ -303,19 +303,19 @@ local function dissect_message(tvb, off, limit, tree, pinfo)
         if t == "]" then open_brackets = open_brackets - 1 end
         local n, err_or_is_1_1 = add_arg(tree, tvb, off, limit, t, pinfo)
         if n == nil then
-            tree:add_expert_info(ef_truncated)
+            tree:add_proto_expert_info(ef_truncated)
             return nil, err_or_is_1_1
         end
         if t == "T" or t == "F" or t == "N" or t == "I" or t == "[" or t == "]" then
             uses_1_1 = true
         end
         if err_or_is_1_1 == "unknown" then
-            tree:add_expert_info(ef_unknown_tag)
+            tree:add_proto_expert_info(ef_unknown_tag)
             return nil, "unknown"
         end
         off = off + n
     end
-    if open_brackets ~= 0 then tree:add_expert_info(ef_arr_unbal) end
+    if open_brackets ~= 0 then tree:add_proto_expert_info(ef_arr_unbal) end
 
     return off - start, uses_1_1, addr, tag, arg_count
 end
@@ -327,7 +327,7 @@ local function dissect_bundle(tvb, off, limit, tree, pinfo, depth)
     if head == nil then return nil, head_n end
     local sub_kind = tree:add(f.kind, tvb(off, 0), "bundle"):set_generated()
     tree:add(f.bundle_head, tvb(off, head_n), head)
-    if not head_aligned then tree:add_expert_info(ef_alignment) end
+    if not head_aligned then tree:add_proto_expert_info(ef_alignment) end
     off = off + head_n
 
     if off + 8 > limit then return nil, "truncated" end
@@ -344,10 +344,10 @@ local function dissect_bundle(tvb, off, limit, tree, pinfo, depth)
     local uses_1_1 = false
 
     while off < limit do
-        if off + 4 > limit then tree:add_expert_info(ef_truncated); return nil, "truncated" end
+        if off + 4 > limit then tree:add_proto_expert_info(ef_truncated); return nil, "truncated" end
         local sz = tvb(off, 4):uint()
         local el_start = off + 4
-        if el_start + sz > limit then tree:add_expert_info(ef_truncated); return nil, "truncated" end
+        if el_start + sz > limit then tree:add_proto_expert_info(ef_truncated); return nil, "truncated" end
 
         local el_kind = "unknown"
         if sz >= 1 then
@@ -365,7 +365,7 @@ local function dissect_bundle(tvb, off, limit, tree, pinfo, depth)
         if el_kind == "message" then
             local n, u11 = dissect_message(tvb, el_start, el_start + sz, el_tree, pinfo)
             if n == nil then
-                el_tree:add_expert_info(ef_truncated)
+                el_tree:add_proto_expert_info(ef_truncated)
                 return nil, "truncated"
             end
             if u11 then uses_1_1 = true end
@@ -373,13 +373,13 @@ local function dissect_bundle(tvb, off, limit, tree, pinfo, depth)
         elseif el_kind == "bundle" then
             local n, u11 = dissect_bundle(tvb, el_start, el_start + sz, el_tree, pinfo, depth + 1)
             if n == nil then
-                el_tree:add_expert_info(ef_truncated)
+                el_tree:add_proto_expert_info(ef_truncated)
                 return nil, "truncated"
             end
             if u11 then uses_1_1 = true end
             subs = subs + 1
         else
-            el_tree:add_expert_info(ef_truncated)
+            el_tree:add_proto_expert_info(ef_truncated)
         end
 
         off = el_start + sz
@@ -462,7 +462,7 @@ local function dissect_tcp_lenprefix(tvb, pinfo, tree)
         if sz == 0 or sz > MAX_FRAME then
             local bad = tree:add(osc, tvb(off), "OSC 1.0 length-prefix unreasonable size")
             bad:add(f.lp_size, tvb(off, 4))
-            bad:add_expert_info(ef_lp_size)
+            bad:add_proto_expert_info(ef_lp_size)
             pinfo.cols.info:set(string.format("OSC-LP bad size=%d", sz))
             return total
         end
@@ -477,7 +477,7 @@ local function dissect_tcp_lenprefix(tvb, pinfo, tree)
 
         local n, uses_1_1, summary = dissect_packet(tvb, off + 4, off + 4 + sz, subtree, pinfo, 0)
         if n == nil then
-            subtree:add_expert_info(ef_truncated)
+            subtree:add_proto_expert_info(ef_truncated)
             summaries[#summaries + 1] = "malformed"
         else
             annotate_envelope(tvb, subtree, pinfo, "TCP/length-prefix", uses_1_1)
@@ -565,13 +565,13 @@ local function dissect_tcp_slip(tvb, pinfo, tree)
                 pinfo.desegment_len = DESEGMENT_ONE_MORE_SEGMENT
                 if #summaries == 0 then
                     local t = tree:add(osc, tvb(offset), "OSC 1.1 SLIP (incomplete — desegmenting)")
-                    t:add_expert_info(ef_slip_trunc)
+                    t:add_proto_expert_info(ef_slip_trunc)
                     pinfo.cols.info:set("OSC-SLIP incomplete (desegmenting)")
                 end
                 return total
             end
             local t = tree:add(osc, tvb(offset), "OSC 1.1 SLIP (malformed escape)")
-            t:add_expert_info(ef_slip_bad)
+            t:add_proto_expert_info(ef_slip_bad)
             pinfo.cols.info:set("OSC-SLIP malformed")
             return total
         end
@@ -591,7 +591,7 @@ local function dissect_tcp_slip(tvb, pinfo, tree)
 
         local n, uses_1_1, summary = dissect_packet(inner, 0, body_len, subtree, pinfo, 0)
         if n == nil then
-            subtree:add_expert_info(ef_truncated)
+            subtree:add_proto_expert_info(ef_truncated)
             summaries[#summaries + 1] = "malformed"
         else
             annotate_envelope(tvb, subtree, pinfo, "TCP/SLIP", uses_1_1 or true)
