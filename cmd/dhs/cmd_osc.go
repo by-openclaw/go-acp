@@ -526,10 +526,19 @@ func printPacket(transport string, ev *osccons.PacketEvent) {
 	fmt.Printf("[%-9s] %s  %s  %s\n", transport, addr, string(tags), strings.Join(parts, " "))
 }
 
+// formatArg renders one Arg in the same shape as the Wireshark dhs_osc
+// dissector's Info column, so the terminal `watch` output and a live
+// Wireshark capture can be compared line-for-line.
 func formatArg(a codec.Arg) string {
 	switch a.Tag {
-	case codec.TagInt32, codec.TagChar:
+	case codec.TagInt32:
 		return strconv.FormatInt(int64(a.Int32), 10)
+	case codec.TagChar:
+		c := byte(a.Int32 & 0xff)
+		if c >= 32 && c < 127 {
+			return fmt.Sprintf("'%c'", c)
+		}
+		return fmt.Sprintf("0x%02x", c)
 	case codec.TagFloat32:
 		return strconv.FormatFloat(float64(a.Float32), 'g', -1, 32)
 	case codec.TagInt64:
@@ -538,10 +547,23 @@ func formatArg(a codec.Arg) string {
 		return strconv.FormatFloat(a.Float64, 'g', -1, 64)
 	case codec.TagString, codec.TagSymbol:
 		return strconv.Quote(a.String)
-	case codec.TagBlob, codec.TagRGBA32, codec.TagMIDI:
-		return fmt.Sprintf("blob[%d]", len(a.Blob))
+	case codec.TagBlob:
+		return fmt.Sprintf("<%db>", len(a.Blob))
+	case codec.TagRGBA32:
+		if len(a.Blob) == 4 {
+			return fmt.Sprintf("#%02x%02x%02x%02x", a.Blob[0], a.Blob[1], a.Blob[2], a.Blob[3])
+		}
+		return fmt.Sprintf("rgba[%d]", len(a.Blob))
+	case codec.TagMIDI:
+		if len(a.Blob) == 4 {
+			return fmt.Sprintf("midi:%02x.%02x.%02x.%02x", a.Blob[0], a.Blob[1], a.Blob[2], a.Blob[3])
+		}
+		return fmt.Sprintf("midi[%d]", len(a.Blob))
 	case codec.TagTimetag:
-		return fmt.Sprintf("0x%016x", a.Uint64)
+		if a.Uint64 == 1 {
+			return "tt=now"
+		}
+		return fmt.Sprintf("tt=%08x.%08x", uint32(a.Uint64>>32), uint32(a.Uint64))
 	case codec.TagTrue:
 		return "T"
 	case codec.TagFalse:

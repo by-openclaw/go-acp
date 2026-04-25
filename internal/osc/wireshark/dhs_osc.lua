@@ -185,73 +185,97 @@ end
 -- Forward-declared because read_args recurses through bundle decoder below.
 local dissect_packet
 
+-- add_arg returns:
+--   (consumed_bytes, value_str, is_1_1_feature)  on success
+--   (nil, reason)                                 on failure (reason ∈ {"truncated","unknown"})
+--
+-- value_str is the inline rendering used in the Info column. Short,
+-- human-readable, matches what a mixer / DAW operator expects to see
+-- at a glance: int/float as numbers, strings quoted + truncated, blobs
+-- as <Nb>, etc.
 local function add_arg(tree, tvb, off, limit, tag, pinfo)
     if tag == "i" then
         if off + 4 > limit then return nil, "truncated" end
+        local v = tvb(off, 4):int()
         tree:add(f.arg_i, tvb(off, 4))
-        return 4, false
+        return 4, tostring(v), false
     elseif tag == "f" then
         if off + 4 > limit then return nil, "truncated" end
+        local v = tvb(off, 4):float()
         tree:add(f.arg_f, tvb(off, 4))
-        return 4, false
+        return 4, string.format("%g", v), false
     elseif tag == "s" or tag == "S" then
         local v, n, aligned = read_osc_string(tvb, off, limit)
         if v == nil then return nil, n end
         local ti = tree:add(tag == "s" and f.arg_s or f.arg_S, tvb(off, n), v)
         if not aligned then ti:add_proto_expert_info(ef_alignment) end
-        return n, false
+        local short = v
+        if #short > 16 then short = short:sub(1, 14) .. ".." end
+        return n, string.format('"%s"', short), false
     elseif tag == "b" then
         local bytes_tvb, n, aligned = read_osc_blob(tvb, off, limit)
         if bytes_tvb == nil then return nil, n end
+        local sz = bytes_tvb:len()
         local ti = tree:add(f.arg_b, tvb(off, n))
-        ti:append_text(string.format("  (%d bytes)", bytes_tvb:len()))
+        ti:append_text(string.format("  (%d bytes)", sz))
         if not aligned then ti:add_proto_expert_info(ef_alignment) end
-        return n, false
+        return n, string.format("<%db>", sz), false
     elseif tag == "h" then
         if off + 8 > limit then return nil, "truncated" end
+        local v = tvb(off, 8):int64()
         tree:add(f.arg_h, tvb(off, 8))
-        return 8, false
+        return 8, tostring(v), false
     elseif tag == "d" then
         if off + 8 > limit then return nil, "truncated" end
+        local v = tvb(off, 8):float()
         tree:add(f.arg_d, tvb(off, 8))
-        return 8, false
+        return 8, string.format("%g", v), false
     elseif tag == "t" then
         if off + 8 > limit then return nil, "truncated" end
+        local hi = tvb(off, 4):uint()
+        local lo = tvb(off + 4, 4):uint()
         tree:add(f.arg_t, tvb(off, 8))
-        return 8, false
+        local vstr
+        if hi == 0 and lo == 1 then vstr = "tt=now"
+        else vstr = string.format("tt=%08x.%08x", hi, lo) end
+        return 8, vstr, false
     elseif tag == "c" then
         if off + 4 > limit then return nil, "truncated" end
         local lo = tvb(off + 3, 1):uint()
-        local ch = (lo >= 32 and lo < 127) and string.format("'%s' (0x%02x)", string.char(lo), lo)
-                                             or string.format("0x%02x", lo)
-        tree:add(f.arg_c, tvb(off, 4), ch)
-        return 4, false
+        local ch_label = (lo >= 32 and lo < 127) and string.format("'%s' (0x%02x)", string.char(lo), lo)
+                                                    or string.format("0x%02x", lo)
+        tree:add(f.arg_c, tvb(off, 4), ch_label)
+        local vstr = (lo >= 32 and lo < 127) and string.format("'%s'", string.char(lo))
+                                                or string.format("0x%02x", lo)
+        return 4, vstr, false
     elseif tag == "r" then
         if off + 4 > limit then return nil, "truncated" end
+        local r, g, b, a = tvb(off, 1):uint(), tvb(off + 1, 1):uint(), tvb(off + 2, 1):uint(), tvb(off + 3, 1):uint()
         tree:add(f.arg_r, tvb(off, 4))
-        return 4, false
+        return 4, string.format("#%02x%02x%02x%02x", r, g, b, a), false
     elseif tag == "m" then
         if off + 4 > limit then return nil, "truncated" end
+        local p, s, d1, d2 = tvb(off, 1):uint(), tvb(off + 1, 1):uint(), tvb(off + 2, 1):uint(), tvb(off + 3, 1):uint()
         tree:add(f.arg_m, tvb(off, 4))
-        return 4, false
+        return 4, string.format("midi:%02x.%02x.%02x.%02x", p, s, d1, d2), false
     elseif tag == "T" then
         tree:add(f.arg_T, tvb(off, 0), "true"):set_generated()
-        return 0, true
+        return 0, "T", true
     elseif tag == "F" then
         tree:add(f.arg_F, tvb(off, 0), "false"):set_generated()
-        return 0, true
+        return 0, "F", true
     elseif tag == "N" then
         tree:add(f.arg_N, tvb(off, 0), "nil"):set_generated()
-        return 0, true
+        return 0, "N", true
     elseif tag == "I" then
         tree:add(f.arg_I, tvb(off, 0), "infinitum"):set_generated()
-        return 0, true
+        return 0, "I", true
     elseif tag == "[" then
         tree:add(f.arg_lb, tvb(off, 0), "array begin"):set_generated()
-        return 0, true
+        return 0, "[", true
     elseif tag == "]" then
         tree:add(f.arg_rb, tvb(off, 0), "array end"):set_generated()
-        return 0, true
+        return 0, "]", true
     else
         return nil, "unknown"
     end
@@ -289,27 +313,27 @@ local function dissect_message(tvb, off, limit, tree, pinfo)
 
     local uses_1_1 = false
     local open_brackets = 0
+    local values = {}
     for i = 1, #tags_only do
         local t = tags_only:sub(i, i)
         if t == "[" then open_brackets = open_brackets + 1 end
         if t == "]" then open_brackets = open_brackets - 1 end
-        local n, err_or_is_1_1 = add_arg(tree, tvb, off, limit, t, pinfo)
+        local n, vstr, is_1_1 = add_arg(tree, tvb, off, limit, t, pinfo)
         if n == nil then
+            -- On failure, vstr holds the reason string.
             tree:add_proto_expert_info(ef_truncated)
-            return nil, err_or_is_1_1
+            if vstr == "unknown" then
+                tree:add_proto_expert_info(ef_unknown_tag)
+            end
+            return nil, vstr
         end
-        if t == "T" or t == "F" or t == "N" or t == "I" or t == "[" or t == "]" then
-            uses_1_1 = true
-        end
-        if err_or_is_1_1 == "unknown" then
-            tree:add_proto_expert_info(ef_unknown_tag)
-            return nil, "unknown"
-        end
+        if is_1_1 then uses_1_1 = true end
+        values[#values + 1] = vstr
         off = off + n
     end
     if open_brackets ~= 0 then tree:add_proto_expert_info(ef_arr_unbal) end
 
-    return off - start, uses_1_1, addr, tag, arg_count
+    return off - start, uses_1_1, addr, tag, arg_count, values
 end
 
 -- dissect_bundle returns (consumed, uses_1_1, summary_string)
@@ -396,11 +420,25 @@ dissect_packet = function(tvb, off, limit, tree, pinfo, depth)
     if first == 0x23 then  -- '#'
         return dissect_bundle(tvb, off, limit, tree, pinfo, depth or 0)
     elseif first == 0x2F then  -- '/'
-        local n, u11, addr, tag, argc = dissect_message(tvb, off, limit, tree, pinfo)
+        local n, u11, addr, tag, _, values = dissect_message(tvb, off, limit, tree, pinfo)
         if n == nil then return nil, u11 end
         local tag_suffix = tag and ("[" .. tag:sub(2) .. "]") or "[?]"
-        local summary = string.format("%s %s (%d arg%s)",
-            addr or "(?)", tag_suffix, argc or 0, (argc or 0) == 1 and "" or "s")
+        local summary
+        if values and #values > 0 then
+            -- Show up to MAX_INLINE_ARGS inline; truncate the rest.
+            local MAX_INLINE_ARGS = 4
+            local shown = values
+            local tail = ""
+            if #values > MAX_INLINE_ARGS then
+                shown = {}
+                for i = 1, MAX_INLINE_ARGS do shown[i] = values[i] end
+                tail = string.format(" …+%d", #values - MAX_INLINE_ARGS)
+            end
+            summary = string.format("%s %s %s%s",
+                addr or "(?)", tag_suffix, table.concat(shown, " "), tail)
+        else
+            summary = string.format("%s %s", addr or "(?)", tag_suffix)
+        end
         return n, u11, summary
     else
         return nil, "unknown"
