@@ -4,9 +4,15 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	"acp/internal/osc/codec"
 )
+
+// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
+// to dialed TCP connections. OSC over TCP carries no in-protocol keep-
+// alive, so the OS-layer probe is the dead-socket detector.
+const DefaultTCPKeepalivePeriod = 30 * time.Second
 
 // framerKind — local to provider; must match the consumer's enum.
 type framerKind int
@@ -45,6 +51,10 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 	c, err := net.Dial("tcp", key)
 	if err != nil {
 		return nil, fmt.Errorf("osc tcp dial %s: %w", key, err)
+	}
+	if tc, ok := c.(*net.TCPConn); ok {
+		_ = tc.SetKeepAlive(true)
+		_ = tc.SetKeepAlivePeriod(DefaultTCPKeepalivePeriod)
 	}
 	d.conns[key] = c
 	return c, nil

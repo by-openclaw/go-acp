@@ -165,7 +165,10 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	// Per-protocol dispatchers handle their own help so users can run
 	// `dhs consumer <proto> -h` and see protocol-specific verbs.
 	if proto == "probel-sw08p" {
-		return runProbel(ctx, rest)
+		return runProbelsw08p(ctx, rest)
+	}
+	if proto == "probel-sw02p" {
+		return runProbelsw02p(ctx, rest)
 	}
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCConsumer(ctx, proto, rest)
