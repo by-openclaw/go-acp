@@ -132,64 +132,64 @@ local protect_state_name = {
 -- Proto + ProtoFields
 -------------------------------------------------------------------------------
 
-local p_swp02 = Proto("probel_sw02p", "Probel SW-P-02")
+local p_swp02 = Proto("dhs_probel_sw02p", "Probel SW-P-02")
 
 local f = {
-    som      = ProtoField.uint8("probel_sw02p.som", "SOM", base.HEX),
-    cmd      = ProtoField.uint8("probel_sw02p.cmd", "Command", base.HEX_DEC, cmd_name),
-    data     = ProtoField.bytes("probel_sw02p.data", "MESSAGE"),
-    cksum    = ProtoField.uint8("probel_sw02p.cksum", "Checksum", base.HEX),
-    cksum_ok = ProtoField.bool("probel_sw02p.cksum_ok", "Checksum OK"),
+    som      = ProtoField.uint8("dhs_probel_sw02p.som", "SOM", base.HEX),
+    cmd      = ProtoField.uint8("dhs_probel_sw02p.cmd", "Command", base.HEX_DEC, cmd_name),
+    data     = ProtoField.bytes("dhs_probel_sw02p.data", "MESSAGE"),
+    cksum    = ProtoField.uint8("dhs_probel_sw02p.cksum", "Checksum", base.HEX),
+    cksum_ok = ProtoField.bool("dhs_probel_sw02p.cksum_ok", "Checksum OK"),
 
     -- Narrow §3.2.3 Multiplier
-    mult_n        = ProtoField.uint8("probel_sw02p.mult",         "Multiplier (§3.2.3)", base.HEX),
-    mult_dest_div = ProtoField.uint8("probel_sw02p.mult.dest_div", "Dest DIV 128", base.DEC, nil, 0x70),
-    mult_bad_src  = ProtoField.bool ("probel_sw02p.mult.bad_src",  "Bad Source / Update Disabled", 8, nil, 0x08),
-    mult_src_div  = ProtoField.uint8("probel_sw02p.mult.src_div",  "Src DIV 128",  base.DEC, nil, 0x07),
+    mult_n        = ProtoField.uint8("dhs_probel_sw02p.mult",         "Multiplier (§3.2.3)", base.HEX),
+    mult_dest_div = ProtoField.uint8("dhs_probel_sw02p.mult.dest_div", "Dest DIV 128", base.DEC, nil, 0x70),
+    mult_bad_src  = ProtoField.bool ("dhs_probel_sw02p.mult.bad_src",  "Bad Source / Update Disabled", 8, nil, 0x08),
+    mult_src_div  = ProtoField.uint8("dhs_probel_sw02p.mult.src_div",  "Src DIV 128",  base.DEC, nil, 0x07),
 
     -- Common decoded fields
-    dest       = ProtoField.uint16("probel_sw02p.dest",   "Destination"),
-    src        = ProtoField.uint16("probel_sw02p.src",    "Source"),
-    dest_mod   = ProtoField.uint8 ("probel_sw02p.dest_mod", "Dest MOD 128", base.DEC),
-    src_mod    = ProtoField.uint8 ("probel_sw02p.src_mod",  "Src MOD 128",  base.DEC),
+    dest       = ProtoField.uint16("dhs_probel_sw02p.dest",   "Destination"),
+    src        = ProtoField.uint16("dhs_probel_sw02p.src",    "Source"),
+    dest_mod   = ProtoField.uint8 ("dhs_probel_sw02p.dest_mod", "Dest MOD 128", base.DEC),
+    src_mod    = ProtoField.uint8 ("dhs_probel_sw02p.src_mod",  "Src MOD 128",  base.DEC),
 
     -- Extended §3.2.47 / §3.2.48 Multiplier bytes
-    dest_mult_ext = ProtoField.uint8("probel_sw02p.dest_mult_ext", "Dest Mult (§3.2.47)", base.HEX, nil, 0x7F),
-    src_mult_ext  = ProtoField.uint8("probel_sw02p.src_mult_ext",  "Src Mult (§3.2.48)",  base.HEX, nil, 0x7F),
+    dest_mult_ext = ProtoField.uint8("dhs_probel_sw02p.dest_mult_ext", "Dest Mult (§3.2.47)", base.HEX, nil, 0x7F),
+    src_mult_ext  = ProtoField.uint8("dhs_probel_sw02p.src_mult_ext",  "Src Mult (§3.2.48)",  base.HEX, nil, 0x7F),
 
     -- Status byte (§3.2.49 / §3.2.50)
-    status_ext      = ProtoField.uint8("probel_sw02p.status_ext", "Status", base.HEX),
-    status_upd_off  = ProtoField.bool ("probel_sw02p.status_ext.upd_off",  "Crosspoint update disabled", 8, nil, 0x01),
-    status_bad_src  = ProtoField.bool ("probel_sw02p.status_ext.bad_src",  "Bad Source",                 8, nil, 0x02),
+    status_ext      = ProtoField.uint8("dhs_probel_sw02p.status_ext", "Status", base.HEX),
+    status_upd_off  = ProtoField.bool ("dhs_probel_sw02p.status_ext.upd_off",  "Crosspoint update disabled", 8, nil, 0x01),
+    status_bad_src  = ProtoField.bool ("dhs_probel_sw02p.status_ext.bad_src",  "Bad Source",                 8, nil, 0x02),
 
     -- rx 006 Go + rx 036 Go Group Salvo operation byte
-    go_op   = ProtoField.uint8("probel_sw02p.go_op",  "Operation", base.HEX, {[0x00]="Set", [0x01]="Clear"}),
-    go_res  = ProtoField.uint8("probel_sw02p.go_res", "Result",    base.HEX, {[0x00]="Set", [0x01]="Cleared", [0x02]="Empty"}),
+    go_op   = ProtoField.uint8("dhs_probel_sw02p.go_op",  "Operation", base.HEX, {[0x00]="Set", [0x01]="Clear"}),
+    go_res  = ProtoField.uint8("dhs_probel_sw02p.go_res", "Result",    base.HEX, {[0x00]="Set", [0x01]="Cleared", [0x02]="Empty"}),
 
     -- SalvoID (§3.2.36 / §3.2.53)
-    salvo_id = ProtoField.uint8("probel_sw02p.salvo_id", "SalvoID", base.DEC, nil, 0x7F),
+    salvo_id = ProtoField.uint8("dhs_probel_sw02p.salvo_id", "SalvoID", base.DEC, nil, 0x7F),
 
     -- rx 007 Status Request controller
-    controller = ProtoField.uint8("probel_sw02p.controller", "Controller", base.HEX, {[0]="LH", [1]="RH"}),
+    controller = ProtoField.uint8("dhs_probel_sw02p.controller", "Controller", base.HEX, {[0]="LH", [1]="RH"}),
 
     -- tx 009 Status Response - 2 fields
-    status2      = ProtoField.uint8("probel_sw02p.status2", "Status", base.HEX),
-    status2_idle = ProtoField.bool ("probel_sw02p.status2.idle",     "Idle system",   8, nil, 0x40),
-    status2_bus  = ProtoField.bool ("probel_sw02p.status2.bus_fault", "Bus fault",    8, nil, 0x20),
-    status2_hot  = ProtoField.bool ("probel_sw02p.status2.overheat",  "Overheat",     8, nil, 0x10),
+    status2      = ProtoField.uint8("dhs_probel_sw02p.status2", "Status", base.HEX),
+    status2_idle = ProtoField.bool ("dhs_probel_sw02p.status2.idle",     "Idle system",   8, nil, 0x40),
+    status2_bus  = ProtoField.bool ("dhs_probel_sw02p.status2.bus_fault", "Bus fault",    8, nil, 0x20),
+    status2_hot  = ProtoField.bool ("dhs_probel_sw02p.status2.overheat",  "Overheat",     8, nil, 0x10),
 
     -- Extended PROTECT common
-    protect_details = ProtoField.uint8 ("probel_sw02p.protect", "Protect details", base.HEX),
-    protect_state   = ProtoField.uint8 ("probel_sw02p.protect.state", "Protect state",
+    protect_details = ProtoField.uint8 ("dhs_probel_sw02p.protect", "Protect details", base.HEX),
+    protect_state   = ProtoField.uint8 ("dhs_probel_sw02p.protect.state", "Protect state",
                         base.DEC, protect_state_name, 0x03),
-    device          = ProtoField.uint16("probel_sw02p.device", "Device number"),
+    device          = ProtoField.uint16("dhs_probel_sw02p.device", "Device number"),
 
     -- tx 100 tally dump
-    dump_count    = ProtoField.uint8 ("probel_sw02p.dump.count",   "Entry count / sentinel", base.DEC),
-    dump_entry    = ProtoField.bytes ("probel_sw02p.dump.entry",    "Entry"),
-    dump_entry_dest   = ProtoField.uint16("probel_sw02p.dump.entry.dest",   "Entry dest"),
-    dump_entry_device = ProtoField.uint16("probel_sw02p.dump.entry.device", "Entry device (0-1023)"),
-    dump_entry_protect = ProtoField.uint8 ("probel_sw02p.dump.entry.protect", "Entry protect",
+    dump_count    = ProtoField.uint8 ("dhs_probel_sw02p.dump.count",   "Entry count / sentinel", base.DEC),
+    dump_entry    = ProtoField.bytes ("dhs_probel_sw02p.dump.entry",    "Entry"),
+    dump_entry_dest   = ProtoField.uint16("dhs_probel_sw02p.dump.entry.dest",   "Entry dest"),
+    dump_entry_device = ProtoField.uint16("dhs_probel_sw02p.dump.entry.device", "Entry device (0-1023)"),
+    dump_entry_protect = ProtoField.uint8 ("dhs_probel_sw02p.dump.entry.protect", "Entry protect",
                           base.DEC, protect_state_name),
 }
 p_swp02.fields = {
@@ -205,11 +205,11 @@ p_swp02.fields = {
     f.dump_count, f.dump_entry, f.dump_entry_dest, f.dump_entry_device, f.dump_entry_protect,
 }
 
-local ef_bad_som = ProtoExpert.new("probel_sw02p.bad_som",     "Bad SOM (expected 0xFF)",
+local ef_bad_som = ProtoExpert.new("dhs_probel_sw02p.bad_som",     "Bad SOM (expected 0xFF)",
                                     expert.group.MALFORMED, expert.severity.ERROR)
-local ef_bad_cksum = ProtoExpert.new("probel_sw02p.bad_cksum", "Bad checksum",
+local ef_bad_cksum = ProtoExpert.new("dhs_probel_sw02p.bad_cksum", "Bad checksum",
                                       expert.group.CHECKSUM, expert.severity.ERROR)
-local ef_unknown_cmd = ProtoExpert.new("probel_sw02p.unknown_cmd", "Unknown command byte",
+local ef_unknown_cmd = ProtoExpert.new("dhs_probel_sw02p.unknown_cmd", "Unknown command byte",
                                         expert.group.PROTOCOL, expert.severity.WARN)
 p_swp02.experts = { ef_bad_som, ef_bad_cksum, ef_unknown_cmd }
 
