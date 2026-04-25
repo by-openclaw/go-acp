@@ -66,7 +66,7 @@ user before code lands, referenced by sequence number from
 Authoritative VSM driver page:
 https://docs.lawo.com/vsm-ip-broadcast-control-system/vsm-interface-driver-and-application-details/driver-supported-protocol-driver/driver-pro-bel-sw-p-02-generic
 
-### Landed on `feat/probel-sw02p-commands` (PR #106, NOT merged / NOT pushed)
+### Landed on main (PR #106 merged 2026-04-25, commit `cadebe6`)
 
 33 command bytes in three groups + Wireshark dissector:
 
@@ -164,6 +164,46 @@ carries the actual resulting state). Echo unchanged state on reject.
 Local-admin escape hatch (bypasses override) is reserved for a
 future `server.AdminUnprotect(dst)` method — not wired to any Rx
 command.
+
+## Known deviations from spec
+
+### Protect blocks connect — state-echo on rx 02 / rx 66
+
+§3.2.60 mandates that a protected destination's crosspoint
+"cannot be altered by any device other than the protecting
+device", but is silent on what the matrix sends back when an
+unauthorised rx 02 CONNECT (or rx 66 Extended CONNECT) is
+rejected.
+
+Pure silent drop causes controllers (Lawo VSM, Commie) to
+timeout and re-issue the rx 02, oscillating the bus. The
+provider implements:
+
+- **No prior route on dst** → silent drop. Fires
+  `probel_sw02p_protect_blocks_connect`.
+- **Prior route on dst** → broadcast tx 04 / tx 68 echoing the
+  EXISTING (dst, src) so the controller sees the crosspoint did
+  not change. Fires both
+  `probel_sw02p_protect_blocks_connect` and
+  `probel_sw02p_protect_blocks_connect_state_echoed`.
+
+The state echo carries the unchanged route, NOT the requested
+route. Never echo a fabricated fulfillment. Verified live
+2026-04-25 with `bin/probel02-commie.pcapng` (rx 02 dst=0 src=3
+→ tx 04 dst=0 src=0 within 1.6 ms).
+
+Sibling deviation pattern to the salvo-emits-cmd-04 deviation in
+SW-P-08 (`memory/feedback_probel_salvo_connected.md`).
+
+Implementation:
+
+- `provider/cmd_rx002_connect.go` (narrow).
+- `provider/cmd_rx066_extended_connect.go` (extended).
+- `provider/compliance_events.go` constants `ProtectBlocksConnect`
+  and `ProtectBlocksConnectStateEchoed`.
+- Tests pinning the 4 branches (narrow + extended) × (no-route +
+  state-echo): `TestConnectRejectedWhenDstProtected_*` and
+  `TestExtendedConnectRejectedWhenDstProtected_*`.
 
 ## Codec transport status
 

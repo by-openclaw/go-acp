@@ -61,17 +61,21 @@ tag including 1.1 payload-less (T/F/N/I) and array markers (`[`, `]`),
 and recursive bundle decoding. Per-message Info column shows address,
 type-tag string, and arg count.
 
-The **probel-sw02p** plugin on this branch (PR #106) holds 33 command
-bytes + Wireshark dissector: the salvo family (10 bytes), the
-VSM-supported bulk set (14 bytes), and non-VSM seqs 5, 6, 30-33, 36-38,
-39-44 (17 bytes). Every command OUTSIDE the VSM set needs explicit
-per-command user approval from the numbered queue in
-`memory/project_probel_sw02p_cmd_queue.md`. Never write code for any
-non-VSM SW-P-02 command without an `approve seq N` from the user. See
+The **probel-sw02p** plugin merged on main 2026-04-25 via PR #106
+(closed #105) — 33 command bytes + Wireshark dissector: the salvo
+family (10 bytes), the VSM-supported bulk set (14 bytes), and
+non-VSM seqs 5, 6, 30-33, 36-38, 39-44 (17 bytes). Every command
+OUTSIDE the VSM set needs explicit per-command user approval from
+the numbered queue in `memory/project_probel_sw02p_cmd_queue.md`.
+Never write code for any non-VSM SW-P-02 command without an
+`approve seq N` from the user. See
 `internal/probel-sw02p/CLAUDE.md` for the full landed tables +
-owner-only protect authority rule. Codec hardening gaps (no auto-retry
-/ reconnect / keepalive) tracked in
-`memory/project_probel_sw02p_client_hardening.md`.
+owner-only protect authority rule + protect-blocks-connect
+state-echo deviation. Consumer matrix-config flags + bootstrap
+sweep + keep-alive ping parked in #128. TCP `SO_KEEPALIVE`
+cross-protocol parked in #129. sw08p parity flags parked in
+#130. HA / multi-instance parked under epic #127 (see
+`memory/project_ha_architecture.md`).
 
 ---
 
