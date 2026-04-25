@@ -41,6 +41,7 @@ import (
 	_ "acp/internal/acp2/consumer"
 	_ "acp/internal/emberplus/consumer"
 	_ "acp/internal/osc/consumer"
+	_ "acp/internal/probel-sw02p/consumer"
 	_ "acp/internal/probel-sw08p/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.
@@ -48,6 +49,7 @@ import (
 	_ "acp/internal/acp2/provider"
 	_ "acp/internal/emberplus/provider"
 	_ "acp/internal/osc/provider"
+	_ "acp/internal/probel-sw02p/provider"
 	_ "acp/internal/probel-sw08p/provider"
 )
 

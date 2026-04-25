@@ -1,5 +1,5 @@
 # Binaries — ignore build output, but allow vendor tools under per-protocol
-# assets (internal/<proto>/assets/) and any remaining top-level assets/.
+# assets (internal/<proto>/assets/).
 bin/
 dist/
 *.exe
@@ -7,10 +7,6 @@ dist/
 *.dll
 *.so
 *.dylib
-!assets/**/*.exe
-!assets/**/*.dll
-!assets/**/*.so
-!assets/**/*.dylib
 !internal/**/assets/**/*.exe
 !internal/**/assets/**/*.dll
 !internal/**/assets/**/*.so
@@ -71,3 +67,18 @@ tests/fixtures/**/raw/
 # The bin/devices/ folder is where the CLI writes --capture output and
 # the local tree cache during development. Never commit it.
 bin/devices/
+
+# Debug/validation scratch — root-level assets/ is a scratch dir (real
+# spec assets live under internal/<proto>/assets/). captures/ keeps
+# hand-curated _final reports committed; newer per-run debug dumps
+# (pcapng, per-run csv/md, ember59*/, vsm_trace/, salvo_*.pcapng, etc.)
+# stay local.
+/assets/
+captures/*.pcapng
+captures/*.py
+captures/*.txt
+captures/commie_salvo/
+captures/ember59*/
+captures/vsm_trace/
+captures/w6b1_provider_metrics.csv
+captures/w6b1_provider_metrics.md

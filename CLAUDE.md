@@ -59,6 +59,11 @@ internal/
     codec/                    stdlib-only wire codec (lift-ready)
     consumer/   provider/   wireshark/
     assets/                   SW-P-08 spec + Commie + TS SW-P-08 emulator
+  probel-sw02p/               Probel SW-P-02 single-matrix single-level control
+    CLAUDE.md                 scope table: VSM-supported bulk + non-VSM queue
+    codec/                    stdlib-only wire codec (lift-ready)
+    consumer/   provider/
+    assets/probel-sw02/       SW-P-02 Issue 26 spec (.doc + antiword .txt)
   tsl/                        placeholder for future TSL UMD plugin
     assets/                   TSL UMD spec
   transport/                  UDP + TCP + AN2 framer + JSONL capture

@@ -43,25 +43,35 @@ tests/                          unit / integration / smoke / fixtures
 docs/                           cross-cutting architecture, connector, schema
 ```
 
-`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, osc}` on this branch.
+`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11}` on this branch.
 Other feature branches add more: `tsl` on `feat/tsl-umd-plugin` and
-`probel-sw02p` on `feat/probel-sw02p-commands`. See
+`cerebrum` on `feat/cerebrum-nb-plugin`. See
 `memory/project_protocol_backlog.md` for the full queue.
 
-The **OSC plugin** on this branch registers two wire versions as
-separate entries per the `feedback_protocol_versioning.md` Pattern A
-rule:
+The **OSC plugin** registers two wire versions as separate entries per
+the `feedback_protocol_versioning.md` Pattern A rule:
 
 - `osc-v10` — UDP + TCP/int32-length-prefix; core types i/f/s/b
 - `osc-v11` — UDP + TCP/SLIP (RFC 1055 double-END); adds T/F/N/I + arrays
 
-Both share `internal/osc/codec/` (stdlib-only). Wireshark support is
-a full from-scratch dissector at
-`internal/osc/wireshark/dhs_osc.lua` covering UDP + TCP
-length-prefix (1.0) + TCP SLIP (1.1), every type tag including 1.1
-payload-less (T/F/N/I) and array markers ([, ]), and recursive
-bundle decoding. Per-message Info column shows address, type-tag
-string, and arg count.
+Both share `internal/osc/codec/` (stdlib-only). Wireshark support is a
+full from-scratch dissector at `internal/osc/wireshark/dhs_osc.lua`
+covering UDP + TCP length-prefix (1.0) + TCP SLIP (1.1), every type
+tag including 1.1 payload-less (T/F/N/I) and array markers (`[`, `]`),
+and recursive bundle decoding. Per-message Info column shows address,
+type-tag string, and arg count.
+
+The **probel-sw02p** plugin on this branch (PR #106) holds 33 command
+bytes + Wireshark dissector: the salvo family (10 bytes), the
+VSM-supported bulk set (14 bytes), and non-VSM seqs 5, 6, 30-33, 36-38,
+39-44 (17 bytes). Every command OUTSIDE the VSM set needs explicit
+per-command user approval from the numbered queue in
+`memory/project_probel_sw02p_cmd_queue.md`. Never write code for any
+non-VSM SW-P-02 command without an `approve seq N` from the user. See
+`internal/probel-sw02p/CLAUDE.md` for the full landed tables +
+owner-only protect authority rule. Codec hardening gaps (no auto-retry
+/ reconnect / keepalive) tracked in
+`memory/project_probel_sw02p_client_hardening.md`.
 
 ---
 
