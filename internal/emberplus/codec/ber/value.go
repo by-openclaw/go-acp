@@ -3,6 +3,7 @@ package ber
 import (
 	"encoding/binary"
 	"math"
+	"math/bits"
 )
 
 // --- Encode value types ---
@@ -104,10 +105,10 @@ func EncodeReal(v float64) []byte {
 		return []byte{0x41}
 	}
 
-	bits := math.Float64bits(v)
-	sign := byte((bits >> 63) & 1)
-	expRaw := int((bits >> 52) & 0x7FF)
-	frac := bits & ((1 << 52) - 1)
+	fbits := math.Float64bits(v)
+	sign := byte((fbits >> 63) & 1)
+	expRaw := int((fbits >> 52) & 0x7FF)
+	frac := fbits & ((1 << 52) - 1)
 
 	var mantissa uint64
 	var exponent int
@@ -127,6 +128,21 @@ func EncodeReal(v float64) []byte {
 		mantissa >>= 1
 		exponent++
 	}
+
+	// X.690 §8.5.6 reads the mantissa N as an unsigned integer:
+	//   value = N × 2^F × B^E
+	// libember-cpp / libember-slim and every Ember+ viewer in the wild
+	// (EmberViewer, EmberPlusView, Lawo VSM) instead read N as a
+	// normalised fraction with the binary point implicit after the
+	// leading 1 bit:
+	//   value = (N / 2^(bitlen(N)-1)) × B^E × 2^F
+	// Two interpretations of the same X.690 clauses; the ecosystem
+	// reading is universal in practice. Bias the wire exponent by
+	// (bitlen(N)-1) so viewers display the value our caller passed in.
+	// Verified live 2026-04-26 against EmberViewer v2.40.0.35 + Lawo
+	// VSM Studio (issue #68): without this bias, 50.0 displays as
+	// 3.125, 100.0 as 6.25, etc.
+	exponent += bits.Len64(mantissa) - 1
 
 	// Exponent as two's-complement minimum-octet signed integer.
 	expBytes := encodeSignedInt(int64(exponent))
@@ -359,7 +375,16 @@ func DecodeReal(data []byte) (float64, error) {
 		for _, b := range mantBytes {
 			mant = (mant << 8) | uint64(b)
 		}
-		v := sign * float64(mant) * math.Pow(2.0, float64(int(exp)*baseFactor+scale))
+		// Mirror the EncodeReal bias: ecosystem readers (libember,
+		// EmberViewer, Lawo VSM) interpret the mantissa N as a normalised
+		// fraction with the implicit binary point after the leading 1
+		// bit. Subtract (bitlen(N)-1) from the wire exponent so this
+		// decoder matches what those peers produce.
+		shift := 0
+		if mant != 0 {
+			shift = bits.Len64(mant) - 1
+		}
+		v := sign * float64(mant) * math.Pow(2.0, float64(int(exp)*baseFactor+scale-shift))
 		return v, nil
 	}
 	return 0, errInvalidReal
