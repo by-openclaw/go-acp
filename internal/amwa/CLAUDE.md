@@ -146,8 +146,14 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
 
 ## Quirks worth remembering
 
-1. **mDNS-SD is mandatory** for production deployments. P2P fallback
-   (`_nmos-node._tcp`) only fires when no Registry is discoverable.
+1. **mDNS-SD is preferred but NOT always available.** Many end-user
+   networks block multicast DNS for security policy reasons. Plan for
+   three deployment modes from day one:
+   - **Full mDNS + Registry** (greenfield / spec-compliant peers).
+   - **Unicast Registry** (`--no-mdns --registry <ip>:<port>`).
+   - **Direct-Node** (`--no-mdns --no-registry --peer-list peers.csv`).
+   Default to mDNS but never assume it works. See
+   [`docs/matrix-compliance.md`](docs/matrix-compliance.md).
 2. **Registries observe heartbeats.** A Node missing a heartbeat (default
    5 s interval, 12 s timeout) is removed from the Query API — the
    Controller observes the WS Subscription event for it. Implement
@@ -174,15 +180,27 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
     serves the Node API to anyone who asks. Node CLIENT-CALLS the
     Registration API on the Registry. Two different code paths, easy
     to mix up.
+11. **Real matrix vendors are partially compliant.** Lawo VSM (verified
+    2026-04-26 from docs) supports Node API + IS-05 over HTTP only —
+    no Registration API, no Query API, no WebSocket, no MQTT, no IS-07,
+    no IS-12, no mDNS. Implement the full spec, then fire compliance
+    events on each peer-side gap. Track per-vendor in
+    [`docs/matrix-compliance.md`](docs/matrix-compliance.md). Mirror of
+    the Probel salvo deviation pattern (top-level `CLAUDE.md`
+    "Spec-strict, no-workaround posture" → exception clause).
+12. **No scheduled activations against Lawo.** Lawo VSM rejects
+    `activate_scheduled_relative` / `_absolute` and silently coerces
+    to immediate. Detect, fire `nmos_scheduled_activation_unsupported`,
+    retry as `activate_immediate`.
 
 ---
 
 ## What NOT to do
 
-- Never bypass DNS-SD with hard-coded URLs in production code (CLI flag
-  for testing is fine).
-- Never assume a Registry exists — implement P2P fallback for the Node
-  side from day one.
+- Never make DNS-SD mandatory — many production networks block it.
+  Always offer `--no-mdns` + `--peer-list` / `--registry` fallback.
+- Never assume a Registry exists — implement direct-Node fallback for
+  the Node + Controller sides from day one (Lawo VSM has no Registry).
 - Never PATCH IS-04 resources directly — they're read-only on the Node
   API. Annotations go through IS-13 (when stable); other resource
   updates re-register through the Registration API.

@@ -321,6 +321,80 @@ packages, not as separate plugin slots.
 
 ---
 
+## Deployment modes — mDNS not always available
+
+Real-world deployments break the "everyone on one multicast LAN"
+assumption. Production end-user networks block mDNS for security
+policy; some matrix vendors (Lawo VSM) ship with no Registry support
+at all. dhs supports three modes from day one:
+
+### Mode A — full mDNS + Registry  (default)
+
+Greenfield / lab / spec-compliant peers.
+
+```
+   ┌────────┐  mDNS  ┌──────────┐  mDNS  ┌────────────┐
+   │ [N]    │ <───── │ DNS-SD   │ ─────> │ [C]        │
+   │ Node   │        │ multicast│        │ Controller │
+   └───┬────┘        └────┬─────┘        └─────┬──────┘
+       │                  │                    │
+       │  POST /resource  │                    │  GET + WS subscribe
+       ▼                  ▼                    ▼
+                ┌─────────────────────┐
+                │  [R] Registry       │
+                │  (consumer face +   │
+                │   provider face)    │
+                └─────────────────────┘
+```
+
+### Mode B — unicast Registry  (`--no-mdns --registry <ip>:<port>`)
+
+Hardened deployments. mDNS firewalled but a Registry still exists.
+
+```
+   ┌────────┐                              ┌────────────┐
+   │ [N]    │                              │ [C]        │
+   │ Node   │                              │ Controller │
+   └───┬────┘                              └─────┬──────┘
+       │  POST /resource                         │  GET + WS subscribe
+       │  (host from --registry FLAG)            │  (host from --registry FLAG)
+       ▼                                         ▼
+                ┌─────────────────────┐
+                │  [R] Registry       │
+                │  --advertise-host   │
+                │     <ip>:<port>     │
+                └─────────────────────┘
+```
+
+### Mode C — direct-Node, no Registry  (`--no-mdns --no-registry --peer-list FILE`)
+
+Lawo VSM use-case (no Registration API support — see
+[`matrix-compliance.md`](matrix-compliance.md)). End-user networks
+where mDNS AND Registry are blocked.
+
+```
+   ┌────────┐                              ┌──────────────────────┐
+   │ [N]    │                              │ [C]      Controller   │
+   │ Node   │  ◄── direct REST per Node ── │                       │
+   │        │      (host list comes from   │  --peer-list peers.csv│
+   │        │       --peer-list FILE)      │                       │
+   └────────┘                              │  reads:                │
+   ┌────────┐                              │   nodeA.lan,2080      │
+   │ [N]    │  ◄────────────────────────── │   nodeB.lan,2080      │
+   │ Node   │                              │   192.0.2.5,8000      │
+   └────────┘                              └──────────────────────┘
+   ┌────────┐
+   │ [N]    │  ◄──────────────────────────
+   │ Node   │
+   └────────┘
+```
+
+In Mode C the Controller fans out per-Node walks, IS-05 PATCHes, and
+IS-07 WebSocket subscriptions. There is no Registry, no Query API,
+no WS subscription stream — every Node is targeted directly.
+
+---
+
 ## Proxy gateway topology (eventual goal)
 
 A fully wired dhs can sit between any controller and any device:

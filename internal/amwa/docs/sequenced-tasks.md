@@ -18,9 +18,10 @@ Tracking: epic [#146](https://github.com/by-openclaw/go-acp/issues/146).
 | 0.1 | `internal/amwa/CLAUDE.md` — atomic per-protocol context. |
 | 0.2 | `internal/amwa/docs/architecture.md` — ASCII per-spec diagrams. |
 | 0.3 | `internal/amwa/docs/sequenced-tasks.md` — this file. |
-| 0.4 | README.md row for NMOS (planned). |
-| 0.5 | `agents.md` — `nmos` added to `<proto>` set. |
-| 0.6 | `internal/amwa/reference.md` — already on main (catalogue). |
+| 0.4 | `internal/amwa/docs/matrix-compliance.md` — per-vendor compliance tracker (Lawo VSM verified). |
+| 0.5 | README.md row for NMOS (planned). |
+| 0.6 | `agents.md` — `nmos` added to `<proto>` set. |
+| 0.7 | `internal/amwa/reference.md` — already on main (catalogue). |
 
 Zero Go code. Zero CLI verbs. Pure design.
 
@@ -31,9 +32,12 @@ the full scope.
 
 ## Phase 1 — Foundation: discovery + registration
 
-### #1 — DNS-SD client + server (both sides)
+### #1 — DNS-SD client + server + unicast fallback (both sides)
 
-Pure infrastructure, no NMOS semantics yet.
+Pure infrastructure, no NMOS semantics yet. **Three deployment modes
+must work from day one** because real-world peers block mDNS or omit
+the Registry entirely (see
+[`matrix-compliance.md`](matrix-compliance.md)).
 
 - mDNS responder + browser using `github.com/hashicorp/mdns` OR
   hand-rolled stdlib (decision in PR).
@@ -41,11 +45,23 @@ Pure infrastructure, no NMOS semantics yet.
   `_nmos-system._tcp`, `_nmos-node._tcp`.
 - TXT record encoding/decoding (`api_proto`, `api_ver`, `api_auth`,
   `pri`).
-- `dhs` library helper: `nmos/discovery/{Browse,Announce}`.
+- **Unicast DNS-SD** (RFC 6763 §10) — fall back to authoritative DNS
+  SRV+TXT lookups when mDNS yields nothing.
+- **CSV peer-list bootstrap** — `--peer-list peers.csv` reads
+  `host,port[,api_ver]` lines for direct-Node mode.
+- **CLI flags landed in this PR** (used by every later phase):
+  - `--mdns` / `--no-mdns` (default: on).
+  - `--registry <host>:<port>` (skip discovery, dial Registry directly).
+  - `--peer-list FILE` (skip discovery + Registry, walk static Nodes).
+  - `--advertise-host <ip>:<port>` (override the IP that gets put in
+    the DNS-SD A/SRV record — needed when binding 0.0.0.0).
+- Compliance events: `nmos_mdns_disabled`, `nmos_mdns_no_response`,
+  `nmos_csv_peer_unreachable`.
+- `dhs` library helper: `nmos/discovery/{Browse,Announce,Resolve}`.
 
-Out of scope: unicast DNS-SD (bigger deploys); IPv6-only networks.
+Out of scope: IPv6-only networks (track in follow-up).
 
-Estimated PR size: ~600 LOC + tests.
+Estimated PR size: ~800 LOC + tests.
 
 ### #2 — IS-09 System API (server + client)
 
@@ -112,13 +128,26 @@ Layer older versions on top of #3/#4 once the v1.3 core is solid.
 
 ### #5 — IS-04 Controller (consumer side)
 
-- DNS-SD browse for `_nmos-query._tcp`.
-- Query API client: list resources with filters, walk by UUID.
-- WS Subscription client: open `ws_href`, parse notifications.
-- CLI: `dhs consumer nmos walk <reg-host>`,
-  `dhs consumer nmos watch <reg-host>`.
+Three modes mirror the deployment modes from #1:
 
-Estimated PR size: ~800 LOC.
+- **Registry mode** (default): DNS-SD browse for `_nmos-query._tcp`,
+  Query API client, WS Subscription client.
+- **Unicast Registry** (`--registry <ip>`): skip browse, hit the host
+  directly.
+- **Direct-Node** (`--peer-list peers.csv`): skip Registry entirely,
+  fan-out walk per Node (Lawo VSM use-case — see
+  [`matrix-compliance.md`](matrix-compliance.md#lawo-vsm--nmos-client-generic-driver)).
+- WS Subscription client opens `ws_href`, parses notifications, fires
+  `nmos_subscription_dropped` on unexpected close.
+- CLI:
+  - `dhs consumer nmos walk <reg-host>` — registry walk.
+  - `dhs consumer nmos walk-node <node-host>` — single-Node walk.
+  - `dhs consumer nmos walk-nodes --peer-list peers.csv` — fan-out walk.
+  - `dhs consumer nmos watch <reg-host>` — Query WS subscription.
+- Compliance events: `nmos_registry_not_supported`,
+  `nmos_query_api_missing`, `nmos_node_api_version_downgrade`.
+
+Estimated PR size: ~1000 LOC.
 
 ### #6 — BCP-002 + BCP-004 conformance
 
@@ -158,6 +187,12 @@ Estimated PR size: ~500 LOC.
 - transport_params validation against caps.
 - SDP encode/decode for RTP Senders.
 - Surface IS-05 in IS-04 Device `controls` URN `urn:x-nmos:control:sr-ctrl/v1.1`.
+- Compliance-event detection on the consumer-write side: peer 404 on
+  `/constraints` → `nmos_constraints_endpoint_missing`; peer 405/404
+  on `/bulk/*` → `nmos_bulk_unsupported`; peer rejects scheduled
+  activation → `nmos_scheduled_activation_unsupported` and retry as
+  `activate_immediate` (Lawo VSM behaviour per
+  [`matrix-compliance.md`](matrix-compliance.md)).
 
 Estimated PR size: ~1500 LOC.
 
