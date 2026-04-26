@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"acp/internal/cerebrum-nb/codec"
@@ -33,8 +34,66 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.BoolVar(&c.tls, "tls", false, "use wss:// instead of ws://")
 	fs.BoolVar(&c.insecure, "insecure-skip-verify", false, "with --tls, skip TLS cert verification")
 	fs.BoolVar(&c.debug, "debug", false, "verbose RX/TX XML logging")
-	fs.DurationVar(&c.timeout, "timeout", 30*time.Second, "per-request timeout")
+	fs.DurationVar(&c.timeout, "timeout", 5*time.Second, "per-request timeout")
 	return c
+}
+
+// reorderFlagsFirst moves any tokens that look like Go flags (start with
+// '-') ahead of positional arguments, so that stdlib flag.Parse — which
+// stops at the first non-flag — sees all flags before the host.
+//
+// This lets users write either:
+//
+//	cerebrum-nb connect --port 4008 --user u --pass p 10.41.64.95
+//	cerebrum-nb connect 10.41.64.95 --port 4008 --user u --pass p
+//
+// Any '--' literal terminator is preserved at its original position.
+func reorderFlagsFirst(args []string) []string {
+	flags := make([]string, 0, len(args))
+	pos := make([]string, 0, len(args))
+	i := 0
+	for i < len(args) {
+		a := args[i]
+		if a == "--" {
+			// Everything after '--' is positional verbatim.
+			pos = append(pos, args[i:]...)
+			break
+		}
+		if len(a) > 1 && a[0] == '-' {
+			flags = append(flags, a)
+			// Bool-vs-value distinction: peek the next token; if it's not
+			// itself a flag and the current flag form is "-name" (not
+			// "-name=value"), treat the next token as the flag value.
+			if !strings.Contains(a, "=") && i+1 < len(args) {
+				next := args[i+1]
+				if (len(next) <= 1 || next[0] != '-') && !isKnownBoolFlag(a) {
+					flags = append(flags, next)
+					i += 2
+					continue
+				}
+			}
+			i++
+			continue
+		}
+		pos = append(pos, a)
+		i++
+	}
+	return append(flags, pos...)
+}
+
+// isKnownBoolFlag reports whether the given flag is one of the cerebrum
+// boolean flags (no value follows). Conservative — anything not listed
+// is assumed to take a value.
+func isKnownBoolFlag(a string) bool {
+	name := strings.TrimLeft(a, "-")
+	if eq := strings.IndexByte(name, '='); eq >= 0 {
+		name = name[:eq]
+	}
+	switch name {
+	case "tls", "insecure-skip-verify", "debug", "h", "help":
+		return true
+	}
+	return false
 }
 
 // runCerebrum is the dispatcher for `dhs consumer cerebrum-nb <verb>`.
@@ -73,24 +132,26 @@ VERBS
   list-routers  one-shot router list (filter device_change LIST by Router)
   walk          full obtain across all §5 types (devices + categories + salvos)
 
-FLAGS (common)
+FLAGS (order doesn't matter — flags can come before OR after the host)
   --port N                  WebSocket port (default 40007)
   --user U                  NB username (or $DHS_CEREBRUM_USER)
   --pass P                  NB password (or $DHS_CEREBRUM_PASS)
   --tls                     use wss:// instead of ws://
   --insecure-skip-verify    with --tls, skip cert validation
   --debug                   verbose RX/TX XML logging
-  --timeout DUR             per-request timeout (default 30s)
+  --timeout DUR             per-request timeout (default 5s — fail fast)
 
 EXAMPLES
-  dhs consumer cerebrum-nb connect     10.6.239.50
-  dhs consumer cerebrum-nb listen      10.6.239.50 --user admin --pass s3cr3t
+  dhs consumer cerebrum-nb connect      10.6.239.50
+  dhs consumer cerebrum-nb connect      127.0.0.1 --port 4008
+  dhs consumer cerebrum-nb listen       10.6.239.50 --user admin --pass s3cr3t
   dhs consumer cerebrum-nb list-devices 10.6.239.50:40007
-  dhs consumer cerebrum-nb walk        cerebrum.local --tls`)
+  dhs consumer cerebrum-nb walk         cerebrum.local --tls`)
 }
 
 // connectAndLogin: parse flags, build a Plugin, Connect.
 func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Session, *cerebrumFlags, []string, error) {
+	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb "+verb, flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
 	if err := fs.Parse(args); err != nil {
@@ -118,11 +179,18 @@ func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Se
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
 
+	scheme := "ws"
+	if cf.tls {
+		scheme = "wss"
+	}
+	fmt.Fprintf(os.Stderr, "dialing %s://%s:%d/ (timeout %s) ...\n", scheme, host, cf.port, cf.timeout)
+
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	if err := p.Connect(ctx, host, cf.port); err != nil {
 		return nil, nil, nil, nil, err
 	}
+	fmt.Fprintf(os.Stderr, "connected; logged in.\n")
 	return p, p.Session(), cf, rest[1:], nil
 }
 
