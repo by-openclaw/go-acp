@@ -57,6 +57,23 @@ the Registry entirely (see
 - PR template / CHECKLIST updated with the four architecture-review
   ticks.
 
+**Also lands in this PR — devcontainer + conformance harness skeleton**
+(per [`conformance.md`](conformance.md)):
+
+- `.devcontainer/devcontainer.json` extended with
+  `ghcr.io/devcontainers/features/docker-outside-of-docker:1` so
+  `docker compose` works inside the dev container.
+- `tests/integration/nmos/_template/docker-compose.yml` —
+  isolated-bridge skeleton for per-phase compose stacks (no
+  `network_mode: host`, no published ports, no persistent volumes).
+- `tests/integration/nmos/_template/UserConfig.py` —
+  `DNS_SD_MODE='unicast'` baseline.
+- `scripts/nmos-run-suite.sh` — boots compose + drives AMWA API +
+  pulls JSON report + exits non-zero on Fail / Could-Not-Test.
+- `Makefile` target `test-conformance-nmos` with `trap`-based cleanup.
+- `tests/integration/nmos/results/.gitkeep` — directory for archived
+  reports.
+
 - mDNS responder + browser using `github.com/hashicorp/mdns` OR
   hand-rolled stdlib (decision in PR).
 - Service types: `_nmos-register._tcp`, `_nmos-query._tcp`,

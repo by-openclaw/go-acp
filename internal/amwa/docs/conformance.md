@@ -48,41 +48,129 @@ Public CI Dashboard: <https://specs.amwa.tv/nmos-dashboard/dashboard.html>
 activations, reboots), so dhs runs them only against an isolated
 instance, never against a production-loaded Registry.
 
-## Ground-truth install (verified 2026-04-26 from install doc)
+## Ground-truth install (verified 2026-04-26 from upstream install doc)
 
 **Published Docker image:** `amwa/nmos-testing` (Docker Hub).
-
-**Linux (host networking — preferred, multicast mDNS works):**
-```bash
-docker pull amwa/nmos-testing
-docker run -d --network="host" amwa/nmos-testing
-docker run -d --network="host" \
-  -v="$(pwd)/UserConfig.py:/config/UserConfig.py" \
-  amwa/nmos-testing
-```
 
 **Ports the container exposes:**
 - `:5000` — main web service + non-interactive API (suite runner).
 - `:5001` — Controller-testing façade (acts as Mock Registry / Mock Node
   for IS-04-04 / IS-05-03).
 
-**Windows / macOS:** Docker `--network host` is unsupported. Two
-options:
-1. Run AMWA tool natively (`python nmos-test.py` after `pip install`)
-   on the WSL2 / Mac host directly, talk to dhs over loopback.
-2. Run in bridge mode + set `DNS_SD_MODE='unicast'` in `UserConfig.py`
-   so the tool uses unicast DNS-SD instead of mDNS (some test cases
-   become Could-Not-Test under unicast — see scope-out table below).
+## Run via devcontainer + isolated bridge (the only blessed mode)
 
-**`UserConfig.py` minimum for unicast / non-interactive CI:**
-```python
-# nmostesting/UserConfig.py — copy of UserConfig.example.py
-ENABLE_DNS_SD = True
-DNS_SD_MODE   = 'unicast'        # 'multicast' for prod-LAN runs
-QUERY_API_HOST = 'dhs-under-test'
-QUERY_API_PORT = 8000
-MAX_TEST_ITERATIONS = 0          # 0 = unlimited
+dhs runs the AMWA conformance suite **inside the existing
+`.devcontainer/`**, against a private docker-compose bridge that does
+not touch the host LAN. Three constraints govern this design:
+
+| Constraint | How it's enforced |
+|---|---|
+| **Use devcontainer.** | All conformance commands run from the dev container shell. Reviewers and CI use the same image. Adds `ghcr.io/devcontainers/features/docker-outside-of-docker:1` so `docker compose` from inside the devcontainer talks to the host Docker daemon. |
+| **No garbage.** | `make test-conformance-nmos-<suite>` registers a `trap docker-compose-down EXIT`. Bridge network, containers, anonymous volumes — all destroyed on success, failure, OR Ctrl-C. The compose project name encodes the suite + run timestamp so concurrent runs never collide. No persistent volumes; the AMWA tool's results are pulled via its JSON API and written to the host workspace, not via volume bind. `docker image prune` runs nightly in CI. |
+| **Stay on local network.** | Custom user-defined bridge network (`dhs_nmos_test_<phase>`). Linux Docker bridge networks isolate broadcast + multicast traffic from the host LAN by default — mDNS announcements stay inside the bridge subnet. Belt-and-braces: `UserConfig.py` ships with `DNS_SD_MODE='unicast'` by default, so even the in-bridge multicast is silenced. No `network_mode: host`, ever. |
+
+### Per-phase compose stack
+
+`tests/integration/nmos/<phase>/docker-compose.yml`:
+
+```yaml
+name: dhs_nmos_${PHASE}_${RUN_ID}    # encoded so concurrent runs never collide
+
+networks:
+  isolated:                          # ephemeral; destroyed by `down`
+    name: dhs_nmos_test_${PHASE}_${RUN_ID}
+    driver: bridge
+    internal: false                  # outbound DNS works; inbound from LAN does NOT
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+
+services:
+  dhs-under-test:
+    image: dhs:dev                   # built by devcontainer post-create
+    networks: [isolated]
+    command: dhs producer nmos serve --no-mdns --bind 0.0.0.0:8080
+    # NO ports: published. Reachable only from amwa-nmos-testing.
+
+  amwa-nmos-testing:
+    image: amwa/nmos-testing@sha256:<DIGEST>   # pinned per phase
+    networks: [isolated]
+    volumes:
+      - ./UserConfig.py:/config/UserConfig.py:ro
+    # NO ports: published. We talk to it via `docker exec` or
+    # `docker compose run` from the devcontainer; nothing escapes
+    # to the host LAN.
+    depends_on:
+      dhs-under-test:
+        condition: service_started
 ```
+
+### `UserConfig.py` (committed per phase, unicast by default)
+
+```python
+# tests/integration/nmos/<phase>/UserConfig.py — copy of UserConfig.example.py
+ENABLE_DNS_SD       = True
+DNS_SD_MODE         = 'unicast'      # NEVER 'multicast' in CI; it leaks
+QUERY_API_HOST      = 'dhs-under-test'
+QUERY_API_PORT      = 8000
+MAX_TEST_ITERATIONS = 0
+```
+
+`DNS_SD_MODE='multicast'` is allowed only on isolated lab segments
+where the user explicitly OK's broadcasting. CI never sets it.
+
+### Make target (no garbage guarantee)
+
+`Makefile` snippet that lands in Phase 1 step #1:
+
+```make
+PHASE  ?= 02-is09
+RUN_ID := $(shell date +%s)-$$$$
+COMPOSE := docker compose -f tests/integration/nmos/$(PHASE)/docker-compose.yml \
+           --project-name dhs_nmos_$(PHASE)_$(RUN_ID)
+
+.PHONY: test-conformance-nmos
+test-conformance-nmos:
+	@trap '$(COMPOSE) down -v --remove-orphans --timeout 5' EXIT INT TERM; \
+	 $(COMPOSE) up -d --quiet-pull && \
+	 scripts/nmos-run-suite.sh $(PHASE) $(RUN_ID)
+```
+
+`scripts/nmos-run-suite.sh` does the API dance against the AMWA tool
+on `:5000` *inside the bridge* (via `docker compose exec` — never
+exposed to the host), pulls the JSON report, writes it to
+`tests/integration/nmos/<phase>/results/<RUN_ID>.json`, and exits
+non-zero if any test reports `Fail` or `Could Not Test`.
+
+The `trap` ensures cleanup even on Ctrl-C, segfault, or runner OOM.
+
+### Why no `network_mode: host`
+
+`network_mode: host` would publish AMWA mDNS (and any test-suite
+multicast probes) onto the user's actual LAN — visible to any other
+NMOS-aware device on the network. That fails the "stay on local
+network" rule and would risk false discovery in shared lab
+environments. Custom bridge keeps everything self-contained.
+
+### Devcontainer feature requirement (lands in Phase 1 step #1)
+
+`.devcontainer/devcontainer.json` will gain:
+
+```jsonc
+"features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+        "version": "latest",
+        "moveDockerSocket": true
+    },
+    // ... existing features ...
+}
+```
+
+Existing devcontainer is a single Go-1.22-bookworm image with no
+docker-cli. Adding the docker-outside-of-docker feature gives the
+devcontainer access to the host Docker daemon (via socket mount) so
+`docker compose` works inside. No Docker-in-Docker — the daemon stays
+on the host, the devcontainer just talks to it.
 
 ## How dhs uses it (CI gate, per phase)
 
