@@ -238,20 +238,17 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
     subtree:add(f.xml_text, payload_str)
     if root then
       subtree:add(f.xml_root, root)
-      pinfo.cols.protocol:set("Cerebrum-NB")
-      local info = string.format("%s %s", arrow, root)
+    local info = string.format("%s %s", arrow, root)
       if mtid     then subtree:add(f.xml_mtid,       mtid);     info = info .. " mtid=" .. mtid end
       if typ      then subtree:add(f.xml_type,       typ);      info = info .. " TYPE=" .. typ end
       if err      then subtree:add(f.xml_error,      err);      info = info .. " ERROR=" .. err end
       if err_code then subtree:add(f.xml_error_code, err_code); info = info .. " CODE=" .. err_code end
       pinfo.cols.info:set(info)
     else
-      pinfo.cols.protocol:set("Cerebrum-NB")
-      pinfo.cols.info:set(string.format("%s TEXT (no XML root) %d bytes", arrow, plen))
+    pinfo.cols.info:set(string.format("%s TEXT (no XML root) %d bytes", arrow, plen))
     end
   elseif opcode == 0x8 then
-    pinfo.cols.protocol:set("Cerebrum-NB")
-    if plen >= 2 then
+if plen >= 2 then
       local code = string.byte(payload_str, 1) * 256 + string.byte(payload_str, 2)
       subtree:add(f.close_code, buffer(pos, 2), code)
       local reason = ""
@@ -266,14 +263,11 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
       pinfo.cols.info:set(string.format("%s CLOSE", arrow))
     end
   elseif opcode == 0x9 then
-    pinfo.cols.protocol:set("Cerebrum-NB")
-    pinfo.cols.info:set(arrow .. " PING")
+pinfo.cols.info:set(arrow .. " PING")
   elseif opcode == 0xA then
-    pinfo.cols.protocol:set("Cerebrum-NB")
-    pinfo.cols.info:set(arrow .. " PONG")
+pinfo.cols.info:set(arrow .. " PONG")
   else
-    pinfo.cols.protocol:set("Cerebrum-NB")
-    pinfo.cols.info:set(string.format("%s %s len=%d", arrow, op_name, plen))
+pinfo.cols.info:set(string.format("%s %s len=%d", arrow, op_name, plen))
   end
 
   return total_needed, false
@@ -296,14 +290,13 @@ local function dissect_handshake(buffer, pinfo, tree)
   local subtree = tree:add(p_cnb, buffer(0, hdr_end + 3), "WebSocket Handshake")
   subtree:add(f.phase, "handshake")
 
-  pinfo.cols.protocol:set("Cerebrum-NB Upgrade")
   local arrow = direction_arrow(pinfo)
   if first_line:sub(1, 4) == "GET " then
     subtree:add(f.hs_request, first_line)
-    pinfo.cols.info:set(arrow .. " " .. first_line)
+    pinfo.cols.info:set(string.format("%s WS upgrade request — %s", arrow, first_line))
   else
     subtree:add(f.hs_response, first_line)
-    pinfo.cols.info:set(arrow .. " " .. first_line)
+    pinfo.cols.info:set(string.format("%s WS upgrade reply — %s", arrow, first_line))
   end
   return hdr_end + 3
 end
@@ -314,18 +307,31 @@ end
 
 function p_cnb.dissector(buffer, pinfo, tree)
   local len = buffer:len()
-  if len < 2 then return 0 end
+  if len < 2 then
+    pinfo.desegment_offset = 0
+    pinfo.desegment_len = 2 - len
+    return
+  end
+
+  -- Always claim the protocol column up-front, regardless of phase
+  -- (Probel / ACP convention — phase / verb belongs in Info, not Protocol).
+  pinfo.cols.protocol:set("Cerebrum-NB")
 
   local prefix = buffer(0, math.min(9, len)):string()
   if looks_like_handshake(prefix) then
     return dissect_handshake(buffer, pinfo, tree)
   end
 
-  -- WS frame mode. Loop through any number of full frames in this segment.
+  -- WS frame mode. Decode as many full frames as fit in this buffer.
+  -- If the last one is partial, request reassembly via desegment_*.
   local offset = 0
   while offset < len do
     local consumed, need_more = dissect_ws_frame(buffer, pinfo, tree, offset)
-    if need_more then break end
+    if need_more then
+      pinfo.desegment_offset = offset
+      pinfo.desegment_len = 1 -- "give me more bytes; I'll figure out exact need next call"
+      return offset > 0 and offset or nil
+    end
     if consumed == 0 then break end
     offset = offset + consumed
   end
