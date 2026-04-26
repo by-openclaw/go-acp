@@ -20,9 +20,10 @@ Tracking: epic [#146](https://github.com/by-openclaw/go-acp/issues/146).
 | 0.3 | `internal/amwa/docs/sequenced-tasks.md` — this file. |
 | 0.4 | `internal/amwa/docs/matrix-compliance.md` — per-vendor compliance tracker (Lawo VSM verified). |
 | 0.5 | `internal/amwa/docs/ha.md` — multi-Registry rules + 4 HA topologies + failover state machine. |
-| 0.6 | README.md row for NMOS (planned). |
-| 0.7 | `agents.md` — `nmos` added to `<proto>` set. |
-| 0.8 | `internal/amwa/reference.md` — already on main (catalogue). |
+| 0.6 | `internal/amwa/docs/dependencies.md` — strict 4-layer architecture (CLI / Plugin / Session / Codec), inter-codec graph, enforcement (depguard + go list -deps audit + PR checklist). |
+| 0.7 | README.md row for NMOS (planned). |
+| 0.8 | `agents.md` — `nmos` added to `<proto>` set. |
+| 0.9 | `internal/amwa/reference.md` — already on main (catalogue). |
 
 Zero Go code. Zero CLI verbs. Pure design.
 
@@ -33,12 +34,27 @@ the full scope.
 
 ## Phase 1 — Foundation: discovery + registration
 
-### #1 — DNS-SD client + server + unicast fallback (both sides)
+### #1 — DNS-SD client + server + unicast fallback + dependency-enforcement gates
 
 Pure infrastructure, no NMOS semantics yet. **Three deployment modes
 must work from day one** because real-world peers block mDNS or omit
 the Registry entirely (see
 [`matrix-compliance.md`](matrix-compliance.md)).
+
+**Also lands in this PR — strict-dependency enforcement gates** (per
+[`dependencies.md`](dependencies.md)):
+
+- New Tier-1 plugin slot `internal/registry/` (interface + Factory +
+  Register + Lookup — mirrors `internal/protocol/` + `internal/provider/`).
+- `internal/amwa/codec/dnssd/` lands first; verified stdlib-only by
+  depguard.
+- `.golangci.yml` updated with NMOS depguard rules:
+  `nmos-codec-stdlib-only`, `nmos-session-no-plugin-imports`,
+  `nmos-plugin-no-cross-plugin`.
+- `internal/amwa/dependencies_test.go` — `go list -deps` audit test
+  (runs on every `go test ./internal/amwa/...`).
+- PR template / CHECKLIST updated with the four architecture-review
+  ticks.
 
 - mDNS responder + browser using `github.com/hashicorp/mdns` OR
   hand-rolled stdlib (decision in PR).

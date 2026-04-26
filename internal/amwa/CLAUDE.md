@@ -228,6 +228,32 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
 
 ---
 
+## Strict-dependency architecture
+
+NMOS code lives in **four layers** with **enforced one-way dependency
+flow**:
+
+```
+LAYER 4  cmd/dhs/cmd_nmos.go                    (CLI)
+LAYER 3  internal/amwa/{consumer,provider,registry}  (PLUGIN)
+LAYER 2  internal/amwa/session/*                (SESSION)
+LAYER 1  internal/amwa/codec/*                  (CODEC — stdlib only)
+```
+
+A package in layer N may import layer < N only. Cross-plugin imports
+between `consumer/`, `provider/`, `registry/` are forbidden. Codec
+packages must remain stdlib-only (lift-to-own-repo ready — same rule
+as every other dhs protocol). Cross-protocol imports
+(`internal/<other-proto>/*`) are forbidden outside neutral
+infrastructure.
+
+A new Tier-1 plugin slot `internal/registry/` lands with NMOS to host
+the Registry's dual-face middleware role.
+
+Enforcement: depguard golangci-lint rule + `go list -deps` audit test
++ PR review checklist. Full rules + inter-codec dependency graph + CI
+config in [`docs/dependencies.md`](docs/dependencies.md).
+
 ## Implementation order
 
 See [`docs/sequenced-tasks.md`](docs/sequenced-tasks.md). Minimum viable
