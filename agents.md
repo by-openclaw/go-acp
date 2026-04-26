@@ -44,8 +44,16 @@ docs/                           cross-cutting architecture, connector, schema
 ```
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
-Other feature branches add more: `cerebrum` on `feat/cerebrum-nb-plugin`. See
-`memory/project_protocol_backlog.md` for the full queue.
+Other feature branches add more: `cerebrum-nb` on `feat/cerebrum-nb-plugin`
+(PR #144), `nmos` (scaffold only — design doc + epic #146) on
+`feat/nmos-scaffold`. See `memory/project_protocol_backlog.md` for the
+full queue.
+
+> **NMOS is the odd one out.** It is a suite of ~14 specs
+> (IS-04/05/07/08/09/12/13, MS-05-01/02, BCP-002/004/006/007/008) with a
+> 3-role topology — Node + Registry + Controller — rather than the
+> 2-role consumer/provider split. Read `internal/amwa/CLAUDE.md` and
+> `internal/amwa/docs/architecture.md` before touching it.
 
 The **TSL UMD plugin** registers three wire versions as separate
 entries per the `feedback_protocol_versioning.md` Pattern A rule:

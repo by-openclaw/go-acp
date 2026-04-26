@@ -1,7 +1,9 @@
 # dhs — Device Hub Systems
 
-Go toolset to discover, connect, monitor, and control devices across four
-protocols: **ACP1**, **ACP2**, **Ember+**, and **Probel SW-P-08 / SW-P-88**.
+Go toolset to discover, connect, monitor, and control devices across many
+protocols: **ACP1**, **ACP2**, **Ember+**, **Probel SW-P-08 / SW-P-88**,
+**Probel SW-P-02**, **OSC**, **TSL UMD**, **EVS Cerebrum NB**, and (planned)
+**AMWA NMOS**.
 
 One binary covers both directions:
 
@@ -26,6 +28,8 @@ One binary covers both directions:
 | Probel SW-P-02  | TCP               | 2002      | ✅ merged on main (PR #106 closed #105, PR #132 closed #128/#129/#130) — 33 bytes + Wireshark; owner-only protect auth + protect-blocks-connect with state echo; consumer matrix-config flags (`--mtx-id --level --dsts --srcs`) + bootstrap rx 01 sweep + 2 s rotating keep-alive ping (mirrors VSM) + TCP SO_KEEPALIVE; VSM + Commie validated 2026-04-25 | ✅ merged on main | [internal/probel-sw02p/CLAUDE.md](internal/probel-sw02p/CLAUDE.md) |
 | TSL UMD v3.1/v4/v5 | v3.1 UDP-only · v4.0 UDP-only · v5.0 UDP **and** TCP/DLE-STX | v3.1 4000 · v4.0 4004 (testbed) · v5.0 8901 UDP / 8902 TCP (testbed) | ✅ merged on main (PR #134 closed #119/#120/#121/#122) — codec + consumer + provider for all 3 versions; `dhs_tsl.lua` Wireshark dissector; consumer `listen` + producer `send` / `serve` CLI verbs (v5.0 multi-DMSG via repeatable `--dmsg "index=N,lh=...,text-tally=...,rh=...,brightness=...,umd=STR"`); SO_KEEPALIVE 30 s on v5 TCP; **VSM + Miranda IP Emulator interop validated 2026-04-26** | ✅ merged on main | [internal/tsl/CLAUDE.md](internal/tsl/CLAUDE.md) |
 | OSC 1.0 / 1.1   | UDP; TCP length-prefix (1.0) or TCP SLIP double-END (1.1) | 8000 (UDP + TCP-LP), 8001 (TCP-SLIP) — all configurable | ✅ merged on main (PR #125 closed #123 + #124) — osc-v10 + osc-v11 codec + every type tag incl. `[ ]` arrays + bundles + full address-pattern matcher; consumer `watch` + producer `send` / `fader` / `serve` CLI verbs; full `dhs_osc.lua` Wireshark dissector with typed Info column; osc.js cross-impl byte oracle; pcap replay fixture; **76 tests** | ✅ merged on main | [internal/osc/CLAUDE.md](internal/osc/CLAUDE.md) |
+| EVS Cerebrum NB | XML over WebSocket (ws/wss) | 40007 (configurable) | 🟡 PR #144 — codec + WS framing + CLI verbs + `dhs_cerebrum_nb.lua` + portable Windows binary; UPPERCASE wire form + LOGIN/NACK round-trip live-verified 2026-04-26 against a real Cerebrum (license-blocked for full happy path) | deferred | [internal/cerebrum-nb/CLAUDE.md](internal/cerebrum-nb/CLAUDE.md) · [internal/cerebrum-nb/docs/consumer.md](internal/cerebrum-nb/docs/consumer.md) |
+| AMWA NMOS       | DNS-SD + HTTP/JSON REST + WebSocket; (IS-07 also MQTT) | per-API (DNS-SD discovered) | 🟡 epic #146 — scaffold + design doc on `feat/nmos-scaffold`; per-spec architecture diagrams + sequenced 24-step plan; minimum viable slice = IS-09 → IS-04 → IS-05 → IS-07 (WebSocket only) + BCP-002/004 conformance | 🟡 epic #146 — Node + Registry both planned (3-role topology, not 2) | [internal/amwa/CLAUDE.md](internal/amwa/CLAUDE.md) · [internal/amwa/docs/architecture.md](internal/amwa/docs/architecture.md) · [internal/amwa/docs/sequenced-tasks.md](internal/amwa/docs/sequenced-tasks.md) · [internal/amwa/reference.md](internal/amwa/reference.md) |
 
 Canonical JSON schema shared across all protocols:
 [docs/protocols/schema.md](docs/protocols/schema.md).
