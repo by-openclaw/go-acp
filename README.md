@@ -1,7 +1,8 @@
 # dhs — Device Hub Systems
 
-Go toolset to discover, connect, monitor, and control devices across four
-protocols: **ACP1**, **ACP2**, **Ember+**, and **Probel SW-P-08 / SW-P-88**.
+Go toolset to discover, connect, monitor, and control devices across many
+protocols: **ACP1**, **ACP2**, **Ember+**, **Probel SW-P-08 / SW-P-88**,
+**Probel SW-P-02**, **OSC**, **TSL UMD**, and **EVS Cerebrum NB**.
 
 One binary covers both directions:
 
@@ -25,7 +26,7 @@ One binary covers both directions:
 | Probel SW-P-08+ | TCP               | 2008      | 🟡 PR #84 (all §3.2 cmds; VSM+Commie+TS validated) | 🟡 PR #84 (all §3.2 cmds; multi-session tally + salvo fan-out live-validated against VSM + Commie; #92 resolved) | [internal/probel-sw08p/CLAUDE.md](internal/probel-sw08p/CLAUDE.md) |
 | Probel SW-P-02  | TCP               | —         | planned  | —        | — |
 | TSL UMD v3.1/v4/v5 | UDP push       | —         | planned  | —        | — |
-| EVS Cerebrum NB | XML over WebSocket (ws/wss) | configurable | planned (consumer-first) | deferred | [internal/cerebrum-northbound-api/assets/](internal/cerebrum-northbound-api/assets/) |
+| EVS Cerebrum NB | XML over WebSocket (ws/wss) | 40007 (configurable) | 🟡 PR #144 — codec + WS framing + CLI verbs + Wireshark + portable Windows binary; UPPERCASE wire form + LOGIN/NACK round-trip live-verified 2026-04-26 against a real Cerebrum (license-blocked for full happy path) | deferred | [internal/cerebrum-nb/CLAUDE.md](internal/cerebrum-nb/CLAUDE.md) · [internal/cerebrum-nb/docs/consumer.md](internal/cerebrum-nb/docs/consumer.md) |
 
 Canonical JSON schema shared across all protocols:
 [docs/protocols/schema.md](docs/protocols/schema.md).

@@ -43,7 +43,7 @@ tests/                          unit / integration / smoke / fixtures
 docs/                           cross-cutting architecture, connector, schema
 ```
 
-`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p}`.
+`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc, tsl, cerebrum-nb}`.
 
 ---
 
@@ -63,6 +63,10 @@ stream, profile, diag.
 Probel has its own verb catalogue (interrogate, connect, tally-dump, watch,
 …) — see `dhs consumer probel-sw08p -h`.
 
+Cerebrum NB has its own verb catalogue (connect, listen, list-devices,
+list-routers, walk) — see `dhs consumer cerebrum-nb -h`. Default port
+40007. Credentials default from `$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`.
+
 Producer verb is `serve` for every protocol.
 
 ---
@@ -74,8 +78,12 @@ internal/acp1/assets/       AXON-ACP_v1_4.pdf
 internal/acp2/assets/       acp2_protocol.pdf + an2_protocol.pdf
 internal/emberplus/assets/  Ember+ Documentation.pdf + Ember+ Formulas.pdf
 internal/probel-sw08p/assets/probel-sw08p/SW-P-08 Issue 30.doc   (use antiword; the .pdf is corrupted)
+internal/probel-sw02p/assets/probel-sw02/                        (SW-P-02 Issue 26)
+internal/osc/assets/                                              (OSC 1.0/1.1 specs)
+internal/tsl/assets/                                              (TSL UMD v3.1/v4/v5)
+internal/cerebrum-nb/assets/                                      (EVS Cerebrum NB v0.13 PDF + DOCX + OCR)
 
-internal/<proto>/wireshark/dissector_<proto>.lua   byte-exact reference
+internal/<proto>/wireshark/dhs_<proto>.lua   byte-exact reference
 ```
 
 Extract the Probel spec:
