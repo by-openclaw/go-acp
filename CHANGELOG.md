@@ -45,6 +45,24 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.5.0](https://github.com/by-openclaw/go-acp/compare/v0.4.0...v0.5.0) (2026-04-26)
+
+
+### Features
+
+* **cli:** list-commands + help-cmd across all 5 protocols ([#133](https://github.com/by-openclaw/go-acp/issues/133)) ([932e321](https://github.com/by-openclaw/go-acp/commit/932e3218732dcd2b855e95e2887b3b4d235f2811))
+* **probel-sw02p:** implement salvo commands §3.2.7/8/14/15/36-39/53/54 ([#106](https://github.com/by-openclaw/go-acp/issues/106)) ([cadebe6](https://github.com/by-openclaw/go-acp/commit/cadebe61b8ad13ef6259451573ce8c60d17247f5))
+* **probel,osc:** consumer matrix-config flags + bootstrap rx 01 sweep + keep-alive ping + TCP SO_KEEPALIVE ([#132](https://github.com/by-openclaw/go-acp/issues/132)) ([a7f0e9e](https://github.com/by-openclaw/go-acp/commit/a7f0e9e673fe325aa2242f4aea2ecafbb7c496f0))
+* **tsl:** TSL UMD v3.1/v4.0/v5.0 plugin + Wireshark dissector + CLI ([#134](https://github.com/by-openclaw/go-acp/issues/134)) ([7a2ea2b](https://github.com/by-openclaw/go-acp/commit/7a2ea2b995ede3773d97ea85cb48be10d5c0e7e2))
+
+
+### Bug Fixes
+
+* **emberplus:** BER REAL ecosystem mantissa bias + S101 BoF resync ([a057f9a](https://github.com/by-openclaw/go-acp/commit/a057f9a4065d78efced6ce9db0dc0b688530b3eb))
+* **emberplus:** BER REAL ecosystem mantissa bias + S101 BoF resync ([#68](https://github.com/by-openclaw/go-acp/issues/68)) ([a244e17](https://github.com/by-openclaw/go-acp/commit/a244e170d0184da69cd5aa0b554e93feb93974f7))
+* **emberplus:** broadcast value-change announcements to all active sessions ([f2edbff](https://github.com/by-openclaw/go-acp/commit/f2edbfff96426b19392ecb215a2de27e3c6f1f0a))
+* **emberplus:** broadcast value-change announcements to all active sessions ([b679ecb](https://github.com/by-openclaw/go-acp/commit/b679ecb704fb22d6912d4a6d1b694db87fb80447))
+
 ## [0.4.0](https://github.com/by-openclaw/go-acp/compare/v0.3.1...v0.4.0) (2026-04-25)
 
 
