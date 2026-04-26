@@ -254,6 +254,22 @@ Enforcement: depguard golangci-lint rule + `go list -deps` audit test
 + PR review checklist. Full rules + inter-codec dependency graph + CI
 config in [`docs/dependencies.md`](docs/dependencies.md).
 
+## Conformance gate — AMWA NMOS Testing tool
+
+Every NMOS PR that ships an implementation chunk MUST pass the matching
+**AMWA NMOS Testing** suite (<https://github.com/AMWA-TV/nmos-testing>).
+The tool runs as Docker, acts as Mock Registry / Mock Node /
+probe-client, and exercises every claimed IS-* / BCP-* / MS-* suite.
+
+Per-phase suite mapping in
+[`docs/sequenced-tasks.md`](docs/sequenced-tasks.md). Pass / Fail /
+Could-Not-Test gating + scope-outs documented in
+[`docs/conformance.md`](docs/conformance.md).
+
+This is the canonical NMOS gate. Vendor-specific integration tests
+(Lawo VSM, nmos-cpp, etc.) layer on top — passing AMWA is necessary,
+not sufficient.
+
 ## Implementation order
 
 See [`docs/sequenced-tasks.md`](docs/sequenced-tasks.md). Minimum viable

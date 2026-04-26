@@ -21,9 +21,10 @@ Tracking: epic [#146](https://github.com/by-openclaw/go-acp/issues/146).
 | 0.4 | `internal/amwa/docs/matrix-compliance.md` — per-vendor compliance tracker (Lawo VSM verified). |
 | 0.5 | `internal/amwa/docs/ha.md` — multi-Registry rules + 4 HA topologies + failover state machine. |
 | 0.6 | `internal/amwa/docs/dependencies.md` — strict 4-layer architecture (CLI / Plugin / Session / Codec), inter-codec graph, enforcement (depguard + go list -deps audit + PR checklist). |
-| 0.7 | README.md row for NMOS (planned). |
-| 0.8 | `agents.md` — `nmos` added to `<proto>` set. |
-| 0.9 | `internal/amwa/reference.md` — already on main (catalogue). |
+| 0.7 | `internal/amwa/docs/conformance.md` — AMWA NMOS Testing tool integration (per-phase suite mapping, Pass/Fail gating, Docker compose, image-digest pinning). |
+| 0.8 | README.md row for NMOS (planned). |
+| 0.9 | `agents.md` — `nmos` added to `<proto>` set. |
+| 0.10 | `internal/amwa/reference.md` — already on main (catalogue). |
 
 Zero Go code. Zero CLI verbs. Pure design.
 
@@ -91,6 +92,9 @@ before tackling IS-04.
 - Consumer: `dhs consumer nmos system <hint>` — fetch + dump.
 - Tests: round-trip JSON, DNS-SD advertise + browse, fallback to
   config file when no `_nmos-system._tcp`.
+- **Conformance gate: AMWA NMOS Testing IS-09-02 suite must Pass.**
+  Pinned by image digest; report archived under
+  `tests/integration/nmos/02-is09/results/`.
 
 Estimated PR size: ~400 LOC.
 
@@ -106,6 +110,8 @@ The Node serves its own resource graph + heartbeats to a Registry.
   every 5 s, DELETE on shutdown.
 - Heartbeat back-off + re-register on `404`.
 - DNS-SD announce of Node API (P2P fallback).
+- **Conformance gate: AMWA NMOS Testing IS-04-01 (Node API) +
+  IS-04-03 (P2P advertisement) must Pass.**
 
 Estimated PR size: ~1500 LOC + tests.
 
@@ -151,6 +157,11 @@ Out of scope here, parked in [HA epic #127](https://github.com/by-openclaw/go-ac
 - Active/active shared-store Registries (would need Redis/etcd; project
   policy disallows external stores in v1).
 
+**Conformance gate: AMWA NMOS Testing IS-04-02 (Registry APIs) must
+Pass.** HA-specific failover behaviour additionally validated by an
+in-repo integration test (kill primary → assert Node re-registers on
+secondary inside the 12 s GC window).
+
 Estimated PR size: ~2200 LOC + tests.
 
 #### #4b — IS-04 v1.2 + v1.1 back-compat
@@ -177,6 +188,9 @@ Three modes mirror the deployment modes from #1:
   - `dhs consumer nmos watch <reg-host>` — Query WS subscription.
 - Compliance events: `nmos_registry_not_supported`,
   `nmos_query_api_missing`, `nmos_node_api_version_downgrade`.
+- **Conformance gate: AMWA NMOS Testing IS-04-04 (Controller) must
+  Pass.** AMWA tool acts as Mock Registry + Mock Node; dhs Controller
+  probes both.
 
 Estimated PR size: ~1000 LOC.
 
@@ -224,6 +238,7 @@ Estimated PR size: ~500 LOC.
   activation → `nmos_scheduled_activation_unsupported` and retry as
   `activate_immediate` (Lawo VSM behaviour per
   [`matrix-compliance.md`](matrix-compliance.md)).
+- **Conformance gate: AMWA NMOS Testing IS-05-01 must Pass.**
 
 Estimated PR size: ~1500 LOC.
 
@@ -245,6 +260,7 @@ Same shape as IS-05 but for in-Device audio routing.
 - Provider: enforce mapping graph constraints.
 - Consumer: CLI `dhs consumer nmos remap`.
 - IS-04 Device `controls` URN `urn:x-nmos:control:cm/v1.0`.
+- **Conformance gate: AMWA NMOS Testing IS-08-01 must Pass.**
 
 Estimated PR size: ~900 LOC.
 
@@ -260,6 +276,8 @@ Estimated PR size: ~900 LOC.
 - `command_subscription`, `command_health` ingestion from clients.
 - IS-04 Source `format = urn:x-nmos:format:data`, Sender
   `transport = urn:x-nmos:transport:websocket`.
+- **Conformance gate: AMWA NMOS Testing IS-07-01 must Pass on the
+  publisher side.**
 
 Estimated PR size: ~700 LOC.
 
@@ -303,6 +321,10 @@ Estimated PR size: ~1500 LOC + tests.
 - Subscription manager: track subscribed OIDs, emit Notification on
   property change.
 - Surface in IS-04 Device `controls` URN `urn:x-nmos:control:ncp/v1.0`.
+- **Conformance gate: AMWA NMOS Testing IS-12-01 (invasive) must Pass.**
+  Run against an isolated dhs instance — the suite triggers state
+  changes (Set property, InvokeMethod). Never run against a production
+  Registry.
 
 Estimated PR size: ~1500 LOC.
 
@@ -322,6 +344,7 @@ Feature set on top of MS-05-02 / IS-12.
 - `NcReceiverMonitor` class (linkStatus, connectionStatus,
   externalSynchronizationStatus, streamStatus + per-status messages).
 - Touchpoint to IS-04 Receiver UUID.
+- **Conformance gate: AMWA NMOS Testing BCP-008-01 must Pass.**
 
 Estimated PR size: ~500 LOC.
 
@@ -331,6 +354,7 @@ Mirror of #16 on the Sender side.
 
 - `NcSenderMonitor` class (linkStatus, transmissionStatus,
   externalSynchronizationStatus, essenceStatus).
+- **Conformance gate: AMWA NMOS Testing BCP-008-02 must Pass.**
 
 Estimated PR size: ~500 LOC.
 
