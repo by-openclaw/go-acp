@@ -14,26 +14,45 @@ Read alongside the top-level [`CLAUDE.md`](../../CLAUDE.md) and the
 
 ## Roles
 
-NMOS introduces a third role that does not fit the existing dhs
-consumer/provider split:
+NMOS uses a **3-role topology** with a **dual-face Registry** in the
+middle. The Registry does not fit the existing dhs consumer/provider
+split because it is BOTH at once — depending on which face you look at:
 
-| NMOS role | dhs slot | What it does |
+```
+devices  ──register/heartbeat──>  ( consumer )  REGISTRY  ( provider )  ──query+WS──>  controller
+   │                                  Registration API     Query API                       │
+   └── Node API (each device)                                                              │
+                                                       ╰── controller commands devices ────╯
+                                                                  via IS-05 / IS-07 / IS-08 / IS-12
+                                                                  directly on each Node API
+```
+
+| NMOS role | dhs vocabulary | What it does |
 |---|---|---|
-| **Node** | provider | A device — exposes a resource graph (Node → Device → Source → Flow → Sender / Receiver), serves the Node API, posts heartbeats to a Registry. |
-| **Registry** | provider (separate process) | Holds the resource catalogue, observes Node heartbeats, serves the Query API + WebSocket subscriptions. |
-| **Controller** | consumer | Discovers Registries via DNS-SD, walks the Query API, commands Nodes via IS-05/08/12. |
+| **Node** (device) | provider (Node API) + outbound client to Registry | Exposes resource graph (Node → Device → Source → Flow → Sender / Receiver), serves the Node API to anyone, POSTs registrations + heartbeats to a Registry. |
+| **Registry** (middleware) | **consumer of device registrations** + **provider of catalogue** | Left face: receives `POST /resource` and `POST /health/...` from Nodes — it consumes their data. Right face: serves Query API + WebSocket subscriptions to Controllers — it provides the catalogue. Same process, two faces. |
+| **Controller** (operator UI) | consumer (Query API + Node APIs) | Discovers Registries via DNS-SD, walks the Query API, then commands Nodes directly via IS-05/07/08/12. |
 
-A fully compliant implementation MUST implement BOTH (or all THREE) sides
-of every spec it claims, AND should be able to act as a **proxy gateway**
-(NMOS in / NMOS out — bridging any controller to any device through dhs).
+A fully compliant implementation MUST implement ALL THREE sides of every
+spec it claims, AND should be able to act as a **proxy gateway** (NMOS
+in / NMOS out — bridging any controller to any device through dhs).
 
 CLI surface mapping (planned):
 
 ```
-dhs producer nmos serve        # Node side (default)
-dhs producer nmos serve --role registry
-dhs consumer nmos walk <reg>   # Controller side
+dhs producer nmos serve                       # Node side (the device — default)
+dhs registry nmos serve                       # Registry side (dual-face middleware)
+                                              #   - serves Registration API (consumes from Nodes)
+                                              #   - serves Query API + WS subs (provides to Controllers)
+dhs consumer nmos walk     <reg-host>         # Controller — walk a Registry
+dhs consumer nmos watch    <reg-host>         # Controller — subscribe via Query WS
+dhs consumer nmos connect  <node-host> ...    # Controller — drive IS-05 on a Node
 ```
+
+The new `dhs registry` top-level verb is needed because the Registry's
+dual-face nature does not fit `producer` (which historically means
+"serves a canonical tree of my own state") nor `consumer` (which
+historically means "talks outbound to a remote device").
 
 ---
 

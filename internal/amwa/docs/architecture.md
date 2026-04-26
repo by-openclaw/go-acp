@@ -19,8 +19,10 @@ Common legend:
 
 ## IS-04 — Discovery & Registration
 
-Three-API system. Asymmetric: Node POSTs heartbeats while Controller
-does WS subscriptions — totally different code paths on each peer.
+Three-API system. The Registry is a **dual-face hybrid**: its left face
+**consumes** device registrations + heartbeats, its right face
+**provides** the catalogue to Controllers. Same process, same in-memory
+store, two faces.
 
 ```
                      ┌──────────────────────────────────┐
@@ -32,38 +34,48 @@ does WS subscriptions — totally different code paths on each peer.
                               ▲             ▲
                   advertise   │             │   browse
                               │             │
-       ┌──────────────────────┴──┐     ┌────┴────────────────────┐
-       │       [N] Node          │     │       [C] Controller     │
-       │                         │     │                          │
-       │  Node API server        │     │  Query API client        │
-       │  GET /self              │     │  GET /nodes              │
-       │  GET /devices           │     │  GET /senders /receivers │
-       │  GET /sources /flows    │     │  POST /subscriptions ────┼──╗
-       │  GET /senders /receivers│     │      ws_href ────────────┼──╣
-       │  PUT /receivers/{id}/   │     │                          │  ║
-       │      target  (legacy)   │     └──────────────────────────┘  ║
-       │                         │                                    ║
-       └──────────┬──────────────┘                                    ║
-                  │                                                   ║
-                  │  POST /resource (register)                        ║
-                  │  POST /health/nodes/{id} (heartbeat ··· 5 s)      ║
-                  │  DELETE /resource/{type}/{id}                     ║
-                  ▼                                                   ║
-       ┌─────────────────────────────────┐                            ║
-       │       [R] Registry              │                            ║
-       │                                 │                            ║
-       │  Registration API (POST/DELETE) │                            ║
-       │  Query API (REST + WS)          │═══════════════════════════>╣
-       │  Heartbeat watchdog             │   notification stream      ║
-       │  Resource catalogue             │   (created/updated/        ║
-       │                                 │    deleted/sync)           ║
-       └─────────────────────────────────┘                            ║
-                                                                       ║
-                            ┌──────────────────────────────────────┐  ║
-                            │  WS subscription                     │<═╝
-                            │  application/json messages           │
-                            │  pre/post resource snapshots         │
-                            └──────────────────────────────────────┘
+
+  ┌──────────────────────┐                                   ┌──────────────────────────┐
+  │      [N] Node        │                                   │     [C] Controller        │
+  │     (the device)     │ ◄──── direct REST to Node API ─── │      (operator UI)        │
+  │                      │       for walk + IS-05 PATCH      │                           │
+  │  Node API SERVER:    │       + IS-07 WS + IS-12 WS       │  Query API CLIENT:        │
+  │   GET /self          │       (after Registry gave URL)   │   GET /nodes              │
+  │   GET /devices       │                                   │   GET /senders /receivers │
+  │   GET /sources       │                                   │   POST /subscriptions     │
+  │   GET /flows         │                                   │       ──> ws_href         │
+  │   GET /senders       │                                   │                           │
+  │   GET /receivers     │                                   │                           │
+  │                      │                                   │                           │
+  │  Registration        │                                   │                           │
+  │  CLIENT:             │                                   │                           │
+  │   POST /resource     │                                   │                           │
+  │   POST /health/...   │                                   │                           │
+  └──────────┬───────────┘                                   └─────────────┬─────────────┘
+             │                                                             │
+   devices   │  POST /resource                                  controller │  GET + WS subscribe
+   register  │  POST /health (heartbeat ···· 5 s)                queries   │
+   UPSTREAM  │  DELETE /resource/{type}/{id}                    DOWNSTREAM │
+             ▼                                                             ▼
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                         [R] REGISTRY (middleware)                            │
+   │                                                                              │
+   │  ┌──── ( CONSUMER face ) ───────────┐  ┌──── ( PROVIDER face ) ────────────┐ │
+   │  │  Registration API server         │  │  Query API server                 │ │
+   │  │   POST   /resource               │  │   GET /nodes /devices /sources    │ │
+   │  │   POST   /health/nodes/{id}      │  │   GET /flows /senders /receivers  │ │
+   │  │   DELETE /resource/{type}/{id}   │  │   RQL filters (?label= ...)       │ │
+   │  │                                  │  │                                   │ │
+   │  │  Heartbeat watchdog goroutine    │  │  Subscription API                 │ │
+   │  │   (5 s default ttl,              │  │   POST /subscriptions ──> ws_href │ │
+   │  │    12 s timeout, GC on lapse)    │  │   WS notify created/updated/      │ │
+   │  │                                  │  │           deleted/sync stream     │ │
+   │  │     INGESTS to ──>               │  │                                   │ │
+   │  │     Resource catalogue ◄───      │  │   Reads from same in-memory store │ │
+   │  └──────────────────────────────────┘  └───────────────────────────────────┘ │
+   │                                                                              │
+   │  Same process. Same in-memory store. Two faces: consumer + provider.         │
+   └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Failure modes Controller must handle:

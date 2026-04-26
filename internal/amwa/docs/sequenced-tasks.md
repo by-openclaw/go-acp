@@ -76,19 +76,33 @@ The Node serves its own resource graph + heartbeats to a Registry.
 
 Estimated PR size: ~1500 LOC + tests.
 
-### #4 — IS-04 Registry (separate provider)
+### #4 — IS-04 Registry (dual-face middleware)
 
-Holds the catalogue, observes heartbeats, serves Query API + WS
-subscriptions.
+The Registry is a hybrid — its left face **consumes** device
+registrations + heartbeats, its right face **provides** the catalogue
+to Controllers. Same process, same in-memory store, two faces. This
+is why dhs needs a new top-level CLI verb `dhs registry nmos serve`
+rather than reusing `dhs producer`.
 
+Consumer face (Registration API server):
+- POST `/resource` — ingest Node + Device + Source + Flow + Sender +
+  Receiver registrations.
+- POST `/health/nodes/{id}` — heartbeat watchdog (5 s ttl, 12 s
+  timeout default).
+- DELETE `/resource/{type}/{id}` — explicit deregistration.
+- Garbage-collect resources when heartbeats lapse.
+
+Provider face (Query API server):
+- GET `/{nodes|devices|sources|flows|senders|receivers}` with
+  RQL-style filters (`?label=...&description=...`).
+- POST `/subscriptions` — returns a `ws_href` for change notifications.
+- WebSocket subscription stream — emit
+  `created` / `updated` / `deleted` / `sync` per resource change.
+
+Shared infra:
 - Resource store (in-memory map; persistence parked for #20).
-- Registration API: POST/DELETE `/resource`, POST `/health/...`.
-- Query API: GET resources with RQL-style filters
-  (`?label=...&description=...`).
-- WebSocket Subscription API: `POST /subscriptions` returns `ws_href`,
-  emit `created`/`updated`/`deleted`/`sync` notifications.
-- Heartbeat watchdog goroutine.
-- DNS-SD announce of Registration API + Query API.
+- DNS-SD announce of BOTH faces (`_nmos-register._tcp` for the consumer
+  face, `_nmos-query._tcp` for the provider face).
 
 Estimated PR size: ~2000 LOC + tests.
 
