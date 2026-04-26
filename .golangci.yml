@@ -1,0 +1,72 @@
+version: "2"
+
+# Project-wide golangci-lint configuration. Defaults preserved; this
+# file exists so we can pin per-package depguard rules.
+#
+# Documented in internal/amwa/docs/dependencies.md.
+
+linters:
+  default: standard
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        # Layer 1 — codec stays stdlib-only. The package compiles
+        # against Go stdlib only so it lifts cleanly to its own repo.
+        # Sibling internal/amwa/codec/* imports are allowed.
+        nmos-codec-stdlib-only:
+          list-mode: lax
+          files:
+            - "**/internal/amwa/codec/**"
+          deny:
+            - pkg: github.com
+              desc: "codec layer is stdlib-only (lift-to-own-repo ready)"
+            - pkg: acp/cmd
+              desc: "codec must not depend on cmd/"
+            - pkg: acp/internal/amwa/session
+              desc: "codec must not depend on session/ (Layer 1 cannot import Layer 2)"
+            - pkg: acp/internal/amwa/consumer
+              desc: "codec must not depend on consumer/ (Layer 1 cannot import Layer 3)"
+            - pkg: acp/internal/amwa/provider
+              desc: "codec must not depend on provider/ (Layer 1 cannot import Layer 3)"
+            - pkg: acp/internal/amwa/registry
+              desc: "codec must not depend on registry/ (Layer 1 cannot import Layer 3)"
+
+        # Layer 2 — session may import Layer 1 codec + neutral
+        # infrastructure, but never Layer 3 plugins or cmd/.
+        nmos-session-no-plugin-imports:
+          list-mode: lax
+          files:
+            - "**/internal/amwa/session/**"
+          deny:
+            - pkg: acp/internal/amwa/consumer
+              desc: "session must not import plugin layer (back-arrow)"
+            - pkg: acp/internal/amwa/provider
+              desc: "session must not import plugin layer (back-arrow)"
+            - pkg: acp/internal/amwa/registry
+              desc: "session must not import plugin layer (back-arrow)"
+            - pkg: acp/cmd
+              desc: "session must not import cmd/"
+
+        # Layer 3 — plugins may import Layer 2 session + Layer 1 codec
+        # + neutral infrastructure, but never each other (no
+        # cross-plugin coupling).
+        nmos-plugin-no-cross-plugin:
+          list-mode: lax
+          files:
+            - "**/internal/amwa/consumer/**"
+            - "**/internal/amwa/provider/**"
+            - "**/internal/amwa/registry/**"
+          deny:
+            - pkg: acp/cmd
+              desc: "plugin layer must not import cmd/"
+
+issues:
+  # Don't drop diagnostics; we want every depguard violation surfaced.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  # Test files are exempt from staticcheck SA9003 (empty branch) only
+  # when the empty branch is intentional placeholder for a future
+  # phase — keep this off here and add nolint markers per-case.
