@@ -221,8 +221,8 @@ case "registry":
     f.NewRegistry().Serve(ctx, opts)
 ```
 
-Future protocols with similar dual-face middleware (none today) can
-register here without touching protocol/ or provider/.
+The slot is introduced for NMOS. Whether other protocols will use it
+is undecided and out of scope for this PR.
 
 ---
 

@@ -395,21 +395,16 @@ no WS subscription stream — every Node is targeted directly.
 
 ---
 
-## Proxy gateway topology (eventual goal)
+## NMOS-internal bridging (consequence of implementing all three roles)
 
-A fully wired dhs can sit between any controller and any device:
+When dhs ships Node + Registry + Controller plugins, a single dhs
+process can sit between an upstream Registry and a downstream Node
+purely on NMOS terms (e.g. for network-segment crossing or Registry
+fan-in). This is not a separate feature — it is what falls out when
+all three roles are implemented to spec and pointed at each other via
+their normal `--registry` / `--peer-list` flags.
 
-```
-        ┌────────────┐         ┌─────────────┐         ┌────────────┐
-        │ Foreign    │ NMOS    │     dhs     │ NMOS    │ Foreign    │
-        │ Controller │ ──────> │  (proxy)    │ ──────> │ Node       │
-        └────────────┘  IS-04  │             │  IS-04  └────────────┘
-                        IS-05  │  Node side  │  IS-05
-                        IS-07  │  +          │  IS-07
-                        IS-12  │  Controller │  IS-12
-                               │  side       │
-                               └─────────────┘
-```
-
-This is the same pattern as the existing dhs proxy story for ACP1 →
-Ember+ etc., just with NMOS terminology on both ends.
+Cross-protocol bridging — exposing an NMOS Node as a Probel matrix or
+exposing an Ember+ tree as an NMOS Node — is **out of scope for this
+plugin**. That belongs to a separate cross-protocol architecture and
+is not designed here.

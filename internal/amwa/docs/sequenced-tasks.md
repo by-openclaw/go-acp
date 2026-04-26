@@ -426,11 +426,17 @@ Per-session counters (registrations, subscriptions, IS-12 commands,
 IS-07 events) wired into the existing `internal/metrics/Connector`
 shape, exposed via `--metrics-addr :9100` and CSV/MD export.
 
-### #24 — Proxy gateway mode
+### #24 — NMOS-internal Registry-fanin / segment-crossing helper
 
-`dhs producer nmos serve --proxy <upstream-registry>` — re-expose an
-upstream Registry as a local Node + Registry pair, bridging
-controllers to devices through dhs.
+Convenience CLI to wire dhs Node + Controller + Registry instances
+together for NMOS-internal bridging across network segments — purely
+on NMOS terms, no cross-protocol translation. Likely just a thin
+configuration wrapper over the existing `--registry` / `--peer-list`
+flags that already exist on Node + Controller. Possibly nothing to
+implement beyond a `docs/recipes/segment-crossing.md` page.
+
+Cross-protocol bridging (NMOS ↔ Ember+ ↔ Probel ↔ ...) is **NOT** in
+scope here; it belongs to a separate cross-protocol architecture.
 
 ---
 

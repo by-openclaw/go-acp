@@ -33,9 +33,14 @@ devices  ──register/heartbeat──>  ( consumer )  REGISTRY  ( provider )  
 | **Registry** (middleware) | **consumer of device registrations** + **provider of catalogue** | Left face: receives `POST /resource` and `POST /health/...` from Nodes — it consumes their data. Right face: serves Query API + WebSocket subscriptions to Controllers — it provides the catalogue. Same process, two faces. |
 | **Controller** (operator UI) | consumer (Query API + Node APIs) | Discovers Registries via DNS-SD, walks the Query API, then commands Nodes directly via IS-05/07/08/12. |
 
-A fully compliant implementation MUST implement ALL THREE sides of every
-spec it claims, AND should be able to act as a **proxy gateway** (NMOS
-in / NMOS out — bridging any controller to any device through dhs).
+A fully compliant implementation MUST implement ALL THREE sides of
+every NMOS spec it claims. NMOS-internal bridging (NMOS controller →
+dhs → NMOS Node, e.g. across network segments) follows from
+implementing all three roles correctly; it is not a separate feature.
+
+> **Out of scope for this plugin:** anything that translates between
+> NMOS and another dhs protocol. Cross-protocol architecture lives
+> elsewhere; the NMOS plugin only ever speaks NMOS.
 
 CLI surface mapping (planned):
 
