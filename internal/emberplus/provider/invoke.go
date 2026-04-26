@@ -267,8 +267,15 @@ func (s *server) encodeMatrixConnectionsAnnouncement(e *entry, conns []canonical
 }
 
 // broadcastMatrixConnections sends a connection-change announcement to
-// every session subscribed to the matrix OID, plus the originating session
-// so strict viewers get a direct echo.
+// every active consumer session. Spec §p.88 implicitly subscribes a
+// consumer to matrix changes on GetDirectory of that matrix, but the
+// rule is patchy across consumers — some viewers walk matrix contents
+// from a parent node reply instead of direct GetDirectory and never
+// register a subscription. Matching the broadcastParam fan-out
+// (libember/TinyEmber+ pattern), push to every connected session so
+// crosspoint changes always reach the client regardless of walking
+// style. The origin parameter stays for symmetry with the per-session
+// echo callers expect.
 func (s *server) broadcastMatrixConnections(matrixOID string, conns []canonical.MatrixConnection, origin *session) {
 	e, ok := s.tree.lookupOID(matrixOID)
 	if !ok {
@@ -277,9 +284,8 @@ func (s *server) broadcastMatrixConnections(matrixOID string, conns []canonical.
 	payload := s.encodeMatrixConnectionsAnnouncement(e, conns)
 
 	s.mu.Lock()
-	set := s.subs[matrixOID]
-	targets := make([]*session, 0, len(set)+1)
-	for sess := range set {
+	targets := make([]*session, 0, len(s.sessions))
+	for sess := range s.sessions {
 		targets = append(targets, sess)
 	}
 	s.mu.Unlock()

@@ -93,6 +93,22 @@ in the repo.
 - `Connection` carries `target`, `sources[]`, `operation` (0=absolute set,
   1=connect, 2=disconnect), `disposition`.
 
+### Known deviations from spec (matrix subscription)
+
+§p.88 reads: "As soon as a consumer issues a GetDirectory command on a
+matrix object, it implicitly subscribes to matrix connection changes."
+Strict reading: only sessions that walked the matrix receive
+connection-change announcements. Our provider broadcasts matrix
+connection changes to **every connected session**, mirroring
+libember-cpp / TinyEmber+ / Lawo provider stacks — most viewers walk
+matrix contents from a parent node reply rather than direct
+GetDirectory(matrix), so strict subscription gating leaves crosspoint
+tallies stranded at the consumer. The same broadcast-to-all rule
+applies to plain Parameter value-change announcements (Subscribe(30)
+exists in spec for streams; no shipping provider gates plain-param
+emission on it). Stream parameters stay subscription-gated in
+`provider/streamer.go`.
+
 ## Stream values
 
 StreamEntry pushes a raw value per `streamIdentifier`. Map to the parameter
