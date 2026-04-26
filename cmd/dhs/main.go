@@ -39,6 +39,7 @@ import (
 	// Consumer plugins — blank imports register with internal/protocol.
 	_ "acp/internal/acp1/consumer"
 	_ "acp/internal/acp2/consumer"
+	_ "acp/internal/cerebrum-nb/consumer"
 	_ "acp/internal/emberplus/consumer"
 	_ "acp/internal/probel-sw08p/consumer"
 
@@ -161,6 +162,9 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	if proto == "probel-sw08p" {
 		return runProbel(ctx, append([]string{verb}, rest...))
 	}
+	if proto == "cerebrum-nb" {
+		return runCerebrum(ctx, append([]string{verb}, rest...))
+	}
 
 	c := findCommand(verb)
 	if c == nil {
@@ -243,21 +247,24 @@ USAGE
   dhs -h | --help                            this page
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
                                profile, diag (ACP2 only)
   Verbs (probel-sw08p):        interrogate, connect, tally-dump, watch, etc.
                                (run 'dhs consumer probel-sw08p --help' for list)
+  Verbs (cerebrum-nb):         connect, listen, list-devices, list-routers, walk
+                               (XML over WebSocket; default port 40007)
 
   Examples:
-    dhs consumer acp1      walk        10.6.239.113
-    dhs consumer acp1      get         10.6.239.113 --slot 1 --label GainA
-    dhs consumer acp2      walk        10.41.40.195
-    dhs consumer emberplus walk        10.0.0.10:9000
-    dhs consumer emberplus invoke      10.0.0.10:9000 --path router.salvo.fire
-    dhs consumer probel-sw08p    interrogate 127.0.0.1:2008 --matrix 0 --level 0 --dst 5
+    dhs consumer acp1        walk        10.6.239.113
+    dhs consumer acp1        get         10.6.239.113 --slot 1 --label GainA
+    dhs consumer acp2        walk        10.41.40.195
+    dhs consumer emberplus   walk        10.0.0.10:9000
+    dhs consumer emberplus   invoke      10.0.0.10:9000 --path router.salvo.fire
+    dhs consumer probel-sw08p interrogate 127.0.0.1:2008 --matrix 0 --level 0 --dst 5
+    dhs consumer cerebrum-nb listen      10.6.239.50 --user admin --pass s3cr3t
 
 PRODUCER (inbound — serve a canonical tree to consumers over the wire)
   Protocols: acp1 | acp2 | emberplus | probel-sw08p
@@ -295,9 +302,10 @@ USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
 PROTOCOLS
-  acp1        Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2        Axon Control Protocol v2 (AN2/TCP only)
-  emberplus   Ember+ (Lawo)
+  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
+  acp2          Axon Control Protocol v2 (AN2/TCP only)
+  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
+  emberplus     Ember+ (Lawo)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
 
 GENERIC VERBS (acp1 / acp2 / emberplus)`)
@@ -307,6 +315,10 @@ GENERIC VERBS (acp1 / acp2 / emberplus)`)
 	fmt.Println(`
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
+
+CEREBRUM VERBS
+  connect | listen | list-devices | list-routers | walk
+  run 'dhs consumer cerebrum-nb listen -h' for per-verb flags.
 
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.`)
 }
