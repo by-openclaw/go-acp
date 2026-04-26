@@ -192,6 +192,20 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
     `activate_scheduled_relative` / `_absolute` and silently coerces
     to immediate. Detect, fire `nmos_scheduled_activation_unsupported`,
     retry as `activate_immediate`.
+13. **One Registry per Node, one Query API per Controller.** IS-04
+    v1.3.3 mandates single-target selection: *"The Node selects a
+    Registration API to use based on the priority"*. HA is
+    client-driven failover via `pri` ranking + 5xx fallback, NOT
+    multi-Registry replication. dhs supports active/passive priority
+    pair + ST 2022-7 dual-network out of the box; active/active
+    shared-store is out of scope for v1. See
+    [`docs/ha.md`](docs/ha.md). Heartbeat 5 s, GC 12 s — failover
+    must complete inside GC window.
+14. **`pri` 0–99 are production; 100+ are dev.** Spec carves the
+    range so dev Registries can't accidentally consume a live
+    deployment. Default Registry `--priority 0`; CI / lab profiles
+    bump to 100+. Fire `nmos_registry_dev_pri` if a `pri >= 100`
+    appears in a production-mode session.
 
 ---
 

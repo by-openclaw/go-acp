@@ -19,9 +19,10 @@ Tracking: epic [#146](https://github.com/by-openclaw/go-acp/issues/146).
 | 0.2 | `internal/amwa/docs/architecture.md` — ASCII per-spec diagrams. |
 | 0.3 | `internal/amwa/docs/sequenced-tasks.md` — this file. |
 | 0.4 | `internal/amwa/docs/matrix-compliance.md` — per-vendor compliance tracker (Lawo VSM verified). |
-| 0.5 | README.md row for NMOS (planned). |
-| 0.6 | `agents.md` — `nmos` added to `<proto>` set. |
-| 0.7 | `internal/amwa/reference.md` — already on main (catalogue). |
+| 0.5 | `internal/amwa/docs/ha.md` — multi-Registry rules + 4 HA topologies + failover state machine. |
+| 0.6 | README.md row for NMOS (planned). |
+| 0.7 | `agents.md` — `nmos` added to `<proto>` set. |
+| 0.8 | `internal/amwa/reference.md` — already on main (catalogue). |
 
 Zero Go code. Zero CLI verbs. Pure design.
 
@@ -92,7 +93,7 @@ The Node serves its own resource graph + heartbeats to a Registry.
 
 Estimated PR size: ~1500 LOC + tests.
 
-### #4 — IS-04 Registry (dual-face middleware)
+### #4 — IS-04 Registry (dual-face middleware) + active/passive HA
 
 The Registry is a hybrid — its left face **consumes** device
 registrations + heartbeats, its right face **provides** the catalogue
@@ -120,7 +121,21 @@ Shared infra:
 - DNS-SD announce of BOTH faces (`_nmos-register._tcp` for the consumer
   face, `_nmos-query._tcp` for the provider face).
 
-Estimated PR size: ~2000 LOC + tests.
+HA from day one (per [`ha.md`](ha.md)):
+- `--priority N` flag (sets `pri` TXT — 0–99 production, 100+ dev).
+- Two-Registry active/passive testbed in `tests/integration/nmos/ha_*.go`:
+  bring up `pri=0` + `pri=1` Registries, kill primary, assert Node
+  re-registers on secondary inside the 12 s GC window.
+- `--bind <ip:port>` accepts comma-separated list for multi-NIC binds
+  (ST 2022-7 dual-network).
+- `--gc-interval` and `--heartbeat-default` configurable per the spec
+  RECOMMENDED clause.
+
+Out of scope here, parked in [HA epic #127](https://github.com/by-openclaw/go-acp/issues/127):
+- Active/active shared-store Registries (would need Redis/etcd; project
+  policy disallows external stores in v1).
+
+Estimated PR size: ~2200 LOC + tests.
 
 #### #4b — IS-04 v1.2 + v1.1 back-compat
 
