@@ -3,22 +3,21 @@
 -- Wireshark Lua Dissector: EVS Cerebrum Northbound API (Neuron Bridge)
 --
 -- Decodes XML-over-WebSocket on TCP port 40007 (configurable).
+-- Never delegates to Wireshark's built-in WebSocket dissector.
 --
 -- Coverage:
 --   * HTTP/1.1 handshake (GET / + 101 Switching Protocols)
 --   * RFC 6455 frames: FIN/RSV/opcode/MASK/payload-len(7/16/64)/key/payload
---   * Text frames carrying one Cerebrum NB XML document — root element
---     name, mtid, type/TYPE attribute surfaced in the Info column
+--   * Text frames carrying one Cerebrum NB XML document — root +
+--     MTID/TYPE/ERROR/ERROR_CODE attributes surfaced in the Info column
 --   * Every command + event root from EVS Cerebrum NB v0.13:
---       login, login_reply, poll, poll_reply, action, subscribe,
---       obtain, unsubscribe, unsubscribe_all, ack, nack, busy,
---       routing, category, salvo, device, routing_change,
---       category_change, salvo_change, device_change, datastore_change
---   * Per-message Info column: "<root> mtid=N TYPE=X" so frames are
---     uniquely identifiable at a glance
---
--- Pure-arithmetic bit ops; no bit32 / bit dependency. Never delegates
--- to Wireshark's built-in WebSocket dissector.
+--       LOGIN/LOGIN_REPLY, POLL/POLL_REPLY, ACTION, SUBSCRIBE, OBTAIN,
+--       UNSUBSCRIBE, UNSUBSCRIBE_ALL, ACK, NACK, BUSY,
+--       ROUTING, CATEGORY, SALVO, DEVICE,
+--       ROUTING_CHANGE, CATEGORY_CHANGE, SALVO_CHANGE,
+--       DEVICE_CHANGE, DATASTORE_CHANGE
+--   * Per-message Info column with direction arrow + verb + key attrs
+--     so each frame is uniquely identifiable at a glance
 --
 -- Refs:
 --   RFC 6455 (WebSocket):  https://www.rfc-editor.org/rfc/rfc6455
@@ -36,36 +35,41 @@ p_cnb.prefs.tcp_port = Pref.uint("TCP port", 40007, "TCP port carrying Cerebrum 
 
 local f = p_cnb.fields
 
--- Stream classification
-f.stream_kind     = ProtoField.string("dhs_cerebrum_nb.stream", "Stream phase")
+-- Stream phase
+f.phase           = ProtoField.string("dhs_cerebrum_nb.phase", "Phase")
 
 -- Handshake
-f.hs_request      = ProtoField.string("dhs_cerebrum_nb.handshake.request", "HTTP request")
+f.hs_request      = ProtoField.string("dhs_cerebrum_nb.handshake.request",  "HTTP request")
 f.hs_response     = ProtoField.string("dhs_cerebrum_nb.handshake.response", "HTTP response")
 
--- WebSocket frame
-f.ws_fin          = ProtoField.bool  ("dhs_cerebrum_nb.ws.fin",     "FIN")
-f.ws_rsv          = ProtoField.uint8 ("dhs_cerebrum_nb.ws.rsv",     "RSV1..3", base.HEX, nil, 0x70)
-f.ws_opcode       = ProtoField.uint8 ("dhs_cerebrum_nb.ws.opcode",  "Opcode",  base.HEX)
-f.ws_opcode_name  = ProtoField.string("dhs_cerebrum_nb.ws.opcode_name", "Opcode name")
-f.ws_masked       = ProtoField.bool  ("dhs_cerebrum_nb.ws.masked",  "MASK")
-f.ws_len7         = ProtoField.uint8 ("dhs_cerebrum_nb.ws.len7",    "Payload len (7-bit field)", base.DEC)
-f.ws_len_ext16    = ProtoField.uint16("dhs_cerebrum_nb.ws.len16",   "Payload len (16-bit ext)",  base.DEC)
-f.ws_len_ext64    = ProtoField.uint64("dhs_cerebrum_nb.ws.len64",   "Payload len (64-bit ext)",  base.DEC)
-f.ws_mask_key     = ProtoField.bytes ("dhs_cerebrum_nb.ws.mask_key", "Masking key", base.NONE)
-f.ws_payload      = ProtoField.bytes ("dhs_cerebrum_nb.ws.payload",  "Payload (post-unmask)", base.NONE)
+-- WebSocket frame fields
+f.ws_fin          = ProtoField.bool  ("dhs_cerebrum_nb.ws.fin",          "FIN")
+f.ws_rsv          = ProtoField.uint8 ("dhs_cerebrum_nb.ws.rsv",          "RSV1..3", base.HEX, nil, 0x70)
+f.ws_opcode       = ProtoField.uint8 ("dhs_cerebrum_nb.ws.opcode",       "Opcode",  base.HEX)
+f.ws_opcode_name  = ProtoField.string("dhs_cerebrum_nb.ws.opcode_name",  "Opcode name")
+f.ws_masked       = ProtoField.bool  ("dhs_cerebrum_nb.ws.masked",       "MASK")
+f.ws_len7         = ProtoField.uint8 ("dhs_cerebrum_nb.ws.len7",         "Payload len (7-bit field)", base.DEC)
+f.ws_len_ext16    = ProtoField.uint16("dhs_cerebrum_nb.ws.len16",        "Payload len (16-bit ext)",  base.DEC)
+f.ws_len_ext64    = ProtoField.uint64("dhs_cerebrum_nb.ws.len64",        "Payload len (64-bit ext)",  base.DEC)
+f.ws_mask_key     = ProtoField.bytes ("dhs_cerebrum_nb.ws.mask_key",     "Masking key", base.NONE)
 
--- XML
-f.xml_root        = ProtoField.string("dhs_cerebrum_nb.xml.root",   "XML root element")
-f.xml_mtid        = ProtoField.string("dhs_cerebrum_nb.xml.mtid",   "mtid")
-f.xml_type        = ProtoField.string("dhs_cerebrum_nb.xml.type",   "type / TYPE")
-f.xml_text        = ProtoField.string("dhs_cerebrum_nb.xml.text",   "XML payload")
+-- XML payload
+f.xml_root        = ProtoField.string("dhs_cerebrum_nb.xml.root",        "XML root")
+f.xml_mtid        = ProtoField.string("dhs_cerebrum_nb.xml.mtid",        "MTID")
+f.xml_type        = ProtoField.string("dhs_cerebrum_nb.xml.type",        "TYPE")
+f.xml_error       = ProtoField.string("dhs_cerebrum_nb.xml.error",       "ERROR")
+f.xml_error_code  = ProtoField.string("dhs_cerebrum_nb.xml.error_code",  "ERROR_CODE")
+f.xml_text        = ProtoField.string("dhs_cerebrum_nb.xml.text",        "XML payload")
+
+-- Close
+f.close_code      = ProtoField.uint16("dhs_cerebrum_nb.close.code",      "Close code", base.DEC)
+f.close_reason    = ProtoField.string("dhs_cerebrum_nb.close.reason",    "Close reason")
 
 -- Expert
 local ef = {
-  bad_opcode  = ProtoExpert.new("dhs_cerebrum_nb.bad_opcode",  "Unknown WS opcode",       expert.group.MALFORMED, expert.severity.ERROR),
-  rsv_set     = ProtoExpert.new("dhs_cerebrum_nb.rsv_set",     "Reserved bits set",       expert.group.MALFORMED, expert.severity.WARN),
-  big_control = ProtoExpert.new("dhs_cerebrum_nb.big_control", "Control frame >125 bytes", expert.group.MALFORMED, expert.severity.ERROR),
+  bad_opcode  = ProtoExpert.new("dhs_cerebrum_nb.bad_opcode",  "Unknown WS opcode",         expert.group.MALFORMED, expert.severity.ERROR),
+  rsv_set     = ProtoExpert.new("dhs_cerebrum_nb.rsv_set",     "Reserved bits set",         expert.group.MALFORMED, expert.severity.WARN),
+  big_control = ProtoExpert.new("dhs_cerebrum_nb.big_control", "Control frame >125 bytes",  expert.group.MALFORMED, expert.severity.ERROR),
 }
 p_cnb.experts = ef
 
@@ -73,25 +77,20 @@ p_cnb.experts = ef
 -- Helpers
 -------------------------------------------------------------------------------
 
-local opcodes = {
-  [0x0] = "continuation",
-  [0x1] = "text",
-  [0x2] = "binary",
-  [0x8] = "close",
-  [0x9] = "ping",
-  [0xA] = "pong",
+local opcode_names = {
+  [0x0] = "CONTINUATION",
+  [0x1] = "TEXT",
+  [0x2] = "BINARY",
+  [0x8] = "CLOSE",
+  [0x9] = "PING",
+  [0xA] = "PONG",
 }
 
-local function band(a, b) return (a - a % b) / b * b end -- not used; kept for clarity
-
+-- Pure-arithmetic bit ops so we don't depend on bit32 / bit.
 local function bit_and(a, m)
-  -- arithmetic AND for byte-wide masks. m must be a power of two combination.
-  local r = 0
-  local v = 1
+  local r, v = 0, 1
   while a > 0 and m > 0 do
-    if (a % 2 == 1) and (m % 2 == 1) then
-      r = r + v
-    end
+    if (a % 2 == 1) and (m % 2 == 1) then r = r + v end
     a = (a - a % 2) / 2
     m = (m - m % 2) / 2
     v = v * 2
@@ -100,12 +99,9 @@ local function bit_and(a, m)
 end
 
 local function bit_xor(a, b)
-  local r = 0
-  local v = 1
+  local r, v = 0, 1
   while a > 0 or b > 0 do
-    if (a % 2) ~= (b % 2) then
-      r = r + v
-    end
+    if (a % 2) ~= (b % 2) then r = r + v end
     a = (a - a % 2) / 2
     b = (b - b % 2) / 2
     v = v * 2
@@ -113,42 +109,50 @@ local function bit_xor(a, b)
   return r
 end
 
--- Per-conversation state: are we past the handshake?
-local conv_state = {}
-
-local function conv_key(pinfo)
-  return tostring(pinfo.src) .. ":" .. tostring(pinfo.src_port) .. "->" ..
-         tostring(pinfo.dst) .. ":" .. tostring(pinfo.dst_port)
+-- Direction arrow. Client uses an ephemeral high port; server listens
+-- on a fixed lower port. So if src_port > dst_port we're going
+-- client→server. (Robust without depending on the configured pref
+-- matching the actual server port — useful when the user runs against
+-- a non-default port like 40008.)
+local function direction_arrow(pinfo)
+  if pinfo.src_port > pinfo.dst_port then return "→" end
+  return "←"
 end
 
-local function rev_key(pinfo)
-  return tostring(pinfo.dst) .. ":" .. tostring(pinfo.dst_port) .. "->" ..
-         tostring(pinfo.src) .. ":" .. tostring(pinfo.src_port)
-end
-
--------------------------------------------------------------------------------
--- XML lightweight extraction
--------------------------------------------------------------------------------
-
+-- XML lightweight extraction. Returns root, mtid, type, error, error_code.
+-- Case-insensitive on attribute keys; values preserved.
 local function extract_xml_attrs(s)
-  -- Returns root, mtid, type. Case-folded comparisons, original values
-  -- preserved.
   local root = s:match("<%s*([%w_]+)")
-  if not root then return nil, nil, nil end
-  local mtid = s:match("[Mm][Tt][Ii][Dd]%s*=%s*\"([^\"]*)\"")
-  if not mtid then mtid = s:match("[Mm][Tt][Ii][Dd]%s*=%s*'([^']*)'") end
-  local typ = s:match("[Tt][Yy][Pp][Ee]%s*=%s*\"([^\"]*)\"")
-  if not typ then typ = s:match("[Tt][Yy][Pp][Ee]%s*=%s*'([^']*)'") end
-  return root:lower(), mtid, typ
+  if not root then return nil end
+  root = root:upper()
+
+  local function attr(name)
+    -- Build a case-insensitive matcher by char-class.
+    local ic = ""
+    for c in name:gmatch(".") do
+      ic = ic .. "[" .. c:lower() .. c:upper() .. "]"
+    end
+    local v = s:match(ic .. "%s*=%s*\"([^\"]*)\"")
+    if not v then v = s:match(ic .. "%s*=%s*'([^']*)'") end
+    return v
+  end
+
+  return root, attr("MTID"), attr("TYPE"), attr("ERROR"), attr("ERROR_CODE")
 end
 
 -------------------------------------------------------------------------------
 -- WebSocket frame dissector
 -------------------------------------------------------------------------------
 
+-- Returns (consumed_bytes) on success, (0, true) when needs more bytes.
+-- We do not call desegment APIs — relying on Wireshark's default TCP
+-- reassembly preference (Edit → Preferences → Protocols → TCP → "Allow
+-- subdissector to reassemble TCP streams"). When that's on, Wireshark
+-- delivers the reassembled buffer to us; when off, we just decode
+-- whatever fits in one segment and label partial frames.
 local function dissect_ws_frame(buffer, pinfo, tree, offset)
   local available = buffer:len() - offset
-  if available < 2 then return nil end
+  if available < 2 then return 0, true end
 
   local b0 = buffer(offset, 1):uint()
   local b1 = buffer(offset + 1, 1):uint()
@@ -159,147 +163,147 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
   local masked = bit_and(b1, 0x80) ~= 0
   local len7   = bit_and(b1, 0x7f)
 
-  local pos = offset + 2
+  local hdr_len = 2
   local plen = len7
   if len7 == 126 then
-    if buffer:len() - pos < 2 then return nil end
-    plen = buffer(pos, 2):uint()
-    pos = pos + 2
+    if available < hdr_len + 2 then return 0, true end
+    plen = buffer(offset + hdr_len, 2):uint()
+    hdr_len = hdr_len + 2
   elseif len7 == 127 then
-    if buffer:len() - pos < 8 then return nil end
-    plen = buffer(pos, 8):uint64():tonumber()
-    pos = pos + 8
+    if available < hdr_len + 8 then return 0, true end
+    plen = buffer(offset + hdr_len, 8):uint64():tonumber()
+    hdr_len = hdr_len + 8
   end
 
-  local mask_offset = pos
-  if masked then
-    if buffer:len() - pos < 4 then return nil end
-    pos = pos + 4
-  end
+  local mask_offset = offset + hdr_len
+  if masked then hdr_len = hdr_len + 4 end
 
-  if buffer:len() - pos < plen then
-    -- need more bytes; ask Wireshark to reassemble
-    pinfo.desegment_offset = offset
-    pinfo.desegment_len = plen - (buffer:len() - pos)
-    return nil
-  end
+  local total_needed = hdr_len + plen
+  if available < total_needed then return 0, true end
 
-  local frame_total = pos + plen - offset
-  local subtree = tree:add(p_cnb, buffer(offset, frame_total), "WebSocket Frame")
+  local pos = offset + hdr_len
+  local subtree = tree:add(p_cnb, buffer(offset, total_needed), "WebSocket Frame")
 
   subtree:add(f.ws_fin,    buffer(offset, 1), fin)
   if rsv ~= 0 then
     subtree:add(f.ws_rsv, buffer(offset, 1), rsv):add_proto_expert_info(ef.rsv_set)
-  else
-    subtree:add(f.ws_rsv, buffer(offset, 1), rsv)
   end
-  subtree:add(f.ws_opcode, buffer(offset, 1), opcode)
-  subtree:add(f.ws_opcode_name, buffer(offset, 1), opcodes[opcode] or "unknown")
-  subtree:add(f.ws_masked, buffer(offset + 1, 1), masked)
-  subtree:add(f.ws_len7,   buffer(offset + 1, 1), len7)
+  subtree:add(f.ws_opcode,      buffer(offset, 1), opcode)
+  subtree:add(f.ws_opcode_name, buffer(offset, 1), opcode_names[opcode] or "UNKNOWN")
+  subtree:add(f.ws_masked,      buffer(offset + 1, 1), masked)
+  subtree:add(f.ws_len7,        buffer(offset + 1, 1), len7)
   if len7 == 126 then
     subtree:add(f.ws_len_ext16, buffer(offset + 2, 2), plen)
   elseif len7 == 127 then
     subtree:add(f.ws_len_ext64, buffer(offset + 2, 8), buffer(offset + 2, 8):uint64())
   end
-
-  if not opcodes[opcode] then
+  if not opcode_names[opcode] then
     subtree:add_proto_expert_info(ef.bad_opcode)
   end
   if opcode >= 0x8 and plen > 125 then
     subtree:add_proto_expert_info(ef.big_control)
   end
-
   if masked then
     subtree:add(f.ws_mask_key, buffer(mask_offset, 4))
   end
 
-  -- Unmask payload into a Lua string (for display + XML extraction).
-  local payload_bytes = {}
+  -- Unmask payload into a Lua string for display + parsing.
+  local payload_chars = {}
   if plen > 0 then
     local raw = buffer(pos, plen):bytes()
     if masked then
-      local mk = { buffer(mask_offset, 1):uint(),
-                   buffer(mask_offset + 1, 1):uint(),
-                   buffer(mask_offset + 2, 1):uint(),
-                   buffer(mask_offset + 3, 1):uint() }
+      local mk = {
+        buffer(mask_offset,     1):uint(),
+        buffer(mask_offset + 1, 1):uint(),
+        buffer(mask_offset + 2, 1):uint(),
+        buffer(mask_offset + 3, 1):uint(),
+      }
       for i = 0, plen - 1 do
-        payload_bytes[#payload_bytes + 1] = string.char(bit_xor(raw:get_index(i), mk[(i % 4) + 1]))
+        payload_chars[i + 1] = string.char(bit_xor(raw:get_index(i), mk[(i % 4) + 1]))
       end
     else
       for i = 0, plen - 1 do
-        payload_bytes[#payload_bytes + 1] = string.char(raw:get_index(i))
+        payload_chars[i + 1] = string.char(raw:get_index(i))
       end
     end
   end
-  local payload_str = table.concat(payload_bytes)
-  if plen > 0 then
-    subtree:add(f.ws_payload, buffer(pos, plen)):set_text(string.format("Payload — %d bytes", plen))
-  end
+  local payload_str = table.concat(payload_chars)
 
-  -- Info column construction.
-  local info_parts = { opcodes[opcode] or string.format("op=0x%x", opcode) }
+  local arrow = direction_arrow(pinfo)
+  local op_name = opcode_names[opcode] or string.format("op=0x%x", opcode)
 
   if opcode == 0x1 and plen > 0 then
-    -- Text frame — XML extraction
-    local root, mtid, typ = extract_xml_attrs(payload_str)
+    -- Text frame — XML extraction.
+    local root, mtid, typ, err, err_code = extract_xml_attrs(payload_str)
+    subtree:add(f.xml_text, payload_str)
     if root then
       subtree:add(f.xml_root, root)
-      info_parts[#info_parts + 1] = "<" .. root .. ">"
-      if mtid then
-        subtree:add(f.xml_mtid, mtid)
-        info_parts[#info_parts + 1] = "mtid=" .. mtid
-      end
-      if typ then
-        subtree:add(f.xml_type, typ)
-        info_parts[#info_parts + 1] = "TYPE=" .. typ
-      end
+      pinfo.cols.protocol:set("Cerebrum-NB")
+      local info = string.format("%s %s", arrow, root)
+      if mtid     then subtree:add(f.xml_mtid,       mtid);     info = info .. " mtid=" .. mtid end
+      if typ      then subtree:add(f.xml_type,       typ);      info = info .. " TYPE=" .. typ end
+      if err      then subtree:add(f.xml_error,      err);      info = info .. " ERROR=" .. err end
+      if err_code then subtree:add(f.xml_error_code, err_code); info = info .. " CODE=" .. err_code end
+      pinfo.cols.info:set(info)
+    else
+      pinfo.cols.protocol:set("Cerebrum-NB")
+      pinfo.cols.info:set(string.format("%s TEXT (no XML root) %d bytes", arrow, plen))
     end
-    subtree:add(f.xml_text, payload_str)
-  elseif opcode == 0x8 and plen >= 2 then
-    local code = string.byte(payload_str, 1) * 256 + string.byte(payload_str, 2)
-    info_parts[#info_parts + 1] = string.format("code=%d", code)
+  elseif opcode == 0x8 then
+    pinfo.cols.protocol:set("Cerebrum-NB")
+    if plen >= 2 then
+      local code = string.byte(payload_str, 1) * 256 + string.byte(payload_str, 2)
+      subtree:add(f.close_code, buffer(pos, 2), code)
+      local reason = ""
+      if plen > 2 then
+        reason = payload_str:sub(3)
+        subtree:add(f.close_reason, buffer(pos + 2, plen - 2), reason)
+        pinfo.cols.info:set(string.format("%s CLOSE code=%d reason=%q", arrow, code, reason))
+      else
+        pinfo.cols.info:set(string.format("%s CLOSE code=%d", arrow, code))
+      end
+    else
+      pinfo.cols.info:set(string.format("%s CLOSE", arrow))
+    end
+  elseif opcode == 0x9 then
+    pinfo.cols.protocol:set("Cerebrum-NB")
+    pinfo.cols.info:set(arrow .. " PING")
+  elseif opcode == 0xA then
+    pinfo.cols.protocol:set("Cerebrum-NB")
+    pinfo.cols.info:set(arrow .. " PONG")
+  else
+    pinfo.cols.protocol:set("Cerebrum-NB")
+    pinfo.cols.info:set(string.format("%s %s len=%d", arrow, op_name, plen))
   end
 
-  pinfo.cols.info:append(" | " .. table.concat(info_parts, " "))
-
-  return frame_total
+  return total_needed, false
 end
 
 -------------------------------------------------------------------------------
 -- Handshake dissector
 -------------------------------------------------------------------------------
 
-local function looks_like_handshake(s)
-  return s:sub(1, 4) == "GET " or s:sub(1, 9) == "HTTP/1.1 "
+local function looks_like_handshake(prefix)
+  return prefix:sub(1, 4) == "GET " or prefix:sub(1, 9) == "HTTP/1.1 "
 end
 
 local function dissect_handshake(buffer, pinfo, tree)
   local s = buffer():string()
-  -- Find end of headers (\r\n\r\n)
   local hdr_end = s:find("\r\n\r\n", 1, true)
-  if not hdr_end then
-    -- Need more bytes
-    pinfo.desegment_offset = 0
-    pinfo.desegment_len = -1 -- DESEGMENT_ONE_MORE_SEGMENT
-    return nil
-  end
-  local hdr = s:sub(1, hdr_end + 1)
-  local subtree = tree:add(p_cnb, buffer(0, hdr_end + 3), "WebSocket Handshake")
+  if not hdr_end then return 0 end
 
-  local first_line = hdr:match("^([^\r\n]+)")
-  if first_line and first_line:sub(1, 4) == "GET " then
+  local first_line = s:match("^([^\r\n]+)") or "?"
+  local subtree = tree:add(p_cnb, buffer(0, hdr_end + 3), "WebSocket Handshake")
+  subtree:add(f.phase, "handshake")
+
+  pinfo.cols.protocol:set("Cerebrum-NB Upgrade")
+  local arrow = direction_arrow(pinfo)
+  if first_line:sub(1, 4) == "GET " then
     subtree:add(f.hs_request, first_line)
-    subtree:add(f.stream_kind, "handshake (client→server)")
-    pinfo.cols.info:append(" | WS upgrade request")
-  elseif first_line and first_line:sub(1, 9) == "HTTP/1.1 " then
+    pinfo.cols.info:set(arrow .. " " .. first_line)
+  else
     subtree:add(f.hs_response, first_line)
-    subtree:add(f.stream_kind, "handshake (server→client)")
-    pinfo.cols.info:append(" | " .. first_line)
-    if first_line:find("101", 10, true) then
-      conv_state[conv_key(pinfo)]   = "frames"
-      conv_state[rev_key(pinfo)]    = "frames"
-    end
+    pinfo.cols.info:set(arrow .. " " .. first_line)
   end
   return hdr_end + 3
 end
@@ -312,24 +316,17 @@ function p_cnb.dissector(buffer, pinfo, tree)
   local len = buffer:len()
   if len < 2 then return 0 end
 
-  pinfo.cols.protocol = "Cerebrum-NB"
-  pinfo.cols.info = "" -- start clean; dissectors append
-
-  -- Handshake detection: look at first few bytes.
-  local first4 = buffer(0, math.min(4, len)):string()
-  if looks_like_handshake(buffer():string()) then
-    -- Mark state if we don't have it yet.
-    local k = conv_key(pinfo)
-    if not conv_state[k] then conv_state[k] = "handshake" end
-    local consumed = dissect_handshake(buffer, pinfo, tree)
-    return consumed or len
+  local prefix = buffer(0, math.min(9, len)):string()
+  if looks_like_handshake(prefix) then
+    return dissect_handshake(buffer, pinfo, tree)
   end
 
-  -- WS frame mode.
+  -- WS frame mode. Loop through any number of full frames in this segment.
   local offset = 0
   while offset < len do
-    local consumed = dissect_ws_frame(buffer, pinfo, tree, offset)
-    if not consumed then break end
+    local consumed, need_more = dissect_ws_frame(buffer, pinfo, tree, offset)
+    if need_more then break end
+    if consumed == 0 then break end
     offset = offset + consumed
   end
   return offset
@@ -340,15 +337,13 @@ end
 -------------------------------------------------------------------------------
 
 local function register_ports()
-  local tcp_port_table = DissectorTable.get("tcp.port")
-  tcp_port_table:add(p_cnb.prefs.tcp_port, p_cnb)
+  local tcp = DissectorTable.get("tcp.port")
+  tcp:add(p_cnb.prefs.tcp_port, p_cnb)
 end
 
 register_ports()
 
--- Re-register on prefs change.
 function p_cnb.prefs_changed()
-  local tcp_port_table = DissectorTable.get("tcp.port")
-  -- Wireshark Lua API doesn't expose remove(); the user reload picks up new port.
-  tcp_port_table:add(p_cnb.prefs.tcp_port, p_cnb)
+  local tcp = DissectorTable.get("tcp.port")
+  tcp:add(p_cnb.prefs.tcp_port, p_cnb)
 end
