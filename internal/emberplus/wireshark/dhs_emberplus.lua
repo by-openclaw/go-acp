@@ -609,6 +609,24 @@ end
 
 -- BER REAL decoder (Ember+ uses binary encoding only for this field).
 -- Returns a Lua number or nil.
+--
+-- X.690 §8.5.7 reads the mantissa N as an unsigned integer with
+-- value = N × 2^F × B^E. Every Ember+ stack in the wild
+-- (libember, EmberViewer, EmberPlusView, Lawo VSM) instead reads N
+-- as a normalised fraction with binary point implicit after the
+-- leading 1 bit, so the wire exponent is biased by bitlen(N)-1.
+-- This dissector mirrors the ecosystem reading; otherwise it shows
+-- 50.0 as 3.125, 100.0 as 6.25, etc. See issue #68 (2026-04-26).
+local function bitlen64(n)
+    if n == 0 then return 0 end
+    local b = 0
+    while n > 0 do
+        b = b + 1
+        n = math.floor(n / 2)
+    end
+    return b
+end
+
 local function decode_ber_real(ba, off, len)
     if len == 0 then return 0.0 end
     local first = ba:get_index(off)
@@ -637,7 +655,8 @@ local function decode_ber_real(ba, off, len)
     local mant_len   = (off + len) - mant_start
     if mant_len < 0 then return nil end
     local mant = decode_ber_uint(ba, mant_start, mant_len)
-    return sign * mant * (2 ^ scale) * (base ^ exp)
+    local shift = mant > 0 and (bitlen64(mant) - 1) or 0
+    return sign * mant * (2 ^ scale) * (base ^ exp) / (2 ^ shift)
 end
 
 -- Decode RELATIVE-OID: sequence of base-128 subidentifiers, high bit = "more".
@@ -1583,12 +1602,20 @@ local function find_next_frame(tvbuf, offset)
     if offset >= pktlen then return nil end
 
     local start = offset
-    -- find EoF, skipping escape sequences.
+    -- find EoF, skipping escape sequences. A literal 0xFE inside a
+    -- frame is a spec violation (S101 mandates 0xFE escape-stuffing as
+    -- 0xFD 0xDE) but Lawo VSM-as-consumer emits a 15-byte non-S101
+    -- preamble before its first real frame on every reconnect. Resync
+    -- on the second BoF so we report CRC over the right bytes instead
+    -- of failing CRC over preamble + real frame concatenated.
     local i = offset + 1
     while i < pktlen do
         local b = tvbuf:range(i, 1):uint()
         if b == S101_ESC then
             i = i + 2
+        elseif b == S101_BOF then
+            start = i
+            i = i + 1
         elseif b == S101_EOF then
             return start, i
         else
@@ -1679,14 +1706,22 @@ local function heuristic(tvbuf, pktinfo, root)
     if len < 6 then return false end
     if tvbuf:range(0, 1):uint() ~= S101_BOF then return false end
 
-    -- Bounded EoF scan, skipping escape sequences.
+    -- Bounded EoF scan, skipping escape sequences. Resync on a second
+    -- BoF mid-stream — Lawo VSM-as-consumer emits a 15-byte non-S101
+    -- preamble before its first real frame; without resync the
+    -- heuristic mis-validates against the preamble bytes and never
+    -- claims the stream.
     local scan_limit = math.min(len, 4096)
+    local bof_at = 1
     local eof_at
     local i = 1
     while i < scan_limit do
         local b = tvbuf:range(i, 1):uint()
         if b == S101_ESC then
             i = i + 2
+        elseif b == S101_BOF then
+            bof_at = i + 1
+            i = i + 1
         elseif b == S101_EOF then
             eof_at = i
             break
@@ -1697,7 +1732,7 @@ local function heuristic(tvbuf, pktinfo, root)
     if not eof_at then return false end
 
     -- Validate S101 header after unescape.
-    local unesc = unescape_s101(tvbuf, 1, eof_at)
+    local unesc = unescape_s101(tvbuf, bof_at, eof_at)
     if unesc:len() < 6 then return false end
     local msg_type = unesc:get_index(1)
     local command  = unesc:get_index(2)

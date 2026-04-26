@@ -117,7 +117,19 @@ S101 layer. Respond to every request promptly.
 - Connection-snapshot diff needs to honor `disposition=modified` (partial).
 - `formula` evaluation (#70) is **parked** — consumer ignores formulas and
   surfaces raw values. Do not lazily implement — requires full Formulas PDF.
-- Viewer quirks (#68) around matrix reflection are **parked**.
+- BER REAL mantissa convention (#68 fix 2026-04-26): every Ember+ stack
+  (libember, EmberViewer, Lawo VSM) reads `N` as a normalised fraction with
+  binary point implicit after the leading 1 bit, not as the literal X.690
+  §8.5.7 unsigned integer. `EncodeReal` + `DecodeReal` in `codec/ber/value.go`
+  bias the wire exponent by `bits.Len64(N)-1` to match. Pinned by
+  `TestReal_EcosystemBytes` (50.0 → `80 05 19`, 100.0 → `80 06 19`,
+  0.1 → `80 fc 0c cc cc cc cc cc cd`). Verified live against EmberViewer
+  v2.40.0.35 + Lawo VSM Studio.
+- S101 reader resyncs on a second BOF mid-frame (`codec/s101/reader.go`).
+  Spec mandates 0xFE escape-stuffing; Lawo VSM-as-consumer emits a 15-byte
+  non-S101 preamble before its first real frame on every reconnect, and
+  resyncing on the second BOF drops the junk rather than failing CRC over
+  the concatenation.
 
 ## What NOT to do
 
