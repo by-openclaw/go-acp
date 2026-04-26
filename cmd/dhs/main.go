@@ -187,6 +187,9 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCConsumer(ctx, proto, rest)
 	}
+	if proto == "tsl-v31" || proto == "tsl-v40" || proto == "tsl-v50" {
+		return runTSLConsumer(ctx, proto, rest)
+	}
 
 	if len(rest) == 0 || hasHelpFlag(rest) {
 		printConsumerHelp()
@@ -223,6 +226,9 @@ func dispatchProducer(ctx context.Context, args []string) error {
 
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCProducer(ctx, proto, rest)
+	}
+	if proto == "tsl-v31" || proto == "tsl-v40" || proto == "tsl-v50" {
+		return runTSLProducer(ctx, proto, rest)
 	}
 	if len(rest) == 0 || hasHelpFlag(rest) {
 		printProducerHelp()

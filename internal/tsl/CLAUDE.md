@@ -101,13 +101,29 @@ Out of scope (spec-strict posture):
 | `tsl_v31_null_pad` | v3.1 frame received with 0x00 pad (non-spec) |
 | `tsl_v5_tcp_unwrapped` | v5.0 TCP frame received without DLE/STX wrapper |
 
+## CLI surface (consumer = MV-receiver)
+
+```
+dhs consumer tsl-v31 listen [--bind HOST:PORT]
+dhs consumer tsl-v40 listen [--bind HOST:PORT]
+dhs consumer tsl-v50 listen [--bind HOST:PORT] [--tcp]
+```
+
+Default ports: v3.1 UDP 4000, v4.0 UDP 4004 (testbed offset since
+v3.1 owns 4000; spec is also 4000 for v4.0), v5.0 UDP 8901, v5.0
+TCP 8902 (testbed offset since v5.0 UDP owns 8901; spec is also
+8901 for TCP). Listener prints decoded frames live with field
+labels mirroring Miranda IP Emulator UI exactly.
+
+Dispatcher: `cmd/dhs/cmd_tsl.go` (`runTSLConsumer`).
+
 ## Testbed
 
 | Tool | Coverage | Role |
 |---|---|---|
-| Miranda TSL IP Emulator v1.02 | v5.0 UDP + TCP | **GVG Kaleido production test harness.** Default port 8901. |
+| Miranda TSL IP Emulator v1.02 | v5.0 UDP + TCP | **GVG Kaleido production test harness.** Default port 8901. ✅ live-validated 2026-04-26 (single-DMSG + 5-DMSG group via "Group display messages"). |
 | Miranda TSL Agent DEV-SNAPSHOT | v5.0 | v5 consumer |
-| Lawo VSM Studio | v3.1 + v4.0 producer | cross-vendor producer |
+| Lawo VSM Studio | v3.1 + v4.0 + v5.0 producer | cross-vendor producer. ✅ live-validated 2026-04-26 from 10.6.239.160 — single-DMSG per display, real tally semantics (PGM=red Text, PVW=green LH, ISO=amber RH). |
 | [TallyArbiter](https://github.com/josephdadams/TallyArbiter) | v3.1 UDP + TCP (off-spec raw chunks), v5 UDP + TCP | OSS peer for decoder cross-check; **reference only**, not authoritative |
 
 **Priority stack:** spec > Miranda (GVG Kaleido) > VSM (Lawo) >

@@ -4,9 +4,17 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	"acp/internal/tsl/codec"
 )
+
+// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
+// to dialed TCP connections. TSL v5.0 over TCP carries no in-protocol
+// keep-alive (verified empirically against VSM 2026-04-26 — 77 s of
+// data flow with zero keep-alive frames), so the OS-layer probe is the
+// dead-socket detector when the consumer goes away without sending FIN.
+const DefaultTCPKeepalivePeriod = 30 * time.Second
 
 // tcpDialer maintains outbound TCP connections to v5.0 consumers (MVs).
 // Per the TallyArbiter reference + Miranda emulator convention, the
@@ -38,6 +46,10 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 	c, err := net.Dial("tcp", key)
 	if err != nil {
 		return nil, fmt.Errorf("tsl v5.0 TCP dial %s: %w", key, err)
+	}
+	if tc, ok := c.(*net.TCPConn); ok {
+		_ = tc.SetKeepAlive(true)
+		_ = tc.SetKeepAlivePeriod(DefaultTCPKeepalivePeriod)
 	}
 	d.conns[key] = c
 	return c, nil

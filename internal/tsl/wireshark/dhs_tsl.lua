@@ -18,70 +18,71 @@
 --
 -------------------------------------------------------------------------------
 
-local tsl = Proto("tsl", "TSL UMD Protocol (v3.1 / v4.0 / v5.0)")
+local tsl = Proto("dhs_tsl", "TSL UMD Protocol (v3.1 / v4.0 / v5.0)")
 
 -- ===== User preferences =====
-tsl.prefs.udp_v31_v40_port = Pref.uint("UDP port — v3.1 / v4.0", 4000, "Default 4000")
-tsl.prefs.udp_v50_port     = Pref.uint("UDP port — v5.0",       8901, "Default 8901 (Kaleido)")
-tsl.prefs.tcp_v50_port     = Pref.uint("TCP port — v5.0 (DLE/STX)", 8901, "Default 8901")
+tsl.prefs.udp_v31_port = Pref.uint("UDP port — v3.1",          4000, "Default 4000")
+tsl.prefs.udp_v40_port = Pref.uint("UDP port — v4.0",          4004, "Default 4004 (testbed; spec uses 4000 but v3.1 binds it)")
+tsl.prefs.udp_v50_port = Pref.uint("UDP port — v5.0",          8901, "Default 8901 (Kaleido)")
+tsl.prefs.tcp_v50_port = Pref.uint("TCP port — v5.0 (DLE/STX)", 8902, "Default 8902 (testbed; spec uses 8901 but v5.0 UDP binds it)")
 
 -- ===== Field definitions =====
 local f = tsl.fields
 
 -- Common
-f.version    = ProtoField.string("tsl.version", "Version")
-f.address    = ProtoField.uint8("tsl.address", "Address",    base.DEC)
-f.screen     = ProtoField.uint16("tsl.screen", "Screen",     base.DEC)
-f.v50_index  = ProtoField.uint16("tsl.v50.index",  "Display Index", base.DEC)
-f.v50_screen = ProtoField.uint16("tsl.v50.screen", "Screen",        base.DEC)
-f.text       = ProtoField.string("tsl.text", "UMD Text")
+f.version    = ProtoField.string("dhs_tsl.version", "Version")
+f.address    = ProtoField.uint8("dhs_tsl.address", "Address",    base.DEC)
+f.screen     = ProtoField.uint16("dhs_tsl.screen", "Screen",     base.DEC)
+f.v50_index  = ProtoField.uint16("dhs_tsl.v50.index",  "Display Index", base.DEC)
+f.v50_screen = ProtoField.uint16("dhs_tsl.v50.screen", "Screen",        base.DEC)
+f.text       = ProtoField.string("dhs_tsl.text", "UMD Text")
 
 -- v3.1 CTRL
-f.v31_ctrl     = ProtoField.uint8("tsl.v31.ctrl", "CTRL", base.HEX)
-f.v31_tally1   = ProtoField.bool("tsl.v31.tally1", "Tally 1", 8, nil, 0x01)
-f.v31_tally2   = ProtoField.bool("tsl.v31.tally2", "Tally 2", 8, nil, 0x02)
-f.v31_tally3   = ProtoField.bool("tsl.v31.tally3", "Tally 3", 8, nil, 0x04)
-f.v31_tally4   = ProtoField.bool("tsl.v31.tally4", "Tally 4", 8, nil, 0x08)
-f.v31_bright   = ProtoField.uint8("tsl.v31.brightness", "Brightness", base.DEC, {[0]="off", [1]="1/7", [2]="1/2", [3]="full"}, 0x30)
-f.v31_rsvd6    = ProtoField.bool("tsl.v31.reserved6", "CTRL bit 6 reserved (must be 0)", 8, nil, 0x40)
-f.v31_bit7     = ProtoField.bool("tsl.v31.bit7", "CTRL bit 7 (must be 0)", 8, nil, 0x80)
+f.v31_ctrl     = ProtoField.uint8("dhs_tsl.v31.ctrl", "CTRL", base.HEX)
+f.v31_tally1   = ProtoField.bool("dhs_tsl.v31.tally1", "Tally 1", 8, nil, 0x01)
+f.v31_tally2   = ProtoField.bool("dhs_tsl.v31.tally2", "Tally 2", 8, nil, 0x02)
+f.v31_tally3   = ProtoField.bool("dhs_tsl.v31.tally3", "Tally 3", 8, nil, 0x04)
+f.v31_tally4   = ProtoField.bool("dhs_tsl.v31.tally4", "Tally 4", 8, nil, 0x08)
+f.v31_bright   = ProtoField.uint8("dhs_tsl.v31.brightness", "Brightness", base.DEC, {[0]="off", [1]="1/7", [2]="1/2", [3]="full"}, 0x30)
+f.v31_rsvd6    = ProtoField.bool("dhs_tsl.v31.reserved6", "CTRL bit 6 reserved (must be 0)", 8, nil, 0x40)
+f.v31_bit7     = ProtoField.bool("dhs_tsl.v31.bit7", "CTRL bit 7 (must be 0)", 8, nil, 0x80)
 
 -- v4.0 extras
-f.v40_chksum     = ProtoField.uint8("tsl.v40.chksum", "CHKSUM (2's-complement mod 128)", base.HEX)
-f.v40_vbc        = ProtoField.uint8("tsl.v40.vbc", "VBC", base.HEX)
-f.v40_vbc_ver    = ProtoField.uint8("tsl.v40.vbc_version", "VBC minor version", base.DEC, nil, 0x70)
-f.v40_vbc_count  = ProtoField.uint8("tsl.v40.vbc_xdata_count", "VBC XDATA byte count", base.DEC, nil, 0x0F)
-f.v40_xbyte      = ProtoField.uint8("tsl.v40.xbyte", "XDATA byte", base.HEX)
-f.v40_xb_lh      = ProtoField.uint8("tsl.v40.xbyte.lh", "LH tally", base.DEC,   {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x30)
-f.v40_xb_text    = ProtoField.uint8("tsl.v40.xbyte.text", "Text tally", base.DEC, {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x0C)
-f.v40_xb_rh      = ProtoField.uint8("tsl.v40.xbyte.rh", "RH tally", base.DEC,   {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x03)
+f.v40_chksum     = ProtoField.uint8("dhs_tsl.v40.chksum", "CHKSUM (2's-complement mod 128)", base.HEX)
+f.v40_vbc        = ProtoField.uint8("dhs_tsl.v40.vbc", "VBC", base.HEX)
+f.v40_vbc_ver    = ProtoField.uint8("dhs_tsl.v40.vbc_version", "VBC minor version", base.DEC, nil, 0x70)
+f.v40_vbc_count  = ProtoField.uint8("dhs_tsl.v40.vbc_xdata_count", "VBC XDATA byte count", base.DEC, nil, 0x0F)
+f.v40_xbyte      = ProtoField.uint8("dhs_tsl.v40.xbyte", "XDATA byte", base.HEX)
+f.v40_xb_lh      = ProtoField.uint8("dhs_tsl.v40.xbyte.lh", "LH tally", base.DEC,   {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x30)
+f.v40_xb_text    = ProtoField.uint8("dhs_tsl.v40.xbyte.text", "Text tally", base.DEC, {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x0C)
+f.v40_xb_rh      = ProtoField.uint8("dhs_tsl.v40.xbyte.rh", "RH tally", base.DEC,   {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x03)
 
 -- v5.0 envelope
-f.v50_pbc    = ProtoField.uint16("tsl.v50.pbc", "PBC (body byte count)", base.DEC)
-f.v50_ver    = ProtoField.uint8("tsl.v50.ver", "VER (minor version)", base.DEC)
-f.v50_flags  = ProtoField.uint8("tsl.v50.flags", "FLAGS", base.HEX)
-f.v50_flags_utf16   = ProtoField.bool("tsl.v50.flags.utf16", "UTF-16LE text",     8, nil, 0x01)
-f.v50_flags_scontrol= ProtoField.bool("tsl.v50.flags.scontrol", "SCONTROL mode",  8, nil, 0x02)
-f.v50_flags_rsvd    = ProtoField.uint8("tsl.v50.flags.reserved", "Reserved bits 2-7", base.HEX, nil, 0xFC)
+f.v50_pbc    = ProtoField.uint16("dhs_tsl.v50.pbc", "PBC (body byte count)", base.DEC)
+f.v50_ver    = ProtoField.uint8("dhs_tsl.v50.ver", "VER (minor version)", base.DEC)
+f.v50_flags  = ProtoField.uint8("dhs_tsl.v50.flags", "FLAGS", base.HEX)
+f.v50_flags_utf16   = ProtoField.bool("dhs_tsl.v50.flags.utf16", "UTF-16LE text",     8, nil, 0x01)
+f.v50_flags_scontrol= ProtoField.bool("dhs_tsl.v50.flags.scontrol", "SCONTROL mode",  8, nil, 0x02)
+f.v50_flags_rsvd    = ProtoField.uint8("dhs_tsl.v50.flags.reserved", "Reserved bits 2-7", base.HEX, nil, 0xFC)
 
 -- v5.0 DMSG
-f.v50_dmsg_ctrl = ProtoField.uint16("tsl.v50.dmsg.control", "CONTROL", base.HEX)
-f.v50_dmsg_rh   = ProtoField.uint16("tsl.v50.dmsg.rh", "RH tally", base.DEC,   {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x0003)
-f.v50_dmsg_text = ProtoField.uint16("tsl.v50.dmsg.text_tally", "Text tally", base.DEC, {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x000C)
-f.v50_dmsg_lh   = ProtoField.uint16("tsl.v50.dmsg.lh", "LH tally", base.DEC,   {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x0030)
-f.v50_dmsg_brt  = ProtoField.uint16("tsl.v50.dmsg.brightness", "Brightness", base.DEC, {[0]="0", [1]="1", [2]="2", [3]="3"}, 0x00C0)
-f.v50_dmsg_rsvd = ProtoField.uint16("tsl.v50.dmsg.reserved", "Reserved bits 8-14", base.HEX, nil, 0x7F00)
-f.v50_dmsg_cd   = ProtoField.bool("tsl.v50.dmsg.control_data", "Control Data flag", 16, nil, 0x8000)
-f.v50_dmsg_len  = ProtoField.uint16("tsl.v50.dmsg.length", "LENGTH", base.DEC)
+f.v50_dmsg_ctrl = ProtoField.uint16("dhs_tsl.v50.dmsg.control", "CONTROL", base.HEX)
+f.v50_dmsg_rh   = ProtoField.uint16("dhs_tsl.v50.dmsg.rh", "RH tally", base.DEC,   {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x0003)
+f.v50_dmsg_text = ProtoField.uint16("dhs_tsl.v50.dmsg.text_tally", "Text tally", base.DEC, {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x000C)
+f.v50_dmsg_lh   = ProtoField.uint16("dhs_tsl.v50.dmsg.lh", "LH tally", base.DEC,   {[0]="off", [1]="red", [2]="green", [3]="amber"}, 0x0030)
+f.v50_dmsg_brt  = ProtoField.uint16("dhs_tsl.v50.dmsg.brightness", "Brightness", base.DEC, {[0]="0", [1]="1", [2]="2", [3]="3"}, 0x00C0)
+f.v50_dmsg_rsvd = ProtoField.uint16("dhs_tsl.v50.dmsg.reserved", "Reserved bits 8-14", base.HEX, nil, 0x7F00)
+f.v50_dmsg_cd   = ProtoField.bool("dhs_tsl.v50.dmsg.control_data", "Control Data flag", 16, nil, 0x8000)
+f.v50_dmsg_len  = ProtoField.uint16("dhs_tsl.v50.dmsg.length", "LENGTH", base.DEC)
 
 -- Expert-info anchors
-local ef_v31_rsvd_bit = ProtoExpert.new("tsl.v31.reserved_bit", "v3.1 CTRL reserved bit set", expert.group.PROTOCOL, expert.severity.WARN)
-local ef_v40_chksum   = ProtoExpert.new("tsl.v40.chksum_fail", "v4.0 CHKSUM mismatch", expert.group.CHECKSUM, expert.severity.WARN)
-local ef_v40_ver      = ProtoExpert.new("tsl.v40.version_mismatch", "v4.0 VBC minor version != 0", expert.group.PROTOCOL, expert.severity.NOTE)
-local ef_v50_rsvd     = ProtoExpert.new("tsl.v50.reserved_bit", "v5.0 reserved bit set", expert.group.PROTOCOL, expert.severity.NOTE)
-local ef_v50_control  = ProtoExpert.new("tsl.v50.control_data", "v5.0 Control-Data flag set (undefined in this version)", expert.group.PROTOCOL, expert.severity.NOTE)
-local ef_v50_bcast    = ProtoExpert.new("tsl.v50.broadcast", "v5.0 broadcast address (0xFFFF)", expert.group.COMMENTS_GROUP, expert.severity.CHAT)
-local ef_unknown      = ProtoExpert.new("tsl.unknown", "Unrecognised TSL payload shape", expert.group.PROTOCOL, expert.severity.WARN)
+local ef_v31_rsvd_bit = ProtoExpert.new("dhs_tsl.v31.reserved_bit", "v3.1 CTRL reserved bit set", expert.group.PROTOCOL, expert.severity.WARN)
+local ef_v40_chksum   = ProtoExpert.new("dhs_tsl.v40.chksum_fail", "v4.0 CHKSUM mismatch", expert.group.CHECKSUM, expert.severity.WARN)
+local ef_v40_ver      = ProtoExpert.new("dhs_tsl.v40.version_mismatch", "v4.0 VBC minor version != 0", expert.group.PROTOCOL, expert.severity.NOTE)
+local ef_v50_rsvd     = ProtoExpert.new("dhs_tsl.v50.reserved_bit", "v5.0 reserved bit set", expert.group.PROTOCOL, expert.severity.NOTE)
+local ef_v50_control  = ProtoExpert.new("dhs_tsl.v50.control_data", "v5.0 Control-Data flag set (undefined in this version)", expert.group.PROTOCOL, expert.severity.NOTE)
+local ef_v50_bcast    = ProtoExpert.new("dhs_tsl.v50.broadcast", "v5.0 broadcast address (0xFFFF)", expert.group.COMMENTS_GROUP, expert.severity.CHAT)
+local ef_unknown      = ProtoExpert.new("dhs_tsl.unknown", "Unrecognised TSL payload shape", expert.group.PROTOCOL, expert.severity.WARN)
 
 tsl.experts = { ef_v31_rsvd_bit, ef_v40_chksum, ef_v40_ver, ef_v50_rsvd, ef_v50_control, ef_v50_bcast, ef_unknown }
 
@@ -94,6 +95,27 @@ local STX = 0x02
 
 -- Arithmetic bit helpers (portable across Lua 5.2/5.3/5.4; no bit32/bit).
 local function has_bit(x, mask) return (x % (mask * 2)) >= mask end
+
+-- Render a 2-bit TSL tally colour to its canonical spec name.
+-- Used by the v5.0 Info column writer.
+local function tally_color_name(c)
+    if c == 0 then return "off"
+    elseif c == 1 then return "red"
+    elseif c == 2 then return "green"
+    elseif c == 3 then return "amber"
+    end
+    return tostring(c)
+end
+
+-- Render a 2-bit brightness to its canonical spec name.
+local function brightness_name(b)
+    if b == 0 then return "off"
+    elseif b == 1 then return "1/7"
+    elseif b == 2 then return "1/2"
+    elseif b == 3 then return "full"
+    end
+    return tostring(b)
+end
 
 -- v3.1 CHKSUM: 2's-comp of sum(HEADER+CTRL+DATA) mod 128
 local function v40_compute_chksum(buf)
@@ -161,19 +183,23 @@ local function dissect_v31(tvb, pinfo, tree)
     ctrl_item:add(f.v31_bright, tvb(1, 1))
     local ctrl = tvb(1, 1):uint()
     if has_bit(ctrl, 0x40) then
-        ctrl_item:add(f.v31_rsvd6, tvb(1, 1)):add_expert_info(ef_v31_rsvd_bit)
+        ctrl_item:add(f.v31_rsvd6, tvb(1, 1)):add_proto_expert_info(ef_v31_rsvd_bit)
     end
     if has_bit(ctrl, 0x80) then
-        ctrl_item:add(f.v31_bit7, tvb(1, 1)):add_expert_info(ef_v31_rsvd_bit)
+        ctrl_item:add(f.v31_bit7, tvb(1, 1)):add_proto_expert_info(ef_v31_rsvd_bit)
     end
 
-    t:add(f.text, tvb(2, 16), tvb(2, 16):string())
-    pinfo.cols.info:set(string.format("v3.1 addr=%d tallies=%s%s%s%s",
+    local text = tvb(2, 16):string()
+    t:add(f.text, tvb(2, 16), text)
+    local bright = math.floor(ctrl / 16) % 4
+    pinfo.cols.info:set(string.format("addr=%d T=%s%s%s%s bright=%d UMD=%q",
         addr,
         has_bit(ctrl, 0x01) and "1" or "-",
         has_bit(ctrl, 0x02) and "2" or "-",
         has_bit(ctrl, 0x04) and "3" or "-",
-        has_bit(ctrl, 0x08) and "4" or "-"))
+        has_bit(ctrl, 0x08) and "4" or "-",
+        bright,
+        text:gsub("%s+$", "")))
 end
 
 local function dissect_v40(tvb, pinfo, tree)
@@ -189,14 +215,15 @@ local function dissect_v40(tvb, pinfo, tree)
     ctrl_item:add(f.v31_tally4, tvb(1, 1))
     ctrl_item:add(f.v31_bright, tvb(1, 1))
 
-    t:add(f.text, tvb(2, 16), tvb(2, 16):string())
+    local v40_text = tvb(2, 16):string()
+    t:add(f.text, tvb(2, 16), v40_text)
 
     -- CHKSUM
     local chksum = tvb(18, 1):uint()
     local expected = v40_compute_chksum(tvb)
     local chk_item = t:add(f.v40_chksum, tvb(18, 1))
     if chksum ~= expected then
-        chk_item:add_expert_info(ef_v40_chksum, string.format("got 0x%02x, expected 0x%02x", chksum, expected))
+        chk_item:add_proto_expert_info(ef_v40_chksum, string.format("got 0x%02x, expected 0x%02x", chksum, expected))
     end
 
     -- VBC
@@ -206,7 +233,7 @@ local function dissect_v40(tvb, pinfo, tree)
     vbc_item:add(f.v40_vbc_count, tvb(19, 1))
     local minor = math.floor(vbc / 16) % 8
     if minor ~= 0 then
-        vbc_item:add_expert_info(ef_v40_ver, string.format("minor=%d", minor))
+        vbc_item:add_proto_expert_info(ef_v40_ver, string.format("minor=%d", minor))
     end
 
     -- XDATA
@@ -226,7 +253,16 @@ local function dissect_v40(tvb, pinfo, tree)
         xi:add(f.v40_xb_rh, xb)
     end
 
-    pinfo.cols.info:set(string.format("v4.0 addr=%d (XDATA=%d)", hdr % 128, xcount))
+    local v40_ctrl = tvb(1, 1):uint()
+    local v40_bright = math.floor(v40_ctrl / 16) % 4
+    pinfo.cols.info:set(string.format("addr=%d T=%s%s%s%s bright=%d XDATA=%d UMD=%q",
+        hdr % 128,
+        has_bit(v40_ctrl, 0x01) and "1" or "-",
+        has_bit(v40_ctrl, 0x02) and "2" or "-",
+        has_bit(v40_ctrl, 0x04) and "3" or "-",
+        has_bit(v40_ctrl, 0x08) and "4" or "-",
+        v40_bright, xcount,
+        v40_text:gsub("%s+$", "")))
 end
 
 -------------------------------------------------------------------------------
@@ -238,7 +274,6 @@ local function dissect_v50(tvb, pinfo, tree)
     t:add(f.version, "5.0"):set_generated()
 
     local pbc = tvb(0, 2):le_uint()
-    local ver = tvb(2, 1):uint()
     local flags = tvb(3, 1):uint()
     local screen = tvb(4, 2):le_uint()
 
@@ -249,15 +284,18 @@ local function dissect_v50(tvb, pinfo, tree)
     fi:add(f.v50_flags_scontrol, tvb(3, 1))
     fi:add(f.v50_flags_rsvd, tvb(3, 1))
     if math.floor(flags / 4) > 0 then
-        fi:add_expert_info(ef_v50_rsvd)
+        fi:add_proto_expert_info(ef_v50_rsvd)
     end
 
     local si = t:add_le(f.v50_screen, tvb(4, 2))
-    if screen == 0xFFFF then si:add_expert_info(ef_v50_bcast) end
+    if screen == 0xFFFF then si:add_proto_expert_info(ef_v50_bcast) end
 
     local cursor = 6
     local idx = 0
     local utf16 = has_bit(flags, 0x01)
+    local first_text = nil
+    local first_index = nil
+    local first_control = nil
     while cursor < tvb:len() do
         if cursor + 4 > tvb:len() then break end
         local index = tvb(cursor, 2):le_uint()
@@ -265,7 +303,7 @@ local function dissect_v50(tvb, pinfo, tree)
 
         local dmsg_item = tree:add(tsl, tvb(cursor, tvb:len() - cursor), string.format("DMSG[%d] index=%d", idx, index))
         dmsg_item:add_le(f.v50_index, tvb(cursor, 2))
-        if index == 0xFFFF then dmsg_item:add_expert_info(ef_v50_bcast) end
+        if index == 0xFFFF then dmsg_item:add_proto_expert_info(ef_v50_bcast) end
         local ci = dmsg_item:add_le(f.v50_dmsg_ctrl, tvb(cursor+2, 2))
         ci:add_le(f.v50_dmsg_rh, tvb(cursor+2, 2))
         ci:add_le(f.v50_dmsg_text, tvb(cursor+2, 2))
@@ -273,9 +311,9 @@ local function dissect_v50(tvb, pinfo, tree)
         ci:add_le(f.v50_dmsg_brt, tvb(cursor+2, 2))
         ci:add_le(f.v50_dmsg_rsvd, tvb(cursor+2, 2))
         ci:add_le(f.v50_dmsg_cd, tvb(cursor+2, 2))
-        if math.floor(control / 256) % 128 > 0 then ci:add_expert_info(ef_v50_rsvd) end
+        if math.floor(control / 256) % 128 > 0 then ci:add_proto_expert_info(ef_v50_rsvd) end
         if control >= 0x8000 then
-            ci:add_expert_info(ef_v50_control)
+            ci:add_proto_expert_info(ef_v50_control)
             cursor = cursor + 4
             idx = idx + 1
             break
@@ -296,13 +334,37 @@ local function dissect_v50(tvb, pinfo, tree)
                 text_str = text_buf:string()
             end
             dmsg_item:add(f.text, text_buf, text_str)
+            if first_text == nil then
+                first_text = text_str
+                first_index = index
+                first_control = control
+            end
         end
         cursor = text_end
         idx = idx + 1
     end
 
-    pinfo.cols.info:set(string.format("v5.0 PBC=%d VER=%d screen=%d dmsgs=%d flags=0x%02x",
-        pbc, ver, screen, idx, flags))
+    -- Per-DMSG detail in Info is only meaningful when there's exactly one
+    -- DMSG: a packed packet (`dmsgs >= 2`) can carry per-display tallies +
+    -- labels that all differ, so picking one as a representative is
+    -- misleading. Drop into the expand tree to inspect each DMSG.
+    local label_part
+    if first_text ~= nil and idx == 1 then
+        local trimmed = first_text:gsub("%s+$", "")
+        local rh         = first_control % 4
+        local text_tally = math.floor(first_control / 4) % 4
+        local lh         = math.floor(first_control / 16) % 4
+        local bright     = math.floor(first_control / 64) % 4
+        label_part = string.format(" display=%d LH=%s Text=%s RH=%s bright=%s UMD=%q",
+            first_index,
+            tally_color_name(lh), tally_color_name(text_tally), tally_color_name(rh),
+            brightness_name(bright),
+            trimmed)
+    else
+        label_part = ""
+    end
+    pinfo.cols.info:set(string.format("PBC=%d screen=%d dmsgs=%d flags=0x%02x%s",
+        pbc, screen, idx, flags, label_part))
 end
 
 -------------------------------------------------------------------------------
@@ -333,7 +395,7 @@ local function udp_heuristic(tvb, pinfo, tree)
         return
     end
     pinfo.cols.protocol = "TSL?"
-    tree:add(tsl, tvb(), "Unrecognised TSL payload"):add_expert_info(ef_unknown)
+    tree:add(tsl, tvb(), "Unrecognised TSL payload"):add_proto_expert_info(ef_unknown)
 end
 
 -------------------------------------------------------------------------------
@@ -370,7 +432,8 @@ end
 local function register_ports()
     local udp = DissectorTable.get("udp.port")
     local tcp = DissectorTable.get("tcp.port")
-    udp:add(tsl.prefs.udp_v31_v40_port, tsl)
+    udp:add(tsl.prefs.udp_v31_port, tsl)
+    udp:add(tsl.prefs.udp_v40_port, tsl)
     udp:add(tsl.prefs.udp_v50_port, tsl)
     tcp:add(tsl.prefs.tcp_v50_port, tsl)
 end

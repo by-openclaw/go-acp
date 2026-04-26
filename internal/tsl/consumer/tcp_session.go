@@ -7,9 +7,15 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"acp/internal/tsl/codec"
 )
+
+// tcpKeepalivePeriod sets SO_KEEPALIVE on accepted TCP connections.
+// TSL v5.0 carries no in-protocol keep-alive — the OS-layer probe is
+// the dead-socket detector when a producer goes away without FIN.
+const tcpKeepalivePeriod = 30 * time.Second
 
 // tcpSession accepts incoming TCP connections from TSL v5.0 producers
 // and de-frames the DLE/STX-wrapped stream per spec §5.0. Each accepted
@@ -65,6 +71,10 @@ func (s *tcpSession) acceptLoop(ctx context.Context) {
 				return
 			}
 			continue
+		}
+		if tc, ok := conn.(*net.TCPConn); ok {
+			_ = tc.SetKeepAlive(true)
+			_ = tc.SetKeepAlivePeriod(tcpKeepalivePeriod)
 		}
 		s.wg.Add(1)
 		go s.connLoop(ctx, conn)

@@ -43,10 +43,34 @@ tests/                          unit / integration / smoke / fixtures
 docs/                           cross-cutting architecture, connector, schema
 ```
 
-`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11}` on this branch.
-Other feature branches add more: `tsl` on `feat/tsl-umd-plugin` and
-`cerebrum` on `feat/cerebrum-nb-plugin`. See
+`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on this branch.
+Other feature branches add more: `cerebrum` on `feat/cerebrum-nb-plugin`. See
 `memory/project_protocol_backlog.md` for the full queue.
+
+The **TSL UMD plugin** registers three wire versions as separate
+entries per the `feedback_protocol_versioning.md` Pattern A rule:
+
+- `tsl-v31` — UDP-only (spec §3.0); 18-byte frame; 4 binary tallies + 2-bit brightness; **no colour**
+- `tsl-v40` — UDP-only; v3.1 frame + CHKSUM + VBC + XDATA (3-position 2-bit colour for L/R display)
+- `tsl-v50` — UDP **and** TCP/DLE-STX (spec §Phy); LH/Text/RH 2-bit colour + 2-bit brightness per DMSG
+
+TSL is push-only one-way: tally-source → MV. CLI shape is symmetric
+to OSC: `dhs consumer tsl-vXX listen [--bind HOST:PORT] [--tcp]`
+binds a UDP listener (or v5.0 TCP listener with `--tcp`) and prints
+every decoded frame. `dhs producer tsl-vXX serve` (TBD) sends.
+
+Wireshark support: `internal/tsl/wireshark/dhs_tsl.lua` covers all
+three versions on UDP + v5.0 TCP/DLE-STX. Auto-registers on UDP
+4000 (v3.1) / 4004 (v4.0) / 8901 (v5.0) and TCP 8902 (v5.0 testbed
+default; spec is 8901 but UDP binds it). Info column carries
+`addr=N T=1234 bright=B UMD="..."` for v3.1/v4.0 and
+`PBC=N screen=N dmsgs=N` (+ per-DMSG detail when single DMSG) for
+v5.0.
+
+Validated live 2026-04-26 against:
+- **Lawo VSM Studio** (controller pushing v3.1, v4.0, v5.0 single-DMSG)
+- **Miranda TSL over IP Emulator v1.02** (v5.0 UDP + TCP, single +
+  group-display-messages 5-DMSG)
 
 The **OSC plugin** registers two wire versions as separate entries per
 the `feedback_protocol_versioning.md` Pattern A rule:
