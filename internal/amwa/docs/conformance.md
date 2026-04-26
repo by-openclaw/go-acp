@@ -48,6 +48,42 @@ Public CI Dashboard: <https://specs.amwa.tv/nmos-dashboard/dashboard.html>
 activations, reboots), so dhs runs them only against an isolated
 instance, never against a production-loaded Registry.
 
+## Ground-truth install (verified 2026-04-26 from install doc)
+
+**Published Docker image:** `amwa/nmos-testing` (Docker Hub).
+
+**Linux (host networking — preferred, multicast mDNS works):**
+```bash
+docker pull amwa/nmos-testing
+docker run -d --network="host" amwa/nmos-testing
+docker run -d --network="host" \
+  -v="$(pwd)/UserConfig.py:/config/UserConfig.py" \
+  amwa/nmos-testing
+```
+
+**Ports the container exposes:**
+- `:5000` — main web service + non-interactive API (suite runner).
+- `:5001` — Controller-testing façade (acts as Mock Registry / Mock Node
+  for IS-04-04 / IS-05-03).
+
+**Windows / macOS:** Docker `--network host` is unsupported. Two
+options:
+1. Run AMWA tool natively (`python nmos-test.py` after `pip install`)
+   on the WSL2 / Mac host directly, talk to dhs over loopback.
+2. Run in bridge mode + set `DNS_SD_MODE='unicast'` in `UserConfig.py`
+   so the tool uses unicast DNS-SD instead of mDNS (some test cases
+   become Could-Not-Test under unicast — see scope-out table below).
+
+**`UserConfig.py` minimum for unicast / non-interactive CI:**
+```python
+# nmostesting/UserConfig.py — copy of UserConfig.example.py
+ENABLE_DNS_SD = True
+DNS_SD_MODE   = 'unicast'        # 'multicast' for prod-LAN runs
+QUERY_API_HOST = 'dhs-under-test'
+QUERY_API_PORT = 8000
+MAX_TEST_ITERATIONS = 0          # 0 = unlimited
+```
+
 ## How dhs uses it (CI gate, per phase)
 
 Each implementation PR ships:
@@ -59,23 +95,45 @@ Each implementation PR ships:
      dhs-under-test:
        build: ../../..
        command: dhs producer nmos serve --no-mdns ...
+       network_mode: host        # Linux CI runners only
      amwa-nmos-testing:
-       image: amwa/nmos-testing:latest      # pinned by digest
+       image: amwa/nmos-testing@sha256:<DIGEST>   # pinned per phase
+       network_mode: host
+       volumes:
+         - ./UserConfig.py:/config/UserConfig.py
        depends_on: [dhs-under-test]
+       # ports 5000 (UI + API), 5001 (Mock services)
    ```
-2. **Make target** `make test-conformance-nmos-<suite>` that:
+2. **NTP / chrony on the runner.** Three test groups need clock sync
+   between dhs and the AMWA tool:
+   - IS-04 Registry Query API pagination tests
+   - IS-05 tests #29 + #30 (absolute scheduled activation)
+   - IS-08 test #4 (absolute scheduled activation)
+   CI provisioning enables `chronyd` against `pool.ntp.org` before the
+   compose stack boots.
+3. **Make target** `make test-conformance-nmos-<suite>` that:
    - boots the compose stack,
-   - drives the AMWA tool's QuestionAPI / AnswerAPI in non-interactive
-     mode pointing at the dhs endpoint,
+   - drives the AMWA tool's API at `:5000` in non-interactive mode
+     pointing at the dhs endpoint,
    - persists the JSON / JUnit-XML report to
      `tests/integration/nmos/<phase>/results/<date>-<suite>.json`.
-3. **CI step** runs `make test-conformance-nmos-<suite>` and fails the
+4. **CI step** runs `make test-conformance-nmos-<suite>` and fails the
    PR if any test reports `Fail` or `Could Not Test` for required
    coverage. `Optional` and `Test Disabled` are allowed.
-4. **Result archive** — every passing report is committed under
+5. **Result archive** — every passing report is committed under
    `tests/integration/nmos/results/` so the conformance trajectory is
    a first-class repo artefact (mirrors the per-protocol fixture
    policy in `feedback_fixture_dogfood.md`).
+
+## Tool limitations (verified from upstream README)
+
+| Limitation | Impact on dhs CI |
+|---|---|
+| **Only one Node tested per run.** | Multi-Node testbeds need separate compose stacks. Per-phase test runs use exactly one dhs Node. |
+| **mDNS announcements broadcast on the network** unless `ENABLE_DNS_SD=False` or `DNS_SD_MODE='unicast'`. | CI uses `unicast` mode by default; multi-host LAN-integration tests use `multicast` only on isolated lab segments. |
+| **No published SemVer release** (only "JT-NM Tested" snapshot tags). | Pin by Docker image digest, not version tag. Bumping the pin is its own `chore(nmos)` PR. |
+| **Time sync required** for IS-04 pagination + IS-05 #29-30 + IS-08 #4. | CI runner provisions NTP before the suite. Local-dev `make test-conformance` warns if clock drift > 1 s. |
+| **Web UI primary; non-interactive mode docs split across pages.** | dhs CI hits the JSON API on `:5000` directly, not the UI. Each `make test-conformance-nmos-<suite>` target wraps the API call in shell glue. |
 
 ## Verdict semantics
 
@@ -133,12 +191,21 @@ The AMWA tool master branch moves. We pin per-phase:
 tests/integration/nmos/<phase>/.amwa-nmos-testing-pin
 ```
 
-Each pin is a Docker image digest (`amwa/nmos-testing@sha256:<digest>`)
-captured the day the PR is approved. Bumping the pin is its own PR
-(category `chore(nmos)`) and re-runs every prior phase's suite under
-the new tool version — analogous to the tsl/osc cross-impl byte-oracle
-pattern in
+Each pin is a Docker image digest captured the day the PR is approved:
+
+```
+# tests/integration/nmos/02-is09/.amwa-nmos-testing-pin
+amwa/nmos-testing@sha256:abc123...
+```
+
+Bumping the pin is its own `chore(nmos)` PR that re-runs every prior
+phase's suite under the new tool version — analogous to the tsl / osc
+cross-impl byte-oracle pattern in
 [`feedback_fixture_dogfood.md`](../../../C:/Users/BY-SYSTEMSSRLBoujraf/.claude/projects/c--Users-BY-SYSTEMSSRLBoujraf-Downloads-acp/memory/feedback_fixture_dogfood.md).
+
+The repo has no SemVer releases; "JT-NM Tested August 2022 v1.1" was
+the most recent tagged release at time of writing. We track `master`
+by digest, not by tag.
 
 ## Cross-reference
 
