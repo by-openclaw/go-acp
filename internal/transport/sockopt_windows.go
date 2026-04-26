@@ -12,15 +12,15 @@ func setReuseAddr(fd uintptr) error {
 	return syscall.SetsockoptInt(syscall.Handle(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
 }
 
+// SetSocketReuseAddr is the exported wrapper for cross-package use (e.g.
+// TSL consumer session). Behaviour matches setReuseAddr.
+func SetSocketReuseAddr(fd uintptr) error {
+	return setReuseAddr(fd)
+}
+
 // SetSocketBroadcast enables SO_BROADCAST on a UDP socket, allowing
 // sends to the limited broadcast address 255.255.255.255. Exported so
 // the acp1 discover code can pass it into net.Dialer.Control.
 func SetSocketBroadcast(fd uintptr) error {
 	return syscall.SetsockoptInt(syscall.Handle(fd), syscall.SOL_SOCKET, syscall.SO_BROADCAST, 1)
-}
-
-// SetSocketReuseAddr is the exported wrapper for cross-package use.
-// Behaviour matches the unexported setReuseAddr.
-func SetSocketReuseAddr(fd uintptr) error {
-	return setReuseAddr(fd)
 }

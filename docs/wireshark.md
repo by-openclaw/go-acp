@@ -1,4 +1,4 @@
-# Wireshark Dissectors for ACP1, ACP2, Ember+, OSC, and Probel SW-P-08
+# Wireshark Dissectors for ACP1, ACP2, Ember+, OSC, Probel, and TSL UMD
 
 This repository ships Lua dissectors so you can inspect live or captured
 traffic from the CLI (`dhs consumer <proto> walk`, `dhs producer serve`, ...)
@@ -17,6 +17,7 @@ clash with upstream built-ins.
 | Ember+         | S101 over TCP                           | 9000 / 9090 / 9092                    | [`internal/emberplus/wireshark/dhs_emberplus.lua`](../internal/emberplus/wireshark/dhs_emberplus.lua) | `dhs_emberplus`     |
 | OSC 1.0 + 1.1  | UDP + TCP length-prefix + TCP SLIP      | 8000 UDP/TCP-LP, 8001 TCP-SLIP        | [`internal/osc/wireshark/dhs_osc.lua`](../internal/osc/wireshark/dhs_osc.lua)                         | `dhs_osc`           |
 | Probel SW-P-08 | TCP                                     | 2008                                  | [`internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua`](../internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua) | `dhs_probel_sw08p`  |
+| TSL UMD (v3.1 / v4.0 / v5.0) | v3.1 + v4.0: UDP only · v5.0: UDP **and** TCP/DLE-STX | v3.1/v4.0: UDP 4000 · v5.0: UDP 8901 · v5.0 TCP: 8901 | [`internal/tsl/wireshark/dhs_tsl.lua`](../internal/tsl/wireshark/dhs_tsl.lua) | `dhs_tsl`           |
 
 All target **Wireshark 4.x** (Lua 5.2+). They install the same way.
 
