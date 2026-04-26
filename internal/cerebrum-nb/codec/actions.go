@@ -21,8 +21,8 @@ const (
 	LockRelease LockKind = "RELEASE"
 )
 
-// ItemType is the §3.3 enum for category items (from the Skyline driver
-// since spec §3.3 is image-only).
+// ItemType is the §3.3 enum for category items (sourced from a
+// third-party vendor reference driver because spec §3.3 is image-only).
 type ItemType string
 
 const (
@@ -130,7 +130,7 @@ func (r *RoutingAction) encodeAction(b *strings.Builder) {
 		Add("TARGET_RECEIVER_NAME", r.TargetReceiverName).
 		Add("SUB_DEVICE", r.SubDevice).
 		Add("TAGS", r.Tags)
-	emitElement(b, "routing", a, nil)
+	emitElement(b, "ROUTING", a, nil)
 }
 
 // ----------------------------------------------------------------------
@@ -154,16 +154,16 @@ type CategoryAction struct {
 
 func (c *CategoryAction) encodeAction(b *strings.Builder) {
 	a := AttrsBuilder{}.
-		ForceAdd("type", c.Type).
-		Add("category", c.Category).
-		Add("index", c.Index).
-		Add("item_type", string(c.ItemType)).
-		Add("value", c.Value).
-		Add("name", c.Name).
-		Add("label", c.Label).
-		Add("inherits", c.Inherits).
-		Add("description", c.Description)
-	emitElement(b, "category", a, nil)
+		ForceAdd("TYPE", c.Type).
+		Add("CATEGORY", c.Category).
+		Add("INDEX", c.Index).
+		Add("ITEM_TYPE", string(c.ItemType)).
+		Add("VALUE", c.Value).
+		Add("NAME", c.Name).
+		Add("LABEL", c.Label).
+		Add("INHERITS", c.Inherits).
+		Add("DESCRIPTION", c.Description)
+	emitElement(b, "CATEGORY", a, nil)
 }
 
 // ----------------------------------------------------------------------
@@ -182,12 +182,12 @@ type SalvoAction struct {
 
 func (s *SalvoAction) encodeAction(b *strings.Builder) {
 	a := AttrsBuilder{}.
-		ForceAdd("type", s.Type).
-		Add("group", s.Group).
-		Add("instance", s.Instance).
-		Add("new_name", s.NewName).
-		Add("description", s.Description)
-	emitElement(b, "salvo", a, nil)
+		ForceAdd("TYPE", s.Type).
+		Add("GROUP", s.Group).
+		Add("INSTANCE", s.Instance).
+		Add("NEW_NAME", s.NewName).
+		Add("DESCRIPTION", s.Description)
+	emitElement(b, "SALVO", a, nil)
 }
 
 // ----------------------------------------------------------------------
@@ -205,10 +205,10 @@ type DeviceAction struct {
 
 func (d *DeviceAction) encodeAction(b *strings.Builder) {
 	a := AttrsBuilder{}.
-		ForceAdd("type", d.Type).
-		Add("device_name", d.DeviceName).
-		Add("sub_device", d.SubDevice).
-		Add("object", d.Object).
-		Add("value", d.Value)
-	emitElement(b, "device", a, nil)
+		ForceAdd("TYPE", d.Type).
+		Add("DEVICE_NAME", d.DeviceName).
+		Add("SUB_DEVICE", d.SubDevice).
+		Add("OBJECT", d.Object).
+		Add("VALUE", d.Value)
+	emitElement(b, "DEVICE", a, nil)
 }

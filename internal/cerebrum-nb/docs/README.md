@@ -26,5 +26,5 @@ XML over WebSocket, default port **40007**.
 
 - Primary: `assets/Cerebrum Northbound API 0v13.pdf` +
   `assets/cerebrum_northbound_api_full_v0_13.docx`
-- Skyline DataMiner driver DMS-DRV-7371 — held under NDA, gitignored;
+- Third-party vendor reference driver — held under NDA, gitignored;
   cited as a secondary cross-check only.

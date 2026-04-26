@@ -58,32 +58,38 @@ func formatMTID(mtid uint32) string {
 	return strconv.FormatUint(uint64(mtid), 10)
 }
 
+// Wire-actual canonical case is UPPERCASE for both element names AND
+// attribute names — verified 2026-04-26 against a live Cerebrum
+// (lowercase TX is rejected with MTID_ERROR because the server
+// doesn't recognise lowercase keys). Spec §2/§4.2-4.4/§5 examples
+// show lowercase but real servers don't accept it.
+
 // ----------------------------------------------------------------------
 // §2 — top-level commands
 // ----------------------------------------------------------------------
 
-// EncodeLogin builds <login username="…" password="…" mtid="…"/>.
+// EncodeLogin builds <LOGIN USERNAME="…" PASSWORD="…" MTID="…"/>.
 func EncodeLogin(mtid uint32, username, password string) []byte {
 	var b strings.Builder
-	emitElement(&b, "login", []Attr{
-		{"username", username},
-		{"password", password},
-		{"mtid", formatMTID(mtid)},
+	emitElement(&b, "LOGIN", []Attr{
+		{"USERNAME", username},
+		{"PASSWORD", password},
+		{"MTID", formatMTID(mtid)},
 	}, nil)
 	return []byte(b.String())
 }
 
-// EncodePoll builds <poll mtid="…"/>.
+// EncodePoll builds <POLL MTID="…"/>.
 func EncodePoll(mtid uint32) []byte {
 	var b strings.Builder
-	emitElement(&b, "poll", []Attr{{"mtid", formatMTID(mtid)}}, nil)
+	emitElement(&b, "POLL", []Attr{{"MTID", formatMTID(mtid)}}, nil)
 	return []byte(b.String())
 }
 
-// EncodeUnsubscribeAll builds <unsubscribe_all mtid="…"/>.
+// EncodeUnsubscribeAll builds <UNSUBSCRIBE_ALL MTID="…"/>.
 func EncodeUnsubscribeAll(mtid uint32) []byte {
 	var b strings.Builder
-	emitElement(&b, "unsubscribe_all", []Attr{{"mtid", formatMTID(mtid)}}, nil)
+	emitElement(&b, "UNSUBSCRIBE_ALL", []Attr{{"MTID", formatMTID(mtid)}}, nil)
 	return []byte(b.String())
 }
 
@@ -93,10 +99,10 @@ type ActionBody interface {
 	encodeAction(b *strings.Builder)
 }
 
-// EncodeAction wraps body in <action mtid="…">…</action>.
+// EncodeAction wraps body in <ACTION MTID="…">…</ACTION>.
 func EncodeAction(mtid uint32, body ActionBody) []byte {
 	var b strings.Builder
-	emitElement(&b, "action", []Attr{{"mtid", formatMTID(mtid)}}, func() {
+	emitElement(&b, "ACTION", []Attr{{"MTID", formatMTID(mtid)}}, func() {
 		body.encodeAction(&b)
 	})
 	return []byte(b.String())
@@ -109,25 +115,25 @@ type SubItem interface {
 	encodeSubItem(b *strings.Builder)
 }
 
-// EncodeSubscribe wraps items in <subscribe mtid="…">…</subscribe>.
+// EncodeSubscribe wraps items in <SUBSCRIBE MTID="…">…</SUBSCRIBE>.
 func EncodeSubscribe(mtid uint32, items []SubItem) []byte {
-	return encodeSubVerb("subscribe", mtid, items)
+	return encodeSubVerb("SUBSCRIBE", mtid, items)
 }
 
-// EncodeObtain wraps items in <obtain mtid="…">…</obtain>.
+// EncodeObtain wraps items in <OBTAIN MTID="…">…</OBTAIN>.
 func EncodeObtain(mtid uint32, items []SubItem) []byte {
-	return encodeSubVerb("obtain", mtid, items)
+	return encodeSubVerb("OBTAIN", mtid, items)
 }
 
-// EncodeUnsubscribe wraps items in <unsubscribe mtid="…">…</unsubscribe>.
+// EncodeUnsubscribe wraps items in <UNSUBSCRIBE MTID="…">…</UNSUBSCRIBE>.
 // Per spec §2 the children must match a prior subscribe.
 func EncodeUnsubscribe(mtid uint32, items []SubItem) []byte {
-	return encodeSubVerb("unsubscribe", mtid, items)
+	return encodeSubVerb("UNSUBSCRIBE", mtid, items)
 }
 
 func encodeSubVerb(verb string, mtid uint32, items []SubItem) []byte {
 	var b strings.Builder
-	emitElement(&b, verb, []Attr{{"mtid", formatMTID(mtid)}}, func() {
+	emitElement(&b, verb, []Attr{{"MTID", formatMTID(mtid)}}, func() {
 		for _, it := range items {
 			it.encodeSubItem(&b)
 		}

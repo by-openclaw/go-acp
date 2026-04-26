@@ -2,8 +2,8 @@
 
 Authoritative, fact-only catalogue of every element name, attribute
 name, and enum value on the Cerebrum Northbound v0.13 wire. Derived
-from the EVS spec text; cross-referenced against the Skyline
-DataMiner driver where useful.
+from the EVS spec text; cross-referenced against a third-party
+reference driver (NDA, never committed) and against live captures.
 
 **Sources**
 
@@ -11,9 +11,12 @@ DataMiner driver where useful.
    from [../assets/cerebrum_northbound_api_full_v0_13.docx](../assets/cerebrum_northbound_api_full_v0_13.docx).
    Also present: image-heavy PDF/DOCX originals at
    [../assets/Cerebrum Northbound API 0v13.pdf](../assets/Cerebrum%20Northbound%20API%200v13.pdf) and [../assets/Cerebrum Northbound API 0v13.docx](../assets/Cerebrum%20Northbound%20API%200v13.docx).
-2. **Secondary (NDA, reference-only, never committed).** Skyline
-   Communications DataMiner driver DMS-DRV-7371 *EVS Cerebrum* v1.1.0.2.
-   Held under Skyline licence; XML ignored via `.gitignore`.
+2. **Live wire captures.** pcaps from real Cerebrum servers — these
+   override spec text where the two disagree (see "Wire-actual vs
+   spec" below).
+3. **Secondary (NDA, reference-only, never committed).** Third-party
+   vendor reference driver. XML kept locally for fact-extraction;
+   gitignored.
 
 ---
 
@@ -34,9 +37,9 @@ as page-header text throughout the spec).
 
 ---
 
-## Element case on the wire
+## Element case on the wire (wire-actual, NOT spec)
 
-Spec examples are **inconsistent**:
+Spec examples are **inconsistent** between sections:
 
 | Section | Case observed |
 |---|---|
@@ -45,17 +48,20 @@ Spec examples are **inconsistent**:
 | §4.1 Routing | UPPERCASE attrs: `TYPE`, `DEVICE_NAME`, `SRCE_NAME`, etc. |
 | §4.2-4.4, §5.* | lowercase attrs: `type`, `category`, `group`, `device_name` |
 
-Skyline driver emits **UPPERCASE** element + attribute names
-throughout. Real-world Cerebrum servers must therefore be
-**case-insensitive** on XML matching (otherwise the driver wouldn't
-work). We will:
+**Live wire reality.** Production Cerebrum servers emit AND require
+**UPPERCASE** elements + attributes. Verified 2026-04-26 via pcap
+against a real Cerebrum: a lowercase `<login mtid="1"/>` was rejected
+with `<NACK MTID="0" ERROR="MTID_ERROR" ERROR_CODE="1"/>` because the
+server didn't recognise lowercase `mtid` as the MTID field. The
+third-party reference driver also emits UPPERCASE throughout.
 
-- **Emit lowercase** on the wire in dhs to match the v0.13 spec
-  examples (normative source).
-- **Accept any case** on receive; fire a `cerebrum_case_normalized`
-  compliance event if a peer sends non-lowercase.
-- Do NOT rely on case-insensitivity as a portability guarantee; treat
-  lowercase as the canonical form.
+dhs therefore:
+
+- **Emits UPPERCASE** on the wire (matches reality, matches every
+  observed peer).
+- **Accepts any case** on receive (case-folded AST), so a future
+  spec-strict lowercase server still works without code changes.
+- Treat **UPPERCASE** as the canonical wire form.
 
 ---
 
@@ -257,11 +263,20 @@ echo the element back with a `type` attribute.
 
 ---
 
-## Error codes (§6, `<nack>` payload)
+## Error codes (§6, `<NACK>` payload)
 
-Complete table from the spec:
+Wire form (verified 2026-04-26 against a real Cerebrum):
 
-| ID | Code | Description |
+```
+<NACK MTID="N" ERROR="<CODE>" ERROR_CODE="<ID>"/>
+```
+
+Note: spec §6 documents attribute names `id` / `code` / `description`,
+but **live Cerebrum uses `ERROR_CODE` / `ERROR` and no description**.
+Decoder accepts either form; encoder emits the wire-actual UPPERCASE
+form.
+
+| ID | ERROR (Code) | Description |
 |---:|---|---|
 | 0 | `INVALID_USER_OR_PASS` | specified username or password is invalid |
 | 1 | `MTID_ERROR` | a message type identifier was not specified |
@@ -275,7 +290,7 @@ Complete table from the spec:
 | 9 | `ONE_OR_MORE_EVENTS_INVALID` | the specified event subscription failed to complete |
 | 10 | `ONE_OR_MORE_OBTAINS_INVALID` | the specified obtain failed to complete |
 | 11 | `RESPONSE_TOO_LARGE` | the XML message is too large to be sent to a client |
-| 12 | `NO_LICENCE_AVAILABLE` | the Cerebrum server has no licences available (note British spelling) |
+| 12 | `NO_LICENCE_AVAILABLE` | the Cerebrum server has no licences available (British spelling) |
 | 13 | `OK` | the request completed successfully |
 
 > Every NACK code becomes a `compliance.Event` named `cerebrum_nack_<code>`.

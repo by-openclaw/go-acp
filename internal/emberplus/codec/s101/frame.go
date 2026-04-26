@@ -7,7 +7,7 @@
 //   - Message type header (4 bytes)
 //   - Keep-alive support
 //
-// Reference: S101 specification (Lawo / DataMiner docs)
+// Reference: S101 specification (Lawo Ember+ docs)
 package s101
 
 import "errors"

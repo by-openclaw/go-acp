@@ -101,7 +101,7 @@ For the "no external deps" rule, option 1 is the path. The Glow subset of BER is
 - [Ember+ Official Repo](https://github.com/Lawo/ember-plus)
 - [Go Library](https://github.com/dufourgilles/emberlib)
 - [C# Reference](https://github.com/Lawo/ember-plus-sharp)
-- [DataMiner S101 Docs](https://docs.dataminer.services/develop/DSI/DSIEmberPlus/S101.html)
+- Third-party S101 protocol notes (public web reference; vendor name omitted by policy)
 - [Wireshark Dissector](https://lists.wireshark.org/archives/wireshark-commits/201806/msg00161.html)
 
 ---

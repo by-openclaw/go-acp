@@ -39,8 +39,8 @@ internal/cerebrum-nb/
 - Full text extracted at
   [assets/cerebrum_northbound_api_full_v0_13.docx](assets/cerebrum_northbound_api_full_v0_13.docx).
   OCR companion at [assets/cerebrum-nb-api-ocr.txt](assets/cerebrum-nb-api-ocr.txt).
-- Skyline DataMiner driver DMS-DRV-7371 *EVS Cerebrum* v1.1.0.2 — held
-  under NDA, gitignored, cited only as a secondary cross-check.
+- Third-party vendor reference driver — held under NDA, gitignored,
+  cited only as a secondary cross-check.
 
 When the spec, the device, and the codec disagree, the dissector breaks
 the tie first. Do NOT rely on the OCR text for byte-exact parsing — it
@@ -103,16 +103,19 @@ Quick index:
 ### Element-name case quirk
 
 Spec examples are **inconsistent** between lowercase (§2, §4.2-4.4, §5)
-and UPPERCASE (§4.1). Skyline's driver emits UPPERCASE throughout; real
-Cerebrum servers must therefore be case-insensitive. We:
+and UPPERCASE (§4.1). **Live wire reality (verified 2026-04-26 against
+a real Cerebrum):** the server emits AND requires UPPERCASE
+elements + attributes. A lowercase `<login mtid="1"/>` is rejected
+with `MTID_ERROR` because the server doesn't recognise lowercase
+`mtid` as the MTID field. We:
 
-- **Emit lowercase** on the wire (matches normative v0.13 examples).
-- **Accept any case** on RX; fire `cerebrum_case_normalized` once per
-  session per element name when non-lowercase observed.
+- **Emit UPPERCASE** on the wire (matches reality).
+- **Accept any case** on RX (case-folded AST); fire
+  `cerebrum_case_normalized` only if non-UPPERCASE seen (rare —
+  defensive against future spec-strict lowercase peers).
 
-Do NOT depend on case-insensitivity portably — treat lowercase as the
-canonical form. See `keys.md` "Element case on the wire" for the
-reasoning.
+Treat **UPPERCASE** as the canonical form. See `keys.md` "Element
+case on the wire" for the live evidence.
 
 ### Message Transaction ID (mtid)
 
@@ -254,9 +257,10 @@ exposed via the standard `compliance.Profile` accessor.
   `<ack>` first, then a separate `<routing_change>` event when the
   matrix actually crosses the point. Two-stage commit; treat the event
   as the truth.
-- Never UPPERCASE elements on TX even if spec §4.1 examples do — Skyline
-  emits UPPERCASE because of historical reasons; v0.13 normative case
-  is lowercase. We follow the normative form.
+- Never lowercase elements on TX. Spec §2 / §4.2-4.4 / §5 examples
+  show lowercase but real Cerebrum servers reject it (verified
+  2026-04-26 — lowercase `<login mtid=...>` returns
+  `MTID_ERROR`). Wire-actual is UPPERCASE everywhere.
 - Never include the binary in `Program Files` for Cerebrum deploys —
   portable layout requires write access to the .exe directory; UAC will
   block writes under `Program Files`. Drop into `C:\dhs\` or similar.
@@ -266,8 +270,9 @@ exposed via the standard `compliance.Profile` accessor.
 - Never silently swallow `<nack>`. Always fire the matching compliance
   event before bubbling the error up to the caller.
 - Never trust the spec PDF for byte-exact parsing — it has image-only
-  tables in §3.3 (ITEM_TYPE) and §6 (Error codes); use the DOCX text +
-  Skyline driver cross-check (per `keys.md` source notes).
+  tables in §3.3 (ITEM_TYPE) and §6 (Error codes); use the DOCX text
+  + the third-party reference driver cross-check (per `keys.md`
+  source notes) + a live pcap.
 
 ---
 
@@ -289,9 +294,10 @@ event ID.
 2. **No sub-protocol.** Cerebrum does not negotiate via
    `Sec-WebSocket-Protocol`. Don't send one; spec doesn't define one.
 
-3. **Element case in spec is mixed.** Lowercase in §2/§4.2-4.4/§5,
-   UPPERCASE in §4.1, Skyline driver UPPERCASE everywhere. Emit
-   lowercase, accept any.
+3. **Element case is UPPERCASE on the wire (not lowercase).** Spec
+   examples show mixed case but live Cerebrum requires UPPERCASE
+   everywhere. Lowercase TX is rejected with `MTID_ERROR`. Emit
+   UPPERCASE, accept any.
 
 4. **mtid is decimal-as-string.** Not hex, not binary; serialise via
    `strconv.FormatUint`.
@@ -318,8 +324,8 @@ event ID.
    §6, ID 12. Match exactly when string-comparing.
 
 10. **`OK` (ID 13) is a NACK code with success semantics.** Never
-    actually emitted by Cerebrum (per Skyline driver behaviour) but
-    listed in §6 as a placeholder. Treat any `nack code='OK'` as a
+    actually emitted by live Cerebrum servers we've observed; listed
+    in spec §6 as a placeholder. Treat any `<NACK ERROR='OK'>` as a
     bug-report event (`cerebrum_nack_ok`) — should never reach us.
 
 11. **Asynchronous events do not echo a request mtid.** Events are

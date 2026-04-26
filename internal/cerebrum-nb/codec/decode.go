@@ -153,9 +153,28 @@ func parseBoolFlag(s string) bool {
 	return false
 }
 
+// parseNack reads either of the two NACK attribute conventions:
+//
+//   - Spec v0.13: <nack mtid id code description/>  (lowercase keys
+//     id / code / description)
+//   - Wire-actual (verified 2026-04-26 against a live Cerebrum):
+//     <NACK MTID ERROR ERROR_CODE/>  (UPPERCASE keys, ERROR carries
+//     the symbolic name, ERROR_CODE carries the numeric id, no
+//     description)
+//
+// The Element AST is already case-folded so e.Attr lookups are
+// case-insensitive on the key.
 func parseNack(e *Element) *NackError {
+	// Numeric ID — try `id` first (spec), then `error_code` (wire-actual).
 	idStr := e.Attr("id")
+	if idStr == "" {
+		idStr = e.Attr("error_code")
+	}
+	// Symbolic code — try `code` first (spec), then `error` (wire-actual).
 	codeStr := e.Attr("code")
+	if codeStr == "" {
+		codeStr = e.Attr("error")
+	}
 	desc := e.Attr("description")
 	if desc == "" {
 		desc = e.Text

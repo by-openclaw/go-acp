@@ -145,7 +145,7 @@ Counts available via `Plugin.Compliance().Counts()` — surfaced in
 | `nack code='NO_LICENCE_AVAILABLE'` | All NB licences in use on the Cerebrum server. Contact EVS. |
 | `nack code='SERVER_INACTIVE'` | We're connected to the standby in a redundant pair; reconnect to the active server. |
 | Connection refused | Wrong port (default 40007 may be re-mapped) or NB API disabled in the Cerebrum app. |
-| `cerebrum_case_normalized` count > 0 | Peer is sending UPPERCASE element / attribute names (Skyline driver does this). Spec says lowercase is canonical; we accept either. |
+| `cerebrum_case_normalized` count > 0 | Peer is sending non-UPPERCASE element / attribute names. Wire-actual canonical form is UPPERCASE; decoder accepts either. |
 
 ---
 

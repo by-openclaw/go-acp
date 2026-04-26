@@ -7,7 +7,7 @@ import (
 
 func TestEncodeLogin(t *testing.T) {
 	got := string(EncodeLogin(7, "alice", "s3cr3t"))
-	want := `<login username="alice" password="s3cr3t" mtid="7"/>`
+	want := `<LOGIN USERNAME="alice" PASSWORD="s3cr3t" MTID="7"/>`
 	if got != want {
 		t.Fatalf("EncodeLogin\n got %s\nwant %s", got, want)
 	}
@@ -15,7 +15,7 @@ func TestEncodeLogin(t *testing.T) {
 
 func TestEncodePoll(t *testing.T) {
 	got := string(EncodePoll(0xffff))
-	want := `<poll mtid="65535"/>`
+	want := `<POLL MTID="65535"/>`
 	if got != want {
 		t.Fatalf("EncodePoll\n got %s\nwant %s", got, want)
 	}
@@ -23,7 +23,7 @@ func TestEncodePoll(t *testing.T) {
 
 func TestEncodeUnsubscribeAll(t *testing.T) {
 	got := string(EncodeUnsubscribeAll(1))
-	want := `<unsubscribe_all mtid="1"/>`
+	want := `<UNSUBSCRIBE_ALL MTID="1"/>`
 	if got != want {
 		t.Fatalf("EncodeUnsubscribeAll\n got %s\nwant %s", got, want)
 	}
@@ -40,7 +40,7 @@ func TestEncodeAction_Routing(t *testing.T) {
 	}
 	got := string(EncodeAction(42, body))
 	// Attribute order matches AttrsBuilder declaration order.
-	want := `<action mtid="42"><routing TYPE="ROUTE" DEVICE_NAME="RTR-A" DEVICE_TYPE="Router" SRCE_ID="12" DEST_ID="34" LEVEL_ID="1"/></action>`
+	want := `<ACTION MTID="42"><ROUTING TYPE="ROUTE" DEVICE_NAME="RTR-A" DEVICE_TYPE="Router" SRCE_ID="12" DEST_ID="34" LEVEL_ID="1"/></ACTION>`
 	if got != want {
 		t.Fatalf("EncodeAction\n got %s\nwant %s", got, want)
 	}
@@ -55,7 +55,7 @@ func TestEncodeSubscribe_RoutingChange(t *testing.T) {
 		},
 	}
 	got := string(EncodeSubscribe(3, items))
-	want := `<subscribe mtid="3"><routing_change type="ROUTE" device_name="*" device_type="*"/></subscribe>`
+	want := `<SUBSCRIBE MTID="3"><ROUTING_CHANGE TYPE="ROUTE" DEVICE_NAME="*" DEVICE_TYPE="*"/></SUBSCRIBE>`
 	if got != want {
 		t.Fatalf("EncodeSubscribe\n got %s\nwant %s", got, want)
 	}
@@ -66,7 +66,7 @@ func TestEncodeObtain_DeviceList(t *testing.T) {
 		&DeviceChange{Type: "LIST"},
 	}
 	got := string(EncodeObtain(9, items))
-	want := `<obtain mtid="9"><device_change type="LIST"/></obtain>`
+	want := `<OBTAIN MTID="9"><DEVICE_CHANGE TYPE="LIST"/></OBTAIN>`
 	if got != want {
 		t.Fatalf("EncodeObtain\n got %s\nwant %s", got, want)
 	}
@@ -106,6 +106,30 @@ func TestDecodeNack_CodeOnly(t *testing.T) {
 	}
 }
 
+func TestDecodeNack_WireActualUPPERCASE(t *testing.T) {
+	// Real Cerebrum emits UPPERCASE NACK with ERROR + ERROR_CODE
+	// attribute names (verified 2026-04-26). Decoder must accept it.
+	f, err := Decode([]byte(`<NACK MTID="0" ERROR="MTID_ERROR" ERROR_CODE="1"/>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Kind != KindNack {
+		t.Fatalf("kind: got %s want nack", f.Kind)
+	}
+	if f.Nack == nil {
+		t.Fatal("nil Nack body")
+	}
+	if f.Nack.ID != NackMtidError {
+		t.Fatalf("ID: got %d want NackMtidError(1)", f.Nack.ID)
+	}
+	if f.Nack.Code != "MTID_ERROR" {
+		t.Fatalf("Code: got %q", f.Nack.Code)
+	}
+	if f.Nack.MTID != "0" {
+		t.Fatalf("MTID: got %q", f.Nack.MTID)
+	}
+}
+
 func TestDecodeLoginReply(t *testing.T) {
 	f, err := Decode([]byte(`<login_reply mtid="1" api_ver="0.13"/>`))
 	if err != nil {
@@ -117,6 +141,7 @@ func TestDecodeLoginReply(t *testing.T) {
 }
 
 func TestDecodePollReply(t *testing.T) {
+	// Lowercase root + UPPERCASE attrs — mixed case fires CaseChanged.
 	f, err := Decode([]byte(`<poll_reply mtid="5" CONNECTED_SERVER_ACTIVE="1" PRIMARY_SERVER_STATE="1" SECONDARY_SERVER_STATE="0"/>`))
 	if err != nil {
 		t.Fatal(err)
@@ -129,12 +154,13 @@ func TestDecodePollReply(t *testing.T) {
 		t.Fatalf("flags: got %+v", pr)
 	}
 	if !f.CaseChanged {
-		t.Fatal("CaseChanged should be true (UPPERCASE attrs in spec example)")
+		t.Fatal("CaseChanged should be true (lowercase root + UPPERCASE attrs is non-canonical)")
 	}
 }
 
 func TestDecodeRoutingChange_UPPERCASE(t *testing.T) {
-	// Skyline driver emits UPPERCASE everywhere; we accept it.
+	// Live Cerebrum emits UPPERCASE everywhere — this is the canonical
+	// wire form and should NOT fire CaseChanged.
 	f, err := Decode([]byte(`<ROUTING_CHANGE TYPE="ROUTE" DEVICE_NAME="RTR-A" DEVICE_TYPE="Router" SRCE_ID="12" SRCE_NAME="CAM1" DEST_ID="34" DEST_NAME="MV1" LEVEL_ID="1" LEVEL_NAME="HD"/>`))
 	if err != nil {
 		t.Fatal(err)
@@ -146,8 +172,24 @@ func TestDecodeRoutingChange_UPPERCASE(t *testing.T) {
 	if rc.Type != "ROUTE" || rc.DeviceName != "RTR-A" || rc.SrceID != "12" || rc.LevelName != "HD" {
 		t.Fatalf("got %+v", rc)
 	}
+	if f.CaseChanged {
+		t.Fatal("CaseChanged should be false — UPPERCASE is the canonical form")
+	}
+}
+
+func TestDecodeRoutingChange_lowercase_FiresCaseChanged(t *testing.T) {
+	// A spec-strict lowercase server (none observed in the wild) — must
+	// still parse, with CaseChanged set so the consumer can fire the
+	// cerebrum_case_normalized compliance event.
+	f, err := Decode([]byte(`<routing_change type="ROUTE" device_name="RTR-A"/>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Kind != KindRoutingChange {
+		t.Fatalf("kind: got %s", f.Kind)
+	}
 	if !f.CaseChanged {
-		t.Fatal("CaseChanged should be true on UPPERCASE input")
+		t.Fatal("CaseChanged should be true on lowercase wire form")
 	}
 }
 
@@ -195,7 +237,7 @@ func TestNackCode_BritishLicence(t *testing.T) {
 func TestEscape_AttrAndText(t *testing.T) {
 	// Make sure encoder escapes ampersands + angle brackets.
 	got := string(EncodeLogin(1, `a"b<c>&d`, "p"))
-	wantSubstr := `username="a&quot;b&lt;c&gt;&amp;d"`
+	wantSubstr := `USERNAME="a&quot;b&lt;c&gt;&amp;d"`
 	if !strings.Contains(got, wantSubstr) {
 		t.Fatalf("expected attr-escape, got %s", got)
 	}

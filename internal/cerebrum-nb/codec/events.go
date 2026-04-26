@@ -2,12 +2,16 @@ package codec
 
 import "strings"
 
+// All TX element + attribute names emitted UPPERCASE per the
+// wire-actual canonical form (verified against a live Cerebrum
+// 2026-04-26).
+
 // ----------------------------------------------------------------------
 // §5.1 — Routing events / subscribes
 // ----------------------------------------------------------------------
 
 // RoutingChange is one row in keys.md "§5.1 Routing". On TX (inside
-// <subscribe>/<obtain>/<unsubscribe>) only the addressing attrs are
+// <SUBSCRIBE>/<OBTAIN>/<UNSUBSCRIBE>) only the addressing attrs are
 // honoured; on RX the server fills in current state.
 type RoutingChange struct {
 	// Type: ROUTE / SRCE_LOCK / DEST_LOCK / LEVEL_MNE / SRCE_MNE /
@@ -28,16 +32,16 @@ type RoutingChange struct {
 
 func (r *RoutingChange) encodeSubItem(b *strings.Builder) {
 	a := AttrsBuilder{}.
-		ForceAdd("type", r.Type).
-		Add("device_name", r.DeviceName).
-		Add("device_type", string(r.DeviceType)).
-		Add("srce_id", r.SrceID).
-		Add("srce_name", r.SrceName).
-		Add("dest_id", r.DestID).
-		Add("dest_name", r.DestName).
-		Add("level_id", r.LevelID).
-		Add("level_name", r.LevelName)
-	emitElement(b, "routing_change", a, nil)
+		ForceAdd("TYPE", r.Type).
+		Add("DEVICE_NAME", r.DeviceName).
+		Add("DEVICE_TYPE", string(r.DeviceType)).
+		Add("SRCE_ID", r.SrceID).
+		Add("SRCE_NAME", r.SrceName).
+		Add("DEST_ID", r.DestID).
+		Add("DEST_NAME", r.DestName).
+		Add("LEVEL_ID", r.LevelID).
+		Add("LEVEL_NAME", r.LevelName)
+	emitElement(b, "ROUTING_CHANGE", a, nil)
 }
 
 // ----------------------------------------------------------------------
@@ -52,9 +56,9 @@ type CategoryChange struct {
 
 func (c *CategoryChange) encodeSubItem(b *strings.Builder) {
 	a := AttrsBuilder{}.
-		ForceAdd("type", c.Type).
-		Add("category", c.Category)
-	emitElement(b, "category_change", a, nil)
+		ForceAdd("TYPE", c.Type).
+		Add("CATEGORY", c.Category)
+	emitElement(b, "CATEGORY_CHANGE", a, nil)
 }
 
 // ----------------------------------------------------------------------
@@ -71,10 +75,10 @@ type SalvoChange struct {
 
 func (s *SalvoChange) encodeSubItem(b *strings.Builder) {
 	a := AttrsBuilder{}.
-		ForceAdd("type", s.Type).
-		Add("group", s.Group).
-		Add("instance", s.Instance)
-	emitElement(b, "salvo_change", a, nil)
+		ForceAdd("TYPE", s.Type).
+		Add("GROUP", s.Group).
+		Add("INSTANCE", s.Instance)
+	emitElement(b, "SALVO_CHANGE", a, nil)
 }
 
 // ----------------------------------------------------------------------
@@ -93,13 +97,13 @@ type DeviceChange struct {
 
 func (d *DeviceChange) encodeSubItem(b *strings.Builder) {
 	a := AttrsBuilder{}.
-		ForceAdd("type", d.Type).
-		Add("ip_address", d.IPAddress).
-		Add("device_type", string(d.DeviceType)).
-		Add("device_name", d.DeviceName).
-		Add("sub_device", d.SubDevice).
-		Add("object", d.Object)
-	emitElement(b, "device_change", a, nil)
+		ForceAdd("TYPE", d.Type).
+		Add("IP_ADDRESS", d.IPAddress).
+		Add("DEVICE_TYPE", string(d.DeviceType)).
+		Add("DEVICE_NAME", d.DeviceName).
+		Add("SUB_DEVICE", d.SubDevice).
+		Add("OBJECT", d.Object)
+	emitElement(b, "DEVICE_CHANGE", a, nil)
 }
 
 // ----------------------------------------------------------------------
@@ -107,7 +111,7 @@ func (d *DeviceChange) encodeSubItem(b *strings.Builder) {
 // ----------------------------------------------------------------------
 
 // DatastoreChange covers §5.5: subscription/obtain by file path inside
-// a Cerebrum data store. RX replies echo this element with a `type`
+// a Cerebrum data store. RX replies echo this element with a TYPE
 // attribute (e.g. ATTRIBUTE).
 type DatastoreChange struct {
 	Name string
@@ -116,6 +120,6 @@ type DatastoreChange struct {
 
 func (d *DatastoreChange) encodeSubItem(b *strings.Builder) {
 	a := AttrsBuilder{}.
-		Add("name", d.Name)
-	emitElement(b, "datastore_change", a, nil)
+		Add("NAME", d.Name)
+	emitElement(b, "DATASTORE_CHANGE", a, nil)
 }

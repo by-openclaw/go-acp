@@ -11,8 +11,8 @@ import (
 
 // Element is a case-folded XML AST node. All Name + Attrs keys are
 // lowercased on parse so callers don't need to spell-check against
-// spec §4.1 (UPPERCASE) vs §4.2-4.4 / §5 (lowercase) vs the Skyline
-// driver (UPPERCASE everywhere). Attribute *values* preserve their
+// spec §4.1 (UPPERCASE) vs §4.2-4.4 / §5 (lowercase) vs the
+// wire-actual UPPERCASE form. Attribute *values* preserve their
 // original case — only the keys are normalised.
 type Element struct {
 	Name     string
@@ -102,7 +102,11 @@ func parseRoot(dec *xml.Decoder) (*Element, error) {
 func parseElement(dec *xml.Decoder, start xml.StartElement, parentCaseChanged bool) (*Element, error) {
 	rawName := start.Name.Local
 	lower := strings.ToLower(rawName)
-	caseChanged := parentCaseChanged || rawName != lower
+	upper := strings.ToUpper(rawName)
+	// CaseChanged fires when the wire form is NOT the canonical
+	// UPPERCASE — flags lowercase or mixed-case servers (rare /
+	// defensive against future spec-strict implementations).
+	caseChanged := parentCaseChanged || rawName != upper
 
 	e := &Element{
 		Name:  lower,
@@ -110,7 +114,7 @@ func parseElement(dec *xml.Decoder, start xml.StartElement, parentCaseChanged bo
 	}
 	for _, a := range start.Attr {
 		ak := strings.ToLower(a.Name.Local)
-		if a.Name.Local != ak {
+		if a.Name.Local != strings.ToUpper(a.Name.Local) {
 			caseChanged = true
 		}
 		e.Attrs[ak] = a.Value
