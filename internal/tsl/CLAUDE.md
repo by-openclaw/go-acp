@@ -101,12 +101,31 @@ Out of scope (spec-strict posture):
 | `tsl_v31_null_pad` | v3.1 frame received with 0x00 pad (non-spec) |
 | `tsl_v5_tcp_unwrapped` | v5.0 TCP frame received without DLE/STX wrapper |
 
-## CLI surface (consumer = MV-receiver)
+## CLI surface
+
+Consumer (MV receiver):
 
 ```
 dhs consumer tsl-v31 listen [--bind HOST:PORT]
 dhs consumer tsl-v40 listen [--bind HOST:PORT]
-dhs consumer tsl-v50 listen [--bind HOST:PORT] [--tcp]
+dhs consumer tsl-v50 listen [--bind HOST:PORT] [--tcp] [--keepalive DUR]
+```
+
+Producer (tally/UMD source — VSM/Kaleido equivalent):
+
+```
+dhs producer tsl-v31|v40|v50 send  --dest HOST:PORT [version flags]
+dhs producer tsl-v31|v40|v50 serve --dest HOST:PORT --refresh DUR [version flags]
+```
+
+v5.0 grouped multi-DMSG (Miranda "Group display messages") via
+repeatable composite flag — overrides singular flags when present:
+
+```
+dhs producer tsl-v50 serve --dest HOST:8901 --refresh 1s --screen 0 \
+  --dmsg "index=2,lh=red,rh=off,brightness=3,umd=PGM" \
+  --dmsg "index=3,lh=off,text-tally=green,rh=off,umd=PVW" \
+  --dmsg "index=4,rh=amber,umd=ISO"
 ```
 
 Default ports: v3.1 UDP 4000, v4.0 UDP 4004 (testbed offset since
@@ -115,7 +134,14 @@ TCP 8902 (testbed offset since v5.0 UDP owns 8901; spec is also
 8901 for TCP). Listener prints decoded frames live with field
 labels mirroring Miranda IP Emulator UI exactly.
 
-Dispatcher: `cmd/dhs/cmd_tsl.go` (`runTSLConsumer`).
+TCP dead-socket detection: SO_KEEPALIVE 30 s on both the v5.0
+producer dialer and consumer listener (`tcpKeepalivePeriod` /
+`DefaultTCPKeepalivePeriod`). TSL v5 spec defines no app-layer
+heartbeat — pcap audit confirmed VSM never sends one — so the
+OS-layer probe is the right detector.
+
+Dispatcher: `cmd/dhs/cmd_tsl.go` (`runTSLConsumer`),
+`cmd/dhs/cmd_tsl_producer.go` (`runTSLProducer`).
 
 ## Testbed
 

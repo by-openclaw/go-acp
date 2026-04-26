@@ -43,7 +43,7 @@ tests/                          unit / integration / smoke / fixtures
 docs/                           cross-cutting architecture, connector, schema
 ```
 
-`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on this branch.
+`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
 Other feature branches add more: `cerebrum` on `feat/cerebrum-nb-plugin`. See
 `memory/project_protocol_backlog.md` for the full queue.
 
@@ -54,10 +54,13 @@ entries per the `feedback_protocol_versioning.md` Pattern A rule:
 - `tsl-v40` — UDP-only; v3.1 frame + CHKSUM + VBC + XDATA (3-position 2-bit colour for L/R display)
 - `tsl-v50` — UDP **and** TCP/DLE-STX (spec §Phy); LH/Text/RH 2-bit colour + 2-bit brightness per DMSG
 
-TSL is push-only one-way: tally-source → MV. CLI shape is symmetric
-to OSC: `dhs consumer tsl-vXX listen [--bind HOST:PORT] [--tcp]`
-binds a UDP listener (or v5.0 TCP listener with `--tcp`) and prints
-every decoded frame. `dhs producer tsl-vXX serve` (TBD) sends.
+TSL is push-only one-way: tally-source → MV. CLI shape:
+
+- `dhs consumer tsl-vXX listen [--bind HOST:PORT] [--tcp] [--keepalive DUR]` — bind a UDP (or v5.0 TCP) listener and print every decoded frame.
+- `dhs producer tsl-vXX send  --dest HOST:PORT [version flags]` — encode one frame and push.
+- `dhs producer tsl-vXX serve --dest HOST:PORT --refresh DUR [version flags]` — same as send, looped on a timer.
+- v5.0 grouped multi-DMSG: repeatable `--dmsg "index=N,lh=...,text-tally=...,rh=...,brightness=...,umd=STR"`.
+- TCP dead-socket detection via SO_KEEPALIVE 30 s on both producer dialer and consumer listener (TSL spec carries no app-layer heartbeat; pcap audit confirmed VSM never sends one).
 
 Wireshark support: `internal/tsl/wireshark/dhs_tsl.lua` covers all
 three versions on UDP + v5.0 TCP/DLE-STX. Auto-registers on UDP
