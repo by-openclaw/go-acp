@@ -44,8 +44,50 @@ docs/                           cross-cutting architecture, connector, schema
 ```
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
-Other feature branches add more: `cerebrum` on `feat/cerebrum-nb-plugin`. See
-`memory/project_protocol_backlog.md` for the full queue.
+Other feature branches add more: `cerebrum-nb` on `feat/cerebrum-nb-plugin`
+(PR #144), `nmos` (scaffold only — design doc + epic #146) on
+`feat/nmos-scaffold`. See `memory/project_protocol_backlog.md` for the
+full queue.
+
+> **NMOS is the odd one out.** It is a suite of ~14 specs
+> (IS-04/05/07/08/09/12/13, MS-05-01/02, BCP-002/004/006/007/008) with a
+> 3-role topology — Node + Registry + Controller (Registry is a dual-
+> face hybrid: consumer of registrations + provider of catalogue) —
+> rather than the 2-role consumer/provider split. Read
+> `internal/amwa/CLAUDE.md` and `internal/amwa/docs/architecture.md`
+> before touching it.
+>
+> **Locked scope rules (2026-04-27):**
+>
+> - **NMOS-strict-spec only.** Implement IS-04/05/07/09/12/MS-05/
+>   BCP-002/004/006/008 literally; fire compliance events on peer
+>   deviations (see `internal/amwa/docs/matrix-compliance.md` —
+>   Lawo VSM verified). NEVER mix with cross-protocol mux concepts.
+> - **Cross-protocol mux is parked.** The ingress→canonical→egress
+>   matrix (Ember+ ingress fan-out to glow+router egresses) is real
+>   architecture but tied to a planned CLI refactor. NO epic, NO PR
+>   without explicit user ask. See `memory/project_cross_protocol_mux.md`.
+> - **Plugin lift-ability.** Each `internal/<proto>/` subtree must
+>   stay extractable to its own Go module repo. Codec rule already in
+>   `feedback_codec_isolation.md`; extend to consumer + provider +
+>   future registry plugin. Only neutral interfaces cross the seam.
+> - **Conformance gate is AMWA NMOS Testing** (Apache-2.0 Python tool,
+>   Docker `amwa/nmos-testing`). Per-phase suite mapping in
+>   `internal/amwa/docs/conformance.md`; runs via devcontainer +
+>   isolated bridge (NEVER `network_mode: host`); pinned by image
+>   digest; trap-based cleanup so no garbage.
+> - **Reference impl: sony/nmos-cpp** (Apache-2.0, JT-NM Tested) — use
+>   as cross-impl byte oracle + interop peer. Same role as `osc.js` for
+>   OSC and Commie for Probel.
+> - **Real-world testbed peers:** Lawo VSM Studio (NMOS Controller —
+>   IS-04 Node API + IS-05 v1.0/1.1, HTTP only, no Query API, no
+>   WebSocket, no scheduled activations); EVS Cerebrum (Cerebrum-NB
+>   on PR #144; Cerebrum NMOS proxy is a real production cross-proto
+>   bridge — interop peer for our NMOS plugin, not a model to copy).
+> - **Approval rule:** when an agent asks the user a question, NEVER
+>   act in the same turn — wait for explicit approval before any
+>   write/commit/PR/issue/memory action. See
+>   `memory/feedback_approval_before_action.md`.
 
 The **TSL UMD plugin** registers three wire versions as separate
 entries per the `feedback_protocol_versioning.md` Pattern A rule:
