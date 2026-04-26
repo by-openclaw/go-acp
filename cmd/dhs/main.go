@@ -53,6 +53,9 @@ import (
 	_ "acp/internal/probel-sw02p/provider"
 	_ "acp/internal/probel-sw08p/provider"
 	_ "acp/internal/tsl/provider"
+
+	// Registry plugins — blank imports register with internal/registry.
+	_ "acp/internal/amwa/registry"
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.
@@ -146,6 +149,12 @@ func main() {
 			os.Exit(exitCode(err))
 		}
 		return
+	case "registry":
+		if err := dispatchRegistry(ctx, args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(exitCode(err))
+		}
+		return
 	case "metrics":
 		if err := runMetrics(ctx, args[1:]); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
@@ -190,6 +199,9 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	if proto == "tsl-v31" || proto == "tsl-v40" || proto == "tsl-v50" {
 		return runTSLConsumer(ctx, proto, rest)
 	}
+	if proto == "nmos" {
+		return runNMOSConsumer(ctx, rest)
+	}
 
 	if len(rest) == 0 || hasHelpFlag(rest) {
 		printConsumerHelp()
@@ -230,6 +242,9 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	if proto == "tsl-v31" || proto == "tsl-v40" || proto == "tsl-v50" {
 		return runTSLProducer(ctx, proto, rest)
 	}
+	if proto == "nmos" {
+		return runNMOSProducer(ctx, rest)
+	}
 	if len(rest) == 0 || hasHelpFlag(rest) {
 		printProducerHelp()
 		return nil
@@ -241,6 +256,27 @@ func dispatchProducer(ctx context.Context, args []string) error {
 		return runProducer(ctx, proto, rest)
 	}
 	return fmt.Errorf("producer %s: unknown verb %q (expected: serve)", proto, verb)
+}
+
+// dispatchRegistry routes `dhs registry <proto> <verb> [args]`. The
+// Registry role is the dual-face NMOS Registration + Query API
+// middleware (and any future Tier-1 registry plugin).
+func dispatchRegistry(ctx context.Context, args []string) error {
+	if len(args) == 0 {
+		printRegistryHelp()
+		return nil
+	}
+	if isHelpToken(args[0]) {
+		printRegistryHelp()
+		return nil
+	}
+	proto := args[0]
+	rest := args[1:]
+	switch proto {
+	case "nmos":
+		return runNMOSRegistry(ctx, rest)
+	}
+	return fmt.Errorf("registry: unknown plugin %q (expected: nmos)", proto)
 }
 
 // isHelpToken returns true for the help tokens we accept at any level.
@@ -409,4 +445,19 @@ EXAMPLES
   dhs producer osc-v10  send  --to 127.0.0.1:8000 --address /test --types ifs --args 42 3.14 hi
   dhs producer osc-v11  fader --to 127.0.0.1:8000 --rate 1000 --duration 5s --pattern sine
   dhs producer osc-v10  serve --bind udp:8000`)
+}
+
+// printRegistryHelp prints `dhs registry` top-level help.
+func printRegistryHelp() {
+	fmt.Println(`dhs registry — dual-face middleware (consumer of registrations + provider of catalogue)
+
+USAGE
+  dhs registry <plugin> serve [flags]
+
+PLUGINS
+  nmos    AMWA NMOS Registry — IS-04 Registration API + Query API
+
+EXAMPLES
+  dhs registry nmos serve --bind :8235 --priority 0
+  dhs registry nmos serve --no-mdns --advertise-host registry.example.com:8235`)
 }

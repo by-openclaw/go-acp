@@ -1,0 +1,3 @@
+# Conformance harness reports land here, one subdirectory per phase
+# (01-discovery, 02-is09, 03-is04-node, ...). Reports are gitignored
+# globally; this directory keeps the layout discoverable.
