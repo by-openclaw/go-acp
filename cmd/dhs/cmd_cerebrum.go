@@ -115,8 +115,10 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumListRouters(ctx, rest)
 	case "walk":
 		return cerebrumWalk(ctx, rest)
+	case "device-details":
+		return cerebrumDeviceDetails(ctx, rest)
 	}
-	return fmt.Errorf("cerebrum-nb: unknown verb %q (expected: connect | listen | list-devices | list-routers | walk)", verb)
+	return fmt.Errorf("cerebrum-nb: unknown verb %q (expected: connect | listen | list-devices | list-routers | walk | device-details)", verb)
 }
 
 func printCerebrumHelp() {
@@ -131,6 +133,7 @@ VERBS
   list-devices  one-shot device list (obtain device_change LIST)
   list-routers  one-shot router list (filter device_change LIST by Router)
   walk          full obtain across all §5 types (devices + categories + salvos)
+  device-details obtain DEVICE_CHANGE TYPE=DETAILS for one device (--device IP|NAME)
 
 FLAGS (order doesn't matter — flags can come before OR after the host)
   --port N                  WebSocket port (default 40007)
@@ -146,7 +149,8 @@ EXAMPLES
   dhs consumer cerebrum-nb connect      127.0.0.1 --port 4008
   dhs consumer cerebrum-nb listen       10.6.239.50 --user admin --pass s3cr3t
   dhs consumer cerebrum-nb list-devices 10.6.239.50:40007
-  dhs consumer cerebrum-nb walk         cerebrum.local --tls`)
+  dhs consumer cerebrum-nb walk         cerebrum.local --tls
+  dhs consumer cerebrum-nb device-details 10.41.64.90 --port 40008 --device 10.107.30.100`)
 }
 
 // connectAndLogin: parse flags, build a Plugin, Connect.
@@ -283,6 +287,117 @@ func cerebrumListRouters(_ context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 	return obtainAndPrintDeviceList(sess, "Router")
+}
+
+// cerebrumDeviceDetails issues an OBTAIN of DEVICE_CHANGE TYPE=DETAILS for a
+// single device and prints the response. Address by IP (default) or name
+// per spec §1.7. The wire shape of the DETAILS response is unconfirmed;
+// first run captures the raw XML so we can refine the structured printer.
+func cerebrumDeviceDetails(_ context.Context, args []string) error {
+	device, deviceType, byName, rest, err := extractDeviceDetailsFlags(args)
+	if err != nil {
+		return err
+	}
+	if device == "" {
+		return fmt.Errorf("cerebrum-nb device-details: --device IP|NAME is required")
+	}
+
+	p, sess, cf, _, err := connectAndLogin(rest, "device-details")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = p.Disconnect() }()
+
+	var got *codec.Frame
+	done := make(chan struct{})
+	var once sync.Once
+	signalDone := func() { once.Do(func() { close(done) }) }
+	timer := time.AfterFunc(cf.timeout, signalDone)
+
+	sess.OnEvent(codec.KindDeviceChange, func(f *codec.Frame) {
+		if f.Device != nil && f.Device.Type == "DETAILS" {
+			got = f
+			signalDone()
+		}
+	})
+
+	dc := &codec.DeviceChange{Type: "DETAILS"}
+	if byName {
+		dc.DeviceName = device
+	} else {
+		dc.IPAddress = device
+	}
+	if deviceType != "" {
+		dc.DeviceType = codec.DeviceType(deviceType)
+	}
+	obCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
+	defer cancel()
+	if err := sess.Obtain(obCtx, []codec.SubItem{dc}); err != nil {
+		return err
+	}
+	<-done
+	timer.Stop()
+
+	if got == nil {
+		fmt.Fprintln(os.Stderr, "(no DEVICE_CHANGE TYPE=DETAILS response within", cf.timeout, ")")
+		return nil
+	}
+
+	d := got.Device
+	addr := d.IPAddress
+	if d.DeviceName != "" {
+		addr = fmt.Sprintf("%s (%s)", addr, d.DeviceName)
+	}
+	fmt.Printf("device       %s\n", addr)
+	fmt.Printf("device_type  %s\n", d.DeviceType)
+	if d.SubDevice != "" {
+		fmt.Printf("sub_device   %s\n", d.SubDevice)
+	}
+	if d.Object != "" {
+		fmt.Printf("object       %s\n", d.Object)
+	}
+	if len(d.Devices) > 0 {
+		fmt.Printf("nested       %d\n", len(d.Devices))
+		for _, e := range d.Devices {
+			fmt.Printf("  %-12s %-20s %s\n", e.DeviceType, displayName(e.DeviceName), e.IPAddress)
+		}
+	}
+	// First-cut: also print the raw XML so we can see the live shape and
+	// refine the structured decoder for any sub-device / object fields the
+	// current parser drops on the floor.
+	fmt.Println()
+	fmt.Println("--- raw response ---")
+	fmt.Println(got.Root.String())
+	return nil
+}
+
+// extractDeviceDetailsFlags splits the device-details argv into the
+// verb-specific flags (--device, --by-name) and the remainder consumed
+// by connectAndLogin. We don't extend cerebrumFlags because these
+// flags only apply to this one verb.
+func extractDeviceDetailsFlags(args []string) (device, deviceType string, byName bool, rest []string, err error) {
+	rest = make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--device":
+			if i+1 >= len(args) {
+				return "", "", false, nil, fmt.Errorf("--device needs a value")
+			}
+			device = args[i+1]
+			i++
+		case "--device-type":
+			if i+1 >= len(args) {
+				return "", "", false, nil, fmt.Errorf("--device-type needs a value")
+			}
+			deviceType = args[i+1]
+			i++
+		case "--by-name":
+			byName = true
+		default:
+			rest = append(rest, args[i])
+		}
+	}
+	return device, deviceType, byName, rest, nil
 }
 
 func cerebrumWalk(_ context.Context, args []string) error {
