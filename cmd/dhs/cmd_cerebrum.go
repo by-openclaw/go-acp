@@ -448,7 +448,18 @@ func cerebrumDeviceValue(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	return printRawAndDone(got, "DEVICE_CHANGE TYPE=VALUE")
+	if got == nil || got.Device == nil {
+		fmt.Fprintln(os.Stderr, "(no DEVICE_CHANGE TYPE=VALUE response within timeout)")
+		return nil
+	}
+	d := got.Device
+	fmt.Printf("device      %s (%s)\n", d.IPAddress, displayName(d.DeviceName))
+	fmt.Printf("sub_device  %s\n", d.SubDevice)
+	fmt.Printf("object      %s\n", d.Object)
+	if d.ObjectValue != nil {
+		fmt.Printf("available   %s\n", boolFlag(d.ObjectValue.Available))
+	}
+	return nil
 }
 
 // cerebrumListCategories issues OBTAIN CATEGORY_CHANGE TYPE=CATEGORY_LIST.
@@ -494,7 +505,20 @@ func cerebrumCategoryDetails(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	return printRawAndDone(got, "CATEGORY_CHANGE TYPE=CATEGORY_DETAILS")
+	if got == nil || got.Category == nil {
+		fmt.Fprintln(os.Stderr, "(no CATEGORY_CHANGE TYPE=CATEGORY_DETAILS response within timeout)")
+		return nil
+	}
+	c := got.Category
+	fmt.Printf("category     %s\n", c.Category)
+	if c.Details != nil {
+		fmt.Printf("label        %s\n", displayDash(c.Details.Label))
+		fmt.Printf("available    %s\n", boolFlag(c.Details.Available))
+		if c.Details.Description != "" {
+			fmt.Printf("description  %s\n", c.Details.Description)
+		}
+	}
+	return nil
 }
 
 // cerebrumListSalvoGroups issues OBTAIN SALVO_CHANGE TYPE=GROUP_LIST.
@@ -540,7 +564,16 @@ func cerebrumListSalvoInstances(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	return printRawAndDone(got, "SALVO_CHANGE TYPE=INSTANCE_LIST")
+	if got == nil || got.Salvo == nil {
+		fmt.Fprintln(os.Stderr, "(no SALVO_CHANGE TYPE=INSTANCE_LIST response within timeout)")
+		return nil
+	}
+	fmt.Printf("group       %s\n", got.Salvo.Group)
+	fmt.Printf("count       %d\n", len(got.Salvo.Instances))
+	for _, ins := range got.Salvo.Instances {
+		fmt.Println(ins)
+	}
+	return nil
 }
 
 // cerebrumSalvoInstanceDetails issues OBTAIN SALVO_CHANGE TYPE=INSTANCE_DETAILS.
@@ -568,7 +601,17 @@ func cerebrumSalvoInstanceDetails(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	return printRawAndDone(got, "SALVO_CHANGE TYPE=INSTANCE_DETAILS")
+	if got == nil || got.Salvo == nil {
+		fmt.Fprintln(os.Stderr, "(no SALVO_CHANGE TYPE=INSTANCE_DETAILS response within timeout)")
+		return nil
+	}
+	s := got.Salvo
+	fmt.Printf("group       %s\n", s.Group)
+	fmt.Printf("instance    %s\n", s.Instance)
+	if s.InstanceDetails != nil {
+		fmt.Printf("available   %s\n", boolFlag(s.InstanceDetails.Available))
+	}
+	return nil
 }
 
 // ----------------------------------------------------------------------
@@ -616,19 +659,6 @@ func obtainOneEvent(sess *cerebrum.Session, timeout time.Duration, kind codec.Fr
 	}
 	<-done
 	return got, nil
-}
-
-// printRawAndDone prints the raw XML of the response. Used for verbs
-// whose response shape is unconfirmed; replace with structured output
-// once the live shape is decoded into the codec.
-func printRawAndDone(f *codec.Frame, label string) error {
-	if f == nil {
-		fmt.Fprintf(os.Stderr, "(no %s response within timeout)\n", label)
-		return nil
-	}
-	fmt.Printf("--- raw %s response ---\n", label)
-	fmt.Println(f.Root.String())
-	return nil
 }
 
 // extractStringFlag pulls --name VALUE out of args. Returns the value

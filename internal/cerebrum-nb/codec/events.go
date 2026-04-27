@@ -58,6 +58,19 @@ type CategoryChange struct {
 	// comma-separated list (verified 2026-04-27). We split into
 	// individual entries here for ergonomic iteration.
 	Categories []string
+
+	// Details populate on RX for TYPE=CATEGORY_DETAILS (verified
+	// 2026-04-27). The server emits `descsription` (sic) as the
+	// description attribute; the decoder accepts both spellings.
+	Details *CategoryDetailsInfo
+}
+
+// CategoryDetailsInfo is the <details> child of a CATEGORY_CHANGE
+// TYPE=CATEGORY_DETAILS response.
+type CategoryDetailsInfo struct {
+	Label       string
+	Available   bool
+	Description string
 }
 
 func (c *CategoryChange) encodeSubItem(b *strings.Builder) {
@@ -82,6 +95,22 @@ type SalvoChange struct {
 	// returns one inner <GROUPS LIST="..."/> with a comma-separated
 	// list (verified 2026-04-27).
 	Groups []string
+
+	// Instances is populated on RX for TYPE=INSTANCE_LIST. Server
+	// emits one <instances list="A,B,..."/> child (same CSV pattern
+	// as GROUP_LIST; verified 2026-04-27).
+	Instances []string
+
+	// InstanceDetails populates on RX for TYPE=INSTANCE_DETAILS
+	// (verified 2026-04-27). When Available is false the server
+	// returns an empty <details available="0"/>.
+	InstanceDetails *SalvoInstanceDetails
+}
+
+// SalvoInstanceDetails is the <details> child of a SALVO_CHANGE
+// TYPE=INSTANCE_DETAILS response.
+type SalvoInstanceDetails struct {
+	Available bool
 }
 
 func (s *SalvoChange) encodeSubItem(b *strings.Builder) {
@@ -121,6 +150,19 @@ type DeviceChange struct {
 	Service    *DeviceService
 	Connection *DeviceConnection
 	SubDevices []DeviceEntry
+
+	// ObjectValue populates on RX for TYPE=VALUE. When Available is
+	// false the server reports the object as unknown / unsupported;
+	// Value carries the live reading otherwise (verified shape on
+	// 2026-04-27 against a real Cerebrum returning available="0").
+	ObjectValue *DeviceObjectValue
+}
+
+// DeviceObjectValue is the <object_value> child of a DEVICE_CHANGE
+// TYPE=VALUE response.
+type DeviceObjectValue struct {
+	Available bool
+	Object    string
 }
 
 // DeviceEntry is one row of a TYPE=LIST DEVICE_CHANGE response (or one

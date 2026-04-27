@@ -3,6 +3,7 @@ package codec
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // FrameKind tags the shape of a decoded RX message.
@@ -220,6 +221,16 @@ func parseCategoryChange(e *Element) *CategoryChange {
 			c.Categories = splitCSV(list)
 		}
 	}
+	// TYPE=CATEGORY_DETAILS: <details label="..." available="0|1"
+	// description="..."/>. Server typo `descsription` accepted here as
+	// a fallback (live capture 2026-04-27).
+	if det := e.Child("details"); det != nil {
+		c.Details = &CategoryDetailsInfo{
+			Label:       det.Attr("label"),
+			Available:   parseBoolAttr(det.Attr("available")),
+			Description: firstNonEmpty(det.Attr("description"), det.Attr("descsription")),
+		}
+	}
 	return c
 }
 
@@ -234,6 +245,20 @@ func parseSalvoChange(e *Element) *SalvoChange {
 	if grp := e.Child("groups"); grp != nil {
 		if list := grp.Attr("list"); list != "" {
 			s.Groups = splitCSV(list)
+		}
+	}
+	// TYPE=INSTANCE_LIST: <instances list="..."/> (live wire 2026-04-27).
+	if ins := e.Child("instances"); ins != nil {
+		if list := ins.Attr("list"); list != "" {
+			s.Instances = splitCSV(list)
+		}
+	}
+	// TYPE=INSTANCE_DETAILS: <details available="0|1"/>
+	// (live wire 2026-04-27 — server returns empty details when the
+	// instance does not exist).
+	if det := e.Child("details"); det != nil && e.Attr("instance") != "" {
+		s.InstanceDetails = &SalvoInstanceDetails{
+			Available: parseBoolAttr(det.Attr("available")),
 		}
 	}
 	return s
@@ -288,6 +313,14 @@ func parseDeviceChange(e *Element) *DeviceChange {
 			SecondaryState: conn.Attr("secondary_state"),
 		}
 	}
+	// TYPE=VALUE: <object_value available="0|1" object="..."/>
+	// (live wire 2026-04-27).
+	if ov := e.Child("object_value"); ov != nil {
+		d.ObjectValue = &DeviceObjectValue{
+			Available: parseBoolAttr(ov.Attr("available")),
+			Object:    ov.Attr("object"),
+		}
+	}
 	if subs := e.Child("sub_devices"); subs != nil {
 		for _, child := range subs.ChildrenNamed("device") {
 			entry := DeviceEntry{
@@ -315,6 +348,12 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// parseBoolAttr maps Cerebrum's "0"/"1" string convention to Go bool.
+// Anything else is treated as false.
+func parseBoolAttr(s string) bool {
+	return s == "1" || strings.EqualFold(s, "true")
 }
 
 func splitCSV(s string) []string {

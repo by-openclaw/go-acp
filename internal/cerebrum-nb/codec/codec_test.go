@@ -419,3 +419,87 @@ func TestDecodeDeviceChange_LiveDetailsShape(t *testing.T) {
 		t.Errorf("SubDevices = %v, want empty (sub_devices was empty in capture)", d.SubDevices)
 	}
 }
+
+func TestDecodeDeviceChange_LiveValueShape(t *testing.T) {
+	wire := `<device_change type="VALUE" ip_address="10.107.30.100" device_name="Powercore 2M1" sub_device="0" object="foo">` +
+		`<object_value available="0" object="foo"/>` +
+		`</device_change>`
+	f, err := Decode([]byte(wire))
+	if err != nil { t.Fatalf("decode: %v", err) }
+	if f.Kind != KindDeviceChange { t.Fatalf("kind: %v", f.Kind) }
+	d := f.Device
+	if d.Type != "VALUE" || d.IPAddress != "10.107.30.100" || d.DeviceName != "Powercore 2M1" {
+		t.Errorf("outer attrs: %+v", d)
+	}
+	if d.SubDevice != "0" || d.Object != "foo" {
+		t.Errorf("addressing: sub=%q obj=%q", d.SubDevice, d.Object)
+	}
+	if d.ObjectValue == nil { t.Fatalf("ObjectValue nil") }
+	if d.ObjectValue.Available || d.ObjectValue.Object != "foo" {
+		t.Errorf("ObjectValue: %+v", d.ObjectValue)
+	}
+}
+
+func TestDecodeCategoryChange_LiveDetailsShape(t *testing.T) {
+	// Server typo on the wire: descsription (sic). Decoder accepts it.
+	wire := `<category_change type="CATEGORY_DETAILS" category="DST_PLAYER">` +
+		`<details label="PLA" available="1" descsription=""/>` +
+		`<items/>` +
+		`</category_change>`
+	f, err := Decode([]byte(wire))
+	if err != nil { t.Fatalf("decode: %v", err) }
+	c := f.Category
+	if c.Type != "CATEGORY_DETAILS" || c.Category != "DST_PLAYER" {
+		t.Errorf("outer attrs: %+v", c)
+	}
+	if c.Details == nil { t.Fatalf("Details nil") }
+	if c.Details.Label != "PLA" || !c.Details.Available || c.Details.Description != "" {
+		t.Errorf("Details: %+v", c.Details)
+	}
+}
+
+func TestDecodeCategoryChange_DescriptionTypoFallback(t *testing.T) {
+	// Future-proof: when a fixed firmware emits the correct attr, the
+	// decoder picks it up just as readily.
+	wire := `<category_change type="CATEGORY_DETAILS" category="X"><details label="L" available="1" description="hello"/></category_change>`
+	f, err := Decode([]byte(wire))
+	if err != nil { t.Fatalf("decode: %v", err) }
+	if f.Category.Details.Description != "hello" {
+		t.Errorf("Description = %q", f.Category.Details.Description)
+	}
+}
+
+func TestDecodeSalvoChange_LiveInstanceListShape(t *testing.T) {
+	// Empty list — captured live; field is nil-or-empty.
+	wire := `<salvo_change type="INSTANCE_LIST" group="Salvo Group 1"><instances list=""/></salvo_change>`
+	f, err := Decode([]byte(wire))
+	if err != nil { t.Fatalf("decode: %v", err) }
+	s := f.Salvo
+	if s.Type != "INSTANCE_LIST" || s.Group != "Salvo Group 1" {
+		t.Errorf("outer attrs: %+v", s)
+	}
+	if len(s.Instances) != 0 {
+		t.Errorf("Instances = %v, want empty", s.Instances)
+	}
+	// Populated list (synthetic — no live capture yet, but pin the
+	// CSV-split shape so when we see it we know the parser handles it).
+	wire2 := `<salvo_change type="INSTANCE_LIST" group="G"><instances list="A,B,C"/></salvo_change>`
+	f2, _ := Decode([]byte(wire2))
+	if !equalSlice(f2.Salvo.Instances, []string{"A","B","C"}) {
+		t.Errorf("populated list: %v", f2.Salvo.Instances)
+	}
+}
+
+func TestDecodeSalvoChange_LiveInstanceDetailsShape(t *testing.T) {
+	wire := `<salvo_change type="INSTANCE_DETAILS" group="Salvo Group 1" instance="x"><details available="0"/></salvo_change>`
+	f, err := Decode([]byte(wire))
+	if err != nil { t.Fatalf("decode: %v", err) }
+	s := f.Salvo
+	if s.Type != "INSTANCE_DETAILS" || s.Instance != "x" {
+		t.Errorf("outer attrs: %+v", s)
+	}
+	if s.InstanceDetails == nil { t.Fatalf("InstanceDetails nil") }
+	if s.InstanceDetails.Available {
+		t.Errorf("Available = true, want false")
+	}
+}
