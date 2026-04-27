@@ -351,6 +351,8 @@ func cerebrumWalk(_ context.Context, args []string) error {
 
 func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) error {
 	var entries []codec.DeviceEntry
+	var snapshotEntries int
+	var snapshotTypes []string
 	done := make(chan struct{})
 	var once sync.Once
 	signalDone := func() { once.Do(func() { close(done) }) }
@@ -360,8 +362,15 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 		if f.Device == nil || f.Device.Type != "LIST" {
 			return
 		}
+		snapshotEntries = len(f.Device.Devices)
+		seen := map[string]bool{}
 		for _, e := range f.Device.Devices {
-			if deviceTypeFilter != "" && string(e.DeviceType) != deviceTypeFilter {
+			t := string(e.DeviceType)
+			if !seen[t] {
+				seen[t] = true
+				snapshotTypes = append(snapshotTypes, t)
+			}
+			if deviceTypeFilter != "" && t != deviceTypeFilter {
 				continue
 			}
 			entries = append(entries, e)
@@ -390,7 +399,16 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 		fmt.Printf("%-10s  %-30s  %s\n", d.DeviceType, name, d.IPAddress)
 	}
 	if len(entries) == 0 {
-		fmt.Fprintln(os.Stderr, "(no devices reported within 15s)")
+		switch {
+		case snapshotEntries == 0:
+			fmt.Fprintln(os.Stderr, "(server returned no DEVICE entries within 15s — check connectivity / licence)")
+		case deviceTypeFilter != "":
+			fmt.Fprintf(os.Stderr,
+				"(snapshot has %d entries but none of DEVICE_TYPE=%q; types seen: %s)\n",
+				snapshotEntries, deviceTypeFilter, strings.Join(snapshotTypes, ", "))
+		default:
+			fmt.Fprintf(os.Stderr, "(snapshot has %d entries — none matched the filter)\n", snapshotEntries)
+		}
 	}
 	return nil
 }
