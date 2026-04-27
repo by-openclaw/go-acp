@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"acp/internal/cerebrum-nb/codec"
@@ -231,20 +232,37 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		printEvent(f)
 	})
 
-	subCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	items := []codec.SubItem{
-		&codec.RoutingChange{Type: "ROUTE", DeviceName: "*", DeviceType: codec.DeviceType("*")},
-		&codec.RoutingChange{Type: "SRCE_LOCK", DeviceName: "*", DeviceType: codec.DeviceType("*")},
-		&codec.RoutingChange{Type: "DEST_LOCK", DeviceName: "*", DeviceType: codec.DeviceType("*")},
-		&codec.CategoryChange{Type: "CATEGORY_LIST"},
-		&codec.SalvoChange{Type: "GROUP_LIST"},
-		&codec.DeviceChange{Type: "LIST"},
+	// Submit one SUBSCRIBE per item, each with its own mtid, so a NACK
+	// on one entry does not invalidate the whole transaction. Live
+	// Cerebrum verified 2026-04-27: at least one ROUTING_CHANGE
+	// subscribe NACKs ONE_OR_MORE_EVENTS_INVALID on this server, while
+	// the snapshot subscribes (CATEGORY_LIST / GROUP_LIST / LIST)
+	// succeed.
+	type sub struct {
+		name string
+		item codec.SubItem
 	}
-	if err := sess.Subscribe(subCtx, items); err != nil {
-		return err
+	plan := []sub{
+		{"ROUTING_CHANGE TYPE=ROUTE", &codec.RoutingChange{Type: "ROUTE", DeviceName: "*", DeviceType: codec.DeviceType("*")}},
+		{"ROUTING_CHANGE TYPE=SRCE_LOCK", &codec.RoutingChange{Type: "SRCE_LOCK", DeviceName: "*", DeviceType: codec.DeviceType("*")}},
+		{"ROUTING_CHANGE TYPE=DEST_LOCK", &codec.RoutingChange{Type: "DEST_LOCK", DeviceName: "*", DeviceType: codec.DeviceType("*")}},
+		{"CATEGORY_CHANGE TYPE=CATEGORY_LIST", &codec.CategoryChange{Type: "CATEGORY_LIST"}},
+		{"SALVO_CHANGE TYPE=GROUP_LIST", &codec.SalvoChange{Type: "GROUP_LIST"}},
+		{"DEVICE_CHANGE TYPE=LIST", &codec.DeviceChange{Type: "LIST"}},
 	}
-	fmt.Fprintln(os.Stderr, "listening for routing/category/salvo/device events; Ctrl+C to stop")
+	var ok, fail int
+	for _, p := range plan {
+		subCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := sess.Subscribe(subCtx, []codec.SubItem{p.item})
+		cancel()
+		if err != nil {
+			slog.Warn("subscribe failed", "plugin", "cerebrum-nb", "item", p.name, "err", err)
+			fail++
+			continue
+		}
+		ok++
+	}
+	fmt.Fprintf(os.Stderr, "subscribed: %d ok, %d failed; listening for events; Ctrl+C to stop\n", ok, fail)
 	<-ctx.Done()
 	return nil
 }
@@ -274,25 +292,23 @@ func cerebrumWalk(_ context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 
-	devices := []*codec.DeviceChange{}
-	categories := []*codec.CategoryChange{}
-	salvoGroups := []*codec.SalvoChange{}
-	done := make(chan struct{})
-	timer := time.AfterFunc(cf.timeout, func() { close(done) })
+	var deviceEntries []codec.DeviceEntry
+	var categories []string
+	var salvoGroups []string
 
 	sess.OnEvent(codec.KindDeviceChange, func(f *codec.Frame) {
 		if f.Device != nil && f.Device.Type == "LIST" {
-			devices = append(devices, f.Device)
+			deviceEntries = append(deviceEntries, f.Device.Devices...)
 		}
 	})
 	sess.OnEvent(codec.KindCategoryChange, func(f *codec.Frame) {
-		if f.Category != nil {
-			categories = append(categories, f.Category)
+		if f.Category != nil && len(f.Category.Categories) > 0 {
+			categories = append(categories, f.Category.Categories...)
 		}
 	})
 	sess.OnEvent(codec.KindSalvoChange, func(f *codec.Frame) {
-		if f.Salvo != nil {
-			salvoGroups = append(salvoGroups, f.Salvo)
+		if f.Salvo != nil && len(f.Salvo.Groups) > 0 {
+			salvoGroups = append(salvoGroups, f.Salvo.Groups...)
 		}
 	})
 
@@ -306,20 +322,25 @@ func cerebrumWalk(_ context.Context, args []string) error {
 	if err := sess.Obtain(obCtx, items); err != nil {
 		return err
 	}
-	<-done
-	timer.Stop()
+	// All three snapshot events arrive before the ACK in practice, but
+	// hold a small drain window so the dispatcher fans out completely.
+	time.Sleep(200 * time.Millisecond)
 
-	fmt.Printf("devices     %d\n", len(devices))
-	for _, d := range devices {
-		fmt.Printf("  %-12s %-20s %s\n", d.DeviceType, d.DeviceName, d.IPAddress)
+	fmt.Printf("devices     %d\n", len(deviceEntries))
+	for _, d := range deviceEntries {
+		name := d.DeviceName
+		if name == "" {
+			name = "-"
+		}
+		fmt.Printf("  %-12s %-20s %s\n", d.DeviceType, name, d.IPAddress)
 	}
 	fmt.Printf("categories  %d\n", len(categories))
 	for _, c := range categories {
-		fmt.Printf("  %s\n", c.Category)
+		fmt.Printf("  %s\n", c)
 	}
 	fmt.Printf("salvos      %d\n", len(salvoGroups))
-	for _, s := range salvoGroups {
-		fmt.Printf("  %s/%s\n", s.Group, s.Instance)
+	for _, g := range salvoGroups {
+		fmt.Printf("  %s\n", g)
 	}
 	return nil
 }
@@ -329,17 +350,26 @@ func cerebrumWalk(_ context.Context, args []string) error {
 // ----------------------------------------------------------------------
 
 func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) error {
-	devices := []*codec.DeviceChange{}
+	var entries []codec.DeviceEntry
 	done := make(chan struct{})
-	timer := time.AfterFunc(15*time.Second, func() { close(done) })
+	var once sync.Once
+	signalDone := func() { once.Do(func() { close(done) }) }
+	timer := time.AfterFunc(15*time.Second, signalDone)
 
 	sess.OnEvent(codec.KindDeviceChange, func(f *codec.Frame) {
-		if f.Device != nil && f.Device.Type == "LIST" {
-			if deviceTypeFilter != "" && string(f.Device.DeviceType) != deviceTypeFilter {
-				return
-			}
-			devices = append(devices, f.Device)
+		if f.Device == nil || f.Device.Type != "LIST" {
+			return
 		}
+		for _, e := range f.Device.Devices {
+			if deviceTypeFilter != "" && string(e.DeviceType) != deviceTypeFilter {
+				continue
+			}
+			entries = append(entries, e)
+		}
+		// Server returns the whole list in one frame — the snapshot
+		// arrives in a single event, so we can finish as soon as we
+		// have it.
+		signalDone()
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -352,10 +382,14 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 	timer.Stop()
 
 	fmt.Printf("%-10s  %-30s  %s\n", "DEVICE_TYPE", "DEVICE_NAME", "IP_ADDRESS")
-	for _, d := range devices {
-		fmt.Printf("%-10s  %-30s  %s\n", d.DeviceType, d.DeviceName, d.IPAddress)
+	for _, d := range entries {
+		name := d.DeviceName
+		if name == "" {
+			name = "-"
+		}
+		fmt.Printf("%-10s  %-30s  %s\n", d.DeviceType, name, d.IPAddress)
 	}
-	if len(devices) == 0 {
+	if len(entries) == 0 {
 		fmt.Fprintln(os.Stderr, "(no devices reported within 15s)")
 	}
 	return nil
@@ -370,18 +404,53 @@ func printEvent(f *codec.Frame) {
 			rc.SrceID, rc.SrceName, rc.DestID, rc.DestName,
 			rc.LevelID, rc.LevelName)
 	case codec.KindCategoryChange:
-		fmt.Printf("[category] %s %s\n", f.Category.Type, f.Category.Category)
+		if f.Category.Type == "CATEGORY_LIST" {
+			fmt.Printf("[category] CATEGORY_LIST count=%d %s\n", len(f.Category.Categories), summarise(f.Category.Categories))
+		} else {
+			fmt.Printf("[category] %s %s\n", f.Category.Type, f.Category.Category)
+		}
 	case codec.KindSalvoChange:
-		fmt.Printf("[salvo] %s group=%s inst=%s\n", f.Salvo.Type, f.Salvo.Group, f.Salvo.Instance)
+		if f.Salvo.Type == "GROUP_LIST" {
+			fmt.Printf("[salvo] GROUP_LIST count=%d %s\n", len(f.Salvo.Groups), summarise(f.Salvo.Groups))
+		} else {
+			fmt.Printf("[salvo] %s group=%s inst=%s\n", f.Salvo.Type, f.Salvo.Group, f.Salvo.Instance)
+		}
 	case codec.KindDeviceChange:
-		fmt.Printf("[device] %-8s type=%s name=%s ip=%s sub=%s obj=%s\n",
-			f.Device.Type, f.Device.DeviceType, f.Device.DeviceName,
-			f.Device.IPAddress, f.Device.SubDevice, f.Device.Object)
+		if f.Device.Type == "LIST" {
+			fmt.Printf("[device] LIST count=%d\n", len(f.Device.Devices))
+			for _, d := range f.Device.Devices {
+				fmt.Printf("           %-10s %-20s %s\n", d.DeviceType, displayName(d.DeviceName), d.IPAddress)
+			}
+		} else {
+			fmt.Printf("[device] %-8s type=%s name=%s ip=%s sub=%s obj=%s\n",
+				f.Device.Type, f.Device.DeviceType, f.Device.DeviceName,
+				f.Device.IPAddress, f.Device.SubDevice, f.Device.Object)
+		}
 	case codec.KindDatastoreChange:
 		fmt.Printf("[datastore] %s type=%s\n", f.Datastore.Name, f.Datastore.Type)
 	default:
 		fmt.Printf("[%s] %s\n", f.Kind, f.Root.String())
 	}
+}
+
+// summarise renders the first 3 entries of a list inline; longer lists
+// get an ellipsis. Keeps the listen Info column readable when a server
+// returns 80+ categories.
+func summarise(items []string) string {
+	if len(items) == 0 {
+		return ""
+	}
+	if len(items) <= 3 {
+		return "[" + strings.Join(items, ", ") + "]"
+	}
+	return "[" + strings.Join(items[:3], ", ") + ", ...]"
+}
+
+func displayName(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }
 
 func boolFlag(b bool) string {

@@ -256,3 +256,107 @@ func TestParseElement_PreservesAttrValueCase(t *testing.T) {
 		t.Fatalf("value preserved: got %q", e.Attr("device_name"))
 	}
 }
+
+// ----------------------------------------------------------------------
+// Live-wire fixtures (Cerebrum 10.41.64.90:40008, 2026-04-27)
+// Verbatim payloads pulled from bin/cerebrum-nb-login-cmd.pcapng
+// frames 131 / 3357 / 3360. They surface the spec deviations the
+// initial parser missed: short IP= attribute, INSTANCE/DEVICE_TYPE
+// inner child, and comma-separated LIST attribute on CATEGORY /
+// GROUPS.
+// ----------------------------------------------------------------------
+
+func TestDecodeDeviceChange_LiveListShape(t *testing.T) {
+	wire := `<DEVICE_CHANGE TYPE="LIST">` +
+		`<DEVICE IP="10.41.63.131"><INSTANCE DEVICE_TYPE="DEVICE"/></DEVICE>` +
+		`<DEVICE IP="10.80.4.13"><INSTANCE DEVICE_TYPE="DEVICE"/></DEVICE>` +
+		`</DEVICE_CHANGE>`
+	f, err := Decode([]byte(wire))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if f.Kind != KindDeviceChange || f.Device == nil {
+		t.Fatalf("kind: %v device=%v", f.Kind, f.Device)
+	}
+	if f.Device.Type != "LIST" {
+		t.Errorf("Type = %q", f.Device.Type)
+	}
+	if got, want := len(f.Device.Devices), 2; got != want {
+		t.Fatalf("Devices len = %d, want %d", got, want)
+	}
+	d0 := f.Device.Devices[0]
+	if d0.IPAddress != "10.41.63.131" {
+		t.Errorf("Devices[0].IPAddress = %q (short IP= attr)", d0.IPAddress)
+	}
+	if d0.DeviceType != "DEVICE" {
+		t.Errorf("Devices[0].DeviceType = %q (should come from INSTANCE child)", d0.DeviceType)
+	}
+	if d0.DeviceName != "" {
+		t.Errorf("Devices[0].DeviceName = %q (server omits this attr)", d0.DeviceName)
+	}
+}
+
+func TestDecodeCategoryChange_LiveCategoryListShape(t *testing.T) {
+	wire := `<CATEGORY_CHANGE TYPE="CATEGORY_LIST"><CATEGORY LIST="DST_SI_FEDERATED,DST_INTERPHONIE,SRC_PLAYER"/></CATEGORY_CHANGE>`
+	f, err := Decode([]byte(wire))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if f.Kind != KindCategoryChange || f.Category == nil {
+		t.Fatalf("kind: %v cat=%v", f.Kind, f.Category)
+	}
+	if f.Category.Type != "CATEGORY_LIST" {
+		t.Errorf("Type = %q", f.Category.Type)
+	}
+	want := []string{"DST_SI_FEDERATED", "DST_INTERPHONIE", "SRC_PLAYER"}
+	if got := f.Category.Categories; !equalSlice(got, want) {
+		t.Errorf("Categories = %v, want %v", got, want)
+	}
+}
+
+func TestDecodeSalvoChange_LiveGroupListShape(t *testing.T) {
+	wire := `<SALVO_CHANGE TYPE="GROUP_LIST"><GROUPS LIST="Salvo Group 1,Salvo Group 2"/></SALVO_CHANGE>`
+	f, err := Decode([]byte(wire))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if f.Kind != KindSalvoChange || f.Salvo == nil {
+		t.Fatalf("kind: %v salvo=%v", f.Kind, f.Salvo)
+	}
+	if f.Salvo.Type != "GROUP_LIST" {
+		t.Errorf("Type = %q", f.Salvo.Type)
+	}
+	want := []string{"Salvo Group 1", "Salvo Group 2"}
+	if got := f.Salvo.Groups; !equalSlice(got, want) {
+		t.Errorf("Groups = %v, want %v", got, want)
+	}
+}
+
+func TestDecodeDeviceChange_AcceptsIPAddressLongForm(t *testing.T) {
+	// Spec wording uses IP_ADDRESS; we still accept it on the chance
+	// some firmware revision returns the long form.
+	wire := `<DEVICE_CHANGE TYPE="LIST"><DEVICE IP_ADDRESS="10.0.0.5" DEVICE_TYPE="DEVICE" DEVICE_NAME="RTR-A"/></DEVICE_CHANGE>`
+	f, err := Decode([]byte(wire))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got, want := len(f.Device.Devices), 1; got != want {
+		t.Fatalf("Devices len = %d, want %d", got, want)
+	}
+	d := f.Device.Devices[0]
+	if d.IPAddress != "10.0.0.5" || d.DeviceType != "DEVICE" || d.DeviceName != "RTR-A" {
+		t.Errorf("entry = %+v", d)
+	}
+}
+
+func equalSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}

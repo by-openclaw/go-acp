@@ -52,6 +52,12 @@ func (r *RoutingChange) encodeSubItem(b *strings.Builder) {
 type CategoryChange struct {
 	Type     string
 	Category string
+
+	// Categories is populated on RX for TYPE=CATEGORY_LIST. Live
+	// Cerebrum returns one inner <CATEGORY LIST="A,B,C,..."/> with a
+	// comma-separated list (verified 2026-04-27). We split into
+	// individual entries here for ergonomic iteration.
+	Categories []string
 }
 
 func (c *CategoryChange) encodeSubItem(b *strings.Builder) {
@@ -71,6 +77,11 @@ type SalvoChange struct {
 	Type     string
 	Group    string
 	Instance string
+
+	// Groups is populated on RX for TYPE=GROUP_LIST. Live Cerebrum
+	// returns one inner <GROUPS LIST="..."/> with a comma-separated
+	// list (verified 2026-04-27).
+	Groups []string
 }
 
 func (s *SalvoChange) encodeSubItem(b *strings.Builder) {
@@ -93,6 +104,20 @@ type DeviceChange struct {
 	DeviceName string
 	SubDevice  string
 	Object     string
+
+	// Devices is populated on RX for TYPE=LIST. Live Cerebrum nests
+	// one <DEVICE IP="..."> per entry, each containing an
+	// <INSTANCE DEVICE_TYPE="..."/> child (verified 2026-04-27 — the
+	// outer attribute name is the short "IP", not the spec's
+	// "IP_ADDRESS"). We accept both spellings.
+	Devices []DeviceEntry
+}
+
+// DeviceEntry is one row of a TYPE=LIST DEVICE_CHANGE response.
+type DeviceEntry struct {
+	IPAddress  string
+	DeviceType DeviceType
+	DeviceName string
 }
 
 func (d *DeviceChange) encodeSubItem(b *strings.Builder) {

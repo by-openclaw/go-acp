@@ -209,29 +209,90 @@ func parseRoutingChange(e *Element) *RoutingChange {
 }
 
 func parseCategoryChange(e *Element) *CategoryChange {
-	return &CategoryChange{
+	c := &CategoryChange{
 		Type:     e.Attr("type"),
 		Category: e.Attr("category"),
 	}
+	// TYPE=CATEGORY_LIST: server emits one inner <CATEGORY LIST="A,B,C"/>
+	// with a comma-separated list (live wire 2026-04-27).
+	if cat := e.Child("category"); cat != nil {
+		if list := cat.Attr("list"); list != "" {
+			c.Categories = splitCSV(list)
+		}
+	}
+	return c
 }
 
 func parseSalvoChange(e *Element) *SalvoChange {
-	return &SalvoChange{
+	s := &SalvoChange{
 		Type:     e.Attr("type"),
 		Group:    e.Attr("group"),
 		Instance: e.Attr("instance"),
 	}
+	// TYPE=GROUP_LIST: server emits one inner <GROUPS LIST="..."/>
+	// (live wire 2026-04-27).
+	if grp := e.Child("groups"); grp != nil {
+		if list := grp.Attr("list"); list != "" {
+			s.Groups = splitCSV(list)
+		}
+	}
+	return s
 }
 
 func parseDeviceChange(e *Element) *DeviceChange {
-	return &DeviceChange{
+	d := &DeviceChange{
 		Type:       e.Attr("type"),
-		IPAddress:  e.Attr("ip_address"),
+		IPAddress:  firstNonEmpty(e.Attr("ip_address"), e.Attr("ip")),
 		DeviceType: DeviceType(e.Attr("device_type")),
 		DeviceName: e.Attr("device_name"),
 		SubDevice:  e.Attr("sub_device"),
 		Object:     e.Attr("object"),
 	}
+	// TYPE=LIST: server emits one <DEVICE IP="..."> per entry, with
+	// an inner <INSTANCE DEVICE_TYPE="..."/>. The outer attribute is
+	// "IP" (live), not the spec's "IP_ADDRESS"; we accept both.
+	for _, child := range e.ChildrenNamed("device") {
+		entry := DeviceEntry{
+			IPAddress:  firstNonEmpty(child.Attr("ip_address"), child.Attr("ip")),
+			DeviceType: DeviceType(child.Attr("device_type")),
+			DeviceName: child.Attr("device_name"),
+		}
+		// DEVICE_TYPE may live on an inner <INSTANCE> child.
+		if entry.DeviceType == "" {
+			if inst := child.Child("instance"); inst != nil {
+				if t := inst.Attr("device_type"); t != "" {
+					entry.DeviceType = DeviceType(t)
+				}
+			}
+		}
+		d.Devices = append(d.Devices, entry)
+	}
+	return d
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func splitCSV(s string) []string {
+	if s == "" {
+		return nil
+	}
+	out := make([]string, 0, 8)
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == ',' {
+			out = append(out, s[start:i])
+			start = i + 1
+		}
+	}
+	out = append(out, s[start:])
+	return out
 }
 
 func parseDatastoreChange(e *Element) *DatastoreChange {
