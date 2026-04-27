@@ -299,21 +299,27 @@ func parseDeviceChange(e *Element) *DeviceChange {
 		Object:     e.Attr("object"),
 	}
 	// TYPE=LIST: server emits one <DEVICE IP="..."> per entry, with
-	// an inner <INSTANCE DEVICE_TYPE="..."/>. The outer attribute is
-	// "IP" (live), not the spec's "IP_ADDRESS"; we accept both.
+	// one or more inner <INSTANCE DEVICE_TYPE="..."/> children — one
+	// per class the device belongs to (Device / Router / SNMP per
+	// spec §3.1). The outer attribute is "IP" (live) or the spec's
+	// "IP_ADDRESS"; we accept both.
 	for _, child := range e.ChildrenNamed("device") {
 		entry := DeviceEntry{
 			IPAddress:  firstNonEmpty(child.Attr("ip_address"), child.Attr("ip")),
 			DeviceType: DeviceType(child.Attr("device_type")),
 			DeviceName: child.Attr("device_name"),
 		}
-		// DEVICE_TYPE may live on an inner <INSTANCE> child.
-		if entry.DeviceType == "" {
-			if inst := child.Child("instance"); inst != nil {
-				if t := inst.Attr("device_type"); t != "" {
-					entry.DeviceType = DeviceType(t)
-				}
+		// Walk every <INSTANCE> child — multiple classes per device
+		// surface as multiple instances (verified against reference
+		// driver Device.ParseInstances).
+		for _, inst := range child.ChildrenNamed("instance") {
+			if t := inst.Attr("device_type"); t != "" {
+				entry.DeviceTypes = append(entry.DeviceTypes, DeviceType(t))
 			}
+		}
+		// Backwards-compat: DeviceType is the first instance class.
+		if entry.DeviceType == "" && len(entry.DeviceTypes) > 0 {
+			entry.DeviceType = entry.DeviceTypes[0]
 		}
 		d.Devices = append(d.Devices, entry)
 	}
@@ -353,12 +359,13 @@ func parseDeviceChange(e *Element) *DeviceChange {
 				DeviceType: DeviceType(child.Attr("device_type")),
 				DeviceName: child.Attr("device_name"),
 			}
-			if entry.DeviceType == "" {
-				if inst := child.Child("instance"); inst != nil {
-					if t := inst.Attr("device_type"); t != "" {
-						entry.DeviceType = DeviceType(t)
-					}
+			for _, inst := range child.ChildrenNamed("instance") {
+				if t := inst.Attr("device_type"); t != "" {
+					entry.DeviceTypes = append(entry.DeviceTypes, DeviceType(t))
 				}
+			}
+			if entry.DeviceType == "" && len(entry.DeviceTypes) > 0 {
+				entry.DeviceType = entry.DeviceTypes[0]
 			}
 			d.SubDevices = append(d.SubDevices, entry)
 		}

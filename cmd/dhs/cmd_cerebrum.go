@@ -793,18 +793,31 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 		if f.Device == nil || f.Device.Type != "LIST" {
 			return
 		}
-		snapshotEntries = len(f.Device.Devices)
+		// Each <DEVICE> may carry multiple <INSTANCE DEVICE_TYPE=…/>
+		// children (one per class — Device / Router / SNMP). Flatten
+		// to one row per (IP × class).
 		seen := map[string]bool{}
 		for _, e := range f.Device.Devices {
-			t := string(e.DeviceType)
-			if !seen[t] {
-				seen[t] = true
-				snapshotTypes = append(snapshotTypes, t)
+			classes := e.DeviceTypes
+			if len(classes) == 0 {
+				classes = []codec.DeviceType{e.DeviceType}
 			}
-			if deviceTypeFilter != "" && t != deviceTypeFilter {
-				continue
+			for _, t := range classes {
+				snapshotEntries++
+				ts := string(t)
+				if !seen[ts] {
+					seen[ts] = true
+					snapshotTypes = append(snapshotTypes, ts)
+				}
+				if deviceTypeFilter != "" && ts != deviceTypeFilter {
+					continue
+				}
+				entries = append(entries, codec.DeviceEntry{
+					IPAddress:  e.IPAddress,
+					DeviceType: t,
+					DeviceName: e.DeviceName,
+				})
 			}
-			entries = append(entries, e)
 		}
 		// Server returns the whole list in one frame — the snapshot
 		// arrives in a single event, so we can finish as soon as we

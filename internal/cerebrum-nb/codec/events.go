@@ -184,10 +184,19 @@ type DeviceObjectValue struct {
 
 // DeviceEntry is one row of a TYPE=LIST DEVICE_CHANGE response (or one
 // nested <sub_devices><device …/></sub_devices> entry under DETAILS).
+//
+// Per spec §3.1, Cerebrum classifies every device into one or more of
+// 'Device' / 'Router' / 'SNMP'. The wire surfaces each class as a
+// separate <INSTANCE DEVICE_TYPE="..."/> child of <DEVICE> (live wire
+// 2026-04-27). DeviceTypes preserves every instance the server emitted,
+// in order. DeviceType is kept for backwards compat — it returns the
+// first non-empty class so existing callers that only want "primary
+// class" still work.
 type DeviceEntry struct {
-	IPAddress  string
-	DeviceType DeviceType
-	DeviceName string
+	IPAddress   string
+	DeviceType  DeviceType   // first instance — convenience accessor
+	DeviceTypes []DeviceType // every <INSTANCE DEVICE_TYPE="..."/> emitted by the server
+	DeviceName  string
 }
 
 // DeviceDetails is the <details> child of a DEVICE_CHANGE TYPE=DETAILS

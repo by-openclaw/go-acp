@@ -541,3 +541,41 @@ func TestDecodeCategoryChange_LiveItemsPositional(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeDeviceChange_MultiInstancePerDevice(t *testing.T) {
+	// Per spec §3.1, a device can belong to multiple classes
+	// (Device / Router / SNMP). The wire surfaces each as a separate
+	// <INSTANCE DEVICE_TYPE="..."/> child of <DEVICE>. The reference
+	// driver Device.ParseInstances expects this; our prior parser
+	// dropped everything after the first instance.
+	wire := `<DEVICE_CHANGE TYPE="LIST">` +
+		`<DEVICE IP="10.0.0.1"><INSTANCE DEVICE_TYPE="DEVICE"/><INSTANCE DEVICE_TYPE="ROUTER"/></DEVICE>` +
+		`<DEVICE IP="10.0.0.2"><INSTANCE DEVICE_TYPE="DEVICE"/><INSTANCE DEVICE_TYPE="SNMP"/></DEVICE>` +
+		`<DEVICE IP="10.0.0.3"><INSTANCE DEVICE_TYPE="DEVICE"/></DEVICE>` +
+		`</DEVICE_CHANGE>`
+	f, err := Decode([]byte(wire))
+	if err != nil { t.Fatalf("decode: %v", err) }
+	if got, want := len(f.Device.Devices), 3; got != want {
+		t.Fatalf("entries: got %d want %d", got, want)
+	}
+	wantClasses := [][]DeviceType{
+		{"DEVICE", "ROUTER"},
+		{"DEVICE", "SNMP"},
+		{"DEVICE"},
+	}
+	for i, want := range wantClasses {
+		got := f.Device.Devices[i].DeviceTypes
+		if len(got) != len(want) {
+			t.Fatalf("entry %d: got %v want %v", i, got, want)
+		}
+		for j, w := range want {
+			if got[j] != w {
+				t.Errorf("entry %d class %d: got %q want %q", i, j, got[j], w)
+			}
+		}
+	}
+	// Backwards-compat: DeviceType returns the first instance.
+	if f.Device.Devices[0].DeviceType != "DEVICE" {
+		t.Errorf("first instance accessor: %q", f.Device.Devices[0].DeviceType)
+	}
+}
