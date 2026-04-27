@@ -231,6 +231,31 @@ func parseCategoryChange(e *Element) *CategoryChange {
 			Description: firstNonEmpty(det.Attr("description"), det.Attr("descsription")),
 		}
 	}
+	// <items> carries positional <ITEM_N TYPE="..." VALUE="..."/>
+	// children. We collect non-BLANK items and preserve the index so
+	// callers can rebuild the panel-grid layout. Live capture
+	// 2026-04-27.
+	if items := e.Child("items"); items != nil && c.Details != nil {
+		for _, child := range items.Children {
+			n, ok := strings.CutPrefix(child.Name, "item_")
+			if !ok {
+				continue
+			}
+			idx, err := strconv.Atoi(n)
+			if err != nil {
+				continue
+			}
+			t := child.Attr("type")
+			if t == "BLANK" {
+				continue
+			}
+			c.Details.Items = append(c.Details.Items, CategoryItem{
+				Index: idx,
+				Type:  t,
+				Value: child.Attr("value"),
+			})
+		}
+	}
 	return c
 }
 

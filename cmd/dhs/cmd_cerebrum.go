@@ -517,6 +517,12 @@ func cerebrumCategoryDetails(_ context.Context, args []string) error {
 		if c.Details.Description != "" {
 			fmt.Printf("description  %s\n", c.Details.Description)
 		}
+		if len(c.Details.Items) > 0 {
+			fmt.Printf("items        %d (BLANK slots dropped)\n", len(c.Details.Items))
+			for _, it := range c.Details.Items {
+				fmt.Printf("  %3d  %-12s %s\n", it.Index, it.Type, it.Value)
+			}
+		}
 	}
 	return nil
 }

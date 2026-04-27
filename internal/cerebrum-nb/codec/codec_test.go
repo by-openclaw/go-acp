@@ -503,3 +503,41 @@ func TestDecodeSalvoChange_LiveInstanceDetailsShape(t *testing.T) {
 		t.Errorf("Available = true, want false")
 	}
 }
+
+func TestDecodeCategoryChange_LiveItemsPositional(t *testing.T) {
+	// Live SOURCES capture 2026-04-27 (slots 1..25 with BLANKs interleaved).
+	wire := `<category_change type="CATEGORY_DETAILS" category="SOURCES">` +
+		`<details available="1" descsription="" label="SOURCES"/>` +
+		`<items>` +
+		`<item_1 type="CATEGORY" value="SRC_SI_GATEWAYS"/>` +
+		`<item_2 type="CATEGORY" value="SRC_SI_INGEST_SRV"/>` +
+		`<item_10 type="SOURCE" value="465"/>` +
+		`<item_11 type="SOURCE" value="466"/>` +
+		`<item_12 type="BLANK" value=""/>` +
+		`<item_17 type="CATEGORY" value="SRC-TEST-YOB"/>` +
+		`</items>` +
+		`</category_change>`
+	f, err := Decode([]byte(wire))
+	if err != nil { t.Fatalf("decode: %v", err) }
+	d := f.Category.Details
+	if d == nil { t.Fatalf("Details nil") }
+	if d.Label != "SOURCES" || !d.Available {
+		t.Errorf("details: %+v", d)
+	}
+	// BLANK dropped, 5 non-blank items remain in their original positions.
+	want := []CategoryItem{
+		{Index: 1,  Type: "CATEGORY", Value: "SRC_SI_GATEWAYS"},
+		{Index: 2,  Type: "CATEGORY", Value: "SRC_SI_INGEST_SRV"},
+		{Index: 10, Type: "SOURCE",   Value: "465"},
+		{Index: 11, Type: "SOURCE",   Value: "466"},
+		{Index: 17, Type: "CATEGORY", Value: "SRC-TEST-YOB"},
+	}
+	if len(d.Items) != len(want) {
+		t.Fatalf("Items len = %d, want %d: %+v", len(d.Items), len(want), d.Items)
+	}
+	for i, w := range want {
+		if d.Items[i] != w {
+			t.Errorf("Items[%d] = %+v, want %+v", i, d.Items[i], w)
+		}
+	}
+}

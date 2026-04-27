@@ -71,6 +71,23 @@ type CategoryDetailsInfo struct {
 	Label       string
 	Available   bool
 	Description string
+
+	// Items is the parsed <items> sibling of <details> — positional
+	// slots in the Cerebrum panel grid. Each slot has a TYPE
+	// (CATEGORY / SOURCE / DESTINATION / BLANK) and a VALUE; BLANK
+	// slots are dropped here, callers iterate Items by Index when
+	// they need positional fidelity.
+	//
+	// Element names on the wire are <ITEM_N …/> with N starting at 1.
+	// Live capture 2026-04-27 against real Cerebrum.
+	Items []CategoryItem
+}
+
+// CategoryItem is one positional slot of a CATEGORY_DETAILS items grid.
+type CategoryItem struct {
+	Index int
+	Type  string // "CATEGORY" | "SOURCE" | "DESTINATION" | "BLANK"
+	Value string
 }
 
 func (c *CategoryChange) encodeSubItem(b *strings.Builder) {
