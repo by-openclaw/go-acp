@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -393,11 +392,9 @@ func boolFlag(b bool) string {
 }
 
 func currentAPIVer(sess *cerebrum.Session) string {
-	host, _ := sess.RemoteHostPort()
-	major := sess.APIVersionMajor()
-	if major == 0 {
+	v := sess.APIVersion()
+	if v == "" {
 		return "(unknown)"
 	}
-	_ = host
-	return strconv.Itoa(major)
+	return v
 }

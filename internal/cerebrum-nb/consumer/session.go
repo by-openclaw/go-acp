@@ -123,8 +123,18 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, useTLS,
 // RemoteHostPort returns the (host, port) the session is talking to.
 func (s *Session) RemoteHostPort() (string, int) { return s.host, s.port }
 
+// APIVersion returns the raw login_reply api_ver string (e.g. "0.13").
+// Empty when login has not completed.
+func (s *Session) APIVersion() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.apiVer
+}
+
 // APIVersionMajor returns the integer major component of the
 // login_reply api_ver — useful as protocol.DeviceInfo.ProtocolVersion.
+// Note: Cerebrum currently ships api_ver="0.x"; major can legitimately
+// be 0. Use APIVersion() for display.
 func (s *Session) APIVersionMajor() int {
 	s.mu.Lock()
 	v := s.apiVer
