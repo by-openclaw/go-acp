@@ -344,31 +344,45 @@ func cerebrumDeviceDetails(_ context.Context, args []string) error {
 	}
 
 	d := got.Device
-	addr := d.IPAddress
-	if d.DeviceName != "" {
-		addr = fmt.Sprintf("%s (%s)", addr, d.DeviceName)
-	}
-	fmt.Printf("device       %s\n", addr)
+	fmt.Printf("device       %s\n", d.IPAddress)
 	fmt.Printf("device_type  %s\n", d.DeviceType)
+	if d.Details != nil {
+		if d.Details.Name != "" {
+			fmt.Printf("name         %s\n", d.Details.Name)
+		}
+		if d.Details.VendorType != "" {
+			fmt.Printf("vendor       %s\n", d.Details.VendorType)
+		}
+		if d.Details.IP1 != "" || d.Details.IP2 != "" {
+			fmt.Printf("control      ip1=%s ip2=%s\n", d.Details.IP1, displayDash(d.Details.IP2))
+		}
+	}
+	if d.Service != nil && (d.Service.IP1 != "" || d.Service.IP2 != "") {
+		fmt.Printf("service      ip1=%s ip2=%s\n", d.Service.IP1, displayDash(d.Service.IP2))
+	}
+	if d.Connection != nil {
+		fmt.Printf("connection   primary=%q secondary=%q\n", d.Connection.PrimaryState, d.Connection.SecondaryState)
+	}
 	if d.SubDevice != "" {
 		fmt.Printf("sub_device   %s\n", d.SubDevice)
 	}
 	if d.Object != "" {
 		fmt.Printf("object       %s\n", d.Object)
 	}
-	if len(d.Devices) > 0 {
-		fmt.Printf("nested       %d\n", len(d.Devices))
-		for _, e := range d.Devices {
+	if len(d.SubDevices) > 0 {
+		fmt.Printf("sub_devices  %d\n", len(d.SubDevices))
+		for _, e := range d.SubDevices {
 			fmt.Printf("  %-12s %-20s %s\n", e.DeviceType, displayName(e.DeviceName), e.IPAddress)
 		}
 	}
-	// First-cut: also print the raw XML so we can see the live shape and
-	// refine the structured decoder for any sub-device / object fields the
-	// current parser drops on the floor.
-	fmt.Println()
-	fmt.Println("--- raw response ---")
-	fmt.Println(got.Root.String())
 	return nil
+}
+
+func displayDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }
 
 // extractDeviceDetailsFlags splits the device-details argv into the

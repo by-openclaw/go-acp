@@ -267,6 +267,44 @@ func parseDeviceChange(e *Element) *DeviceChange {
 		}
 		d.Devices = append(d.Devices, entry)
 	}
+	// TYPE=DETAILS: nested vendor metadata (verified 2026-04-27).
+	if det := e.Child("details"); det != nil {
+		d.Details = &DeviceDetails{
+			IP1:        det.Attr("ip1"),
+			IP2:        det.Attr("ip2"),
+			Name:       det.Attr("name"),
+			VendorType: det.Attr("type"),
+		}
+	}
+	if svc := e.Child("service"); svc != nil {
+		d.Service = &DeviceService{
+			IP1: svc.Attr("ip1"),
+			IP2: svc.Attr("ip2"),
+		}
+	}
+	if conn := e.Child("connection"); conn != nil {
+		d.Connection = &DeviceConnection{
+			PrimaryState:   conn.Attr("primary_state"),
+			SecondaryState: conn.Attr("secondary_state"),
+		}
+	}
+	if subs := e.Child("sub_devices"); subs != nil {
+		for _, child := range subs.ChildrenNamed("device") {
+			entry := DeviceEntry{
+				IPAddress:  firstNonEmpty(child.Attr("ip_address"), child.Attr("ip")),
+				DeviceType: DeviceType(child.Attr("device_type")),
+				DeviceName: child.Attr("device_name"),
+			}
+			if entry.DeviceType == "" {
+				if inst := child.Child("instance"); inst != nil {
+					if t := inst.Attr("device_type"); t != "" {
+						entry.DeviceType = DeviceType(t)
+					}
+				}
+			}
+			d.SubDevices = append(d.SubDevices, entry)
+		}
+	}
 	return d
 }
 

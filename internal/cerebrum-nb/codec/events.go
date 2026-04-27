@@ -111,13 +111,49 @@ type DeviceChange struct {
 	// outer attribute name is the short "IP", not the spec's
 	// "IP_ADDRESS"). We accept both spellings.
 	Devices []DeviceEntry
+
+	// Details / Service / Connection / SubDevices populate on RX for
+	// TYPE=DETAILS (verified 2026-04-27 against a Lawo Powercore peer
+	// at 10.107.30.100). Spec keys.md §5.4 names only ip_address +
+	// device_type as TX attrs; the RX shape carries vendor metadata
+	// in nested elements.
+	Details    *DeviceDetails
+	Service    *DeviceService
+	Connection *DeviceConnection
+	SubDevices []DeviceEntry
 }
 
-// DeviceEntry is one row of a TYPE=LIST DEVICE_CHANGE response.
+// DeviceEntry is one row of a TYPE=LIST DEVICE_CHANGE response (or one
+// nested <sub_devices><device …/></sub_devices> entry under DETAILS).
 type DeviceEntry struct {
 	IPAddress  string
 	DeviceType DeviceType
 	DeviceName string
+}
+
+// DeviceDetails is the <details> child of a DEVICE_CHANGE TYPE=DETAILS
+// response. ip1/ip2 carry the primary / secondary control-network IPs
+// (ST 2022-7 dual-network); VendorType is the device-model identifier
+// distinct from the outer device_type enum (e.g. "Powercore").
+type DeviceDetails struct {
+	IP1, IP2   string
+	Name       string
+	VendorType string
+}
+
+// DeviceService is the <service> child — the data-plane interfaces
+// the device uses for its essence streams.
+type DeviceService struct {
+	IP1, IP2 string
+}
+
+// DeviceConnection is the <connection> child — current health of the
+// primary / secondary control-network connections, returned as
+// human-readable strings (e.g. "Connection Active",
+// "Connection Not Configured").
+type DeviceConnection struct {
+	PrimaryState   string
+	SecondaryState string
 }
 
 func (d *DeviceChange) encodeSubItem(b *strings.Builder) {

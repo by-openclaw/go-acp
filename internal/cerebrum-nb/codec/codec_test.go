@@ -360,3 +360,62 @@ func equalSlice(a, b []string) bool {
 	}
 	return true
 }
+
+func TestDecodeDeviceChange_LiveDetailsShape(t *testing.T) {
+	// Verbatim payload captured 2026-04-27 from real Cerebrum
+	// 10.41.64.90:40008 (bin/cerebrum-nb-device-details (1).pcapng)
+	// for device 10.107.30.100 (a Lawo Powercore 2M1).
+	wire := `<device_change type="DETAILS" ip_address="10.107.30.100" device_type="DEVICE">` +
+		`<details ip1="10.107.30.100" ip2="" name="Powercore 2M1" type="Powercore"/>` +
+		`<service ip1="10.41.69.61" ip2="10.41.69.62"/>` +
+		`<connection primary_state="Connection Active" secondary_state="Connection Not Configured"/>` +
+		`<sub_devices/>` +
+		`</device_change>`
+	f, err := Decode([]byte(wire))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if f.Kind != KindDeviceChange || f.Device == nil {
+		t.Fatalf("kind: %v device=%v", f.Kind, f.Device)
+	}
+	d := f.Device
+	if d.Type != "DETAILS" {
+		t.Errorf("Type = %q", d.Type)
+	}
+	if d.IPAddress != "10.107.30.100" {
+		t.Errorf("IPAddress = %q", d.IPAddress)
+	}
+	if d.DeviceType != "DEVICE" {
+		t.Errorf("DeviceType = %q", d.DeviceType)
+	}
+	if d.Details == nil {
+		t.Fatalf("Details nil")
+	}
+	if d.Details.IP1 != "10.107.30.100" || d.Details.IP2 != "" {
+		t.Errorf("Details ip1/ip2 = %q/%q", d.Details.IP1, d.Details.IP2)
+	}
+	if d.Details.Name != "Powercore 2M1" {
+		t.Errorf("Details.Name = %q", d.Details.Name)
+	}
+	if d.Details.VendorType != "Powercore" {
+		t.Errorf("Details.VendorType = %q", d.Details.VendorType)
+	}
+	if d.Service == nil {
+		t.Fatalf("Service nil")
+	}
+	if d.Service.IP1 != "10.41.69.61" || d.Service.IP2 != "10.41.69.62" {
+		t.Errorf("Service ip1/ip2 = %q/%q", d.Service.IP1, d.Service.IP2)
+	}
+	if d.Connection == nil {
+		t.Fatalf("Connection nil")
+	}
+	if d.Connection.PrimaryState != "Connection Active" {
+		t.Errorf("PrimaryState = %q", d.Connection.PrimaryState)
+	}
+	if d.Connection.SecondaryState != "Connection Not Configured" {
+		t.Errorf("SecondaryState = %q", d.Connection.SecondaryState)
+	}
+	if len(d.SubDevices) != 0 {
+		t.Errorf("SubDevices = %v, want empty (sub_devices was empty in capture)", d.SubDevices)
+	}
+}
