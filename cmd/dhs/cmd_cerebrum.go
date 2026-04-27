@@ -147,7 +147,7 @@ VERBS — each issues exactly ONE OBTAIN/SUBSCRIBE so you can pcap it
   ---  ----------------------  ----------------------------------------
   01   connect                 LOGIN + POLL (no OBTAIN)
   02   list-devices            DEVICE_CHANGE TYPE=LIST
-  03   list-routers            DEVICE_CHANGE TYPE=LIST (filter Router)
+  03   list-routers            DEVICE_CHANGE TYPE=LIST + sentinel synth (route-master always row 0; ROUTER-class rows from wire)
   04   list-categories         CATEGORY_CHANGE TYPE=CATEGORY_LIST
   05   list-salvo-groups       SALVO_CHANGE TYPE=GROUP_LIST
   06   walk                    LIST + CATEGORY_LIST + GROUP_LIST in 1 OBTAIN
@@ -303,13 +303,128 @@ func cerebrumListDevices(_ context.Context, args []string) error {
 	return obtainAndPrintDeviceList(sess, "")
 }
 
+// routerRow is one row of the list-routers display table. Two roles:
+// "aggregator" (the route-master sentinel `0.0.0.0/ROUTER`, always
+// printed first) and "physical" (a real ROUTER-class device returned
+// by DEVICE_CHANGE LIST).
+type routerRow struct {
+	IPAddress  string
+	DeviceType string
+	DeviceName string
+	Role       string
+}
+
+// cerebrumListRouters issues a DEVICE_CHANGE TYPE=LIST OBTAIN, filters
+// for ROUTER-class entries (case-insensitive base class per spec §3.1
+// — `ROUTER`, `Router`, `router`, `ROUTER:N` all qualify), and prints
+// a 4-column table that always opens with the central route-master
+// sentinel (`0.0.0.0/ROUTER`, role `aggregator`) — the addressing
+// target for cross-router routing actions per spec §4.1 and the
+// reference-driver convention. Physical ROUTER-class rows (e.g. an
+// SW-P-08 router added to the Cerebrum config) follow with role
+// `physical` (or `physical:N` for sub-device suffixes).
+//
+// On a Cerebrum with no physical routers configured the table still
+// has the route-master row — never empty.
 func cerebrumListRouters(_ context.Context, args []string) error {
 	p, sess, _, _, err := connectAndLogin(args, "list-routers")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
-	return obtainAndPrintDeviceList(sess, "Router")
+
+	var snapshot []codec.DeviceEntry
+	done := make(chan struct{})
+	var once sync.Once
+	signalDone := func() { once.Do(func() { close(done) }) }
+	timer := time.AfterFunc(15*time.Second, signalDone)
+
+	sess.OnEvent(codec.KindDeviceChange, func(f *codec.Frame) {
+		if f.Device == nil || f.Device.Type != "LIST" {
+			return
+		}
+		snapshot = append(snapshot, f.Device.Devices...)
+		signalDone()
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := sess.Obtain(ctx, []codec.SubItem{&codec.DeviceChange{Type: "LIST"}}); err != nil {
+		return err
+	}
+	<-done
+	timer.Stop()
+
+	rows := cerebrumRouterRowsFromList(snapshot)
+	fmt.Printf("%-12s  %-30s  %-16s  %s\n", "DEVICE_TYPE", "DEVICE_NAME", "IP_ADDRESS", "ROLE")
+	for _, r := range rows {
+		name := r.DeviceName
+		if name == "" {
+			name = "-"
+		}
+		fmt.Printf("%-12s  %-30s  %-16s  %s\n", r.DeviceType, name, r.IPAddress, r.Role)
+	}
+	return nil
+}
+
+// cerebrumRouterRowsFromList builds the list-routers table rows from a
+// DEVICE_CHANGE TYPE=LIST snapshot. The route-master sentinel
+// (`0.0.0.0/ROUTER`, role `aggregator`) is always row 0 — even when
+// the snapshot has no ROUTER-class entries — because every Cerebrum
+// installation has the central route-master regardless of which
+// physical routers (if any) are configured.
+//
+// Filtering rules from spec §3.1:
+//   - DEVICE_TYPE values are uppercase enumerals (`ROUTER`, `SNMP`,
+//     `DEVICE`); we still match case-insensitively to be tolerant of
+//     servers that emit mixed case.
+//   - Sub-device suffix `:N` is allowed (e.g. `ROUTER:2` for the
+//     second matrix on a multi-matrix router). Filter on the BASE
+//     class only; carry the full string through to the output.
+//
+// Lifted as a pure helper so unit tests can cover all filter cases
+// without spinning up a session.
+func cerebrumRouterRowsFromList(devices []codec.DeviceEntry) []routerRow {
+	rows := []routerRow{
+		{
+			IPAddress:  "0.0.0.0",
+			DeviceType: "ROUTER",
+			DeviceName: "(route-master)",
+			Role:       "aggregator",
+		},
+	}
+	for _, e := range devices {
+		classes := e.DeviceTypes
+		if len(classes) == 0 {
+			classes = []codec.DeviceType{e.DeviceType}
+		}
+		for _, t := range classes {
+			ts := string(t)
+			if ts == "" {
+				continue
+			}
+			base := ts
+			suffix := ""
+			if i := strings.IndexByte(ts, ':'); i >= 0 {
+				base = ts[:i]
+				suffix = ts[i+1:]
+			}
+			if !strings.EqualFold(base, "ROUTER") {
+				continue
+			}
+			role := "physical"
+			if suffix != "" {
+				role = "physical:" + suffix
+			}
+			rows = append(rows, routerRow{
+				IPAddress:  e.IPAddress,
+				DeviceType: ts,
+				DeviceName: e.DeviceName,
+				Role:       role,
+			})
+		}
+	}
+	return rows
 }
 
 // cerebrumDeviceDetails issues an OBTAIN of DEVICE_CHANGE TYPE=DETAILS for a

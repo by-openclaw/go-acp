@@ -17,7 +17,7 @@ The full element / attribute / enum catalogue is at
 | `connect` | Login + one `<poll/>` and exit (sanity check + redundancy probe) |
 | `listen` | Subscribe to all routing / category / salvo / device events; print one line per dispatched frame; Ctrl-C to stop |
 | `list-devices` | One-shot `<obtain><device_change type='LIST'/></obtain>` — table of every device |
-| `list-routers` | Same as `list-devices`, filter `device_type='Router'` |
+| `list-routers` | DEVICE_CHANGE TYPE=LIST + sentinel synth — table includes the route-master sentinel (`0.0.0.0/ROUTER`, role `aggregator`) on row 0 plus any ROUTER-class device from the wire (case-insensitive base class per spec §3.1; `:N` sub-device suffix preserved) |
 | `walk` | One-shot obtain across DEVICE_LIST + CATEGORY_LIST + GROUP_LIST — counts + entries |
 
 ## Common flags

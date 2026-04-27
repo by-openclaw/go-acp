@@ -216,7 +216,7 @@ which combines three) so an operator can pcap each step individually.
 |---|---|---|
 | 01 | `connect` | LOGIN + POLL |
 | 02 | `list-devices` | DEVICE_CHANGE TYPE=LIST |
-| 03 | `list-routers` | DEVICE_CHANGE TYPE=LIST + client-side filter |
+| 03 | `list-routers` | DEVICE_CHANGE TYPE=LIST + sentinel synth (route-master row 0; ROUTER-class rows from wire) |
 | 04 | `list-categories` | CATEGORY_CHANGE TYPE=CATEGORY_LIST |
 | 05 | `list-salvo-groups` | SALVO_CHANGE TYPE=GROUP_LIST |
 | 06 | `walk` | LIST + CATEGORY_LIST + GROUP_LIST in one OBTAIN |
@@ -231,11 +231,26 @@ Common flags: `--port 40007` `--user <u>` `--pass <p>` `--tls` (use
 `wss://`) `--insecure-skip-verify` `--debug` (verbose RX/TX XML)
 `--timeout DUR` (default 5s — fail fast).
 
-NB: `list-routers` filters the LIST snapshot by `DEVICE_TYPE='Router'`
-client-side, but on every Cerebrum we've tested the LIST returns every
-device with `DEVICE_TYPE='DEVICE'` — so the filter usually returns
-empty. **Class-based enumeration is not exposed by the NB API.** See
-"Routing model" below.
+NB: `list-routers` issues a DEVICE_CHANGE TYPE=LIST OBTAIN (same wire
+as `list-devices`) and prints a 4-column table:
+
+```
+DEVICE_TYPE   DEVICE_NAME                IP_ADDRESS        ROLE
+ROUTER        (route-master)             0.0.0.0           aggregator   ← always row 0
+ROUTER        MTX1                       10.41.40.55       physical     ← from wire (if any)
+ROUTER:2      MTX1                       10.41.40.55       physical:2   ← sub-device suffix per §3.1
+```
+
+The route-master sentinel (`0.0.0.0/ROUTER`, role `aggregator`) is
+**always** row 0 — it's the addressing target for cross-router routing
+actions per spec §4.1 and the reference-driver convention, present on
+every Cerebrum installation regardless of which physical routers (if
+any) are configured. Subsequent rows are wire entries from
+DEVICE_CHANGE LIST whose `<INSTANCE DEVICE_TYPE="…"/>` matches
+`ROUTER` (case-insensitive on the base class; `:N` sub-device suffix
+preserved in the displayed DEVICE_TYPE per §3.1). On a Cerebrum with
+no ROUTER-class devices configured (e.g. `.90` and `.95` test fleets
+2026-04-27) only the route-master row appears.
 
 ---
 
