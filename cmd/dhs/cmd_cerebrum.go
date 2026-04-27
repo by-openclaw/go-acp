@@ -117,8 +117,20 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumWalk(ctx, rest)
 	case "device-details":
 		return cerebrumDeviceDetails(ctx, rest)
+	case "device-value":
+		return cerebrumDeviceValue(ctx, rest)
+	case "list-categories":
+		return cerebrumListCategories(ctx, rest)
+	case "category-details":
+		return cerebrumCategoryDetails(ctx, rest)
+	case "list-salvo-groups":
+		return cerebrumListSalvoGroups(ctx, rest)
+	case "list-salvo-instances":
+		return cerebrumListSalvoInstances(ctx, rest)
+	case "salvo-instance-details":
+		return cerebrumSalvoInstanceDetails(ctx, rest)
 	}
-	return fmt.Errorf("cerebrum-nb: unknown verb %q (expected: connect | listen | list-devices | list-routers | walk | device-details)", verb)
+	return fmt.Errorf("cerebrum-nb: unknown verb %q (run dhs consumer cerebrum-nb -h for the catalogue)", verb)
 }
 
 func printCerebrumHelp() {
@@ -127,13 +139,24 @@ func printCerebrumHelp() {
 USAGE
   dhs consumer cerebrum-nb <verb> <host>[:port] [flags]
 
-VERBS
-  connect       login + ping loop only (sanity check + redundancy probe)
-  listen        subscribe to all routing/category/salvo/device events
-  list-devices  one-shot device list (obtain device_change LIST)
-  list-routers  one-shot router list (filter device_change LIST by Router)
-  walk          full obtain across all §5 types (devices + categories + salvos)
-  device-details obtain DEVICE_CHANGE TYPE=DETAILS for one device (--device IP|NAME)
+VERBS — each issues exactly ONE OBTAIN/SUBSCRIBE so you can pcap it
+       individually. Run them in the seq order shown when you want a
+       fresh pcap per step.
+
+  Seq  Verb                    Wire (one OBTAIN per call)
+  ---  ----------------------  ----------------------------------------
+  01   connect                 LOGIN + POLL (no OBTAIN)
+  02   list-devices            DEVICE_CHANGE TYPE=LIST
+  03   list-routers            DEVICE_CHANGE TYPE=LIST (filter Router)
+  04   list-categories         CATEGORY_CHANGE TYPE=CATEGORY_LIST
+  05   list-salvo-groups       SALVO_CHANGE TYPE=GROUP_LIST
+  06   walk                    LIST + CATEGORY_LIST + GROUP_LIST in 1 OBTAIN
+  07   device-details          DEVICE_CHANGE TYPE=DETAILS  (--device IP --device-type DEVICE)
+  08   device-value            DEVICE_CHANGE TYPE=VALUE    (--device NAME --by-name --sub-device X --object Y)
+  09   category-details        CATEGORY_CHANGE TYPE=CATEGORY_DETAILS  (--category NAME)
+  10   list-salvo-instances    SALVO_CHANGE TYPE=INSTANCE_LIST  (--group NAME)
+  11   salvo-instance-details  SALVO_CHANGE TYPE=INSTANCE_DETAILS  (--group NAME --instance NAME)
+  12   listen                  SUBSCRIBE per item (split for per-item NACK isolation)
 
 FLAGS (order doesn't matter — flags can come before OR after the host)
   --port N                  WebSocket port (default 40007)
@@ -383,6 +406,249 @@ func displayDash(s string) string {
 		return "-"
 	}
 	return s
+}
+
+// cerebrumDeviceValue issues OBTAIN DEVICE_CHANGE TYPE=VALUE for one
+// (device, sub_device, object) tuple. Per spec §5.4 VALUE addresses by
+// device_name + sub_device + object. Wire shape unconfirmed; raw XML
+// is always dumped so we can refine the decoder on first capture.
+func cerebrumDeviceValue(_ context.Context, args []string) error {
+	device, _, byName, rest, err := extractDeviceDetailsFlags(args)
+	if err != nil {
+		return err
+	}
+	subDev, rest, err := extractStringFlag(rest, "--sub-device")
+	if err != nil {
+		return err
+	}
+	object, rest, err := extractStringFlag(rest, "--object")
+	if err != nil {
+		return err
+	}
+	if device == "" {
+		return fmt.Errorf("cerebrum-nb device-value: --device NAME is required (use --by-name)")
+	}
+	if subDev == "" || object == "" {
+		return fmt.Errorf("cerebrum-nb device-value: --sub-device and --object are both required")
+	}
+
+	p, sess, cf, _, err := connectAndLogin(rest, "device-value")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = p.Disconnect() }()
+
+	dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: object}
+	if byName {
+		dc.DeviceName = device
+	} else {
+		dc.IPAddress = device
+	}
+	got, err := obtainSingleDeviceChange(sess, cf.timeout, dc, "VALUE")
+	if err != nil {
+		return err
+	}
+	return printRawAndDone(got, "DEVICE_CHANGE TYPE=VALUE")
+}
+
+// cerebrumListCategories issues OBTAIN CATEGORY_CHANGE TYPE=CATEGORY_LIST.
+// Wire shape known (CATEGORY child with comma-separated LIST attr).
+func cerebrumListCategories(_ context.Context, args []string) error {
+	p, sess, cf, _, err := connectAndLogin(args, "list-categories")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = p.Disconnect() }()
+	got, err := obtainSingleCategoryChange(sess, cf.timeout, &codec.CategoryChange{Type: "CATEGORY_LIST"}, "CATEGORY_LIST")
+	if err != nil {
+		return err
+	}
+	if got == nil || got.Category == nil {
+		return nil
+	}
+	fmt.Printf("count %d\n", len(got.Category.Categories))
+	for _, c := range got.Category.Categories {
+		fmt.Println(c)
+	}
+	return nil
+}
+
+// cerebrumCategoryDetails issues OBTAIN CATEGORY_CHANGE TYPE=CATEGORY_DETAILS
+// for one category. Wire shape unconfirmed; raw XML dumped.
+func cerebrumCategoryDetails(_ context.Context, args []string) error {
+	cat, rest, err := extractStringFlag(args, "--category")
+	if err != nil {
+		return err
+	}
+	if cat == "" {
+		return fmt.Errorf("cerebrum-nb category-details: --category NAME is required")
+	}
+	p, sess, cf, _, err := connectAndLogin(rest, "category-details")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = p.Disconnect() }()
+	got, err := obtainSingleCategoryChange(sess, cf.timeout,
+		&codec.CategoryChange{Type: "CATEGORY_DETAILS", Category: cat},
+		"CATEGORY_DETAILS")
+	if err != nil {
+		return err
+	}
+	return printRawAndDone(got, "CATEGORY_CHANGE TYPE=CATEGORY_DETAILS")
+}
+
+// cerebrumListSalvoGroups issues OBTAIN SALVO_CHANGE TYPE=GROUP_LIST.
+// Wire shape known (GROUPS child with comma-separated LIST attr).
+func cerebrumListSalvoGroups(_ context.Context, args []string) error {
+	p, sess, cf, _, err := connectAndLogin(args, "list-salvo-groups")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = p.Disconnect() }()
+	got, err := obtainSingleSalvoChange(sess, cf.timeout, &codec.SalvoChange{Type: "GROUP_LIST"}, "GROUP_LIST")
+	if err != nil {
+		return err
+	}
+	if got == nil || got.Salvo == nil {
+		return nil
+	}
+	fmt.Printf("count %d\n", len(got.Salvo.Groups))
+	for _, g := range got.Salvo.Groups {
+		fmt.Println(g)
+	}
+	return nil
+}
+
+// cerebrumListSalvoInstances issues OBTAIN SALVO_CHANGE TYPE=INSTANCE_LIST.
+// Wire shape unconfirmed; raw XML dumped.
+func cerebrumListSalvoInstances(_ context.Context, args []string) error {
+	group, rest, err := extractStringFlag(args, "--group")
+	if err != nil {
+		return err
+	}
+	if group == "" {
+		return fmt.Errorf("cerebrum-nb list-salvo-instances: --group NAME is required")
+	}
+	p, sess, cf, _, err := connectAndLogin(rest, "list-salvo-instances")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = p.Disconnect() }()
+	got, err := obtainSingleSalvoChange(sess, cf.timeout,
+		&codec.SalvoChange{Type: "INSTANCE_LIST", Group: group},
+		"INSTANCE_LIST")
+	if err != nil {
+		return err
+	}
+	return printRawAndDone(got, "SALVO_CHANGE TYPE=INSTANCE_LIST")
+}
+
+// cerebrumSalvoInstanceDetails issues OBTAIN SALVO_CHANGE TYPE=INSTANCE_DETAILS.
+// Wire shape unconfirmed; raw XML dumped.
+func cerebrumSalvoInstanceDetails(_ context.Context, args []string) error {
+	group, rest, err := extractStringFlag(args, "--group")
+	if err != nil {
+		return err
+	}
+	instance, rest, err := extractStringFlag(rest, "--instance")
+	if err != nil {
+		return err
+	}
+	if group == "" || instance == "" {
+		return fmt.Errorf("cerebrum-nb salvo-instance-details: --group and --instance are both required")
+	}
+	p, sess, cf, _, err := connectAndLogin(rest, "salvo-instance-details")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = p.Disconnect() }()
+	got, err := obtainSingleSalvoChange(sess, cf.timeout,
+		&codec.SalvoChange{Type: "INSTANCE_DETAILS", Group: group, Instance: instance},
+		"INSTANCE_DETAILS")
+	if err != nil {
+		return err
+	}
+	return printRawAndDone(got, "SALVO_CHANGE TYPE=INSTANCE_DETAILS")
+}
+
+// ----------------------------------------------------------------------
+// helpers shared by every single-OBTAIN verb
+// ----------------------------------------------------------------------
+
+func obtainSingleDeviceChange(sess *cerebrum.Session, timeout time.Duration, item *codec.DeviceChange, wantType string) (*codec.Frame, error) {
+	return obtainOneEvent(sess, timeout, codec.KindDeviceChange, item, func(f *codec.Frame) bool {
+		return f.Device != nil && f.Device.Type == wantType
+	})
+}
+
+func obtainSingleCategoryChange(sess *cerebrum.Session, timeout time.Duration, item *codec.CategoryChange, wantType string) (*codec.Frame, error) {
+	return obtainOneEvent(sess, timeout, codec.KindCategoryChange, item, func(f *codec.Frame) bool {
+		return f.Category != nil && f.Category.Type == wantType
+	})
+}
+
+func obtainSingleSalvoChange(sess *cerebrum.Session, timeout time.Duration, item *codec.SalvoChange, wantType string) (*codec.Frame, error) {
+	return obtainOneEvent(sess, timeout, codec.KindSalvoChange, item, func(f *codec.Frame) bool {
+		return f.Salvo != nil && f.Salvo.Type == wantType
+	})
+}
+
+// obtainOneEvent issues a one-shot OBTAIN with the given SubItem and
+// blocks until either the matching event arrives or timeout fires.
+func obtainOneEvent(sess *cerebrum.Session, timeout time.Duration, kind codec.FrameKind, item codec.SubItem, match func(*codec.Frame) bool) (*codec.Frame, error) {
+	var got *codec.Frame
+	done := make(chan struct{})
+	var once sync.Once
+	signal := func() { once.Do(func() { close(done) }) }
+	timer := time.AfterFunc(timeout, signal)
+	defer timer.Stop()
+
+	sess.OnEvent(kind, func(f *codec.Frame) {
+		if match(f) {
+			got = f
+			signal()
+		}
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if err := sess.Obtain(ctx, []codec.SubItem{item}); err != nil {
+		return nil, err
+	}
+	<-done
+	return got, nil
+}
+
+// printRawAndDone prints the raw XML of the response. Used for verbs
+// whose response shape is unconfirmed; replace with structured output
+// once the live shape is decoded into the codec.
+func printRawAndDone(f *codec.Frame, label string) error {
+	if f == nil {
+		fmt.Fprintf(os.Stderr, "(no %s response within timeout)\n", label)
+		return nil
+	}
+	fmt.Printf("--- raw %s response ---\n", label)
+	fmt.Println(f.Root.String())
+	return nil
+}
+
+// extractStringFlag pulls --name VALUE out of args. Returns the value
+// and the args minus that flag pair. Unknown flags pass through
+// untouched so connectAndLogin can consume them.
+func extractStringFlag(args []string, name string) (string, []string, error) {
+	rest := make([]string, 0, len(args))
+	var val string
+	for i := 0; i < len(args); i++ {
+		if args[i] == name {
+			if i+1 >= len(args) {
+				return "", nil, fmt.Errorf("%s needs a value", name)
+			}
+			val = args[i+1]
+			i++
+			continue
+		}
+		rest = append(rest, args[i])
+	}
+	return val, rest, nil
 }
 
 // extractDeviceDetailsFlags splits the device-details argv into the
