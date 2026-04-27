@@ -63,9 +63,22 @@ stream, profile, diag.
 Probel has its own verb catalogue (interrogate, connect, tally-dump, watch,
 …) — see `dhs consumer probel-sw08p -h`.
 
-Cerebrum NB has its own verb catalogue (connect, listen, list-devices,
-list-routers, walk) — see `dhs consumer cerebrum-nb -h`. Default port
-40007. Credentials default from `$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`.
+Cerebrum NB has its own verb catalogue — every verb issues exactly one
+OBTAIN/SUBSCRIBE so an operator can pcap each step individually:
+`connect`, `list-devices`, `list-routers`, `list-categories`,
+`list-salvo-groups`, `walk`, `device-details`, `device-value`,
+`category-details`, `list-salvo-instances`, `salvo-instance-details`,
+`listen`. See `dhs consumer cerebrum-nb -h`. Default port 40007.
+Credentials default from `$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`.
+
+**Cerebrum routing model (locked 2026-04-27):** the route-master is
+the sentinel `IP_ADDRESS=0.0.0.0` + `DEVICE_TYPE=ROUTER`, NOT a device
+discovered via LIST. Source / destination IDs come from walking the
+SOURCES / DESTINATIONS category trees. See
+`internal/cerebrum-nb/CLAUDE.md` "Routing model" + `docs/keys.md`
+"Route-master sentinel". Spec §3.1 names three classes (Router /
+SNMP / Device) but the NB API does not enumerate them via LIST — it's
+admin-side metadata only.
 
 Producer verb is `serve` for every protocol.
 

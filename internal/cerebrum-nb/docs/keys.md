@@ -160,6 +160,39 @@ image-based** so these come from `Api/Definitions/ItemType.cs`:
 
 Always wrapped in `<action mtid='…'>…</action>`. Body is one of:
 
+### Route-master sentinel (live-verified, reference-driver convention)
+
+The "router" is the **central Cerebrum route-master**, not a device
+discovered via LIST. Every routing action is addressed to a sentinel
+pair the reference driver hardcodes:
+
+```
+IP_ADDRESS = "0.0.0.0"
+DEVICE_TYPE = "ROUTER"
+```
+
+Same convention regardless of which Cerebrum the action targets — the
+route-master is internal to each Cerebrum installation.
+
+```xml
+<ACTION MTID="N">
+  <ROUTING TYPE="ROUTE" IP_ADDRESS="0.0.0.0" DEVICE_TYPE="ROUTER"
+           SRCE_ID="<numeric-from-SOURCES-tree>"
+           DEST_ID="<numeric-from-DESTINATIONS-tree>"/>
+</ACTION>
+```
+
+Source / destination IDs come from walking the SOURCES and DESTINATIONS
+category trees (§5.2). Each `<CATEGORY_DETAILS>` `<ITEMS>` block carries
+positional `<ITEM_N TYPE="…" VALUE="…"/>` children. Leaf items with
+`TYPE="SOURCE"` / `TYPE="DESTINATION"` carry numeric IDs usable as
+SRCE_ID / DEST_ID.
+
+Spec §3.1 names three classes (`Router` / `SNMP` / `Device`) but the
+NB API does **not** enumerate by class via LIST — every device on
+every Cerebrum we've tested returns `DEVICE_TYPE="DEVICE"`. Class
+metadata is admin-side; routing targets the sentinel.
+
 ### §4.1 Routing — `<routing TYPE='…' …/>`
 
 | TYPE | Key attrs (from spec examples) |

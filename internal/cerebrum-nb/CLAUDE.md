@@ -209,17 +209,33 @@ Cerebrum host".
 
 ## CLI verbs (consumer)
 
-```
-dhs consumer cerebrum-nb connect      <host>          # login + ping loop only
-dhs consumer cerebrum-nb listen       <host>          # subscribe to ALL *_CHANGE
-dhs consumer cerebrum-nb list-devices <host>          # one-shot device list
-dhs consumer cerebrum-nb list-routers <host>          # one-shot router list (DEVICE_TYPE='Router')
-dhs consumer cerebrum-nb walk         <host>          # full obtain across all §5 types
-```
+Each verb is **exactly one OBTAIN/SUBSCRIBE on the wire** (except `walk`
+which combines three) so an operator can pcap each step individually.
+
+| Seq | Verb | Wire |
+|---|---|---|
+| 01 | `connect` | LOGIN + POLL |
+| 02 | `list-devices` | DEVICE_CHANGE TYPE=LIST |
+| 03 | `list-routers` | DEVICE_CHANGE TYPE=LIST + client-side filter |
+| 04 | `list-categories` | CATEGORY_CHANGE TYPE=CATEGORY_LIST |
+| 05 | `list-salvo-groups` | SALVO_CHANGE TYPE=GROUP_LIST |
+| 06 | `walk` | LIST + CATEGORY_LIST + GROUP_LIST in one OBTAIN |
+| 07 | `device-details` | DEVICE_CHANGE TYPE=DETAILS (`--device IP --device-type CLASS`) |
+| 08 | `device-value` | DEVICE_CHANGE TYPE=VALUE (`--device NAME --by-name --sub-device X --object Y`) |
+| 09 | `category-details` | CATEGORY_CHANGE TYPE=CATEGORY_DETAILS (`--category NAME`) |
+| 10 | `list-salvo-instances` | SALVO_CHANGE TYPE=INSTANCE_LIST (`--group NAME`) |
+| 11 | `salvo-instance-details` | SALVO_CHANGE TYPE=INSTANCE_DETAILS (`--group NAME --instance NAME`) |
+| 12 | `listen` | per-item SUBSCRIBE (split for per-item NACK isolation) |
 
 Common flags: `--port 40007` `--user <u>` `--pass <p>` `--tls` (use
-`wss://`) `--insecure-skip-verify` `--debug-xml` (write RX+TX XML to
-`captures/xml/`) `--data-dir <path>` (override portable layout).
+`wss://`) `--insecure-skip-verify` `--debug` (verbose RX/TX XML)
+`--timeout DUR` (default 5s — fail fast).
+
+NB: `list-routers` filters the LIST snapshot by `DEVICE_TYPE='Router'`
+client-side, but on every Cerebrum we've tested the LIST returns every
+device with `DEVICE_TYPE='DEVICE'` — so the filter usually returns
+empty. **Class-based enumeration is not exposed by the NB API.** See
+"Routing model" below.
 
 ---
 
@@ -276,12 +292,80 @@ exposed via the standard `compliance.Profile` accessor.
 
 ---
 
-## Known deviations from spec
+## Routing model (locked 2026-04-27 against live + reference driver)
 
-None observed yet — first real-device interop will surface them. Each
-will be documented here with the byte-level evidence (Wireshark
-capture path, frame number, expected vs observed XML) and a compliance
-event ID.
+The "router" in this protocol is **NOT a discoverable device**. It is
+the **central Cerebrum route-master**, addressed by a sentinel:
+
+```
+IP_ADDRESS = "0.0.0.0"
+DEVICE_TYPE = "ROUTER"
+```
+
+Per spec §4.1.1, the route action is:
+
+```xml
+<ACTION MTID="N">
+  <ROUTING TYPE="ROUTE" IP_ADDRESS="0.0.0.0" DEVICE_TYPE="ROUTER"
+           SRCE_ID="<numeric>" DEST_ID="<numeric>"/>
+</ACTION>
+```
+
+The reference driver (NDA) hardcodes the same sentinel pair and uses
+it for every routing action — `MakeRoute`, `LockSource`, `LockDestination`,
+mnemonic actions, RouteMaster source/destination tags. There is no
+"find the router device first" step.
+
+Source / destination IDs are discovered through **categories**:
+
+| Top-level category | Children TYPE values |
+|---|---|
+| `SOURCES` | `CATEGORY` (drilldown) / `SOURCE` (numeric leaf — usable as `SRCE_ID`) |
+| `DESTINATIONS` | `CATEGORY` (drilldown) / `DESTINATION` (numeric leaf — usable as `DEST_ID`) |
+
+Each `<CATEGORY_DETAILS>` response carries an `<ITEMS>` block with
+positional `<ITEM_N TYPE="…" VALUE="…"/>` children. To find routable
+IDs, walk SOURCES → sub-category → ... until you hit a `TYPE=SOURCE`
+leaf (likewise for DESTINATIONS).
+
+Spec §3.1 names three classes (Router / SNMP / Device). The wire LIST
+on every Cerebrum we've tested returns one `<INSTANCE DEVICE_TYPE>`
+per device with the literal value `DEVICE` — class-based enumeration
+is admin-side metadata, not exposed by the NB API. The codec parses
+multiple `<INSTANCE>` children defensively (the spec / reference
+driver allow it) but production servers we've seen emit one.
+
+## Known deviations from spec (live-verified 2026-04-27)
+
+| Spec text | Live wire | Decoder |
+|---|---|---|
+| `<DEVICE IP_ADDRESS="…" DEVICE_TYPE="…" DEVICE_NAME="…"/>` | `<DEVICE IP="…"><INSTANCE DEVICE_TYPE="…"/></DEVICE>` (short `IP=`, type on inner INSTANCE, no DEVICE_NAME) | accepts both `IP=` and `IP_ADDRESS=`; reads class from the first `<INSTANCE>` |
+| `<CATEGORY_DETAILS><details … description="…"/>` | `<details … descsription="…"/>` (server typo "descsription") | accepts both spellings, prefers `description` if both present |
+| Routing class enumerated via LIST | LIST always returns `DEVICE_TYPE="DEVICE"`; class is admin-side only | use the `0.0.0.0/ROUTER` sentinel for routing actions; do not try to discover the router |
+
+## Live-verified data (2026-04-27)
+
+Two Cerebrums tested (host `10.41.64.90` 11 devices, host `10.41.64.95`
+27 devices). Read path fully verified end-to-end:
+
+- LOGIN → LOGIN_REPLY (`api_ver=0.1`); POLL `connected_active`
+  + redundancy state observed live (saw failover between primary and
+  secondary mid-session).
+- DEVICE_CHANGE LIST + DETAILS + VALUE — vendor metadata surfaces in
+  `<DETAILS NAME=… TYPE=…/>` (the inner `TYPE` is the device-model
+  identifier, e.g. "Powercore"; **distinct from the outer DEVICE_TYPE
+  enum**).
+- CATEGORY_CHANGE LIST + DETAILS — populated `<ITEMS>` grids verified;
+  82 categories on the .95 fleet.
+- SALVO_CHANGE GROUP_LIST + INSTANCE_LIST + INSTANCE_DETAILS — empty
+  on this fleet but shapes pinned by unit tests.
+- Listen split-subscribe: snapshot subscribes (CATEGORY_LIST /
+  GROUP_LIST / DEVICE LIST) succeed; ROUTING_CHANGE wildcards NACK
+  on these fleets (no router device with the admin class set).
+
+11 codec tests pinned against captured payloads. Routing ACTION verb
+not yet implemented — will be a follow-up against a Cerebrum that
+allows route operations (TEST-YOB sandbox or admin sign-off).
 
 ---
 
