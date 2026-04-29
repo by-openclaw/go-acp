@@ -66,10 +66,14 @@ Probel has its own verb catalogue (interrogate, connect, tally-dump, watch,
 Cerebrum NB has its own verb catalogue — every verb issues exactly one
 OBTAIN/SUBSCRIBE so an operator can pcap each step individually:
 `connect`, `list-devices`, `list-routers`, `list-categories`,
-`list-salvo-groups`, `walk`, `device-details`, `device-value`,
+`list-salvo-groups`, `device-details`, `device-value`,
 `category-details`, `list-salvo-instances`, `salvo-instance-details`,
 `listen`. See `dhs consumer cerebrum-nb -h`. Default port 40007.
 Credentials default from `$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`.
+LOGIN is sent only when both user and pass are provided; the WS
+handshake + idle hold work without it (TCP keep-alive carries the
+session). Server enforces LOGIN only for `<OBTAIN>` / `<SUBSCRIBE>` /
+`<ACTION>` — `<POLL>` is unauthenticated.
 
 **Cerebrum routing model (locked 2026-04-27):** the route-master is
 the sentinel `IP_ADDRESS=0.0.0.0` + `DEVICE_TYPE=ROUTER`, NOT a device

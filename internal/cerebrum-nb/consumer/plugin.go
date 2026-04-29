@@ -45,8 +45,10 @@ type Plugin struct {
 	logger *slog.Logger
 
 	// Username / Password come from CLI flags or the
-	// DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS env vars. Set before
-	// Connect.
+	// DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS env vars. Optional —
+	// LOGIN is not required to open a Cerebrum NB session (verified
+	// with EVS support 2026-04-30). Set them only if you need to
+	// call Login() explicitly after Connect.
 	Username string
 	Password string
 
@@ -70,14 +72,23 @@ func NewPlugin(logger *slog.Logger) *Plugin {
 	return &Plugin{logger: logger.With(slog.String("plugin", "cerebrum-nb"))}
 }
 
-// Connect dials the Cerebrum WebSocket endpoint and performs login.
-// Cerebrum has no path on the URL — host:port only.
+// Connect dials the Cerebrum WebSocket endpoint. Cerebrum has no path
+// on the URL — host:port only.
+//
+// LOGIN is performed automatically when both Username and Password are
+// set on the Plugin: actions (DEVICE_CHANGE, CATEGORY_CHANGE, ROUTING
+// ACTION, …) require an authenticated session and the server will
+// otherwise NACK with `NOT_LOGGED_IN` (§6 ID 6). When credentials are
+// not provided, Connect skips LOGIN and dials only — useful for
+// connection diagnostics, but every action will fail until Login() is
+// called.
+//
+// Persistence at the transport layer is guaranteed by TCP keep-alive
+// in both directions; no application-level keep-alive is required or
+// emitted (verified 2026-04-30, see CLAUDE.md "Session persistence").
 func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 	if port == 0 {
 		port = DefaultPort
-	}
-	if p.Username == "" || p.Password == "" {
-		return fmt.Errorf("cerebrum-nb: username and password required (set Plugin.Username/Password or DHS_CEREBRUM_USER/DHS_CEREBRUM_PASS env)")
 	}
 
 	p.mu.Lock()
@@ -96,12 +107,34 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 	if err != nil {
 		return err
 	}
-	if err := sess.login(ctx, p.Username, p.Password); err != nil {
-		_ = sess.close()
-		return err
+
+	if p.Username != "" && p.Password != "" {
+		if err := sess.login(ctx, p.Username, p.Password); err != nil {
+			_ = sess.close()
+			return err
+		}
+	} else {
+		p.logger.Info("connected without LOGIN; actions will NACK with NOT_LOGGED_IN until Login() is called",
+			slog.String("host", host),
+		)
 	}
 	p.session = sess
 	return nil
+}
+
+// Login sends a LOGIN frame using the credentials set on the Plugin
+// and blocks for the LOGIN_REPLY. Optional — Cerebrum servers accept
+// most NB verbs without an authenticated session. Returns an error if
+// Username or Password are empty, or if the server NACKs the login.
+func (p *Plugin) Login(ctx context.Context) error {
+	sess := p.Session()
+	if sess == nil {
+		return fmt.Errorf("cerebrum-nb: not connected (call Connect first)")
+	}
+	if p.Username == "" || p.Password == "" {
+		return fmt.Errorf("cerebrum-nb: Login: Username and Password must be set on the Plugin")
+	}
+	return sess.login(ctx, p.Username, p.Password)
 }
 
 // Disconnect tears down the WebSocket. Idempotent.

@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
+	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"acp/internal/cerebrum-nb/codec"
+	"acp/internal/cerebrum-nb/codec/ws"
 	cerebrum "acp/internal/cerebrum-nb/consumer"
 )
 
@@ -113,8 +117,6 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumListDevices(ctx, rest)
 	case "list-routers":
 		return cerebrumListRouters(ctx, rest)
-	case "walk":
-		return cerebrumWalk(ctx, rest)
 	case "device-details":
 		return cerebrumDeviceDetails(ctx, rest)
 	case "device-value":
@@ -129,6 +131,8 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumListSalvoInstances(ctx, rest)
 	case "salvo-instance-details":
 		return cerebrumSalvoInstanceDetails(ctx, rest)
+	case "keepalive-probe":
+		return cerebrumKeepaliveProbe(ctx, rest)
 	}
 	return fmt.Errorf("cerebrum-nb: unknown verb %q (run dhs consumer cerebrum-nb -h for the catalogue)", verb)
 }
@@ -176,7 +180,12 @@ EXAMPLES
   dhs consumer cerebrum-nb device-details 10.41.64.90 --port 40008 --device 10.107.30.100`)
 }
 
-// connectAndLogin: parse flags, build a Plugin, Connect.
+// connectAndLogin: parse flags, build a Plugin, Connect. LOGIN is NOT
+// performed — per EVS support 2026-04-30 it is not required to open a
+// Cerebrum NB session and appears to arm a server-side 30 s timeout.
+// If a future verb needs an authenticated session, call Plugin.Login()
+// explicitly. The historical name is kept so the call sites read the
+// same.
 func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Session, *cerebrumFlags, []string, error) {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb "+verb, flag.ContinueOnError)
@@ -217,13 +226,144 @@ func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Se
 	if err := p.Connect(ctx, host, cf.port); err != nil {
 		return nil, nil, nil, nil, err
 	}
-	fmt.Fprintf(os.Stderr, "connected; logged in.\n")
+	if p.Session().LoggedIn() {
+		fmt.Fprintf(os.Stderr, "connected; logged in.\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "connected (no LOGIN — set --user/--pass for verbs that act on data).\n")
+	}
 	return p, p.Session(), cf, rest[1:], nil
 }
 
 // ----------------------------------------------------------------------
 // Verbs
 // ----------------------------------------------------------------------
+
+// cerebrumKeepaliveProbe dials a bare WebSocket against Cerebrum (no
+// LOGIN, no POLL, no app-level WS PING) and holds the connection idle
+// for --idle. Per EVS support 2026-04-30: the server emits TCP-layer
+// keep-alive segments during idle and the kernel auto-ACKs them; this
+// verb proves both halves of that via tshark on the same wire.
+//
+// Sending any application traffic (LOGIN / POLL / WS PING) suppresses
+// the server-side TCP keep-alive timer, so this verb deliberately stays
+// silent.
+func cerebrumKeepaliveProbe(_ context.Context, args []string) error {
+	args = reorderFlagsFirst(args)
+	fs := flag.NewFlagSet("cerebrum-nb keepalive-probe", flag.ContinueOnError)
+	cf := newCerebrumFlags(fs)
+	idle := fs.Duration("idle", 120*time.Second, "hold the connection idle for this long, then exit")
+	sendLogin := fs.Bool("send-login", false, "send <LOGIN .../> after handshake then idle (isolates whether LOGIN alone arms a server-side timer)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	rest := fs.Args()
+	if len(rest) < 1 {
+		return fmt.Errorf("cerebrum-nb keepalive-probe: missing host[:port] argument")
+	}
+	host, portArg, err := splitHostPort(rest[0], cf.port)
+	if err != nil {
+		return err
+	}
+	cf.port = portArg
+
+	scheme := "ws"
+	if cf.tls {
+		scheme = "wss"
+	}
+	urlStr := fmt.Sprintf("%s://%s:%d/", scheme, host, cf.port)
+
+	dialCtx, dialCancel := context.WithTimeout(context.Background(), cf.timeout)
+	defer dialCancel()
+
+	t0 := time.Now()
+	fmt.Fprintf(os.Stderr, "[%s] dialing %s (idle %s) ...\n",
+		t0.Format(time.RFC3339), urlStr, *idle)
+
+	conn, err := ws.Dial(dialCtx, urlStr, nil)
+	if err != nil {
+		return fmt.Errorf("cerebrum-nb keepalive-probe: dial: %w", err)
+	}
+	defer func() { _ = conn.Close(1000, "client closing") }()
+
+	tConn := time.Now()
+	fmt.Fprintf(os.Stderr, "[%s] connected (laddr %s -> raddr %s, %.0fms)\n",
+		tConn.Format(time.RFC3339), conn.LocalAddr(), conn.RemoteAddr(),
+		float64(tConn.Sub(t0).Milliseconds()))
+
+	// If --send-login was passed, emit a single LOGIN frame and read its
+	// reply synchronously, before the RX goroutine takes over. This
+	// isolates whether LOGIN alone arms a server-side session timer.
+	// Use whatever the caller supplied as --user / --pass — the test
+	// is to characterise server behaviour after a LOGIN attempt
+	// (success or NACK), not to authenticate.
+	if *sendLogin {
+		loginPayload := codec.EncodeLogin(1, cf.user, cf.pass)
+		fmt.Fprintf(os.Stderr, "[%s] tx %s\n",
+			time.Now().Format(time.RFC3339), string(loginPayload))
+		txCtx, txCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := conn.WriteText(txCtx, loginPayload); err != nil {
+			txCancel()
+			return fmt.Errorf("cerebrum-nb keepalive-probe: write LOGIN: %w", err)
+		}
+		txCancel()
+		rxCtx, rxCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		op, reply, err := conn.ReadMessage(rxCtx)
+		rxCancel()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[%s] login reply read error: %v\n",
+				time.Now().Format(time.RFC3339), err)
+		} else {
+			fmt.Fprintf(os.Stderr, "[%s] rx opcode=0x%x %s\n",
+				time.Now().Format(time.RFC3339), op, string(reply))
+		}
+	}
+
+	// Drain RX in the background so any control frames (PING/PONG) are
+	// processed by ws.Conn's inline handler. Cerebrum is not expected
+	// to send unsolicited app frames; whatever arrives is logged.
+	rxDone := make(chan struct{})
+	go func() {
+		defer close(rxDone)
+		for {
+			op, payload, err := conn.ReadMessage(context.Background())
+			if err != nil {
+				if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
+					fmt.Fprintf(os.Stderr, "[%s] rx error: %v\n",
+						time.Now().Format(time.RFC3339), err)
+				} else {
+					fmt.Fprintf(os.Stderr, "[%s] rx closed: %v\n",
+						time.Now().Format(time.RFC3339), err)
+				}
+				return
+			}
+			fmt.Fprintf(os.Stderr, "[%s] rx app frame opcode=0x%x len=%d\n",
+				time.Now().Format(time.RFC3339), op, len(payload))
+		}
+	}()
+
+	// Idle hold; periodic heartbeat to stderr so the operator sees the
+	// probe is still alive without sending anything on the wire.
+	tick := time.NewTicker(15 * time.Second)
+	defer tick.Stop()
+	deadline := time.After(*idle)
+	for {
+		select {
+		case <-deadline:
+			fmt.Fprintf(os.Stderr, "[%s] idle deadline reached; closing\n",
+				time.Now().Format(time.RFC3339))
+			_ = conn.Close(1000, "client closing")
+			<-rxDone
+			return nil
+		case t := <-tick.C:
+			fmt.Fprintf(os.Stderr, "[%s] still idle (T+%s)\n",
+				t.Format(time.RFC3339), t.Sub(t0).Truncate(time.Second))
+		case <-rxDone:
+			fmt.Fprintf(os.Stderr, "[%s] connection closed by peer or error\n",
+				time.Now().Format(time.RFC3339))
+			return nil
+		}
+	}
+}
 
 func cerebrumConnect(_ context.Context, args []string) error {
 	p, sess, cf, _, err := connectAndLogin(args, "connect")
@@ -270,18 +410,34 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		item codec.SubItem
 	}
 	plan := []sub{
-		{"ROUTING_CHANGE TYPE=ROUTE", &codec.RoutingChange{Type: "ROUTE", DeviceName: "*", DeviceType: codec.DeviceType("*")}},
-		{"ROUTING_CHANGE TYPE=SRCE_LOCK", &codec.RoutingChange{Type: "SRCE_LOCK", DeviceName: "*", DeviceType: codec.DeviceType("*")}},
-		{"ROUTING_CHANGE TYPE=DEST_LOCK", &codec.RoutingChange{Type: "DEST_LOCK", DeviceName: "*", DeviceType: codec.DeviceType("*")}},
+		// Route-master sentinel per CLAUDE.md "Routing model" + per-type
+		// wildcards verified live 2026-04-29 (audit-FR §wire). Server
+		// requires IP_ADDRESS="0.0.0.0" DEVICE_TYPE="ROUTER" plus the
+		// row-specific ID wildcards from spec §5.1; missing them yields
+		// NACK ONE_OR_MORE_EVENTS_INVALID.
+		{"ROUTING_CHANGE TYPE=ROUTE", &codec.RoutingChange{
+			Type: "ROUTE", IPAddress: "0.0.0.0", DeviceType: codec.DeviceType("ROUTER"),
+			DestID: "*", LevelID: "*",
+		}},
+		{"ROUTING_CHANGE TYPE=SRCE_LOCK", &codec.RoutingChange{
+			Type: "SRCE_LOCK", IPAddress: "0.0.0.0", DeviceType: codec.DeviceType("ROUTER"),
+			SrceID: "*",
+		}},
+		{"ROUTING_CHANGE TYPE=DEST_LOCK", &codec.RoutingChange{
+			Type: "DEST_LOCK", IPAddress: "0.0.0.0", DeviceType: codec.DeviceType("ROUTER"),
+			DestID: "*", LevelID: "*",
+		}},
 		{"CATEGORY_CHANGE TYPE=CATEGORY_LIST", &codec.CategoryChange{Type: "CATEGORY_LIST"}},
 		{"SALVO_CHANGE TYPE=GROUP_LIST", &codec.SalvoChange{Type: "GROUP_LIST"}},
 		{"DEVICE_CHANGE TYPE=LIST", &codec.DeviceChange{Type: "LIST"}},
 	}
 	var ok, fail int
 	for _, p := range plan {
-		subCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		err := sess.Subscribe(subCtx, []codec.SubItem{p.item})
-		cancel()
+		// No timeout: SUBSCRIBE on a wildcard ROUTING_CHANGE can stream
+		// 100k+ snapshot rows before the ACK lands. Bind to the verb's
+		// own ctx so the call exits cleanly on Ctrl+C, and if the WS
+		// dies the underlying read returns immediately.
+		err := sess.Subscribe(ctx, []codec.SubItem{p.item})
 		if err != nil {
 			slog.Warn("subscribe failed", "plugin", "cerebrum-nb", "item", p.name, "err", err)
 			fail++
@@ -829,66 +985,6 @@ func extractDeviceDetailsFlags(args []string) (device, deviceType string, byName
 		}
 	}
 	return device, deviceType, byName, rest, nil
-}
-
-func cerebrumWalk(_ context.Context, args []string) error {
-	p, sess, cf, _, err := connectAndLogin(args, "walk")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = p.Disconnect() }()
-
-	var deviceEntries []codec.DeviceEntry
-	var categories []string
-	var salvoGroups []string
-
-	sess.OnEvent(codec.KindDeviceChange, func(f *codec.Frame) {
-		if f.Device != nil && f.Device.Type == "LIST" {
-			deviceEntries = append(deviceEntries, f.Device.Devices...)
-		}
-	})
-	sess.OnEvent(codec.KindCategoryChange, func(f *codec.Frame) {
-		if f.Category != nil && len(f.Category.Categories) > 0 {
-			categories = append(categories, f.Category.Categories...)
-		}
-	})
-	sess.OnEvent(codec.KindSalvoChange, func(f *codec.Frame) {
-		if f.Salvo != nil && len(f.Salvo.Groups) > 0 {
-			salvoGroups = append(salvoGroups, f.Salvo.Groups...)
-		}
-	})
-
-	obCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
-	defer cancel()
-	items := []codec.SubItem{
-		&codec.DeviceChange{Type: "LIST"},
-		&codec.CategoryChange{Type: "CATEGORY_LIST"},
-		&codec.SalvoChange{Type: "GROUP_LIST"},
-	}
-	if err := sess.Obtain(obCtx, items); err != nil {
-		return err
-	}
-	// All three snapshot events arrive before the ACK in practice, but
-	// hold a small drain window so the dispatcher fans out completely.
-	time.Sleep(200 * time.Millisecond)
-
-	fmt.Printf("devices     %d\n", len(deviceEntries))
-	for _, d := range deviceEntries {
-		name := d.DeviceName
-		if name == "" {
-			name = "-"
-		}
-		fmt.Printf("  %-12s %-20s %s\n", d.DeviceType, name, d.IPAddress)
-	}
-	fmt.Printf("categories  %d\n", len(categories))
-	for _, c := range categories {
-		fmt.Printf("  %s\n", c)
-	}
-	fmt.Printf("salvos      %d\n", len(salvoGroups))
-	for _, g := range salvoGroups {
-		fmt.Printf("  %s\n", g)
-	}
-	return nil
 }
 
 // ----------------------------------------------------------------------

@@ -20,6 +20,7 @@ type RoutingChange struct {
 
 	DeviceName string
 	DeviceType DeviceType
+	IPAddress  string // §1.7 alternative to DeviceName; required for the route-master sentinel ("0.0.0.0" + DEVICE_TYPE="ROUTER")
 
 	// Addressing (use one of name / id pair per row in §5.1)
 	SrceID    string
@@ -33,6 +34,7 @@ type RoutingChange struct {
 func (r *RoutingChange) encodeSubItem(b *strings.Builder) {
 	a := AttrsBuilder{}.
 		ForceAdd("TYPE", r.Type).
+		Add("IP_ADDRESS", r.IPAddress).
 		Add("DEVICE_NAME", r.DeviceName).
 		Add("DEVICE_TYPE", string(r.DeviceType)).
 		Add("SRCE_ID", r.SrceID).

@@ -13,16 +13,10 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"acp/internal/cerebrum-nb/codec"
 	"acp/internal/cerebrum-nb/codec/ws"
 )
-
-// PingInterval is how often the consumer pings Cerebrum as a fallback
-// keep-alive when no <poll> traffic is in flight. RFC 6455 ping; the
-// server replies with Pong.
-const PingInterval = 30 * time.Second
 
 // Session is the live WebSocket session against one Cerebrum host. It
 // owns:
@@ -116,7 +110,6 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, useTLS,
 	}
 	s.mtidNext.Store(1)
 	go s.readLoop()
-	go s.pingLoop()
 	return s, nil
 }
 
@@ -394,22 +387,28 @@ func (s *Session) readLoop() {
 func (s *Session) dispatch(f *codec.Frame) {
 	// 1. Try to match an in-flight request by mtid.
 	if f.MTID != "" {
-		s.mu.Lock()
-		ch, ok := s.pending[f.MTID]
-		s.mu.Unlock()
-		if ok {
-			select {
-			case ch <- f:
-			default:
-				s.logger.Warn("dropped reply (channel full)", slog.String("mtid", f.MTID))
-			}
-			// Replies that also need to fan out to subscribers fall through.
-			// Per spec, ack/nack/busy/login_reply/poll_reply only ever match
-			// the in-flight request; events have no mtid waiter so we treat
-			// them as exclusive to the subscriber path below.
-			switch f.Kind {
-			case codec.KindAck, codec.KindNack, codec.KindBusy,
-				codec.KindLoginReply, codec.KindPollReply:
+		// Only Ack / Nack / Busy / LoginReply / PollReply are valid
+		// terminal replies for an in-flight request. ROUTING_CHANGE /
+		// CATEGORY_CHANGE / SALVO_CHANGE / DEVICE_CHANGE rows can carry
+		// the same MTID as the originating SUBSCRIBE (server streams the
+		// snapshot rows before the WILDCARD_COMPLETE + ACK), but they
+		// are notifications, not replies — routing them into the pending
+		// channel makes roundTrip return the first row instead of the
+		// ACK, which then mis-classifies the SUBSCRIBE as "unexpected
+		// ROUTING_CHANGE" failure. Send only terminal replies to the
+		// pending waiter; let everything else fan out to subscribers.
+		switch f.Kind {
+		case codec.KindAck, codec.KindNack, codec.KindBusy,
+			codec.KindLoginReply, codec.KindPollReply:
+			s.mu.Lock()
+			ch, ok := s.pending[f.MTID]
+			s.mu.Unlock()
+			if ok {
+				select {
+				case ch <- f:
+				default:
+					s.logger.Warn("dropped reply (channel full)", slog.String("mtid", f.MTID))
+				}
 				return
 			}
 		}
@@ -428,28 +427,6 @@ func (s *Session) dispatch(f *codec.Frame) {
 		}
 		if sub.fn != nil {
 			sub.fn(f)
-		}
-	}
-}
-
-// pingLoop emits a Ping every PingInterval as fallback keep-alive.
-// Cerebrum doesn't require it (TCP keep-alive could be enough) but a
-// Ping is cheap and surfaces dead connections fast.
-func (s *Session) pingLoop() {
-	t := time.NewTicker(PingInterval)
-	defer t.Stop()
-	for {
-		select {
-		case <-s.stopRX:
-			return
-		case <-t.C:
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			err := s.conn.Ping(ctx, nil)
-			cancel()
-			if err != nil {
-				s.logger.Debug("ping failed", slog.String("err", err.Error()))
-				return
-			}
 		}
 	}
 }

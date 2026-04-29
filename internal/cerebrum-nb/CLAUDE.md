@@ -59,7 +59,9 @@ WebSocket stream.
 | URL path | **none** — connect to `wss://host:port` only; no HTTP path |
 | Framing | One XML document per WebSocket text message (UTF-8) |
 | Licensing | One northbound licence per WebSocket connection |
-| Pre-requisites | (1) sufficient northbound licences; (2) API enabled in Cerebrum; (3) NB-enabled user account |
+| Pre-requisites | (1) sufficient northbound licences; (2) API enabled in Cerebrum |
+| Authentication | LOGIN is **required to call any action** (`DEVICE_CHANGE`, `CATEGORY_CHANGE`, `ROUTING ACTION`, …). Calling an action without LOGIN returns `NACK code='NOT_LOGGED_IN'` (§6 ID 6) — verified live 2026-04-30 against `10.100.0.5:40007` for `DEVICE_CHANGE TYPE=LIST`. LOGIN is **NOT** required to open the WebSocket: dial + idle hold works without LOGIN. `Plugin.Connect` therefore performs LOGIN only when both `Username` and `Password` are set. |
+| Session persistence | TCP keep-alive (both directions). No application-level keep-alive emitted. Verified live 2026-04-30 against `10.100.0.5:40007` — 180 s idle hold (no LOGIN, no POLL, no WS PING), 71 server-initiated TCP keep-alive probes (~2.5 s cadence) all auto-ACKed by the kernel, 11 client-initiated probes (Go `net.Dialer{}` default 15 s SO_KEEPALIVE) all ACKed by the server, zero FIN/RST. Pcaps `bin/cerebrum-keepalive-probe.pcapng` (120 s) + `bin/cerebrum-keepalive-180s.pcapng` (180 s). |
 
 Consumer-first. Provider lands in a follow-up PR (no Cerebrum emulator
 yet; we don't dogfood until we can talk to a real device or the EVS
@@ -83,7 +85,7 @@ lift-ready per `feedback_codec_isolation`.
 | Server-to-client frames | Never masked |
 | Opcode used | `0x1` Text (XML payload) — never Binary |
 | Fragmentation | Accepted on RX; on TX we always send a single non-fragmented frame (the largest XML payload we emit fits comfortably) |
-| Ping/Pong | Reply Pong on RX Ping; emit Ping every 30 s as fallback keep-alive |
+| Ping/Pong | Reply Pong on RX Ping (handled inline by `ws.Conn.ReadMessage`). We do NOT emit periodic WS Pings — TCP keep-alive carries the load and any app-level traffic suppresses Cerebrum's server-side TCP keep-alive timer. |
 | Close | Send `0x8` Close with code 1000 on graceful Disconnect |
 | Max payload | 16 MiB cap on RX (config-driven; rejecting larger fires `cerebrum_nack_response_too_large`) |
 
@@ -209,23 +211,22 @@ Cerebrum host".
 
 ## CLI verbs (consumer)
 
-Each verb is **exactly one OBTAIN/SUBSCRIBE on the wire** (except `walk`
+Each verb is **exactly one OBTAIN/SUBSCRIBE on the wire** (except `listen`
 which combines three) so an operator can pcap each step individually.
 
 | Seq | Verb | Wire |
 |---|---|---|
-| 01 | `connect` | LOGIN + POLL |
+| 01 | `connect` | POLL only — no LOGIN |
 | 02 | `list-devices` | DEVICE_CHANGE TYPE=LIST |
 | 03 | `list-routers` | DEVICE_CHANGE TYPE=LIST + sentinel synth (route-master row 0; ROUTER-class rows from wire) |
 | 04 | `list-categories` | CATEGORY_CHANGE TYPE=CATEGORY_LIST |
 | 05 | `list-salvo-groups` | SALVO_CHANGE TYPE=GROUP_LIST |
-| 06 | `walk` | LIST + CATEGORY_LIST + GROUP_LIST in one OBTAIN |
-| 07 | `device-details` | DEVICE_CHANGE TYPE=DETAILS (`--device IP --device-type CLASS`) |
-| 08 | `device-value` | DEVICE_CHANGE TYPE=VALUE (`--device NAME --by-name --sub-device X --object Y`) |
-| 09 | `category-details` | CATEGORY_CHANGE TYPE=CATEGORY_DETAILS (`--category NAME`) |
-| 10 | `list-salvo-instances` | SALVO_CHANGE TYPE=INSTANCE_LIST (`--group NAME`) |
-| 11 | `salvo-instance-details` | SALVO_CHANGE TYPE=INSTANCE_DETAILS (`--group NAME --instance NAME`) |
-| 12 | `listen` | per-item SUBSCRIBE (split for per-item NACK isolation) |
+| 06 | `device-details` | DEVICE_CHANGE TYPE=DETAILS (`--device IP --device-type CLASS`) |
+| 07 | `device-value` | DEVICE_CHANGE TYPE=VALUE (`--device NAME --by-name --sub-device X --object Y`) |
+| 08 | `category-details` | CATEGORY_CHANGE TYPE=CATEGORY_DETAILS (`--category NAME`) |
+| 09 | `list-salvo-instances` | SALVO_CHANGE TYPE=INSTANCE_LIST (`--group NAME`) |
+| 10 | `salvo-instance-details` | SALVO_CHANGE TYPE=INSTANCE_DETAILS (`--group NAME --instance NAME`) |
+| 11 | `listen` | per-item SUBSCRIBE (split for per-item NACK isolation) |
 
 Common flags: `--port 40007` `--user <u>` `--pass <p>` `--tls` (use
 `wss://`) `--insecure-skip-verify` `--debug` (verbose RX/TX XML)
@@ -279,6 +280,23 @@ exposed via the standard `compliance.Profile` accessor.
 
 ## What NOT to do
 
+- Never assume LOGIN is required to open the WebSocket. The handshake
+  + idle hold work without it (verified 2026-04-30, 180 s clean). LOGIN
+  is required for **actions** (any `DEVICE_CHANGE` / `CATEGORY_CHANGE`
+  / `ROUTING ACTION` returns `NACK NOT_LOGGED_IN` without it). Therefore
+  `Plugin.Connect` only performs LOGIN when both `Username` and
+  `Password` are set; bare connection diagnostics work without
+  credentials.
+- Never emit periodic application-level keep-alives (WS PING /
+  unprovoked POLL / any other heartbeat). They are unnecessary and they
+  suppress the server's TCP keep-alive timer, which is the actual
+  persistence mechanism. The kernel auto-ACKs server TCP keep-alive
+  probes; no user-space code is required.
+- Never treat the 30 s server-side cut after a wildcard SUBSCRIBE as a
+  bug to work around at the LOGIN layer — they're independent. The
+  SUBSCRIBE timer fires regardless of LOGIN state. Implement a reconcile
+  loop (re-LOGIN + re-SUBSCRIBE within 30 s) for long-running observers,
+  not an "auto-relogin every N s".
 - Never connect to a Cerebrum without first verifying licence
   availability — login fails with `nack code='NO_LICENCE_AVAILABLE'`;
   treat as fatal, do not retry in a tight loop.
