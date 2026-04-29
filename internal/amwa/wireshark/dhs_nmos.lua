@@ -263,7 +263,9 @@ end
 
 local function looks_nmos(buf)
     -- Heuristic: payload contains the literal "_nmos-".
-    local s = buf:bytes():tohex()
+    -- ByteArray:tohex() returns UPPERCASE by default in Wireshark Lua —
+    -- pass true for lowercase so the literal-substring search matches.
+    local s = buf:bytes():tohex(true)
     -- "_nmos-" in ASCII = 5F 6E 6D 6F 73 2D
     return s:find("5f6e6d6f732d", 1, true) ~= nil
 end
