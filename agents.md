@@ -45,9 +45,14 @@ docs/                           cross-cutting architecture, connector, schema
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
 Other feature branches add more: `cerebrum-nb` on `feat/cerebrum-nb-plugin`
-(PR #144), `nmos` (scaffold only — design doc + epic #146) on
-`feat/nmos-scaffold`. See `memory/project_protocol_backlog.md` for the
-full queue.
+(PR #144), `nmos` on `feat/nmos-scaffold` (PR #147 — Phase 0 scaffold +
+Mode D + cerebrum-interop docs) and `feat/nmos-discovery-dnssd` (PR #149,
+renamed from #148 — Phase 1 step #1: DNS-SD codec + mDNS responder/browser
++ RFC 6763 §10 chase-the-PTR unicast + peer-list + Tier-1 `internal/registry/`
+slot + `dhs_nmos.lua` dissector + harness skeleton; 10/10 verification
+PASS across deployment modes A/B/C/D as of 2026-04-29; awaiting #147
+merge then base retarget to main).
+See `memory/project_protocol_backlog.md` for the full queue.
 
 > **NMOS is the odd one out.** It is a suite of ~14 specs
 > (IS-04/05/07/08/09/12/13, MS-05-01/02, BCP-002/004/006/007/008) with a
