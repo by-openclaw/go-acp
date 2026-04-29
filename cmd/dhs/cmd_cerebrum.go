@@ -451,12 +451,22 @@ func cerebrumListen(ctx context.Context, args []string) error {
 }
 
 func cerebrumListDevices(_ context.Context, args []string) error {
-	p, sess, _, _, err := connectAndLogin(args, "list-devices")
+	classFilter := ""
+	filtered := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--device-type" && i+1 < len(args) {
+			classFilter = args[i+1]
+			i++
+			continue
+		}
+		filtered = append(filtered, args[i])
+	}
+	p, sess, _, _, err := connectAndLogin(filtered, "list-devices")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
-	return obtainAndPrintDeviceList(sess, "")
+	return obtainAndPrintDeviceList(sess, classFilter)
 }
 
 // routerRow is one row of the list-routers display table. Two roles:
@@ -1020,7 +1030,7 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 					seen[ts] = true
 					snapshotTypes = append(snapshotTypes, ts)
 				}
-				if deviceTypeFilter != "" && ts != deviceTypeFilter {
+				if deviceTypeFilter != "" && !strings.EqualFold(ts, deviceTypeFilter) {
 					continue
 				}
 				entries = append(entries, codec.DeviceEntry{
@@ -1038,20 +1048,24 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	items := []codec.SubItem{&codec.DeviceChange{Type: "LIST"}}
+	items := []codec.SubItem{&codec.DeviceChange{Type: "LIST", DeviceType: codec.DeviceType(deviceTypeFilter)}}
 	if err := sess.Obtain(ctx, items); err != nil {
 		return err
 	}
 	<-done
 	timer.Stop()
 
-	fmt.Printf("%-10s  %-30s  %s\n", "DEVICE_TYPE", "DEVICE_NAME", "IP_ADDRESS")
+	fmt.Printf("%-10s  %s\n", "DEVICE_TYPE", "IP_ADDRESS")
+	// Prepend the route-master sentinel (`0.0.0.0/ROUTER`) — central
+	// addressing target per spec §4.1, present on every Cerebrum,
+	// never returned in the wire LIST. Always show it in the unfiltered
+	// output and when filtering by ROUTER class; suppress for Device /
+	// SNMP filters.
+	if deviceTypeFilter == "" || strings.EqualFold(deviceTypeFilter, "Router") {
+		fmt.Printf("%-10s  %s\n", "ROUTER", "0.0.0.0")
+	}
 	for _, d := range entries {
-		name := d.DeviceName
-		if name == "" {
-			name = "-"
-		}
-		fmt.Printf("%-10s  %-30s  %s\n", d.DeviceType, name, d.IPAddress)
+		fmt.Printf("%-10s  %s\n", d.DeviceType, d.IPAddress)
 	}
 	if len(entries) == 0 {
 		switch {

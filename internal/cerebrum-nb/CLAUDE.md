@@ -368,13 +368,13 @@ is admin-side metadata, not exposed by the NB API. The codec parses
 multiple `<INSTANCE>` children defensively (the spec / reference
 driver allow it) but production servers we've seen emit one.
 
-## Known deviations from spec (live-verified 2026-04-27)
+## Spec is the source of truth
 
-| Spec text | Live wire | Decoder |
-|---|---|---|
-| `<DEVICE IP_ADDRESS="…" DEVICE_TYPE="…" DEVICE_NAME="…"/>` | `<DEVICE IP="…"><INSTANCE DEVICE_TYPE="…"/></DEVICE>` (short `IP=`, type on inner INSTANCE, no DEVICE_NAME) | accepts both `IP=` and `IP_ADDRESS=`; reads class from the first `<INSTANCE>` |
-| `<CATEGORY_DETAILS><details … description="…"/>` | `<details … descsription="…"/>` (server typo "descsription") | accepts both spellings, prefers `description` if both present |
-| Routing class enumerated via LIST | LIST always returns `DEVICE_TYPE="DEVICE"`; class is admin-side only | use the `0.0.0.0/ROUTER` sentinel for routing actions; do not try to discover the router |
+This file tracks the EVS Cerebrum NB v0.13 spec. When a peer sends a
+form that diverges from the spec, the codec absorbs it and fires a
+compliance event (see "Compliance events" above + per-event
+docstrings in `consumer/compliance_events.go`). Deviation catalogues
+live with the events, not here.
 
 ## Live-verified data (2026-04-27)
 
