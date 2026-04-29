@@ -152,13 +152,19 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
 ## Quirks worth remembering
 
 1. **mDNS-SD is preferred but NOT always available.** Many end-user
-   networks block multicast DNS for security policy reasons. Plan for
-   three deployment modes from day one:
-   - **Full mDNS + Registry** (greenfield / spec-compliant peers).
-   - **Unicast Registry** (`--no-mdns --registry <ip>:<port>`).
-   - **Direct-Node** (`--no-mdns --no-registry --peer-list peers.csv`).
+   networks block multicast DNS for security policy reasons; some
+   vendors ship Registry-less peer-to-peer mode that *still* relies
+   on mDNS (EVS Cerebrum). Plan for four deployment modes from day
+   one — all spec-compliant; the AMWA NMOS specs (IS-04 §3) remain
+   the source of truth, modes only name `(mDNS, Registry)`
+   combinations:
+   - **Mode A — Full mDNS + Registry** (greenfield / spec-compliant peers).
+   - **Mode B — Unicast Registry** (`--no-mdns --registry <ip>:<port>`).
+   - **Mode C — Direct-Node** (`--no-mdns --no-registry --peer-list peers.csv`).
+   - **Mode D — mDNS direct-Node** (`--mdns --no-registry`) — Cerebrum P2P.
    Default to mDNS but never assume it works. See
-   [`docs/matrix-compliance.md`](docs/matrix-compliance.md).
+   [`docs/matrix-compliance.md`](docs/matrix-compliance.md) and
+   [`docs/cerebrum-interop.md`](docs/cerebrum-interop.md).
 2. **Registries observe heartbeats.** A Node missing a heartbeat (default
    5 s interval, 12 s timeout) is removed from the Query API — the
    Controller observes the WS Subscription event for it. Implement

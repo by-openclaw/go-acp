@@ -64,6 +64,7 @@ deployment topology. Each mode maps to a CLI flag set:
 | **Full mDNS + Registry** | Greenfield / lab / spec-compliant peers (nmos-cpp). | `dhs registry nmos serve --mdns`<br>`dhs producer nmos serve` (Node auto-discovers Registry)<br>`dhs consumer nmos walk` (Controller auto-discovers Registry) |
 | **Unicast Registry** (mDNS off, static Registry hint) | Hardened deployments where mDNS is firewalled but a Registry still exists. | `dhs registry nmos serve --no-mdns --advertise-host <ip>:<port>`<br>`dhs producer nmos serve --no-mdns --registry <ip>:<port>`<br>`dhs consumer nmos walk <registry-ip>:<port>` |
 | **Direct-Node** (no Registry at all) | Lawo VSM, vendor environments without IS-04 registration support, end-user environments where mDNS is blocked. | `dhs producer nmos serve --no-mdns --no-registry`<br>`dhs consumer nmos walk-nodes --peer-list peers.csv`<br>`dhs consumer nmos walk-node <node-ip>:<port>` |
+| **mDNS direct-Node** (mDNS on, no Registry) | EVS Cerebrum peer-to-peer mode and any deployment where mDNS works but no Registry is provisioned. Nodes are mDNS-discovered on `_nmos-node._tcp` (peer service type) and addressed directly. See [`cerebrum-interop.md`](cerebrum-interop.md). | `dhs producer nmos serve --mdns --no-registry`<br>`dhs consumer nmos walk-nodes --mdns --no-registry` |
 | **CSV bootstrap** | Operations team gives dhs a static list of Node URLs (Lawo VSM convention). | `--peer-list peers.csv` (one Node URL per line) |
 
 Default mode: **Full mDNS + Registry**. Deviations fire a startup-log

@@ -326,7 +326,13 @@ packages, not as separate plugin slots.
 Real-world deployments break the "everyone on one multicast LAN"
 assumption. Production end-user networks block mDNS for security
 policy; some matrix vendors (Lawo VSM) ship with no Registry support
-at all. dhs supports three modes from day one:
+at all; some ship Registry-less peer-to-peer mode that still relies on
+mDNS (EVS Cerebrum). dhs supports four modes from day one. Each mode
+is a deployment **topology**, not a spec variant — the AMWA NMOS
+specifications (IS-04 §3 in particular) remain the authoritative
+source of truth for every wire interaction. Modes A/B/C/D simply
+name combinations of `(mDNS-on/off, Registry-present/absent)` that
+AMWA already permits.
 
 ### Mode A — full mDNS + Registry  (default)
 
@@ -392,6 +398,37 @@ where mDNS AND Registry are blocked.
 In Mode C the Controller fans out per-Node walks, IS-05 PATCHes, and
 IS-07 WebSocket subscriptions. There is no Registry, no Query API,
 no WS subscription stream — every Node is targeted directly.
+
+### Mode D — mDNS direct-Node, no Registry  (`--mdns --no-registry`)
+
+EVS Cerebrum peer-to-peer mode and any deployment where mDNS works
+on the LAN but no Registry is provisioned. Nodes are mDNS-discovered
+on `_nmos-node._tcp` (peer service type, **not**
+`_nmos-register._tcp`) and addressed directly. See
+[`cerebrum-interop.md`](cerebrum-interop.md) §3 for the Cerebrum
+trigger.
+
+```
+   ┌────────┐  mDNS  ┌──────────┐  mDNS  ┌──────────────────────┐
+   │ [N]    │ <───── │ DNS-SD   │ ─────> │ [C]      Controller   │
+   │ Node   │        │ multicast│        │                       │
+   │        │        │ _nmos-   │        │  resolves _nmos-node  │
+   │        │        │  node    │        │  to host list, then    │
+   └───┬────┘        │  ._tcp   │        │  per-Node REST          │
+   ┌───┴────┐        └────┬─────┘        │                       │
+   │ [N]    │             │              │  no Registry,          │
+   │ Node   │  ◄── direct REST per Node ─│  no Query API,         │
+   └────────┘                            │  no WS subscriptions   │
+   ┌────────┐                            └──────────────────────┘
+   │ [N]    │  ◄────────────────────────
+   │ Node   │
+   └────────┘
+```
+
+Mode D is the mDNS-equivalent of Mode C: the Controller still fans
+out per-Node walks, IS-05 PATCHes, and IS-07 subscriptions. The
+only difference vs. Mode C is the source of the host list — mDNS
+browse (Mode D) instead of `--peer-list` CSV (Mode C).
 
 ---
 

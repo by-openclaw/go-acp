@@ -1,0 +1,262 @@
+# NMOS — EVS Cerebrum interop notes
+
+The EVS Cerebrum control system ships an **IS-04 Registry implementation**
+as one of its NMOS surfaces. This doc captures what we know about how
+that registry behaves, derived from the vendor-supplied
+[`NMOS IS-04-5 Help.pdf`](NMOS%20IS-04-5%20Help.pdf) shipped alongside
+this file.
+
+> **Scope.** This doc is about Cerebrum's NMOS Registry surface
+> (HTTP, port 8080) only. It is unrelated to Cerebrum's Northbound
+> XML/WebSocket API on port 40007 — those are two independent
+> product surfaces with no shared discovery, transport, or session
+> state. NB lives in `internal/cerebrum-nb/`; this doc never touches it.
+
+> **Source.** `NMOS IS-04-5 Help.pdf` (8 pages), shipped by EVS with
+> Cerebrum. Verified: 2026-04-29 (documentation review — no live
+> Cerebrum-NMOS testbed yet). Live verification at RTBF pending.
+
+---
+
+## 1. Why this doc
+
+[`matrix-compliance.md`](matrix-compliance.md) already tracks Lawo VSM as
+a **Node-only** vendor (no Registry, no Query API, IS-05 over HTTP only).
+Cerebrum is the **inverse** — it ships a full IS-04 Registry
+implementation and runs as the catalogue middleware between Nodes and
+Controllers. Cerebrum is the most likely first NMOS Registry peer dhs
+will meet at RTBF, so its deviations need to be classified before
+integration starts.
+
+Three jobs:
+
+1. Pin down the three NMOS deployment modes Cerebrum supports, so we
+   know which dhs CLI surfaces have to interop with which Cerebrum
+   surface.
+2. Surface a previously-unrepresented deployment mode in our schema
+   (**Mode D — mDNS direct-Node, no Registry**), required by Cerebrum's
+   peer-to-peer mode.
+3. Catalogue Cerebrum's documented spec deviations as compliance events
+   we have to fire when peering with it.
+
+---
+
+## 2. Cerebrum's three NMOS modes
+
+| # | Cerebrum mode | Cerebrum role | Discovery | Registry |
+|---|---|---|---|---|
+| 1 | **External Registry** | Node + Controller talking to someone else's IS-04 Registry | mDNS or unicast hint | external (3rd-party) |
+| 2 | **Peer-to-peer** | Nodes only; no central catalogue | mDNS (mandatory — multicast must traverse) | none |
+| 3 | **Hosted Registry** ("Network Media Server" device) | Cerebrum **is** the IS-04 Registry | Cerebrum advertises via Bonjour | Cerebrum |
+
+ASCII view:
+
+```
+Mode 1 — Cerebrum connects to someone else's Registry
+  Cerebrum ── HTTP ──> 3rd-party Registry <── HTTP ── 3rd-party Nodes
+
+Mode 2 — Peer-to-peer
+  Cerebrum <── mDNS ──> 3rd-party Nodes
+                       (no Registry — direct Node-API walking only)
+
+Mode 3 — Cerebrum hosts the Registry
+  3rd-party Nodes ── HTTP ──> Cerebrum:8080 (Registry) <── HTTP ── 3rd-party Controllers
+```
+
+---
+
+## 3. Mapping to dhs deployment modes
+
+[`matrix-compliance.md`](matrix-compliance.md) "Deployment modes"
+defines three today: **A** (full mDNS + Registry), **B** (unicast
+Registry), **C** (direct-Node, no mDNS, no Registry). Cerebrum's mode 2
+("peer-to-peer with mDNS but no Registry") doesn't fit any of them —
+mDNS is mandatory but Registry is absent. We need a new **Mode D**.
+
+| Cerebrum mode | dhs equivalent | Notes |
+|---|---|---|
+| 1. External Registry | **A** (`--mdns`) or **B** (`--no-mdns --registry`) — we're a Node and/or Controller; Cerebrum is too | Both peers register against a third-party Registry |
+| 2. Peer-to-peer | **D** (NEW) — `mDNS direct-Node`, no Registry | Required for Cerebrum P2P; not yet wired in CLI |
+| 3. Hosted Registry | **A** or **B** — we're a Node and/or Controller; Cerebrum is the Registry | dhs `producer nmos serve` + `consumer nmos walk` against Cerebrum:8080 |
+
+**Mode D — new deployment mode:**
+
+| Property | Value |
+|---|---|
+| Discovery | mDNS-SD on `_nmos-node._tcp` (peer service type, not `_nmos-register._tcp`) |
+| Registry | none — direct-Node walking only |
+| Heartbeats | N/A (no Registry to heartbeat against) |
+| Producer flags | `dhs producer nmos serve --mdns --no-registry` |
+| Consumer flags | `dhs consumer nmos walk-nodes --mdns --no-registry` |
+| Fallback | once mDNS resolves a peer set, the rest of the flow degrades into direct-Node walking |
+
+**Principle:** dhs supports **every** deployment topology a peer might
+require. AMWA NMOS specifications (IS-04 §3 in particular) remain the
+authoritative source of truth — Mode D is not a spec deviation, it
+just names a `(mDNS-on, Registry-absent)` combination AMWA already
+permits. Canonical references for Mode D:
+[`architecture.md`](architecture.md) §"Mode D" + ASCII,
+[`matrix-compliance.md`](matrix-compliance.md) "Deployment modes"
+table, [`internal/amwa/CLAUDE.md`](../CLAUDE.md) Quirks #1.
+
+---
+
+## 4. Cerebrum's hosted Registry — implementation details (peer side)
+
+These are facts about **Cerebrum's** environment, not about dhs. We
+surface them so integration teams know what their Cerebrum host looks
+like before we connect.
+
+| Aspect | Cerebrum behaviour |
+|---|---|
+| Default port | 8080 (HTTP, no TLS in default config) |
+| Host OS observed | Windows Server 2022 Datacenter |
+| mDNS lib | Bonjour for Windows (Apple installer required on the Cerebrum host) |
+| `_nmos-system._tcp.local` PTR cadence | every 10–20 s |
+| Multicast group | 224.0.0.251 (UDP/5353) |
+| Supported endpoints | `GET /x-nmos/registration/`, `GET /x-nmos/registration/v1.x/`, `POST /x-nmos/registration/v1.x/resource`, `DELETE /x-nmos/registration/v1.x/resource/{type}/{id}`, `POST /x-nmos/registration/v1.x/health/nodes/{id}` |
+| Heartbeat / GC | 5 s default / 12 s default; configurable up to **30 000 ms** (hard ceiling — see §7.2) |
+| Required Win prereq | `netsh http add urlacl url=http://*:8080/x-nmos/registration/ user=EVERYONE listen=yes delegate=yes` (and the same for `/query/`) — on the Cerebrum host, run as Administrator |
+| Firewall | Inbound TCP 8080 must be open on the Cerebrum host |
+| Bonjour failure mode | Registry surfaces error `-65540` → restart Bonjour service on the Cerebrum host |
+
+> **dhs is OS-agnostic.** Our IS-04 Registry implementation uses the Go
+> standard library (no Bonjour service, no `netsh`, no Windows-specific
+> dependency); it runs on Linux, macOS, Windows. The list above
+> documents Cerebrum's environment so field teams know what to install
+> on the Cerebrum host, not what dhs requires on its own host.
+
+---
+
+## 5. Spec deviations — compliance events to fire when peering with Cerebrum
+
+Each of these matches the "absorb-and-fire" pattern from
+[`matrix-compliance.md`](matrix-compliance.md). Fire at most once per
+(session, peer, deviation) tuple.
+
+| Deviation | Cerebrum behaviour | dhs response | Compliance event |
+|---|---|---|---|
+| Query API absent | Vendor PDF: *"external third party control systems cannot interrogate the registry directly"*. Only Registration API endpoints served. | If we're the Controller, fall back to direct-Node walking against Cerebrum's known Nodes. | `nmos_query_api_missing` (existing) |
+| IS-05 activation always-immediate | Single PATCH; activation always coerced to `now`. | Detect rejection of `activate_scheduled_*`; retry as `activate_immediate`. | `nmos_scheduled_activation_unsupported` (existing — applies to Cerebrum too) |
+| IS-05 single-PATCH expectation | Cerebrum waits for HTTP 200 OK before next PATCH on same device. | Don't pipeline IS-05 PATCHes when peer is Cerebrum; serialise per-device. | `nmos_is05_serial_patch_required` (NEW) |
+| SDP legs truncated | Cerebrum reads only the first 2 leg/stream definitions in `m=` blocks (vendor PDF: *"Cerebrum currently only use the first two definitions of legs/streams"*). | dhs encoder/decoder supports unlimited legs. When our Sender has >2 legs and peer is Cerebrum, fire event so operator knows extra legs were silently dropped peer-side. | `nmos_sdp_legs_truncated_peer` (NEW) |
+| Sender identity tuple uniqueness | Cerebrum requires (m/c addr, origin addr, port) globally unique across senders; duplicates are highlighted red in their UI but not rejected. | Detect duplicates ourselves before announcing — Cerebrum will mis-route otherwise. | `nmos_sender_identity_collision` (NEW) |
+| `a=group:DUP primary secondary` expected for redundant flows | Cerebrum expects this exact spelling; if absent, the second leg is treated as a separate flow. | dhs encoder emits the canonical form already; integration tests must verify the line is preserved end-to-end. | n/a (we already comply — no event) |
+
+Naming convention: `nmos_` prefix; new events land in the NMOS
+compliance catalogue when the codec-side compliance package is wired
+(see `internal/amwa/CLAUDE.md` "Strict-dependency architecture").
+
+---
+
+## 6. Sub-device pattern (SubID) — TODO verify against Cerebrum tech docs
+
+Cerebrum's IS-04 Registry has a **SubID** concept layered on top of NMOS
+UUIDs. The vendor PDF describes two referencing modes:
+
+| Mode | How a sender/receiver is addressed | Hardware-swap behaviour |
+|---|---|---|
+| **Without SubID** | Full UUID path: `<node UUID>\|<device UUID>\|<sender or receiver UUID>` | All UUIDs change post-swap → every route reconfigured manually |
+| **With SubID** | `<SubID>.<sender or receiver label>` | SubID-to-Node binding updates once; route configurations referencing SubID + label survive |
+
+Concrete walkthrough (paraphrased from PDF — see TODO below):
+
+```
+Pre-swap:
+  Node X (uuid=A1, label="CAM-01-room-3", SubID="cam-01")
+    Sender (uuid=S1, label="SDI-OUT-1")
+
+  Cerebrum route references:  cam-01.SDI-OUT-1   ✓
+
+Hardware swap (different MAC, different UUIDs):
+  Node X' (uuid=B7, label="CAM-01-room-3", SubID rebound to "cam-01")
+    Sender (uuid=S9, label="SDI-OUT-1")
+
+  Cerebrum route references:  cam-01.SDI-OUT-1   ✓ still valid
+```
+
+**Anti-pattern called out by name in the vendor PDF:** EVS XT Servers
+include the unit's serial number in sender/receiver labels. After
+hardware swap, the **labels** change too, breaking the
+SubID-as-stable-key promise. Cerebrum's documented workaround: deploy XT
+Servers **without** SubID assignment, accepting full-UUID-path
+referencing instead.
+
+> **TODO — verify against Cerebrum tech docs.** The SubID story above
+> is a paraphrase of one paragraph in `NMOS IS-04-5 Help.pdf`. Before
+> relying on SubID semantics in integration tests:
+>
+> 1. Pull canonical Cerebrum technical documentation via vendor support
+>    contact (not the help PDF, which is operator-facing).
+> 2. Verify: does SubID survive a node UUID change without operator
+>    action? What's the failure mode if two replaced nodes claim the
+>    same SubID? What happens during the swap window when both old and
+>    new node could be heartbeating?
+> 3. Confirm the EVS XT label-instability anti-pattern is the only
+>    documented case, or whether other peers exhibit similar
+>    label-mutation behaviour.
+
+---
+
+## 7. Warnings + open question
+
+### 7.1 Open question — Cerebrum's missing Query API
+
+Cerebrum's IS-04 Registry deliberately does not expose `/x-nmos/query/*`.
+The vendor PDF states this as a fact, not a roadmap item. Open: is this
+a deliberate product choice (Cerebrum routes everything through its own
+UI) or a planned-but-unimplemented surface?
+
+If deliberate: any third-party Controller (dhs, Lawo, anyone) peering
+with Cerebrum-as-Registry must walk each Node directly. Mode A (full
+mDNS + Registry) effectively degrades to Mode B-with-mDNS-discovery
+against a Cerebrum peer — the Registry's discovery face is usable, the
+catalogue face is not.
+
+### 7.2 Warning — `30 000 ms` is a hard ceiling on Cerebrum's GC timeout
+
+The "Timeout" parameter in Cerebrum's Advanced Comms dialog is capped
+at 30 000 ms. dhs Nodes peering with a Cerebrum Registry must:
+
+- Send heartbeat at ≤ ~6 s (matches default 5 s with margin).
+- **Never** request a Registry-side GC timeout > 30 000 ms — Cerebrum
+  will silently clamp to 30 000 ms, which makes the dhs-side keep-alive
+  cadence calculation incorrect.
+- Treat 30 000 ms as the hard maximum tolerated outage window for a
+  Node peering with Cerebrum.
+
+### 7.3 Warning — Cerebrum's internal datastore XML is not a public format
+
+Cerebrum stores Registry state in
+`..\Data Files\Generic Device Data\<ip>.xml` on the Cerebrum host. This
+is an internal datastore format. It exists; dhs does **not** parse,
+generate, or synchronise it.
+
+Don't:
+
+- Confuse this with Cerebrum's Northbound XML wire protocol (port
+  40007) — different product surface, different XML schema, no
+  relationship to NMOS.
+- Read or write the file from dhs as a side-channel.
+- Treat the file shape as stable across Cerebrum versions.
+
+If RTBF needs Registry-state replication outside Cerebrum's own SQL or
+Virtual-IP mechanism, we provide it through dhs primitives (Mode D peer
+sync, Mode B unicast Registry replication once HA lands), not by
+touching this file.
+
+---
+
+## Cross-references
+
+- [`internal/amwa/CLAUDE.md`](../CLAUDE.md) — NMOS plugin top-level
+  context. Quirks #1 enumerates deployment modes A/B/C/D.
+- [`matrix-compliance.md`](matrix-compliance.md) — vendor-by-vendor
+  compliance tracker. Cerebrum row to be added once a live testbed
+  exists.
+- [`architecture.md`](architecture.md) — IS-04 / IS-05 role topology
+  diagrams.
+- [`conformance.md`](conformance.md) — AMWA NMOS Testing tool gating
+  per spec.
+- [`NMOS IS-04-5 Help.pdf`](NMOS%20IS-04-5%20Help.pdf) — vendor source
+  for everything in this doc.
