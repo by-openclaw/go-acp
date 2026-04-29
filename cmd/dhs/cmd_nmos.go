@@ -117,7 +117,15 @@ func runNMOSDiscoverUnicast(ctx context.Context, resolver, service string, timeo
 	if resolver == "" {
 		return fmt.Errorf("nmos discover --unicast: --resolver is required")
 	}
-	insts, err := session.ResolveUnicast(ctx, resolver, service, codec.DefaultDomain, timeout)
+	// If the user passed a fully-qualified service (e.g.
+	// `_nmos-register._tcp.by-systems.arpa`), peel the domain off so
+	// instance Domain is set correctly and FullName doesn't suffix
+	// `.local`. A bare service-type uses DefaultDomain ("local").
+	bareSvc, dom := splitServiceDomain(service)
+	if dom == "" {
+		dom = codec.DefaultDomain
+	}
+	insts, err := session.ResolveUnicast(ctx, resolver, bareSvc, dom, timeout)
 	if err != nil {
 		return err
 	}
@@ -158,6 +166,27 @@ func runNMOSDiscoverMDNS(ctx context.Context, service string, timeout time.Durat
 	sort.Slice(insts, func(i, j int) bool { return insts[i].Name < insts[j].Name })
 	printInstances(service, insts)
 	return nil
+}
+
+// splitServiceDomain peels the domain off a possibly-FQDN service
+// name. `_nmos-register._tcp` → ("_nmos-register._tcp", "");
+// `_nmos-register._tcp.by-systems.arpa` → ("_nmos-register._tcp",
+// "by-systems.arpa"). Heuristic per RFC 6763 §4.1.2: leading
+// underscore-prefixed labels form the bare service-type, the rest
+// is the discovery domain.
+func splitServiceDomain(s string) (bare, domain string) {
+	parts := strings.Split(s, ".")
+	cut := len(parts)
+	for i, p := range parts {
+		if !strings.HasPrefix(p, "_") {
+			cut = i
+			break
+		}
+	}
+	if cut == len(parts) {
+		return s, ""
+	}
+	return strings.Join(parts[:cut], "."), strings.Join(parts[cut:], ".")
 }
 
 func printInstances(service string, insts []codec.Instance) {
