@@ -24,6 +24,7 @@ import (
 
 	codec "acp/internal/amwa/codec/dnssd"
 	"acp/internal/amwa/codec/is09"
+	"acp/internal/amwa/codec/spec"
 	"acp/internal/amwa/consumer"
 	"acp/internal/amwa/provider"
 	session "acp/internal/amwa/session/dnssd"
@@ -43,8 +44,10 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSDiscover(ctx, rest)
 	case "system":
 		return runNMOSSystem(ctx, rest)
+	case "walk":
+		return runNMOSWalk(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -614,4 +617,72 @@ announce of _nmos-register._tcp + _nmos-query._tcp.
   --gc-interval D          Heartbeat watchdog tick rate (default 1s)
   --heartbeat-timeout D    Evict Nodes that miss heartbeats this long
                            (default 12s, IS-04 §6.1)`)
+}
+
+// ---- consumer walk (IS-04 Controller) ---------------------------------------
+
+func runNMOSWalk(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("walk", flag.ContinueOnError)
+	registry := fs.String("registry", "", "Registry origin (Mode B unicast — http://host:port). When empty, --mdns or --unicast triggers DNS-SD discovery.")
+	mdns := fs.Bool("mdns", true, "discover the Registry via mDNS (Mode A); ignored if --registry is set")
+	unicast := fs.Bool("unicast", false, "discover via unicast DNS-SD (Mode B); requires --resolver")
+	resolver := fs.String("resolver", "", "unicast DNS resolver IP")
+	domain := fs.String("domain", "by-systems.arpa", "unicast DNS-SD discovery domain")
+	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor (v1.1 / v1.2 / v1.3); empty = highest mutual")
+	timeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *registry == "" && !*mdns && !*unicast {
+		return fmt.Errorf("nmos walk: pick exactly one of --registry / --mdns / --unicast")
+	}
+
+	mode := ""
+	switch {
+	case *unicast:
+		if *resolver == "" {
+			return fmt.Errorf("nmos walk --unicast: --resolver is required")
+		}
+		mode = "unicast"
+	case *mdns:
+		mode = "mdns"
+	}
+
+	rep := &spec.SliceReporter{}
+	logger := slog.Default()
+	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
+		Logger:           logger,
+		Reporter:         rep,
+		RegistryURL:      *registry,
+		DiscoveryMode:    mode,
+		DiscoveryTimeout: *timeout,
+		UnicastResolver:  *resolver,
+		UnicastDomain:    *domain,
+		APIVer:           *apiVer,
+	})
+	if err != nil {
+		return fmt.Errorf("nmos walk: %w", err)
+	}
+
+	fmt.Printf("Registry %s (api_ver=%s, spec=%s)\n", c.BaseURL(), c.Codec().APIVer(), c.Codec().SpecPatch())
+
+	snap, errs := c.Walk(ctx)
+	fmt.Printf("Catalogue:\n")
+	fmt.Printf("  nodes:     %d\n", len(snap.Nodes))
+	fmt.Printf("  devices:   %d\n", len(snap.Devices))
+	fmt.Printf("  sources:   %d\n", len(snap.Sources))
+	fmt.Printf("  flows:     %d\n", len(snap.Flows))
+	fmt.Printf("  senders:   %d\n", len(snap.Senders))
+	fmt.Printf("  receivers: %d\n", len(snap.Receivers))
+	for _, e := range errs {
+		fmt.Fprintf(os.Stderr, "warn: %v\n", e)
+	}
+	if events := rep.Snapshot(); len(events) > 0 {
+		fmt.Fprintf(os.Stderr, "%d compliance event(s) fired:\n", len(events))
+		for _, ev := range events {
+			fmt.Fprintf(os.Stderr, "  [%s] %s/%s %s: %s\n",
+				ev.Severity, ev.SpecID, ev.APIVer, ev.Code, ev.Detail)
+		}
+	}
+	return nil
 }
