@@ -1,0 +1,53 @@
+# AMWA NMOS Testing tool — isolated-bridge harness skeleton.
+#
+# Per phase the suite-runner copies this template into
+# tests/integration/nmos/<NN-suite>/, customises the UserConfig.py +
+# `command:` line, then drives `nmos-run-suite.sh` against it.
+#
+# All traffic stays on a private bridge network — no host networking,
+# no published ports, no persistent volumes. The dhs SUT (System Under
+# Test) container joins the same bridge so the AMWA tool reaches it
+# unicast-only via the bridge DNS resolver. mDNS multicast does not
+# leak to the user's LAN.
+#
+# Pin the image by digest before flipping the suite to required-pass
+# in CI; phase tickets capture the digest used.
+
+services:
+  nmos-testing:
+    image: amwa/nmos-testing:latest
+    container_name: dhs-nmos-testing
+    volumes:
+      - ./UserConfig.py:/config/UserConfig.py:ro
+      - ./results:/results
+    environment:
+      # Drive the tool via its REST API rather than the web UI.
+      - PYTHONUNBUFFERED=1
+    networks:
+      - nmos
+    # Suite-runner sets this command per phase; the template just runs
+    # the help banner so `docker compose up` proves the image exists.
+    command:
+      - python
+      - nmos-test.py
+      - --help
+
+  dhs:
+    # Built locally in CI from the current branch via `make build`;
+    # mounted in for fast iteration.
+    image: dhs:dev
+    container_name: dhs-nmos-sut
+    networks:
+      - nmos
+    # Phase-specific overrides set the right verb (producer / registry).
+    command: ["dhs", "version"]
+
+networks:
+  nmos:
+    driver: bridge
+    internal: false
+    # Disable IPv6 + custom subnet to keep the harness deterministic.
+    enable_ipv6: false
+    ipam:
+      config:
+        - subnet: 172.30.255.0/24

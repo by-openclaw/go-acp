@@ -45,9 +45,12 @@ docs/                           cross-cutting architecture, connector, schema
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
 `cerebrum-nb` is merged on main (PR #144, v0.6.0 tagged 2026-04-30).
-The active feature branch is `nmos` (scaffold + Phase 1 step #1 — epic
-#146, PR #147 + PR #149) on `feat/nmos-scaffold` and
-`feat/nmos-discovery-dnssd`. See
+NMOS Phase 0 scaffold merged on main 2026-04-30 via PR #147; the active
+feature branch is `feat/nmos-discovery-dnssd` (PR #149 — Phase 1 step #1:
+DNS-SD codec + mDNS responder/browser + RFC 6763 §10 chase-the-PTR
+unicast + peer-list + Tier-1 `internal/registry/` slot + `dhs_nmos.lua`
+dissector + harness skeleton; 10/10 verification PASS across deployment
+modes A/B/C/D as of 2026-04-29). See
 `memory/project_protocol_backlog.md` for the full queue.
 
 > **NMOS is the odd one out.** It is a suite of ~14 specs

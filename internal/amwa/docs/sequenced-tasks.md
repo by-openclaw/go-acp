@@ -37,10 +37,20 @@ the full scope.
 
 ### #1 — DNS-SD client + server + unicast fallback + dependency-enforcement gates
 
-Pure infrastructure, no NMOS semantics yet. **Three deployment modes
-must work from day one** because real-world peers block mDNS or omit
-the Registry entirely (see
-[`matrix-compliance.md`](matrix-compliance.md)).
+> **Status: VERIFIED 2026-04-29 — PR #149.** 10/10 layer scoreboard
+> green across modes A/B/C/D against pfSense Unbound (unicast) +
+> same-host loopback (mDNS). Two bug fixes landed during sign-off:
+> Windows mDNS multi-interface bind + `IP_MULTICAST_LOOP` re-enable
+> (build-tagged stdlib-only); Lua dissector `tohex(true)` for
+> lowercase heuristic; chase-the-PTR for bandwidth-minimising
+> resolvers (RFC 6763 §10). PR #147 merged on main 2026-04-30; PR
+> #149 retargeted to main; awaiting CI green → merge.
+
+Pure infrastructure, no NMOS semantics yet. **Four deployment modes
+must work from day one** (A/B/C plus Mode D added 2026-04-29 for EVS
+Cerebrum P2P) because real-world peers block mDNS, omit the Registry,
+or want mDNS-discovered direct-Node addressing without a Registry —
+see [`matrix-compliance.md`](matrix-compliance.md).
 
 **Also lands in this PR — strict-dependency enforcement gates** (per
 [`dependencies.md`](dependencies.md)):
