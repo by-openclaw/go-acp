@@ -19,6 +19,7 @@ import (
 	"time"
 
 	codec "acp/internal/amwa/codec/dnssd"
+	"acp/internal/amwa/codec/is04"
 	session "acp/internal/amwa/session/dnssd"
 	httpsession "acp/internal/amwa/session/http"
 	registryslot "acp/internal/registry"
@@ -51,9 +52,11 @@ func (Factory) New(logger *slog.Logger) registryslot.Registry {
 	return &Registry{logger: logger}
 }
 
-// Registry implements registryslot.Registry. Phase 1 step #1 scope:
-// mDNS announce only — no HTTP listener yet. Stats reflect what we
-// can measure at the discovery layer (announcements emitted).
+// Registry implements registryslot.Registry. Serves the IS-04
+// Registration + Query API + WebSocket subscriptions in parallel
+// across every wire minor registered with the is04 package
+// (`is04.AllCodecs()`). DNS-SD `api_ver` TXT advertises every
+// supported minor comma-separated.
 type Registry struct {
 	logger *slog.Logger
 
@@ -63,11 +66,13 @@ type Registry struct {
 	announced  []codec.Instance
 	announces  uint64 // atomic
 
-	// Phase 1 #4: real HTTP face + store + GC + WS subscriptions.
-	store    *Store
-	subs     *SubscriptionManager
-	apiVer   string
-	httpSrv  *httpsession.Server
+	// HTTP face + store. One Store is shared across every served
+	// API version — resources are version-stamped on ingest, payload
+	// shape varies per requested URL prefix.
+	store     *Store
+	apiVers   []string                            // wire minors served, ascending — e.g. ["v1.1","v1.2","v1.3"]
+	subsByVer map[string]*SubscriptionManager     // one per minor (ws_href differs)
+	httpSrv   *httpsession.Server
 }
 
 // Serve advertises the Registry via mDNS, mounts the Registration +
@@ -94,47 +99,44 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 	if priority < 0 {
 		priority = 0
 	}
-	apiVer := opts.APIVer
-	if apiVer == "" {
-		apiVer = "v1.3"
-	}
-	r.apiVer = apiVer
+	// Determine which IS-04 wire minors to serve in parallel.
+	//   - opts.APIVer set         → serve only that minor (back-compat
+	//                                 + per-minor integration testing)
+	//   - opts.APIVer empty       → serve every codec registered with
+	//                                 is04.AllCodecs() (production
+	//                                 default)
+	//   - no codecs registered    → fall back to "v1.3" so single-binary
+	//                                 tests that don't blank-import
+	//                                 is04/vXX still work
+	apiVers := pickAPIVersions(opts.APIVer)
+	r.apiVers = apiVers
 
-	// Initialise store + subscription manager. AdvertiseHost is what
-	// we publish in ws_href so peers can reach us.
+	// Initialise store + per-minor subscription managers.
+	// AdvertiseHost is what we publish in ws_href so peers can reach us.
 	advertise := opts.AdvertiseHost
 	if advertise == "" {
 		advertise = fmt.Sprintf("%s:%d", host, port)
 	}
 	r.store = NewStore()
-	r.subs = NewSubscriptionManager(r.logger, r.store, advertise, apiVer)
+	r.subsByVer = make(map[string]*SubscriptionManager, len(apiVers))
 
-	// HTTP routes — Registration + Query.
+	// HTTP routes — Registration + Query API installed in parallel
+	// for every served minor on one shared store.
 	srv := httpsession.NewServer(r.logger)
-	regBase := "/x-nmos/registration/" + apiVer
-	queryBase := "/x-nmos/query/" + apiVer
-	installRegistrationRoutes(srv, r.store, regBase)
-	installQueryRoutes(srv, r.store, r.subs, queryBase)
+	wsPrefixes := make([]string, 0, len(apiVers))
+	upgradeHandlers := make(map[string]stdhttp.HandlerFunc, len(apiVers))
+	for _, apiVer := range apiVers {
+		regBase := "/x-nmos/registration/" + apiVer
+		queryBase := "/x-nmos/query/" + apiVer
+		mgr := NewSubscriptionManager(r.logger, r.store, advertise, apiVer)
+		r.subsByVer[apiVer] = mgr
+		installRegistrationRoutes(srv, r.store, regBase)
+		installQueryRoutes(srv, r.store, mgr, queryBase)
 
-	// WebSocket upgrade route — registered as a prefix-matched GET.
-	wsPrefix := queryBase + "/subscriptions/"
-	upgradeHandler := r.subs.UpgradeHandler(queryBase)
-	srv.HandlePrefix(wsPrefix, stdhttp.MethodGet, func(ctx context.Context, req *stdhttp.Request) (int, any, error) {
-		// We can't return through the route table for an Upgrade —
-		// the handler hijacks the connection. Use the raw upgrade
-		// path: install a separate raw http.Handler via httpsession's
-		// raw escape hatch. For now, return 0 + a sentinel and rely
-		// on the dispatcher to call the upgrade. Since the
-		// dispatcher writes a JSON response we can't easily hijack,
-		// we accept the limitation: fall back to a 501 — peers can
-		// fetch the resource list via REST during this phase. WS
-		// dispatch lives on a parallel net/http mux, see installWS.
-		_ = upgradeHandler
-		return stdhttp.StatusNotImplemented, httpsession.ErrorBody{
-			Code: 501, Error: "Not Implemented",
-			Debug: "WebSocket upgrade handled on parallel mux; this route should not be hit",
-		}, nil
-	})
+		wsPrefix := queryBase + "/subscriptions/"
+		wsPrefixes = append(wsPrefixes, wsPrefix)
+		upgradeHandlers[wsPrefix] = mgr.UpgradeHandler(queryBase)
+	}
 
 	r.mu.Lock()
 	r.httpSrv = srv
@@ -159,9 +161,15 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		// net/http converts POST→GET on 301.
 		routeTable := srv.MuxHandler()
 		dispatcher := stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, req *stdhttp.Request) {
-			if strings.HasPrefix(req.URL.Path, wsPrefix) && strings.HasSuffix(req.URL.Path, "/ws") {
-				upgradeHandler(w, req)
-				return
+			// Per-minor WS upgrade dispatch — match any registered
+			// `/x-nmos/query/<ver>/subscriptions/<id>/ws` prefix.
+			if strings.HasSuffix(req.URL.Path, "/ws") {
+				for _, prefix := range wsPrefixes {
+					if strings.HasPrefix(req.URL.Path, prefix) {
+						upgradeHandlers[prefix](w, req)
+						return
+					}
+				}
 			}
 			routeTable.ServeHTTP(w, req)
 		})
@@ -197,7 +205,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 				IPv4:    ips,
 				TXT: map[string]string{
 					codec.TXTKeyAPIProto: "http",
-					codec.TXTKeyAPIVer:   apiVer,
+					codec.TXTKeyAPIVer:   strings.Join(apiVers, ","),
 					codec.TXTKeyAPIAuth:  "false",
 					codec.TXTKeyPriority: strconv.Itoa(priority),
 				},
@@ -226,7 +234,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 	if r.logger != nil {
 		r.logger.Info("registry/nmos: HTTP face active",
 			"bind", bindAddr,
-			"reg", regBase, "query", queryBase, "ws", wsPrefix)
+			"api_vers", apiVers)
 	}
 
 	// Block until ctx cancels OR the HTTP server crashes.
@@ -286,6 +294,27 @@ func (r *Registry) Stats() registryslot.Stats {
 		// thing this scaffold actually does is announce.
 		Registrations: atomic.LoadUint64(&r.announces),
 	}
+}
+
+// pickAPIVersions resolves which IS-04 wire minors the Registry
+// should serve.
+//
+//   - Explicit override (opts.APIVer non-empty) — single minor only.
+//     Used by per-minor integration tests + back-compat callers.
+//   - Empty override + codecs registered with is04 — every registered
+//     APIVer in ascending order. Production default once
+//     internal/amwa/codec/is04/v11 + v12 + v13 are blank-imported.
+//   - Empty override + no codecs registered — fall back to "v1.3" so
+//     unit tests that don't blank-import is04/vXX still exercise the
+//     route installer.
+func pickAPIVersions(override string) []string {
+	if override != "" {
+		return []string{override}
+	}
+	if vs := is04.SupportedVersions(); len(vs) > 0 {
+		return vs
+	}
+	return []string{"v1.3"}
 }
 
 // pickAdvertiseHostPort resolves opts.AdvertiseHost (preferred) or

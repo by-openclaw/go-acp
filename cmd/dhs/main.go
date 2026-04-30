@@ -57,6 +57,16 @@ import (
 
 	// Registry plugins — blank imports register with internal/registry.
 	_ "acp/internal/amwa/registry"
+
+	// NMOS codec versions — blank imports trigger init()-time
+	// registration with the per-spec spec.Registry[T]. Each minor
+	// is its own package; cmd/dhs/main.go is the only place that
+	// references the concrete vXX/ packages directly. Plugin code
+	// (Layer 3) goes through the host spec's Codec interface only,
+	// per `internal/amwa/docs/dependencies.md` forbidden edges.
+	_ "acp/internal/amwa/codec/is04/v11"
+	_ "acp/internal/amwa/codec/is04/v12"
+	_ "acp/internal/amwa/codec/is04/v13"
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.
