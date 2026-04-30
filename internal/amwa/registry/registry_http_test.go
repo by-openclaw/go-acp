@@ -26,34 +26,29 @@ func startRegistryHTTP(t *testing.T, store *Store, mgr *SubscriptionManager) (st
 	installRegistrationRoutes(srv, store, "/x-nmos/registration/v1.3")
 	installQueryRoutes(srv, store, mgr, "/x-nmos/query/v1.3")
 
-	mux := stdhttp.NewServeMux()
 	routeTable := srv.MuxHandler()
+	handler := routeTable
 	if mgr != nil {
-		// Subtree match `/subscriptions/` covers BOTH the upgrade path
-		// (`/subscriptions/<id>/ws`) AND the REST endpoints
-		// (`/subscriptions` + `/subscriptions`). The upgrade handler
-		// delegates to the route table whenever the URL doesn't end in
-		// `/ws`, so REST + WS share the same prefix without redirect
-		// shenanigans.
+		// Wrap the route table with a single dispatcher: any path
+		// matching `/x-nmos/query/v1.3/subscriptions/<id>/ws` is a
+		// WebSocket upgrade; everything else falls through to the
+		// route table verbatim. We deliberately avoid net/http
+		// ServeMux subtree patterns here — registering
+		// `/subscriptions/` would trigger ServeMux's 301
+		// no-slash→slash redirect for POSTs to `/subscriptions`,
+		// and net/http converts POST→GET on 301.
 		upgrade := mgr.UpgradeHandler("/x-nmos/query/v1.3")
-		mux.HandleFunc("/x-nmos/query/v1.3/subscriptions/", func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-			if strings.HasSuffix(r.URL.Path, "/ws") {
+		const wsPrefix = "/x-nmos/query/v1.3/subscriptions/"
+		handler = stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+			if strings.HasPrefix(r.URL.Path, wsPrefix) && strings.HasSuffix(r.URL.Path, "/ws") {
 				upgrade(w, r)
-				return
-			}
-			// ServeMux redirects no-trailing-slash → trailing-slash for
-			// our subtree pattern. The route table has the exact-match
-			// path without the slash, so strip before delegating.
-			if strings.HasSuffix(r.URL.Path, "/") {
-				r2 := r.Clone(r.Context())
-				r2.URL.Path = strings.TrimRight(r.URL.Path, "/")
-				routeTable.ServeHTTP(w, r2)
 				return
 			}
 			routeTable.ServeHTTP(w, r)
 		})
 	}
-	mux.Handle("/", routeTable)
+	mux := stdhttp.NewServeMux()
+	mux.Handle("/", handler)
 
 	ts := httptest.NewServer(mux)
 	return strings.TrimPrefix(ts.URL, "http://"), ts.Close

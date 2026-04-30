@@ -149,34 +149,25 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 	bindAddr := opts.BindAddrs[0]
 	httpErrCh := make(chan error, 1)
 	go func() {
-		// Build a parallel mux that handles both the route-table
-		// dispatcher AND the WS upgrade. The subtree pattern
-		// `/subscriptions/` covers both — the upgrade handler
-		// delegates to the route table whenever the URL doesn't end
-		// in `/ws`, so REST + WS share the same prefix without
-		// hitting ServeMux's 308-redirect-on-trailing-slash.
+		// Wrap the route table with a single dispatcher: any path
+		// matching `/x-nmos/query/<ver>/subscriptions/<id>/ws` is a
+		// WebSocket upgrade; everything else falls through to the
+		// route table verbatim. We deliberately avoid net/http
+		// ServeMux subtree patterns here — registering
+		// `/subscriptions/` would trigger ServeMux's 301 redirect
+		// for POSTs to `/subscriptions` (no trailing slash), and
+		// net/http converts POST→GET on 301.
 		routeTable := srv.MuxHandler()
-		mux := stdhttp.NewServeMux()
-		mux.HandleFunc(wsPrefix, func(w stdhttp.ResponseWriter, req *stdhttp.Request) {
-			if strings.HasSuffix(req.URL.Path, "/ws") {
+		dispatcher := stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, req *stdhttp.Request) {
+			if strings.HasPrefix(req.URL.Path, wsPrefix) && strings.HasSuffix(req.URL.Path, "/ws") {
 				upgradeHandler(w, req)
-				return
-			}
-			// ServeMux redirects no-trailing-slash → trailing-slash for
-			// our subtree pattern. The route table has the exact-match
-			// path without the slash, so strip before delegating.
-			if strings.HasSuffix(req.URL.Path, "/") {
-				r2 := req.Clone(req.Context())
-				r2.URL.Path = strings.TrimRight(req.URL.Path, "/")
-				routeTable.ServeHTTP(w, r2)
 				return
 			}
 			routeTable.ServeHTTP(w, req)
 		})
-		mux.Handle("/", routeTable)
 		s := &stdhttp.Server{
 			Addr:              bindAddr,
-			Handler:           mux,
+			Handler:           dispatcher,
 			ReadHeaderTimeout: 5 * time.Second,
 		}
 		httpErrCh <- runHTTPServer(httpCtx, s)
