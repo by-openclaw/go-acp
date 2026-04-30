@@ -1,0 +1,7 @@
+[
+  {
+    "id": "test_01",
+    "outcome": "Pass",
+    "_comment": "Baseline placeholder — replace with the full per-test expected outcome list once a real run has been performed against a pinned image digest. Until then the harness reports 'no expected.json regression detected' on any single-test pass."
+  }
+]

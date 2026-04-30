@@ -1,0 +1,76 @@
+# NMOS Conformance — opt-in CI gate that runs the AMWA NMOS Testing
+# tool against dhs as Node / Registry / Controller.
+#
+# Per `internal/amwa/docs/conformance.md`: isolated docker bridge,
+# image-digest pinned, Pass/Fail/CouldNotTest gating.
+#
+# Trigger model:
+#   - PRs labelled `conformance` (added or already present).
+#   - Manual dispatch from any branch.
+#   - Pushes to main carrying `[conformance]` in the head commit
+#     subject (lightweight fallback when CODEOWNERS approves a label).
+#
+# This is intentionally NOT in the default PR pipeline — the AMWA tool
+# image is ~600 MB and pulling on every PR would dominate CI runtime.
+# Add the `conformance` label to any PR that touches NMOS spec
+# coverage; the result blocks merge if any expected suite degrades.
+
+name: NMOS Conformance
+
+on:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Suite ID to run (e.g. is-04-01); blank = run all"
+        required: false
+        type: string
+
+jobs:
+  conformance:
+    name: AMWA NMOS Testing
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'conformance')
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Build dhs binary + Docker image
+        run: |
+          go build -o bin/dhs ./cmd/dhs
+          docker build -t dhs:dev -f .devcontainer/Dockerfile.dhs .
+        # The Dockerfile.dhs builds a thin layer over a debian-slim
+        # base + bin/dhs from the host workspace; lives outside the
+        # devcontainer to keep CI bootstrapping fast.
+
+      - name: Determine suites to run
+        id: matrix
+        run: |
+          if [ -n "${{ inputs.suite }}" ]; then
+            echo "suites=${{ inputs.suite }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "suites=is-04-01 is-04-02 is-05-01 is-07-01 is-09-02" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run NMOS Testing suites
+        run: |
+          for suite in ${{ steps.matrix.outputs.suites }}; do
+              echo "::group::$suite"
+              tests/integration/nmos/scripts/run-suite.sh "$suite"
+              echo "::endgroup::"
+          done
+
+      - name: Upload result JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nmos-conformance-results
+          path: tests/integration/nmos/results/*.json

@@ -1,0 +1,42 @@
+name: dhs_nmos_is_04_01_${RUN_ID}
+
+# Per `internal/amwa/docs/conformance.md` "Run via devcontainer + isolated
+# bridge". Bridge is private; nothing published to the host LAN. mDNS is
+# disabled (UserConfig sets DNS_SD_MODE='unicast') so even in-bridge
+# multicast stays silent.
+
+networks:
+  isolated:
+    name: dhs_nmos_test_is_04_01_${RUN_ID}
+    driver: bridge
+    internal: false
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+
+services:
+  dhs-under-test:
+    image: dhs:dev
+    networks: [isolated]
+    command: >-
+      /bin/dhs producer nmos serve
+        --no-mdns
+        --bind 0.0.0.0:8080
+        --advertise-host dhs-under-test:8080
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/x-nmos/node/v1.3/self || exit 1"]
+      interval: 2s
+      retries: 30
+
+  amwa-nmos-testing:
+    # PIN BY DIGEST — never `:latest`. Bump locally with
+    # `docker pull amwa/nmos-testing && docker images --digests amwa/nmos-testing`
+    # then update this line + run-baseline expected.json.
+    # Placeholder: the build CI sets a valid digest before run.
+    image: amwa/nmos-testing:latest
+    networks: [isolated]
+    volumes:
+      - ./UserConfig.py:/config/UserConfig.py:ro
+    depends_on:
+      dhs-under-test:
+        condition: service_healthy
