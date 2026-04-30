@@ -44,7 +44,7 @@ docs/                           cross-cutting architecture, connector, schema
 ```
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
-Other feature branches add more: `cerebrum` on `feat/cerebrum-nb-plugin`. See
+Other feature branches add more: `cerebrum-nb` on `feat/cerebrum-nb-plugin`. See
 `memory/project_protocol_backlog.md` for the full queue.
 
 The **TSL UMD plugin** registers three wire versions as separate
@@ -137,6 +137,14 @@ watcher's per-frame line shape (`/addr ,tags v1 v2 v3`) matches the
 `dhs_osc.lua` Wireshark Info column verbatim, so a live `watch`
 terminal and a tshark capture can be diffed line-for-line.
 
+Cerebrum NB (feature branch): see `dhs consumer cerebrum-nb -h` and
+`internal/cerebrum-nb/CLAUDE.md`. Spec is authoritative — DOCX in
+`internal/cerebrum-nb/assets/`. Default port 40007. Credentials via
+`$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`. Workflow rule
+(2026-04-30): every new verb is described as text first (name + wire
+frame + flags + RX + output); implement only after explicit user
+approval — see `feedback_design_first_no_code.md`.
+
 Producer verb is `serve` for the slot-based protocols.
 
 ---
@@ -148,6 +156,10 @@ internal/acp1/assets/       AXON-ACP_v1_4.pdf
 internal/acp2/assets/       acp2_protocol.pdf + an2_protocol.pdf
 internal/emberplus/assets/  Ember+ Documentation.pdf + Ember+ Formulas.pdf
 internal/probel-sw08p/assets/probel-sw08p/SW-P-08 Issue 30.doc   (use antiword; the .pdf is corrupted)
+internal/probel-sw02p/assets/probel-sw02/                        (SW-P-02 Issue 26)
+internal/osc/assets/                                              (OSC 1.0/1.1 specs)
+internal/tsl/assets/                                              (TSL UMD v3.1/v4/v5)
+internal/cerebrum-nb/assets/                                      (EVS Cerebrum NB v0.13 PDF + DOCX + OCR)
 
 internal/<proto>/wireshark/dhs_<proto>.lua         byte-exact reference
 ```
