@@ -95,14 +95,15 @@ func TestPickAdvertiseHostPort(t *testing.T) {
 }
 
 func TestServeStaticModeSkipsMDNS(t *testing.T) {
-	// Mode "static" should not open a multicast socket — verifies the
-	// scaffold respects --discovery=static even when no IS-04 HTTP
-	// surface is wired up yet.
+	// Mode "static" should not open a multicast socket but still
+	// brings up the HTTP face. Bind to an OS-allocated port to keep
+	// the test self-contained.
 	r := &Registry{}
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 
 	err := r.Serve(ctx, registryslot.ServeOptions{
+		BindAddrs:     []string{"127.0.0.1:0"},
 		AdvertiseHost: "127.0.0.1:8235",
 		DiscoveryMode: "static",
 	})
@@ -111,6 +112,8 @@ func TestServeStaticModeSkipsMDNS(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 	stats := r.Stats()
+	// The mDNS-announce counter is reused for Registrations; static
+	// mode skips announce so it stays at 0.
 	if stats.Registrations != 0 {
 		t.Errorf("expected zero announcements in static mode, got %d", stats.Registrations)
 	}

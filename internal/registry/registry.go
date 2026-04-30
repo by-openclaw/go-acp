@@ -15,6 +15,7 @@ package registry
 import (
 	"context"
 	"log/slog"
+	"time"
 )
 
 // Registry is the runtime contract a plugin satisfies.
@@ -63,6 +64,18 @@ type ServeOptions struct {
 	// PeerList is a file path holding `host,port[,api_ver]` lines for
 	// static mode. Empty otherwise.
 	PeerList string
+
+	// APIVer is the NMOS wire version exposed under the API base path
+	// (e.g. "v1.3"). Empty defaults to the plugin's preferred version.
+	APIVer string
+
+	// GCInterval is how often the heartbeat watchdog wakes up to
+	// evict stale Nodes. Zero defaults to 1 s.
+	GCInterval time.Duration
+
+	// HeartbeatTimeout is how long a Node may go without heartbeats
+	// before the GC evicts it. Zero defaults to 12 s (IS-04 §6.1).
+	HeartbeatTimeout time.Duration
 }
 
 // Stats is the standard counter set every Registry plugin exposes.

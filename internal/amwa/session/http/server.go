@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	stdhttp "net/http"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 )
@@ -17,21 +18,29 @@ import (
 // is JSON-encoded with status 200 (or status if explicitly returned).
 type HandlerFunc func(ctx context.Context, r *stdhttp.Request) (status int, body any, err error)
 
-// Server is a thin route table over net/http.Server. Routes are an
-// exact-match `(method, path) -> HandlerFunc`; no wildcards yet (IS-09
-// has zero parameterised paths).
+// Server is a thin route table over net/http.Server. Routes are
+// either exact-match `(method, path) -> HandlerFunc` or prefix-match
+// `(method, prefix*) -> HandlerFunc`. Exact matches win over prefix
+// matches; longer prefixes win over shorter prefixes.
 type Server struct {
 	Logger *slog.Logger
 
-	mu     sync.RWMutex
-	routes map[routeKey]HandlerFunc
-	mux    *stdhttp.ServeMux
-	srv    *stdhttp.Server
+	mu       sync.RWMutex
+	routes   map[routeKey]HandlerFunc
+	prefixes []prefixRoute // longer prefixes first
+	mux      *stdhttp.ServeMux
+	srv      *stdhttp.Server
 }
 
 type routeKey struct {
 	method string
 	path   string
+}
+
+type prefixRoute struct {
+	method string
+	prefix string
+	fn     HandlerFunc
 }
 
 // ErrorBody mirrors the IS-04 §4.4 / IS-09 RAML error envelope so
@@ -60,6 +69,34 @@ func (s *Server) Handle(method, path string, fn HandlerFunc) {
 		panic(fmt.Sprintf("nmos/http: duplicate route %s %s", method, path))
 	}
 	s.routes[k] = fn
+}
+
+// HandlePrefix registers a prefix-match (method, prefix*) handler.
+// Used by Registry endpoints under /resource/ and /health/nodes/
+// where the path tail is a parameter. Longer prefixes win over
+// shorter ones.
+func (s *Server) HandlePrefix(prefix, method string, fn HandlerFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	pr := prefixRoute{method: method, prefix: prefix, fn: fn}
+	// Insert in length-descending order so dispatch picks the
+	// longest match first.
+	idx := 0
+	for idx < len(s.prefixes) && len(s.prefixes[idx].prefix) >= len(prefix) {
+		idx++
+	}
+	s.prefixes = append(s.prefixes, prefixRoute{})
+	copy(s.prefixes[idx+1:], s.prefixes[idx:])
+	s.prefixes[idx] = pr
+}
+
+// MuxHandler returns a stdhttp.Handler that runs the route-table
+// dispatcher. Used by callers (e.g. the Registry) that compose their
+// own net/http.Server (typically because they need a sibling raw
+// handler for WebSocket upgrades). The returned Handler is safe for
+// concurrent use.
+func (s *Server) MuxHandler() stdhttp.Handler {
+	return stdhttp.HandlerFunc(s.dispatch)
 }
 
 // Serve binds to addr and serves until ctx is cancelled. Returns the
@@ -118,12 +155,30 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	s.mu.RLock()
 	fn, ok := s.routes[routeKey{method: r.Method, path: r.URL.Path}]
 	if !ok {
-		// Try the other commonly-paired method to choose 404 vs 405.
+		// Try a prefix route — longest match first.
+		for _, pr := range s.prefixes {
+			if pr.method == r.Method && strings.HasPrefix(r.URL.Path, pr.prefix) {
+				fn = pr.fn
+				ok = true
+				break
+			}
+		}
+	}
+	if !ok {
+		// Choose 404 vs 405 based on whether ANY route matches the path.
 		methodNotAllowed := false
 		for k := range s.routes {
 			if k.path == r.URL.Path && k.method != r.Method {
 				methodNotAllowed = true
 				break
+			}
+		}
+		if !methodNotAllowed {
+			for _, pr := range s.prefixes {
+				if pr.method != r.Method && strings.HasPrefix(r.URL.Path, pr.prefix) {
+					methodNotAllowed = true
+					break
+				}
 			}
 		}
 		s.mu.RUnlock()
