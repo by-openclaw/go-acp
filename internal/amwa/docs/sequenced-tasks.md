@@ -110,13 +110,13 @@ Estimated PR size: ~800 LOC + tests.
 
 ### #2 — IS-09 System API (server + client)
 
-> **Status: in flight — branch `feat/nmos-is09-system`.** Mode A self-loop
-> live-verified 2026-04-30: `dhs producer nmos serve --role system` boots
-> the IS-09 endpoints, announces `_nmos-system._tcp` via mDNS; `dhs
-> consumer nmos system --mdns` selects the instance per the spec rule and
-> fetches a validated /global. `--direct host:port` bypasses discovery
-> for unicast / Mode B targets. AMWA NMOS Testing IS-09-02 conformance
-> run pending in CI integration phase.
+> **Status: MERGED 2026-04-30 — PR #153 squash `6f89db8`.** Mode A
+> self-loop live-verified: `dhs producer nmos serve --role system`
+> serves the IS-09 endpoints, announces `_nmos-system._tcp` via mDNS;
+> `dhs consumer nmos system --mdns` selects the instance per the spec
+> rule and fetches a validated /global. `--direct host:port` bypasses
+> discovery for unicast / Mode B targets. AMWA NMOS Testing IS-09-02
+> conformance run deferred to the integration sweep at end of Phase 1.
 
 Smallest NMOS spec. Lets us validate the "REST + DNS-SD" plumbing
 before tackling IS-04.
@@ -153,6 +153,12 @@ package (used by Phase 1 #3-#4 too).
 
 ### #3 — IS-04 Node API (provider side)
 
+> **Status: MERGED 2026-04-30 — PR #155 squash `8293d4f`.** IS-04 v1.3
+> Node API + Registration client live-verified Mode A self-loop:
+> `dhs producer nmos serve --role node --config FILE [--registry URL]`
+> serves every Node API endpoint, optionally POSTs to Registry +
+> heartbeats every 5 s + DELETEs on shutdown.
+
 The Node serves its own resource graph + heartbeats to a Registry.
 
 - Codec: `internal/amwa/codec/is04/` — Node, Device, Source, Flow,
@@ -169,6 +175,15 @@ The Node serves its own resource graph + heartbeats to a Registry.
 Estimated PR size: ~1500 LOC + tests.
 
 ### #4 — IS-04 Registry (dual-face middleware) + active/passive HA
+
+> **Status: in flight — branch `feat/nmos-is04-registry`, PR #157.**
+> In-memory store + Registration API + Query API + WS subscriptions
+> (RFC 6455 hand-rolled) + GC heartbeat watchdog (12 s default IS-04
+> §6.1) + DNS-SD announce of both faces. Mode A integration verified:
+> Node from #3 registers + heartbeats; Registry serves Node + Device
+> via Query API; Controller can subscribe to /nodes WS and receive
+> sync grain + change events. Active/passive HA testbed defers to the
+> integration sweep once N8 lands the live Controller.
 
 The Registry is a hybrid — its left face **consumes** device
 registrations + heartbeats, its right face **provides** the catalogue

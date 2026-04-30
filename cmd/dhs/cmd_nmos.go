@@ -495,8 +495,11 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	mdns := fs.Bool("mdns", true, "advertise via mDNS (Mode A)")
 	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Modes B / C)")
 	advertise := fs.String("advertise-host", "", "host:port placed in DNS-SD A/SRV records (default: hostname:port)")
-	bind := fs.String("bind", ":8235", "Registration/Query API listen address (HTTP surface lands in Phase 1 #4)")
+	bind := fs.String("bind", ":8235", "Registration/Query API listen address")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
+	apiVer := fs.String("api-ver", "v1.3", "IS-04 wire version exposed under /x-nmos/{registration,query}/<v>")
+	gcInterval := fs.Duration("gc-interval", time.Second, "heartbeat watchdog tick rate")
+	heartbeatTimeout := fs.Duration("heartbeat-timeout", 12*time.Second, "evict Nodes after this long without heartbeats (IS-04 §6.1 default 12s)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -513,20 +516,23 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	}
 	r := f.New(logger)
 
-	binds := []string{*bind}
-	// AdvertiseHost (when non-empty) wins over BindAddrs in
-	// pickAdvertiseHostPort, so we just pass both through.
 	opts := registryslot.ServeOptions{
-		BindAddrs:     binds,
-		AdvertiseHost: *advertise,
-		Priority:      *priority,
-		DiscoveryMode: mode,
+		BindAddrs:        []string{*bind},
+		AdvertiseHost:    *advertise,
+		Priority:         *priority,
+		DiscoveryMode:    mode,
+		APIVer:           *apiVer,
+		GCInterval:       *gcInterval,
+		HeartbeatTimeout: *heartbeatTimeout,
 	}
-	fmt.Printf("Registry: bind=%s, mode=%s, priority=%d\n", *bind, mode, *priority)
+	fmt.Printf("Registry: bind=%s, mode=%s, priority=%d, api_ver=%s\n", *bind, mode, *priority, *apiVer)
+	fmt.Printf("  Registration: POST/GET/DELETE under http://<host>%s/x-nmos/registration/%s/...\n", *bind, *apiVer)
+	fmt.Printf("  Query:        GET + POST /subscriptions under http://<host>%s/x-nmos/query/%s/...\n", *bind, *apiVer)
+	fmt.Printf("  WS subs:      ws://<host>%s/x-nmos/query/%s/subscriptions/<id>/ws\n", *bind, *apiVer)
+	fmt.Printf("  GC: tick=%s, heartbeat-timeout=%s\n", *gcInterval, *heartbeatTimeout)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-register._tcp + _nmos-query._tcp via mDNS.")
 	}
-	fmt.Println("Note: Phase 1 #1 ships mDNS announce only; Registration/Query API REST lands in Phase 1 #4.")
 
 	return r.Serve(ctx, opts)
 }
@@ -595,12 +601,17 @@ func printNMOSRegistryHelp() {
 	fmt.Println(`Usage:
   dhs registry nmos serve [flags]
 
-Phase 1 #1 scope: announces _nmos-register._tcp + _nmos-query._tcp
-via mDNS only — Registration/Query API REST lands in Phase 1 #4.
+Boots the IS-04 v1.3 Registry — Registration API + Query API + WS
+subscriptions on the configured --bind, plus the optional mDNS
+announce of _nmos-register._tcp + _nmos-query._tcp.
 
-  --mdns                Advertise via mDNS (default)
-  --no-mdns             Disable mDNS announce
-  --advertise-host H    host:port placed in SRV record
-  --bind ADDR           Future HTTP listen address (default :8235)
-  --priority N          DNS-SD pri TXT (0-99 prod, 100+ dev)`)
+  --bind ADDR              HTTP listen address (default :8235)
+  --advertise-host H:P     host:port placed in SRV / ws_href records
+                           (default: derived from --bind + hostname)
+  --mdns / --no-mdns       Toggle mDNS announce (default on)
+  --api-ver V              IS-04 version exposed (default v1.3)
+  --priority N             DNS-SD pri TXT (0-99 prod, 100+ dev)
+  --gc-interval D          Heartbeat watchdog tick rate (default 1s)
+  --heartbeat-timeout D    Evict Nodes that miss heartbeats this long
+                           (default 12s, IS-04 §6.1)`)
 }

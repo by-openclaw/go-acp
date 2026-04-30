@@ -11,13 +11,16 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	stdhttp "net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	codec "acp/internal/amwa/codec/dnssd"
 	session "acp/internal/amwa/session/dnssd"
+	httpsession "acp/internal/amwa/session/http"
 	registryslot "acp/internal/registry"
 )
 
@@ -59,17 +62,24 @@ type Registry struct {
 	cancel     context.CancelFunc
 	announced  []codec.Instance
 	announces  uint64 // atomic
+
+	// Phase 1 #4: real HTTP face + store + GC + WS subscriptions.
+	store    *Store
+	subs     *SubscriptionManager
+	apiVer   string
+	httpSrv  *httpsession.Server
 }
 
-// Serve advertises the Registry via mDNS and blocks until ctx is
+// Serve advertises the Registry via mDNS, mounts the Registration +
+// Query API HTTP faces, runs the GC loop, and blocks until ctx is
 // cancelled. opts.DiscoveryMode controls whether mDNS announce fires:
 //
 //   - "mdns" / "" — announce on the link.
-//   - "unicast" / "static" — skip announce; the Registry is reached
-//     via configured peers and does not advertise itself.
+//   - "unicast" / "static" — skip announce; records published via
+//     authoritative DNS (e.g. pfSense Unbound).
 //
-// Phase 1 step #1 does not start an HTTP listener; the BindAddrs and
-// AdvertiseHost are interpreted only for the SRV records.
+// Phase 1 step #4: full Registration + Query API REST + WS
+// subscriptions on top of the in-memory Store.
 func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) error {
 	mode := strings.ToLower(opts.DiscoveryMode)
 	if mode == "" {
@@ -84,6 +94,84 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 	if priority < 0 {
 		priority = 0
 	}
+	apiVer := opts.APIVer
+	if apiVer == "" {
+		apiVer = "v1.3"
+	}
+	r.apiVer = apiVer
+
+	// Initialise store + subscription manager. AdvertiseHost is what
+	// we publish in ws_href so peers can reach us.
+	advertise := opts.AdvertiseHost
+	if advertise == "" {
+		advertise = fmt.Sprintf("%s:%d", host, port)
+	}
+	r.store = NewStore()
+	r.subs = NewSubscriptionManager(r.logger, r.store, advertise, apiVer)
+
+	// HTTP routes — Registration + Query.
+	srv := httpsession.NewServer(r.logger)
+	regBase := "/x-nmos/registration/" + apiVer
+	queryBase := "/x-nmos/query/" + apiVer
+	installRegistrationRoutes(srv, r.store, regBase)
+	installQueryRoutes(srv, r.store, r.subs, queryBase)
+
+	// WebSocket upgrade route — registered as a prefix-matched GET.
+	wsPrefix := queryBase + "/subscriptions/"
+	upgradeHandler := r.subs.UpgradeHandler(queryBase)
+	srv.HandlePrefix(wsPrefix, stdhttp.MethodGet, func(ctx context.Context, req *stdhttp.Request) (int, any, error) {
+		// We can't return through the route table for an Upgrade —
+		// the handler hijacks the connection. Use the raw upgrade
+		// path: install a separate raw http.Handler via httpsession's
+		// raw escape hatch. For now, return 0 + a sentinel and rely
+		// on the dispatcher to call the upgrade. Since the
+		// dispatcher writes a JSON response we can't easily hijack,
+		// we accept the limitation: fall back to a 501 — peers can
+		// fetch the resource list via REST during this phase. WS
+		// dispatch lives on a parallel net/http mux, see installWS.
+		_ = upgradeHandler
+		return stdhttp.StatusNotImplemented, httpsession.ErrorBody{
+			Code: 501, Error: "Not Implemented",
+			Debug: "WebSocket upgrade handled on parallel mux; this route should not be hit",
+		}, nil
+	})
+
+	r.mu.Lock()
+	r.httpSrv = srv
+	r.mu.Unlock()
+
+	// HTTP server starts in a goroutine — we own ctx for full lifecycle.
+	httpCtx, httpCancel := context.WithCancel(ctx)
+	defer httpCancel()
+	if len(opts.BindAddrs) == 0 {
+		return fmt.Errorf("registry/nmos: BindAddrs required (use \":0\" for OS-allocated)")
+	}
+	bindAddr := opts.BindAddrs[0]
+	httpErrCh := make(chan error, 1)
+	go func() {
+		// Wrap the route table with a single dispatcher: any path
+		// matching `/x-nmos/query/<ver>/subscriptions/<id>/ws` is a
+		// WebSocket upgrade; everything else falls through to the
+		// route table verbatim. We deliberately avoid net/http
+		// ServeMux subtree patterns here — registering
+		// `/subscriptions/` would trigger ServeMux's 301 redirect
+		// for POSTs to `/subscriptions` (no trailing slash), and
+		// net/http converts POST→GET on 301.
+		routeTable := srv.MuxHandler()
+		dispatcher := stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, req *stdhttp.Request) {
+			if strings.HasPrefix(req.URL.Path, wsPrefix) && strings.HasSuffix(req.URL.Path, "/ws") {
+				upgradeHandler(w, req)
+				return
+			}
+			routeTable.ServeHTTP(w, req)
+		})
+		s := &stdhttp.Server{
+			Addr:              bindAddr,
+			Handler:           dispatcher,
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+		httpErrCh <- runHTTPServer(httpCtx, s)
+	}()
 
 	if mode == "mdns" {
 		resp, err := session.NewResponder(r.logger)
@@ -109,7 +197,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 				IPv4:    ips,
 				TXT: map[string]string{
 					codec.TXTKeyAPIProto: "http",
-					codec.TXTKeyAPIVer:   "v1.3",
+					codec.TXTKeyAPIVer:   apiVer,
 					codec.TXTKeyAPIAuth:  "false",
 					codec.TXTKeyPriority: strconv.Itoa(priority),
 				},
@@ -129,11 +217,47 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 				"register", codec.ServiceRegister, "query", codec.ServiceQuery)
 		}
 	} else if r.logger != nil {
-		r.logger.Info("registry/nmos: mDNS announce disabled by --discovery", "mode", mode)
+		r.logger.Info("registry/nmos: mDNS announce disabled", "mode", mode)
 	}
 
-	<-ctx.Done()
+	// GC loop — evict Nodes that miss heartbeats past threshold.
+	go runGC(httpCtx, r.store, r.logger, opts.GCInterval, opts.HeartbeatTimeout)
+
+	if r.logger != nil {
+		r.logger.Info("registry/nmos: HTTP face active",
+			"bind", bindAddr,
+			"reg", regBase, "query", queryBase, "ws", wsPrefix)
+	}
+
+	// Block until ctx cancels OR the HTTP server crashes.
+	select {
+	case <-ctx.Done():
+	case err := <-httpErrCh:
+		return err
+	}
 	return r.Stop()
+}
+
+// runHTTPServer adapts a stdhttp.Server to ctx-cancel semantics —
+// returns when the server exits.
+func runHTTPServer(ctx context.Context, srv *stdhttp.Server) error {
+	errCh := make(chan error, 1)
+	go func() {
+		err := srv.ListenAndServe()
+		if err == stdhttp.ErrServerClosed {
+			err = nil
+		}
+		errCh <- err
+	}()
+	select {
+	case <-ctx.Done():
+		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(shutCtx)
+		return <-errCh
+	case err := <-errCh:
+		return err
+	}
 }
 
 // Stop closes the mDNS responder. Idempotent.
