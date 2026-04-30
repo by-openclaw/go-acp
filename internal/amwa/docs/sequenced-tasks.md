@@ -162,7 +162,8 @@ package (used by Phase 1 #3-#4 too).
 The Node serves its own resource graph + heartbeats to a Registry.
 
 - Codec: `internal/amwa/codec/is04/` — Node, Device, Source, Flow,
-  Sender, Receiver JSON Schemas (v1.3.x first; v1.2.x added in #4b).
+  Sender, Receiver JSON Schemas. v1.3.3 lands first; v1.2.2 + v1.1.3
+  added in #4b — all three are required scope per spec-strict rule.
 - Provider: HTTP server on Node side; `GET /self`, `/devices`,
   `/sources`, `/flows`, `/senders`, `/receivers`.
 - Registration client: POST `/resource`, POST `/health/nodes/{id}`
@@ -176,13 +177,19 @@ Estimated PR size: ~1500 LOC + tests.
 
 ### #4 — IS-04 Registry (dual-face middleware) + active/passive HA
 
-> **Status: in flight — branch `feat/nmos-is04-registry`, PR #157.**
+> **Status: MERGED 2026-04-30 — squash `7813f38` on main (PR #157).**
 > In-memory store + Registration API + Query API + WS subscriptions
 > (RFC 6455 hand-rolled) + GC heartbeat watchdog (12 s default IS-04
 > §6.1) + DNS-SD announce of both faces. Mode A integration verified:
 > Node from #3 registers + heartbeats; Registry serves Node + Device
 > via Query API; Controller can subscribe to /nodes WS and receive
-> sync grain + change events. Active/passive HA testbed defers to the
+> sync grain + change events. Cross-platform CI green (Lint +
+> Cross-compile + Test on ubuntu/macos/windows/rocky9/rhel9-ubi).
+> One late fix on the same branch (`44a1d5f`): replaced parent
+> ServeMux subtree pattern with a single dispatcher Handler so
+> POST /subscriptions doesn't hit the 301-redirect → POST→GET
+> conversion path that masked the bug locally on Go 1.26 but
+> failed on CI Go 1.22. Active/passive HA testbed defers to the
 > integration sweep once N8 lands the live Controller.
 
 The Registry is a hybrid — its left face **consumes** device
@@ -232,9 +239,42 @@ secondary inside the 12 s GC window).
 
 Estimated PR size: ~2200 LOC + tests.
 
-#### #4b — IS-04 v1.2 + v1.1 back-compat
+#### #4b — IS-04 v1.2.2 + v1.1.3 back-compat (ACTIVE — spec-strict, not deferred)
 
-Layer older versions on top of #3/#4 once the v1.3 core is solid.
+Per `internal/amwa/CLAUDE.md` "Versioning" + top-level CLAUDE.md
+"Spec-strict, no-workaround posture": every listed version is required
+scope, not optional. v1.3.3 lands first because that's how #3+#4 were
+already merged on main; v1.2.2 + v1.1.3 layer on next, before N8 (the
+Controller) so the Controller speaks all three from day one.
+
+Surface required:
+- Codec: per-version structs in `internal/amwa/codec/is04/v11/`,
+  `is04/v12/`, `is04/v13/` (or one union struct with version-tagged
+  encode/validate paths — pick whichever produces the leaner diff
+  against the v1.3.3 codec on main, **never silently drop fields
+  between versions**).
+- Server URL trees: Registry serves
+  `/x-nmos/registration/v1.1/`, `/v1.2/`, `/v1.3/` and
+  `/x-nmos/query/v1.1/`, `/v1.2/`, `/v1.3/` in parallel on the same
+  store; payload shape rendered per the requested URL prefix.
+- DNS-SD: `api_ver=v1.1,v1.2,v1.3` (today's announcer publishes v1.3
+  only — fix in this PR).
+- Selection rule: filter peer's `api_ver` ∩ ours; pick highest mutual
+  minor. Never silently downgrade outside the intersection.
+- Compliance events fire on per-version deviations
+  (`nmos_node_api_version_downgrade` etc.).
+
+Tests:
+- Codec table tests for every version: round-trip every v1.1.3 / v1.2.2 / v1.3.3 fixture from the AMWA spec annexes.
+- Registry HTTP test: POST to each of the three URL trees, assert
+  store ingests + Query API returns the version-correct payload.
+- AMWA NMOS Testing harness runs the IS-04-01 + IS-04-02 + IS-04-03
+  suites against ALL THREE versions, not just v1.3.
+
+Acceptance: AMWA NMOS Testing IS-04 suites Pass on v1.1.3 + v1.2.2 +
+v1.3.3 with no Could-Not-Test gaps; cross-vendor Mode B against
+Cerebrum (which advertises `v1.1,v1.2,v1.3`) shows our consumer
+picking the highest mutual minor.
 
 ### #5 — IS-04 Controller (consumer side)
 
