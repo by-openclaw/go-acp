@@ -43,7 +43,70 @@ tests/                          unit / integration / smoke / fixtures
 docs/                           cross-cutting architecture, connector, schema
 ```
 
-`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc, tsl, cerebrum-nb}`.
+`<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
+Other feature branches add more: `cerebrum-nb` on `feat/cerebrum-nb-plugin`. See
+`memory/project_protocol_backlog.md` for the full queue.
+
+The **TSL UMD plugin** registers three wire versions as separate
+entries per the `feedback_protocol_versioning.md` Pattern A rule:
+
+- `tsl-v31` — UDP-only (spec §3.0); 18-byte frame; 4 binary tallies + 2-bit brightness; **no colour**
+- `tsl-v40` — UDP-only; v3.1 frame + CHKSUM + VBC + XDATA (3-position 2-bit colour for L/R display)
+- `tsl-v50` — UDP **and** TCP/DLE-STX (spec §Phy); LH/Text/RH 2-bit colour + 2-bit brightness per DMSG
+
+TSL is push-only one-way: tally-source → MV. CLI shape:
+
+- `dhs consumer tsl-vXX listen [--bind HOST:PORT] [--tcp] [--keepalive DUR]` — bind a UDP (or v5.0 TCP) listener and print every decoded frame.
+- `dhs producer tsl-vXX send  --dest HOST:PORT [version flags]` — encode one frame and push.
+- `dhs producer tsl-vXX serve --dest HOST:PORT --refresh DUR [version flags]` — same as send, looped on a timer.
+- v5.0 grouped multi-DMSG: repeatable `--dmsg "index=N,lh=...,text-tally=...,rh=...,brightness=...,umd=STR"`.
+- TCP dead-socket detection via SO_KEEPALIVE 30 s on both producer dialer and consumer listener (TSL spec carries no app-layer heartbeat; pcap audit confirmed VSM never sends one).
+
+Wireshark support: `internal/tsl/wireshark/dhs_tsl.lua` covers all
+three versions on UDP + v5.0 TCP/DLE-STX. Auto-registers on UDP
+4000 (v3.1) / 4004 (v4.0) / 8901 (v5.0) and TCP 8902 (v5.0 testbed
+default; spec is 8901 but UDP binds it). Info column carries
+`addr=N T=1234 bright=B UMD="..."` for v3.1/v4.0 and
+`PBC=N screen=N dmsgs=N` (+ per-DMSG detail when single DMSG) for
+v5.0.
+
+Validated live 2026-04-26 against:
+- **Lawo VSM Studio** (controller pushing v3.1, v4.0, v5.0 single-DMSG)
+- **Miranda TSL over IP Emulator v1.02** (v5.0 UDP + TCP, single +
+  group-display-messages 5-DMSG)
+
+The **OSC plugin** registers two wire versions as separate entries per
+the `feedback_protocol_versioning.md` Pattern A rule:
+
+- `osc-v10` — UDP + TCP/int32-length-prefix; core types i/f/s/b
+- `osc-v11` — UDP + TCP/SLIP (RFC 1055 double-END); adds T/F/N/I + arrays
+
+Both share `internal/osc/codec/` (stdlib-only). Wireshark support is a
+full from-scratch dissector at `internal/osc/wireshark/dhs_osc.lua`
+covering UDP + TCP length-prefix (1.0) + TCP SLIP (1.1), every type
+tag including 1.1 payload-less (T/F/N/I) and array markers (`[`, `]`),
+and recursive bundle decoding. Per-message Info column shows address,
+type-tag string, and arg count.
+
+The **probel-sw02p** plugin merged on main 2026-04-25 via PR #106
+(closed #105) — 33 command bytes + Wireshark dissector: the salvo
+family (10 bytes), the VSM-supported bulk set (14 bytes), and
+non-VSM seqs 5, 6, 30-33, 36-38, 39-44 (17 bytes). Every command
+OUTSIDE the VSM set needs explicit per-command user approval from
+the numbered queue in `memory/project_probel_sw02p_cmd_queue.md`.
+Never write code for any non-VSM SW-P-02 command without an
+`approve seq N` from the user. See
+`internal/probel-sw02p/CLAUDE.md` for the full landed tables +
+owner-only protect authority rule + protect-blocks-connect
+state-echo deviation. Consumer matrix-config flags
+(`--mtx-id --level --dsts --srcs`) + bootstrap rx 01 sweep +
+rotating 2 s keep-alive ping landed via PR #132 (closed #128;
+mirrors VSM observed behaviour since SW-P-02 has no in-protocol
+keep-alive command). PR #132 also added default TCP
+`SO_KEEPALIVE` across sw02p / sw08p / osc TCP codecs (#129) and
+mirrored matrix-config flags onto sw08p (#130). HA / multi-
+instance parked under epic #127 (see
+`memory/project_ha_architecture.md`).
 
 ---
 
@@ -63,7 +126,18 @@ stream, profile, diag.
 Probel has its own verb catalogue (interrogate, connect, tally-dump, watch,
 …) — see `dhs consumer probel-sw08p -h`.
 
-Cerebrum NB: see `dhs consumer cerebrum-nb -h` and
+OSC has its own symmetric-peer verbs:
+- `dhs consumer osc-vXX watch --listen <udp|tcp-len|tcp-slip>:<port> [--pattern PAT]`
+- `dhs producer osc-vXX send --to HOST:PORT --transport KIND --address /A --types TAGS [args...]`
+- `dhs producer osc-vXX fader --to HOST:PORT [--rate N] [--duration D] [--min --max] [--pattern ramp|sine|random]`
+- `dhs producer osc-vXX serve --bind <transport>:<port>`
+
+Type-tag tokens for `--types`: `i f s b h d t S c r m T F N I [ ]`. The
+watcher's per-frame line shape (`/addr ,tags v1 v2 v3`) matches the
+`dhs_osc.lua` Wireshark Info column verbatim, so a live `watch`
+terminal and a tshark capture can be diffed line-for-line.
+
+Cerebrum NB (feature branch): see `dhs consumer cerebrum-nb -h` and
 `internal/cerebrum-nb/CLAUDE.md`. Spec is authoritative — DOCX in
 `internal/cerebrum-nb/assets/`. Default port 40007. Credentials via
 `$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`. Workflow rule
@@ -71,7 +145,7 @@ Cerebrum NB: see `dhs consumer cerebrum-nb -h` and
 frame + flags + RX + output); implement only after explicit user
 approval — see `feedback_design_first_no_code.md`.
 
-Producer verb is `serve` for every protocol.
+Producer verb is `serve` for the slot-based protocols.
 
 ---
 
@@ -87,8 +161,16 @@ internal/osc/assets/                                              (OSC 1.0/1.1 s
 internal/tsl/assets/                                              (TSL UMD v3.1/v4/v5)
 internal/cerebrum-nb/assets/                                      (EVS Cerebrum NB v0.13 PDF + DOCX + OCR)
 
-internal/<proto>/wireshark/dhs_<proto>.lua   byte-exact reference
+internal/<proto>/wireshark/dhs_<proto>.lua         byte-exact reference
 ```
+
+Naming convention is `dhs_<proto>` for the file, the Proto, and the
+field-abbrev prefix (e.g. `dhs_osc.address`). The `dhs_` prefix avoids
+clashes with Wireshark built-ins that own bare `<proto>.*` namespaces
+(notably `osc.*`). A regression fixture is checked in at
+`tests/fixtures/osc/battery.pcapng` (343 KB, 88 frames across all OSC
+transports) — `dissector_replay_test.go` runs tshark on it under the
+`integration` build tag.
 
 Extract the Probel spec:
 

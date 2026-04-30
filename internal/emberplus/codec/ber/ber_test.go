@@ -141,6 +141,44 @@ func TestReal_RoundTrip(t *testing.T) {
 	}
 }
 
+// TestReal_EcosystemBytes pins the wire bytes against the
+// fractional-mantissa reading (libember / EmberViewer / Lawo VSM).
+// Issue #68: prior to 2026-04-26 the encoder emitted N-as-integer per
+// the literal X.690 §8.5.7 reading; every shipping Ember+ viewer
+// instead reads N as a normalised fraction with binary point implicit
+// after the leading 1 bit, so 50.0 displayed as 3.125, 100.0 as 6.25,
+// and 0.1 as 4.44E-17. The encoder now biases the wire exponent by
+// (bitlen(N)-1) so the wire bytes match what every other Ember+ stack
+// produces. Verified live against EmberViewer v2.40.0.35 + VSM Studio
+// (host 10.6.239.160) on 2026-04-26.
+func TestReal_EcosystemBytes(t *testing.T) {
+	cases := []struct {
+		value float64
+		want  []byte
+	}{
+		{50.0, []byte{0x80, 0x05, 0x19}},
+		{100.0, []byte{0x80, 0x06, 0x19}},
+		{1.0, []byte{0x80, 0x00, 0x01}},
+		{2.0, []byte{0x80, 0x01, 0x01}},
+		{16.0, []byte{0x80, 0x04, 0x01}},
+		{0.1, []byte{0x80, 0xfc, 0x0c, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcd}},
+	}
+	for _, tc := range cases {
+		got := EncodeReal(tc.value)
+		if len(got) != len(tc.want) {
+			t.Errorf("EncodeReal(%v) length = %d, want %d (got % x, want % x)",
+				tc.value, len(got), len(tc.want), got, tc.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != tc.want[i] {
+				t.Errorf("EncodeReal(%v) = % x, want % x", tc.value, got, tc.want)
+				break
+			}
+		}
+	}
+}
+
 func TestTLV_PrimitiveRoundTrip(t *testing.T) {
 	orig := Integer(42)
 	data := EncodeTLV(orig)

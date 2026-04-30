@@ -59,6 +59,26 @@ func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
 	return &Plugin{logger: logger}
 }
 
+// MatrixConfig holds the externally-supplied matrix shape — mirrors
+// the SW-P-02 consumer's MatrixConfig for cross-protocol parity.
+// SW-P-08 has no wire-side discovery primitive ("Router I/O Params"
+// is audio gain/level, not dimensions), so callers configure size +
+// mtxid + level explicitly the same way VSM does in its UI.
+type MatrixConfig struct {
+	// MatrixID is the wire matrix identifier (0-15 narrow, 0-127
+	// extended). Default 0.
+	MatrixID uint8
+	// Level is the wire level identifier (0-15 narrow, 0-27 extended).
+	// Default 0.
+	Level uint8
+	// Dsts is the destination count on this (matrix, level). Used to
+	// bound rx 21 tally-dump scope and validate connect targets.
+	Dsts uint16
+	// Srcs is the source count on this (matrix, level). Used for
+	// label config lookup + connect-source validation.
+	Srcs uint16
+}
+
 // Plugin is the Probel Protocol implementation. One instance talks to
 // one matrix (host:port). Holds the TCP client and per-session state
 // that individual commands populate (source/destination name caches,
@@ -72,6 +92,10 @@ type Plugin struct {
 	client   *codec.Client
 	recorder *transport.Recorder
 
+	// matrixCfg holds caller-supplied matrix shape. Set via
+	// SetMatrixConfig before Connect; defaults applied at use sites.
+	matrixCfg MatrixConfig
+
 	// profile aggregates wire-tolerance events observed during this
 	// session. See compliance_events.go for the catalog. Nil until
 	// Connect fires; callers read via ComplianceProfile().
@@ -81,6 +105,23 @@ type Plugin struct {
 	// Connect fires; callers read via Metrics(). Preserved after
 	// Disconnect so post-mortem summaries are still available.
 	metricsConn *metrics.Connector
+}
+
+// SetMatrixConfig records the caller-supplied matrix shape. Call
+// before Connect. After Connect, changes take effect at the next
+// Connect / Disconnect cycle.
+func (p *Plugin) SetMatrixConfig(cfg MatrixConfig) {
+	p.mu.Lock()
+	p.matrixCfg = cfg
+	p.mu.Unlock()
+}
+
+// MatrixConfig returns the currently-set matrix config (zero value if
+// SetMatrixConfig was never called).
+func (p *Plugin) MatrixConfig() MatrixConfig {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.matrixCfg
 }
 
 // Metrics returns the session-scoped connector metrics. Nil before

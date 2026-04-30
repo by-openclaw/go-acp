@@ -20,8 +20,11 @@
 
 | Dissector            | Path                                                |
 |----------------------|-----------------------------------------------------|
-| ACP1 dissector       | [assets/dissector_acpv1.lua](../../assets/dissector_acpv1.lua) |
-| ACP2 dissector       | [assets/dissector_acp2.lua](../../assets/dissector_acp2.lua)   |
+| ACP1 dissector          | [internal/acp1/wireshark/dhs_acpv1.lua](../../internal/acp1/wireshark/dhs_acpv1.lua) |
+| ACP2 dissector          | [internal/acp2/wireshark/dhs_acpv2.lua](../../internal/acp2/wireshark/dhs_acpv2.lua) |
+| Ember+ dissector        | [internal/emberplus/wireshark/dhs_emberplus.lua](../../internal/emberplus/wireshark/dhs_emberplus.lua) |
+| OSC dissector           | [internal/osc/wireshark/dhs_osc.lua](../../internal/osc/wireshark/dhs_osc.lua) |
+| Probel SW-P-08 dissector| [internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua](../../internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua) |
 
 ---
 

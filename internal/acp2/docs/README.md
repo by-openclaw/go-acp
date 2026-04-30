@@ -11,4 +11,4 @@
 |---|---|---|
 | ACP2 Protocol | [acp2_protocol.pdf](../../../internal/acp2/assets/acp2_protocol.pdf) | Full specification |
 | AN2 Transport | [an2_protocol.pdf](../../../internal/acp2/assets/an2_protocol.pdf) | Transport layer |
-| Wireshark dissector | [dissector_acp2.lua](../../../internal/acp2/assets/dissector_acp2.lua) | Byte-exact reference |
+| Wireshark dissector | [dhs_acpv2.lua](../../../internal/acp2/wireshark/dhs_acpv2.lua) | Byte-exact reference |

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,7 +24,7 @@ import (
 // the context so every subcommand sees the same recorder. Same JSONL
 // shape as acp1/acp2/emberplus capture — one {ts, proto, dir, hex, len}
 // object per frame (including DLE ACK / DLE NAK control sequences).
-func runProbel(ctx context.Context, args []string) error {
+func runProbelsw08p(ctx context.Context, args []string) error {
 	args, rec, err := extractCaptureFlag(args)
 	if err != nil {
 		return err
@@ -31,6 +32,13 @@ func runProbel(ctx context.Context, args []string) error {
 	if rec != nil {
 		defer func() { _ = rec.Close() }()
 		ctx = context.WithValue(ctx, probelRecorderKey{}, rec)
+	}
+	args, mc, mcSet, err := extractMatrixConfigFlags(args)
+	if err != nil {
+		return err
+	}
+	if mcSet {
+		ctx = context.WithValue(ctx, probelMatrixConfigKey{}, mc)
 	}
 	if len(args) == 0 || hasHelpFlag(args) {
 		helpProbel()
@@ -146,6 +154,9 @@ func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), 
 	if rec, ok := ctx.Value(probelRecorderKey{}).(*transport.Recorder); ok && rec != nil {
 		p.SetRecorder(rec)
 	}
+	if mc, ok := ctx.Value(probelMatrixConfigKey{}).(probelproto.MatrixConfig); ok {
+		p.SetMatrixConfig(mc)
+	}
 	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
 	if err != nil {
 		return nil, func() {}, err
@@ -159,6 +170,121 @@ func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), 
 // probelRecorderKey is the context.Context key for the optional
 // JSONL traffic recorder shared across a single `dhs consumer probel-sw08p` invocation.
 type probelRecorderKey struct{}
+
+// probelMatrixConfigKey is the context.Context key for the optional
+// matrix config (mtxid + level + dsts + srcs) supplied by the global
+// CLI flags. Matches VSM's per-matrix configuration pattern.
+type probelMatrixConfigKey struct{}
+
+// extractMatrixConfigFlags pulls --mtx-id / --level / --dsts / --srcs
+// out of args BEFORE sub-command dispatch. Returns the remaining args,
+// the parsed config, and a sticky bool that's true when any of the
+// four flags were observed (so callers know whether to apply the
+// MatrixConfig at all). All four flags accept --flag=N or --flag N.
+//
+// Defaults: --mtx-id=0, --level=0. --dsts and --srcs default to 0
+// (not required for verbs that don't need them; required for the
+// future bootstrap-sweep / keep-alive ping wiring that mirrors what
+// SW-P-02 ships).
+func extractMatrixConfigFlags(args []string) ([]string, probelproto.MatrixConfig, bool, error) {
+	var mc probelproto.MatrixConfig
+	var seen bool
+	out := make([]string, 0, len(args))
+
+	parseUint := func(name, val string, max uint64) (uint64, error) {
+		n, err := strconv.ParseUint(val, 10, 32)
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", name, err)
+		}
+		if n > max {
+			return 0, fmt.Errorf("%s: %d exceeds %d", name, n, max)
+		}
+		return n, nil
+	}
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		var (
+			name string
+			val  string
+			ok   bool
+		)
+		switch {
+		case strings.HasPrefix(a, "--mtx-id=") || strings.HasPrefix(a, "-mtx-id="):
+			name = "--mtx-id"
+			val = strings.SplitN(a, "=", 2)[1]
+			ok = true
+		case a == "--mtx-id" || a == "-mtx-id":
+			if i+1 >= len(args) {
+				return nil, mc, false, fmt.Errorf("--mtx-id requires a value")
+			}
+			name, val, ok = "--mtx-id", args[i+1], true
+			i++
+		case strings.HasPrefix(a, "--level=") || strings.HasPrefix(a, "-level="):
+			name = "--level"
+			val = strings.SplitN(a, "=", 2)[1]
+			ok = true
+		case a == "--level" || a == "-level":
+			if i+1 >= len(args) {
+				return nil, mc, false, fmt.Errorf("--level requires a value")
+			}
+			name, val, ok = "--level", args[i+1], true
+			i++
+		case strings.HasPrefix(a, "--dsts=") || strings.HasPrefix(a, "-dsts="):
+			name = "--dsts"
+			val = strings.SplitN(a, "=", 2)[1]
+			ok = true
+		case a == "--dsts" || a == "-dsts":
+			if i+1 >= len(args) {
+				return nil, mc, false, fmt.Errorf("--dsts requires a value")
+			}
+			name, val, ok = "--dsts", args[i+1], true
+			i++
+		case strings.HasPrefix(a, "--srcs=") || strings.HasPrefix(a, "-srcs="):
+			name = "--srcs"
+			val = strings.SplitN(a, "=", 2)[1]
+			ok = true
+		case a == "--srcs" || a == "-srcs":
+			if i+1 >= len(args) {
+				return nil, mc, false, fmt.Errorf("--srcs requires a value")
+			}
+			name, val, ok = "--srcs", args[i+1], true
+			i++
+		}
+		if !ok {
+			out = append(out, a)
+			continue
+		}
+		seen = true
+		switch name {
+		case "--mtx-id":
+			n, err := parseUint(name, val, 127)
+			if err != nil {
+				return nil, mc, false, err
+			}
+			mc.MatrixID = uint8(n)
+		case "--level":
+			n, err := parseUint(name, val, 27)
+			if err != nil {
+				return nil, mc, false, err
+			}
+			mc.Level = uint8(n)
+		case "--dsts":
+			n, err := parseUint(name, val, 16383)
+			if err != nil {
+				return nil, mc, false, err
+			}
+			mc.Dsts = uint16(n)
+		case "--srcs":
+			n, err := parseUint(name, val, 16383)
+			if err != nil {
+				return nil, mc, false, err
+			}
+			mc.Srcs = uint16(n)
+		}
+	}
+	return out, mc, seen, nil
+}
 
 // extractCaptureFlag scans args for "--capture FILE" or "--capture=FILE"
 // before sub-command dispatch. Removes the matched tokens from the

@@ -2,7 +2,7 @@
 // plugin for the internal/protocol interface.
 //
 // Authoritative spec: assets/AXON-ACP_v1_4.pdf.
-// Cross-reference: the Axon Wireshark dissector in assets/dissector_acpv1.lua
+// Cross-reference: the Axon Wireshark dissector in wireshark/dhs_acpv1.lua
 // and the C# reference driver (ByResearch.DHS.AxonACP.DeviceDriver).
 //
 // Scope of this package:

@@ -53,13 +53,25 @@ func (r *Reader) ReadFrame() (*Frame, error) {
 		// Discard bytes outside frames.
 	}
 
-	// Collect bytes until EOF.
+	// Collect bytes until EOF. A literal 0xFE inside a frame is a spec
+	// violation — S101 §p.94 mandates 0xFE escape-stuffing as 0xFD 0xDE,
+	// so a properly-encoded payload byte never appears here as a raw
+	// 0xFE. Lawo VSM-as-consumer emits a 15-byte non-S101 preamble
+	// (e.g. fe d9 5c 80 30 80 7f 20 02 31 00 00 00 00 00) before its
+	// first real EmBER frame on every reconnect; resyncing on a second
+	// raw 0xFE drops the junk preamble and recovers the real frame
+	// instead of failing CRC over the concatenation.
 	var buf []byte
 	buf = append(buf, BOF)
 	for {
 		b, err := r.r.ReadByte()
 		if err != nil {
 			return nil, fmt.Errorf("s101 read: %w", err)
+		}
+		if b == BOF {
+			buf = buf[:0]
+			buf = append(buf, BOF)
+			continue
 		}
 		buf = append(buf, b)
 		if b == EOF {

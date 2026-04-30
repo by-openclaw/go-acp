@@ -14,6 +14,12 @@ import (
 // DefaultDialTimeout caps how long Client.Dial waits for a TCP connect.
 const DefaultDialTimeout = 5 * time.Second
 
+// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
+// to dialed TCP connections by Dial. Zero in ClientConfig means use this
+// default; pass a negative value to disable explicitly. Belt-and-braces
+// dead-socket detector alongside the §2 framing-level ACK / NAK retries.
+const DefaultTCPKeepalivePeriod = 30 * time.Second
+
 // DefaultReadBufferSize is the capacity of the accumulating read buffer.
 // SW-P-08 frames are small (<300 bytes in the largest tally dump); 4 KiB
 // is plenty for one or two in-flight frames.
@@ -190,6 +196,11 @@ type ClientConfig struct {
 	// MaxAttempts overrides DefaultMaxAttempts (send + retries).
 	MaxAttempts int
 
+	// TCPKeepalivePeriod sets SO_KEEPALIVE + the keep-alive period on
+	// the dialed TCP connection. Zero = use DefaultTCPKeepalivePeriod;
+	// negative = disable keep-alive entirely.
+	TCPKeepalivePeriod time.Duration
+
 	// OnTx / OnRx are optional raw-byte observer callbacks invoked on
 	// every send and receive respectively. Kept as plain funcs to
 	// avoid pulling any other acp package into this codec — callers
@@ -232,6 +243,7 @@ func Dial(ctx context.Context, addr string, logger *slog.Logger, cfg ClientConfi
 	if err != nil {
 		return nil, fmt.Errorf("probel dial %s: %w", addr, err)
 	}
+	applyTCPKeepalive(conn, cfg.TCPKeepalivePeriod, logger)
 	c := newClient(conn, logger, cfg)
 	go c.readLoop(cfg.ReadBufferSize)
 	c.logger.Info("probel client connected",
@@ -252,6 +264,29 @@ func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Cl
 	c := newClient(conn, logger, cfg)
 	go c.readLoop(cfg.ReadBufferSize)
 	return c
+}
+
+// applyTCPKeepalive enables SO_KEEPALIVE on a dialed TCP connection.
+// period == 0 → DefaultTCPKeepalivePeriod; period < 0 → disable.
+// No-op when conn isn't a *net.TCPConn (e.g. test pipe).
+func applyTCPKeepalive(conn net.Conn, period time.Duration, logger *slog.Logger) {
+	if period < 0 {
+		return
+	}
+	if period == 0 {
+		period = DefaultTCPKeepalivePeriod
+	}
+	tc, ok := conn.(*net.TCPConn)
+	if !ok {
+		return
+	}
+	if err := tc.SetKeepAlive(true); err != nil {
+		logger.Debug("probel SetKeepAlive failed", slog.String("err", err.Error()))
+		return
+	}
+	if err := tc.SetKeepAlivePeriod(period); err != nil {
+		logger.Debug("probel SetKeepAlivePeriod failed", slog.String("err", err.Error()))
+	}
 }
 
 func newClient(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {

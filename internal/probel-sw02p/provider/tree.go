@@ -1,0 +1,554 @@
+package probelsw02p
+
+import (
+	"fmt"
+	"strconv"
+	"sync"
+
+	"acp/internal/export/canonical"
+	"acp/internal/probel-sw02p/codec"
+)
+
+// matrixKey identifies one (matrix, level) pair within an SW-P-02
+// tree. Matrix id + level id are both uint8 on the wire.
+type matrixKey struct {
+	matrix uint8
+	level  uint8
+}
+
+// matrixState holds the crosspoint snapshot for one (matrix, level):
+// the current source for each destination plus the declared counts.
+// SW-P-02 is destination-driven — one source per destination per
+// level.
+//
+// Protect state from SW-P-08 is omitted from this scaffold — those
+// fields will be re-added alongside the per-command commits that use
+// them. Salvo "pending" storage lands here with rx 05 / 35.
+type matrixState struct {
+	targetCount int
+	sourceCount int
+
+	// sources maps destination (0-based) to source (0-based) for every
+	// currently-routed destination. Sparse: absence of a key means
+	// "unconnected / unknown". Sparse storage is mandatory per scale
+	// targets in root CLAUDE.md (65535×65535 per matrix).
+	sources map[uint16]uint16
+
+	// pending is the server-wide salvo buffer for §3.2.7 CONNECT ON GO
+	// messages. Each rx 05 appends one slot; the next rx 06 GO either
+	// applies every slot to the sources map (set) or drops the whole
+	// list (clear). A single slot list per (matrix, level) pair mirrors
+	// the SW-P-02 §3.2.7 / §3.2.8 flow and the real-world router
+	// behaviour — multiple controllers feeding the same matrix share
+	// the same pending buffer.
+	pending []pendingSlot
+
+	// pendingGroups holds the per-SalvoID buffers fed by §3.2.36
+	// CONNECT ON GO GROUP SALVO. Populated by rx 35, drained by
+	// rx 36 GO GROUP SALVO. Keyed by SalvoID (0-127); up to 128
+	// groups can be staged simultaneously on the same matrix. Sparse
+	// — a SalvoID with no staged slots simply does not appear in
+	// the map.
+	pendingGroups map[uint8][]pendingSlot
+
+	// targetLabels / sourceLabels hold the human-readable names from
+	// the canonical tree's TargetLabels / SourceLabels maps. Empty
+	// slice = names not declared in the tree.
+	targetLabels []string
+	sourceLabels []string
+
+	// protect holds the current protect state keyed by destination.
+	// Sparse: destinations with no entry are implicitly ProtectNone.
+	// Updated by rx 102 / rx 104 handlers (enforcing the owner-only
+	// authority rule per memory/project_probel_extensions.md) and
+	// read by rx 101 / rx 105 handlers that surface the state back
+	// to controllers. OwnerName is populated lazily via the rx 103 /
+	// tx 099 name handshake — until that round-trip completes the
+	// name is "" but OwnerDevice is always set on a protected entry.
+	protect map[uint16]protectEntry
+}
+
+// protectEntry is one destination's protect state — the 2-bit state
+// from §3.2.60 plus the owner's Device Number (§3.2.66 byte 3-4) used
+// as the identity key for authority checks, and the optional human-
+// readable owner name resolved via §3.2.67 / §3.2.63.
+type protectEntry struct {
+	State       codec.ProtectState
+	OwnerDevice uint16 // Device Number used for owner-only authority checks
+	OwnerName   string // 8-char ASCII device name from tx 099, "" until handshake completes
+}
+
+// pendingSlot is one crosspoint staged by rx 05 / rx 69 CONNECT ON GO
+// or rx 35 / rx 71 CONNECT ON GO GROUP SALVO, waiting for rx 06 /
+// rx 36 GO to commit or clear. Extended marks slots staged via the
+// extended-addressing variants (rx 069 / rx 071); commit emits tx 068
+// Extended CONNECTED for those and tx 004 CONNECTED for narrow ones
+// so the CONNECTED form on the wire always matches the addressing
+// range the controller used to stage it (§3.2.51 + §3.2.50 vs.
+// §3.2.7 + §3.2.6).
+type pendingSlot struct {
+	Destination uint16
+	Source      uint16
+	Extended    bool
+}
+
+// tree is the in-memory state indexed by (matrix, level). Built from a
+// canonical.Export at Serve start. Mutated by SetValue (API path) or
+// by incoming CrosspointConnect requests (wire path, added per-command)
+// — both paths pass through the same applyConnect helper so any
+// future announcement fan-out stays consistent.
+type tree struct {
+	mu       sync.RWMutex
+	matrices map[matrixKey]*matrixState
+}
+
+// newTree reduces a canonical Export to the per-(matrix,level) state
+// the provider needs.
+func newTree(exp *canonical.Export) (*tree, error) {
+	t := &tree{matrices: map[matrixKey]*matrixState{}}
+	if exp == nil || exp.Root == nil {
+		return t, nil
+	}
+	visit(exp.Root, t)
+	return t, nil
+}
+
+// visit walks any canonical Element, adding Matrix elements to the
+// tree.
+func visit(e canonical.Element, t *tree) {
+	if e == nil {
+		return
+	}
+	if m, ok := e.(*canonical.Matrix); ok {
+		addMatrix(m, t)
+	}
+	for _, c := range e.Common().Children {
+		visit(c, t)
+	}
+}
+
+// addMatrix registers one canonical Matrix in the tree.
+func addMatrix(m *canonical.Matrix, t *tree) {
+	matrixID := uint8(m.Number - 1)
+	if m.Number <= 0 {
+		matrixID = 0
+	}
+
+	levels := m.Labels
+	if len(levels) == 0 {
+		st := buildState(m, "")
+		t.matrices[matrixKey{matrix: matrixID, level: 0}] = st
+		return
+	}
+	for i, lvl := range levels {
+		st := buildState(m, labelKey(lvl))
+		t.matrices[matrixKey{matrix: matrixID, level: uint8(i)}] = st
+	}
+}
+
+// labelKey returns the key the canonical Matrix's TargetLabels /
+// SourceLabels maps are indexed by.
+func labelKey(lvl canonical.MatrixLabel) string {
+	if lvl.Description != nil && *lvl.Description != "" {
+		return *lvl.Description
+	}
+	return lvl.BasePath
+}
+
+// buildState constructs the matrixState for one (matrix, level).
+func buildState(m *canonical.Matrix, key string) *matrixState {
+	st := &matrixState{
+		targetCount: int(m.TargetCount),
+		sourceCount: int(m.SourceCount),
+	}
+	st.sources = map[uint16]uint16{}
+	if st.targetCount > 0 {
+		st.targetLabels = buildLabels(m.TargetLabels, key, st.targetCount)
+	}
+	if st.sourceCount > 0 {
+		st.sourceLabels = buildLabels(m.SourceLabels, key, st.sourceCount)
+	}
+	return st
+}
+
+// buildLabels resolves the inner map for one level key into a dense
+// ordinal-indexed slice.
+func buildLabels(outer map[string]map[string]string, key string, n int) []string {
+	out := make([]string, n)
+	if outer == nil {
+		return out
+	}
+	inner, ok := outer[key]
+	if !ok {
+		return out
+	}
+	for sk, sv := range inner {
+		idx, err := strconv.Atoi(sk)
+		if err != nil || idx < 0 || idx >= n {
+			continue
+		}
+		out[idx] = sv
+	}
+	return out
+}
+
+// Size reports how many (matrix, level) pairs are in the tree.
+func (t *tree) Size() int {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return len(t.matrices)
+}
+
+// applyConnect records a crosspoint connection on (matrix, level,
+// dst). Returns an error if the indices are out of range.
+func (t *tree) applyConnect(m, l uint8, dst uint16, src uint16) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return fmt.Errorf("probel-sw02p: unknown matrix=%d level=%d", m, l)
+	}
+	if int(dst) >= st.targetCount {
+		return fmt.Errorf("probel-sw02p: dst %d >= targetCount %d on matrix=%d level=%d",
+			dst, st.targetCount, m, l)
+	}
+	if int(src) >= st.sourceCount {
+		return fmt.Errorf("probel-sw02p: src %d >= sourceCount %d on matrix=%d level=%d",
+			src, st.sourceCount, m, l)
+	}
+	st.sources[dst] = src
+	return nil
+}
+
+// appendPending stages one crosspoint into (matrix, level)'s pending
+// salvo buffer. Auto-creates the matrixState for (m, l) if the tree
+// has no canonical entry — SW-P-02 is single-matrix / single-level on
+// the wire, so a controller can legitimately issue CONNECT ON GO
+// before any canonical tree has been loaded. The count fields stay 0
+// until a tree is declared; applyPending honours those zero counts by
+// skipping out-of-range slots.
+func (t *tree) appendPending(m, l uint8, slot pendingSlot) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: m, level: l}
+	st, ok := t.matrices[key]
+	if !ok {
+		st = &matrixState{sources: map[uint16]uint16{}}
+		t.matrices[key] = st
+	}
+	st.pending = append(st.pending, slot)
+}
+
+// drainPending atomically empties (matrix, level)'s pending buffer and
+// returns its contents. Used by handleGo on both op=set (apply each
+// slot and broadcast) and op=clear (just discard). Returns nil if no
+// matrixState exists for the key — a spurious GO on an unknown matrix
+// is a no-op rather than an error.
+func (t *tree) drainPending(m, l uint8) []pendingSlot {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return nil
+	}
+	out := st.pending
+	st.pending = nil
+	return out
+}
+
+// appendPendingGroup stages one crosspoint into the SalvoID-keyed
+// pending buffer on (matrix, level). Auto-creates the matrixState and
+// the per-salvo slice on first use.
+func (t *tree) appendPendingGroup(m, l uint8, salvoID uint8, slot pendingSlot) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: m, level: l}
+	st, ok := t.matrices[key]
+	if !ok {
+		st = &matrixState{sources: map[uint16]uint16{}}
+		t.matrices[key] = st
+	}
+	if st.pendingGroups == nil {
+		st.pendingGroups = map[uint8][]pendingSlot{}
+	}
+	st.pendingGroups[salvoID] = append(st.pendingGroups[salvoID], slot)
+}
+
+// drainPendingGroup atomically empties (matrix, level)'s SalvoID-keyed
+// pending buffer and returns its contents. Returns nil if the SalvoID
+// has no staged slots — a spurious GO GROUP SALVO on an empty group
+// is legal per §3.2.37 (tx 38 ack still fires with Result=Empty).
+func (t *tree) drainPendingGroup(m, l uint8, salvoID uint8) []pendingSlot {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok || st.pendingGroups == nil {
+		return nil
+	}
+	out := st.pendingGroups[salvoID]
+	delete(st.pendingGroups, salvoID)
+	return out
+}
+
+// protectApplyResult reports what protectApply / protectClear did.
+// Callers translate this into the tx 097 / tx 098 "Protect details"
+// byte and into compliance-event emission.
+type protectApplyResult int
+
+const (
+	// protectApplyAccepted — state updated + owner recorded. Emit
+	// tx 097 / tx 098 fan-out with the new state.
+	protectApplyAccepted protectApplyResult = iota
+	// protectApplyRejectedOwner — a different device owns this
+	// destination. Fire the unauthorized compliance event; emit
+	// tx 097 / tx 098 with the *existing* state so peers observe
+	// no-change.
+	protectApplyRejectedOwner
+	// protectApplyRejectedOverride — current state is ProbelOverride
+	// (§3.2.60 "Cannot be altered remotely"). Same observable
+	// behaviour as RejectedOwner (emit unchanged state) but the
+	// semantic is distinct for audit.
+	protectApplyRejectedOverride
+)
+
+// protectApply implements the rx 102 state machine per
+// memory/project_probel_extensions.md and §3.2.60:
+//   - current=ProbelOverride → reject (protectApplyRejectedOverride)
+//   - current=None → accept, owner=device, state=ProtectProBel (on newState)
+//   - current=Probel|OEM & device==owner → accept, update state
+//   - current=Probel|OEM & device!=owner → reject (RejectedOwner)
+//
+// newState is what the caller wants on accept (rx 102 always passes
+// ProtectProBel; admin paths can pass other states). Returns the
+// entry that should be echoed on the wire (either the updated one
+// on accept or the unchanged existing one on reject).
+func (t *tree) protectApply(dst uint16, device uint16, newState codec.ProtectState) (protectEntry, protectApplyResult) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: 0, level: 0}
+	st, ok := t.matrices[key]
+	if !ok {
+		st = &matrixState{sources: map[uint16]uint16{}}
+		t.matrices[key] = st
+	}
+	if st.protect == nil {
+		st.protect = map[uint16]protectEntry{}
+	}
+	cur, exists := st.protect[dst]
+	switch {
+	case exists && cur.State == codec.ProtectProBelOverride:
+		return cur, protectApplyRejectedOverride
+	case !exists || cur.State == codec.ProtectNone:
+		next := protectEntry{State: newState, OwnerDevice: device}
+		st.protect[dst] = next
+		return next, protectApplyAccepted
+	case cur.OwnerDevice == device:
+		next := cur
+		next.State = newState
+		st.protect[dst] = next
+		return next, protectApplyAccepted
+	default:
+		return cur, protectApplyRejectedOwner
+	}
+}
+
+// protectClear implements the rx 104 state machine:
+//   - current=None → accept (no-op), emit tx 098 with State=None
+//   - current=ProbelOverride → reject (protectApplyRejectedOverride)
+//   - current=Probel|OEM & device==owner → accept, delete entry
+//   - current=Probel|OEM & device!=owner → reject (RejectedOwner)
+//
+// Returns the entry observable on the wire (cleared entry + State=None
+// on accept, or the unchanged existing one on reject).
+func (t *tree) protectClear(dst uint16, device uint16) (protectEntry, protectApplyResult) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: 0, level: 0}
+	st, ok := t.matrices[key]
+	if !ok || st.protect == nil {
+		return protectEntry{}, protectApplyAccepted
+	}
+	cur, exists := st.protect[dst]
+	switch {
+	case !exists || cur.State == codec.ProtectNone:
+		return protectEntry{}, protectApplyAccepted
+	case cur.State == codec.ProtectProBelOverride:
+		return cur, protectApplyRejectedOverride
+	case cur.OwnerDevice == device:
+		delete(st.protect, dst)
+		return protectEntry{}, protectApplyAccepted
+	default:
+		return cur, protectApplyRejectedOwner
+	}
+}
+
+// protectDumpEntry is one tuple returned by protectDump — ordered
+// pair of destination + state + owner metadata.
+type protectDumpEntry struct {
+	Destination uint16
+	Entry       protectEntry
+}
+
+// protectDump returns every (dst, entry) pair currently stored on
+// matrix 0 filtered by [startDest, ...), limited to at most count
+// entries. Used by rx 105 TALLY DUMP REQUEST to emit tx 100
+// chunks. Ordering is ascending-destination so successive calls
+// stay deterministic. count <= 0 means "all from startDest".
+func (t *tree) protectDump(startDest uint16, count int) []protectDumpEntry {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: 0, level: 0}]
+	if !ok || st.protect == nil {
+		return nil
+	}
+	keys := make([]uint16, 0, len(st.protect))
+	for k := range st.protect {
+		if k >= startDest {
+			keys = append(keys, k)
+		}
+	}
+	// Simple insertion sort — protect map stays small in practice.
+	for i := 1; i < len(keys); i++ {
+		for j := i; j > 0 && keys[j] < keys[j-1]; j-- {
+			keys[j], keys[j-1] = keys[j-1], keys[j]
+		}
+	}
+	if count > 0 && len(keys) > count {
+		keys = keys[:count]
+	}
+	out := make([]protectDumpEntry, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, protectDumpEntry{Destination: k, Entry: st.protect[k]})
+	}
+	return out
+}
+
+// protectEntriesByDevice returns every stored protect entry whose
+// OwnerDevice matches device. Used by handleProtectDeviceNameRequest
+// to discover the OwnerName string (if any) associated with a
+// Device Number — the name layer is best-effort since the name
+// handshake is asynchronous from the rx 102 CONNECT that registered
+// the owner.
+func (t *tree) protectEntriesByDevice(device uint16) []protectEntry {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: 0, level: 0}]
+	if !ok || st.protect == nil {
+		return nil
+	}
+	out := make([]protectEntry, 0)
+	for _, e := range st.protect {
+		if e.OwnerDevice == device {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// protectLookup returns the current protect entry for (matrix=0, dst).
+// Returns (zero entry, false) when no entry exists — callers treat
+// that as ProtectNone semantically.
+func (t *tree) protectLookup(dst uint16) (protectEntry, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: 0, level: 0}]
+	if !ok || st.protect == nil {
+		return protectEntry{}, false
+	}
+	e, ok := st.protect[dst]
+	return e, ok
+}
+
+// sourceLockSnapshot returns a per-source lock bitmap sized to the
+// widest declared sourceCount across matrix 0. Per §3.2.17 note 2 a
+// zero bit is ambiguous (card absent OR signal lost) — this plugin
+// runs as software with no physical input cards to monitor, so every
+// declared source reports "locked = true" (clean signal) by default.
+// Future HW-monitor integration can swap this out via a ServerOption.
+func (t *tree) sourceLockSnapshot() []bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	maxSrc := 0
+	for key, st := range t.matrices {
+		if key.matrix != 0 {
+			continue
+		}
+		if st.sourceCount > maxSrc {
+			maxSrc = st.sourceCount
+		}
+	}
+	if maxSrc == 0 {
+		return nil
+	}
+	out := make([]bool, maxSrc)
+	for i := range out {
+		out[i] = true
+	}
+	return out
+}
+
+// buildRouterConfigResponse1 derives the tx 076 RESPONSE-1 payload
+// from the canonical tree. All levels registered on matrix 0 are
+// emitted in ascending level order with the shared target/source
+// counts drawn from their matrixState. Up to RouterConfigMaxLevels
+// (28) are reported — levels beyond that are silently dropped
+// because the §3.2.58 bit map cannot encode them.
+func (t *tree) buildRouterConfigResponse1() codec.RouterConfigResponse1Params {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	var bitmap uint32
+	levels := make([]codec.RouterConfigResponse1LevelEntry, 0)
+	for lvl := uint8(0); int(lvl) < codec.RouterConfigMaxLevels; lvl++ {
+		st, ok := t.matrices[matrixKey{matrix: 0, level: lvl}]
+		if !ok {
+			continue
+		}
+		bitmap |= 1 << uint(lvl)
+		levels = append(levels, codec.RouterConfigResponse1LevelEntry{
+			NumDestinations: uint16(st.targetCount),
+			NumSources:      uint16(st.sourceCount),
+		})
+	}
+	return codec.RouterConfigResponse1Params{LevelMap: bitmap, Levels: levels}
+}
+
+// lookupSource returns the currently-routed source for (matrix, level,
+// dst). The second return is true when the tree has a recorded route;
+// callers encode the §3.2.5 "destination out of range" sentinel
+// (codec.DestOutOfRangeSource) when ok = false.
+func (t *tree) lookupSource(m, l uint8, dst uint16) (uint16, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return 0, false
+	}
+	src, ok := st.sources[dst]
+	return src, ok
+}
+
+// applyConnectLenient records a crosspoint on (matrix, level, dst)
+// without rejecting out-of-range indices — used by the salvo commit
+// path where the tree may not have declared target/source counts yet.
+// When the matrix is unknown, auto-creates it; when target/source
+// counts are non-zero, silently skips slots outside those counts so a
+// rogue CONNECT ON GO cannot corrupt the state of a well-defined
+// tree. Returns true if the crosspoint was recorded, false if skipped.
+func (t *tree) applyConnectLenient(m, l uint8, dst, src uint16) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := matrixKey{matrix: m, level: l}
+	st, ok := t.matrices[key]
+	if !ok {
+		st = &matrixState{sources: map[uint16]uint16{}}
+		t.matrices[key] = st
+	}
+	if st.targetCount > 0 && int(dst) >= st.targetCount {
+		return false
+	}
+	if st.sourceCount > 0 && int(src) >= st.sourceCount {
+		return false
+	}
+	st.sources[dst] = src
+	return true
+}

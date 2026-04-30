@@ -186,8 +186,17 @@ func (s *server) unsubscribe(sess *session, oid string) {
 }
 
 // broadcastParam fans out a QualifiedParameter announcement to every
-// consumer subscribed to the given OID. Subscribers that missed the
-// send-queue high-water-mark silently drop the frame — see session.send.
+// active consumer session. The Subscribe / Unsubscribe commands in the
+// Ember+ spec gate STREAM parameter emission specifically; for plain
+// parameters every shipping provider (libember-cpp, TinyEmber+, Lawo
+// stacks) pushes value-change announcements to all connected sessions
+// regardless of explicit subscription. Most consumers (EmberViewer,
+// EmberPlusView, mc² controllers) never send Subscribe for non-stream
+// parameters and rely on this fan-out — without it they freeze on the
+// initial GetDirectory snapshot. Subscribers that missed the
+// send-queue high-water-mark silently drop the frame — see
+// session.send. Stream-parameter fan-out stays subscription-gated in
+// streamer.go.
 func (s *server) broadcastParam(oid string, p *canonical.Parameter) {
 	e, ok := s.tree.lookupOID(oid)
 	if !ok {
@@ -196,9 +205,8 @@ func (s *server) broadcastParam(oid string, p *canonical.Parameter) {
 	payload := s.encodeParamAnnouncement(e, p)
 
 	s.mu.Lock()
-	set := s.subs[oid]
-	targets := make([]*session, 0, len(set))
-	for sess := range set {
+	targets := make([]*session, 0, len(s.sessions))
+	for sess := range s.sessions {
 		targets = append(targets, sess)
 	}
 	s.mu.Unlock()

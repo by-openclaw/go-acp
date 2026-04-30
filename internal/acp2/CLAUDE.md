@@ -7,7 +7,7 @@ Authoritative specs:
 - `internal/acp2/assets/acp2_protocol.pdf`
 - `internal/acp2/assets/an2_protocol.pdf` (AN2 transport)
 
-Wireshark dissector (byte-exact reference): `./wireshark/dissector_acp2.lua`.
+Wireshark dissector (byte-exact reference): `./wireshark/dhs_acpv2.lua`.
 
 Viewer under test: Lawo VSM Axon Neuron driver. Spec-strict, no workarounds.
 
@@ -20,7 +20,7 @@ internal/acp2/
 ├── CLAUDE.md    ← this file
 ├── consumer/    package acp2 — implements protocol.Protocol
 ├── provider/    package acp2 — implements provider.Provider
-├── wireshark/   dissector_acp2.lua
+├── wireshark/   dhs_acpv2.lua
 ├── docs/        consumer.md / provider.md / README.md
 └── assets/      acp2_protocol.pdf + an2_protocol.pdf + demo_device.json
 ```

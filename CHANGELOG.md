@@ -45,6 +45,51 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.5.0](https://github.com/by-openclaw/go-acp/compare/v0.4.0...v0.5.0) (2026-04-26)
+
+
+### Features
+
+* **cli:** list-commands + help-cmd across all 5 protocols ([#133](https://github.com/by-openclaw/go-acp/issues/133)) ([932e321](https://github.com/by-openclaw/go-acp/commit/932e3218732dcd2b855e95e2887b3b4d235f2811))
+* **probel-sw02p:** implement salvo commands §3.2.7/8/14/15/36-39/53/54 ([#106](https://github.com/by-openclaw/go-acp/issues/106)) ([cadebe6](https://github.com/by-openclaw/go-acp/commit/cadebe61b8ad13ef6259451573ce8c60d17247f5))
+* **probel,osc:** consumer matrix-config flags + bootstrap rx 01 sweep + keep-alive ping + TCP SO_KEEPALIVE ([#132](https://github.com/by-openclaw/go-acp/issues/132)) ([a7f0e9e](https://github.com/by-openclaw/go-acp/commit/a7f0e9e673fe325aa2242f4aea2ecafbb7c496f0))
+* **tsl:** TSL UMD v3.1/v4.0/v5.0 plugin + Wireshark dissector + CLI ([#134](https://github.com/by-openclaw/go-acp/issues/134)) ([7a2ea2b](https://github.com/by-openclaw/go-acp/commit/7a2ea2b995ede3773d97ea85cb48be10d5c0e7e2))
+
+
+### Bug Fixes
+
+* **emberplus:** BER REAL ecosystem mantissa bias + S101 BoF resync ([a057f9a](https://github.com/by-openclaw/go-acp/commit/a057f9a4065d78efced6ce9db0dc0b688530b3eb))
+* **emberplus:** BER REAL ecosystem mantissa bias + S101 BoF resync ([#68](https://github.com/by-openclaw/go-acp/issues/68)) ([a244e17](https://github.com/by-openclaw/go-acp/commit/a244e170d0184da69cd5aa0b554e93feb93974f7))
+* **emberplus:** broadcast value-change announcements to all active sessions ([f2edbff](https://github.com/by-openclaw/go-acp/commit/f2edbfff96426b19392ecb215a2de27e3c6f1f0a))
+* **emberplus:** broadcast value-change announcements to all active sessions ([b679ecb](https://github.com/by-openclaw/go-acp/commit/b679ecb704fb22d6912d4a6d1b694db87fb80447))
+
+## [0.4.0](https://github.com/by-openclaw/go-acp/compare/v0.3.1...v0.4.0) (2026-04-25)
+
+
+### Features
+
+* **acp2:** close remaining 5 per-type fixture gaps (full spec coverage, [#64](https://github.com/by-openclaw/go-acp/issues/64)) ([77a8a1c](https://github.com/by-openclaw/go-acp/commit/77a8a1c1e891ccb7b6e8025f4f668d352dc2d5fe))
+* **fixtures/acp2:** per-type capture + frozen tree library ([#64](https://github.com/by-openclaw/go-acp/issues/64)) ([daa18a4](https://github.com/by-openclaw/go-acp/commit/daa18a452ae05707ec95ce76eed613b8bc77e729))
+* **fixtures/acp2:** per-type capture + frozen tree library (partial [#64](https://github.com/by-openclaw/go-acp/issues/64)) ([90a58bb](https://github.com/by-openclaw/go-acp/commit/90a58bb5a2034f004e939555631b088c9789abe9))
+* **osc/cli:** full OSC consumer + producer verbs with help ([4954016](https://github.com/by-openclaw/go-acp/commit/49540166c26a547c205d1757049a41980c680624))
+* **osc/wireshark:** full from-scratch dissector — UDP + TCP-LP + TCP-SLIP ([c5f2e35](https://github.com/by-openclaw/go-acp/commit/c5f2e35f2a196acf4e89d9716482c6f1d24a50aa))
+* **osc:** full OSC 1.0 + 1.1 plugin — codec + UDP/TCP-LP/TCP-SLIP + dissector + CLI ([de45286](https://github.com/by-openclaw/go-acp/commit/de4528603ff4259a8d0c1927375810e200f66f97))
+* **osc:** full OSC 1.0 address-pattern matcher + array constructors + per-tag tests ([58b1e56](https://github.com/by-openclaw/go-acp/commit/58b1e56efb57f50e160eced93c7255631486eb4c))
+* **osc:** richer Wireshark SLIP dissector — address + type-tag + arg count in Info column ([64536b2](https://github.com/by-openclaw/go-acp/commit/64536b28fe3dcc6fd672fbe97e2ef550d2724eb5))
+* **osc:** scaffold plugin — consumer + provider stubs + CLAUDE.md ([7f13e34](https://github.com/by-openclaw/go-acp/commit/7f13e34240091c764827578d2e0a4b37baf80ff1))
+* **osc:** show typed arg values in Wireshark Info col + CLI watch output ([25cbac7](https://github.com/by-openclaw/go-acp/commit/25cbac787dba61f62cb6f260aef003a2c2f25286))
+* **osc:** TCP — length-prefix (v1.0) + SLIP double-END (v1.1) ([bdf1ff2](https://github.com/by-openclaw/go-acp/commit/bdf1ff2bddd7bc2b7e8c8043bef3c5f9512327a2))
+* **osc:** v1.0 codec + UDP consumer + provider + integration ([2785e5b](https://github.com/by-openclaw/go-acp/commit/2785e5ba7eb45ec84d8a37c0a48b90205c814ee2))
+* **osc:** Wireshark — SLIP unstuffer that delegates to built-in OSC dissector ([9d78124](https://github.com/by-openclaw/go-acp/commit/9d78124c9115e4f1ac098a7c8d5cc453dddd723d))
+
+
+### Bug Fixes
+
+* **osc/wireshark:** correct string/blob alignment check off-by-one ([30537ca](https://github.com/by-openclaw/go-acp/commit/30537ca87a60c16d4e50786975c9849e14a8d9f8))
+* **osc/wireshark:** use add_proto_expert_info for ProtoExpert objects ([71b6349](https://github.com/by-openclaw/go-acp/commit/71b6349cdad24d4b612d9cb6f7314ea9175ce224))
+* **probel-sw08p/provider:** emit tx 04 Connected on salvo Set ([#92](https://github.com/by-openclaw/go-acp/issues/92)) ([077c265](https://github.com/by-openclaw/go-acp/commit/077c2651ceb780b97a78b6d47e71cce154e37b3c))
+* **probel-sw08p/provider:** emit tx 04 Connected on salvo Set ([#92](https://github.com/by-openclaw/go-acp/issues/92)) ([e4f6579](https://github.com/by-openclaw/go-acp/commit/e4f657941cc8b7775184282d952f0a86667e04ec))
+
 ## [0.3.1](https://github.com/by-openclaw/go-acp/compare/v0.3.0...v0.3.1) (2026-04-23)
 
 

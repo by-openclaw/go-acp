@@ -22,6 +22,12 @@ func setReuseAddr(fd uintptr) error {
 	return nil
 }
 
+// SetSocketReuseAddr is the exported wrapper for cross-package use (e.g.
+// TSL consumer session). Behaviour matches setReuseAddr.
+func SetSocketReuseAddr(fd uintptr) error {
+	return setReuseAddr(fd)
+}
+
 // SetSocketBroadcast enables SO_BROADCAST on a UDP socket so sends to
 // the limited broadcast address 255.255.255.255 are accepted by the
 // kernel. Used by acp1 discover's active probe path.

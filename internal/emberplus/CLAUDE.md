@@ -8,7 +8,7 @@ Authoritative refs:
 - `internal/emberplus/assets/Ember+ Documentation.pdf`
 - `internal/emberplus/assets/Ember+ Formulas.pdf`
 
-Wireshark dissector: `./wireshark/dissector_emberplus.lua`.
+Wireshark dissector: `./wireshark/dhs_emberplus.lua`.
 
 Testbed emulator: `internal/emberplus/assets/smh/` (BY-RESEARCH TS emulator, port 9000/9090/9092);
 convention — targets labeled `1`, sources labeled `2`.
@@ -27,7 +27,7 @@ internal/emberplus/
 │   └── matrix/  matrix/target/source encoder helpers
 ├── consumer/    package emberplus — implements protocol.Protocol
 ├── provider/    package emberplus — implements provider.Provider
-├── wireshark/   dissector_emberplus.lua
+├── wireshark/   dhs_emberplus.lua
 ├── docs/        consumer.md / provider.md / README.md
 └── assets/      Ember+ PDFs + TinyEmberPlus/EmberPlusView tools + smh/ TS lib
 ```
@@ -93,6 +93,22 @@ in the repo.
 - `Connection` carries `target`, `sources[]`, `operation` (0=absolute set,
   1=connect, 2=disconnect), `disposition`.
 
+### Known deviations from spec (matrix subscription)
+
+§p.88 reads: "As soon as a consumer issues a GetDirectory command on a
+matrix object, it implicitly subscribes to matrix connection changes."
+Strict reading: only sessions that walked the matrix receive
+connection-change announcements. Our provider broadcasts matrix
+connection changes to **every connected session**, mirroring
+libember-cpp / TinyEmber+ / Lawo provider stacks — most viewers walk
+matrix contents from a parent node reply rather than direct
+GetDirectory(matrix), so strict subscription gating leaves crosspoint
+tallies stranded at the consumer. The same broadcast-to-all rule
+applies to plain Parameter value-change announcements (Subscribe(30)
+exists in spec for streams; no shipping provider gates plain-param
+emission on it). Stream parameters stay subscription-gated in
+`provider/streamer.go`.
+
 ## Stream values
 
 StreamEntry pushes a raw value per `streamIdentifier`. Map to the parameter
@@ -117,7 +133,19 @@ S101 layer. Respond to every request promptly.
 - Connection-snapshot diff needs to honor `disposition=modified` (partial).
 - `formula` evaluation (#70) is **parked** — consumer ignores formulas and
   surfaces raw values. Do not lazily implement — requires full Formulas PDF.
-- Viewer quirks (#68) around matrix reflection are **parked**.
+- BER REAL mantissa convention (#68 fix 2026-04-26): every Ember+ stack
+  (libember, EmberViewer, Lawo VSM) reads `N` as a normalised fraction with
+  binary point implicit after the leading 1 bit, not as the literal X.690
+  §8.5.7 unsigned integer. `EncodeReal` + `DecodeReal` in `codec/ber/value.go`
+  bias the wire exponent by `bits.Len64(N)-1` to match. Pinned by
+  `TestReal_EcosystemBytes` (50.0 → `80 05 19`, 100.0 → `80 06 19`,
+  0.1 → `80 fc 0c cc cc cc cc cc cd`). Verified live against EmberViewer
+  v2.40.0.35 + Lawo VSM Studio.
+- S101 reader resyncs on a second BOF mid-frame (`codec/s101/reader.go`).
+  Spec mandates 0xFE escape-stuffing; Lawo VSM-as-consumer emits a 15-byte
+  non-S101 preamble before its first real frame on every reconnect, and
+  resyncing on the second BOF drops the junk rather than failing CRC over
+  the concatenation.
 
 ## What NOT to do
 

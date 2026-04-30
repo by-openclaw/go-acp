@@ -1,7 +1,7 @@
 # ACP1 per-type fixtures
 
 One slimmed capture + frozen tshark tree per ACP1 wire element, as defined
-by AXON-ACP v1.4. The dissector under `internal/acp1/assets/dissector_acpv1.lua`
+by AXON-ACP v1.4. The dissector under `internal/acp1/wireshark/dhs_acpv1.lua`
 is expected to render every element exactly as frozen — the CI parity test
 under `tests/unit/fixture_parity/` asserts that.
 
@@ -61,5 +61,5 @@ make fixtures-acp1
 ```
 
 Wireshark / tshark ≥ 4.x required. The dissector under
-`internal/acp1/assets/dissector_acpv1.lua` must be installed in the personal
+`internal/acp1/wireshark/dhs_acpv1.lua` must be installed in the personal
 plugins dir (see [`docs/wireshark.md`](../../../../docs/wireshark.md)).

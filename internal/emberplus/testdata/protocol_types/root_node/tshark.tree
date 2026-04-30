@@ -14,7 +14,7 @@ Frame 1: Packet, 149 bytes on wire (1192 bits), 149 bytes captured (1192 bits) o
     Capture Length: 149 bytes (1192 bits)
     [Frame is marked: False]
     [Frame is ignored: False]
-    [Protocols in frame: null:ip:tcp:emberplus]
+    [Protocols in frame: null:ip:tcp:dhs_emberplus]
     Character encoding: ASCII (0)
 Null/Loopback
     Family: IP (2)

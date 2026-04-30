@@ -14,7 +14,7 @@ Frame 1: Packet, 63 bytes on wire (504 bits), 63 bytes captured (504 bits) on in
     Capture Length: 63 bytes (504 bits)
     [Frame is marked: False]
     [Frame is ignored: False]
-    [Protocols in frame: null:ip:udp:acpv1_full]
+    [Protocols in frame: null:ip:udp:dhs_acpv1]
     Character encoding: ASCII (0)
 Null/Loopback
     Family: IP (2)

@@ -3,7 +3,7 @@
 One slimmed capture + frozen tshark tree per ACP2 wire element, as defined
 by `internal/acp2/assets/acp2_protocol.pdf` (object types + functions +
 error codes) and the AN2 transport spec. The dissector under
-`internal/acp2/wireshark/dissector_acp2.lua` is expected to render every
+`internal/acp2/wireshark/dhs_acpv2.lua` is expected to render every
 element exactly as frozen — the parity test under
 `internal/acp2/consumer/fixture_parity_test.go` asserts that.
 
@@ -93,5 +93,5 @@ make fixtures-acp2
 ```
 
 Wireshark / tshark ≥ 4.x required. The dissector under
-`internal/acp2/wireshark/dissector_acp2.lua` must be installed in the
+`internal/acp2/wireshark/dhs_acpv2.lua` must be installed in the
 personal plugins dir (see [`docs/wireshark.md`](../../../../docs/wireshark.md)).
