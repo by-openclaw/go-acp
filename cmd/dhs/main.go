@@ -69,6 +69,7 @@ import (
 	_ "acp/internal/amwa/codec/is04/v13"
 	_ "acp/internal/amwa/codec/is05/v10"
 	_ "acp/internal/amwa/codec/is05/v11"
+	_ "acp/internal/amwa/codec/is07/v10"
 	_ "acp/internal/amwa/codec/is09/v10"
 )
 
