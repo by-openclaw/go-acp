@@ -74,6 +74,18 @@ import (
 	_ "acp/internal/amwa/codec/is09/v10"
 	_ "acp/internal/amwa/codec/is12/v10"
 	_ "acp/internal/amwa/codec/ms05/v10"
+
+	// BCP validator packages — register into the shared bcp registry
+	// at init() time so the host-resource fanout in
+	// `internal/amwa/codec/bcp/Run` sees them.
+	_ "acp/internal/amwa/codec/bcp/bcp00201"
+	_ "acp/internal/amwa/codec/bcp/bcp00202"
+	_ "acp/internal/amwa/codec/bcp/bcp00401"
+	_ "acp/internal/amwa/codec/bcp/bcp00402"
+	_ "acp/internal/amwa/codec/bcp/bcp00601"
+	_ "acp/internal/amwa/codec/bcp/bcp00604"
+	_ "acp/internal/amwa/codec/bcp/bcp00801"
+	_ "acp/internal/amwa/codec/bcp/bcp00802"
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.
