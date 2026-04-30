@@ -21,8 +21,8 @@ const (
 	LockRelease LockKind = "RELEASE"
 )
 
-// ItemType is the §3.3 enum for category items (sourced from a
-// third-party vendor reference driver because spec §3.3 is image-only).
+// ItemType is the §3.3 enum for category items (spec §3.3 is image-only;
+// the values here are the canonical strings observed on the wire).
 type ItemType string
 
 const (

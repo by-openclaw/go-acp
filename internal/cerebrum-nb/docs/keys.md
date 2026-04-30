@@ -2,8 +2,7 @@
 
 Authoritative, fact-only catalogue of every element name, attribute
 name, and enum value on the Cerebrum Northbound v0.13 wire. Derived
-from the EVS spec text; cross-referenced against a third-party
-reference driver (NDA, never committed) and against live captures.
+from the EVS spec text and cross-referenced against live captures.
 
 **Sources**
 
@@ -14,9 +13,6 @@ reference driver (NDA, never committed) and against live captures.
 2. **Live wire captures.** pcaps from real Cerebrum servers — these
    override spec text where the two disagree (see "Wire-actual vs
    spec" below).
-3. **Secondary (NDA, reference-only, never committed).** Third-party
-   vendor reference driver. XML kept locally for fact-extraction;
-   gitignored.
 
 ---
 
@@ -52,8 +48,7 @@ Spec examples are **inconsistent** between sections:
 **UPPERCASE** elements + attributes. Verified 2026-04-26 via pcap
 against a real Cerebrum: a lowercase `<login mtid="1"/>` was rejected
 with `<NACK MTID="0" ERROR="MTID_ERROR" ERROR_CODE="1"/>` because the
-server didn't recognise lowercase `mtid` as the MTID field. The
-third-party reference driver also emits UPPERCASE throughout.
+server didn't recognise lowercase `mtid` as the MTID field.
 
 dhs therefore:
 
@@ -160,11 +155,11 @@ image-based** so these come from `Api/Definitions/ItemType.cs`:
 
 Always wrapped in `<action mtid='…'>…</action>`. Body is one of:
 
-### Route-master sentinel (live-verified, reference-driver convention)
+### Route-master sentinel (live-verified)
 
 The "router" is the **central Cerebrum route-master**, not a device
 discovered via LIST. Every routing action is addressed to a sentinel
-pair the reference driver hardcodes:
+pair:
 
 ```
 IP_ADDRESS = "0.0.0.0"

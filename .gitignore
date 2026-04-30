@@ -41,12 +41,6 @@ desktop.ini
 # Temp
 /tmp/
 
-# NDA-gated third-party reference driver for Cerebrum NB. Kept locally
-# for fact-extraction only; never committed. See
-# internal/cerebrum-nb/docs/keys.md for the paraphrased catalogue.
-internal/cerebrum-northbound-api/assets/cerebrum.xml
-internal/cerebrum-nb/assets/cerebrum.xml
-
 # Node.js test-harness installs (internal/**/test-harness/node_modules).
 # Dependencies are pinned via package.json + package-lock.json and
 # re-installed by .devcontainer/post-create.sh on container build.

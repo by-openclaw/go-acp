@@ -29,5 +29,5 @@ XML over WebSocket, default port **40007**.
 
 - Primary: `assets/Cerebrum Northbound API 0v13.pdf` +
   `assets/cerebrum_northbound_api_full_v0_13.docx`
-- Third-party vendor reference driver — held under NDA, gitignored;
-  cited as a secondary cross-check only.
+- Live wire captures from production Cerebrum servers (override spec
+  text where the two disagree).
