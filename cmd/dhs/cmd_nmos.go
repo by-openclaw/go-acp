@@ -46,8 +46,10 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSSystem(ctx, rest)
 	case "walk":
 		return runNMOSWalk(ctx, rest)
+	case "events":
+		return runNMOSEventsConsumer(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, events)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -61,8 +63,10 @@ func runNMOSProducer(ctx context.Context, args []string) error {
 	switch verb {
 	case "serve":
 		return runNMOSNodeServe(ctx, rest)
+	case "events":
+		return runNMOSEventsProducer(ctx, rest)
 	}
-	return fmt.Errorf("producer nmos: unknown verb %q (expected: serve)", verb)
+	return fmt.Errorf("producer nmos: unknown verb %q (expected: serve, events)", verb)
 }
 
 // runNMOSRegistry dispatches `dhs registry nmos <verb> [args]`.
