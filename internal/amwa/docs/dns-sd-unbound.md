@@ -190,6 +190,8 @@ the `compliance.Event` channel — see
 
 - [`cerebrum-interop.md`](cerebrum-interop.md) — Cerebrum-specific
   Registry quirks + Mode 1/2/3 mapping.
+- [`firewall-recipes.md`](firewall-recipes.md) — host firewall rules
+  (Windows / Linux / macOS) for the ports advertised by these records.
 - [`matrix-compliance.md`](matrix-compliance.md) — per-vendor compliance
   tracker; Cerebrum row references this recipe.
 - [`sequenced-tasks.md`](sequenced-tasks.md) §Phase 1 #1 — DNS-SD
