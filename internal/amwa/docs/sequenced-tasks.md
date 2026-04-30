@@ -43,8 +43,8 @@ the full scope.
 > Windows mDNS multi-interface bind + `IP_MULTICAST_LOOP` re-enable
 > (build-tagged stdlib-only); Lua dissector `tohex(true)` for
 > lowercase heuristic; chase-the-PTR for bandwidth-minimising
-> resolvers (RFC 6763 §10). Awaiting PR #147 merge → base retarget
-> → merge.
+> resolvers (RFC 6763 §10). PR #147 merged on main 2026-04-30; PR
+> #149 retargeted to main; awaiting CI green → merge.
 
 Pure infrastructure, no NMOS semantics yet. **Four deployment modes
 must work from day one** (A/B/C plus Mode D added 2026-04-29 for EVS

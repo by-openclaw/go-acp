@@ -44,15 +44,14 @@ docs/                           cross-cutting architecture, connector, schema
 ```
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
-Other feature branches add more: `cerebrum-nb` on `feat/cerebrum-nb-plugin`
-(PR #144), `nmos` on `feat/nmos-scaffold` (PR #147 — Phase 0 scaffold +
-Mode D + cerebrum-interop docs) and `feat/nmos-discovery-dnssd` (PR #149,
-renamed from #148 — Phase 1 step #1: DNS-SD codec + mDNS responder/browser
-+ RFC 6763 §10 chase-the-PTR unicast + peer-list + Tier-1 `internal/registry/`
-slot + `dhs_nmos.lua` dissector + harness skeleton; 10/10 verification
-PASS across deployment modes A/B/C/D as of 2026-04-29; awaiting #147
-merge then base retarget to main).
-See `memory/project_protocol_backlog.md` for the full queue.
+`cerebrum-nb` is merged on main (PR #144, v0.6.0 tagged 2026-04-30).
+NMOS Phase 0 scaffold merged on main 2026-04-30 via PR #147; the active
+feature branch is `feat/nmos-discovery-dnssd` (PR #149 — Phase 1 step #1:
+DNS-SD codec + mDNS responder/browser + RFC 6763 §10 chase-the-PTR
+unicast + peer-list + Tier-1 `internal/registry/` slot + `dhs_nmos.lua`
+dissector + harness skeleton; 10/10 verification PASS across deployment
+modes A/B/C/D as of 2026-04-29). See
+`memory/project_protocol_backlog.md` for the full queue.
 
 > **NMOS is the odd one out.** It is a suite of ~14 specs
 > (IS-04/05/07/08/09/12/13, MS-05-01/02, BCP-002/004/006/007/008) with a
@@ -86,9 +85,10 @@ See `memory/project_protocol_backlog.md` for the full queue.
 >   OSC and Commie for Probel.
 > - **Real-world testbed peers:** Lawo VSM Studio (NMOS Controller —
 >   IS-04 Node API + IS-05 v1.0/1.1, HTTP only, no Query API, no
->   WebSocket, no scheduled activations); EVS Cerebrum (Cerebrum-NB
->   on PR #144; Cerebrum NMOS proxy is a real production cross-proto
->   bridge — interop peer for our NMOS plugin, not a model to copy).
+>   WebSocket, no scheduled activations); EVS Cerebrum (cerebrum-nb
+>   merged via PR #144; Cerebrum NMOS proxy is a real production
+>   cross-proto bridge — interop peer for our NMOS plugin, not a model
+>   to copy).
 > - **Approval rule:** when an agent asks the user a question, NEVER
 >   act in the same turn — wait for explicit approval before any
 >   write/commit/PR/issue/memory action. See
@@ -184,6 +184,14 @@ watcher's per-frame line shape (`/addr ,tags v1 v2 v3`) matches the
 `dhs_osc.lua` Wireshark Info column verbatim, so a live `watch`
 terminal and a tshark capture can be diffed line-for-line.
 
+Cerebrum NB (feature branch): see `dhs consumer cerebrum-nb -h` and
+`internal/cerebrum-nb/CLAUDE.md`. Spec is authoritative — DOCX in
+`internal/cerebrum-nb/assets/`. Default port 40007. Credentials via
+`$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`. Workflow rule
+(2026-04-30): every new verb is described as text first (name + wire
+frame + flags + RX + output); implement only after explicit user
+approval — see `feedback_design_first_no_code.md`.
+
 Producer verb is `serve` for the slot-based protocols.
 
 ---
@@ -195,6 +203,10 @@ internal/acp1/assets/       AXON-ACP_v1_4.pdf
 internal/acp2/assets/       acp2_protocol.pdf + an2_protocol.pdf
 internal/emberplus/assets/  Ember+ Documentation.pdf + Ember+ Formulas.pdf
 internal/probel-sw08p/assets/probel-sw08p/SW-P-08 Issue 30.doc   (use antiword; the .pdf is corrupted)
+internal/probel-sw02p/assets/probel-sw02/                        (SW-P-02 Issue 26)
+internal/osc/assets/                                              (OSC 1.0/1.1 specs)
+internal/tsl/assets/                                              (TSL UMD v3.1/v4/v5)
+internal/cerebrum-nb/assets/                                      (EVS Cerebrum NB v0.13 PDF + DOCX + OCR)
 
 internal/<proto>/wireshark/dhs_<proto>.lua         byte-exact reference
 ```
