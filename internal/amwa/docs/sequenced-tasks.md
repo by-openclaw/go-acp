@@ -278,6 +278,14 @@ picking the highest mutual minor.
 
 ### #5 — IS-04 Controller (consumer side)
 
+> **Status: PR #162 OPEN 2026-05-01, CI in flight, auto-merge enabled.**
+> Codec interface from PR #160 plumbs end-to-end via DI — same
+> Controller speaks v1.1, v1.2, or v1.3 per Registry advertisement.
+> Lands `internal/amwa/session/query/` (Query API client) + `consumer/
+> controller.go` + `dhs consumer nmos walk` verb. WS subscription
+> consumer (`watch` verb) layered on later. See `memory/feedback_
+> nmos_auto_merge.md` for merge policy.
+
 Three modes mirror the deployment modes from #1:
 
 - **Registry mode** (default): DNS-SD browse for `_nmos-query._tcp`,
