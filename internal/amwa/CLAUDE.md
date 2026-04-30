@@ -265,6 +265,91 @@ Enforcement: depguard golangci-lint rule + `go list -deps` audit test
 + PR review checklist. Full rules + inter-codec dependency graph + CI
 config in [`docs/dependencies.md`](docs/dependencies.md).
 
+---
+
+## Codec architecture (locked pattern — every NMOS spec)
+
+Every NMOS spec MUST implement **every stable version listed above**,
+not just the latest. To make that tractable across the whole 14-spec
+suite — and to keep the cost of supporting a future v1.4 / v2.0
+constant rather than linear — every spec follows ONE locked codec
+pattern. The shared base is in
+[`internal/amwa/codec/spec/`](codec/spec/) and is stdlib-only.
+
+### Roles per layer (Layer 1, codec)
+
+```
+internal/amwa/codec/
+  spec/                          # NMOS-wide base (Versioned interface, generic Registry[T],
+                                 # SelectHighestMutual, ComplianceEvent + Reporter)
+  is04/  is05/  is07/  is08/     # one folder per spec — canonical structs + Codec interface
+  is09/  is12/  ms0501/  ms0502/
+    codec.go                     # extends spec.Versioned with the spec's resource methods
+    {node,device,...}.go         # canonical union structs (every minor's fields, omitempty)
+    patterns.go enums.go         # shared regex / URN tables
+    v10/  v11/  v12/  v13/       # per-minor Strategy impls (~50–100 LOC each)
+      codec.go                   # implements the spec's Codec interface for ONE wire minor
+
+  bcp/                           # JSON-shape validators (no own wire — layer onto host spec)
+    bcp00201/  bcp00202/         # BCP-002-01 / 002-02
+    bcp00401/  bcp00402/         # BCP-004-01 / 002-02
+    bcp00601/  bcp00604/         # BCP-006-01 / 006-04
+    bcp00801/  bcp00802/         # BCP-008-01 / 008-02
+```
+
+### OOP principles enforced
+
+| Principle | Mechanism |
+|---|---|
+| **Encapsulation** | Per-minor field-gating + per-minor validation rules live inside each `vXX.Codec` impl. The plugin layer never sees minor-specific logic. |
+| **Open/closed** | New minor (e.g. IS-04 v1.4 when AMWA ships it) = +1 file `v14/codec.go` + 1 init-time `Register` call. Zero edits to existing files. New spec (e.g. IS-13 when stable) = +1 folder following the template. |
+| **Liskov substitution** | Any `Codec` interchangeable on the Registry store, Node API server, Controller client. Plugin code receives `is04.Codec` from `spec.Registry[is04.Codec]`. |
+| **Single responsibility** | `spec/` is contracts + cross-cutting infra only. Per-spec packages hold canonical types. `vXX/` packages hold version deltas only. Plugin layer holds business logic only. |
+| **Interface segregation** | `spec.Versioned` is three methods. Per-spec `Codec` interfaces extend it with only that spec's resource methods. No god-interface. |
+| **Dependency inversion** | Plugin code depends on `spec.Versioned` + per-spec `Codec` interface, never on `vXX/*` directly. depguard rule enforces this in CI. Concrete impls are wired in via `init()` registration; tests substitute fakes via DI. |
+
+### Idempotent registration
+
+`spec.Registry[T].Register` is safe to call repeatedly with the same
+instance under the same `(SpecID, APIVer)` key. Calling with a
+different instance under an already-registered key panics — that's a
+duplicate-init bug. Empty SpecID / APIVer / SpecPatch panic. Same
+semantics as `internal/protocol.Register`.
+
+### Cross-cutting concerns in `spec/`
+
+- **Version selection.** `spec.SelectHighestMutual` picks the highest
+  version mutually supported between us and a peer's `api_ver` TXT.
+  Returns `ErrNoCommonVersion` (typed) when intersection is empty so
+  the caller fires a compliance event — never silently downgrade.
+- **Compliance events.** `spec.ComplianceEvent` carries
+  `(SpecID, APIVer, SpecPatch, Code, Severity, Detail, Resource,
+  PeerHost, At)`. `spec.Reporter` is the DI seam codecs use to emit
+  events. Production wires a logger-backed reporter via
+  `cmd/dhs/cmd_nmos.go`; tests pass `*spec.SliceReporter` for
+  assertion. Codecs NEVER reach into a global.
+- **No silent workarounds.** Per top-level CLAUDE.md "Spec-strict,
+  no-workaround posture", every absorbed deviation MUST fire a
+  ComplianceEvent — the codec keeps decoding, but the deviation is
+  audited.
+
+### Spec-strict version coverage rule
+
+Skipping any minor listed in the [Versioning](#versioning) table is a
+**spec violation**, not a deferral. The plugin owes:
+
+- DNS-SD `api_ver` TXT advertises every supported minor
+  comma-separated.
+- Server URL trees serve every minor in parallel
+  (`/x-nmos/<api>/v1.1/`, `/v1.2/`, `/v1.3/`, …) on one canonical
+  store.
+- Highest-mutual-minor selection on every peer handshake; never
+  silently downgrade outside the intersection.
+
+WIP-at-AMWA specs (IS-13 Annotation, BCP-006-02 H.264,
+BCP-006-03 H.265, BCP-007-01 NDI) are the only legitimate "not yet"
+scope — they land when AMWA stabilises them.
+
 ## Conformance gate — AMWA NMOS Testing tool
 
 Every NMOS PR that ships an implementation chunk MUST pass the matching
