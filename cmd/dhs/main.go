@@ -64,6 +64,8 @@ import (
 	// references the concrete vXX/ packages directly. Plugin code
 	// (Layer 3) goes through the host spec's Codec interface only,
 	// per `internal/amwa/docs/dependencies.md` forbidden edges.
+	_ "acp/internal/amwa/codec/is04/v11"
+	_ "acp/internal/amwa/codec/is04/v12"
 	_ "acp/internal/amwa/codec/is04/v13"
 )
 
