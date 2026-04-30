@@ -110,20 +110,46 @@ Estimated PR size: ~800 LOC + tests.
 
 ### #2 — IS-09 System API (server + client)
 
+> **Status: in flight — branch `feat/nmos-is09-system`.** Mode A self-loop
+> live-verified 2026-04-30: `dhs producer nmos serve --role system` boots
+> the IS-09 endpoints, announces `_nmos-system._tcp` via mDNS; `dhs
+> consumer nmos system --mdns` selects the instance per the spec rule and
+> fetches a validated /global. `--direct host:port` bypasses discovery
+> for unicast / Mode B targets. AMWA NMOS Testing IS-09-02 conformance
+> run pending in CI integration phase.
+
 Smallest NMOS spec. Lets us validate the "REST + DNS-SD" plumbing
 before tackling IS-04.
 
 - Codec: `internal/amwa/codec/is09/` — JSON Schema for `global`
-  resource.
-- Provider: `dhs producer nmos serve --role system --config FILE`.
-- Consumer: `dhs consumer nmos system <hint>` — fetch + dump.
-- Tests: round-trip JSON, DNS-SD advertise + browse, fallback to
-  config file when no `_nmos-system._tcp`.
+  resource (stdlib-only; spec-strict per
+  `https://specs.amwa.tv/is-09/releases/v1.0.0/`).
+- Session: neutral `internal/amwa/session/http/` — typed JSON GET +
+  exact-match route table; reused by IS-04 / IS-05 / IS-08 in later
+  phases.
+- Provider: `dhs producer nmos serve --role system --config FILE` —
+  loads + validates the config, serves the two endpoints, advertises
+  `_nmos-system._tcp` (mDNS or static via Unbound — see
+  [`dns-sd-unbound.md`](dns-sd-unbound.md)).
+- Consumer: `dhs consumer nmos system [--mdns | --unicast --resolver
+  IP | --peer-list F | --direct H:P]` — selection rule (filter by
+  api_proto + api_ver, sort by pri, randomised tie-break), GET
+  /global, validate, dump.
+- Tests: codec round-trip per AMWA spec example; out-of-range
+  rejection per integer field; missing-required rejection; unknown-key
+  rejection; HTTP server route table + 404 / 405; consumer selection
+  rule (proto filter, version filter, lowest pri, tie-break).
 - **Conformance gate: AMWA NMOS Testing IS-09-02 suite must Pass.**
   Pinned by image digest; report archived under
   `tests/integration/nmos/02-is09/results/`.
 
-Estimated PR size: ~400 LOC.
+Spec-strict deviations to watch: IS-09 v1.0 predates IS-10, so
+`api_auth` MUST NOT appear in the `_nmos-system._tcp` TXT. dhs encoder
+omits it; decoder fires `nmos_unexpected_txt_key` when a peer emits
+it.
+
+Estimated PR size: ~1500 LOC including the new neutral HTTP session
+package (used by Phase 1 #3-#4 too).
 
 ### #3 — IS-04 Node API (provider side)
 
