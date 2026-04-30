@@ -102,7 +102,32 @@ Inside Layer 1, codec sub-packages may import each other but only along
 the directed graph below. New cross-edges require an architecture
 review.
 
+The graph has THREE tiers within Layer 1:
+
+1. **`spec/`** — NMOS-wide base (`Versioned` interface, generic
+   `Registry[T]`, `SelectHighestMutual`, `ComplianceEvent + Reporter`).
+   Stdlib-only. No sibling imports. Every spec depends on it.
+2. **Per-spec packages** (`is04/`, `is05/`, …) — canonical structs +
+   per-spec `Codec` interface (extends `spec.Versioned`). May import
+   `spec/` and select sibling specs as the directed graph below allows.
+3. **Per-minor packages** (`is04/v11/`, `is05/v10/`, …) — Strategy
+   impls, one per wire minor. Import their host spec package +
+   `spec/`. Never import sibling minors (`v12/` ≠ `v11/`) or other
+   specs' minors. Blank-imported from `cmd/dhs/main.go` to wire init().
+4. **BCP validator packages** (`bcp/bcp00201/`, `bcp/bcp00401/`, …) —
+   register into their host spec at init() via
+   `<host>.RegisterValidator(...)`. Implement `bcp.Validator` (which
+   itself extends `spec.Versioned`).
+
 ```
+   ┌──────────────┐
+   │     spec     │  ◄── leaf base; no sibling imports
+   │ Versioned +  │      Versioned interface, generic Registry[T],
+   │ Registry[T] +│      SelectHighestMutual, ComplianceEvent + Reporter
+   │  Reporter    │
+   └──────┬───────┘
+          │  (every per-spec package imports spec)
+          ▼
    ┌──────────────┐         ┌──────────────┐
    │  jsonschema  │         │    dnssd     │      ◄── independent of all others
    │ (validator)  │         │ (mDNS + SRV) │
@@ -164,9 +189,21 @@ review.
 - `is09` MUST NOT import `is04` (System config is bootstrap-only).
 - `rql` MUST NOT import `is04` (it's pure filter-syntax; resource
   type-checking happens in the IS-04 layer).
-- `bcp-008-*` is NOT a separate package; it's MS-05-02 classes.
-  Likewise `bcp-002`, `bcp-004`, `bcp-006`, `bcp-007` are JSON-Schema
-  files compiled into the relevant codec, NOT separate code paths.
+- `spec/` (the NMOS-wide codec base) MUST NOT import any sibling
+  codec package. It is the leaf — every spec depends on it; it
+  depends on no spec.
+- Per-minor packages (`is04/v11/`, `is05/v10/`, …) MUST NOT be
+  imported by Layer 2 / 3 / 4. Only their host spec package may import
+  them, and only at `init()` time for `Register` calls. Plugin code
+  goes through the host spec's `Codec` interface via the
+  `spec.Registry[T]`.
+- `is04/v12/` MUST NOT import `is04/v11/` or `is04/v13/`. Per-minor
+  packages are siblings — they share the canonical structs in their
+  parent (`is04/`), not each other.
+- BCP validator packages (`bcp/bcp00201/`, `bcp/bcp00401/`, …)
+  register into their host spec via `<host>.RegisterValidator(...)` at
+  init() time and are blank-imported from `cmd/dhs/main.go`. They MUST
+  NOT be imported anywhere else.
 
 ---
 
