@@ -15,6 +15,7 @@ package http
 
 import (
 	"bufio"
+	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
@@ -51,10 +52,11 @@ var ErrWebSocketClosed = errors.New("nmos/http: websocket closed")
 // WebSocket wraps a hijacked TCP connection and provides text-frame
 // I/O.
 type WebSocket struct {
-	conn   net.Conn
-	bufr   *bufio.Reader
-	mu     sync.Mutex
-	closed bool
+	conn       net.Conn
+	bufr       *bufio.Reader
+	mu         sync.Mutex
+	closed     bool
+	clientSide bool // when true, outgoing frames are masked (RFC 6455 §5.3 client requirement)
 }
 
 // AcceptWebSocket completes the RFC 6455 handshake on r and returns a
@@ -110,7 +112,7 @@ func (w *WebSocket) SendText(payload []byte) error {
 	if w.closed {
 		return ErrWebSocketClosed
 	}
-	return writeFrame(w.conn, wsOpcodeText, payload)
+	return writeFrame(w.conn, wsOpcodeText, payload, w.clientSide)
 }
 
 // SendPing emits a Ping frame; the peer should reply with Pong.
@@ -120,7 +122,7 @@ func (w *WebSocket) SendPing(payload []byte) error {
 	if w.closed {
 		return ErrWebSocketClosed
 	}
-	return writeFrame(w.conn, wsOpcodePing, payload)
+	return writeFrame(w.conn, wsOpcodePing, payload, w.clientSide)
 }
 
 // Close emits a Close frame and tears down the underlying connection.
@@ -133,7 +135,7 @@ func (w *WebSocket) Close() error {
 	}
 	w.closed = true
 	// Write Close frame (best-effort), then close TCP.
-	_ = writeFrame(w.conn, wsOpcodeClose, []byte{0x03, 0xE8}) // 1000 = normal closure
+	_ = writeFrame(w.conn, wsOpcodeClose, []byte{0x03, 0xE8}, w.clientSide) // 1000 = normal closure
 	w.mu.Unlock()
 	return w.conn.Close()
 }
@@ -158,7 +160,7 @@ func (w *WebSocket) ReadText() ([]byte, error) {
 			continue
 		case wsOpcodePing:
 			w.mu.Lock()
-			_ = writeFrame(w.conn, wsOpcodePong, payload)
+			_ = writeFrame(w.conn, wsOpcodePong, payload, w.clientSide)
 			w.mu.Unlock()
 		case wsOpcodePong:
 			// We don't track pongs; just drop.
@@ -175,27 +177,53 @@ func (w *WebSocket) SetReadDeadline(t time.Time) error {
 	return w.conn.SetReadDeadline(t)
 }
 
-// writeFrame emits a single unmasked frame. Per RFC 6455 §5.3,
-// servers MUST NOT mask.
-func writeFrame(w io.Writer, opcode byte, payload []byte) error {
-	hdr := make([]byte, 0, 10)
+// writeFrame emits a single unfragmented frame. Per RFC 6455 §5.3,
+// servers MUST NOT mask while clients MUST mask. The mask flag
+// matches the WebSocket's clientSide. Mask key is per-frame random.
+func writeFrame(w io.Writer, opcode byte, payload []byte, mask bool) error {
+	hdr := make([]byte, 0, 14)
 	hdr = append(hdr, 0x80|opcode) // FIN=1, RSV=0, opcode
 
 	plen := len(payload)
+	maskBit := byte(0)
+	if mask {
+		maskBit = 0x80
+	}
 	switch {
 	case plen <= 125:
-		hdr = append(hdr, byte(plen))
+		hdr = append(hdr, maskBit|byte(plen))
 	case plen <= 65535:
-		hdr = append(hdr, 126)
+		hdr = append(hdr, maskBit|126)
 		var ext [2]byte
 		binary.BigEndian.PutUint16(ext[:], uint16(plen))
 		hdr = append(hdr, ext[:]...)
 	default:
-		hdr = append(hdr, 127)
+		hdr = append(hdr, maskBit|127)
 		var ext [8]byte
 		binary.BigEndian.PutUint64(ext[:], uint64(plen))
 		hdr = append(hdr, ext[:]...)
 	}
+
+	if mask {
+		var maskKey [4]byte
+		if _, err := io.ReadFull(rand.Reader, maskKey[:]); err != nil {
+			return fmt.Errorf("nmos/http: mask key: %w", err)
+		}
+		hdr = append(hdr, maskKey[:]...)
+		if _, err := w.Write(hdr); err != nil {
+			return err
+		}
+		// Mask payload in-place into a copy so we don't mutate caller's slice.
+		masked := make([]byte, plen)
+		for i, b := range payload {
+			masked[i] = b ^ maskKey[i%4]
+		}
+		if _, err := w.Write(masked); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	if _, err := w.Write(hdr); err != nil {
 		return err
 	}
