@@ -19,7 +19,6 @@ import (
 	"log/slog"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -251,52 +250,55 @@ func runNMOSNodeServe(ctx context.Context, args []string) error {
 func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	_ = fs.String("role", "node", "producer role to start (node | system)")
+	configPath := fs.String("config", "", "path to IS-04 Node bundle JSON (node + devices + sources + flows + senders + receivers)")
+	bind := fs.String("bind", ":8080", "Node API HTTP listen address")
+	advertise := fs.String("advertise-host", "", "host[:port] placed in DNS-SD A/SRV records (default: hostname + bind port)")
 	mdns := fs.Bool("mdns", true, "advertise via mDNS")
-	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce")
-	advertise := fs.String("advertise-host", "", "host:port placed in DNS-SD A/SRV records (default: hostname:port)")
-	port := fs.Int("port", 8080, "Node API port advertised in SRV record")
-	apiVer := fs.String("api-ver", "v1.3", "IS-04 Node API version advertised in TXT")
+	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Mode B / static)")
+	apiVer := fs.String("api-ver", "v1.3", "IS-04 wire version exposed under /x-nmos/node/<v>")
+	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
+	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats every 5 s")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	mdnsActive := *mdns && !*noMDNS
-	if !mdnsActive {
-		fmt.Println("dhs producer nmos serve: mDNS announce disabled; nothing else implemented yet (Phase 1 #1 scope).")
-		<-ctx.Done()
-		return nil
+	if *configPath == "" {
+		return fmt.Errorf("producer nmos serve --role node: --config FILE required (use Phase 0 #1 mDNS-only placeholder via --discover-only flag if you really mean to)")
 	}
 
-	host, err := resolveAdvertiseHost(*advertise, *port)
-	if err != nil {
-		return err
-	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	resp, err := session.NewResponder(logger)
+
+	bundle, err := provider.LoadNodeConfigFromFile(*configPath)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = resp.Close() }()
 
-	ins := codec.Instance{
-		Name:    "dhs-nmos-node",
-		Service: codec.ServiceNode,
-		Domain:  codec.DefaultDomain,
-		Host:    host,
-		Port:    uint16(*port),
-		TXT: map[string]string{
-			codec.TXTKeyAPIProto: "http",
-			codec.TXTKeyAPIVer:   *apiVer,
-			codec.TXTKeyAPIAuth:  "false",
-		},
+	mode := "mdns"
+	if !*mdns || *noMDNS {
+		mode = "static"
 	}
-	if err := resp.Announce(ctx, ins); err != nil {
+	cfg := provider.IS04NodeConfig{
+		Bind:          *bind,
+		AdvertiseHost: *advertise,
+		DiscoveryMode: mode,
+		Priority:      *priority,
+		APIVer:        *apiVer,
+		RegistryURL:   *registry,
+	}
+	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
+	if err != nil {
 		return err
 	}
-	fmt.Printf("Announcing %s on %s:%d (mDNS).\n", codec.ServiceNode, host, *port)
-	fmt.Println("Note: Phase 1 #1 ships mDNS announce only; Node API REST surface lands in Phase 1 #3.")
+	defer func() { _ = srv.Stop() }()
 
-	<-ctx.Done()
-	return nil
+	fmt.Printf("Node API: bind=%s, mode=%s, api_ver=%s, priority=%d\n", *bind, mode, *apiVer, *priority)
+	fmt.Printf("  GET http://<host>%s/x-nmos/node/%s/{,self,devices,sources,flows,senders,receivers}\n", *bind, *apiVer)
+	if mode == "mdns" {
+		fmt.Println("Announcing _nmos-node._tcp via mDNS.")
+	}
+	if *registry != "" {
+		fmt.Printf("Registering against %s every %s + heartbeat.\n", *registry, "5s")
+	}
+	return srv.Serve(ctx)
 }
 
 // ---- consumer system (IS-09) ------------------------------------------------
@@ -529,42 +531,6 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	return r.Serve(ctx, opts)
 }
 
-// resolveAdvertiseHost honours an explicit --advertise-host, otherwise
-// derives one from os.Hostname + the requested port.
-func resolveAdvertiseHost(adv string, port int) (string, error) {
-	if adv != "" {
-		host, _, err := splitNMOSHostPort(adv)
-		if err != nil {
-			return "", err
-		}
-		return host, nil
-	}
-	h, err := os.Hostname()
-	if err != nil || h == "" {
-		h = "localhost"
-	}
-	if !strings.Contains(h, ".") {
-		h = h + "." + codec.DefaultDomain
-	}
-	_ = port
-	return h, nil
-}
-
-// splitNMOSHostPort wraps net.SplitHostPort so callers can pass "host:port"
-// or "host" — the latter yields an empty port.
-func splitNMOSHostPort(s string) (string, string, error) {
-	if !strings.Contains(s, ":") {
-		return s, "", nil
-	}
-	idx := strings.LastIndex(s, ":")
-	host := s[:idx]
-	port := s[idx+1:]
-	if _, err := strconv.Atoi(port); err != nil {
-		return "", "", fmt.Errorf("nmos: bad port %q", port)
-	}
-	return host, port, nil
-}
-
 // ---- help text --------------------------------------------------------------
 
 func printNMOSConsumerHelp() {
@@ -597,15 +563,21 @@ func printNMOSProducerHelp() {
 
   --role node|system    Producer role (default: node)
 
-Role: node (Phase 1 #1)
-  Announces a placeholder Node via mDNS only — IS-04 Node API REST surface
-  lands in Phase 1 #3.
+Role: node (Phase 1 #3 — IS-04 v1.3 Node API)
+  Loads a Node bundle JSON (node + devices + sources + flows + senders +
+  receivers), validates each resource against the IS-04 v1.3 JSON Schema,
+  serves the Node API on --bind, optionally announces _nmos-node._tcp via
+  mDNS, and (when --registry is set) POSTs every resource + heartbeats
+  every 5 s to a Registry's Registration API.
 
-  --mdns                Advertise via mDNS (default)
-  --no-mdns             Disable mDNS announce
-  --advertise-host H    host placed in SRV record (default: os.Hostname)
-  --port N              Port advertised in SRV (default 8080)
-  --api-ver V           IS-04 version in TXT (default v1.3)
+  --config FILE         Node bundle JSON (required)
+  --bind ADDR           HTTP listen address (default :8080)
+  --advertise-host H    host[:port] placed in DNS-SD A/SRV records
+  --mdns / --no-mdns    Toggle mDNS announce (default on)
+  --api-ver V           IS-04 version exposed under /x-nmos/node/<v> (default v1.3)
+  --priority N          DNS-SD pri TXT (0-99 prod, 100+ dev)
+  --registry URL        Registration API base URL (e.g. http://reg.local:8235);
+                        omit to run mDNS-only / direct-Node mode
 
 Role: system (Phase 1 #2 — IS-09 System API)
   Loads + validates a /global resource JSON, serves the two IS-09 endpoints
