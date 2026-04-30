@@ -29,6 +29,29 @@ type RoutingChange struct {
 	DestName  string
 	LevelID   string
 	LevelName string
+
+	// MNE rows (§5.1.4 LEVEL_MNE / §5.1.5 SRCE_MNE / §5.1.6 DEST_MNE)
+	// carry the actual name string in MNEMONIC and a slot index in
+	// ALT_MNE. On TX (subscribe filter), Mnemonic + AltMne are
+	// emitted as attributes per §4.1.4-§4.1.6.
+	//
+	// On RX, Cerebrum returns slot-keyed CHILD ELEMENTS instead — one
+	// <mne mnemonic="..."/> for slot 0 (the primary), and one
+	// <alt_mne_N mnemonic="..."/> per active alternate (1..N). Decoder
+	// flattens these into Mnemonics[slot] = name. Slots whose child
+	// carries `available="0"` are dropped. (Live wire 2026-04-30 against
+	// Cerebrum at 10.41.64.95.)
+	Mnemonic  string
+	AltMne    string
+	Mnemonics map[int]string
+
+	// RouteSourceID / RouteSourceLevelID populate from the <route> child
+	// of a TYPE=ROUTE routing_change RX row (cross-level routes carry a
+	// source_level_id distinct from the row's level_id). RouteAvailable
+	// reflects the child's `available` attribute.
+	RouteSourceID      string
+	RouteSourceLevelID string
+	RouteAvailable     bool
 }
 
 func (r *RoutingChange) encodeSubItem(b *strings.Builder) {
@@ -42,7 +65,9 @@ func (r *RoutingChange) encodeSubItem(b *strings.Builder) {
 		Add("DEST_ID", r.DestID).
 		Add("DEST_NAME", r.DestName).
 		Add("LEVEL_ID", r.LevelID).
-		Add("LEVEL_NAME", r.LevelName)
+		Add("LEVEL_NAME", r.LevelName).
+		Add("MNEMONIC", r.Mnemonic).
+		Add("ALT_MNE", r.AltMne)
 	emitElement(b, "ROUTING_CHANGE", a, nil)
 }
 

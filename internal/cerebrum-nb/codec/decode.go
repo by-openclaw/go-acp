@@ -196,17 +196,57 @@ func parseNack(e *Element) *NackError {
 }
 
 func parseRoutingChange(e *Element) *RoutingChange {
-	return &RoutingChange{
+	r := &RoutingChange{
 		Type:       e.Attr("type"),
 		DeviceName: e.Attr("device_name"),
 		DeviceType: DeviceType(e.Attr("device_type")),
+		IPAddress:  firstNonEmpty(e.Attr("ip_address"), e.Attr("ip")),
 		SrceID:     e.Attr("srce_id"),
 		SrceName:   e.Attr("srce_name"),
 		DestID:     e.Attr("dest_id"),
 		DestName:   e.Attr("dest_name"),
 		LevelID:    e.Attr("level_id"),
 		LevelName:  e.Attr("level_name"),
+		Mnemonic:   e.Attr("mnemonic"),
+		AltMne:     e.Attr("alt_mne"),
 	}
+	// RX shape (Cerebrum wire 2026-04-30):
+	//   <mne available="1" mnemonic="..."/>          → slot 0
+	//   <alt_mne_N available="1" mnemonic="..."/>    → slot N
+	//   <route source_level_id source_id available/> → ROUTE source
+	for _, c := range e.Children {
+		switch {
+		case c.Name == "mne":
+			if c.Attr("available") == "0" {
+				continue
+			}
+			name := c.Attr("mnemonic")
+			if r.Mnemonics == nil {
+				r.Mnemonics = map[int]string{}
+			}
+			r.Mnemonics[0] = name
+			if r.Mnemonic == "" {
+				r.Mnemonic = name
+			}
+		case strings.HasPrefix(c.Name, "alt_mne_"):
+			if c.Attr("available") == "0" {
+				continue
+			}
+			n, err := strconv.Atoi(strings.TrimPrefix(c.Name, "alt_mne_"))
+			if err != nil {
+				continue
+			}
+			if r.Mnemonics == nil {
+				r.Mnemonics = map[int]string{}
+			}
+			r.Mnemonics[n] = c.Attr("mnemonic")
+		case c.Name == "route":
+			r.RouteSourceID = c.Attr("source_id")
+			r.RouteSourceLevelID = c.Attr("source_level_id")
+			r.RouteAvailable = c.Attr("available") == "1"
+		}
+	}
+	return r
 }
 
 func parseCategoryChange(e *Element) *CategoryChange {
