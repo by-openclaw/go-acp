@@ -74,6 +74,15 @@ server:local-data: "dhs._nmos-query._tcp.by-systems.arpa. 60 IN SRV 0 0 8235 by-
 server:local-data: 'dhs._nmos-query._tcp.by-systems.arpa. 60 IN TXT "api_proto=http" "api_ver=v1.3" "api_auth=false" "pri=0"'
 server:local-data: "by-desk-03.by-systems.arpa. 60 IN A 10.6.239.113"
 
+# --- dhs IS-09 System API on by-desk-03 (10.6.239.113:10641) -----------------
+# `dhs producer nmos serve --role system --config global.json` running on the
+# workstation. IS-09 v1.0 has its own DNS-SD service type (`_nmos-system._tcp`)
+# and predates IS-10, so the TXT record advertises only api_proto / api_ver /
+# pri — `api_auth` is intentionally absent per the v1.0 spec.
+server:local-data: "_nmos-system._tcp.by-systems.arpa.    60 IN PTR dhs._nmos-system._tcp.by-systems.arpa."
+server:local-data: "dhs._nmos-system._tcp.by-systems.arpa. 60 IN SRV 0 0 10641 by-desk-03.by-systems.arpa."
+server:local-data: 'dhs._nmos-system._tcp.by-systems.arpa. 60 IN TXT "api_proto=http" "api_ver=v1.0" "pri=0"'
+
 # --- EVS Cerebrum hosted Registry (10.100.0.5:8080) --------------------------
 # Cerebrum's "Network Media Server" device with Hosted Registry mode enabled;
 # Cerebrum runs both Registration + Query faces on the same HTTP listener.
@@ -174,8 +183,9 @@ Pattern per peer:
 4. Add **one** TXT per face with the four IS-04 keys.
 5. Add **one** A record for the target hostname.
 
-For an IS-09 System server, use `_nmos-system._tcp` instead. For Node
-P2P (Mode D), use `_nmos-node._tcp`.
+For an IS-09 System server, use `_nmos-system._tcp` instead — and
+**omit `api_auth`** from its TXT record (IS-09 v1.0 predates IS-10).
+For Node P2P (Mode D), use `_nmos-node._tcp`.
 
 Compliance events fired by `dhs consumer nmos discover` when a peer's
 records deviate (priority collisions, missing keys, malformed `pri`)
