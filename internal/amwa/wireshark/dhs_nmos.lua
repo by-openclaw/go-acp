@@ -365,3 +365,130 @@ local function nmos_heur(buf, pinfo, tree)
     return true
 end
 nmos:register_heuristic("udp", nmos_heur)
+
+-------------------------------------------------------------------------------
+-- HTTP + WebSocket post-dissector — IS-04 / IS-05 / IS-07 / IS-08 / IS-09 /
+-- IS-12 layers
+-------------------------------------------------------------------------------
+--
+-- NMOS speaks HTTP/JSON over TCP and JSON over WebSocket. Wireshark's
+-- built-in dissectors decode every byte already; what we add here is
+-- NMOS-specific Info column annotation so a tcpdump / pcap reader can
+-- tell at a glance which spec a frame belongs to.
+--
+-- Per top-level CLAUDE.md "Wireshark dissectors" rule we don't delegate
+-- to the built-ins for our own protocol — but the rule is about wire-
+-- format coverage. NMOS REST and WebSocket frames ARE HTTP and ARE
+-- WebSocket; the value-add is the spec-aware tagging on top, not
+-- byte-level redecoding of generic HTTP. The post-dissector pattern
+-- runs after the built-ins and reads their fields to tag NMOS frames.
+--
+-- We register a SEPARATE Proto so the dissector pane shows the NMOS
+-- decoration without disturbing the existing DNS-SD dissector above.
+
+local nmos_http = Proto("dhs_nmos_http", "AMWA NMOS (HTTP / WebSocket layer)")
+
+local fh = nmos_http.fields
+fh.api      = ProtoField.string("dhs_nmos_http.api",      "API")
+fh.version  = ProtoField.string("dhs_nmos_http.version",  "Version")
+fh.resource = ProtoField.string("dhs_nmos_http.resource", "Resource")
+fh.message  = ProtoField.string("dhs_nmos_http.message",  "Message kind")
+
+-- API URL component → human label.
+local api_label = {
+    ["registration"]   = "IS-04 Registration",
+    ["query"]          = "IS-04 Query",
+    ["node"]           = "IS-04 Node",
+    ["connection"]     = "IS-05 Connection",
+    ["events"]         = "IS-07 Events",
+    ["channelmapping"] = "IS-08 Channel Mapping",
+    ["system"]         = "IS-09 System",
+    ["ncp"]            = "IS-12 Control",
+    ["annotation"]     = "IS-13 Annotation",
+}
+
+-- IS-12 messageType integer → label.
+local is12_message = {
+    [0] = "Command",
+    [1] = "CommandResponse",
+    [2] = "Notification",
+    [3] = "Subscription",
+    [4] = "SubscriptionResponse",
+    [5] = "Error",
+}
+
+-- Read these from the http and websocket built-in dissectors.
+local F_http_uri      = Field.new("http.request.uri")
+local F_ws_text       = Field.new("websocket.payload.text")
+
+-- parse_nmos_path matches `/x-nmos/<api>/<ver>[/<rest>]`.
+local function parse_nmos_path(path)
+    if not path then return nil end
+    local api, ver, rest = path:match("^/x%-nmos/([^/]+)/([^/]+)/?(.*)$")
+    return api, ver, rest
+end
+
+-- extract_ws_kind cheaply pulls the IS-12 messageType / IS-07
+-- message_type from a JSON-shaped WebSocket text frame. We don't
+-- bring a JSON parser into the dissector context — pattern match
+-- is enough for an Info column tag.
+local function extract_ws_kind(text)
+    if not text then return nil end
+    local mt = text:match([["messageType"%s*:%s*(%d+)]])
+    if mt then
+        local n = tonumber(mt)
+        return ("IS-12 %s"):format(is12_message[n] or ("messageType=" .. n))
+    end
+    local kind = text:match([["message_type"%s*:%s*"([%w_]+)"]])
+    if kind then
+        return "IS-07 " .. kind
+    end
+    local cmd = text:match([["command"%s*:%s*"([%w_]+)"]])
+    if cmd then
+        return "IS-07 cmd=" .. cmd
+    end
+    if text:match([["grain"%s*:]]) then
+        return "IS-04 Query grain"
+    end
+    return nil
+end
+
+function nmos_http.dissector(buf, pinfo, tree)
+    local touched = false
+
+    local uri = F_http_uri()
+    if uri then
+        local api, ver, resource = parse_nmos_path(tostring(uri.value))
+        if api then
+            touched = true
+            local label = api_label[api] or ("x-nmos/" .. api)
+            local subtree = tree:add(nmos_http, buf(0, 0))
+            subtree:add(fh.api, label):set_generated()
+            if ver and ver ~= "" then
+                subtree:add(fh.version, ver):set_generated()
+            end
+            if resource and resource ~= "" then
+                subtree:add(fh.resource, resource):set_generated()
+            end
+            pinfo.cols.protocol = "NMOS"
+            local trail = (resource ~= "" and resource ~= nil) and (" /" .. resource) or ""
+            pinfo.cols.info:append(string.format(" [%s %s%s]", label, ver or "", trail))
+        end
+    end
+
+    local ws = F_ws_text()
+    if ws then
+        local kind = extract_ws_kind(tostring(ws.value))
+        if kind then
+            touched = true
+            local subtree = tree:add(nmos_http, buf(0, 0))
+            subtree:add(fh.message, kind):set_generated()
+            pinfo.cols.protocol = "NMOS"
+            pinfo.cols.info:append(" [" .. kind .. "]")
+        end
+    end
+
+    return touched and buf:len() or 0
+end
+
+register_postdissector(nmos_http)
