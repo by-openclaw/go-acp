@@ -73,6 +73,7 @@ import (
 	_ "acp/internal/amwa/codec/is08/v10"
 	_ "acp/internal/amwa/codec/is09/v10"
 	_ "acp/internal/amwa/codec/is12/v10"
+	_ "acp/internal/amwa/codec/ms05/v10"
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.
