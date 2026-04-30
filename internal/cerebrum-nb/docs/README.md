@@ -11,16 +11,19 @@ XML over WebSocket, default port **40007**.
 | [consumer.md](consumer.md) | CLI walkthrough + portable Windows install recipe |
 | [../CLAUDE.md](../CLAUDE.md) | Atomic per-protocol context — wire layer, mtid, quirks, "what NOT to do" |
 
-## Status (2026-04-26)
+## Status (2026-04-30)
 
-- 🟡 In flight, branch `feat/cerebrum-nb-plugin`, tracking issue
-  [#143](https://github.com/by-openclaw/go-acp/issues/143).
+- 🟡 In flight, branch `feat/cerebrum-nb-plugin`, PR #144.
 - Consumer plugin: codec + WS framing + Login/Poll/Action/Subscribe/
   Obtain/Unsubscribe/UnsubscribeAll, CLI verbs (`connect` / `listen` /
-  `list-devices` / `list-routers` / `walk`), Wireshark dissector, unit
-  tests, integration test scaffold.
+  `route` / `list-devices` / `device-details` / `device-value` /
+  `list-categories` / `category-details` / `list-salvo-*` /
+  `keepalive-probe`), Wireshark dissector, unit tests, integration
+  test scaffold.
 - Provider plugin: not yet (separate follow-up PR).
-- Real-peer interop validation: pending Cerebrum server access.
+- Real-peer interop validation: `listen` + `route` live-verified on a
+  production fleet 2026-04-30; redundancy + license behaviour
+  confirmed.
 
 ## Spec sources
 

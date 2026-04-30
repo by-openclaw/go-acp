@@ -63,26 +63,13 @@ stream, profile, diag.
 Probel has its own verb catalogue (interrogate, connect, tally-dump, watch,
 …) — see `dhs consumer probel-sw08p -h`.
 
-Cerebrum NB has its own verb catalogue — every verb issues exactly one
-OBTAIN/SUBSCRIBE so an operator can pcap each step individually:
-`connect`, `list-devices`, `list-routers`, `list-categories`,
-`list-salvo-groups`, `device-details`, `device-value`,
-`category-details`, `list-salvo-instances`, `salvo-instance-details`,
-`listen`. See `dhs consumer cerebrum-nb -h`. Default port 40007.
-Credentials default from `$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`.
-LOGIN is sent only when both user and pass are provided; the WS
-handshake + idle hold work without it (TCP keep-alive carries the
-session). Server enforces LOGIN only for `<OBTAIN>` / `<SUBSCRIBE>` /
-`<ACTION>` — `<POLL>` is unauthenticated.
-
-**Cerebrum routing model (locked 2026-04-27):** the route-master is
-the sentinel `IP_ADDRESS=0.0.0.0` + `DEVICE_TYPE=ROUTER`, NOT a device
-discovered via LIST. Source / destination IDs come from walking the
-SOURCES / DESTINATIONS category trees. See
-`internal/cerebrum-nb/CLAUDE.md` "Routing model" + `docs/keys.md`
-"Route-master sentinel". Spec §3.1 names three classes (Router /
-SNMP / Device) but the NB API does not enumerate them via LIST — it's
-admin-side metadata only.
+Cerebrum NB: see `dhs consumer cerebrum-nb -h` and
+`internal/cerebrum-nb/CLAUDE.md`. Spec is authoritative — DOCX in
+`internal/cerebrum-nb/assets/`. Default port 40007. Credentials via
+`$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`. Workflow rule
+(2026-04-30): every new verb is described as text first (name + wire
+frame + flags + RX + output); implement only after explicit user
+approval — see `feedback_design_first_no_code.md`.
 
 Producer verb is `serve` for every protocol.
 

@@ -16,9 +16,12 @@ The full element / attribute / enum catalogue is at
 |---|---|
 | `connect` | Login + one `<poll/>` and exit (sanity check + redundancy probe) |
 | `listen` | Subscribe to all routing / category / salvo / device events; print one line per dispatched frame; Ctrl-C to stop |
-| `list-devices` | One-shot `<obtain><device_change type='LIST'/></obtain>` — table of every device |
-| `list-routers` | DEVICE_CHANGE TYPE=LIST + sentinel synth — table includes the route-master sentinel (`0.0.0.0/ROUTER`, role `aggregator`) on row 0 plus any ROUTER-class device from the wire (case-insensitive base class per spec §3.1; `:N` sub-device suffix preserved) |
-| `walk` | One-shot obtain across DEVICE_LIST + CATEGORY_LIST + GROUP_LIST — counts + entries |
+| `route` | Issue one or more `<action><routing TYPE='ROUTE'/></action>` — single (`--dest --srce --level`), batch (`--route dst:src:lvl` repeated) or CSV (`--csv FILE`) |
+| `list-devices` | One-shot `<obtain><device_change type='LIST'/></obtain>` — table of every device, with `--device-type CLASS` filter and a route-master sentinel synth row when unfiltered or filtered to ROUTER |
+| `device-details` / `device-value` | Detail + property snapshots for one device |
+| `list-categories` / `category-details` | Category catalogue + per-category items |
+| `list-salvo-groups` / `list-salvo-instances` / `salvo-instance-details` | Salvo catalogue snapshots |
+| `keepalive-probe` | Diagnostic — hold the WS open, count keep-alive frames, optional periodic LOGIN |
 
 ## Common flags
 
@@ -53,10 +56,13 @@ dhs consumer cerebrum-nb listen 10.6.239.50
 dhs consumer cerebrum-nb list-devices 10.6.239.50
 
 # Routers only
-dhs consumer cerebrum-nb list-routers 10.6.239.50
+dhs consumer cerebrum-nb list-devices --device-type Router 10.6.239.50
 
-# Devices + categories + salvos in one shot
-dhs consumer cerebrum-nb walk 10.6.239.50 --timeout 60s
+# Apply a route at the route-master (level 1, dest 60 ← srce 60)
+dhs consumer cerebrum-nb route --dest 60 --srce 60 --level 1 10.6.239.50
+
+# Batch routes
+dhs consumer cerebrum-nb route --route 60:60:1 --route 61:61:1 10.6.239.50
 
 # Over TLS
 dhs consumer cerebrum-nb listen cerebrum.local --tls

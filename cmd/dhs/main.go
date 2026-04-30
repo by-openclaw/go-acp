@@ -254,7 +254,7 @@ CONSUMER (outbound — connect to a device, query / control it)
                                profile, diag (ACP2 only)
   Verbs (probel-sw08p):        interrogate, connect, tally-dump, watch, etc.
                                (run 'dhs consumer probel-sw08p --help' for list)
-  Verbs (cerebrum-nb):         connect, listen, list-devices, list-routers, walk
+  Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
 
   Examples:
@@ -317,8 +317,7 @@ PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
 
 CEREBRUM VERBS
-  connect | listen | list-devices | list-routers | walk
-  run 'dhs consumer cerebrum-nb listen -h' for per-verb flags.
+  run 'dhs consumer cerebrum-nb -h' for the verb catalogue.
 
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.`)
 }

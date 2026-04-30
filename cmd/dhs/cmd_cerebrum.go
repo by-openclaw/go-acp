@@ -115,8 +115,6 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumListen(ctx, rest)
 	case "list-devices":
 		return cerebrumListDevices(ctx, rest)
-	case "list-routers":
-		return cerebrumListRouters(ctx, rest)
 	case "device-details":
 		return cerebrumDeviceDetails(ctx, rest)
 	case "device-value":
@@ -133,6 +131,8 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumSalvoInstanceDetails(ctx, rest)
 	case "keepalive-probe":
 		return cerebrumKeepaliveProbe(ctx, rest)
+	case "route":
+		return cerebrumRoute(ctx, rest)
 	}
 	return fmt.Errorf("cerebrum-nb: unknown verb %q (run dhs consumer cerebrum-nb -h for the catalogue)", verb)
 }
@@ -143,24 +143,22 @@ func printCerebrumHelp() {
 USAGE
   dhs consumer cerebrum-nb <verb> <host>[:port] [flags]
 
-VERBS — each issues exactly ONE OBTAIN/SUBSCRIBE so you can pcap it
-       individually. Run them in the seq order shown when you want a
-       fresh pcap per step.
+VERBS
 
-  Seq  Verb                    Wire (one OBTAIN per call)
-  ---  ----------------------  ----------------------------------------
-  01   connect                 LOGIN + POLL (no OBTAIN)
-  02   list-devices            DEVICE_CHANGE TYPE=LIST
-  03   list-routers            DEVICE_CHANGE TYPE=LIST + sentinel synth (route-master always row 0; ROUTER-class rows from wire)
-  04   list-categories         CATEGORY_CHANGE TYPE=CATEGORY_LIST
-  05   list-salvo-groups       SALVO_CHANGE TYPE=GROUP_LIST
-  06   walk                    LIST + CATEGORY_LIST + GROUP_LIST in 1 OBTAIN
-  07   device-details          DEVICE_CHANGE TYPE=DETAILS  (--device IP --device-type DEVICE)
-  08   device-value            DEVICE_CHANGE TYPE=VALUE    (--device NAME --by-name --sub-device X --object Y)
-  09   category-details        CATEGORY_CHANGE TYPE=CATEGORY_DETAILS  (--category NAME)
-  10   list-salvo-instances    SALVO_CHANGE TYPE=INSTANCE_LIST  (--group NAME)
-  11   salvo-instance-details  SALVO_CHANGE TYPE=INSTANCE_DETAILS  (--group NAME --instance NAME)
-  12   listen                  SUBSCRIBE per item (split for per-item NACK isolation)
+  Verb                     Wire
+  -----------------------  -----------------------------------------------
+  connect                  POLL (LOGIN auto when --user/--pass set)
+  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop
+  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
+  list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device]
+  device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
+  device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
+  list-categories          OBTAIN <category_change type='CATEGORY_LIST'/>
+  category-details         OBTAIN <category_change type='CATEGORY_DETAILS'/>  --category NAME
+  list-salvo-groups        OBTAIN <salvo_change type='GROUP_LIST'/>
+  list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
+  salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
+  keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
 
 FLAGS (order doesn't matter — flags can come before OR after the host)
   --port N                  WebSocket port (default 40007)
@@ -172,12 +170,12 @@ FLAGS (order doesn't matter — flags can come before OR after the host)
   --timeout DUR             per-request timeout (default 5s — fail fast)
 
 EXAMPLES
-  dhs consumer cerebrum-nb connect      10.6.239.50
-  dhs consumer cerebrum-nb connect      127.0.0.1 --port 4008
-  dhs consumer cerebrum-nb listen       10.6.239.50 --user admin --pass s3cr3t
-  dhs consumer cerebrum-nb list-devices 10.6.239.50:40007
-  dhs consumer cerebrum-nb walk         cerebrum.local --tls
-  dhs consumer cerebrum-nb device-details 10.41.64.90 --port 40008 --device 10.107.30.100`)
+  dhs consumer cerebrum-nb connect       10.6.239.50
+  dhs consumer cerebrum-nb listen        10.6.239.50 --user admin --pass s3cr3t
+  dhs consumer cerebrum-nb list-devices  10.6.239.50:40007 --device-type Router
+  dhs consumer cerebrum-nb route         10.6.239.50 --dest 60 --srce 60 --level 1
+  dhs consumer cerebrum-nb route         10.6.239.50 --route 60:60:1 --route 61:61:1
+  dhs consumer cerebrum-nb device-details 10.6.239.50 --port 40008 --device 10.107.30.100`)
 }
 
 // connectAndLogin: parse flags, build a Plugin, Connect. LOGIN is NOT
@@ -467,130 +465,6 @@ func cerebrumListDevices(_ context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 	return obtainAndPrintDeviceList(sess, classFilter)
-}
-
-// routerRow is one row of the list-routers display table. Two roles:
-// "aggregator" (the route-master sentinel `0.0.0.0/ROUTER`, always
-// printed first) and "physical" (a real ROUTER-class device returned
-// by DEVICE_CHANGE LIST).
-type routerRow struct {
-	IPAddress  string
-	DeviceType string
-	DeviceName string
-	Role       string
-}
-
-// cerebrumListRouters issues a DEVICE_CHANGE TYPE=LIST OBTAIN, filters
-// for ROUTER-class entries (case-insensitive base class per spec §3.1
-// — `ROUTER`, `Router`, `router`, `ROUTER:N` all qualify), and prints
-// a 4-column table that always opens with the central route-master
-// sentinel (`0.0.0.0/ROUTER`, role `aggregator`) — the addressing
-// target for cross-router routing actions per spec §4.1 and the
-// reference-driver convention. Physical ROUTER-class rows (e.g. an
-// SW-P-08 router added to the Cerebrum config) follow with role
-// `physical` (or `physical:N` for sub-device suffixes).
-//
-// On a Cerebrum with no physical routers configured the table still
-// has the route-master row — never empty.
-func cerebrumListRouters(_ context.Context, args []string) error {
-	p, sess, _, _, err := connectAndLogin(args, "list-routers")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = p.Disconnect() }()
-
-	var snapshot []codec.DeviceEntry
-	done := make(chan struct{})
-	var once sync.Once
-	signalDone := func() { once.Do(func() { close(done) }) }
-	timer := time.AfterFunc(15*time.Second, signalDone)
-
-	sess.OnEvent(codec.KindDeviceChange, func(f *codec.Frame) {
-		if f.Device == nil || f.Device.Type != "LIST" {
-			return
-		}
-		snapshot = append(snapshot, f.Device.Devices...)
-		signalDone()
-	})
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	if err := sess.Obtain(ctx, []codec.SubItem{&codec.DeviceChange{Type: "LIST"}}); err != nil {
-		return err
-	}
-	<-done
-	timer.Stop()
-
-	rows := cerebrumRouterRowsFromList(snapshot)
-	fmt.Printf("%-12s  %-30s  %-16s  %s\n", "DEVICE_TYPE", "DEVICE_NAME", "IP_ADDRESS", "ROLE")
-	for _, r := range rows {
-		name := r.DeviceName
-		if name == "" {
-			name = "-"
-		}
-		fmt.Printf("%-12s  %-30s  %-16s  %s\n", r.DeviceType, name, r.IPAddress, r.Role)
-	}
-	return nil
-}
-
-// cerebrumRouterRowsFromList builds the list-routers table rows from a
-// DEVICE_CHANGE TYPE=LIST snapshot. The route-master sentinel
-// (`0.0.0.0/ROUTER`, role `aggregator`) is always row 0 — even when
-// the snapshot has no ROUTER-class entries — because every Cerebrum
-// installation has the central route-master regardless of which
-// physical routers (if any) are configured.
-//
-// Filtering rules from spec §3.1:
-//   - DEVICE_TYPE values are uppercase enumerals (`ROUTER`, `SNMP`,
-//     `DEVICE`); we still match case-insensitively to be tolerant of
-//     servers that emit mixed case.
-//   - Sub-device suffix `:N` is allowed (e.g. `ROUTER:2` for the
-//     second matrix on a multi-matrix router). Filter on the BASE
-//     class only; carry the full string through to the output.
-//
-// Lifted as a pure helper so unit tests can cover all filter cases
-// without spinning up a session.
-func cerebrumRouterRowsFromList(devices []codec.DeviceEntry) []routerRow {
-	rows := []routerRow{
-		{
-			IPAddress:  "0.0.0.0",
-			DeviceType: "ROUTER",
-			DeviceName: "(route-master)",
-			Role:       "aggregator",
-		},
-	}
-	for _, e := range devices {
-		classes := e.DeviceTypes
-		if len(classes) == 0 {
-			classes = []codec.DeviceType{e.DeviceType}
-		}
-		for _, t := range classes {
-			ts := string(t)
-			if ts == "" {
-				continue
-			}
-			base := ts
-			suffix := ""
-			if i := strings.IndexByte(ts, ':'); i >= 0 {
-				base = ts[:i]
-				suffix = ts[i+1:]
-			}
-			if !strings.EqualFold(base, "ROUTER") {
-				continue
-			}
-			role := "physical"
-			if suffix != "" {
-				role = "physical:" + suffix
-			}
-			rows = append(rows, routerRow{
-				IPAddress:  e.IPAddress,
-				DeviceType: ts,
-				DeviceName: e.DeviceName,
-				Role:       role,
-			})
-		}
-	}
-	return rows
 }
 
 // cerebrumDeviceDetails issues an OBTAIN of DEVICE_CHANGE TYPE=DETAILS for a
@@ -1086,9 +960,20 @@ func printEvent(f *codec.Frame) {
 	switch f.Kind {
 	case codec.KindRoutingChange:
 		rc := f.Routing
+		// ROUTE rows carry the source in the <route source_id source_level_id/>
+		// child element (RouteSourceID / RouteSourceLevelID), not the
+		// top-level srce_id attribute. SRCE_LOCK / DEST_LOCK / *_MNE rows
+		// keep the source on the top-level attrs as before.
+		srceID, srceName := rc.SrceID, rc.SrceName
+		if rc.Type == "ROUTE" && rc.RouteSourceID != "" {
+			srceID = rc.RouteSourceID
+			if rc.RouteSourceLevelID != "" && rc.RouteSourceLevelID != rc.LevelID {
+				srceID = fmt.Sprintf("%s@lvl%s", rc.RouteSourceID, rc.RouteSourceLevelID)
+			}
+		}
 		fmt.Printf("[routing] %-8s dev=%s/%s srce=%s(%s) dest=%s(%s) lvl=%s(%s)\n",
 			rc.Type, rc.DeviceType, rc.DeviceName,
-			rc.SrceID, rc.SrceName, rc.DestID, rc.DestName,
+			srceID, srceName, rc.DestID, rc.DestName,
 			rc.LevelID, rc.LevelName)
 	case codec.KindCategoryChange:
 		if f.Category.Type == "CATEGORY_LIST" {
@@ -1153,4 +1038,165 @@ func currentAPIVer(sess *cerebrum.Session) string {
 		return "(unknown)"
 	}
 	return v
+}
+
+// ----------------------------------------------------------------------
+// route — issue one or more <action><routing TYPE='ROUTE'/></action>
+// per Ember+ Cerebrum Northbound API spec §4.1.1.
+// ----------------------------------------------------------------------
+
+// routeSpec is one (dest, srce, level) triple parsed from --route or --csv.
+type routeSpec struct{ Dest, Srce, Level string }
+
+// parseRouteFlag parses "dst:src:lvl" into a routeSpec.
+func parseRouteFlag(s string) (routeSpec, error) {
+	parts := strings.Split(s, ":")
+	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return routeSpec{}, fmt.Errorf("--route %q: expected dst:src:lvl", s)
+	}
+	return routeSpec{Dest: parts[0], Srce: parts[1], Level: parts[2]}, nil
+}
+
+// readRoutesCSV parses a CSV file with header dest,srce,level (any order; case-insensitive).
+func readRoutesCSV(path string) ([]routeSpec, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	lines := strings.Split(strings.ReplaceAll(string(b), "\r\n", "\n"), "\n")
+	if len(lines) == 0 {
+		return nil, fmt.Errorf("--csv %s: empty", path)
+	}
+	header := strings.Split(strings.ToLower(strings.TrimSpace(lines[0])), ",")
+	idx := map[string]int{}
+	for i, h := range header {
+		idx[strings.TrimSpace(h)] = i
+	}
+	for _, k := range []string{"dest", "srce", "level"} {
+		if _, ok := idx[k]; !ok {
+			return nil, fmt.Errorf("--csv %s: missing column %q (need dest,srce,level)", path, k)
+		}
+	}
+	out := []routeSpec{}
+	for n, line := range lines[1:] {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		f := strings.Split(line, ",")
+		if len(f) < len(header) {
+			return nil, fmt.Errorf("--csv %s line %d: %d cols < %d", path, n+2, len(f), len(header))
+		}
+		out = append(out, routeSpec{
+			Dest:  strings.TrimSpace(f[idx["dest"]]),
+			Srce:  strings.TrimSpace(f[idx["srce"]]),
+			Level: strings.TrimSpace(f[idx["level"]]),
+		})
+	}
+	return out, nil
+}
+
+// stringSliceFlag captures repeatable string flags like --route a --route b.
+type stringSliceFlag []string
+
+func (s *stringSliceFlag) String() string     { return strings.Join(*s, ",") }
+func (s *stringSliceFlag) Set(v string) error { *s = append(*s, v); return nil }
+
+func cerebrumRoute(_ context.Context, args []string) error {
+	args = reorderFlagsFirst(args)
+	fs := flag.NewFlagSet("cerebrum-nb route", flag.ContinueOnError)
+	cf := newCerebrumFlags(fs)
+	router := fs.String("router", "0.0.0.0", "router target — IP_ADDRESS for the route-master sentinel (0.0.0.0) or a physical Router IP")
+	deviceName := fs.String("device-name", "", "alternative to --router: address by DEVICE_NAME")
+	dest := fs.String("dest", "", "destination ID (single-route mode)")
+	srce := fs.String("srce", "", "source ID (single-route mode)")
+	level := fs.String("level", "", "level ID (single-route mode)")
+	var routesFlag stringSliceFlag
+	fs.Var(&routesFlag, "route", "repeatable: dst:src:lvl (use multiple --route to batch)")
+	csv := fs.String("csv", "", "CSV file with columns dest,srce,level")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	rest := fs.Args()
+	if len(rest) < 1 {
+		return fmt.Errorf("cerebrum-nb route: missing host[:port] argument")
+	}
+
+	// Build the route list from flags.
+	var routes []routeSpec
+	if *dest != "" || *srce != "" || *level != "" {
+		if *dest == "" || *srce == "" || *level == "" {
+			return fmt.Errorf("--dest/--srce/--level: all three required for single-route mode")
+		}
+		routes = append(routes, routeSpec{Dest: *dest, Srce: *srce, Level: *level})
+	}
+	for _, r := range routesFlag {
+		rs, err := parseRouteFlag(r)
+		if err != nil {
+			return err
+		}
+		routes = append(routes, rs)
+	}
+	if *csv != "" {
+		rs, err := readRoutesCSV(*csv)
+		if err != nil {
+			return err
+		}
+		routes = append(routes, rs...)
+	}
+	if len(routes) == 0 {
+		return fmt.Errorf("cerebrum-nb route: no routes specified (use --dest/--srce/--level, --route, or --csv)")
+	}
+
+	host, portArg, err := splitHostPort(rest[0], cf.port)
+	if err != nil {
+		return err
+	}
+	cf.port = portArg
+
+	logLevel := slog.LevelInfo
+	if cf.debug {
+		logLevel = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
+
+	p := cerebrum.NewPlugin(logger)
+	p.Username = cf.user
+	p.Password = cf.pass
+	p.UseTLS = cf.tls
+	p.InsecureSkipVerify = cf.insecure
+
+	dialCtx, dialCancel := context.WithTimeout(context.Background(), cf.timeout)
+	defer dialCancel()
+	if err := p.Connect(dialCtx, host, cf.port); err != nil {
+		return err
+	}
+	defer func() { _ = p.Disconnect() }()
+	sess := p.Session()
+
+	fails := 0
+	for _, r := range routes {
+		body := &codec.RoutingAction{
+			Type:        "ROUTE",
+			IPAddress:   *router,
+			DeviceName:  *deviceName,
+			DeviceType:  codec.DeviceType("ROUTER"),
+			DestID:      r.Dest,
+			SrceID:      r.Srce,
+			LevelID:     r.Level,
+		}
+		if cf.debug {
+			fmt.Fprintf(os.Stderr, "tx: <action mtid=N><ROUTING TYPE=ROUTE DEST_ID=%s SRCE_ID=%s LEVEL_ID=%s/></action>\n", r.Dest, r.Srce, r.Level)
+		}
+		if err := sess.Action(context.Background(), body); err != nil {
+			fmt.Printf("[route] NACK dst=%s src=%s lvl=%s reason=%s\n", r.Dest, r.Srce, r.Level, err)
+			fails++
+			continue
+		}
+		fmt.Printf("[route] OK   dst=%s src=%s lvl=%s\n", r.Dest, r.Srce, r.Level)
+	}
+	if fails > 0 {
+		return fmt.Errorf("%d/%d routes failed", fails, len(routes))
+	}
+	return nil
 }
