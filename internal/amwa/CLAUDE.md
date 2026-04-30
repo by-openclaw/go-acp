@@ -107,23 +107,37 @@ resources by their IS-04 UUID.
 
 ## Versioning
 
-Every IS-* and MS-* spec has multiple stable releases that coexist on the
-wire:
+Every IS-* and MS-* spec has multiple stable releases that coexist on
+the wire. The plugin MUST implement every track listed below — both
+the wire `api_ver` (major.minor) AND the latest patch within that
+minor (the spec text we strictly comply with). Authoritative version
+numbers come from `internal/amwa/reference.md`.
 
-| Spec | Tracks worth supporting |
-|---|---|
-| IS-04 | v1.3.x (current), v1.2.x (still common), v1.1.x (legacy) |
-| IS-05 | v1.1.x (current), v1.0.x (still common) |
-| IS-07 | v1.0.x |
-| IS-08 | v1.0.x |
-| IS-09 | v1.0.x |
-| IS-12 | v1.0.x |
-| MS-05-01 / MS-05-02 | v1.0.x |
-| BCP-* | v1.0.0 each (BCP-006-02 / 006-03 / 007-01 still WIP) |
+| Spec | Wire `api_ver` (URL) | Spec text patch (strict-comply) |
+|---|---|---|
+| IS-04 | v1.1, v1.2, v1.3 | v1.1.3 / v1.2.2 / v1.3.3 |
+| IS-05 | v1.0, v1.1 | v1.0.2 / v1.1.2 |
+| IS-07 | v1.0 | v1.0.1 |
+| IS-08 | v1.0 | v1.0.1 |
+| IS-09 | v1.0 | v1.0.0 |
+| IS-12 | v1.0 | v1.0.1 |
+| MS-05-01 / MS-05-02 | v1.0 | v1.0.0 |
+| BCP-002-01 / BCP-002-02 | v1.0 | v1.0.0 |
+| BCP-004-01 / BCP-004-02 | v1.0 | v1.0.0 |
+| BCP-006-01 / BCP-006-04 | v1.0 | v1.0.0 |
+| BCP-008-01 / BCP-008-02 | v1.0 | v1.0.0 |
 
-Convention: every supported version becomes a selectable parameter on the
-plugin (mirroring the `proto:tsl` v3.1/v4.0/v5.0 pattern). Default to the
-latest stable; never silently downgrade.
+Convention: every listed version is a selectable parameter on the
+plugin (mirroring `proto:tsl` v3.1/v4.0/v5.0). DNS-SD `api_ver` TXT
+advertises every supported minor comma-separated
+(e.g. `api_ver=v1.1,v1.2,v1.3`). Server URL trees serve every minor
+in parallel (`/x-nmos/registration/v1.1/`, `/v1.2/`, `/v1.3/`, …) on
+the same store. Default to the highest mutually-supported minor;
+**never silently downgrade**, never silently drop a track. Skipping
+any version listed above is a spec violation, not a deferral.
+
+Genuinely WIP at AMWA (no stable release yet — land when stable):
+IS-13 Annotation, BCP-006-02 H.264, BCP-006-03 H.265, BCP-007-01 NDI.
 
 ---
 

@@ -45,14 +45,16 @@ docs/                           cross-cutting architecture, connector, schema
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
 `cerebrum-nb` is merged on main (PR #144, v0.6.0 tagged 2026-04-30).
-NMOS Phase 1 #1 / #2 / #3 merged on main 2026-04-30 (PR #147 scaffold,
-#149 DNS-SD, #153 IS-09 System API, #155 IS-04 v1.3 Node API +
-Registration client). PR #157 is the active feature branch
-`feat/nmos-is04-registry` — Phase 1 #4 IS-04 Registry (Registration +
-Query + WS subscriptions + GC, RFC 6455 hand-rolled) — awaiting CI +
-merge. PR #151 release-please v0.7.0 is open and rolls every NMOS
-merge into one chore release. Cross-vendor Mode B verified live
-against EVS Cerebrum Hosted Registry on 10.100.0.5:8080. See
+NMOS Phase 1 #1 / #2 / #3 / #4 all merged on main 2026-04-30 (PR #147
+scaffold, #149 DNS-SD, #153 IS-09 v1.0.0 System API, #155 IS-04 v1.3.3
+Node API + Registration client, #157 IS-04 v1.3.3 Registry —
+Registration + Query + WS subscriptions + GC + RFC 6455 hand-rolled,
+sha `7813f38`). PR #151 release-please v0.7.0 is open and rolls every
+NMOS merge into one chore release. Cross-vendor Mode B verified live
+against EVS Cerebrum Hosted Registry on 10.100.0.5:8080. NEXT in queue:
+**#4b** (IS-04 v1.2.2 + v1.1.3 back-compat — required scope per
+spec-strict rule, not deferred), **N8** (IS-04 Controller consumer),
+**N9** (BCP-002 + BCP-004 validators). See
 `memory/project_protocol_backlog.md` for the full queue.
 
 > **NMOS is the odd one out.** It is a suite of ~14 specs
@@ -65,10 +67,19 @@ against EVS Cerebrum Hosted Registry on 10.100.0.5:8080. See
 >
 > **Locked scope rules (2026-04-27):**
 >
-> - **NMOS-strict-spec only.** Implement IS-04/05/07/09/12/MS-05/
+> - **NMOS-strict-spec only.** Implement IS-04/05/07/08/09/12/MS-05/
 >   BCP-002/004/006/008 literally; fire compliance events on peer
 >   deviations (see `internal/amwa/docs/matrix-compliance.md` —
 >   Lawo VSM verified). NEVER mix with cross-protocol mux concepts.
+> - **Multi-version is required, not optional** (per
+>   `internal/amwa/CLAUDE.md` "Versioning" + `feedback_nmos_multi_version.md`):
+>   IS-04 v1.1.3 + v1.2.2 + v1.3.3, IS-05 v1.0.2 + v1.1.2, IS-07/08/12
+>   v1.0.1, IS-09 v1.0.0, MS-05-01/02 v1.0.0, BCP-002/004/006/008
+>   v1.0.0. DNS-SD `api_ver` TXT advertises every supported minor
+>   comma-separated; URL trees serve every minor in parallel. Skipping
+>   any version listed is a spec violation, not a deferral. Genuinely
+>   WIP at AMWA (no stable release): IS-13 Annotation, BCP-006-02 H.264,
+>   BCP-006-03 H.265, BCP-007-01 NDI — those land when stable.
 > - **Cross-protocol mux is parked.** The ingress→canonical→egress
 >   matrix (Ember+ ingress fan-out to glow+router egresses) is real
 >   architecture but tied to a planned CLI refactor. NO epic, NO PR
