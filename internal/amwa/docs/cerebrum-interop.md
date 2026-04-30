@@ -258,5 +258,8 @@ touching this file.
   diagrams.
 - [`conformance.md`](conformance.md) — AMWA NMOS Testing tool gating
   per spec.
+- [`dns-sd-unbound.md`](dns-sd-unbound.md) — Mode B unicast DNS-SD
+  recipe for pfSense Unbound, including the `cerebrum` instance live-
+  verified 2026-04-30.
 - [`NMOS IS-04-5 Help.pdf`](NMOS%20IS-04-5%20Help.pdf) — vendor source
   for everything in this doc.
