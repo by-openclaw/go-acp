@@ -45,17 +45,30 @@ docs/                           cross-cutting architecture, connector, schema
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
 `cerebrum-nb` is merged on main (PR #144, v0.6.0 tagged 2026-04-30).
-NMOS Phase 1 #1 / #2 / #3 / #4 all merged on main 2026-04-30 (PR #147
-scaffold, #149 DNS-SD, #153 IS-09 v1.0.0 System API, #155 IS-04 v1.3.3
-Node API + Registration client, #157 IS-04 v1.3.3 Registry —
-Registration + Query + WS subscriptions + GC + RFC 6455 hand-rolled,
-sha `7813f38`). PR #151 release-please v0.7.0 is open and rolls every
-NMOS merge into one chore release. Cross-vendor Mode B verified live
-against EVS Cerebrum Hosted Registry on 10.100.0.5:8080. NEXT in queue:
-**#4b** (IS-04 v1.2.2 + v1.1.3 back-compat — required scope per
-spec-strict rule, not deferred), **N8** (IS-04 Controller consumer),
-**N9** (BCP-002 + BCP-004 validators). See
-`memory/project_protocol_backlog.md` for the full queue.
+NMOS Phase 1 #1-#4 all merged on main 2026-04-30. NMOS Phase 2
+(codec architecture rollout) under way 2026-04-30 / 05-01:
+
+- **MERGED on main:** #158 doc lock, #159 spec/ base
+  (Versioned + Registry[T] + Reporter, sha `c3709113`),
+  #160 IS-04 multi-version v1.1.3+v1.2.2+v1.3.3 (`db4f73b5`),
+  #161 IS-09 retrofit (`af3ca667`).
+- **Open with auto-merge enabled:** #162 IS-04 Controller (Step 4),
+  #174 IS-05 codec base (Step 5, closes #163).
+- **Per-spec sub-tracker issues opened 2026-05-01** (proto:nmos label,
+  sub-trackers of #146): #163 IS-05, #164 IS-07, #165 IS-08, #166 IS-12,
+  #167 MS-05-01/02, #168 BCP-002, #169 BCP-004, #170 BCP-006,
+  #171 BCP-008, #172 Wireshark dissector, #173 AMWA NMOS Testing harness.
+- **PR #151 release-please v0.7.0** still open, auto-rolling every
+  NMOS merge into one chore release.
+
+Cross-vendor Mode B verified live against EVS Cerebrum Hosted Registry
+on 10.100.0.5:8080 during Phase 1. NEXT in queue: drive through Steps
+6-15 (IS-07 / 08 / 12, MS-05, BCP-002 / 004 / 006 / 008, Wireshark, AMWA
+Testing harness). User standing approval per
+`memory/feedback_nmos_auto_merge.md` — PRs auto-merge on green CI;
+manual approval owed only on the final integration-test PR (#173
+Step 15). Per-spec issue rule per
+`memory/feedback_per_spec_issue.md`.
 
 > **NMOS is the odd one out.** It is a suite of ~14 specs
 > (IS-04/05/07/08/09/12/13, MS-05-01/02, BCP-002/004/006/007/008) with a
