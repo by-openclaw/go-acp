@@ -45,6 +45,31 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.6.0](https://github.com/by-openclaw/go-acp/compare/v0.5.0...v0.6.0) (2026-04-30)
+
+
+### Features
+
+* **cerebrum-nb,cli:** device-details verb (OBTAIN DEVICE_CHANGE TYPE=DETAILS) ([e2dbab3](https://github.com/by-openclaw/go-acp/commit/e2dbab38f33499cd3d013dba6ec00c75c541a8e7))
+* **cerebrum-nb,cli:** one-OBTAIN-per-verb collection set (seq pcap workflow) ([21f2f0f](https://github.com/by-openclaw/go-acp/commit/21f2f0fbb50f2a42ff6b321ff3d2e037d4864bb5))
+* **cerebrum-nb/codec:** decode RX child elements for routing_change ([098d6d5](https://github.com/by-openclaw/go-acp/commit/098d6d5f5675529b665057ea7243260f8684ee2d))
+* **cerebrum-nb:** consumer plugin (XML over WebSocket:40007) + portable Windows binary ([36fa45f](https://github.com/by-openclaw/go-acp/commit/36fa45f4fa2c7467cfe475c307bfb433c8773879))
+* **cerebrum-nb:** decode 4 more live wire shapes (VALUE / CATEGORY_DETAILS / INSTANCE_LIST / INSTANCE_DETAILS) ([3490dda](https://github.com/by-openclaw/go-acp/commit/3490dda72a2ce6d000a5de5933d394ce302a8bcc))
+* **cerebrum-nb:** decode CATEGORY_DETAILS &lt;items&gt; positional grid ([667052c](https://github.com/by-openclaw/go-acp/commit/667052cb33b6a31a5f7e828ae31f796c76cb249f))
+* **cerebrum-nb:** decode DEVICE_CHANGE TYPE=DETAILS sub-tree ([b08fa50](https://github.com/by-openclaw/go-acp/commit/b08fa50261471a3e5aa17041643fa7b10b63f0b0))
+* **cerebrum-nb:** route action verb; resolve ROUTE source in listen; drop matrix-dm ([c0a4b38](https://github.com/by-openclaw/go-acp/commit/c0a4b38af29a30c7d764b0583b1d5bc5111da34a))
+
+
+### Bug Fixes
+
+* **cerebrum-nb,cli:** clarify list-devices empty-result message ([4615b4f](https://github.com/by-openclaw/go-acp/commit/4615b4f7f6deec62682248e5236a4802c90ebfa9))
+* **cerebrum-nb,cli:** list-devices --device-type filter + drop DEVICE_NAME column ([6866463](https://github.com/by-openclaw/go-acp/commit/6866463cc6c889a5c1493b6cece03b3ccc82941c)), closes [#144](https://github.com/by-openclaw/go-acp/issues/144)
+* **cerebrum-nb,cli:** print full api_ver, not (unknown) for v0.x ([11aabf3](https://github.com/by-openclaw/go-acp/commit/11aabf35ed8361290e5807f0d87e775a8ece83c0))
+* **cerebrum-nb:** list-routers shows route-master + wire ROUTER-class entries ([fd7d939](https://github.com/by-openclaw/go-acp/commit/fd7d9396d499a08f96b2fe106ea08eeefebc6484))
+* **cerebrum-nb:** live wire shapes for DEVICE/CATEGORY/SALVO list + split listen subscribes ([4531c60](https://github.com/by-openclaw/go-acp/commit/4531c60856dfe25b526e943ed09bd1472643a88a))
+* **cerebrum-nb:** parse all &lt;INSTANCE&gt; children per &lt;DEVICE&gt; (was dropping ROUTER/SNMP classes) ([644c140](https://github.com/by-openclaw/go-acp/commit/644c1407df0edb92df42f5b8a300eefa1ea77c02))
+* **cerebrum-nb:** TCP keep-alive persistence + conditional LOGIN + dispatch fix ([1754cac](https://github.com/by-openclaw/go-acp/commit/1754cac0f6321a5dcc6096fa715a27c3d31102fa)), closes [#144](https://github.com/by-openclaw/go-acp/issues/144)
+
 ## [0.5.0](https://github.com/by-openclaw/go-acp/compare/v0.4.0...v0.5.0) (2026-04-26)
 
 
