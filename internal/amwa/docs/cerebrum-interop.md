@@ -263,3 +263,65 @@ touching this file.
   verified 2026-04-30.
 - [`NMOS IS-04-5 Help.pdf`](NMOS%20IS-04-5%20Help.pdf) — vendor source
   for everything in this doc.
+
+---
+
+## NMOS Phase A live test — observed 2026-05-01
+
+dhs Node bundle (Node + Device + audio Source + audio L24 Flow + RTP
+Sender + RTP Receiver) registered against Cerebrum via
+`bin/dhs producer nmos serve --no-mdns --registry http://10.100.0.5:8080
+--bind 0.0.0.0:18080 --advertise-host 10.6.239.113:18080
+--config tests/fixtures/nmos/cerebrum-test-node.json --api-ver v1.3`.
+All 6 POSTs accepted; resources visible in Cerebrum's UI with all
+linkages correct. Subscription-bug fix in PR #187 lands the `receiver_id`
+/ `sender_id` field correctly on the wire.
+
+Three remaining mismatches between what dhs sends and what Cerebrum
+serves back via Query API:
+
+| Field | dhs wire (verified vs spec) | Cerebrum Query API echo | Spec rule |
+|---|---|---|---|
+| `sender.version` | `"1777651501:0"` (TAI) | `""` | required, `^[0-9]+:[0-9]+$` (resource_core.json) |
+| `receiver.version` | `"1777651501:0"` | `""` | same as above |
+| `flow.sample_rate` | `{"numerator":48000,"denominator":1}` | field dropped | required for audio raw flows (flow_audio_raw.json `required`) |
+| `sender.subscription.active` | `false` | `true` (auto-flipped) | spec value reflects "actively delivering"; dhs Sender is not |
+
+Pattern: `flow.version`, `source.version`, `device.version`,
+`node.version` round-trip correctly; only sender + receiver versions
+are blanked. `sample_rate` drop is specific to audio raw flows.
+Active-flip happens on Sender only.
+
+Bonus deviation: Cerebrum's UI mis-renders UTF-8 em-dash `—` as
+Latin-1 `â€"` — the wire bytes are spec-correct UTF-8; only the
+display layer is broken. Workaround: keep dhs labels/descriptions
+ASCII when testing.
+
+### Verification status
+
+dhs codec is byte-exact-correct against the AMWA IS-04 v1.3 schemas
+on every wire field listed above. Per
+[`integration-plan.md`](integration-plan.md) "How yellow rows turn
+green" we require third-party evidence to attribute the mismatches —
+running the AMWA NMOS Testing tool's Mock Registry locally and
+comparing the same 3 fields is the next step. If AMWA Mock Registry
+also blanks `sender.version` etc., the bug is on dhs's side and we
+revisit the codec. If it preserves them, Cerebrum is the deviator
+and these become tracked compliance events.
+
+Until then, status of the affected codec paths in the integration
+plan stays **yellow** (codec landed, real-peer evidence ambiguous).
+
+### Cerebrum device-panel knobs that affect interop (per
+"Modify Device" UI screenshot 2026-05-01)
+
+| Setting | Behaviour | dhs impact |
+|---|---|---|
+| Device Category: NMOS IS-04/5 | co-hosted IS-04 + IS-05 | both APIs target the same host:port |
+| Fixed Server Version: (none) | "highest supported used" | confirms our multi-version `api_ver=v1.1,v1.2,v1.3` strategy is right |
+| Send Empty (not null) SDP for Disconnect: ☐ | disconnect uses `transport_file.data: null` (spec) | our IS-05 codec already pointer-typed → renders null correctly |
+| Ignore (Force) Active Receivers Master Enable: ☐ | honour `master_enable` gating | standard IS-05 behaviour |
+| Ignore Sender Origin Line Changes: ☑ | tolerates static SDP `o=` | less strict than RFC 4566; we keep correct behaviour |
+| Pre-defined IP Senders/Receivers ☑ | auto-creates placeholder Sender/Receiver | when our Node registers, Cerebrum may inject extras; dhs walk must filter on our UUIDs not fail on extras |
+| Resource Query: ☑, **WebSocket Server Port: 8089** | IS-04 Query WS subs on `:8089` (not `:8080`) | when seq 6 `watch` verb tests run, target `ws://10.100.0.5:8089/`, not `:8080` |
+| Return HTML formatted Resources: ☐ | pure JSON responses | our `application/json` decoder is happy |
