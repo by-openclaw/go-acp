@@ -15,6 +15,14 @@ import (
 	"time"
 
 	"acp/internal/amwa/codec/is04"
+	// Blank import to register the v1.3 IS-04 Codec via init() so that
+	// NewIS04NodeServer's spec.Registry lookup succeeds in unit tests.
+	// Layer 3 plugin code (which provider/ lives in) MUST NOT depend on
+	// vXX/ packages directly per docs/dependencies.md — but tests are
+	// the explicit exemption: unit tests need the codec wired up to
+	// exercise the plugin end-to-end. Mirrors the pattern in
+	// internal/amwa/registry/*_test.go.
+	_ "acp/internal/amwa/codec/is04/v13"
 )
 
 func validNode() is04.Node {

@@ -119,9 +119,10 @@ func TestCandidateAcceptsLegacyServiceName(t *testing.T) {
 
 func TestRegistryWatcherSelectsByPriority(t *testing.T) {
 	w := &RegistryWatcher{
-		preferAPIVer: "v1.3",
-		byFull:       map[string]RegistryCandidate{},
-		disqualified: map[string]time.Time{},
+		preferAPIVer:  "v1.3",
+		disqualifyTTL: 30 * time.Second, // long enough to outlast the test
+		byFull:        map[string]RegistryCandidate{},
+		disqualified:  map[string]time.Time{},
 	}
 	w.byFull["reg-low.example."] = RegistryCandidate{FullName: "reg-low.example.", URL: "http://low", Priority: 50}
 	w.byFull["reg-hi.example."] = RegistryCandidate{FullName: "reg-hi.example.", URL: "http://hi", Priority: 5}

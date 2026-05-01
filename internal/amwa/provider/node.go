@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +18,40 @@ import (
 	dnssdsession "acp/internal/amwa/session/dnssd"
 	httpsession "acp/internal/amwa/session/http"
 )
+
+// encodeOne wraps a per-resource codec Encode method into a
+// json.RawMessage suitable for handing back to the HTTP framework.
+// On encode error, returns a JSON null — the schema-validation tests
+// will catch this as a server bug rather than masking it as 200 OK.
+func encodeOne[T any](enc func(T) ([]byte, error), v T) json.RawMessage {
+	body, err := enc(v)
+	if err != nil {
+		return json.RawMessage("null")
+	}
+	return json.RawMessage(body)
+}
+
+// encodeList encodes every element of a slice via enc and returns a
+// JSON array of the resulting blobs. Elements that fail to encode are
+// dropped from the array — the alternative (returning null in-place)
+// would corrupt the array's element type.
+func encodeList[T any](enc func(T) ([]byte, error), in []T) json.RawMessage {
+	out := []byte{'['}
+	first := true
+	for _, v := range in {
+		body, err := enc(v)
+		if err != nil {
+			continue
+		}
+		if !first {
+			out = append(out, ',')
+		}
+		out = append(out, body...)
+		first = false
+	}
+	out = append(out, ']')
+	return json.RawMessage(out)
+}
 
 // IS04NodeConfig is the runtime config for the Node API server. Bind
 // address, advertise host, mDNS mode, priority — separate from
@@ -40,6 +75,14 @@ type IS04NodeServer struct {
 	logger *slog.Logger
 	cfg    IS04NodeConfig
 	bundle *NodeConfig
+	// codec encodes every Node-API response in the wire shape for the
+	// configured api_ver. Without this downcast, GET /x-nmos/node/v1.0/...
+	// would return the canonical (v1.3) JSON shape, which carries fields
+	// (interfaces, attached_network_device, controls, caps.constraint_sets,
+	// etc.) that the older minor's schema rejects — AMWA NMOS Testing
+	// auto_node_11/12 fail "Response schema validation error" without it.
+	// See `feedback_amwa_strict_all_versions` and #192.
+	codec is04.Codec
 
 	mu        sync.Mutex
 	http      *httpsession.Server
@@ -49,13 +92,13 @@ type IS04NodeServer struct {
 	watcher   *RegistryWatcher
 
 	// Per-endpoint hit counters.
-	indexHits     uint64
-	selfHits      uint64
-	deviceHits    uint64
-	sourceHits    uint64
-	flowHits      uint64
-	senderHits    uint64
-	receiverHits  uint64
+	indexHits    uint64
+	selfHits     uint64
+	deviceHits   uint64
+	sourceHits   uint64
+	flowHits     uint64
+	senderHits   uint64
+	receiverHits uint64
 }
 
 // NewIS04NodeServer validates the Node bundle and prepares (but does
@@ -76,7 +119,11 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 	if cfg.APIVer == "" {
 		cfg.APIVer = is04.APIVersion
 	}
-	return &IS04NodeServer{logger: logger, cfg: cfg, bundle: bundle}, nil
+	codec, ok := is04.Get(cfg.APIVer)
+	if !ok {
+		return nil, fmt.Errorf("provider/node: no IS-04 codec registered for api_ver=%q (registered: %v)", cfg.APIVer, is04.SupportedVersions())
+	}
+	return &IS04NodeServer{logger: logger, cfg: cfg, bundle: bundle, codec: codec}, nil
 }
 
 // Serve binds the HTTP listener, optionally announces via DNS-SD,
@@ -230,7 +277,11 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 		atomic.AddUint64(&s.selfHits, 1)
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		return 0, &s.bundle.Node, nil
+		body, err := s.codec.EncodeNode(s.bundle.Node)
+		if err != nil {
+			return stdhttp.StatusInternalServerError, httpsession.ErrorBody{Code: 500, Error: "Encode failed", Debug: err.Error()}, nil
+		}
+		return 0, json.RawMessage(body), nil
 	})
 
 	// Devices, Sources, Flows, Senders, Receivers each have a list
@@ -238,61 +289,86 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 	// the dispatcher 404 on unknown ids — there's no wildcard support
 	// in the route table, so per-id endpoints are installed at server
 	// start by walking the bundle.
+	//
+	// Every response body is encoded via s.codec — the per-api_ver
+	// IS-04 Codec — so the wire shape matches the URL's minor (#192).
+	// Returning canonical structs through encoding/json would emit v1.3
+	// fields that the older minor's schema rejects.
 	s.installCollection(srv, base, "devices", func() any {
-		s.mu.Lock(); defer s.mu.Unlock(); atomic.AddUint64(&s.deviceHits, 1); return s.bundle.Devices
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		atomic.AddUint64(&s.deviceHits, 1)
+		return encodeList(s.codec.EncodeDevice, s.bundle.Devices)
 	}, func(id string) (any, bool) {
-		s.mu.Lock(); defer s.mu.Unlock()
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		for i := range s.bundle.Devices {
 			if s.bundle.Devices[i].ID == id {
-				return &s.bundle.Devices[i], true
+				return encodeOne(s.codec.EncodeDevice, s.bundle.Devices[i]), true
 			}
 		}
 		return nil, false
 	}, idsFromDevices(s.bundle.Devices))
 
 	s.installCollection(srv, base, "sources", func() any {
-		s.mu.Lock(); defer s.mu.Unlock(); atomic.AddUint64(&s.sourceHits, 1); return s.bundle.Sources
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		atomic.AddUint64(&s.sourceHits, 1)
+		return encodeList(s.codec.EncodeSource, s.bundle.Sources)
 	}, func(id string) (any, bool) {
-		s.mu.Lock(); defer s.mu.Unlock()
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		for i := range s.bundle.Sources {
 			if s.bundle.Sources[i].ID == id {
-				return &s.bundle.Sources[i], true
+				return encodeOne(s.codec.EncodeSource, s.bundle.Sources[i]), true
 			}
 		}
 		return nil, false
 	}, idsFromSources(s.bundle.Sources))
 
 	s.installCollection(srv, base, "flows", func() any {
-		s.mu.Lock(); defer s.mu.Unlock(); atomic.AddUint64(&s.flowHits, 1); return s.bundle.Flows
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		atomic.AddUint64(&s.flowHits, 1)
+		return encodeList(s.codec.EncodeFlow, s.bundle.Flows)
 	}, func(id string) (any, bool) {
-		s.mu.Lock(); defer s.mu.Unlock()
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		for i := range s.bundle.Flows {
 			if s.bundle.Flows[i].ID == id {
-				return &s.bundle.Flows[i], true
+				return encodeOne(s.codec.EncodeFlow, s.bundle.Flows[i]), true
 			}
 		}
 		return nil, false
 	}, idsFromFlows(s.bundle.Flows))
 
 	s.installCollection(srv, base, "senders", func() any {
-		s.mu.Lock(); defer s.mu.Unlock(); atomic.AddUint64(&s.senderHits, 1); return s.bundle.Senders
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		atomic.AddUint64(&s.senderHits, 1)
+		return encodeList(s.codec.EncodeSender, s.bundle.Senders)
 	}, func(id string) (any, bool) {
-		s.mu.Lock(); defer s.mu.Unlock()
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		for i := range s.bundle.Senders {
 			if s.bundle.Senders[i].ID == id {
-				return &s.bundle.Senders[i], true
+				return encodeOne(s.codec.EncodeSender, s.bundle.Senders[i]), true
 			}
 		}
 		return nil, false
 	}, idsFromSenders(s.bundle.Senders))
 
 	s.installCollection(srv, base, "receivers", func() any {
-		s.mu.Lock(); defer s.mu.Unlock(); atomic.AddUint64(&s.receiverHits, 1); return s.bundle.Receivers
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		atomic.AddUint64(&s.receiverHits, 1)
+		return encodeList(s.codec.EncodeReceiver, s.bundle.Receivers)
 	}, func(id string) (any, bool) {
-		s.mu.Lock(); defer s.mu.Unlock()
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		for i := range s.bundle.Receivers {
 			if s.bundle.Receivers[i].ID == id {
-				return &s.bundle.Receivers[i], true
+				return encodeOne(s.codec.EncodeReceiver, s.bundle.Receivers[i]), true
 			}
 		}
 		return nil, false
@@ -330,8 +406,13 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 				rcv.Subscription.Active = false
 				return stdhttp.StatusAccepted, struct{}{}, nil
 			}
-			// Otherwise the payload is a Sender object — connect.
-			sender, err := is04.DecodeSender(body)
+			// Otherwise the payload is a Sender object — connect. Decode
+			// via the per-api_ver codec so that a v1.0 PUT body (no caps,
+			// no interface_bindings, no subscription) is accepted; the
+			// canonical decoder uses DisallowUnknownFields against the v1.3
+			// schema and would 400 on a v1.0-shaped body even though it's
+			// spec-correct for the URL minor (#192).
+			sender, err := s.codec.DecodeSender(body)
 			if err != nil {
 				return stdhttp.StatusBadRequest, httpsession.ErrorBody{
 					Code: stdhttp.StatusBadRequest, Error: "Bad Request", Debug: err.Error(),
@@ -340,7 +421,15 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 			id := sender.ID
 			rcv.Subscription.SenderID = &id
 			rcv.Subscription.Active = true
-			return stdhttp.StatusAccepted, sender, nil
+			// Encode the response Sender via the same codec so the wire
+			// shape matches the URL minor.
+			respBody, err := s.codec.EncodeSender(sender)
+			if err != nil {
+				return stdhttp.StatusInternalServerError, httpsession.ErrorBody{
+					Code: 500, Error: "Encode failed", Debug: err.Error(),
+				}, nil
+			}
+			return stdhttp.StatusAccepted, json.RawMessage(respBody), nil
 		})
 	}
 }
