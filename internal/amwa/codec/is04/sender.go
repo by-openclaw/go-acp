@@ -12,22 +12,34 @@ import (
 type Sender struct {
 	ResourceCore
 
-	FlowID            *string        `json:"flow_id"` // UUID OR null
-	Transport         string         `json:"transport"`
-	DeviceID          string         `json:"device_id"`
-	ManifestHref      *string        `json:"manifest_href"` // URI OR null
-	InterfaceBindings []string       `json:"interface_bindings"`
-	Caps              map[string]any `json:"caps,omitempty"`
-	Subscription      Subscription   `json:"subscription"`
+	FlowID            *string            `json:"flow_id"` // UUID OR null
+	Transport         string             `json:"transport"`
+	DeviceID          string             `json:"device_id"`
+	ManifestHref      *string            `json:"manifest_href"` // URI OR null
+	InterfaceBindings []string           `json:"interface_bindings"`
+	Caps              map[string]any     `json:"caps,omitempty"`
+	Subscription      SenderSubscription `json:"subscription"`
 }
 
-// Subscription is shared by Sender and Receiver. Sender carries
-// receiver_id (the receiver currently consuming this sender's flow);
-// Receiver carries sender_id. Both also carry `active`.
-type Subscription struct {
-	ReceiverID *string `json:"receiver_id,omitempty"`
-	SenderID   *string `json:"sender_id,omitempty"`
+// SenderSubscription mirrors sender.json `subscription`. Spec
+// (sender.json §required) lists both `receiver_id` and `active` as
+// required; `receiver_id` type is `["string","null"]` so the field
+// MUST be on the wire even when null — hence no `omitempty` on the
+// pointer (Go drops a nil-pointer field tagged `omitempty` entirely).
+//
+// AMWA-approved registries (Cerebrum, etc.) silently compensate for
+// missing receiver_id, but strict IS-04 conformance requires it.
+type SenderSubscription struct {
+	ReceiverID *string `json:"receiver_id"`
 	Active     bool    `json:"active"`
+}
+
+// ReceiverSubscription mirrors receiver_*.json `subscription`. Spec
+// requires both `sender_id` and `active`; `sender_id` type is
+// `["string","null"]` so the field MUST be on the wire when null.
+type ReceiverSubscription struct {
+	SenderID *string `json:"sender_id"`
+	Active   bool    `json:"active"`
 }
 
 // Validate enforces sender.json rules.

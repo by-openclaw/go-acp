@@ -247,7 +247,7 @@ func validSender() Sender {
 		DeviceID:          "3b8be755-08ff-452b-b217-c9151eb21193",
 		ManifestHref:      &href,
 		InterfaceBindings: []string{"eth0"},
-		Subscription:      Subscription{Active: false},
+		Subscription:      SenderSubscription{Active: false},
 	}
 }
 
@@ -292,7 +292,7 @@ func validReceiver() Receiver {
 		InterfaceBindings: []string{"eth0"},
 		Format:            FormatVideo,
 		Caps:              ReceiverCaps{MediaTypes: []string{"video/raw"}},
-		Subscription:      Subscription{Active: false},
+		Subscription:      ReceiverSubscription{Active: false},
 	}
 }
 

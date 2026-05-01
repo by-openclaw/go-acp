@@ -16,12 +16,12 @@ import (
 type Receiver struct {
 	ResourceCore
 
-	DeviceID          string         `json:"device_id"`
-	Transport         string         `json:"transport"`
-	InterfaceBindings []string       `json:"interface_bindings"`
-	Format            string         `json:"format"`
-	Caps              ReceiverCaps   `json:"caps"`
-	Subscription      Subscription   `json:"subscription"`
+	DeviceID          string               `json:"device_id"`
+	Transport         string               `json:"transport"`
+	InterfaceBindings []string             `json:"interface_bindings"`
+	Format            string               `json:"format"`
+	Caps              ReceiverCaps         `json:"caps"`
+	Subscription      ReceiverSubscription `json:"subscription"`
 }
 
 // ReceiverCaps mirrors the receiver_*.json `caps` object. v1.3 supports
