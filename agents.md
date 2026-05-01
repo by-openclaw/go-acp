@@ -45,30 +45,41 @@ docs/                           cross-cutting architecture, connector, schema
 
 `<proto>` ∈ `{acp1, acp2, emberplus, probel-sw08p, probel-sw02p, osc-v10, osc-v11, tsl-v31, tsl-v40, tsl-v50}` on main.
 `cerebrum-nb` is merged on main (PR #144, v0.6.0 tagged 2026-04-30).
-NMOS Phase 1 #1-#4 all merged on main 2026-04-30. NMOS Phase 2
-(codec architecture rollout) under way 2026-04-30 / 05-01:
+NMOS Phase 2 Steps 1-14 all merged on main 2026-05-01:
 
-- **MERGED on main:** #158 doc lock, #159 spec/ base
-  (Versioned + Registry[T] + Reporter, sha `c3709113`),
-  #160 IS-04 multi-version v1.1.3+v1.2.2+v1.3.3 (`db4f73b5`),
-  #161 IS-09 retrofit (`af3ca667`).
-- **Open with auto-merge enabled:** #162 IS-04 Controller (Step 4),
-  #174 IS-05 codec base (Step 5, closes #163).
-- **Per-spec sub-tracker issues opened 2026-05-01** (proto:nmos label,
-  sub-trackers of #146): #163 IS-05, #164 IS-07, #165 IS-08, #166 IS-12,
-  #167 MS-05-01/02, #168 BCP-002, #169 BCP-004, #170 BCP-006,
-  #171 BCP-008, #172 Wireshark dissector, #173 AMWA NMOS Testing harness.
-- **PR #151 release-please v0.7.0** still open, auto-rolling every
-  NMOS merge into one chore release.
+- **MERGED:** #158-#160 (codec base + IS-04 multi-version), #161 IS-09
+  retrofit, #162 IS-04 Controller, #174 IS-05 codec, #176/#177 IS-07
+  codec + WS layer (closed #164), #178 IS-08 codec, #179 IS-12 codec
+  (refs #166), #180 MS-05-01+02 codec (refs #167), #181 BCP-002/004/
+  006/008 validators (closed #168/#169/#170/#171), #182 Wireshark
+  dissector HTTP/WS layer (closed #172), #186 integration-plan v2.
+- **OPEN, awaits user manual approval:** #183 AMWA NMOS Testing
+  harness (Step 15, closes #173) — only NMOS PR with manual gate per
+  `feedback_nmos_auto_merge.md`.
+- **OPEN, real-peer-discovered bug fix:** #187 is04 Subscription
+  split — sender/receiver subscription was missing required
+  receiver_id/sender_id field on the wire (omitempty + nil-pointer).
+  Held OPEN per "no PR if not tested" + `feedback_real_peer_closes_self_test.md`.
+- **Reopened:** #165 IS-08 plugin layer (codec landed; Node endpoints
+  + Controller mapping diff still pending).
+- **New tracker:** #185 IS-07 MQTT bridge (no skip without user approval
+  → pending tracker, not skipped).
+- **Pending plugin work to unblock further integration testing:**
+  IS-04 Controller `watch` verb, IS-05 plugin (#163), IS-08 plugin
+  (#165), IS-12+MS-05-02 plugin layer (#166), IS-07 MQTT (#185).
 
-Cross-vendor Mode B verified live against EVS Cerebrum Hosted Registry
-on 10.100.0.5:8080 during Phase 1. NEXT in queue: drive through Steps
-6-15 (IS-07 / 08 / 12, MS-05, BCP-002 / 004 / 006 / 008, Wireshark, AMWA
-Testing harness). User standing approval per
-`memory/feedback_nmos_auto_merge.md` — PRs auto-merge on green CI;
-manual approval owed only on the final integration-test PR (#173
-Step 15). Per-spec issue rule per
-`memory/feedback_per_spec_issue.md`.
+**Phase A real-peer test against EVS Cerebrum 10.100.0.5:8080
+in progress 2026-05-01.** A1-A5 passed (reach + decode + register
+all 6 resource types + heartbeat + round-trip walk). 1 codec bug
+found and fixed (PR #187 above). 3 Cerebrum-side mismatches under
+investigation (sender/receiver version blanked, flow.sample_rate
+dropped, sender.subscription.active flipped to true) — verifying
+against AMWA NMOS Testing tool's Mock Registry next. dhs Node
+running at 10.6.239.113:18080. Bundle file:
+`tests/fixtures/nmos/cerebrum-test-node.json`.
+
+Per-spec status table (driving order, separate provider+controller
+status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amwa/docs/integration-plan.md).
 
 > **NMOS is the odd one out.** It is a suite of ~14 specs
 > (IS-04/05/07/08/09/12/13, MS-05-01/02, BCP-002/004/006/007/008) with a
