@@ -26,6 +26,7 @@ import (
 	stdhttp "net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -51,11 +52,18 @@ var ErrWebSocketClosed = errors.New("nmos/http: websocket closed")
 
 // WebSocket wraps a hijacked TCP connection and provides text-frame
 // I/O.
+//
+// `closed` is an atomic flag because ReadText reads it on every loop
+// iteration without holding mu (the read blocks on the socket; we
+// don't want to block Close on the read), while Close + SendText +
+// SendPing flip / observe it under mu. Atomic load on hot-path
+// reads + atomic CAS on Close keeps the race-detector happy and
+// preserves the existing Close idempotency contract.
 type WebSocket struct {
 	conn       net.Conn
 	bufr       *bufio.Reader
 	mu         sync.Mutex
-	closed     bool
+	closed     atomic.Bool
 	clientSide bool // when true, outgoing frames are masked (RFC 6455 §5.3 client requirement)
 }
 
@@ -109,7 +117,7 @@ func wsAcceptKey(secKey string) string {
 func (w *WebSocket) SendText(payload []byte) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.closed {
+	if w.closed.Load() {
 		return ErrWebSocketClosed
 	}
 	return writeFrame(w.conn, wsOpcodeText, payload, w.clientSide)
@@ -119,7 +127,7 @@ func (w *WebSocket) SendText(payload []byte) error {
 func (w *WebSocket) SendPing(payload []byte) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.closed {
+	if w.closed.Load() {
 		return ErrWebSocketClosed
 	}
 	return writeFrame(w.conn, wsOpcodePing, payload, w.clientSide)
@@ -128,12 +136,10 @@ func (w *WebSocket) SendPing(payload []byte) error {
 // Close emits a Close frame and tears down the underlying connection.
 // Idempotent.
 func (w *WebSocket) Close() error {
-	w.mu.Lock()
-	if w.closed {
-		w.mu.Unlock()
-		return nil
+	if !w.closed.CompareAndSwap(false, true) {
+		return nil // already closed
 	}
-	w.closed = true
+	w.mu.Lock()
 	// Write Close frame (best-effort), then close TCP.
 	_ = writeFrame(w.conn, wsOpcodeClose, []byte{0x03, 0xE8}, w.clientSide) // 1000 = normal closure
 	w.mu.Unlock()
@@ -145,7 +151,7 @@ func (w *WebSocket) Close() error {
 // Close frames return ErrWebSocketClosed.
 func (w *WebSocket) ReadText() ([]byte, error) {
 	for {
-		if w.closed {
+		if w.closed.Load() {
 			return nil, ErrWebSocketClosed
 		}
 		opcode, payload, err := readFrame(w.bufr)
