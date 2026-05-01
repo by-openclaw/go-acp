@@ -25,9 +25,19 @@ type RegistryCandidate struct {
 	APIAuth  bool   // api_auth TXT
 }
 
-// RegistryWatcher browses `_nmos-register._tcp` on the link, keeps the
-// set of currently-advertised Registry candidates, and exposes the
-// best (highest-priority, lowest pri integer) one to callers.
+// RegistryWatcher browses BOTH `_nmos-register._tcp` (IS-04 v1.2+) and
+// `_nmos-registration._tcp` (IS-04 v1.0 / v1.1 legacy name) on the
+// link, keeps the set of currently-advertised Registry candidates, and
+// exposes the best (highest-priority, lowest pri integer) one to
+// callers.
+//
+// IS-04 v1.2 renamed the service; v1.0 and v1.1 Registries advertise on
+// the legacy name only. A watcher that browsed only the modern name
+// would miss every legacy Registry — and the AMWA NMOS Testing tool
+// runs its mock Registries on the legacy name when the suite is
+// invoked at `version=v1.0` or `v1.1`. See
+// `feedback_amwa_strict_all_versions` and tests/integration/nmos/amwa/
+// NOTES.md for the conformance evidence.
 //
 // Compliance with IS-04 v1.3.3 §3.1:
 //   - watch shared records (PTR) on the service type;
@@ -45,9 +55,10 @@ type RegistryWatcher struct {
 	preferAPIVer  string
 	disqualifyTTL time.Duration
 
-	browser *dnssdsession.Browser
-	cancel  context.CancelFunc
-	out     <-chan dnssdcodec.Instance
+	browser   *dnssdsession.Browser
+	cancel    context.CancelFunc
+	outModern <-chan dnssdcodec.Instance
+	outLegacy <-chan dnssdcodec.Instance
 
 	mu           sync.Mutex
 	byFull       map[string]RegistryCandidate
@@ -87,17 +98,24 @@ func NewRegistryWatcher(logger *slog.Logger, preferAPIVer string) (*RegistryWatc
 	}, nil
 }
 
-// Run starts the browse loop. It returns immediately; cancel ctx to
-// stop. Safe to call only once.
+// Run starts the browse loop on BOTH the modern and legacy NMOS
+// registration service names. Returns immediately; cancel ctx to stop.
+// Safe to call only once.
 func (w *RegistryWatcher) Run(ctx context.Context) error {
 	loopCtx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
-	out, err := w.browser.Browse(loopCtx, dnssdcodec.ServiceRegister)
+	outModern, err := w.browser.Browse(loopCtx, dnssdcodec.ServiceRegister)
 	if err != nil {
 		cancel()
 		return err
 	}
-	w.out = out
+	outLegacy, err := w.browser.Browse(loopCtx, dnssdcodec.ServiceRegisterLegacy)
+	if err != nil {
+		cancel()
+		return err
+	}
+	w.outModern = outModern
+	w.outLegacy = outLegacy
 	go w.consume(loopCtx)
 	return nil
 }
@@ -157,8 +175,11 @@ func (w *RegistryWatcher) All() []RegistryCandidate {
 	return out
 }
 
-// consume reads from the browser channel and folds new Instances into
-// byFull. Older entries refresh their TXT/Priority when re-advertised.
+// consume reads from BOTH browser channels (modern + legacy service
+// names) and folds new Instances into byFull. Older entries refresh
+// their TXT/Priority when re-advertised. A Registry that advertises on
+// both names — possible during a v1.2 transition window — is
+// deduplicated by FullName since the SRV target+port stays identical.
 //
 // The watcher also caches every A record observed (keyed by hostname)
 // so that mocks sharing one SRV target — but advertising in separate
@@ -166,15 +187,39 @@ func (w *RegistryWatcher) All() []RegistryCandidate {
 // late-arriving A record fixes earlier hostname-only entries too.
 func (w *RegistryWatcher) consume(ctx context.Context) {
 	for {
+		var ins dnssdcodec.Instance
+		var ok bool
 		select {
 		case <-ctx.Done():
 			return
-		case ins, ok := <-w.out:
+		case ins, ok = <-w.outModern:
 			if !ok {
-				return
+				w.outModern = nil
 			}
+		case ins, ok = <-w.outLegacy:
+			if !ok {
+				w.outLegacy = nil
+			}
+		}
+		// If both channels are closed, exit.
+		if w.outModern == nil && w.outLegacy == nil {
+			return
+		}
+		if !ok {
+			// Only one channel closed; keep looping on the other.
+			continue
+		}
+		{
 			cand, ok := candidateFromInstance(ins, w.preferAPIVer)
 			if !ok {
+				if w.logger != nil {
+					w.logger.Info("provider/node: registry rejected",
+						"name", ins.FullName(),
+						"host", ins.Host, "port", ins.Port,
+						"api_ver_advert", ins.TXT[dnssdcodec.TXTKeyAPIVer],
+						"api_ver_prefer", w.preferAPIVer,
+						"api_proto", ins.TXT[dnssdcodec.TXTKeyAPIProto])
+				}
 				continue
 			}
 			w.mu.Lock()

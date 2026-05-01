@@ -82,6 +82,41 @@ func TestCandidateRejectsEmptyHostPort(t *testing.T) {
 	}
 }
 
+// TestCandidateAcceptsLegacyServiceName documents that a Registry
+// advertising on `_nmos-registration._tcp` (IS-04 v1.0/v1.1) is just as
+// valid as one on the modern `_nmos-register._tcp` — candidateFromInstance
+// is service-name-agnostic. The watcher's Run() method must browse both
+// service names; a Node that filtered on service name alone would miss
+// every legacy Registry. Closes #193.
+func TestCandidateAcceptsLegacyServiceName(t *testing.T) {
+	if dnssdcodec.ServiceRegisterLegacy != "_nmos-registration._tcp" {
+		t.Fatalf("ServiceRegisterLegacy = %q, want _nmos-registration._tcp",
+			dnssdcodec.ServiceRegisterLegacy)
+	}
+	ins := dnssdcodec.Instance{
+		Name:    "reg-legacy",
+		Service: dnssdcodec.ServiceRegisterLegacy,
+		Domain:  "local",
+		Host:    "reg-legacy.local",
+		Port:    8235,
+		TXT: map[string]string{
+			dnssdcodec.TXTKeyAPIProto: "http",
+			dnssdcodec.TXTKeyAPIVer:   "v1.0",
+			dnssdcodec.TXTKeyPriority: "10",
+		},
+	}
+	cand, ok := candidateFromInstance(ins, "v1.0")
+	if !ok {
+		t.Fatal("legacy-service Registry should be accepted when api_ver matches preferred")
+	}
+	if cand.APIVer != "v1.0" {
+		t.Errorf("APIVer = %q (want v1.0)", cand.APIVer)
+	}
+	if cand.URL != "http://reg-legacy.local:8235" {
+		t.Errorf("URL = %q", cand.URL)
+	}
+}
+
 func TestRegistryWatcherSelectsByPriority(t *testing.T) {
 	w := &RegistryWatcher{
 		preferAPIVer: "v1.3",

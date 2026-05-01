@@ -8,11 +8,18 @@ import (
 
 // NMOS service types (RFC 6763). One PTR query per type discovers all
 // instances of that role on the link / domain.
+//
+// IS-04 v1.2 renamed the registration service from
+// `_nmos-registration._tcp` to `_nmos-register._tcp`. v1.0 and v1.1
+// Registries advertise on the legacy name; v1.2+ on the modern one.
+// A spec-strict watcher MUST browse both to find Registries across
+// every supported minor — see `feedback_amwa_strict_all_versions`.
 const (
-	ServiceRegister = "_nmos-register._tcp" // IS-04 Registration API (Registry left face)
-	ServiceQuery    = "_nmos-query._tcp"    // IS-04 Query API (Registry right face)
-	ServiceSystem   = "_nmos-system._tcp"   // IS-09 System API
-	ServiceNode     = "_nmos-node._tcp"     // IS-04 Node API (P2P fallback)
+	ServiceRegister       = "_nmos-register._tcp"      // IS-04 v1.2+ Registration API (Registry left face)
+	ServiceRegisterLegacy = "_nmos-registration._tcp"  // IS-04 v1.0 / v1.1 Registration API (legacy name)
+	ServiceQuery          = "_nmos-query._tcp"         // IS-04 Query API (Registry right face)
+	ServiceSystem         = "_nmos-system._tcp"        // IS-09 System API
+	ServiceNode           = "_nmos-node._tcp"          // IS-04 Node API (P2P fallback)
 )
 
 // DefaultDomain is the link-local mDNS suffix (RFC 6762 §3).
