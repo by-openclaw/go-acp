@@ -122,15 +122,19 @@ status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amw
 >   BCP-002/004/006/008 literally; fire compliance events on peer
 >   deviations (see `internal/amwa/docs/matrix-compliance.md` —
 >   Lawo VSM verified). NEVER mix with cross-protocol mux concepts.
-> - **Multi-version is required, not optional** (per
->   `internal/amwa/CLAUDE.md` "Versioning" + `feedback_nmos_multi_version.md`):
->   IS-04 v1.1.3 + v1.2.2 + v1.3.3, IS-05 v1.0.2 + v1.1.2, IS-07/08/12
->   v1.0.1, IS-09 v1.0.0, MS-05-01/02 v1.0.0, BCP-002/004/006/008
->   v1.0.0. DNS-SD `api_ver` TXT advertises every supported minor
->   comma-separated; URL trees serve every minor in parallel. Skipping
->   any version listed is a spec violation, not a deferral. Genuinely
->   WIP at AMWA (no stable release): IS-13 Annotation, BCP-006-02 H.264,
->   BCP-006-03 H.265, BCP-007-01 NDI — those land when stable.
+> - **Strict every AMWA-published version. No deferral, no out-of-scope.**
+>   (per `internal/amwa/CLAUDE.md` "Versioning" +
+>   `feedback_amwa_strict_all_versions.md` + `feedback_nmos_multi_version.md`):
+>   IS-04 v1.0.3 + v1.1.3 + v1.2.2 + v1.3.3, IS-05 v1.0.2 + v1.1.2,
+>   IS-07/08/12 v1.0.1, IS-09 v1.0.0, MS-05-01/02 v1.0.0,
+>   BCP-002/004/006/008 v1.0.0. DNS-SD `api_ver` TXT advertises every
+>   supported minor comma-separated; URL trees serve every minor in
+>   parallel. Skipping any version listed is a spec violation. NO minor
+>   is ever framed as "deferred", "out of scope by design", or "we don't
+>   see it in the wild" — if it's not implemented, it's missing and gets
+>   added. Only legitimate "land when stable" carve-outs are
+>   AMWA-WIP-without-stable-release: IS-13 Annotation, BCP-006-02 H.264,
+>   BCP-006-03 H.265, BCP-007-01 NDI.
 > - **Cross-protocol mux is parked.** The ingress→canonical→egress
 >   matrix (Ember+ ingress fan-out to glow+router egresses) is real
 >   architecture but tied to a planned CLI refactor. NO epic, NO PR

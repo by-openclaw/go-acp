@@ -455,6 +455,16 @@ entry `feedback_probel_salvo_connected`.
 See [feedback_no_workaround, feedback_spec_table_literal,
 feedback_probel_salvo_connected] in memory.
 
+**AMWA NMOS — strict every published version.** For the AMWA NMOS suite
+specifically, no minor AMWA has published is ever "deferred", "out of
+scope by design", or "skipped because we don't see it in the wild". The
+authoritative version list lives in `internal/amwa/CLAUDE.md`; if a
+minor in that table is unimplemented today, it is *missing* and gets
+implemented, never reframed as a stable product decision. The only
+legitimate "land when stable" is for AMWA-WIP specs (IS-13, BCP-006-02,
+BCP-006-03, BCP-007-01) which carry no published stable release yet.
+See `feedback_amwa_strict_all_versions` in memory.
+
 ---
 
 ## What NOT to do

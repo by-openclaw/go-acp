@@ -115,7 +115,7 @@ numbers come from `internal/amwa/reference.md`.
 
 | Spec | Wire `api_ver` (URL) | Spec text patch (strict-comply) |
 |---|---|---|
-| IS-04 | v1.1, v1.2, v1.3 | v1.1.3 / v1.2.2 / v1.3.3 |
+| IS-04 | v1.0, v1.1, v1.2, v1.3 | v1.0.3 / v1.1.3 / v1.2.2 / v1.3.3 |
 | IS-05 | v1.0, v1.1 | v1.0.2 / v1.1.2 |
 | IS-07 | v1.0 | v1.0.1 |
 | IS-08 | v1.0 | v1.0.1 |
@@ -127,17 +127,27 @@ numbers come from `internal/amwa/reference.md`.
 | BCP-006-01 / BCP-006-04 | v1.0 | v1.0.0 |
 | BCP-008-01 / BCP-008-02 | v1.0 | v1.0.0 |
 
+**Strict-spec rule (binding, no exceptions for AMWA-published versions):**
+every minor AMWA has published is in scope. There is **no "deferred",
+no "out of scope by design", no "we don't see it in the wild"** for
+any minor in this table. If a minor is not implemented today, it is
+a *missing* implementation to be added — never framed as a stable
+product decision. See memory `feedback_amwa_strict_all_versions.md`.
+
 Convention: every listed version is a selectable parameter on the
 plugin (mirroring `proto:tsl` v3.1/v4.0/v5.0). DNS-SD `api_ver` TXT
 advertises every supported minor comma-separated
-(e.g. `api_ver=v1.1,v1.2,v1.3`). Server URL trees serve every minor
-in parallel (`/x-nmos/registration/v1.1/`, `/v1.2/`, `/v1.3/`, …) on
+(e.g. `api_ver=v1.0,v1.1,v1.2,v1.3`). Server URL trees serve every
+minor in parallel
+(`/x-nmos/registration/v1.0/`, `/v1.1/`, `/v1.2/`, `/v1.3/`, …) on
 the same store. Default to the highest mutually-supported minor;
 **never silently downgrade**, never silently drop a track. Skipping
 any version listed above is a spec violation, not a deferral.
 
 Genuinely WIP at AMWA (no stable release yet — land when stable):
 IS-13 Annotation, BCP-006-02 H.264, BCP-006-03 H.265, BCP-007-01 NDI.
+These are the ONLY legitimate "land when stable" carve-outs; they
+land the moment AMWA publishes a stable release.
 
 ---
 
