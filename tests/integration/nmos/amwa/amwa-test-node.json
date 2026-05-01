@@ -13,7 +13,7 @@
     "href": "http://dhs-node:18080/",
     "caps": {},
     "api": {
-      "versions": ["v1.3"],
+      "versions": ["v1.0", "v1.1", "v1.2", "v1.3"],
       "endpoints": [
         {"host": "dhs-node", "port": 18080, "protocol": "http"}
       ]

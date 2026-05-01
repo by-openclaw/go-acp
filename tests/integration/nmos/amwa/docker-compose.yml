@@ -38,6 +38,7 @@ services:
       - --bind=:18080
       - --advertise-host=dhs-node:18080
       - --mdns
+      - --api-ver=${DHS_API_VER:-v1.3}
     depends_on:
       - nmos-testing
     restart: unless-stopped
