@@ -1,0 +1,179 @@
+package provider
+
+import (
+	"testing"
+	"time"
+
+	dnssdcodec "acp/internal/amwa/codec/dnssd"
+	"acp/internal/amwa/codec/is04"
+)
+
+func TestCandidateFromInstance(t *testing.T) {
+	ins := dnssdcodec.Instance{
+		Name:    "reg-1",
+		Service: dnssdcodec.ServiceRegister,
+		Domain:  "local",
+		Host:    "reg-1.local",
+		Port:    8235,
+		TXT: map[string]string{
+			dnssdcodec.TXTKeyAPIProto: "http",
+			dnssdcodec.TXTKeyAPIVer:   "v1.2,v1.3",
+			dnssdcodec.TXTKeyAPIAuth:  "false",
+			dnssdcodec.TXTKeyPriority: "5",
+		},
+	}
+	cand, ok := candidateFromInstance(ins, "v1.3")
+	if !ok {
+		t.Fatal("candidateFromInstance ok=false")
+	}
+	if cand.URL != "http://reg-1.local:8235" {
+		t.Errorf("URL = %q", cand.URL)
+	}
+	if cand.Priority != 5 {
+		t.Errorf("Priority = %d", cand.Priority)
+	}
+	if cand.APIVer != "v1.3" {
+		t.Errorf("APIVer = %q (want v1.3 — preferred match)", cand.APIVer)
+	}
+	if cand.APIAuth {
+		t.Errorf("APIAuth must be false")
+	}
+}
+
+func TestCandidateRejectsRegistryWithoutPreferredVersion(t *testing.T) {
+	// AMWA test_01_01 — Node must NOT register with a Registry that
+	// doesn't advertise a version we speak.
+	ins := dnssdcodec.Instance{
+		Name:    "reg-2",
+		Service: dnssdcodec.ServiceRegister,
+		Domain:  "local",
+		Host:    "reg-2.local",
+		Port:    8235,
+		TXT: map[string]string{
+			dnssdcodec.TXTKeyAPIProto: "http",
+			dnssdcodec.TXTKeyAPIVer:   "v1.0,v1.1",
+		},
+	}
+	if _, ok := candidateFromInstance(ins, "v1.3"); ok {
+		t.Error("candidateFromInstance ok=true; v1.3 not in {v1.0,v1.1} should reject")
+	}
+}
+
+func TestCandidateRejectsHTTPS(t *testing.T) {
+	// dhs doesn't speak https yet (IS-10 / TLS pending). Reject.
+	ins := dnssdcodec.Instance{
+		Name:    "reg-3",
+		Service: dnssdcodec.ServiceRegister,
+		Host:    "reg-3.local",
+		Port:    8235,
+		TXT: map[string]string{
+			dnssdcodec.TXTKeyAPIProto: "https",
+			dnssdcodec.TXTKeyAPIVer:   "v1.3",
+		},
+	}
+	if _, ok := candidateFromInstance(ins, "v1.3"); ok {
+		t.Error("candidateFromInstance ok=true for https; should reject")
+	}
+}
+
+func TestCandidateRejectsEmptyHostPort(t *testing.T) {
+	if _, ok := candidateFromInstance(dnssdcodec.Instance{Port: 0}, "v1.3"); ok {
+		t.Error("ok must be false for empty Host/Port")
+	}
+}
+
+func TestRegistryWatcherSelectsByPriority(t *testing.T) {
+	w := &RegistryWatcher{
+		preferAPIVer: "v1.3",
+		byFull:       map[string]RegistryCandidate{},
+		disqualified: map[string]time.Time{},
+	}
+	w.byFull["reg-low.example."] = RegistryCandidate{FullName: "reg-low.example.", URL: "http://low", Priority: 50}
+	w.byFull["reg-hi.example."] = RegistryCandidate{FullName: "reg-hi.example.", URL: "http://hi", Priority: 5}
+	w.byFull["reg-mid.example."] = RegistryCandidate{FullName: "reg-mid.example.", URL: "http://mid", Priority: 20}
+
+	best, ok := w.Best()
+	if !ok || best.URL != "http://hi" {
+		t.Fatalf("Best = %+v ok=%v, want URL=http://hi", best, ok)
+	}
+
+	w.Disqualify("reg-hi.example.")
+	best, ok = w.Best()
+	if !ok || best.URL != "http://mid" {
+		t.Fatalf("after Disqualify(hi) Best = %+v ok=%v, want URL=http://mid", best, ok)
+	}
+
+	w.Disqualify("reg-mid.example.")
+	best, ok = w.Best()
+	if !ok || best.URL != "http://low" {
+		t.Fatalf("after Disqualify(mid) Best = %+v ok=%v, want URL=http://low", best, ok)
+	}
+
+	w.Disqualify("reg-low.example.")
+	if _, ok := w.Best(); ok {
+		t.Fatalf("after disqualifying all, Best must return ok=false")
+	}
+}
+
+func TestRegistryWatcherDisqualifyExpires(t *testing.T) {
+	w := &RegistryWatcher{
+		preferAPIVer:  "v1.3",
+		disqualifyTTL: 1 * time.Millisecond,
+		byFull:        map[string]RegistryCandidate{},
+		disqualified:  map[string]time.Time{},
+	}
+	w.byFull["reg.example."] = RegistryCandidate{FullName: "reg.example.", URL: "http://r", Priority: 1}
+	w.Disqualify("reg.example.")
+	if _, ok := w.Best(); ok {
+		t.Fatal("immediate Best after Disqualify must be empty")
+	}
+	time.Sleep(10 * time.Millisecond)
+	if _, ok := w.Best(); !ok {
+		t.Fatal("Best after disqualifyTTL elapsed must return the candidate again")
+	}
+}
+
+func TestExpandNodeEndpointsAddsAdvertiseHost(t *testing.T) {
+	n := &is04.Node{}
+	expandNodeEndpoints(n, "dhs-node:18080", ":18080")
+	found := false
+	for _, e := range n.API.Endpoints {
+		if e.Host == "dhs-node" && e.Port == 18080 && e.Protocol == "http" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("dhs-node:18080 not in endpoints: %+v", n.API.Endpoints)
+	}
+}
+
+func TestExpandNodeEndpointsIdempotent(t *testing.T) {
+	n := &is04.Node{}
+	n.API.Endpoints = []is04.NodeEndpoint{
+		{Host: "dhs-node", Port: 18080, Protocol: "http"},
+	}
+	expandNodeEndpoints(n, "dhs-node:18080", ":18080")
+	count := 0
+	for _, e := range n.API.Endpoints {
+		if e.Host == "dhs-node" && e.Port == 18080 {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("dhs-node:18080 listed %d times, want 1: %+v", count, n.API.Endpoints)
+	}
+}
+
+func TestClearUnservedManifestHrefs(t *testing.T) {
+	href := "http://wrong/transportfile"
+	senders := []is04.Sender{
+		{ManifestHref: &href},
+		{ManifestHref: &href},
+	}
+	clearUnservedManifestHrefs(senders)
+	for i, s := range senders {
+		if s.ManifestHref != nil {
+			t.Errorf("senders[%d].ManifestHref = %q, want nil", i, *s.ManifestHref)
+		}
+	}
+}

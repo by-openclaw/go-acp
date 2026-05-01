@@ -12,6 +12,11 @@ dist/
 !internal/**/assets/**/*.so
 !internal/**/assets/**/*.dylib
 
+# Cross-compiled dhs binary staged into AMWA harness build context.
+# Re-built by `GOOS=linux GOARCH=amd64 go build -o tests/integration/nmos/amwa/dhs ./cmd/dhs`
+# before each `docker compose build`.
+tests/integration/nmos/amwa/dhs
+
 # Go build cache
 *.test
 *.out

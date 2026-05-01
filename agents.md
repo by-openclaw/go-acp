@@ -78,6 +78,33 @@ against AMWA NMOS Testing tool's Mock Registry next. dhs Node
 running at 10.6.239.113:18080. Bundle file:
 `tests/fixtures/nmos/cerebrum-test-node.json`.
 
+**AMWA NMOS Testing IS-04-01 v1.3 round 25 (2026-05-01 evening):
+56 Pass / 1 Fail / 1 Warning / 1 Manual / 1 Not Implemented /
+10 Disabled / 3 N/A.** Branch
+`feat/nmos-is04-amwa-conformance` lands the full IS-04-01 wave
+(codec subscription split, CORS + parent listings + OPTIONS
+preflight, runtime endpoint expansion, manifest_href nulling,
+mDNS Registry watcher with priority filter + cumulative A-record
+cache, heartbeat-first failover with cascade in one tick,
+200-on-POST DELETE+re-POST, IS-04 §4.3.1 PUT receivers/{id}/
+target, BCP-rich AMWA fixture). Single Fail = `test_16` Docker
+Desktop Windows cascade-timing race (same code passes on Linux
+Docker / true host networking). Per-row caveats live in
+[`tests/integration/nmos/amwa/NOTES.md`](tests/integration/nmos/amwa/NOTES.md).
+Run via:
+
+```bash
+cd tests/integration/nmos/amwa
+GOOS=linux GOARCH=amd64 go build -o dhs ../../../../cmd/dhs
+docker compose down && docker compose up -d --build
+curl -X POST http://127.0.0.1:5000/api -H 'Content-Type: application/json' \
+  -d '{"suite":"IS-04-01","host":["172.19.0.3"],"port":[18080],"version":["v1.3"],"output":"json"}'
+```
+
+Web UI: <http://127.0.0.1:5000> → Host `172.19.0.3`, Port `18080`,
+Version `v1.3`. v1.0/v1.1/v1.2 rounds pending — codec already
+ships those minors (Phase 2 Step 2 / PR #160).
+
 Per-spec status table (driving order, separate provider+controller
 status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amwa/docs/integration-plan.md).
 

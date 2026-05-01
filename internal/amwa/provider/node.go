@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	stdhttp "net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -44,6 +46,7 @@ type IS04NodeServer struct {
 	responder *dnssdsession.Responder
 	cancel    context.CancelFunc
 	regClient *RegistrationClient
+	watcher   *RegistryWatcher
 
 	// Per-endpoint hit counters.
 	indexHits     uint64
@@ -86,6 +89,18 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		return errors.New("provider/node: already serving")
 	}
 
+	// Auto-derive api.endpoints from runtime: every non-loopback IPv4
+	// the Node binds, plus the --advertise-host hostname. IS-04 v1.3.3
+	// §4.2.2 mandates that this list reflects every protocol/IP/port the
+	// Node is reachable on — and AMWA NMOS Testing test_20 enforces it
+	// against whatever URL the test reaches us at.
+	expandNodeEndpoints(&s.bundle.Node, s.cfg.AdvertiseHost, s.cfg.Bind)
+
+	// Manifest URLs that we cannot honour (no /transportfile handler
+	// shipped today) MUST be null on the wire — leaving a stale URL
+	// fails AMWA test_20_01 and is also wrong per spec.
+	clearUnservedManifestHrefs(s.bundle.Senders)
+
 	srv := httpsession.NewServer(s.logger)
 	s.installRoutes(srv)
 	s.http = srv
@@ -124,9 +139,27 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 			"api_ver", s.cfg.APIVer, "pri", s.cfg.Priority)
 	}
 
-	// Registration client (optional).
+	// Registration: explicit URL wins (Mode B). Otherwise, when in
+	// mDNS mode, browse `_nmos-register._tcp` and auto-register against
+	// the highest-pri Registry — that's IS-04 §3.1 Mode A.
 	if s.cfg.RegistryURL != "" {
 		rc := NewRegistrationClient(s.logger, s.cfg.RegistryURL, s.cfg.APIVer, s.bundle)
+		s.regClient = rc
+		go rc.Run(ctx)
+	} else if s.cfg.DiscoveryMode == "" || s.cfg.DiscoveryMode == "mdns" {
+		w, err := NewRegistryWatcher(s.logger, s.cfg.APIVer)
+		if err != nil {
+			s.mu.Unlock()
+			return fmt.Errorf("provider/node: open registry watcher: %w", err)
+		}
+		if err := w.Run(ctx); err != nil {
+			_ = w.Close()
+			s.mu.Unlock()
+			return fmt.Errorf("provider/node: start registry watcher: %w", err)
+		}
+		s.watcher = w
+		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
+		rc.SetWatcher(w)
 		s.regClient = rc
 		go rc.Run(ctx)
 	}
@@ -171,6 +204,23 @@ func (s *IS04NodeServer) Stats() map[string]uint64 {
 // should use IS-05 connection management instead.
 func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 	base := "/x-nmos/node/" + s.cfg.APIVer
+
+	// IS-04 §4 — parent listings. The Node API root advertises which
+	// NMOS API trees this host serves (we expose only "node/"). Each
+	// API tree's root then advertises the supported version subtrees.
+	// AMWA NMOS Testing's auto_node_1/auto_node_2 require both.
+	srv.Handle(stdhttp.MethodGet, "/x-nmos", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		return 0, []string{"node/"}, nil
+	})
+	srv.Handle(stdhttp.MethodGet, "/x-nmos/", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		return 0, []string{"node/"}, nil
+	})
+	srv.Handle(stdhttp.MethodGet, "/x-nmos/node", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		return 0, []string{s.cfg.APIVer + "/"}, nil
+	})
+	srv.Handle(stdhttp.MethodGet, "/x-nmos/node/", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		return 0, []string{s.cfg.APIVer + "/"}, nil
+	})
 
 	srv.Handle(stdhttp.MethodGet, base+"/", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 		atomic.AddUint64(&s.indexHits, 1)
@@ -248,18 +298,62 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 		return nil, false
 	}, idsFromReceivers(s.bundle.Receivers))
 
-	// PUT /receivers/{id}/target → 501 Not Implemented (deprecated;
-	// use IS-05 instead). Fired per-id so the path matches exactly.
+	// PUT /receivers/{id}/target — IS-04 §4.3.1 legacy connection
+	// control. v1.0/v1.1 mandated this; v1.2+ recommends IS-05 instead
+	// but the path remains. Body is either a Sender JSON object (to
+	// connect — sets subscription.sender_id + active=true) or an empty
+	// {} (to disconnect — sets subscription.sender_id=null + active=
+	// false). Returns 202 Accepted with the resulting Sender object
+	// (or empty object on disconnect) per spec.
 	for _, r := range s.bundle.Receivers {
-		path := base + "/receivers/" + r.ID + "/target"
-		srv.Handle(stdhttp.MethodPut, path, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
-			return stdhttp.StatusNotImplemented, httpsession.ErrorBody{
-				Code:  stdhttp.StatusNotImplemented,
-				Error: "Not Implemented",
-				Debug: "PUT /receivers/{id}/target deprecated in IS-04 v1.3 — use IS-05 instead",
-			}, nil
+		rid := r.ID
+		path := base + "/receivers/" + rid + "/target"
+		srv.Handle(stdhttp.MethodPut, path, func(ctx context.Context, req *stdhttp.Request) (int, any, error) {
+			body, err := io.ReadAll(io.LimitReader(req.Body, 1<<16))
+			if err != nil {
+				return stdhttp.StatusBadRequest, httpsession.ErrorBody{
+					Code: stdhttp.StatusBadRequest, Error: "Bad Request", Debug: err.Error(),
+				}, nil
+			}
+			trimmed := strings.TrimSpace(string(body))
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			rcv := findReceiverByID(s.bundle.Receivers, rid)
+			if rcv == nil {
+				return stdhttp.StatusNotFound, httpsession.ErrorBody{
+					Code: stdhttp.StatusNotFound, Error: "Not Found", Debug: rid,
+				}, nil
+			}
+			// Empty body or `{}` ⇒ disconnect.
+			if trimmed == "" || trimmed == "{}" {
+				rcv.Subscription.SenderID = nil
+				rcv.Subscription.Active = false
+				return stdhttp.StatusAccepted, struct{}{}, nil
+			}
+			// Otherwise the payload is a Sender object — connect.
+			sender, err := is04.DecodeSender(body)
+			if err != nil {
+				return stdhttp.StatusBadRequest, httpsession.ErrorBody{
+					Code: stdhttp.StatusBadRequest, Error: "Bad Request", Debug: err.Error(),
+				}, nil
+			}
+			id := sender.ID
+			rcv.Subscription.SenderID = &id
+			rcv.Subscription.Active = true
+			return stdhttp.StatusAccepted, sender, nil
 		})
 	}
+}
+
+// findReceiverByID locates a Receiver in the slice by UUID. Returns nil
+// when the id is unknown — callers must respond 404.
+func findReceiverByID(rs []is04.Receiver, id string) *is04.Receiver {
+	for i := range rs {
+		if rs[i].ID == id {
+			return &rs[i]
+		}
+	}
+	return nil
 }
 
 // installCollection registers GET <base>/<plural> and per-id GETs.
