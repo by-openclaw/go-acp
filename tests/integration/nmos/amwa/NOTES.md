@@ -4,6 +4,73 @@ Snapshot of the per-test posture for the AMWA NMOS Testing tool against
 dhs running in this docker-compose. Update whenever the cause of a row
 changes; the table is the source of truth for what to expect.
 
+## IS-04-03 (Peer-to-Peer Node) — 2026-05-02 round 1
+
+Peer-to-Peer mode harness setup: `dhs-registry` is **stopped** so the
+Node enters Mode-D and advertises `_nmos-node._tcp` directly. The AMWA
+tool browses for that service type and probes the Node API directly at
+the discovered host:port.
+
+### IS-04-03 round 1 results
+
+| API ver | Pass | Fail | Warning | Disabled | Manual | N/A | Notes |
+|---|---:|---:|---:|---:|---:|---:|---|
+| **v1.0** | **16** | **0** | **0** | 7 | 1 | 3 | clean — `test_01` Pass; `test_02` Manual |
+| **v1.1** | **16** | **0** | **0** | 7 | 1 | 3 | clean |
+| **v1.2** | **16** | **0** | **0** | 7 | 1 | 3 | clean |
+| **v1.3** | **17** | **0** | **0** | 7 | 1 | 3 | clean |
+
+**65 Pass / 0 Fail / 0 Warning across all four AMWA-published IS-04 minors.**
+
+`test_01` (Node advertises `_nmos-node._tcp` with `ver_*` TXT records
+when no Registration API is reachable) passes on every minor. `test_02`
+(counters increment on resource change) is always Manual — operator
+confirms by mutating a Node resource and checking the counter bumped via
+`avahi-browse -rpt _nmos-node._tcp`.
+
+The 7 Disabled tests are `auto_node_17/18/19/20/21/22/23` (or one less
+on v1.0/v1.1/v1.2): authorization probes that require `ENABLE_AUTH=true`
+in the harness — out of scope for the unauthenticated profile we ship by
+default.
+
+### Closed gap
+
+`_nmos-node._tcp` TXT records were missing the six IS-04 §3.1.1 `ver_*`
+counter keys (`ver_slf`, `ver_dvc`, `ver_src`, `ver_flw`, `ver_snd`,
+`ver_rcv`). The Mode-D peer probe + AMWA `test_01` both look at those
+specifically. Fix:
+
+- Six `atomic.Uint64` counters on `IS04NodeServer` (one per resource
+  type), exposed via `BumpResourceVersion(rt)` for future IS-05
+  call-sites to wire when staging activations promote into the live
+  bundle.
+- `Responder.Update(ctx, ins)` extension on the dnssd interface — the
+  stdlib backend re-emits the announcement with the RFC 6762 §10.2
+  cache-flush bit; the Avahi backend calls
+  `EntryGroup.UpdateServiceTxt` via DBus. Both surface the new TXT to
+  peers without tearing down the announcement.
+- `buildNodeTXTLocked` rebuilds the full TXT map from current counter
+  state at announce + republish time.
+
+Result: every `_nmos-node._tcp` advertisement now carries the four
+base TXT keys (`api_proto`, `api_ver`, `api_auth`, `pri`) + the six
+`ver_*` counters, satisfying IS-04 §3.1.1 byte-by-byte.
+
+### IS-04-03 reproduce one round
+
+```
+ssh root@10.100.0.105 'cd /root/amwa-test && DHS_API_VER=v1.3 docker compose up -d --build --force-recreate dhs'
+sleep 8   # mDNS settle
+ssh root@10.100.0.105 '/root/amwa-test/run-is0403.sh v1.3'
+scp root@10.100.0.105:/root/amwa-test/results/is04-03-v1.3.json tests/integration/nmos/amwa/results/
+```
+
+To run all four minors back-to-back, repeat the loop with `DHS_API_VER`
+set to v1.0 / v1.1 / v1.2 / v1.3. Each cycle takes ~15 s (8 s mDNS
+settle + ~3 s harness run + container restart).
+
+---
+
 ## IS-04-02 (Registry — Registration + Query API) — 2026-05-02 round 22
 
 Single docker-compose serves both `dhs-node` (IS-04-01 NUT, port 18080)

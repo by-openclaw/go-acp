@@ -322,11 +322,23 @@ type avahiResponder struct {
 
 	mu     sync.Mutex
 	closed bool
-	groups []dbus.ObjectPath
+	// groups maps [dnssd.Instance.FullName] → EntryGroup path so
+	// Update can locate the right group to call UpdateServiceTxt on.
+	groups map[string]avahiGroup
+}
+
+// avahiGroup records the EntryGroup path plus the AddService argument
+// triple (name, service, domain) needed by UpdateServiceTxt — Avahi's
+// API requires the same identifying triple on the update call.
+type avahiGroup struct {
+	path    dbus.ObjectPath
+	name    string
+	service string
+	domain  string
 }
 
 func newAvahiResponder(logger *slog.Logger, conn *dbus.Conn) *avahiResponder {
-	return &avahiResponder{logger: logger, conn: conn}
+	return &avahiResponder{logger: logger, conn: conn, groups: map[string]avahiGroup{}}
 }
 
 // Announce creates a fresh EntryGroup for the Instance, AddService's
@@ -378,8 +390,44 @@ func (r *avahiResponder) Announce(ctx context.Context, ins dnssd.Instance) error
 	}
 
 	r.mu.Lock()
-	r.groups = append(r.groups, groupPath)
+	if r.groups == nil {
+		r.groups = map[string]avahiGroup{}
+	}
+	r.groups[ins.FullName()] = avahiGroup{
+		path: groupPath, name: ins.Name, service: ins.Service, domain: domain,
+	}
 	r.mu.Unlock()
+	return nil
+}
+
+// Update calls EntryGroup.UpdateServiceTxt on the matching group so the
+// daemon swaps the TXT records in-place and re-announces per RFC 6762
+// §10.2 (cache-flush). Required for IS-04 §3.1.1 P2P Node `ver_*`
+// counter bumps; see internal/amwa/provider/node.go bumpResourceVersion.
+func (r *avahiResponder) Update(ctx context.Context, ins dnssd.Instance) error {
+	if ins.Name == "" || ins.Service == "" {
+		return errors.New("dnssd: Update requires Name and Service")
+	}
+	r.mu.Lock()
+	if r.closed {
+		r.mu.Unlock()
+		return errors.New("dnssd: responder closed")
+	}
+	g, ok := r.groups[ins.FullName()]
+	r.mu.Unlock()
+	if !ok {
+		return fmt.Errorf("dnssd: Update: instance %q not announced", ins.FullName())
+	}
+	group := r.conn.Object(avahiBusName, g.path)
+	if err := group.Call(
+		avahiEntryIf+".UpdateServiceTxt", 0,
+		avahiIfaceUnspec, avahiProtoIPv4, avahiPubNoFlags,
+		g.name, g.service, g.domain,
+		encodeAvahiTXT(ins.TXT),
+	).Store(); err != nil {
+		return fmt.Errorf("dnssd: Avahi UpdateServiceTxt(%s.%s.%s): %w",
+			g.name, g.service, g.domain, err)
+	}
 	return nil
 }
 
@@ -397,8 +445,8 @@ func (r *avahiResponder) Close() error {
 	r.mu.Unlock()
 
 	var firstErr error
-	for _, gp := range groups {
-		if err := r.conn.Object(avahiBusName, gp).Call(avahiEntryIf+".Free", 0).Store(); err != nil && firstErr == nil {
+	for _, g := range groups {
+		if err := r.conn.Object(avahiBusName, g.path).Call(avahiEntryIf+".Free", 0).Store(); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}

@@ -57,6 +57,15 @@ type Responder interface {
 	// initial announcements are queued; the responder continues to reply
 	// to queries until Close is called or ctx is cancelled.
 	Announce(ctx context.Context, ins dnssd.Instance) error
+	// Update replaces the TXT (and only the TXT) of a previously-Announced
+	// Instance, matched by FullName(). Other fields on ins are ignored
+	// — Host/Port/IP changes require a Close + fresh Announce. Used by
+	// Peer-to-Peer Nodes (IS-04 §3.1.1) to bump the `ver_*` counters
+	// without tearing down the announcement; per RFC 6762 §10.2 the
+	// re-emission carries the cache-flush bit on the TXT record so peers
+	// refresh their cache. Returns an error if the Instance has not been
+	// Announced first.
+	Update(ctx context.Context, ins dnssd.Instance) error
 	// Close emits goodbye packets (TTL=0) on every advertised Instance
 	// per RFC 6762 §10.1, then shuts the transport. Idempotent.
 	Close() error

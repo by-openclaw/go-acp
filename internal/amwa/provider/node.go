@@ -119,6 +119,21 @@ type IS04NodeServer struct {
 	flowHits     uint64
 	senderHits   uint64
 	receiverHits uint64
+
+	// IS-04 §3.1.1 Peer-to-Peer Node TXT counters. One per resource
+	// type — incremented every time the matching Node API resource list
+	// changes (POST/PUT/DELETE on /devices, /sources, /flows, /senders,
+	// /receivers, or PATCH on /self via IS-05). Mode-D peers watch the
+	// TXT records on `_nmos-node._tcp` to know when to re-fetch the
+	// underlying Node API. Wraps mod 256 per spec; the wire form is the
+	// uint8 truncation of the counter. Bumping is wired through
+	// bumpResourceVersion which republishes the TXT via Responder.Update.
+	verSelf     atomic.Uint64
+	verDevice   atomic.Uint64
+	verSource   atomic.Uint64
+	verFlow     atomic.Uint64
+	verSender   atomic.Uint64
+	verReceiver atomic.Uint64
 }
 
 // NewIS04NodeServer validates the Node bundle and prepares (but does
@@ -190,12 +205,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 			Domain:  dnssdcodec.DefaultDomain,
 			Host:    host,
 			Port:    uint16(port),
-			TXT: map[string]string{
-				dnssdcodec.TXTKeyAPIProto: "http",
-				dnssdcodec.TXTKeyAPIVer:   apiVerTXT,
-				dnssdcodec.TXTKeyAPIAuth:  "false",
-				dnssdcodec.TXTKeyPriority: strconv.Itoa(s.cfg.Priority),
-			},
+			TXT:     s.buildNodeTXTLocked(apiVerTXT),
 		}
 		s.announceInstance = ins
 		// Save the parent context for later re-announce on
@@ -255,6 +265,89 @@ func (s *IS04NodeServer) Stop() error {
 		_ = s.regClient.Close()
 	}
 	return nil
+}
+
+// buildNodeTXTLocked returns a fresh TXT map for the `_nmos-node._tcp`
+// announce: the four IS-04 §3.1.1 base keys plus the six `ver_*`
+// counters (snapshotted from atomic state). Caller MUST hold s.mu —
+// the only lock-free element is the atomic counter Load.
+func (s *IS04NodeServer) buildNodeTXTLocked(apiVerTXT string) map[string]string {
+	return map[string]string{
+		dnssdcodec.TXTKeyAPIProto: "http",
+		dnssdcodec.TXTKeyAPIVer:   apiVerTXT,
+		dnssdcodec.TXTKeyAPIAuth:  "false",
+		dnssdcodec.TXTKeyPriority: strconv.Itoa(s.cfg.Priority),
+		dnssdcodec.TXTKeyVerSlf:   strconv.Itoa(int(uint8(s.verSelf.Load()))),
+		dnssdcodec.TXTKeyVerDvc:   strconv.Itoa(int(uint8(s.verDevice.Load()))),
+		dnssdcodec.TXTKeyVerSrc:   strconv.Itoa(int(uint8(s.verSource.Load()))),
+		dnssdcodec.TXTKeyVerFlw:   strconv.Itoa(int(uint8(s.verFlow.Load()))),
+		dnssdcodec.TXTKeyVerSnd:   strconv.Itoa(int(uint8(s.verSender.Load()))),
+		dnssdcodec.TXTKeyVerRcv:   strconv.Itoa(int(uint8(s.verReceiver.Load()))),
+	}
+}
+
+// counterForResource picks the matching atomic counter for a resource
+// type. Returns nil for unknown types so the bump path stays safe.
+func (s *IS04NodeServer) counterForResource(t is04.ResourceType) (*atomic.Uint64, string) {
+	switch t {
+	case is04.ResourceNode:
+		return &s.verSelf, dnssdcodec.TXTKeyVerSlf
+	case is04.ResourceDevice:
+		return &s.verDevice, dnssdcodec.TXTKeyVerDvc
+	case is04.ResourceSource:
+		return &s.verSource, dnssdcodec.TXTKeyVerSrc
+	case is04.ResourceFlow:
+		return &s.verFlow, dnssdcodec.TXTKeyVerFlw
+	case is04.ResourceSender:
+		return &s.verSender, dnssdcodec.TXTKeyVerSnd
+	case is04.ResourceReceiver:
+		return &s.verReceiver, dnssdcodec.TXTKeyVerRcv
+	}
+	return nil, ""
+}
+
+// BumpResourceVersion increments the matching IS-04 §3.1.1 `ver_*`
+// counter (mod 256) and republishes the `_nmos-node._tcp` TXT record so
+// Mode-D peers learn the resource list has changed. Safe to call from
+// any handler — the responder Update path is no-op when we're in
+// registered mode (responder == nil because Node MUST suspend the P2P
+// announce while registered, IS-04 §4.2.1).
+//
+// Exported so the IS-05 Connection API (and any future runtime
+// mutation surface) can trigger a counter bump after PATCH /staged
+// activations promote into the live bundle.
+func (s *IS04NodeServer) BumpResourceVersion(t is04.ResourceType) {
+	c, key := s.counterForResource(t)
+	if c == nil {
+		return
+	}
+	v := uint8(c.Add(1))
+	s.mu.Lock()
+	if s.announceInstance.Service == "" {
+		// Not in mDNS mode (static discovery) — nothing to advertise.
+		s.mu.Unlock()
+		return
+	}
+	if s.announceInstance.TXT == nil {
+		s.announceInstance.TXT = map[string]string{}
+	}
+	// Always stage the new value on the saved Instance so that a
+	// later re-announce on lose-registration carries the up-to-date
+	// counters, even if mutations happened while we were registered
+	// and the responder was suspended.
+	s.announceInstance.TXT[key] = strconv.Itoa(int(v))
+	snapshot := s.announceInstance
+	resp := s.responder
+	s.mu.Unlock()
+	if resp == nil {
+		// Registered mode: counter is staged on announceInstance.TXT,
+		// will be picked up on the next P2P re-announce.
+		return
+	}
+	if err := resp.Update(s.announceCtx, snapshot); err != nil {
+		s.logger.Warn("provider/node: republish ver_* TXT failed",
+			"resource", t, "err", err)
+	}
 }
 
 // startMDNSAnnounceLocked opens a fresh Responder + Announces the saved

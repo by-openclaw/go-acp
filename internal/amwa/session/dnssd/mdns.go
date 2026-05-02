@@ -359,6 +359,51 @@ func (r *stdlibResponder) Announce(ctx context.Context, ins dnssd.Instance) erro
 	return nil
 }
 
+// Update replaces the TXT records of a previously-Announced Instance,
+// matched by FullName(), and re-emits a single announcement packet on
+// every interface. Per RFC 6762 §10.2 the TXT record carries the
+// cache-flush bit (already set by EncodeAnnounce) so peers replace any
+// cached copy. Returns an error if the Instance has not been Announced.
+func (r *stdlibResponder) Update(ctx context.Context, ins dnssd.Instance) error {
+	if ins.Name == "" || ins.Service == "" {
+		return errors.New("dnssd: Update requires Name and Service")
+	}
+	full := ins.FullName()
+	r.mu.Lock()
+	if r.closed {
+		r.mu.Unlock()
+		return errors.New("dnssd: responder closed")
+	}
+	idx := -1
+	for i := range r.instances {
+		if r.instances[i].FullName() == full {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		r.mu.Unlock()
+		return fmt.Errorf("dnssd: Update: instance %q not announced", full)
+	}
+	r.instances[idx].TXT = ins.TXT
+	updated := r.instances[idx]
+	conns := append([]*net.UDPConn(nil), r.conns...)
+	r.mu.Unlock()
+
+	pkt, err := dnssd.EncodeAnnounce(updated, true)
+	if err != nil {
+		return err
+	}
+	for _, c := range conns {
+		if _, werr := c.WriteToUDP(pkt, &mdnsIPv4); werr != nil {
+			if r.logger != nil && ctx.Err() == nil {
+				r.logger.Debug("dnssd: update write", "err", werr)
+			}
+		}
+	}
+	return nil
+}
+
 func (r *stdlibResponder) serveQueries(ctx context.Context) {
 	var wg sync.WaitGroup
 	for _, c := range r.conns {
