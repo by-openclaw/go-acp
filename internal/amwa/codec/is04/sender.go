@@ -50,9 +50,9 @@ func (s *Sender) Validate() error {
 	if s.DeviceID == "" || !IsValidUUID(s.DeviceID) {
 		errs = append(errs, fmt.Sprintf("sender.device_id %q: must match UUID v1-5", s.DeviceID))
 	}
-	if s.InterfaceBindings == nil {
-		errs = append(errs, "sender.interface_bindings: required (may be empty array)")
-	}
+	// interface_bindings landed in IS-04 v1.2 — when present, it must
+	// be an array of MAC strings; when absent (a v1.0/v1.1 wire shape)
+	// we accept the field's omission silently.
 	// manifest_href is required (string OR null) — the field must be
 	// present in the JSON. Nil pointer = absent; empty string = invalid.
 	if s.ManifestHref != nil && *s.ManifestHref == "" {

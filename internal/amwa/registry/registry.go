@@ -130,13 +130,14 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		queryBase := "/x-nmos/query/" + apiVer
 		mgr := NewSubscriptionManager(r.logger, r.store, advertise, apiVer)
 		r.subsByVer[apiVer] = mgr
-		installRegistrationRoutes(srv, r.store, regBase)
-		installQueryRoutes(srv, r.store, mgr, queryBase)
+		installRegistrationRoutes(srv, r.store, regBase, apiVer)
+		installQueryRoutes(srv, r.store, mgr, queryBase, apiVer)
 
 		wsPrefix := queryBase + "/subscriptions/"
 		wsPrefixes = append(wsPrefixes, wsPrefix)
 		upgradeHandlers[wsPrefix] = mgr.UpgradeHandler(queryBase)
 	}
+	installAPIRootRoutes(srv, apiVers)
 
 	r.mu.Lock()
 	r.httpSrv = srv
@@ -193,11 +194,24 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		r.cancel = cancel
 		r.mu.Unlock()
 
-		// Advertise both faces — Registration (left) and Query (right).
+		// Advertise the Registration (left) + Query (right) faces.
+		// pickRegistryServices adds the legacy `_nmos-registration._tcp`
+		// name when any of v1.0/v1.1/v1.2 is in scope — see comment on
+		// the helper for the spec rationale.
+		services := pickRegistryServices(apiVers)
 		ips := localIPv4Candidates(host)
-		for _, svc := range []string{codec.ServiceRegister, codec.ServiceQuery} {
+		for _, svc := range services {
+			// Distinct instance Name per service type so the daemon
+			// (Avahi / stdlib) treats each as its own EntryGroup —
+			// critical because both register service types resolve to
+			// the same host:port and would otherwise collide as
+			// "duplicate" by FullName.
+			instanceName := "dhs-nmos-registry"
+			if svc == codec.ServiceRegisterLegacy {
+				instanceName = "dhs-nmos-registry-legacy"
+			}
 			ins := codec.Instance{
-				Name:    "dhs-nmos-registry",
+				Name:    instanceName,
 				Service: svc,
 				Domain:  codec.DefaultDomain,
 				Host:    host,
@@ -222,7 +236,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		if r.logger != nil {
 			r.logger.Info("registry/nmos: mDNS announce active",
 				"host", host, "port", port, "pri", priority,
-				"register", codec.ServiceRegister, "query", codec.ServiceQuery)
+				"services", services)
 		}
 	} else if r.logger != nil {
 		r.logger.Info("registry/nmos: mDNS announce disabled", "mode", mode)

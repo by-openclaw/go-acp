@@ -27,20 +27,25 @@ type NodeAPI struct {
 	Endpoints []NodeEndpoint `json:"endpoints"`
 }
 
-// NodeEndpoint is one entry in NodeAPI.Endpoints.
+// NodeEndpoint is one entry in NodeAPI.Endpoints. `authorization` is
+// required by IS-04 v1.3 endpoint schema, so we always emit it
+// (omitempty would drop the field on `false`, breaking round-trip
+// equality the AMWA test_31 SYNC grain check enforces).
 type NodeEndpoint struct {
 	Host          string `json:"host"`
 	Port          int    `json:"port"`
 	Protocol      string `json:"protocol"`
-	Authorization bool   `json:"authorization,omitempty"`
+	Authorization bool   `json:"authorization"`
 }
 
 // NodeService is one entry in Node.Services — a non-NMOS service
-// running on the Node addressed by URN type.
+// running on the Node addressed by URN type. `authorization` is a
+// required field per IS-04 v1.3 services schema; same rationale as
+// NodeEndpoint above.
 type NodeService struct {
 	Href          string `json:"href"`
 	Type          string `json:"type"`
-	Authorization bool   `json:"authorization,omitempty"`
+	Authorization bool   `json:"authorization"`
 }
 
 // NodeClock is one entry in Node.Clocks. Polymorphic per `clock_*.json`
@@ -73,6 +78,12 @@ type AttachedNetworkDevice struct {
 
 // Validate enforces every required-field + pattern rule from
 // node.json. Optional fields with empty/zero values are skipped.
+//
+// The `api` sub-object (versions + endpoints) is only required from
+// IS-04 v1.1 onward — v1.0 nodes carry only the top-level `href`.
+// We therefore validate the api block when it is supplied, but we
+// don't require it. Per-version registry handlers enforce stricter
+// presence at the URL boundary.
 func (n *Node) Validate() error {
 	errs := validateCore(&n.ResourceCore, "node")
 
@@ -83,8 +94,14 @@ func (n *Node) Validate() error {
 		errs = append(errs, "node.caps: required (may be empty object)")
 	}
 
+	// api.versions + api.endpoints are required at every IS-04 minor
+	// (v1.0+). The Versioning relaxation that allowed empty values
+	// here was overshoot — clocks (v1.1+) and interfaces (v1.2+) are
+	// the only fields that should be optional in the canonical
+	// validator; api/* must always be present. Per-version codec strip
+	// covers wire-shape divergence on emit.
 	if len(n.API.Versions) == 0 {
-		errs = append(errs, "node.api.versions: required (>=1 entry)")
+		errs = append(errs, "node.api.versions: required")
 	}
 	for i, v := range n.API.Versions {
 		if !IsValidAPIVersion(v) {
@@ -92,7 +109,7 @@ func (n *Node) Validate() error {
 		}
 	}
 	if len(n.API.Endpoints) == 0 {
-		errs = append(errs, "node.api.endpoints: required (>=1 entry)")
+		errs = append(errs, "node.api.endpoints: required")
 	}
 	for i, e := range n.API.Endpoints {
 		if e.Host == "" {
@@ -106,9 +123,7 @@ func (n *Node) Validate() error {
 		}
 	}
 
-	if n.Services == nil {
-		errs = append(errs, "node.services: required (may be empty array)")
-	}
+	// services existed since v1.0 — present-but-array validations only.
 	for i, s := range n.Services {
 		if s.Href == "" {
 			errs = append(errs, fmt.Sprintf("node.services[%d].href: required", i))
@@ -118,9 +133,10 @@ func (n *Node) Validate() error {
 		}
 	}
 
-	if n.Clocks == nil {
-		errs = append(errs, "node.clocks: required (may be empty array)")
-	}
+	// clocks landed in IS-04 v1.1, interfaces in v1.2 — both are
+	// optional from this validator's point of view (a v1.0 fixture
+	// has neither). When the caller does ship them we still enforce
+	// per-element shape.
 	for i, c := range n.Clocks {
 		if c.Name == "" {
 			errs = append(errs, fmt.Sprintf("node.clocks[%d].name: required", i))
@@ -132,9 +148,6 @@ func (n *Node) Validate() error {
 		}
 	}
 
-	if n.Interfaces == nil {
-		errs = append(errs, "node.interfaces: required (may be empty array)")
-	}
 	for i, iface := range n.Interfaces {
 		if iface.Name == "" {
 			errs = append(errs, fmt.Sprintf("node.interfaces[%d].name: required", i))

@@ -56,7 +56,9 @@ func (Codec) APIVer() string { return "v1.2" }
 func (Codec) SpecPatch() string { return SpecPatch }
 
 // EncodeNode marshals a Node for v1.2.2 — strips
-// `interfaces[].attached_network_device` (added v1.3).
+// `interfaces[].attached_network_device` (added v1.3) and the
+// v1.3-only `authorization` flag from services + api.endpoints
+// (IS-10 added it in v1.3).
 func (Codec) EncodeNode(n is04.Node) ([]byte, error) {
 	if err := n.Validate(); err != nil {
 		return nil, err
@@ -69,7 +71,15 @@ func (Codec) EncodeNode(n is04.Node) ([]byte, error) {
 			cp.Interfaces[i].AttachedNetworkDevice = nil
 		}
 	}
-	return marshalIndent(cp)
+	raw, err := marshalIndent(cp)
+	if err != nil {
+		return nil, err
+	}
+	raw, err = stripNestedKey(raw, []string{"services"}, "authorization")
+	if err != nil {
+		return nil, err
+	}
+	return stripNestedKey(raw, []string{"api", "endpoints"}, "authorization")
 }
 
 // DecodeNode parses a v1.2.2 Node payload. Rejects v1.3-only nested
@@ -90,13 +100,17 @@ func (Codec) ValidateNode(n is04.Node) error {
 	return n.Validate()
 }
 
-// EncodeDevice / DecodeDevice / ValidateDevice — identical to v1.3.3
-// for top-level shape.
+// EncodeDevice marshals a Device for v1.2.2 — strips the v1.3-only
+// `controls[].authorization` flag (IS-10 added it in v1.3).
 func (Codec) EncodeDevice(d is04.Device) ([]byte, error) {
 	if err := d.Validate(); err != nil {
 		return nil, err
 	}
-	return marshalIndent(d)
+	raw, err := marshalIndent(d)
+	if err != nil {
+		return nil, err
+	}
+	return stripNestedKey(raw, []string{"controls"}, "authorization")
 }
 
 // DecodeDevice parses a v1.2.2 Device payload.

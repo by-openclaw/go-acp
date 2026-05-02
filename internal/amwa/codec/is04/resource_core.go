@@ -19,6 +19,15 @@ type ResourceCore struct {
 // validateCore returns the slice of human-readable validation errors for
 // the embedded ResourceCore. Caller appends additional resource-type
 // rules.
+//
+// IS-04 v1.3.3 resource_core.json marks `label` and `description` as
+// required fields of type string, and `tags` as required of type
+// object — but empty values are valid in each case. Real-world peers
+// (and the AMWA Testing tool's per-version fixtures) ship `"label": ""`
+// regularly, and the v1.0 schemas don't require `tags`/`description`
+// at all. We enforce only id/version *type and pattern* here; per-
+// version key-presence is enforced upstream at the registry POST
+// handler, which knows the URL's api_ver.
 func validateCore(c *ResourceCore, where string) []string {
 	var errs []string
 	if c.ID == "" || !IsValidUUID(c.ID) {
@@ -26,15 +35,6 @@ func validateCore(c *ResourceCore, where string) []string {
 	}
 	if c.Version == "" || !IsValidVersion(c.Version) {
 		errs = append(errs, fmt.Sprintf("%s.version %q: must match `<sec>:<nsec>` TAI form", where, c.Version))
-	}
-	if c.Label == "" {
-		errs = append(errs, where+".label: required (resource_core)")
-	}
-	if c.Description == "" {
-		errs = append(errs, where+".description: required (resource_core)")
-	}
-	if c.Tags == nil {
-		errs = append(errs, where+".tags: required (may be empty object, but key must be present)")
 	}
 	return errs
 }

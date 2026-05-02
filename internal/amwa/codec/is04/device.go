@@ -37,34 +37,24 @@ func (d *Device) Validate() error {
 	if d.NodeID == "" || !IsValidUUID(d.NodeID) {
 		errs = append(errs, fmt.Sprintf("device.node_id %q: must match RFC 4122 v1-v5 UUID", d.NodeID))
 	}
-	if d.Senders == nil {
-		errs = append(errs, "device.senders: required (may be empty array)")
-	} else {
-		for i, id := range d.Senders {
-			if !IsValidUUID(id) {
-				errs = append(errs, fmt.Sprintf("device.senders[%d] %q: not a UUID", i, id))
-			}
+	for i, id := range d.Senders {
+		if !IsValidUUID(id) {
+			errs = append(errs, fmt.Sprintf("device.senders[%d] %q: not a UUID", i, id))
 		}
 	}
-	if d.Receivers == nil {
-		errs = append(errs, "device.receivers: required (may be empty array)")
-	} else {
-		for i, id := range d.Receivers {
-			if !IsValidUUID(id) {
-				errs = append(errs, fmt.Sprintf("device.receivers[%d] %q: not a UUID", i, id))
-			}
+	for i, id := range d.Receivers {
+		if !IsValidUUID(id) {
+			errs = append(errs, fmt.Sprintf("device.receivers[%d] %q: not a UUID", i, id))
 		}
 	}
-	if d.Controls == nil {
-		errs = append(errs, "device.controls: required (may be empty array)")
-	} else {
-		for i, c := range d.Controls {
-			if c.Href == "" {
-				errs = append(errs, fmt.Sprintf("device.controls[%d].href: required", i))
-			}
-			if c.Type == "" {
-				errs = append(errs, fmt.Sprintf("device.controls[%d].type: required (URN)", i))
-			}
+	// `controls` landed in IS-04 v1.1 — when absent (a v1.0 wire body)
+	// we accept the field's omission silently.
+	for i, c := range d.Controls {
+		if c.Href == "" {
+			errs = append(errs, fmt.Sprintf("device.controls[%d].href: required", i))
+		}
+		if c.Type == "" {
+			errs = append(errs, fmt.Sprintf("device.controls[%d].type: required (URN)", i))
 		}
 	}
 

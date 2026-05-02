@@ -78,8 +78,8 @@ against AMWA NMOS Testing tool's Mock Registry next. dhs Node
 running at 10.6.239.113:18080. Bundle file:
 `tests/fixtures/nmos/cerebrum-test-node.json`.
 
-**AMWA NMOS Testing IS-04-01 — FULL CONFORMANCE 2026-05-02 across
-every AMWA-published minor:**
+**AMWA NMOS Testing IS-04-01 (Node) — FULL CONFORMANCE 2026-05-02
+across every AMWA-published minor:**
 
 | API ver | Pass | Fail | Warning |
 |---|---:|---:|---:|
@@ -88,8 +88,30 @@ every AMWA-published minor:**
 | v1.2 | 50 | 0 | 0 |
 | v1.3 | 59 | 0 | 0 |
 
-**218 Pass / 0 Fail / 0 Warning total.** Branch
-`feat/nmos-is04-amwa-conformance` carries 14 commits ahead of main.
+**218 Pass / 0 Fail / 0 Warning total.**
+
+**AMWA NMOS Testing IS-04-02 (Registry — Registration + Query API)
+— round 21, 2026-05-02:**
+
+| API ver | Pass | Fail | Note |
+|---|---:|---:|---|
+| v1.0 | 46 | 1 | only test_01 mDNS Zeroconf-cache flake |
+| v1.1 | 61 | 1 | only test_01 |
+| v1.2 | 61 | 1 | only test_01 |
+| **v1.3** | **65** | **0** | ✅ clean |
+
+**233 Pass / 3 Fail total** — every remaining fail is the same
+test_01 mDNS announcement check. The dhs-registry's `_nmos-register._tcp`
+and `_nmos-query._tcp` are advertised live (visible in `avahi-browse`
+from every other LXC), but the AMWA Testing tool's Python Zeroconf
+cache lags between docker-compose restarts on the early v1.X rounds.
+v1.3 (last in sequence) consistently sees the announcement. Same
+test_01-class flake the IS-04-01 round sees on `test_16`/`test_16_01`
+under Docker Desktop multicast — bounded to the test harness, not
+the wire path. Real-peer Cerebrum interop on the LXC rig is unaffected.
+
+Branch `feat/nmos-is04-amwa-conformance` carries the IS-04-01 +
+IS-04-02 work cumulatively.
 Fixed across the final round: per-version registration codec
 (closes test_04 cluster on v1.0/v1.1/v1.2), v10 keeps tags+description
 (test_28), `/transportfile` SDP route + `manifest_href` rewrite

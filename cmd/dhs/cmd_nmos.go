@@ -504,7 +504,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	advertise := fs.String("advertise-host", "", "host:port placed in DNS-SD A/SRV records (default: hostname:port)")
 	bind := fs.String("bind", ":8235", "Registration/Query API listen address")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
-	apiVer := fs.String("api-ver", "v1.3", "IS-04 wire version exposed under /x-nmos/{registration,query}/<v>")
+	apiVer := fs.String("api-ver", "", "IS-04 wire version exposed at /x-nmos/{registration,query}/<v>. Empty (default) mounts every codec registered (v1.0/v1.1/v1.2/v1.3 in parallel) — pin to one minor for per-version integration testing.")
 	gcInterval := fs.Duration("gc-interval", time.Second, "heartbeat watchdog tick rate")
 	heartbeatTimeout := fs.Duration("heartbeat-timeout", 12*time.Second, "evict Nodes after this long without heartbeats (IS-04 §6.1 default 12s)")
 	if err := fs.Parse(args); err != nil {
@@ -532,10 +532,14 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		GCInterval:       *gcInterval,
 		HeartbeatTimeout: *heartbeatTimeout,
 	}
-	fmt.Printf("Registry: bind=%s, mode=%s, priority=%d, api_ver=%s\n", *bind, mode, *priority, *apiVer)
-	fmt.Printf("  Registration: POST/GET/DELETE under http://<host>%s/x-nmos/registration/%s/...\n", *bind, *apiVer)
-	fmt.Printf("  Query:        GET + POST /subscriptions under http://<host>%s/x-nmos/query/%s/...\n", *bind, *apiVer)
-	fmt.Printf("  WS subs:      ws://<host>%s/x-nmos/query/%s/subscriptions/<id>/ws\n", *bind, *apiVer)
+	verLabel := *apiVer
+	if verLabel == "" {
+		verLabel = "<all>"
+	}
+	fmt.Printf("Registry: bind=%s, mode=%s, priority=%d, api_ver=%s\n", *bind, mode, *priority, verLabel)
+	fmt.Printf("  Registration: POST/GET/DELETE under http://<host>%s/x-nmos/registration/%s/...\n", *bind, verLabel)
+	fmt.Printf("  Query:        GET + POST /subscriptions under http://<host>%s/x-nmos/query/%s/...\n", *bind, verLabel)
+	fmt.Printf("  WS subs:      ws://<host>%s/x-nmos/query/%s/subscriptions/<id>/ws\n", *bind, verLabel)
 	fmt.Printf("  GC: tick=%s, heartbeat-timeout=%s\n", *gcInterval, *heartbeatTimeout)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-register._tcp + _nmos-query._tcp via mDNS.")

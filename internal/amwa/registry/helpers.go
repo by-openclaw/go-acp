@@ -3,8 +3,36 @@ package registry
 import (
 	"encoding/json"
 
+	codec "acp/internal/amwa/codec/dnssd"
 	"acp/internal/amwa/codec/is04"
 )
+
+// pickRegistryServices returns the DNS-SD service-type names a Registry
+// must advertise to satisfy every minor of IS-04 it claims to support.
+//
+// Spec rationale:
+//   - IS-04 v1.2 renamed the Registration service from
+//     `_nmos-registration._tcp` to `_nmos-register._tcp`.
+//   - Per AMWA `IS0402Test.test_01` (and any peer Node still on those
+//     minors) v1.0/v1.1/v1.2 clients browse the LEGACY name; v1.3+
+//     clients browse the modern name.
+//   - The Query face never had a legacy alias — `_nmos-query._tcp` is
+//     the only name across every minor.
+//
+// So a registry that supports v1.0/v1.1/v1.2 alongside v1.3 MUST
+// advertise on both register service-type names. Mirror of the
+// consumer-side `RegistryWatcher` browse fix (#193). See
+// `feedback_amwa_strict_all_versions`.
+func pickRegistryServices(apiVers []string) []string {
+	out := []string{codec.ServiceRegister, codec.ServiceQuery}
+	for _, v := range apiVers {
+		if v == "v1.0" || v == "v1.1" || v == "v1.2" {
+			out = append(out, codec.ServiceRegisterLegacy)
+			break
+		}
+	}
+	return out
+}
 
 // jsonUnmarshal aliases encoding/json.Unmarshal so callers don't have
 // to import json directly — keeps every Registry handler-side file
@@ -30,6 +58,7 @@ func singularFromPlural(p string) (is04.ResourceType, bool) {
 	}
 	return "", false
 }
+
 
 // getResource fetches one resource by (type, id). Returns the typed
 // value and a boolean ok.
@@ -57,22 +86,3 @@ func getResource(s *Store, t is04.ResourceType, id string) (any, bool) {
 	return nil, false
 }
 
-// listResource returns every resource of the given type as `[]any`
-// (so the HTTP layer can JSON-encode it without per-type plumbing).
-func listResource(s *Store, t is04.ResourceType) any {
-	switch t {
-	case is04.ResourceNode:
-		return s.ListNodes()
-	case is04.ResourceDevice:
-		return s.ListDevices()
-	case is04.ResourceSource:
-		return s.ListSources()
-	case is04.ResourceFlow:
-		return s.ListFlows()
-	case is04.ResourceSender:
-		return s.ListSenders()
-	case is04.ResourceReceiver:
-		return s.ListReceivers()
-	}
-	return []any{}
-}

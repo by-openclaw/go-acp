@@ -68,8 +68,11 @@ func TestNodeRequiredMissing(t *testing.T) {
 		{"endpoints empty", func(n *Node) { n.API.Endpoints = nil }, "api.endpoints"},
 		{"bad protocol", func(n *Node) { n.API.Endpoints[0].Protocol = "ftp" }, "protocol"},
 		{"port out of range", func(n *Node) { n.API.Endpoints[0].Port = 70000 }, "port"},
-		{"clocks missing", func(n *Node) { n.Clocks = nil }, "clocks"},
-		{"interfaces missing", func(n *Node) { n.Interfaces = nil }, "interfaces"},
+		// `clocks missing` and `interfaces missing` are intentionally
+		// not error cases in the canonical validator: clocks landed in
+		// IS-04 v1.1 and interfaces in v1.2, so a v1.0 fixture has
+		// neither. Per-version presence checks live in
+		// `internal/amwa/registry/store.go validateRegistrationPresenceVersioned`.
 		{"interface bad mac", func(n *Node) { n.Interfaces[0].PortID = "not-a-mac" }, "port_id"},
 	}
 	for _, tc := range cases {

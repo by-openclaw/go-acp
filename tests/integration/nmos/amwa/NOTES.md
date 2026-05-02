@@ -1,8 +1,139 @@
-# IS-04-01 — known caveats for this harness
+# IS-04 — known caveats for this harness
 
 Snapshot of the per-test posture for the AMWA NMOS Testing tool against
 dhs running in this docker-compose. Update whenever the cause of a row
 changes; the table is the source of truth for what to expect.
+
+## IS-04-02 (Registry — Registration + Query API) — 2026-05-02 round 22
+
+Single docker-compose serves both `dhs-node` (IS-04-01 NUT, port 18080)
+and `dhs-registry` (IS-04-02 NUT, port 8235). Registry mounts every IS-04
+codec registered with the binary in parallel under
+`/x-nmos/{registration,query}/{v1.0,v1.1,v1.2,v1.3}/` and now
+advertises the registration face on **both** service-type names so
+v1.0/v1.1/v1.2 peers (which browse the legacy `_nmos-registration._tcp`)
+discover us alongside v1.3+ peers (which browse the modern
+`_nmos-register._tcp`).
+
+### IS-04-02 round 22 results
+
+| API ver | Pass | Fail | CNT | Disabled | NA | Manual | Notes |
+|---|---:|---:|---:|---:|---:|---:|---|
+| **v1.0** | **47** | **0** | 8 | 16 | 20 | 1 | clean — `test_01` Pass after legacy advertise |
+| **v1.1** | **62** | **0** | 9 | 16 | 4 | 1 | clean |
+| **v1.2** | **68** | **0** | 2 | 16 | 4 | 1 | clean — +7 Pass vs round 21 (legacy advertise un-blocked Mock-Node-driven cascade) |
+| **v1.3** | **65** | **0** | 11 | 16 | 3 | 1 | clean (no regression) |
+
+**242 Pass / 0 Fail / 0 Warning across all four AMWA-published IS-04 minors.**
+
+The 3 round-21 Fails (`test_01` on v1.0/v1.1/v1.2) all closed in
+round 22. v1.2 also jumped +7 Pass because the AMWA harness's internal
+Mock Node uses the same legacy-name browse logic as `test_01`; once we
+advertised on `_nmos-registration._tcp`, the Mock Node could register
+against us on v1.2 rounds, which un-blocked the rest of the suite from
+its CNT cascade.
+
+### What `test_01` was actually checking — round-21 root cause
+
+Earlier (round 21) I labelled the 3 `test_01` Fails as a
+`python-zeroconf` cache flake bounded to the AMWA harness side. That
+was wrong. Reading
+[`IS0402Test.py`](https://raw.githubusercontent.com/AMWA-TV/nmos-testing/master/nmostesting/suites/IS0402Test.py)
+proves it:
+
+```python
+def test_01(self, test):
+    service_type = "_nmos-registration._tcp.local."
+    if self.is04_reg_utils.compare_api_version(api["version"], "v1.3") >= 0:
+        service_type = "_nmos-register._tcp.local."
+    return self.do_dns_sd_advertisement_check(test, api, service_type)
+```
+
+The harness chooses the **legacy** service-type for v1.0/v1.1/v1.2 and
+the **modern** service-type only for v1.3+. Our registry advertised
+*only* on `_nmos-register._tcp`, so the v1.0/v1.1/v1.2 browse for
+`_nmos-registration._tcp` returned nothing — "No matching mDNS
+announcement found". Spec-strict bug on our side, not a harness flake.
+
+The previous "harness cache" hypothesis fit the v1.3-passes /
+others-fail pattern coincidentally because v1.3 is the only minor that
+uses the modern service-type. Lesson logged via
+`feedback_blame_third_party_last`: any failure = our wire bytes until
+proven otherwise; comparing against the upstream test source first
+would have rooted this in minutes, not rounds.
+
+### Closed gap (round 22)
+
+`internal/amwa/registry/registry.go` advertises on
+`_nmos-registration._tcp` (the legacy name) **in addition to**
+`_nmos-register._tcp` whenever `apiVers` contains any of v1.0/v1.1/v1.2,
+mirroring the existing consumer-side `RegistryWatcher` browse fix
+(#193). The decision is encapsulated in
+`pickRegistryServices(apiVers []string) []string` (`helpers.go`) with a
+7-case unit test pinning the behaviour. Distinct instance names per
+service-type (`dhs-nmos-registry` vs `dhs-nmos-registry-legacy`) avoid
+EntryGroup collisions when both names resolve to the same host:port.
+
+Wire confirmation from the LXC docker bridge:
+
+```
+$ avahi-browse -rpt _nmos-register._tcp
+=  br-… IPv4 dhs-nmos-registry         _nmos-register._tcp     dhs-registry.local 172.18.0.4:8235 \
+       "api_proto=http" "pri=0" "api_ver=v1.0,v1.1,v1.2,v1.3" "api_auth=false"
+
+$ avahi-browse -rpt _nmos-registration._tcp
+=  br-… IPv4 dhs-nmos-registry-legacy  _nmos-registration._tcp dhs-registry.local 172.18.0.4:8235 \
+       "api_proto=http" "pri=0" "api_ver=v1.0,v1.1,v1.2,v1.3" "api_auth=false"
+```
+
+Cerebrum (production peer on the rig) advertises both service-types
+the same way — independent confirmation that this is the spec-strict
+posture, not a dhs-specific quirk.
+
+### Open caveats (round 22)
+
+| Test | State | Note |
+|---|---|---|
+| `auto_query_5..19`, `auto_registration_4/5/6` | Could Not Test | by-id endpoint probes that need pre-registered fixtures the harness doesn't auto-populate. Same status `nmos-cpp` gets on a fresh registry per the public AMWA dashboard. |
+| `test_25` (v1.2) | Not Implemented | Query API ancestry filter (`query.ancestry_id` / `query.ancestry_type`) returns 501 — test accepts as OPTIONAL per spec. |
+| `test_22` family | Manual | Spec-mandated reboot-persistence checks; harness can't auto-verify against an ephemeral container. |
+
+### Closed gaps (sub-issues, all real spec bugs that affect any v1.X peer, not just AMWA)
+
+| Gap | Effect |
+|---|---|
+| Location header on POST/PUT /resource | Closed test_03/15/21*/23/24/27-31 (cascade ~22 tests) |
+| /x-nmos, /x-nmos/{api}, /x-nmos/{api}/ root listings | Closed auto_query_1/2 + auto_registration_1/2 |
+| Real X-Paging-* pagination — since/until anchors, limit=0 echo, Link header with raw `:` | Closed test_21_1..test_21_9 + test_21_1_1 |
+| Presence-vs-empty validation per api_ver (v1.0 = id+version+label; v1.1+ adds description+tags) | Closed test_04 + 6 do_400_check siblings |
+| Subscriptions: per-id GET, query.rql honored, query.downgrade lifted out of params, filter-edge grain semantics, SYNC pre==post | Closed test_23_1, test_24_1, test_29, test_31 (v1.3) |
+| Per-resource api_ver tracking + 409 Conflict + URL-version-isolated query | Closed test_22, test_22_2, test_32 |
+| Per-version codec strip of Flow.components / Node Endpoint+Service authorization / Device.controls.authorization / Receiver.subscription.active | Closed test_31 cross-resource bytes-equality on v1.0/v1.1/v1.2 |
+| Cascade-via-source for v1.0 Flow (no device_id) + Flow.source_id parent check | Closed test_26/27/28 v1.0 |
+| Node.Validate skips api/clocks/interfaces when absent (v1.0 wire shape) | Closed v1.0 test_03 cluster |
+| Flow.Validate per-format guards only when format-specific fields present | Closed v1.0 test_09/18 |
+| query.ancestry_id / query.ancestry_type returns 501 (test accepts as OPTIONAL) | Closed test_25 v1.2 |
+
+### IS-04-02 reproduce one round
+
+```
+cd tests/integration/nmos/amwa
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ../../../bin/dhs.linux ../../../cmd/dhs
+scp ../../../bin/dhs.linux root@10.100.0.105:/root/amwa-test/dhs
+ssh root@10.100.0.105 'cd /root/amwa-test && docker compose up -d --build --force-recreate dhs-registry'
+sleep 8
+for v in v1.0 v1.1 v1.2 v1.3 ; do
+    ssh root@10.100.0.105 "/root/amwa-test/run-is0402.sh $v" | head -3
+    scp root@10.100.0.105:/root/amwa-test/results/is04-02-$v.json results/
+done
+```
+
+---
+
+## IS-04-01 (Node) — round 25, 2026-05-02
+
+Snapshot of the per-test posture for the AMWA NMOS Testing tool
+against `dhs-node` (port 18080) running in the same docker-compose.
 
 ## Multi-version conformance status (2026-05-02, post-#191/#192/#193)
 

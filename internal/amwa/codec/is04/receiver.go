@@ -47,9 +47,8 @@ func (r *Receiver) Validate() error {
 	if r.Transport == "" || !IsValidTransportURN(r.Transport) {
 		errs = append(errs, fmt.Sprintf("receiver.transport %q: must be a known NMOS transport URN or non-NMOS URI", r.Transport))
 	}
-	if r.InterfaceBindings == nil {
-		errs = append(errs, "receiver.interface_bindings: required (may be empty array)")
-	}
+	// interface_bindings landed in IS-04 v1.2 — accept its absence on
+	// v1.0/v1.1 wire shapes.
 	if r.Format == "" || !IsValidFormatURN(r.Format) {
 		errs = append(errs, fmt.Sprintf("receiver.format %q: required, must be NMOS format URN or non-NMOS URI", r.Format))
 	}

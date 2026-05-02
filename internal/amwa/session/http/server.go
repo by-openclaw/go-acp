@@ -227,11 +227,30 @@ type RawBody struct {
 	Body        []byte
 }
 
+// WithHeaders lets a handler attach extra response headers (e.g. the
+// `Location` header IS-04 §6.1.1 mandates on Registration POST/PUT,
+// or `X-Paging-*` on Query API list responses) without changing the
+// HandlerFunc signature. Body is JSON-encoded as usual; Headers are
+// applied verbatim before WriteHeader. Body may itself be a *RawBody
+// to combine non-JSON content with custom headers.
+type WithHeaders struct {
+	Body    any
+	Headers map[string]string
+}
+
 // writeJSON serialises body as JSON with the spec-mandated header set.
 // As a special case, *RawBody emits a non-JSON response — used for
 // IS-04 transportfile (SDP) routes that the spec requires to be
-// served as text/plain or application/sdp, NOT JSON.
+// served as text/plain or application/sdp, NOT JSON. *WithHeaders
+// applies extra headers before delegating to the inner body.
 func writeJSON(w stdhttp.ResponseWriter, status int, body any) {
+	if wh, ok := body.(*WithHeaders); ok {
+		for k, v := range wh.Headers {
+			w.Header().Set(k, v)
+		}
+		writeJSON(w, status, wh.Body)
+		return
+	}
 	if rb, ok := body.(*RawBody); ok {
 		ct := rb.ContentType
 		if ct == "" {

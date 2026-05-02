@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -63,11 +64,14 @@ type GrainBody struct {
 }
 
 // GrainDataRow is one entry in GrainBody.Data — `path` is the
-// resource id, `pre` / `post` are the before/after JSON.
+// resource id, `pre` / `post` are the before/after JSON. Both are
+// pointers so a nil pointer drops the key entirely on encode (the
+// AMWA Testing tool's IS-04-02 test_23_1 specifically asserts that
+// CREATED grains have no `pre` key, not that `pre` == null).
 type GrainDataRow struct {
-	Path string          `json:"path"`
-	Pre  json.RawMessage `json:"pre,omitempty"`
-	Post json.RawMessage `json:"post,omitempty"`
+	Path string           `json:"path"`
+	Pre  *json.RawMessage `json:"pre,omitempty"`
+	Post *json.RawMessage `json:"post,omitempty"`
 }
 
 // subscription is one in-flight WS session.
@@ -78,6 +82,19 @@ type subscription struct {
 	Persist      bool
 	Secure       bool
 	MaxUpdateRate int
+
+	// params is the IS-04 §6.1.5 basic-query / RQL filter the
+	// subscriber requested at POST time. Mirrors the Query API GET
+	// query string: top-level field=value plus optional
+	// `query.rql=eq(field,value)`.
+	params map[string][]string
+
+	// downgrade is `query.downgrade=v1.X`, lifted out of params at
+	// subscription-creation time so it isn't applied as a regular
+	// equality filter (a resource never carries `query.downgrade` as
+	// a JSON field). When empty, the subscription is strictly bound
+	// to its own api_ver.
+	downgrade string
 
 	ws       *httpsession.WebSocket
 	source   string // sub UUID echoed in grain.source_id
@@ -141,6 +158,28 @@ func (m *SubscriptionManager) HandlePost(base string) httpsession.HandlerFunc {
 			Persist:       req.Persist, Secure: req.Secure,
 			ResourcePath: req.ResourcePath, Params: req.Params,
 		}
+		params := paramsAsQuery(req.Params)
+		downgrade := ""
+		if vs, ok := params["query.downgrade"]; ok && len(vs) > 0 {
+			downgrade = vs[0]
+			delete(params, "query.downgrade")
+		}
+		// Strip pagination + non-rql control params — they're not
+		// equality filters. Keep `query.rql` (the RQL predicate) so
+		// jsonMatchesFilter can honor it. Same handling as the Query
+		// API GET path.
+		for k := range params {
+			if strings.HasPrefix(k, "paging.") {
+				delete(params, k)
+				continue
+			}
+			if strings.HasPrefix(k, "query.") && k != "query.rql" {
+				delete(params, k)
+			}
+		}
+		if len(params) == 0 {
+			params = nil
+		}
 		m.mu.Lock()
 		m.subs[id] = &subscription{
 			ID:            id,
@@ -149,11 +188,20 @@ func (m *SubscriptionManager) HandlePost(base string) httpsession.HandlerFunc {
 			Persist:       req.Persist,
 			Secure:        req.Secure,
 			MaxUpdateRate: req.MaxUpdateRate,
+			params:        params,
+			downgrade:     downgrade,
 			source:        id,
 			closeCh:       make(chan struct{}),
 		}
 		m.mu.Unlock()
-		return stdhttp.StatusCreated, res, nil
+		// IS-04 §6.1.6 (Query API) — Subscription POST returns 201 +
+		// `Location` pointing at /subscriptions/{id}. AMWA test_29 /
+		// test_31 explicitly check this header.
+		loc := base + "/subscriptions/" + id
+		return stdhttp.StatusCreated, &httpsession.WithHeaders{
+			Body:    res,
+			Headers: map[string]string{"Location": loc},
+		}, nil
 	}
 }
 
@@ -167,10 +215,85 @@ func (m *SubscriptionManager) HandleList() httpsession.HandlerFunc {
 			out = append(out, SubscriptionResource{
 				ID: s.ID, WSHref: s.WSHref, MaxUpdateRate: s.MaxUpdateRate,
 				Persist: s.Persist, Secure: s.Secure, ResourcePath: s.ResourcePath,
+				Params: queryAsParams(s.params),
 			})
 		}
 		return 0, out, nil
 	}
+}
+
+// HandleGetByID returns the SubscriptionResource for a single
+// subscription id. AMWA test_29 specifically POSTs a sub then GETs
+// /subscriptions/{id} and expects 200 + the same shape.
+func (m *SubscriptionManager) HandleGetByID(prefix string) httpsession.HandlerFunc {
+	return func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		id := strings.TrimPrefix(r.URL.Path, prefix)
+		if id == "" || strings.Contains(id, "/") {
+			return stdhttp.StatusNotFound, httpsession.ErrorBody{Code: 404, Error: "Not Found", Debug: r.URL.Path}, nil
+		}
+		m.mu.Lock()
+		s, ok := m.subs[id]
+		m.mu.Unlock()
+		if !ok {
+			return stdhttp.StatusNotFound, httpsession.ErrorBody{Code: 404, Error: "Not Found", Debug: id}, nil
+		}
+		return 0, SubscriptionResource{
+			ID: s.ID, WSHref: s.WSHref, MaxUpdateRate: s.MaxUpdateRate,
+			Persist: s.Persist, Secure: s.Secure, ResourcePath: s.ResourcePath,
+			Params: queryAsParams(s.params),
+		}, nil
+	}
+}
+
+// paramsAsQuery flattens an IS-04 subscription `params` JSON object
+// into the map shape `splitFilterParams` + `jsonMatchesFilter`
+// consume. Accepts the canonical shape
+// `{"description":"foo","label":"bar"}`. RQL is delivered via the
+// special `query.rql` key.
+func paramsAsQuery(p any) map[string][]string {
+	if p == nil {
+		return nil
+	}
+	out := make(map[string][]string)
+	if m, ok := p.(map[string]any); ok {
+		for k, v := range m {
+			switch tv := v.(type) {
+			case string:
+				out[k] = []string{tv}
+			case []any:
+				for _, e := range tv {
+					if s, ok := e.(string); ok {
+						out[k] = append(out[k], s)
+					}
+				}
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// queryAsParams is the inverse used when echoing the params back on
+// GET /subscriptions and GET /subscriptions/{id}.
+func queryAsParams(q map[string][]string) any {
+	if len(q) == 0 {
+		return nil
+	}
+	out := make(map[string]any, len(q))
+	for k, vs := range q {
+		if len(vs) == 1 {
+			out[k] = vs[0]
+		} else if len(vs) > 1 {
+			ss := make([]any, len(vs))
+			for i, v := range vs {
+				ss[i] = v
+			}
+			out[k] = ss
+		}
+	}
+	return out
 }
 
 // ServeHTTP is the WS upgrade handler. Routed at
@@ -202,10 +325,23 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 		m.mu.Unlock()
 
 		// Send sync grains for every existing resource matching the
-		// resource_path.
+		// resource_path AND the subscription params filter. SYNC has
+		// pre == post (current snapshot), so a single jsonMatchesFilter
+		// against Post is sufficient. We also apply the same no-
+		// downgrade-by-default version gate the Query API uses, so a
+		// /query/v1.3 subscription doesn't bootstrap with v1.0-only
+		// resources (AMWA test_22_2). When the subscriber requested
+		// `query.downgrade=v1.X` at POST time, lower-version
+		// resources become visible per AMWA's downgrade semantics.
 		now := time.Now()
-		for _, c := range m.store.SnapshotChanges() {
+		for _, c := range m.store.SnapshotChanges(m.apiVer) {
 			if !subscriptionMatches(sub.ResourcePath, c) {
+				continue
+			}
+			if !versionAllowed(c.APIVer, m.apiVer, sub.downgrade) {
+				continue
+			}
+			if !jsonMatchesFilter(c.Post, sub.params) && len(sub.params) > 0 {
 				continue
 			}
 			frame, err := buildGrain(sub.source, c, now)
@@ -234,19 +370,54 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 }
 
 // onChange is the store listener — fan-out to every matching
-// subscription.
+// subscription. For each subscriber we project the Change against the
+// subscriber's filter and synthesize a grain whose pre/post pair
+// reflects the resource's relationship to the filter set:
+//
+//   - resource entered the filter (pre absent or unmatched, post matched)
+//     → "created from filter"  : pre dropped, post kept
+//   - resource left the filter (pre matched, post absent or unmatched)
+//     → "deleted from filter"  : pre kept, post dropped
+//   - resource updated within the filter (both matched)
+//     → "modified": both kept
+//   - resource was outside the filter on both sides → no emit
+//
+// Without a filter we ship the raw Change (existing semantics).
 func (m *SubscriptionManager) onChange(c Change) {
+	// We can no longer short-circuit on m.apiVer here: per-subscription
+	// `query.downgrade` may relax the version gate, so fan out has to
+	// run per-subscriber. listeners are invoked while the Store holds
+	// its write lock, so we read api_ver from the Change envelope
+	// (already populated by the Put* method) instead of re-locking.
 	m.mu.Lock()
 	subs := make([]*subscription, 0, len(m.subs))
 	for _, s := range m.subs {
-		if s.ws != nil && subscriptionMatches(s.ResourcePath, c) {
-			subs = append(subs, s)
+		if s.ws == nil {
+			continue
 		}
+		if !subscriptionMatches(s.ResourcePath, c) {
+			continue
+		}
+		if !versionAllowed(c.APIVer, m.apiVer, s.downgrade) {
+			continue
+		}
+		subs = append(subs, s)
 	}
 	m.mu.Unlock()
 	now := time.Now()
 	for _, s := range subs {
-		frame, err := buildGrain(s.source, c, now)
+		// Filter against the CANONICAL body (with all v1.3-shape
+		// fields present) so a `description=...` filter still
+		// matches a v1.0 Node whose description got stripped on
+		// the wire. After projection, re-encode the surviving
+		// pre/post bodies via the wire codec so the subscriber
+		// only sees fields that exist in their wire minor.
+		projected, ok := projectChange(c, s.params)
+		if !ok {
+			continue
+		}
+		projected = reencodeChange(projected, m.apiVer)
+		frame, err := buildGrain(s.source, projected, now)
 		if err != nil {
 			continue
 		}
@@ -254,6 +425,164 @@ func (m *SubscriptionManager) onChange(c Change) {
 			m.logger.Warn("registry/subs: send grain failed", "id", s.ID, "err", err)
 		}
 	}
+}
+
+// reencodeChange decodes c.Pre/c.Post into the typed canonical struct
+// for c.ResourceType and re-marshals via the codec for wireVer. When
+// no codec is registered for wireVer (or decode fails), the original
+// Change is returned unchanged.
+func reencodeChange(c Change, wireVer string) Change {
+	codec, ok := is04.Get(wireVer)
+	if !ok {
+		return c
+	}
+	out := c
+	out.Pre = reencodeBody(c.Pre, c.ResourceType, codec)
+	out.Post = reencodeBody(c.Post, c.ResourceType, codec)
+	return out
+}
+
+func reencodeBody(raw json.RawMessage, t is04.ResourceType, codec is04.Codec) json.RawMessage {
+	if len(raw) == 0 {
+		return raw
+	}
+	switch t {
+	case is04.ResourceNode:
+		var v is04.Node
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return raw
+		}
+		if b, err := codec.EncodeNode(v); err == nil {
+			return b
+		}
+	case is04.ResourceDevice:
+		var v is04.Device
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return raw
+		}
+		if b, err := codec.EncodeDevice(v); err == nil {
+			return b
+		}
+	case is04.ResourceSource:
+		var v is04.Source
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return raw
+		}
+		if b, err := codec.EncodeSource(v); err == nil {
+			return b
+		}
+	case is04.ResourceFlow:
+		var v is04.Flow
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return raw
+		}
+		if b, err := codec.EncodeFlow(v); err == nil {
+			return b
+		}
+	case is04.ResourceSender:
+		var v is04.Sender
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return raw
+		}
+		if b, err := codec.EncodeSender(v); err == nil {
+			return b
+		}
+	case is04.ResourceReceiver:
+		var v is04.Receiver
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return raw
+		}
+		if b, err := codec.EncodeReceiver(v); err == nil {
+			return b
+		}
+	}
+	return raw
+}
+
+// projectChange clips a raw Change against an optional filter so the
+// resulting grain reports the resource's filter-set transitions per
+// IS-04 §5.2.
+func projectChange(c Change, params map[string][]string) (Change, bool) {
+	if len(params) == 0 {
+		return c, true
+	}
+	preMatch := jsonMatchesFilter(c.Pre, params)
+	postMatch := jsonMatchesFilter(c.Post, params)
+	if !preMatch && !postMatch {
+		return c, false
+	}
+	out := c
+	if !preMatch {
+		out.Pre = nil
+	}
+	if !postMatch {
+		out.Post = nil
+	}
+	// Re-derive Kind from the projected pair so buildGrain renders
+	// the correct shape: pre-only ⇒ deleted, post-only ⇒ created,
+	// both ⇒ updated/sync (preserve sync if it was sync originally).
+	switch {
+	case len(out.Pre) > 0 && len(out.Post) > 0:
+		if c.Kind == ChangeSync {
+			out.Kind = ChangeSync
+		} else {
+			out.Kind = ChangeUpdated
+		}
+	case len(out.Pre) > 0:
+		out.Kind = ChangeDeleted
+	case len(out.Post) > 0:
+		out.Kind = ChangeCreated
+	}
+	return out, true
+}
+
+// jsonMatchesFilter unmarshals data into a generic map and compares
+// the requested top-level fields. Supports the same shape as the
+// Query API filter:
+//   - "field=value" → top-level equality
+//   - "query.rql=eq(field,value)" → single-predicate RQL
+func jsonMatchesFilter(data json.RawMessage, q map[string][]string) bool {
+	if len(data) == 0 {
+		return false
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return false
+	}
+	for k, vs := range q {
+		switch {
+		case strings.HasPrefix(k, "paging.") || strings.HasPrefix(k, "query."):
+			if k != "query.rql" {
+				continue
+			}
+			for _, v := range vs {
+				p := parseRQLEq(v)
+				if p == nil {
+					continue
+				}
+				val, ok := m[p.Field].(string)
+				if !ok || val != p.Value {
+					return false
+				}
+			}
+		default:
+			val, ok := m[k].(string)
+			if !ok {
+				return false
+			}
+			ok2 := false
+			for _, want := range vs {
+				if val == want {
+					ok2 = true
+					break
+				}
+			}
+			if !ok2 {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (m *SubscriptionManager) removeSub(id string) {
@@ -277,8 +606,46 @@ func subscriptionMatches(resourcePath string, c Change) bool {
 }
 
 // buildGrain turns a Change into the IS-04 §5.2 grain wire envelope.
+//
+// Per IS-04 v1.3.3 §5.2, the (pre, post) pair encodes the change
+// kind:
+//   - created  → pre absent, post present
+//   - updated  → pre present, post present (different bodies)
+//   - deleted  → pre present, post absent
+//   - sync     → pre present, post present (SAME body)
 func buildGrain(source string, c Change, now time.Time) ([]byte, error) {
 	ts := fmt.Sprintf("%d:%d", now.Unix(), now.Nanosecond())
+	row := GrainDataRow{Path: c.ID}
+	switch c.Kind {
+	case ChangeCreated:
+		if len(c.Post) > 0 {
+			p := c.Post
+			row.Post = &p
+		}
+	case ChangeUpdated:
+		if len(c.Pre) > 0 {
+			p := c.Pre
+			row.Pre = &p
+		}
+		if len(c.Post) > 0 {
+			p := c.Post
+			row.Post = &p
+		}
+	case ChangeDeleted:
+		if len(c.Pre) > 0 {
+			p := c.Pre
+			row.Pre = &p
+		}
+	case ChangeSync:
+		// SYNC echoes the current resource as both pre and post —
+		// IS-04 §5.2 grain semantics for "no change since the
+		// subscriber connected".
+		if len(c.Post) > 0 {
+			p := c.Post
+			row.Pre = &p
+			row.Post = &p
+		}
+	}
 	g := Grain{
 		GrainType:         "event",
 		SourceID:          source,
@@ -291,16 +658,9 @@ func buildGrain(source string, c Change, now time.Time) ([]byte, error) {
 		Grain: GrainBody{
 			Type:  "urn:x-nmos:format:data.event",
 			Topic: "/" + c.ResourceType.Plural() + "/",
-			Data: []GrainDataRow{{
-				Path: c.ID,
-				Pre:  c.Pre,
-				Post: c.Post,
-			}},
+			Data:  []GrainDataRow{row},
 		},
 	}
-	_ = c.Kind // change kind isn't part of the grain envelope itself; the
-	// post-only / pre-only / both-set tuple already encodes
-	// created (pre=null, post=set), updated (both set), deleted (post=null), sync (post=set).
 	return json.Marshal(g)
 }
 

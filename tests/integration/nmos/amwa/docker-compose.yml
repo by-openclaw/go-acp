@@ -43,6 +43,35 @@ services:
       - nmos-testing
     restart: unless-stopped
 
+  # IS-04-02 Registry under test. Reuses the same image; the entrypoint
+  # exec's dhs with whatever CLI args we pass, so we drive `registry
+  # nmos serve` here. Without --api-ver the registry mounts every
+  # is04 codec it has compiled in (v1.0/v1.1/v1.2/v1.3) at parallel
+  # /x-nmos/{registration,query}/<v>/ trees so the AMWA Testing tool
+  # can target any minor in one run.
+  dhs-registry:
+    build:
+      context: .
+      dockerfile: Dockerfile.dhs
+    container_name: dhs-registry
+    hostname: dhs-registry
+    networks:
+      nmos:
+        aliases:
+          - dhs-registry.local
+    ports:
+      - "8235:8235"
+    command:
+      - registry
+      - nmos
+      - serve
+      - --bind=:8235
+      - --advertise-host=dhs-registry:8235
+      - --mdns
+    depends_on:
+      - nmos-testing
+    restart: unless-stopped
+
 networks:
   nmos:
     driver: bridge

@@ -23,8 +23,8 @@ import (
 func startRegistryHTTP(t *testing.T, store *Store, mgr *SubscriptionManager) (string, func()) {
 	t.Helper()
 	srv := httpsession.NewServer(nil)
-	installRegistrationRoutes(srv, store, "/x-nmos/registration/v1.3")
-	installQueryRoutes(srv, store, mgr, "/x-nmos/query/v1.3")
+	installRegistrationRoutes(srv, store, "/x-nmos/registration/v1.3", "v1.3")
+	installQueryRoutes(srv, store, mgr, "/x-nmos/query/v1.3", "v1.3")
 
 	routeTable := srv.MuxHandler()
 	handler := routeTable

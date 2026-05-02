@@ -14,13 +14,17 @@ import (
 
 // installRegistrationRoutes wires the Registration API endpoints onto
 // the given HTTP server, base = `/x-nmos/registration/<api-ver>`.
-func installRegistrationRoutes(srv *httpsession.Server, store *Store, base string) {
+// apiVer must match the URL prefix's wire minor (e.g. "v1.0", "v1.3").
+func installRegistrationRoutes(srv *httpsession.Server, store *Store, base, apiVer string) {
 	// Index — `["resource/", "health/"]`.
 	srv.Handle(stdhttp.MethodGet, base+"/", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 		return 0, []string{"resource/", "health/"}, nil
 	})
 
 	// POST /resource — accept registrations.
+	// Spec IS-04 §6.1.1: response MUST include `Location` header pointing
+	// at /x-nmos/registration/<api-ver>/resource/<plural>/<id>. AMWA
+	// IS-04-02 test_03/15/21*/23/24/27-31 fail the suite without it.
 	srv.Handle(stdhttp.MethodPost, base+"/resource", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 4<<20))
 		if err != nil {
@@ -30,8 +34,12 @@ func installRegistrationRoutes(srv *httpsession.Server, store *Store, base strin
 		if err != nil {
 			return stdhttp.StatusBadRequest, httpsession.ErrorBody{Code: 400, Error: "Bad Request", Debug: err.Error()}, nil
 		}
-		hadPrev := preExists(store, env.Type, idFromEnvelope(env))
-		if err := store.IngestRegistration(env); err != nil {
+		id := idFromEnvelope(env)
+		hadPrev := preExists(store, env.Type, id)
+		if err := store.IngestRegistrationVersioned(env, apiVer); err != nil {
+			if errors.Is(err, ErrAPIVerConflict) {
+				return stdhttp.StatusConflict, httpsession.ErrorBody{Code: 409, Error: "Conflict", Debug: err.Error()}, nil
+			}
 			return stdhttp.StatusBadRequest, httpsession.ErrorBody{Code: 400, Error: "Bad Request", Debug: err.Error()}, nil
 		}
 		// Echo the data; spec says response body is the registered resource.
@@ -41,7 +49,11 @@ func installRegistrationRoutes(srv *httpsession.Server, store *Store, base strin
 		if hadPrev {
 			status = stdhttp.StatusOK
 		}
-		return status, raw, nil
+		loc := base + "/resource/" + env.Type.Plural() + "/" + id
+		return status, &httpsession.WithHeaders{
+			Body:    raw,
+			Headers: map[string]string{"Location": loc},
+		}, nil
 	})
 
 	// GET /resource/{type}/{id} — read-back.

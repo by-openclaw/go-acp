@@ -69,11 +69,13 @@ func (Codec) SpecPatch() string { return SpecPatch }
 // (v1.3) struct's JSON keys.
 
 // Fields ACTUALLY introduced in v1.1+ that v1.0 wire MUST NOT carry.
-// `tags` and `description` are NOT in this list: v1.0.3 node.json /
-// device.json don't require them but allow them as additionalProperties,
-// and the AMWA Testing tool's test_28 (and equivalents) expects `tags`
-// to round-trip from the bundle. Stripping them caused
-// "Unable to find expected key 'tags'" Fails on v1.0.
+// `description` + `tags` are NOT in this list because v1.0.3 allows
+// them as additionalProperties — the AMWA IS-04-02 test_23_1 /
+// test_24_1 (basic-query / RQL filter) explicitly populates
+// `description` in the v1.0 body and expects it to round-trip
+// through the WS grain. We instead drop them only when empty
+// (zero-value Go struct field) via stripEmpty in EncodeNode/Device,
+// which matches the behavior of nmos-cpp's v1.0 codec.
 var nodeV11PlusFields = []string{
 	"api",        // added v1.1
 	"clocks",     // added v1.1
@@ -85,15 +87,18 @@ var deviceV11PlusFields = []string{
 }
 
 var sourceV11PlusFields = []string{
-	"clock_name", // added v1.1
-	"grain_rate", // added v1.1
-	"channels",   // added v1.2 (audio variant)
+	"clock_name",  // added v1.1
+	"grain_rate",  // added v1.1
+	"channels",    // added v1.2 (audio variant)
+	// description + tags are core fields in v1.0+ for sources;
+	// IS04Utils.downgrade_resource keeps them on Source. No strip.
 }
 
 var flowV11PlusFields = []string{
 	"device_id",               // added v1.1
 	"grain_rate",              // added v1.1
 	"media_type",              // added v1.1 (top-level)
+	"components",              // added v1.1 (video raw — array)
 	"frame_width",             // added v1.1 (video)
 	"frame_height",            // added v1.1 (video)
 	"interlace_mode",          // added v1.1 (video)
@@ -115,12 +120,96 @@ var receiverV11PlusFields = []string{
 	"interface_bindings", // added v1.2
 }
 
-// EncodeNode marshals a Node for v1.0.3 — strips v1.1+ properties.
+// EncodeNode marshals a Node for v1.0.3 — strips v1.1+ properties
+// and the v1.3-only `authorization` flag from services[*]. (api block
+// is fully stripped, so endpoints[*].authorization is moot.) Empty
+// `description`/`tags` are also stripped: v1.0 doesn't require them
+// and the AMWA Testing tool's per-version fixture lacks them.
 func (Codec) EncodeNode(n is04.Node) ([]byte, error) {
 	if err := validateNodeV10(n); err != nil {
 		return nil, err
 	}
-	return stripFields(n, nodeV11PlusFields)
+	raw, err := stripFields(n, nodeV11PlusFields)
+	if err != nil {
+		return nil, err
+	}
+	raw, err = stripEmptyOptional(raw, "description", "tags")
+	if err != nil {
+		return nil, err
+	}
+	return stripAuthFromServices(raw)
+}
+
+// stripEmptyOptional drops the named top-level keys when their JSON
+// value is empty — empty string for strings, empty object/array for
+// objects/arrays, null. Used by v10 codecs to clean up
+// description/tags fields the canonical struct emits even when the
+// caller didn't supply them.
+func stripEmptyOptional(raw []byte, keys ...string) ([]byte, error) {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return raw, nil
+	}
+	for _, k := range keys {
+		v, ok := m[k]
+		if !ok {
+			continue
+		}
+		if jsonValueIsEmpty(v) {
+			delete(m, k)
+		}
+	}
+	return json.MarshalIndent(m, "", "  ")
+}
+
+func jsonValueIsEmpty(v json.RawMessage) bool {
+	s := string(v)
+	switch s {
+	case `""`, `null`, `{}`, `[]`:
+		return true
+	}
+	return false
+}
+
+// stripAuthFromServices removes the `authorization` key from every
+// element of `services[]` in a JSON object body. Used by codecs whose
+// wire schema predates IS-10 (`authorization` was added to the
+// services entry in IS-04 v1.3 alongside BCP-003-02 auth).
+func stripAuthFromServices(raw []byte) ([]byte, error) {
+	return stripFromArray(raw, []string{"services"}, "authorization")
+}
+
+// stripFromArray walks raw as JSON, descends into the nested object
+// path, then drops `key` from every element of the array at the leaf.
+// Re-marshals with 2-space indent. Idempotent — silently returns the
+// input unchanged when the path doesn't resolve to an array.
+func stripFromArray(raw []byte, path []string, key string) ([]byte, error) {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, err
+	}
+	cur := v
+	for _, p := range path[:len(path)-1] {
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return raw, nil
+		}
+		cur = m[p]
+	}
+	leaf, ok := cur.(map[string]any)
+	if !ok {
+		return raw, nil
+	}
+	arr, ok := leaf[path[len(path)-1]].([]any)
+	if !ok {
+		return raw, nil
+	}
+	for _, el := range arr {
+		if em, ok := el.(map[string]any); ok {
+			delete(em, key)
+		}
+	}
+	return json.MarshalIndent(v, "", "  ")
 }
 
 // DecodeNode parses a v1.0.3 Node payload. Rejects v1.1+ keys.
@@ -157,9 +246,6 @@ func validateNodeV10(n is04.Node) error {
 	if n.Version == "" || !is04.IsValidVersion(n.Version) {
 		errs = append(errs, fmt.Sprintf("node.version %q: must match `<sec>:<nsec>` TAI form", n.Version))
 	}
-	if n.Label == "" {
-		errs = append(errs, "node.label: required")
-	}
 	if n.Href == "" {
 		errs = append(errs, "node.href: required (v1.0 top-level)")
 	}
@@ -180,13 +266,18 @@ func validateNodeV10(n is04.Node) error {
 	return joinErrs("is04 v1.0 node validation failed", errs)
 }
 
-// EncodeDevice marshals a Device for v1.0.3 — strips description, tags,
-// controls.
+// EncodeDevice marshals a Device for v1.0.3 — strips `controls`
+// (v1.1) plus empty `description`/`tags` to match the IS04Utils v1.0
+// downgrade shape.
 func (Codec) EncodeDevice(d is04.Device) ([]byte, error) {
 	if err := validateDeviceV10(d); err != nil {
 		return nil, err
 	}
-	return stripFields(d, deviceV11PlusFields)
+	raw, err := stripFields(d, deviceV11PlusFields)
+	if err != nil {
+		return nil, err
+	}
+	return stripEmptyOptional(raw, "description", "tags")
 }
 
 // DecodeDevice parses a v1.0.3 Device payload. Rejects v1.1+ keys.
@@ -219,9 +310,6 @@ func validateDeviceV10(d is04.Device) error {
 	}
 	if d.Version == "" || !is04.IsValidVersion(d.Version) {
 		errs = append(errs, fmt.Sprintf("device.version %q: must match `<sec>:<nsec>`", d.Version))
-	}
-	if d.Label == "" {
-		errs = append(errs, "device.label: required")
 	}
 	if d.Type == "" {
 		errs = append(errs, "device.type: required (URN)")
@@ -288,12 +376,6 @@ func validateSourceV10(s is04.Source) error {
 	if s.Version == "" || !is04.IsValidVersion(s.Version) {
 		errs = append(errs, fmt.Sprintf("source.version %q: must match `<sec>:<nsec>`", s.Version))
 	}
-	if s.Label == "" {
-		errs = append(errs, "source.label: required")
-	}
-	if s.Description == "" {
-		errs = append(errs, "source.description: required")
-	}
 	if s.Format == "" {
 		errs = append(errs, "source.format: required (URN)")
 	}
@@ -358,12 +440,6 @@ func validateFlowV10(f is04.Flow) error {
 	if f.Version == "" || !is04.IsValidVersion(f.Version) {
 		errs = append(errs, fmt.Sprintf("flow.version %q: must match `<sec>:<nsec>`", f.Version))
 	}
-	if f.Label == "" {
-		errs = append(errs, "flow.label: required")
-	}
-	if f.Description == "" {
-		errs = append(errs, "flow.description: required")
-	}
 	if f.Format == "" || !is04.IsValidFormatURN(f.Format) {
 		errs = append(errs, fmt.Sprintf("flow.format %q: must be a known NMOS format URN", f.Format))
 	}
@@ -425,12 +501,6 @@ func validateSenderV10(s is04.Sender) error {
 	if s.Version == "" || !is04.IsValidVersion(s.Version) {
 		errs = append(errs, fmt.Sprintf("sender.version %q: must match `<sec>:<nsec>`", s.Version))
 	}
-	if s.Label == "" {
-		errs = append(errs, "sender.label: required")
-	}
-	if s.Description == "" {
-		errs = append(errs, "sender.description: required")
-	}
 	if s.FlowID == nil || *s.FlowID == "" || !is04.IsValidUUID(*s.FlowID) {
 		errs = append(errs, "sender.flow_id: required (UUID, non-null in v1.0)")
 	}
@@ -450,12 +520,44 @@ func validateSenderV10(s is04.Sender) error {
 }
 
 // EncodeReceiver marshals a Receiver for v1.0.3 — strips
-// interface_bindings.
+// `interface_bindings` (v1.2 addition) AND `subscription.active`
+// (v1.1 addition). The IS04Utils.downgrade_resource v1.0 path
+// removes both, so the SYNC body must too for AMWA test_31's
+// byte-equality check.
 func (Codec) EncodeReceiver(r is04.Receiver) ([]byte, error) {
 	if err := validateReceiverV10(r); err != nil {
 		return nil, err
 	}
-	return stripFields(r, receiverV11PlusFields)
+	raw, err := stripFields(r, receiverV11PlusFields)
+	if err != nil {
+		return nil, err
+	}
+	return stripNestedKey(raw, []string{"subscription"}, "active")
+}
+
+// stripNestedKey for v1.0 — same shape as the v11/v12 helper. Walks
+// the nested object path, deletes `key` from the leaf map.
+func stripNestedKey(raw []byte, path []string, key string) ([]byte, error) {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, err
+	}
+	cur := v
+	for _, p := range path[:len(path)-1] {
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return raw, nil
+		}
+		cur = m[p]
+	}
+	leaf, ok := cur.(map[string]any)
+	if !ok {
+		return raw, nil
+	}
+	if leaf2, ok := leaf[path[len(path)-1]].(map[string]any); ok {
+		delete(leaf2, key)
+	}
+	return json.MarshalIndent(v, "", "  ")
 }
 
 // DecodeReceiver parses a v1.0.3 Receiver payload. Rejects v1.1+ keys.
@@ -488,12 +590,6 @@ func validateReceiverV10(r is04.Receiver) error {
 	}
 	if r.Version == "" || !is04.IsValidVersion(r.Version) {
 		errs = append(errs, fmt.Sprintf("receiver.version %q: must match `<sec>:<nsec>`", r.Version))
-	}
-	if r.Label == "" {
-		errs = append(errs, "receiver.label: required")
-	}
-	if r.Description == "" {
-		errs = append(errs, "receiver.description: required")
 	}
 	if r.Format == "" {
 		errs = append(errs, "receiver.format: required (URN)")
