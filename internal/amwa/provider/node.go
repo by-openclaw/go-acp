@@ -53,6 +53,18 @@ func encodeList[T any](enc func(T) ([]byte, error), in []T) json.RawMessage {
 	return json.RawMessage(out)
 }
 
+// nodeInstanceName returns the DNS-SD instance name for a Node's
+// _nmos-node._tcp announce. RFC 6763 §4.1.1 wants instance names to be
+// human-readable AND unique on the link — using the Node's label
+// satisfies both. Falls back to "dhs-nmos-node" only when the label
+// is empty (config bug, but don't crash).
+func nodeInstanceName(label string) string {
+	if label == "" {
+		return "dhs-nmos-node"
+	}
+	return label
+}
+
 // IS04NodeConfig is the runtime config for the Node API server. Bind
 // address, advertise host, mDNS mode, priority — separate from
 // NodeConfig (the file-loaded resource bundle).
@@ -164,7 +176,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.responder = resp
 		s.cancel = cancel
 		ins := dnssdcodec.Instance{
-			Name:    "dhs-nmos-node",
+			Name:    nodeInstanceName(s.bundle.Node.Label),
 			Service: dnssdcodec.ServiceNode,
 			Domain:  dnssdcodec.DefaultDomain,
 			Host:    host,

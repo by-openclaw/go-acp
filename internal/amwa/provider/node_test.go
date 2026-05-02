@@ -112,6 +112,21 @@ func TestValidateBundleRequiresExistingDevice(t *testing.T) {
 	}
 }
 
+func TestNodeInstanceName(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"", "dhs-nmos-node"},
+		{"dhs-debian-node", "dhs-debian-node"},
+		{"Studio A — Camera 3", "Studio A — Camera 3"},
+	}
+	for _, c := range cases {
+		if got := nodeInstanceName(c.in); got != c.want {
+			t.Errorf("nodeInstanceName(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
 func TestNodeServerEndToEnd(t *testing.T) {
 	addr := freeAddr(t)
 	s, err := NewIS04NodeServer(nil, validBundle(), IS04NodeConfig{
