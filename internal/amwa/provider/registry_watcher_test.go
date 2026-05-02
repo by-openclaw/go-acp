@@ -151,6 +151,91 @@ func TestRegistryWatcherSelectsByPriority(t *testing.T) {
 	}
 }
 
+// Cerebrum (and any IS-04 v1.2 transitional Registry) advertises the
+// same URL on both _nmos-register._tcp (modern) AND
+// _nmos-registration._tcp (legacy). Best() must dedupe by URL — without
+// it, byFull's random map iteration makes Best() pick a different
+// FullName each tick, and the registration loop's
+// shouldSwitchToBetter() flap-switches every second between the two
+// names, hammering the Registry with deregister + re-register pairs
+// that show up as Senders/Receivers churning in the UI.
+//
+// Verified live on Proxmox LXC rig 2026-05-02 against Cerebrum @
+// 10.100.0.5 advertising on both names.
+func TestRegistryWatcherBestDedupesByURL(t *testing.T) {
+	w := &RegistryWatcher{
+		preferAPIVer:  "v1.3",
+		disqualifyTTL: 30 * time.Second,
+		byFull:        map[string]RegistryCandidate{},
+		disqualified:  map[string]time.Time{},
+	}
+	// Cerebrum on both service names, same URL, same priority.
+	w.byFull["Cerebrum._nmos-register._tcp.local."] = RegistryCandidate{
+		FullName: "Cerebrum._nmos-register._tcp.local.",
+		URL:      "http://10.100.0.5:8080", Priority: 0,
+	}
+	w.byFull["Cerebrum._nmos-registration._tcp.local."] = RegistryCandidate{
+		FullName: "Cerebrum._nmos-registration._tcp.local.",
+		URL:      "http://10.100.0.5:8080", Priority: 0,
+	}
+
+	// 100 calls in a row must return the SAME FullName — anything else
+	// proves the flap.
+	first, ok := w.Best()
+	if !ok {
+		t.Fatal("Best returned ok=false")
+	}
+	if first.URL != "http://10.100.0.5:8080" {
+		t.Fatalf("Best.URL = %q, want http://10.100.0.5:8080", first.URL)
+	}
+	for i := 0; i < 100; i++ {
+		got, _ := w.Best()
+		if got.FullName != first.FullName {
+			t.Fatalf("call %d returned FullName=%q, want stable %q", i, got.FullName, first.FullName)
+		}
+	}
+
+	// Tie-breaker prefers _nmos-register (modern) over _nmos-registration
+	// (legacy) — alphabetically earlier.
+	if first.FullName != "Cerebrum._nmos-register._tcp.local." {
+		t.Fatalf("Best.FullName = %q, want modern name (alphabetically first)", first.FullName)
+	}
+
+	// Disqualifying the modern name leaves only the legacy name —
+	// Best() must promote the legacy entry, NOT return ok=false.
+	w.Disqualify("Cerebrum._nmos-register._tcp.local.")
+	got, ok := w.Best()
+	if !ok {
+		t.Fatal("Best ok=false after disqualifying only modern name; legacy should remain")
+	}
+	if got.FullName != "Cerebrum._nmos-registration._tcp.local." {
+		t.Fatalf("Best.FullName = %q after disqualify(modern), want legacy", got.FullName)
+	}
+}
+
+// Empty-URL pre-resolution stubs (DNS-SD instances seen before their A
+// record arrives) must not appear as Best() — pickBase would synthesize
+// an invalid base URL `/x-nmos/registration/v1.3` that 5xx'd every
+// registration attempt.
+func TestRegistryWatcherBestDropsEmptyURL(t *testing.T) {
+	w := &RegistryWatcher{
+		preferAPIVer:  "v1.3",
+		disqualifyTTL: 30 * time.Second,
+		byFull:        map[string]RegistryCandidate{},
+		disqualified:  map[string]time.Time{},
+	}
+	w.byFull["pre-resolve.example."] = RegistryCandidate{
+		FullName: "pre-resolve.example.", URL: "", Priority: 0,
+	}
+	w.byFull["resolved.example."] = RegistryCandidate{
+		FullName: "resolved.example.", URL: "http://r:8080", Priority: 50,
+	}
+	got, ok := w.Best()
+	if !ok || got.URL != "http://r:8080" {
+		t.Fatalf("Best = %+v ok=%v, want URL=http://r:8080 (empty-URL skipped)", got, ok)
+	}
+}
+
 func TestRegistryWatcherDisqualifyExpires(t *testing.T) {
 	w := &RegistryWatcher{
 		preferAPIVer:  "v1.3",

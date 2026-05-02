@@ -142,22 +142,56 @@ func (w *RegistryWatcher) Close() error {
 
 // Best returns the current best Registry candidate, ok=false if none
 // known (or every one has been disqualified within disqualifyTTL).
+//
+// Dedupes by URL: the same Registry can appear twice in byFull when it
+// advertises on both _nmos-register._tcp (modern) AND
+// _nmos-registration._tcp (legacy) — that's spec-conformant during a
+// v1.2 transition and matches Cerebrum's live behaviour. Without
+// dedupe, Best() returns whichever name the map's random iteration
+// happens to pick, and shouldSwitchToBetter() flap-switches every
+// tick. Dedupe groups entries by URL, picks the highest-priority
+// FullName per group, with ties broken alphabetically (which prefers
+// the modern service name `_nmos-register` over `_nmos-registration`).
 func (w *RegistryWatcher) Best() (RegistryCandidate, bool) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.gcDisqualifiedLocked()
-	cands := make([]RegistryCandidate, 0, len(w.byFull))
+	// First pass: collect non-disqualified entries grouped by URL.
+	byURL := make(map[string]RegistryCandidate, len(w.byFull))
 	for full, c := range w.byFull {
 		if _, dq := w.disqualified[full]; dq {
 			continue
 		}
-		cands = append(cands, c)
+		// Drop empty-URL entries — pre-resolution stubs that can't
+		// be POSTed against anyway. Best() returning one would make
+		// pickBase produce an invalid base URL.
+		if c.URL == "" {
+			continue
+		}
+		prev, seen := byURL[c.URL]
+		if !seen {
+			byURL[c.URL] = c
+			continue
+		}
+		// Keep the higher-priority (lower number) entry; if equal,
+		// keep the alphabetically earlier FullName for determinism.
+		if c.Priority < prev.Priority ||
+			(c.Priority == prev.Priority && c.FullName < prev.FullName) {
+			byURL[c.URL] = c
+		}
 	}
-	if len(cands) == 0 {
+	if len(byURL) == 0 {
 		return RegistryCandidate{}, false
 	}
+	cands := make([]RegistryCandidate, 0, len(byURL))
+	for _, c := range byURL {
+		cands = append(cands, c)
+	}
 	sort.SliceStable(cands, func(i, j int) bool {
-		return cands[i].Priority < cands[j].Priority
+		if cands[i].Priority != cands[j].Priority {
+			return cands[i].Priority < cands[j].Priority
+		}
+		return cands[i].FullName < cands[j].FullName
 	})
 	return cands[0], true
 }
