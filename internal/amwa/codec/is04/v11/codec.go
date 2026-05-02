@@ -188,16 +188,29 @@ func (Codec) EncodeSender(s is04.Sender) ([]byte, error) {
 	return stripFields(s, senderV12PlusFields)
 }
 
-// DecodeSender parses a v1.1.3 Sender payload. Rejects v1.2+ keys.
+// DecodeSender parses a v1.1.3 Sender payload. Rejects v1.2+ keys
+// and applies only the v1.1 required-field set — bypasses
+// is04.DecodeSender because that runs the canonical (v1.3)
+// validator which requires interface_bindings, a v1.2 addition.
+// AMWA test_13 sends a v1.1-shaped Sender body (no interface_bindings,
+// no caps, no subscription) — the v1.3 validator rejected it as 400.
 func (Codec) DecodeSender(raw []byte) (is04.Sender, error) {
 	if err := rejectFields(raw, senderV12PlusFields, "sender"); err != nil {
 		return is04.Sender{}, err
 	}
-	s, err := is04.DecodeSender(raw)
-	if err != nil {
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.DisallowUnknownFields()
+	var s is04.Sender
+	if err := d.Decode(&s); err != nil {
+		return is04.Sender{}, fmt.Errorf("is04 v1.1: decode sender: %w", err)
+	}
+	if d.More() {
+		return is04.Sender{}, fmt.Errorf("is04 v1.1: decode sender: trailing JSON content")
+	}
+	if err := validateSenderV11(s); err != nil {
 		return is04.Sender{}, err
 	}
-	return *s, nil
+	return s, nil
 }
 
 // ValidateSender applies the v1.1.3 required-field set — drops the
