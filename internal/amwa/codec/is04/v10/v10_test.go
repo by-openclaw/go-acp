@@ -86,9 +86,11 @@ func TestNodeEncodeStripsV11PlusFields(t *testing.T) {
 
 func TestNodeDecodeRejectsV11PlusFields(t *testing.T) {
 	c := Codec{}
+	// description and tags are NOT v1.1+ — v1.0.3 schema treats them
+	// as permitted additionalProperties, and AMWA test_28 expects
+	// `tags` to round-trip from the bundle on /x-nmos/node/v1.0/.
+	// Only api / clocks / interfaces are genuinely v1.1+ keys.
 	cases := []string{
-		`"description":"x"`,
-		`"tags":{}`,
 		`"api":{"versions":["v1.0"],"endpoints":[]}`,
 		`"clocks":[]`,
 		`"interfaces":[]`,

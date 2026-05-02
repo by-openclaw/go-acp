@@ -68,18 +68,20 @@ func (Codec) SpecPatch() string { return SpecPatch }
 // wire MUST NOT carry. Each list is a strict subset of the canonical
 // (v1.3) struct's JSON keys.
 
+// Fields ACTUALLY introduced in v1.1+ that v1.0 wire MUST NOT carry.
+// `tags` and `description` are NOT in this list: v1.0.3 node.json /
+// device.json don't require them but allow them as additionalProperties,
+// and the AMWA Testing tool's test_28 (and equivalents) expects `tags`
+// to round-trip from the bundle. Stripping them caused
+// "Unable to find expected key 'tags'" Fails on v1.0.
 var nodeV11PlusFields = []string{
-	"description", // added v1.1 via resource_core
-	"tags",        // added v1.1 via resource_core
-	"api",         // added v1.1
-	"clocks",      // added v1.1
-	"interfaces",  // added v1.2
+	"api",        // added v1.1
+	"clocks",     // added v1.1
+	"interfaces", // added v1.2
 }
 
 var deviceV11PlusFields = []string{
-	"description", // added v1.1 via resource_core
-	"tags",        // added v1.1 via resource_core
-	"controls",    // added v1.1
+	"controls", // added v1.1
 }
 
 var sourceV11PlusFields = []string{
