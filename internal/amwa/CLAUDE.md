@@ -86,6 +86,42 @@ api_auth  = true | false
 pri       = <int>          # lower = higher priority
 ```
 
+### DNS-SD service-name version transition (binding)
+
+IS-04 v1.2 renamed the registration service from
+`_nmos-registration._tcp` (legacy) to `_nmos-register._tcp` (modern).
+v1.0 / v1.1 Registries advertise on the legacy name only; v1.2+ on the
+modern one. The watcher MUST browse BOTH concurrently — a Node that
+browsed only the modern name would miss every legacy Registry on the
+link. See `feedback_amwa_strict_all_versions` and the
+`internal/amwa/codec/dnssd/types.go` constants `ServiceRegister` +
+`ServiceRegisterLegacy`.
+
+### DNS-SD backend selection (multi-OS)
+
+`internal/amwa/session/dnssd/` exposes [Browser] / [Responder]
+**interfaces**, picked at process start by `NewBrowser` /
+`NewResponder` based on what's reachable on the host:
+
+| Host | Backend | Why |
+|---|---|---|
+| Linux + avahi-daemon on system DBus | **Avahi** via `org.freedesktop.Avahi.Server` (pure-Go via `github.com/godbus/dbus/v5`) | sub-ms cascade-timing per AMWA test_05/15/16; full RFC 6762/6763 corner-case handling |
+| macOS | **Bonjour** via `libSystem` (CGo, planned #196) | Bonjour daemon always present; canonical path |
+| Windows + Bonjour Service installed | **Bonjour** via `dnssd.dll` (CGo, planned #195) | matches Cerebrum / nmos-cpp Windows behaviour |
+| anything else (no daemon, slim containers, etc.) | **stdlib** — pure Go `net.UDPConn` on 224.0.0.251:5353 | universal fallback; never removed; lower perf (500 ms read-deadline jitter) means cascade-timing tests degrade |
+
+The choice is logged at INFO at start (`dnssd: using Avahi via DBus
+(system daemon)` / `dnssd: using stdlib browser (no system daemon
+detected)`). **Stdlib path is the floor — never delete it.** Future
+contributors keep all OS paths so that a slim container (or a Windows
+host without Bonjour, or a misconfigured systemd-less Linux box) still
+runs dhs — degraded conformance, never broken.
+
+Tracking: epic #194 (full daemon delegation), Phase A landed on
+`feat/nmos-is04-amwa-conformance` for Linux Avahi; Phases B-windows
+(#195) + B-macos (#196) + C (LXC multi-distro #197) follow on the same
+protocol branch per `feedback_pr_per_protocol`.
+
 ---
 
 ## Resource graph (the IS-04 universe)

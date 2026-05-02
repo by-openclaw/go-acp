@@ -151,6 +151,23 @@ status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amw
 > - **Reference impl: sony/nmos-cpp** (Apache-2.0, JT-NM Tested) — use
 >   as cross-impl byte oracle + interop peer. Same role as `osc.js` for
 >   OSC and Commie for Probel.
+> - **DNS-SD backend: multi-OS, daemon-delegated where available, stdlib
+>   fallback always.** `internal/amwa/session/dnssd/` exposes Browser +
+>   Responder INTERFACES picked at process start: Avahi (Linux,
+>   `org.freedesktop.Avahi.Server` via DBus, pure-Go), Bonjour (macOS
+>   `libSystem` / Windows `dnssd.dll`, CGo), stdlib (universal
+>   fallback). Phase A (Linux Avahi) landed in `eb55fb2`; Phase B-windows
+>   (#195) + B-macos (#196) + C-multi-distro-LXC (#197) pending.
+>   **Never remove the stdlib path** — it's the floor when no daemon is
+>   reachable (slim containers, Windows without Bonjour, systemd-less
+>   Linux). Performance degrades but the Node still runs. See
+>   `internal/amwa/CLAUDE.md` "DNS-SD backend selection (multi-OS)".
+> - **Don't break OS coverage.** When extending the DNS-SD layer, every
+>   change must compile + test green on Linux (Avahi path) AND on
+>   macOS/Windows (stdlib path until B-macos / B-windows land).
+>   `go build ./...` is the cross-OS smoke test; CI runs it on all
+>   three. Removing one platform's support to "simplify" breaks the
+>   fleet — user fleet is WinSrv + Debian + Ubuntu + RHEL + Rocky.
 > - **Real-world testbed peers:** Lawo VSM Studio (NMOS Controller —
 >   IS-04 Node API + IS-05 v1.0/1.1, HTTP only, no Query API, no
 >   WebSocket, no scheduled activations); EVS Cerebrum (cerebrum-nb

@@ -31,6 +31,20 @@ land in `results/is04-01-v<X>.json`. Run between rounds with a full
 | #193 watcher api_ver filter | `1b9dd33` | Browse both `_nmos-register._tcp` AND `_nmos-registration._tcp`; v1.0/v1.1 mocks now discoverable |
 | #192 provider downcast | `fd26b4b` | Per-version codec dispatch on every Node-API GET / PUT-target body; auto_node_11/12 now Pass on v1.2 |
 | #191 v12 codec gating | `bb0cffe` | Strip `Node.interfaces[].attached_network_device` + `Receiver.caps.{constraint_sets,version}` for v1.2 wire |
+| nmos-cpp arch alignment | `0c6ea9a` | cascade always heartbeat-first; Browser fan-out subscriptions; one shared Browser per process |
+| #194 DNS-SD daemon delegation Phase A — Avahi/Linux | `eb55fb2` | system DNS-SD daemon path via Avahi DBus (pure-Go); sub-ms cascade timing; v1.0 Pass count: **30 → 43** |
+
+### Open sub-issues (multi-OS coverage to preserve)
+
+Phase B + C of #194. The dhs DNS-SD layer is interface-driven so each OS path is isolated by build tag — adding any of these does NOT touch the Linux Avahi or stdlib paths.
+
+| Issue | Phase | What |
+|---|---|---|
+| #195 | B-windows | Bonjour via `dnssd.dll` (CGo); Bonjour Service install required |
+| #196 | B-macos | Bonjour via `libSystem` (CGo); daemon always present on macOS |
+| #197 | C | LXC multi-distro interop test (Debian/Ubuntu/RHEL/Rocky) |
+
+**Stdlib path is the floor — keep working on every OS regardless of which daemon backend is active.**
 
 How to reproduce any single round:
 

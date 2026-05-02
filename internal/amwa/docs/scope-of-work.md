@@ -7,6 +7,31 @@ expands the NMOS feature surface should update the matching row.
 > Read order before touching code: this file → `architecture.md` →
 > `integration-plan.md` → `internal/amwa/CLAUDE.md`.
 
+## 0a. Binding rule — DNS-SD backend coverage (multi-OS)
+
+`internal/amwa/session/dnssd/` exposes [Browser] / [Responder] interfaces
+backed by per-OS implementations. Selection happens at process start
+(`detect.go`) and is logged.
+
+| Platform | Backend | Status | Issue |
+|---|---|---|---|
+| Linux + avahi-daemon | Avahi via DBus (pure-Go) | **landed** `eb55fb2` | #194 Phase A |
+| macOS | Bonjour via libSystem (CGo) | planned | #196 |
+| Windows + Bonjour Service | Bonjour via dnssd.dll (CGo) | planned | #195 |
+| any host | stdlib `net.UDPConn` + in-tree codec | always present (floor) | — |
+| Linux multi-distro test rig | LXC (Debian/Ubuntu/RHEL/Rocky) | planned | #197 |
+
+**Stdlib path is the floor — never delete.** Anyone extending the
+DNS-SD layer must keep all three OS paths compiling green. Removing
+one to "simplify" breaks the user's fleet (WinSrv + Debian + Ubuntu +
+RHEL + Rocky). The interface abstraction is the seam: backends are
+isolated by build tags + a small `tryDaemon*` factory.
+
+User explicitly approved the godbus dep + CGo paths 2026-05-02 with
+the constraint: "no external lib was only to reduce risk, but if it
+is mandatory we will do" + "we have winsrv, linux debian, ubuntu, rhel,
+rocky". Strict-spec + perf + multi-OS + idempotent are non-negotiable.
+
 ## 0. Binding rule — strict every AMWA-published version
 
 For every spec listed in `internal/amwa/CLAUDE.md` Versioning table:
