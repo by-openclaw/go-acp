@@ -26,6 +26,7 @@ import (
 	stdhttp "net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -52,10 +53,15 @@ var ErrWebSocketClosed = errors.New("nmos/http: websocket closed")
 // WebSocket wraps a hijacked TCP connection and provides text-frame
 // I/O.
 type WebSocket struct {
-	conn       net.Conn
-	bufr       *bufio.Reader
-	mu         sync.Mutex
-	closed     bool
+	conn net.Conn
+	bufr *bufio.Reader
+	mu   sync.Mutex
+	// closed is atomic so ReadText can poll it without holding `mu`
+	// (a long readFrame call would otherwise block Close behind it).
+	// Writes still happen under `mu` to serialise with the
+	// concurrent Close-frame write that races against in-flight
+	// writeFrame from Ping/Pong handlers.
+	closed     atomic.Bool
 	clientSide bool // when true, outgoing frames are masked (RFC 6455 §5.3 client requirement)
 }
 
@@ -109,7 +115,7 @@ func wsAcceptKey(secKey string) string {
 func (w *WebSocket) SendText(payload []byte) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.closed {
+	if w.closed.Load() {
 		return ErrWebSocketClosed
 	}
 	return writeFrame(w.conn, wsOpcodeText, payload, w.clientSide)
@@ -119,7 +125,7 @@ func (w *WebSocket) SendText(payload []byte) error {
 func (w *WebSocket) SendPing(payload []byte) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.closed {
+	if w.closed.Load() {
 		return ErrWebSocketClosed
 	}
 	return writeFrame(w.conn, wsOpcodePing, payload, w.clientSide)
@@ -129,11 +135,11 @@ func (w *WebSocket) SendPing(payload []byte) error {
 // Idempotent.
 func (w *WebSocket) Close() error {
 	w.mu.Lock()
-	if w.closed {
+	if w.closed.Load() {
 		w.mu.Unlock()
 		return nil
 	}
-	w.closed = true
+	w.closed.Store(true)
 	// Write Close frame (best-effort), then close TCP.
 	_ = writeFrame(w.conn, wsOpcodeClose, []byte{0x03, 0xE8}, w.clientSide) // 1000 = normal closure
 	w.mu.Unlock()
@@ -145,7 +151,7 @@ func (w *WebSocket) Close() error {
 // Close frames return ErrWebSocketClosed.
 func (w *WebSocket) ReadText() ([]byte, error) {
 	for {
-		if w.closed {
+		if w.closed.Load() {
 			return nil, ErrWebSocketClosed
 		}
 		opcode, payload, err := readFrame(w.bufr)
