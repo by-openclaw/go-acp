@@ -103,6 +103,14 @@ type IS04NodeServer struct {
 	regClient *RegistrationClient
 	watcher   *RegistryWatcher
 
+	// announceInstance + announceCtx are kept around so the mDNS
+	// _nmos-node._tcp announce can be torn down on registration
+	// success (IS-04 §4.2.1: a registered Node MUST stop advertising
+	// _nmos-node._tcp until registration is lost) and rebuilt
+	// verbatim on lose-registration.
+	announceInstance dnssdcodec.Instance
+	announceCtx      context.Context
+
 	// Per-endpoint hit counters.
 	indexHits    uint64
 	selfHits     uint64
@@ -167,14 +175,15 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// DNS-SD announce.
 	if s.cfg.DiscoveryMode == "" || s.cfg.DiscoveryMode == "mdns" {
 		host, port := splitHostPort(s.cfg.AdvertiseHost, s.cfg.Bind)
-		resp, err := dnssdsession.NewResponder(s.logger)
-		if err != nil {
-			s.mu.Unlock()
-			return fmt.Errorf("provider/node: open mDNS responder: %w", err)
+		// IS-04 §3.1 + AMWA test_12_01: api_ver TXT carries the FULL
+		// comma-separated list of versions the Node supports (from the
+		// bundle's `api.versions`), NOT just the wire api_ver.
+		// Advertising only "v1.3" makes the Node look like v1.3+-only,
+		// which test_12_01 flags as Warning even when registered.
+		apiVerTXT := s.cfg.APIVer
+		if len(s.bundle.Node.API.Versions) > 0 {
+			apiVerTXT = strings.Join(s.bundle.Node.API.Versions, ",")
 		}
-		ctxAnnounce, cancel := context.WithCancel(ctx)
-		s.responder = resp
-		s.cancel = cancel
 		ins := dnssdcodec.Instance{
 			Name:    nodeInstanceName(s.bundle.Node.Label),
 			Service: dnssdcodec.ServiceNode,
@@ -183,19 +192,20 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 			Port:    uint16(port),
 			TXT: map[string]string{
 				dnssdcodec.TXTKeyAPIProto: "http",
-				dnssdcodec.TXTKeyAPIVer:   s.cfg.APIVer,
+				dnssdcodec.TXTKeyAPIVer:   apiVerTXT,
 				dnssdcodec.TXTKeyAPIAuth:  "false",
 				dnssdcodec.TXTKeyPriority: strconv.Itoa(s.cfg.Priority),
 			},
 		}
-		if err := resp.Announce(ctxAnnounce, ins); err != nil {
+		s.announceInstance = ins
+		// Save the parent context for later re-announce on
+		// lose-registration; the per-announce sub-context is fresh
+		// each time (Avahi auto-cancels on Close).
+		s.announceCtx = ctx
+		if err := s.startMDNSAnnounceLocked(); err != nil {
 			s.mu.Unlock()
-			_ = resp.Close()
-			return fmt.Errorf("provider/node: announce %s: %w", dnssdcodec.ServiceNode, err)
+			return err
 		}
-		s.logger.Info("provider/node: mDNS announce active",
-			"service", dnssdcodec.ServiceNode, "host", host, "port", port,
-			"api_ver", s.cfg.APIVer, "pri", s.cfg.Priority)
 	}
 
 	// Registration: explicit URL wins (Mode B). Otherwise, when in
@@ -203,6 +213,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// the highest-pri Registry — that's IS-04 §3.1 Mode A.
 	if s.cfg.RegistryURL != "" {
 		rc := NewRegistrationClient(s.logger, s.cfg.RegistryURL, s.cfg.APIVer, s.bundle)
+		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
 		go rc.Run(ctx)
 	} else if s.cfg.DiscoveryMode == "" || s.cfg.DiscoveryMode == "mdns" {
@@ -219,6 +230,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.watcher = w
 		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
 		rc.SetWatcher(w)
+		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
 		go rc.Run(ctx)
 	}
@@ -243,6 +255,69 @@ func (s *IS04NodeServer) Stop() error {
 		_ = s.regClient.Close()
 	}
 	return nil
+}
+
+// startMDNSAnnounceLocked opens a fresh Responder + Announces the saved
+// announceInstance. Caller MUST hold s.mu. Idempotent: a no-op if a
+// responder is already active. Used both at first Serve and to
+// re-announce after a lose-registration transition.
+func (s *IS04NodeServer) startMDNSAnnounceLocked() error {
+	if s.responder != nil {
+		return nil
+	}
+	resp, err := dnssdsession.NewResponder(s.logger)
+	if err != nil {
+		return fmt.Errorf("provider/node: open mDNS responder: %w", err)
+	}
+	ctxAnnounce, cancel := context.WithCancel(s.announceCtx)
+	if err := resp.Announce(ctxAnnounce, s.announceInstance); err != nil {
+		cancel()
+		_ = resp.Close()
+		return fmt.Errorf("provider/node: announce %s: %w", dnssdcodec.ServiceNode, err)
+	}
+	s.responder = resp
+	s.cancel = cancel
+	s.logger.Info("provider/node: mDNS announce active",
+		"service", dnssdcodec.ServiceNode,
+		"host", s.announceInstance.Host, "port", s.announceInstance.Port,
+		"api_ver", s.cfg.APIVer, "pri", s.cfg.Priority)
+	return nil
+}
+
+// stopMDNSAnnounceLocked tears the responder down + emits goodbye
+// packets. Caller MUST hold s.mu. Idempotent.
+func (s *IS04NodeServer) stopMDNSAnnounceLocked() {
+	if s.responder == nil {
+		return
+	}
+	if s.cancel != nil {
+		s.cancel()
+		s.cancel = nil
+	}
+	_ = s.responder.Close()
+	s.responder = nil
+	s.logger.Info("provider/node: mDNS announce suspended (registered with Registry)",
+		"service", dnssdcodec.ServiceNode)
+}
+
+// onRegistrationStateChanged toggles the _nmos-node._tcp announce on
+// every registration transition. IS-04 v1.3 §4.2.1 (and AMWA test_12_01)
+// require: registered Nodes MUST stop advertising via mDNS until
+// registration is lost. Stub for v1.0/v1.1/v1.2 too — the spec rule
+// is harmless on older minors and keeps behaviour uniform.
+func (s *IS04NodeServer) onRegistrationStateChanged(registered bool) {
+	if s.cfg.DiscoveryMode != "" && s.cfg.DiscoveryMode != "mdns" {
+		return // static discovery — no responder to toggle
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if registered {
+		s.stopMDNSAnnounceLocked()
+	} else {
+		if err := s.startMDNSAnnounceLocked(); err != nil {
+			s.logger.Warn("provider/node: re-announce on lose-registration failed", "err", err)
+		}
+	}
 }
 
 // Stats exposes per-endpoint hit counters.

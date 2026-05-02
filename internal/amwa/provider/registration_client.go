@@ -73,6 +73,14 @@ type RegistrationClient struct {
 	mu          sync.Mutex
 	cancelLoop  context.CancelFunc
 	registered  atomic.Bool
+	// onRegistered fires whenever the registered flag transitions
+	// (true→false or false→true). The callback is invoked synchronously
+	// from the loop goroutine so handlers must be quick + non-blocking
+	// (e.g. toggle the mDNS responder via a goroutine internally if
+	// needed). Used by IS04NodeServer to satisfy IS-04 §4.2.1: a
+	// registered Node MUST stop advertising _nmos-node._tcp until
+	// registration is lost (AMWA test_12_01).
+	onRegistered atomic.Pointer[func(bool)]
 	// everRegistered flips true after the first successful registerAll.
 	// On subsequent failovers we use rejoinOrRegister (heartbeat-first)
 	// per IS-04 §6.1. Touched only inside the Run loop, no mutex.
@@ -117,6 +125,32 @@ func NewRegistrationClient(logger *slog.Logger, registryURL, apiVer string, bund
 			Timeout: 10 * time.Second,
 		},
 		closed: make(chan struct{}),
+	}
+}
+
+// SetOnRegistered installs a callback fired on every transition of
+// the registered flag (true→false or false→true). Used by
+// IS04NodeServer to suspend the _nmos-node._tcp mDNS announce while
+// registered (IS-04 §4.2.1, AMWA test_12_01).
+func (c *RegistrationClient) SetOnRegistered(cb func(bool)) {
+	if cb == nil {
+		c.onRegistered.Store(nil)
+		return
+	}
+	c.onRegistered.Store(&cb)
+}
+
+// setRegistered atomically updates the registered flag and fires the
+// onRegistered callback when the value actually changes — replaces
+// every direct c.registered.Store call so transitions never get
+// missed by the consumer.
+func (c *RegistrationClient) setRegistered(v bool) {
+	prev := c.registered.Swap(v)
+	if prev == v {
+		return
+	}
+	if cb := c.onRegistered.Load(); cb != nil && *cb != nil {
+		(*cb)(v)
 	}
 }
 
@@ -173,7 +207,7 @@ func (c *RegistrationClient) disqualifyCurrent() {
 // fails the Node if it POSTs /resource on every failover.
 func (c *RegistrationClient) rejoinOrRegister(ctx context.Context) error {
 	if err := c.sendHeartbeat(ctx); err == nil {
-		c.registered.Store(true)
+		c.setRegistered(true)
 		return nil
 	} else if errors.Is(err, ErrRegistryNotFound) {
 		// New Registry doesn't have our resources — register fresh.
@@ -244,7 +278,7 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 			if c.registered.Load() && c.shouldSwitchToBetter() {
 				c.logger.Info("provider/node: better registry available — switching")
 				c.deregisterAll()
-				c.registered.Store(false)
+				c.setRegistered(false)
 			}
 			if !c.registered.Load() {
 				// Try every advertised Registry in priority order
@@ -295,7 +329,7 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 			if errors.Is(err, ErrRegistryNotFound) {
 				c.logger.Warn("provider/node: heartbeat 404 — re-registering")
 				atomic.AddUint64(&c.reregister, 1)
-				c.registered.Store(false)
+				c.setRegistered(false)
 			} else if err != nil {
 				c.logger.Warn("provider/node: heartbeat failed", "err", err)
 				atomic.AddUint64(&c.failures, 1)
@@ -308,7 +342,7 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 				// the new Registry's view, forcing a needless re-POST
 				// and tripping AMWA test_16. Just disqualify + cascade.
 				c.disqualifyCurrent()
-				c.registered.Store(false)
+				c.setRegistered(false)
 				// Immediate failover loop — try the next-best Registry
 				// right now rather than waiting another HeartbeatInterval.
 				// AMWA test_15/16 cascade mocks down faster than 5 s.
@@ -406,7 +440,7 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 			return err
 		}
 	}
-	c.registered.Store(true)
+	c.setRegistered(true)
 	return nil
 }
 
@@ -543,7 +577,7 @@ func (c *RegistrationClient) deregisterAll() {
 		c.deleteResource(delCtx, is04.ResourceDevice, c.bundle.Devices[i].ID)
 	}
 	c.deleteResource(delCtx, is04.ResourceNode, c.bundle.Node.ID)
-	c.registered.Store(false)
+	c.setRegistered(false)
 }
 
 func (c *RegistrationClient) deleteResource(ctx context.Context, t is04.ResourceType, id string) {
