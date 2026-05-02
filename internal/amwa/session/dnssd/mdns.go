@@ -12,17 +12,17 @@ import (
 	"acp/internal/amwa/codec/dnssd"
 )
 
-// mDNS link-local addresses (RFC 6762 §3). IPv6 is staged for a
+// mDNS link-local addresses (RFC 6762 ??3). IPv6 is staged for a
 // follow-up; many production switches drop ff02::fb so IPv4 ships
 // first.
 var mdnsIPv4 = net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353}
 
 // MaxMDNSPacketSize is the upper bound for an mDNS UDP payload per
-// RFC 6762 §17 (MUST NOT exceed the path MTU; on Ethernet that is
+// RFC 6762 ??17 (MUST NOT exceed the path MTU; on Ethernet that is
 // 1500 minus IP+UDP headers, so 1500 is a safe ceiling for receive).
 const MaxMDNSPacketSize = 1500
 
-// QueryInterval is the default browser query cadence (RFC 6762 §5.2 —
+// QueryInterval is the default browser query cadence (RFC 6762 ??5.2 ???
 // the recommendation is roughly every minute, increasing for quiet
 // services).
 const QueryInterval = 30 * time.Second
@@ -54,9 +54,9 @@ func openMulticastConns(logger *slog.Logger) ([]*net.UDPConn, error) {
 			}
 			continue
 		}
-		// RFC 6762 §11 expects link-local loopback delivery; Go's
+		// RFC 6762 ??11 expects link-local loopback delivery; Go's
 		// stdlib disables IP_MULTICAST_LOOP on ListenMulticastUDP, so
-		// re-enable per platform — required for same-host
+		// re-enable per platform ??? required for same-host
 		// Node/Controller discovery.
 		if err := setMulticastLoopback(c, true); err != nil && logger != nil {
 			logger.Debug("dnssd: enable multicast loopback failed", "iface", ifi.Name, "err", err)
@@ -74,7 +74,7 @@ func openMulticastConns(logger *slog.Logger) ([]*net.UDPConn, error) {
 		_ = setMulticastLoopback(c, true)
 		conns = []*net.UDPConn{c}
 		if logger != nil {
-			logger.Warn("dnssd: no IPv4 multicast iface — fell back to OS default")
+			logger.Warn("dnssd: no IPv4 multicast iface ??? fell back to OS default")
 		}
 	}
 	return conns, nil
@@ -103,11 +103,11 @@ func closeConns(conns []*net.UDPConn) error {
 	return firstErr
 }
 
-// Browser scans the link for instances of a given service. Browse()
-// returns a channel that yields one Instance per response observed
-// until ctx is cancelled. The same instance may be reported multiple
-// times — callers should de-duplicate by FullName().
-type Browser struct {
+// stdlibBrowser is the pure-Go [Browser] implementation. It opens raw
+// multicast sockets on 224.0.0.251:5353 and decodes packets via the
+// in-tree [acp/internal/amwa/codec/dnssd] codec. Default fallback when
+// no system DNS-SD daemon is reachable.
+type stdlibBrowser struct {
 	logger  *slog.Logger
 	conns   []*net.UDPConn
 	mu      sync.Mutex
@@ -116,18 +116,20 @@ type Browser struct {
 	reading bool         // true once readLoop goroutines have started
 }
 
-// NewBrowser opens an mDNS receive socket on every up + multicast IPv4
-// interface (see openMulticastConns).
-func NewBrowser(logger *slog.Logger) (*Browser, error) {
+// newStdlibBrowser opens an mDNS receive socket on every up + multicast
+// IPv4 interface (see openMulticastConns). The returned Browser is the
+// stdlib fallback used by [NewBrowser] when the system daemon path is
+// unavailable.
+func newStdlibBrowser(logger *slog.Logger) (*stdlibBrowser, error) {
 	conns, err := openMulticastConns(logger)
 	if err != nil {
 		return nil, err
 	}
-	return &Browser{logger: logger, conns: conns}, nil
+	return &stdlibBrowser{logger: logger, conns: conns}, nil
 }
 
 // Close shuts the receive sockets. Safe to call multiple times.
-func (b *Browser) Close() error {
+func (b *stdlibBrowser) Close() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.closed {
@@ -142,14 +144,14 @@ func (b *Browser) Close() error {
 // every per-interface goroutine exits.
 //
 // Browse can be called multiple times concurrently on the same Browser
-// — each call gets its own filtered channel. Internally a single read
+// ??? each call gets its own filtered channel. Internally a single read
 // loop per UDP conn fans every received Instance out to ALL active
 // subscriptions, with each subscription filtering by its own service
 // name. Sharing one read loop is critical: spinning a separate
 // ReadFromUDP goroutine per Browse call would race on the same socket
 // (each packet lands in only one reader, the wrong one would filter
 // it out and lose it). See `feedback_amwa_strict_all_versions`.
-func (b *Browser) Browse(ctx context.Context, service string) (<-chan dnssd.Instance, error) {
+func (b *stdlibBrowser) Browse(ctx context.Context, service string) (<-chan dnssd.Instance, error) {
 	if service == "" {
 		return nil, errors.New("dnssd: empty service in Browse")
 	}
@@ -198,7 +200,7 @@ type browseSub struct {
 // readLoop reads mDNS responses from one socket and fans every
 // Instance out to every active subscription (each subscription filters
 // by its own service name). Runs until the conn is closed.
-func (b *Browser) readLoop(c *net.UDPConn) {
+func (b *stdlibBrowser) readLoop(c *net.UDPConn) {
 	buf := make([]byte, MaxMDNSPacketSize)
 	for {
 		if err := c.SetReadDeadline(time.Now().Add(500 * time.Millisecond)); err != nil {
@@ -230,7 +232,7 @@ func (b *Browser) readLoop(c *net.UDPConn) {
 		if !msg.Header.IsResponse() {
 			continue
 		}
-		// Snapshot the subs slice under lock — sub list may grow / shrink
+		// Snapshot the subs slice under lock ??? sub list may grow / shrink
 		// concurrently as Browse calls come and go.
 		b.mu.Lock()
 		subs := make([]*browseSub, len(b.subs))
@@ -247,7 +249,7 @@ func (b *Browser) readLoop(c *net.UDPConn) {
 	}
 }
 
-func (b *Browser) sendQueries(ctx context.Context, service string) {
+func (b *stdlibBrowser) sendQueries(ctx context.Context, service string) {
 	send := func() {
 		qbytes, err := dnssd.EncodeQuery(service+"."+dnssd.DefaultDomain, dnssd.TypePTR, false)
 		if err != nil {
@@ -278,8 +280,8 @@ func (b *Browser) sendQueries(ctx context.Context, service string) {
 }
 
 // Responder advertises one or more Instances on the link, replying to
-// queries and emitting unsolicited announcements per RFC 6762 §8.3.
-type Responder struct {
+// queries and emitting unsolicited announcements per RFC 6762 ??8.3.
+type stdlibResponder struct {
 	logger    *slog.Logger
 	conns     []*net.UDPConn
 	mu        sync.Mutex
@@ -287,19 +289,21 @@ type Responder struct {
 	closed    bool
 }
 
-// NewResponder opens an mDNS socket on every up + multicast IPv4
-// interface (see openMulticastConns).
-func NewResponder(logger *slog.Logger) (*Responder, error) {
+// newStdlibResponder opens an mDNS socket on every up + multicast IPv4
+// interface (see openMulticastConns). The returned Responder is the
+// stdlib fallback used by [NewResponder] when the system daemon path is
+// unavailable.
+func newStdlibResponder(logger *slog.Logger) (*stdlibResponder, error) {
 	conns, err := openMulticastConns(logger)
 	if err != nil {
 		return nil, err
 	}
-	return &Responder{logger: logger, conns: conns}, nil
+	return &stdlibResponder{logger: logger, conns: conns}, nil
 }
 
 // Close emits goodbye packets (TTL=0) on every interface per RFC 6762
-// §10.1 best-effort, then shuts the sockets.
-func (r *Responder) Close() error {
+// ??10.1 best-effort, then shuts the sockets.
+func (r *stdlibResponder) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.closed {
@@ -319,10 +323,10 @@ func (r *Responder) Close() error {
 }
 
 // Announce starts emitting an Instance on the link. The first three
-// packets are sent ~1 s apart per RFC 6762 §8.3 on every bound
+// packets are sent ~1 s apart per RFC 6762 ??8.3 on every bound
 // interface; thereafter the instance is re-emitted in response to
 // matching queries.
-func (r *Responder) Announce(ctx context.Context, ins dnssd.Instance) error {
+func (r *stdlibResponder) Announce(ctx context.Context, ins dnssd.Instance) error {
 	if ins.Name == "" || ins.Service == "" {
 		return errors.New("dnssd: Announce requires Name and Service")
 	}
@@ -355,7 +359,7 @@ func (r *Responder) Announce(ctx context.Context, ins dnssd.Instance) error {
 	return nil
 }
 
-func (r *Responder) serveQueries(ctx context.Context) {
+func (r *stdlibResponder) serveQueries(ctx context.Context) {
 	var wg sync.WaitGroup
 	for _, c := range r.conns {
 		wg.Add(1)
@@ -412,3 +416,4 @@ func (r *Responder) serveQueries(ctx context.Context) {
 	}
 	wg.Wait()
 }
+

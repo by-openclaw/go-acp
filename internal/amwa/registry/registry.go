@@ -61,7 +61,7 @@ type Registry struct {
 	logger *slog.Logger
 
 	mu         sync.Mutex
-	responder  *session.Responder
+	responder  session.Responder
 	cancel     context.CancelFunc
 	announced  []codec.Instance
 	announces  uint64 // atomic

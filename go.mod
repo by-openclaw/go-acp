@@ -2,7 +2,10 @@ module acp
 
 go 1.23.0
 
-require github.com/prometheus/client_golang v1.23.2
+require (
+	github.com/godbus/dbus/v5 v5.2.2
+	github.com/prometheus/client_golang v1.23.2
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

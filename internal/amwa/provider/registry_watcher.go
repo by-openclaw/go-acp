@@ -61,7 +61,7 @@ type RegistryWatcher struct {
 	// 224.0.0.251:5353 was tried first but breaks on Docker bridge
 	// networks where the second multicast bind doesn't see the same
 	// stream of packets the first one sees.
-	browser   *dnssdsession.Browser
+	browser   dnssdsession.Browser
 	cancel    context.CancelFunc
 	outModern <-chan dnssdcodec.Instance
 	outLegacy <-chan dnssdcodec.Instance

@@ -86,7 +86,7 @@ type IS04NodeServer struct {
 
 	mu        sync.Mutex
 	http      *httpsession.Server
-	responder *dnssdsession.Responder
+	responder dnssdsession.Responder
 	cancel    context.CancelFunc
 	regClient *RegistrationClient
 	watcher   *RegistryWatcher

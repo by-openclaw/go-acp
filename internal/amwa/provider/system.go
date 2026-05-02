@@ -58,7 +58,7 @@ type IS09Server struct {
 
 	mu        sync.Mutex
 	http      *httpsession.Server
-	responder *dnssdsession.Responder
+	responder dnssdsession.Responder
 	cancel    context.CancelFunc
 
 	// Counters (atomic).
