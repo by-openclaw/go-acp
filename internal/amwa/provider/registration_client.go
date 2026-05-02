@@ -54,6 +54,12 @@ type RegistrationClient struct {
 	base   string
 	apiVer string
 	bundle *NodeConfig
+	// codec encodes every resource POSTed to the registry in the wire
+	// shape for the configured api_ver. Without this, the registry
+	// stores canonical (v1.3) JSON, the Node API serves per-version
+	// JSON, and AMWA test_04 / test_07-11 fail Node-API vs registry
+	// coherence on every minor < v1.3.
+	codec is04.Codec
 
 	// watcher, when non-nil, supplies the current Registry (Mode A).
 	// When nil, base is fixed (Mode B).
@@ -100,11 +106,13 @@ func NewRegistrationClient(logger *slog.Logger, registryURL, apiVer string, bund
 			base = base + "/x-nmos/registration/" + apiVer
 		}
 	}
+	codec, _ := is04.Get(apiVer) // nil-codec falls back to canonical shape in EncodeRegistrationVersioned
 	return &RegistrationClient{
 		logger: logger,
 		base:   base,
 		apiVer: apiVer,
 		bundle: bundle,
+		codec:  codec,
 		http: &stdhttp.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -433,7 +441,7 @@ func (c *RegistrationClient) postResource(ctx context.Context, t is04.ResourceTy
 // + an error for transport / 4xx / 5xx failures. 200 + 201 surface as
 // (status, nil) so the caller can distinguish them.
 func (c *RegistrationClient) postResourceOnce(ctx context.Context, t is04.ResourceType, data any) (int, error) {
-	body, err := is04.EncodeRegistration(t, data)
+	body, err := is04.EncodeRegistrationVersioned(c.codec, t, data)
 	if err != nil {
 		return 0, err
 	}
