@@ -285,16 +285,29 @@ func TestExpandNodeEndpointsIdempotent(t *testing.T) {
 	}
 }
 
-func TestClearUnservedManifestHrefs(t *testing.T) {
-	href := "http://wrong/transportfile"
+func TestRewriteManifestHrefs(t *testing.T) {
+	stale := "http://wrong/transportfile"
 	senders := []is04.Sender{
-		{ManifestHref: &href},
-		{ManifestHref: &href},
+		{ResourceCore: is04.ResourceCore{ID: "aaaa1111-2222-3333-4444-555566667777"}, ManifestHref: &stale},
+		{ResourceCore: is04.ResourceCore{ID: "bbbb1111-2222-3333-4444-555566667777"}, ManifestHref: nil},
 	}
-	clearUnservedManifestHrefs(senders)
+	rewriteManifestHrefs(senders, "dhs-node:18080", "v1.2")
 	for i, s := range senders {
-		if s.ManifestHref != nil {
-			t.Errorf("senders[%d].ManifestHref = %q, want nil", i, *s.ManifestHref)
+		if s.ManifestHref == nil {
+			t.Fatalf("senders[%d].ManifestHref nil after rewrite", i)
 		}
+		want := "http://dhs-node:18080/x-nmos/node/v1.2/senders/" + senders[i].ID + "/transportfile"
+		if *s.ManifestHref != want {
+			t.Errorf("senders[%d].ManifestHref = %q, want %q", i, *s.ManifestHref, want)
+		}
+	}
+}
+
+func TestRewriteManifestHrefsNoOpWhenAdvertiseEmpty(t *testing.T) {
+	stale := "http://orig/transportfile"
+	senders := []is04.Sender{{ManifestHref: &stale}}
+	rewriteManifestHrefs(senders, "", "v1.3")
+	if senders[0].ManifestHref == nil || *senders[0].ManifestHref != stale {
+		t.Errorf("rewriteManifestHrefs with empty advertise should be a no-op; got %v", senders[0].ManifestHref)
 	}
 }

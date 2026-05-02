@@ -155,10 +155,10 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// against whatever URL the test reaches us at.
 	expandNodeEndpoints(&s.bundle.Node, s.cfg.AdvertiseHost, s.cfg.Bind)
 
-	// Manifest URLs that we cannot honour (no /transportfile handler
-	// shipped today) MUST be null on the wire — leaving a stale URL
-	// fails AMWA test_20_01 and is also wrong per spec.
-	clearUnservedManifestHrefs(s.bundle.Senders)
+	// Rewrite Sender manifest_href to point at our /transportfile route
+	// at the wire api_ver. v1.0/v1.1/v1.2 sender.json require a non-null
+	// URI string; the matching transportfile handler is installed below.
+	rewriteManifestHrefs(s.bundle.Senders, s.cfg.AdvertiseHost, s.cfg.APIVer)
 
 	srv := httpsession.NewServer(s.logger)
 	s.installRoutes(srv)
@@ -369,6 +369,23 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 		}
 		return nil, false
 	}, idsFromSenders(s.bundle.Senders))
+
+	// IS-04 senders/{id}/transportfile — serves the SDP that describes
+	// how to receive the Sender's flow. v1.0/v1.1/v1.2 schemas require
+	// manifest_href to be a non-null URI; AMWA test_20_01 (v1.3) checks
+	// the URL is actually reachable. We serve a minimal RFC 4566 SDP
+	// per Sender — Content-Type application/sdp, status 200.
+	for _, snd := range s.bundle.Senders {
+		sid := snd.ID
+		sndCopy := snd
+		path := base + "/senders/" + sid + "/transportfile"
+		srv.Handle(stdhttp.MethodGet, path, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+			return 0, &httpsession.RawBody{
+				ContentType: "application/sdp",
+				Body:        []byte(sdpFor(sndCopy)),
+			}, nil
+		})
+	}
 
 	s.installCollection(srv, base, "receivers", func() any {
 		s.mu.Lock()

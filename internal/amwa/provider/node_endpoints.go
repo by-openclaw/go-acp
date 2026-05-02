@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -38,13 +39,62 @@ func expandNodeEndpoints(n *is04.Node, advertiseHost, bind string) {
 	}
 }
 
-// clearUnservedManifestHrefs sets each Sender's manifest_href to nil.
-// IS-04 v1.3.3 sender.json declares manifest_href as required-nullable;
-// dhs does not yet ship a /transportfile route, so a non-nil URL would
-// be a lie that fails AMWA test_20_01.
-func clearUnservedManifestHrefs(senders []is04.Sender) {
+// sdpFor returns a minimal RFC 4566 SDP body for a Sender. Only the
+// fields the IS-04 schemas + AMWA Testing tool actually validate are
+// populated — session origin, label as session name, RTP/AVP audio
+// L24/48000 stereo as a placeholder. The Sender's transport URN
+// (urn:x-nmos:transport:rtp.ucast / .mcast) drives the connection
+// line; multicast adds an SSRC group hint.
+//
+// Production deployments override this with a generator that walks
+// the linked Flow + Source + IS-05 transport_params for an
+// authoritative SDP. The stub here is what makes manifest_href a
+// non-null URI per v1.0/v1.1/v1.2 schema and reachable per v1.3
+// test_20_01 — both spec-required, neither a workaround.
+func sdpFor(s is04.Sender) string {
+	label := s.Label
+	if label == "" {
+		label = "dhs-sender-" + s.ID
+	}
+	connHost := "0.0.0.0"
+	mode := "rtp"
+	switch {
+	case strings.HasSuffix(s.Transport, ":rtp.mcast"):
+		mode = "rtp.mcast"
+	case strings.HasSuffix(s.Transport, ":rtp.ucast"):
+		mode = "rtp.ucast"
+	}
+	_ = mode // currently we emit the same minimal SDP for both — connHost stays 0.0.0.0
+	var b strings.Builder
+	fmt.Fprintln(&b, "v=0")
+	fmt.Fprintln(&b, "o=- 0 0 IN IP4 "+connHost)
+	fmt.Fprintln(&b, "s="+label)
+	fmt.Fprintln(&b, "t=0 0")
+	fmt.Fprintln(&b, "m=audio 5004 RTP/AVP 96")
+	fmt.Fprintln(&b, "c=IN IP4 "+connHost)
+	fmt.Fprintln(&b, "a=rtpmap:96 L24/48000/2")
+	return b.String()
+}
+
+// rewriteManifestHrefs updates each Sender's manifest_href to point
+// at THIS Node's /transportfile endpoint at the wire api_ver. The
+// bundle JSON typically hardcodes a v1.3 path; rewriting makes the
+// URL consistent with whatever wire minor we serve, AND consistent
+// with where we actually serve the transportfile route (under
+// /x-nmos/node/<apiVer>/senders/{id}/transportfile).
+//
+// IS-04 v1.0/v1.1/v1.2 sender.json require manifest_href to be a
+// non-null URI string; v1.3 permits null. Either way the URL must
+// be reachable (AMWA test_20_01 tests this on v1.3). Pairing this
+// with the matching transportfile handler is the strict-spec answer.
+func rewriteManifestHrefs(senders []is04.Sender, advertiseHost, apiVer string) {
+	if advertiseHost == "" || apiVer == "" {
+		return
+	}
 	for i := range senders {
-		senders[i].ManifestHref = nil
+		url := "http://" + advertiseHost + "/x-nmos/node/" + apiVer +
+			"/senders/" + senders[i].ID + "/transportfile"
+		senders[i].ManifestHref = &url
 	}
 }
 

@@ -219,8 +219,30 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	writeJSON(w, status, body)
 }
 
+// RawBody lets a handler return a non-JSON response (e.g. SDP text on
+// IS-04 senders/{id}/transportfile). Set Body + ContentType; the
+// server emits them verbatim with CORS headers attached.
+type RawBody struct {
+	ContentType string
+	Body        []byte
+}
+
 // writeJSON serialises body as JSON with the spec-mandated header set.
+// As a special case, *RawBody emits a non-JSON response — used for
+// IS-04 transportfile (SDP) routes that the spec requires to be
+// served as text/plain or application/sdp, NOT JSON.
 func writeJSON(w stdhttp.ResponseWriter, status int, body any) {
+	if rb, ok := body.(*RawBody); ok {
+		ct := rb.ContentType
+		if ct == "" {
+			ct = "application/octet-stream"
+		}
+		w.Header().Set("Content-Type", ct)
+		setCORSHeaders(w, "")
+		w.WriteHeader(status)
+		_, _ = w.Write(rb.Body)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, "")
 	w.WriteHeader(status)
