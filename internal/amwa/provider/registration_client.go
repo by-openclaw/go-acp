@@ -304,16 +304,29 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 				// Immediate failover loop — try the next-best Registry
 				// right now rather than waiting another HeartbeatInterval.
 				// AMWA test_15/16 cascade mocks down faster than 5 s.
+				//
+				// Per IS-04 v1.3.3 §6.1: failover MUST attempt a heartbeat
+				// first against the new Registry. Only if that returns 404
+				// (Registry doesn't have us yet) do we fall back to
+				// registerAll. AMWA test_16 explicitly fails any Node that
+				// POSTs /resource on every failover instead of probing
+				// with a heartbeat — that test detail reads:
+				// "Node re-registered its resources when it failed over to
+				// a new registry, when it should only have issued a
+				// heartbeat". rejoinOrRegister implements that semantic;
+				// previously this loop called registerAll unconditionally,
+				// which is wire-correct only on the very first cascade
+				// step into a never-seen Registry.
 				for i := 0; i < MaxFailoverChain; i++ {
 					if _, ok := c.pickBase(); !ok {
 						break
 					}
-					regErr := c.registerAll(loopCtx)
+					regErr := c.rejoinOrRegister(loopCtx)
 					if regErr == nil {
 						lastHeartbeat = time.Time{}
 						break
 					}
-					c.logger.Warn("provider/node: cascade re-register failed", "step", i, "err", regErr)
+					c.logger.Warn("provider/node: cascade rejoin/register failed", "step", i, "err", regErr)
 					atomic.AddUint64(&c.failures, 1)
 					c.disqualifyCurrent()
 				}

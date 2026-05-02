@@ -108,10 +108,12 @@ func closeConns(conns []*net.UDPConn) error {
 // until ctx is cancelled. The same instance may be reported multiple
 // times — callers should de-duplicate by FullName().
 type Browser struct {
-	logger *slog.Logger
-	conns  []*net.UDPConn
-	mu     sync.Mutex
-	closed bool
+	logger  *slog.Logger
+	conns   []*net.UDPConn
+	mu      sync.Mutex
+	closed  bool
+	subs    []*browseSub // active Browse subscriptions
+	reading bool         // true once readLoop goroutines have started
 }
 
 // NewBrowser opens an mDNS receive socket on every up + multicast IPv4
@@ -138,62 +140,111 @@ func (b *Browser) Close() error {
 // Browse runs a query/listen loop until ctx is cancelled. Discovered
 // instances are sent to the returned channel. The channel closes when
 // every per-interface goroutine exits.
+//
+// Browse can be called multiple times concurrently on the same Browser
+// — each call gets its own filtered channel. Internally a single read
+// loop per UDP conn fans every received Instance out to ALL active
+// subscriptions, with each subscription filtering by its own service
+// name. Sharing one read loop is critical: spinning a separate
+// ReadFromUDP goroutine per Browse call would race on the same socket
+// (each packet lands in only one reader, the wrong one would filter
+// it out and lose it). See `feedback_amwa_strict_all_versions`.
 func (b *Browser) Browse(ctx context.Context, service string) (<-chan dnssd.Instance, error) {
 	if service == "" {
 		return nil, errors.New("dnssd: empty service in Browse")
 	}
 	out := make(chan dnssd.Instance, 16)
+	sub := &browseSub{ctx: ctx, service: service, out: out}
+
+	b.mu.Lock()
+	b.subs = append(b.subs, sub)
+	first := !b.reading
+	if first {
+		b.reading = true
+	}
+	b.mu.Unlock()
+
+	if first {
+		for _, c := range b.conns {
+			go b.readLoop(c)
+		}
+	}
 
 	go b.sendQueries(ctx, service)
 
-	var wg sync.WaitGroup
-	for _, c := range b.conns {
-		wg.Add(1)
-		go func(c *net.UDPConn) {
-			defer wg.Done()
-			buf := make([]byte, MaxMDNSPacketSize)
-			for {
-				if err := c.SetReadDeadline(time.Now().Add(500 * time.Millisecond)); err != nil {
-					return
-				}
-				n, _, err := c.ReadFromUDP(buf)
-				if ctx.Err() != nil {
-					return
-				}
-				if err != nil {
-					if ne, ok := err.(net.Error); ok && ne.Timeout() {
-						continue
-					}
-					if b.logger != nil {
-						b.logger.Debug("dnssd: read error", "err", err)
-					}
-					return
-				}
-				msg, err := dnssd.Decode(buf[:n])
-				if err != nil {
-					if b.logger != nil {
-						b.logger.Debug("dnssd: decode error", "err", err, "len", n)
-					}
-					continue
-				}
-				if !msg.Header.IsResponse() {
-					continue
-				}
-				for _, ins := range dnssd.DecodeInstances(msg, service) {
-					select {
-					case out <- ins:
-					case <-ctx.Done():
-						return
-					}
-				}
-			}
-		}(c)
-	}
 	go func() {
-		wg.Wait()
+		<-ctx.Done()
+		b.mu.Lock()
+		for i, s := range b.subs {
+			if s == sub {
+				b.subs = append(b.subs[:i], b.subs[i+1:]...)
+				break
+			}
+		}
+		b.mu.Unlock()
 		close(out)
 	}()
+
 	return out, nil
+}
+
+// browseSub is one active Browse subscription on a shared Browser.
+type browseSub struct {
+	ctx     context.Context
+	service string
+	out     chan dnssd.Instance
+}
+
+// readLoop reads mDNS responses from one socket and fans every
+// Instance out to every active subscription (each subscription filters
+// by its own service name). Runs until the conn is closed.
+func (b *Browser) readLoop(c *net.UDPConn) {
+	buf := make([]byte, MaxMDNSPacketSize)
+	for {
+		if err := c.SetReadDeadline(time.Now().Add(500 * time.Millisecond)); err != nil {
+			return
+		}
+		n, _, err := c.ReadFromUDP(buf)
+		b.mu.Lock()
+		closed := b.closed
+		b.mu.Unlock()
+		if closed {
+			return
+		}
+		if err != nil {
+			if ne, ok := err.(net.Error); ok && ne.Timeout() {
+				continue
+			}
+			if b.logger != nil {
+				b.logger.Debug("dnssd: read error", "err", err)
+			}
+			return
+		}
+		msg, err := dnssd.Decode(buf[:n])
+		if err != nil {
+			if b.logger != nil {
+				b.logger.Debug("dnssd: decode error", "err", err, "len", n)
+			}
+			continue
+		}
+		if !msg.Header.IsResponse() {
+			continue
+		}
+		// Snapshot the subs slice under lock — sub list may grow / shrink
+		// concurrently as Browse calls come and go.
+		b.mu.Lock()
+		subs := make([]*browseSub, len(b.subs))
+		copy(subs, b.subs)
+		b.mu.Unlock()
+		for _, sub := range subs {
+			for _, ins := range dnssd.DecodeInstances(msg, sub.service) {
+				select {
+				case sub.out <- ins:
+				case <-sub.ctx.Done():
+				}
+			}
+		}
+	}
 }
 
 func (b *Browser) sendQueries(ctx context.Context, service string) {

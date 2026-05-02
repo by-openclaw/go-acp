@@ -55,6 +55,12 @@ type RegistryWatcher struct {
 	preferAPIVer  string
 	disqualifyTTL time.Duration
 
+	// One shared Browser that fans every received mDNS Instance out to
+	// every active subscription via Browse() — see Browser.Browse doc.
+	// Two independent Browsers each binding their own sockets to
+	// 224.0.0.251:5353 was tried first but breaks on Docker bridge
+	// networks where the second multicast bind doesn't see the same
+	// stream of packets the first one sees.
 	browser   *dnssdsession.Browser
 	cancel    context.CancelFunc
 	outModern <-chan dnssdcodec.Instance
@@ -99,8 +105,10 @@ func NewRegistryWatcher(logger *slog.Logger, preferAPIVer string) (*RegistryWatc
 }
 
 // Run starts the browse loop on BOTH the modern and legacy NMOS
-// registration service names. Returns immediately; cancel ctx to stop.
-// Safe to call only once.
+// registration service names — Browser.Browse fans packets out to
+// every active subscription, so two Browse calls share one read loop
+// without racing. Returns immediately; cancel ctx to stop. Safe to
+// call only once.
 func (w *RegistryWatcher) Run(ctx context.Context) error {
 	loopCtx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
@@ -120,13 +128,16 @@ func (w *RegistryWatcher) Run(ctx context.Context) error {
 	return nil
 }
 
-// Close stops the browse loop and the underlying sockets. Idempotent.
+// Close stops the browse loops and the underlying sockets. Idempotent.
 func (w *RegistryWatcher) Close() error {
 	if w.cancel != nil {
 		w.cancel()
 		w.cancel = nil
 	}
-	return w.browser.Close()
+	if w.browser != nil {
+		return w.browser.Close()
+	}
+	return nil
 }
 
 // Best returns the current best Registry candidate, ok=false if none
