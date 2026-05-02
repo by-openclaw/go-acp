@@ -4,21 +4,33 @@ Snapshot of the per-test posture for the AMWA NMOS Testing tool against
 dhs running in this docker-compose. Update whenever the cause of a row
 changes; the table is the source of truth for what to expect.
 
-## Multi-version conformance status (2026-05-02)
+## Multi-version conformance status (2026-05-02, post-#191/#192/#193)
 
 `feat/nmos-is04-amwa-conformance` runs all four AMWA-published IS-04
 minors per the strict-all-versions rule
 (`internal/amwa/CLAUDE.md` Versioning, memory
 `feedback_amwa_strict_all_versions`). Each `.env` row of the harness
 sets `DHS_API_VER` and the suite's `version` parameter; result JSONs
-land in `results/is04-01-v<X>.json`.
+land in `results/is04-01-v<X>.json`. Run between rounds with a full
+`docker compose down --remove-orphans` to reset AMWA Mock state.
 
-| API ver | Pass | Fail | Warning | Manual | Not Impl. | Test Disabled | N/A | Could Not Test | Notes |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| **v1.3** | **56** | 1 | 1 | 1 | 1 | 10 | 3 | 1 | round 25 baseline; only Fail is `test_16` cascade-timing under Docker Desktop Windows |
-| v1.2 | 34 | 13 | 2 | 1 | 1 | 10 | 4 | 8 | known gaps: v12 codec missing field-gating; watcher api_ver match issues |
-| v1.1 | 32 | 14 | 2 | 1 | 1 | 10 | 5 | 8 | same root causes as v1.2 |
-| v1.0 | 29 | 14 | 2 | 1 | 1 | 9 | 9 | 8 | v10 codec lands in commit 4bb7f6f; remaining gaps shared with v1.1/v1.2 |
+### Headline numbers
+
+| API ver | Pass | Fail | Warning | Manual | Δ vs round-25 | Notes |
+|---|---:|---:|---:|---:|---:|---|
+| **v1.3** | **55** | 2 | 1 | 1 | -1 | cascade-timing (`test_15`/`test_16`/`test_16_01`) flaky under Docker-Desktop-Windows; baseline 56 |
+| **v1.2** | **51** | 3 | 2 | 1 | n/a (was 34) | **+17** via #192 (provider downcast) + #191 (v12 codec gating); remaining 3 Fails = cascade timing |
+| v1.1 | 33 | 13 | 2 | 1 | n/a (was 32) | watcher fixed (#193); remaining gaps need v11 codec audit (sub-issue) + cascade timing |
+| v1.0 | 30 | 11 | 2 | 1 | n/a (was 29) | v10 codec landed in commit 4bb7f6f (#190); watcher fixed (#193); same residual gaps as v1.1 |
+
+### Closed sub-issues
+
+| Issue | Commit | Effect |
+|---|---|---|
+| #190 v1.0 codec | `4bb7f6f` | v10 codec package + 7 v1.0.3 schemas + tests; codec.AllCodecs now lists v1.0/v1.1/v1.2/v1.3 |
+| #193 watcher api_ver filter | `1b9dd33` | Browse both `_nmos-register._tcp` AND `_nmos-registration._tcp`; v1.0/v1.1 mocks now discoverable |
+| #192 provider downcast | `fd26b4b` | Per-version codec dispatch on every Node-API GET / PUT-target body; auto_node_11/12 now Pass on v1.2 |
+| #191 v12 codec gating | `bb0cffe` | Strip `Node.interfaces[].attached_network_device` + `Receiver.caps.{constraint_sets,version}` for v1.2 wire |
 
 How to reproduce any single round:
 
