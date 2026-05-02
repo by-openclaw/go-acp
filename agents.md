@@ -78,32 +78,41 @@ against AMWA NMOS Testing tool's Mock Registry next. dhs Node
 running at 10.6.239.113:18080. Bundle file:
 `tests/fixtures/nmos/cerebrum-test-node.json`.
 
-**AMWA NMOS Testing IS-04-01 v1.3 round 25 (2026-05-01 evening):
-56 Pass / 1 Fail / 1 Warning / 1 Manual / 1 Not Implemented /
-10 Disabled / 3 N/A.** Branch
-`feat/nmos-is04-amwa-conformance` lands the full IS-04-01 wave
-(codec subscription split, CORS + parent listings + OPTIONS
-preflight, runtime endpoint expansion, manifest_href nulling,
-mDNS Registry watcher with priority filter + cumulative A-record
-cache, heartbeat-first failover with cascade in one tick,
-200-on-POST DELETE+re-POST, IS-04 §4.3.1 PUT receivers/{id}/
-target, BCP-rich AMWA fixture). Single Fail = `test_16` Docker
-Desktop Windows cascade-timing race (same code passes on Linux
-Docker / true host networking). Per-row caveats live in
+**AMWA NMOS Testing IS-04-01 — FULL CONFORMANCE 2026-05-02 across
+every AMWA-published minor:**
+
+| API ver | Pass | Fail | Warning |
+|---|---:|---:|---:|
+| v1.0 | 53 | 0 | 0 |
+| v1.1 | 56 | 0 | 0 |
+| v1.2 | 50 | 0 | 0 |
+| v1.3 | 59 | 0 | 0 |
+
+**218 Pass / 0 Fail / 0 Warning total.** Branch
+`feat/nmos-is04-amwa-conformance` carries 14 commits ahead of main.
+Fixed across the final round: per-version registration codec
+(closes test_04 cluster on v1.0/v1.1/v1.2), v10 keeps tags+description
+(test_28), `/transportfile` SDP route + `manifest_href` rewrite
+(auto_node_11/12), v1.1 sender validator (test_13), full api_ver TXT
+comma-list + suspend mDNS while registered (test_12_01), watcher
+dedupe by URL (kills the dual-name register/deregister flap).
+
+Test rig: 4 Proxmox LXCs on DMZ VLAN — dhs-debian (Debian 12,
+10.100.0.102), dhs-ubuntu (Ubuntu 24, 10.100.0.103), dhs-rocky
+(Rocky 9, 10.100.0.104) as Node test targets; dhs-tools (Ubuntu 24,
+10.100.0.105) hosting AMWA Testing tool image
+`amwa/nmos-testing:master-902dd5d` (the `:latest` tag regressed to a
+Controller Façade UI on port 5001 — pin the July 2024 tag for IS-04
+Node testing). Cerebrum @ 10.100.0.5 visible on the same VLAN for
+real-peer interop. SSH key on desk-03 at `~/.ssh/by-rune_lxc`.
+Per-row caveats + closed-issue table in
 [`tests/integration/nmos/amwa/NOTES.md`](tests/integration/nmos/amwa/NOTES.md).
-Run via:
 
+Run a single conformance round:
 ```bash
-cd tests/integration/nmos/amwa
-GOOS=linux GOARCH=amd64 go build -o dhs ../../../../cmd/dhs
-docker compose down && docker compose up -d --build
-curl -X POST http://127.0.0.1:5000/api -H 'Content-Type: application/json' \
-  -d '{"suite":"IS-04-01","host":["172.19.0.3"],"port":[18080],"version":["v1.3"],"output":"json"}'
+ssh -i ~/.ssh/by-rune_lxc root@10.100.0.105 'bash /tmp/run-one.sh v1.3'
 ```
-
-Web UI: <http://127.0.0.1:5000> → Host `172.19.0.3`, Port `18080`,
-Version `v1.3`. v1.0/v1.1/v1.2 rounds pending — codec already
-ships those minors (Phase 2 Step 2 / PR #160).
+(Helper scripts live in `bin/amwa-*.sh` on desk-03.)
 
 Per-spec status table (driving order, separate provider+controller
 status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amwa/docs/integration-plan.md).

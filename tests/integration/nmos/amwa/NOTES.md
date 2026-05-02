@@ -16,12 +16,18 @@ land in `results/is04-01-v<X>.json`. Run between rounds with a full
 
 ### Headline numbers
 
-| API ver | Pass | Fail | Warning | Manual | Δ vs round-25 | Notes |
-|---|---:|---:|---:|---:|---:|---|
-| **v1.3** | **55** | 2 | 1 | 1 | -1 | cascade-timing (`test_15`/`test_16`/`test_16_01`) flaky under Docker-Desktop-Windows; baseline 56 |
-| **v1.2** | **51** | 3 | 2 | 1 | n/a (was 34) | **+17** via #192 (provider downcast) + #191 (v12 codec gating); remaining 3 Fails = cascade timing |
-| v1.1 | 33 | 13 | 2 | 1 | n/a (was 32) | watcher fixed (#193); remaining gaps need v11 codec audit (sub-issue) + cascade timing |
-| v1.0 | 30 | 11 | 2 | 1 | n/a (was 29) | v10 codec landed in commit 4bb7f6f (#190); watcher fixed (#193); same residual gaps as v1.1 |
+### Final round (2026-05-02, post-LXC-rig + post-test_12_01-fix) — full conformance
+
+| API ver | Pass | Fail | Warning | Manual | Notes |
+|---|---:|---:|---:|---:|---|
+| **v1.0** | **53** | **0** | **0** | 1 | clean — all gaps closed |
+| **v1.1** | **56** | **0** | **0** | 1 | clean — test_13 closed by v1.1 sender validator fix |
+| **v1.2** | **50** | **0** | **0** | 1 | clean |
+| **v1.3** | **59** | **0** | **0** | 1 | clean — test_12_01 closed by full api_ver TXT list + suspend-on-register |
+
+**218 Pass / 0 Fail / 0 Warning across all four AMWA-published IS-04 minors.**
+
+Test rig: AMWA Testing tool `master-902dd5d` running on dhs-tools LXC (10.100.0.105) via docker-compose; dhs-node container built fresh from cross-compiled binary each run. Native Linux Docker bridge → no Docker-Desktop-Windows multicast bug.
 
 ### Closed sub-issues
 
@@ -33,6 +39,13 @@ land in `results/is04-01-v<X>.json`. Run between rounds with a full
 | #191 v12 codec gating | `bb0cffe` | Strip `Node.interfaces[].attached_network_device` + `Receiver.caps.{constraint_sets,version}` for v1.2 wire |
 | nmos-cpp arch alignment | `0c6ea9a` | cascade always heartbeat-first; Browser fan-out subscriptions; one shared Browser per process |
 | #194 DNS-SD daemon delegation Phase A — Avahi/Linux | `eb55fb2` | system DNS-SD daemon path via Avahi DBus (pure-Go); sub-ms cascade timing; v1.0 Pass count: **30 → 43** |
+| LXC test rig + multi-Node mDNS instance name | `943ed36` | unique mDNS instance per Node label (RFC 6763 §4.1.1); enables service-per-device multi-Node deploy |
+| Watcher dedupe by URL | `644f643` | RegistryWatcher.Best() collapses dual-name advertised same Cerebrum URL → no register/deregister flap on the wire |
+| Per-version registration codec | `5907793` | EncodeRegistrationVersioned dispatches via per-api_ver Codec; closes test_04/07/08/09/10/11 on v1.0/v1.1/v1.2 |
+| v10 keeps tags + description | `a81d681` | v1.0.3 schemas allow these as additionalProperties; closes test_28 |
+| /transportfile + manifest_href | `1b46ff9` | RFC 4566 SDP body served per Sender; rewriteManifestHrefs points URL at this Node; closes auto_node_11/12 v1.1+v1.2 + cascade flake on v1.0 |
+| v1.1 sender validator | `7c7509c` | DecodeSender uses v1.1 required-field set (no interface_bindings/caps/subscription); closes test_13 |
+| api_ver TXT comma-list + suspend-on-register | `534694d` | full versions array in mDNS TXT; mDNS responder torn down on register, re-announced on lose-registration; closes test_12_01 |
 
 ### Open sub-issues (multi-OS coverage to preserve)
 
