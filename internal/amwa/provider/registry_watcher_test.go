@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	dnssdcodec "acp/internal/amwa/codec/dnssd"
-	"acp/internal/amwa/codec/is04"
+	dnssdcodec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is04"
 )
 
 func TestCandidateFromInstance(t *testing.T) {

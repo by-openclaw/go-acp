@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sort"
 
-	"acp/internal/emberplus/codec/glow"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 // GlowEntry is one row of the plugin's flat Glow tree dump.

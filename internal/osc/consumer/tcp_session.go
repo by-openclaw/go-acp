@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/osc/codec"
+	"dhs/internal/osc/codec"
 )
 
 // tcpKeepalivePeriod sets SO_KEEPALIVE on accepted TCP connections.

@@ -11,8 +11,8 @@ import (
 	"log/slog"
 	"sync"
 
-	"acp/internal/cerebrum-nb/codec"
-	"acp/internal/protocol"
+	"dhs/internal/cerebrum-nb/codec"
+	"dhs/internal/protocol"
 )
 
 func init() {

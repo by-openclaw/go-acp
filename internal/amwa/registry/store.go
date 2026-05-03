@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is04"
 )
 
 // ErrNotFound is returned by every getter when the resource is unknown.

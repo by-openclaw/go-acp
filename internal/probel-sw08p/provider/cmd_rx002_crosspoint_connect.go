@@ -1,7 +1,7 @@
 package probelsw08p
 
 import (
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // handleCrosspointConnect decodes the connect request, records the

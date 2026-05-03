@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/tsl/codec"
-	consumer "acp/internal/tsl/consumer"
-	provider "acp/internal/tsl/provider"
+	"dhs/internal/tsl/codec"
+	consumer "dhs/internal/tsl/consumer"
+	provider "dhs/internal/tsl/provider"
 )
 
 // TestV31_MultiInstance_SamePort verifies the SO_REUSEADDR multi-listener

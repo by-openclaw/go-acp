@@ -9,8 +9,8 @@ import (
 
 	stdhttp "net/http"
 
-	"acp/internal/amwa/codec/is04"
-	httpsession "acp/internal/amwa/session/http"
+	"dhs/internal/amwa/codec/is04"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // installQueryRoutes wires the Query API endpoints onto the server.

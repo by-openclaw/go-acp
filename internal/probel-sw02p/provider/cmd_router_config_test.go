@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"acp/internal/export/canonical"
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // TestRouterConfigRequestDerivedFromTree drives rx 075 through the

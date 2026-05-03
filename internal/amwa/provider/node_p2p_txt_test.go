@@ -6,9 +6,9 @@ import (
 	"sync"
 	"testing"
 
-	dnssdcodec "acp/internal/amwa/codec/dnssd"
-	"acp/internal/amwa/codec/is04"
-	dnssdsession "acp/internal/amwa/session/dnssd"
+	dnssdcodec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is04"
+	dnssdsession "dhs/internal/amwa/session/dnssd"
 )
 
 // mockResponder is a test-only [dnssdsession.Responder] that records the

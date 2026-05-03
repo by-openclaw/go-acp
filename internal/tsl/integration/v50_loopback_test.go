@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/tsl/codec"
-	consumer "acp/internal/tsl/consumer"
-	provider "acp/internal/tsl/provider"
+	"dhs/internal/tsl/codec"
+	consumer "dhs/internal/tsl/consumer"
+	provider "dhs/internal/tsl/provider"
 )
 
 // TestV50_UDPLoopback_ASCII drives a single-DMSG ASCII v5.0 packet via

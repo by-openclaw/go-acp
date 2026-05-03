@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 var fencedJSON = regexp.MustCompile("(?s)```json\\s*\\n(.*?)\\n```")

@@ -1,9 +1,9 @@
 package emberplus
 
 import (
-	"acp/internal/export/canonical"
-	"acp/internal/emberplus/codec/ber"
-	"acp/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
+	"dhs/internal/emberplus/codec/ber"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 // encodeQualifiedFunction emits a [APPLICATION 20] QualifiedFunction. Only

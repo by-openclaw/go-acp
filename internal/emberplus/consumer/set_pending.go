@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // pendingSet captures one in-flight SetValue call waiting for the

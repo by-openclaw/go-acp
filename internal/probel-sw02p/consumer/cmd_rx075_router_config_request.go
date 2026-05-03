@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // RouterConfigResponse captures either tx 076 RESPONSE-1 (§3.2.58)

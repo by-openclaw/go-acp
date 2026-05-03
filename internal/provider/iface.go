@@ -12,7 +12,7 @@ import (
 	"context"
 	"log/slog"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 // Provider is the runtime contract: start serving on an address, stop cleanly.

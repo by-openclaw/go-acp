@@ -3,8 +3,8 @@ package emberplus
 import (
 	"testing"
 
-	"acp/internal/export/canonical"
-	"acp/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 // buildMatrixTree constructs a minimal tree: router(Node 1) → mat(Matrix 1.1)

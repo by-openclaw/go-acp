@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"strings"
 
-	"acp/internal/amwa/codec/is04"
-	httpsession "acp/internal/amwa/session/http"
+	"dhs/internal/amwa/codec/is04"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // Client is the IS-04 Query API client. Hold one per Registry: it

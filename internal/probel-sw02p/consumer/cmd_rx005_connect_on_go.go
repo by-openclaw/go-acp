@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // SendConnectOnGo emits rx 05 CONNECT ON GO (§3.2.7) and waits for the

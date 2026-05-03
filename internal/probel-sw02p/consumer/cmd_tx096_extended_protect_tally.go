@@ -1,7 +1,7 @@
 package probelsw02p
 
 import (
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // SubscribeExtendedProtectTally registers fn as a listener for tx 96

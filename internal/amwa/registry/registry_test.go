@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	registryslot "acp/internal/registry"
+	registryslot "dhs/internal/registry"
 )
 
 func TestFactoryRegisteredViaInit(t *testing.T) {

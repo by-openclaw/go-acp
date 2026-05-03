@@ -8,8 +8,8 @@ import (
 	stdhttp "net/http"
 	"strings"
 
-	"acp/internal/amwa/codec/is04"
-	httpsession "acp/internal/amwa/session/http"
+	"dhs/internal/amwa/codec/is04"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // installRegistrationRoutes wires the Registration API endpoints onto

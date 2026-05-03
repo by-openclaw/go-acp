@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/amwa/codec/dnssd"
-	"acp/internal/amwa/codec/is04"
-	"acp/internal/amwa/codec/spec"
-	"acp/internal/amwa/session/query"
+	"dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/spec"
+	"dhs/internal/amwa/session/query"
 )
 
 // ControllerOptions configures the IS-04 Controller. The pattern

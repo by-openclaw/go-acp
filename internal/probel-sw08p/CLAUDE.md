@@ -281,5 +281,5 @@ sentinel. Fixed by switching to `map[uint16]uint16` in commit
 - Do NOT combine multiple commands in one file. One command byte = one file.
 - Do NOT silently work around a spec deviation — always route through
   `compliance.Profile` so the event is observable.
-- Do NOT import `acp/internal/*` from `internal/probel-sw08p/codec/` — codec is
+- Do NOT import `dhs/internal/*` from `internal/probel-sw08p/codec/` — codec is
   stdlib-only.

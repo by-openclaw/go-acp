@@ -7,7 +7,7 @@ import (
 	"math"
 	"time"
 
-	iacp1 "acp/internal/acp1/consumer"
+	iacp1 "dhs/internal/acp1/consumer"
 )
 
 // RunAnnounceDemo oscillates the integer value at (slot, group, id)

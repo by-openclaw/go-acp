@@ -10,9 +10,9 @@ import (
 	"strings"
 	"sync"
 
-	"acp/internal/export/canonical"
-	"acp/internal/emberplus/codec/glow"
-	"acp/internal/emberplus/codec/s101"
+	"dhs/internal/export/canonical"
+	"dhs/internal/emberplus/codec/glow"
+	"dhs/internal/emberplus/codec/s101"
 )
 
 // session is one live consumer connection. Single read loop; a send

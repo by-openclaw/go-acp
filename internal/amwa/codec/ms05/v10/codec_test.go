@@ -3,7 +3,7 @@ package v10
 import (
 	"testing"
 
-	"acp/internal/amwa/codec/ms05"
+	"dhs/internal/amwa/codec/ms05"
 )
 
 func TestRegistration(t *testing.T) {

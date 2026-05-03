@@ -8,8 +8,8 @@ import (
 	"sync"
 	"syscall"
 
-	"acp/internal/transport"
-	"acp/internal/tsl/codec"
+	"dhs/internal/transport"
+	"dhs/internal/tsl/codec"
 )
 
 // udpSender is shared across versions. It owns a single outbound UDP

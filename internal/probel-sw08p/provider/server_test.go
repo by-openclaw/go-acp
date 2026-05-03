@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
-	"acp/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/export/canonical"
 )
 
 // TestTreeParsesDemoMatrix loads the demo fixture and verifies both

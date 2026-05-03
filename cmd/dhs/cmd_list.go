@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 func runListProtocols() error {

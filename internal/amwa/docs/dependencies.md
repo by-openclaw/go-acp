@@ -20,12 +20,12 @@ introduces a back-arrow.
 │  LAYER 4 — CLI                                                             │
 │  cmd/dhs/cmd_nmos.go                                                       │
 │                                                                            │
-│  Allowed:  acp/internal/amwa/consumer    (blank import + verb dispatch)     │
-│            acp/internal/amwa/provider    (blank import)                    │
-│            acp/internal/amwa/registry    (blank import)                    │
-│            acp/internal/protocol         (interface, registry lookup)       │
-│            acp/internal/provider         (interface, registry lookup)       │
-│            acp/internal/registry         (interface, registry lookup)       │
+│  Allowed:  dhs/internal/amwa/consumer    (blank import + verb dispatch)     │
+│            dhs/internal/amwa/provider    (blank import)                    │
+│            dhs/internal/amwa/registry    (blank import)                    │
+│            dhs/internal/protocol         (interface, registry lookup)       │
+│            dhs/internal/provider         (interface, registry lookup)       │
+│            dhs/internal/registry         (interface, registry lookup)       │
 │  Forbidden: anything under internal/amwa/codec/* directly                   │
 │             anything under internal/amwa/session/* directly                 │
 │             any other internal/<proto>/* (cross-protocol leak)              │
@@ -37,14 +37,14 @@ introduces a back-arrow.
 │  internal/amwa/provider/  (Node)                                           │
 │  internal/amwa/registry/  (Registry — dual-face middleware)                │
 │                                                                            │
-│  Allowed:  acp/internal/amwa/session/*                                      │
-│            acp/internal/amwa/codec/*                                        │
-│            acp/internal/protocol           (interface only)                 │
-│            acp/internal/provider           (interface only)                 │
-│            acp/internal/registry           (interface only — NEW slot)      │
-│            acp/internal/protocol/compliance                                │
-│            acp/internal/storage            (portable data dir)              │
-│            acp/internal/metrics            (connector + Prom)               │
+│  Allowed:  dhs/internal/amwa/session/*                                      │
+│            dhs/internal/amwa/codec/*                                        │
+│            dhs/internal/protocol           (interface only)                 │
+│            dhs/internal/provider           (interface only)                 │
+│            dhs/internal/registry           (interface only — NEW slot)      │
+│            dhs/internal/protocol/compliance                                │
+│            dhs/internal/storage            (portable data dir)              │
+│            dhs/internal/metrics            (connector + Prom)               │
 │  Forbidden: any other internal/<proto>/*                                    │
 │             cmd/*                                                          │
 │             cross-imports between consumer / provider / registry            │
@@ -62,11 +62,11 @@ introduces a back-arrow.
 │                                          client)                           │
 │  internal/amwa/session/bootstrap/      (IS-09 fetch on Node boot)          │
 │                                                                            │
-│  Allowed:  acp/internal/amwa/codec/*                                        │
-│            acp/internal/transport       (HTTP/WS capture)                   │
-│            acp/internal/protocol/compliance                                │
-│            acp/internal/metrics                                            │
-│  Forbidden: acp/internal/amwa/{consumer,provider,registry}                  │
+│  Allowed:  dhs/internal/amwa/codec/*                                        │
+│            dhs/internal/transport       (HTTP/WS capture)                   │
+│            dhs/internal/protocol/compliance                                │
+│            dhs/internal/metrics                                            │
+│  Forbidden: dhs/internal/amwa/{consumer,provider,registry}                  │
 │             cmd/*                                                          │
 │             any other internal/<proto>/*                                    │
 └──────────────────────────────────┬─────────────────────────────────────────┘
@@ -285,7 +285,7 @@ linters-settings:
         files:
           - "**/internal/amwa/codec/**"
         deny:
-          - pkg: "acp/"
+          - pkg: "dhs/"
             desc: "codec layer must be stdlib-only (lift-to-own-repo ready)"
           - pkg: "github.com/"
             desc: "codec layer must be stdlib-only"
@@ -295,20 +295,20 @@ linters-settings:
         files:
           - "**/internal/amwa/session/**"
         deny:
-          - pkg: "acp/internal/amwa/consumer"
+          - pkg: "dhs/internal/amwa/consumer"
             desc: "session must not import plugin layer (back-arrow)"
-          - pkg: "acp/internal/amwa/provider"
-          - pkg: "acp/internal/amwa/registry"
-          - pkg: "acp/cmd/"
+          - pkg: "dhs/internal/amwa/provider"
+          - pkg: "dhs/internal/amwa/registry"
+          - pkg: "dhs/cmd/"
 
       nmos-plugin-no-cross-plugin:
         list-mode: lax
         files:
           - "**/internal/amwa/consumer/**"
         deny:
-          - pkg: "acp/internal/amwa/provider"
+          - pkg: "dhs/internal/amwa/provider"
             desc: "consumer must not import provider (cross-plugin leak)"
-          - pkg: "acp/internal/amwa/registry"
+          - pkg: "dhs/internal/amwa/registry"
       # ... mirror rules for provider/ and registry/
 ```
 
@@ -327,14 +327,14 @@ import (
 )
 
 func TestCodecHasNoAcpImports(t *testing.T) {
-    pkg, err := build.Import("acp/internal/amwa/codec/...", "", 0)
-    // walk every codec package, fail if any import starts with "acp/"
-    // (excluding sibling acp/internal/amwa/codec/*)
+    pkg, err := build.Import("dhs/internal/amwa/codec/...", "", 0)
+    // walk every codec package, fail if any import starts with "dhs/"
+    // (excluding sibling dhs/internal/amwa/codec/*)
 }
 
 func TestSessionHasNoPluginImports(t *testing.T) {
     // walk every session package, fail if it imports
-    // acp/internal/amwa/{consumer,provider,registry}
+    // dhs/internal/amwa/{consumer,provider,registry}
 }
 
 // ... etc
@@ -366,13 +366,13 @@ without breaking the layering:
 
 | Package | Purpose | Layers allowed |
 |---|---|---|
-| `acp/internal/storage` | Portable data dir + atomic file writes | 2, 3 |
-| `acp/internal/metrics` | Connector counters + Prom registry | 2, 3 |
-| `acp/internal/transport` | HTTP/WS capture (`--capture` flag) | 2 only |
-| `acp/internal/protocol/compliance` | Compliance.Profile + event types | 2, 3 |
-| `acp/internal/protocol` | Consumer interface + registry | 3, 4 |
-| `acp/internal/provider` | Provider interface + registry | 3, 4 |
-| `acp/internal/registry` *(NEW)* | Registry interface + registry | 3, 4 |
+| `dhs/internal/storage` | Portable data dir + atomic file writes | 2, 3 |
+| `dhs/internal/metrics` | Connector counters + Prom registry | 2, 3 |
+| `dhs/internal/transport` | HTTP/WS capture (`--capture` flag) | 2 only |
+| `dhs/internal/protocol/compliance` | Compliance.Profile + event types | 2, 3 |
+| `dhs/internal/protocol` | Consumer interface + registry | 3, 4 |
+| `dhs/internal/provider` | Provider interface + registry | 3, 4 |
+| `dhs/internal/registry` *(NEW)* | Registry interface + registry | 3, 4 |
 
 ---
 

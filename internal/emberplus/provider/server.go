@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 // server is the provider runtime. One listener, many sessions, a shared

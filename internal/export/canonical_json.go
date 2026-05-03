@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 // ErrNilExport is returned by WriteCanonicalJSON when the caller

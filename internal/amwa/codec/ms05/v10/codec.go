@@ -2,7 +2,7 @@
 // single track defined by the spec today.
 package v10
 
-import "acp/internal/amwa/codec/ms05"
+import "dhs/internal/amwa/codec/ms05"
 
 // SpecPatch — the patch release the codec is audited against.
 const SpecPatch = "v1.0.0"

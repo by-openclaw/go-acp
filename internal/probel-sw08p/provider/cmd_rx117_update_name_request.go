@@ -3,7 +3,7 @@ package probelsw08p
 import (
 	"log/slog"
 
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // handleUpdateNameRequest: rx 117 — fire-and-forget label push.

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"acp/internal/cerebrum-nb/codec"
+	"dhs/internal/cerebrum-nb/codec"
 )
 
 // TestRouteActionEncoding verifies the wire emitted by the route verb

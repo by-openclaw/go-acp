@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // session is one connected SW-P-02 client. It owns the TCP socket,

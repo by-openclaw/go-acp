@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/dnssd"
 )
 
 // DefaultUnicastTimeout caps a single unicast DNS-SD query.

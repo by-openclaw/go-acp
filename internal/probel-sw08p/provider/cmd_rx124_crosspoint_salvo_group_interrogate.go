@@ -1,7 +1,7 @@
 package probelsw08p
 
 import (
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // handleSalvoGroupInterrogate: rx 124 → tx 125. Returns one salvo slot

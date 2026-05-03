@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"acp/internal/export/canonical"
-	"acp/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 // TestRoundTrip_NodeWithParameter asserts the provider encoder and the

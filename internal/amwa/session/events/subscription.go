@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	httpsession "acp/internal/amwa/session/http"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // subscription tracks one publisher-side connected client and its

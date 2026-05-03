@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"acp/internal/probel-sw08p/codec"
-	"acp/internal/protocol"
+	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/protocol"
 )
 
 // SingleSourceName fetches one source's name. Per spec §3.3.19 Note 5,

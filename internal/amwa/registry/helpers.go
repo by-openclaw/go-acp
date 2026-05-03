@@ -3,8 +3,8 @@ package registry
 import (
 	"encoding/json"
 
-	codec "acp/internal/amwa/codec/dnssd"
-	"acp/internal/amwa/codec/is04"
+	codec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is04"
 )
 
 // pickRegistryServices returns the DNS-SD service-type names a Registry

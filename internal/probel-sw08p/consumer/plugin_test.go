@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // TestFactoryMeta verifies the registration contract: the plugin

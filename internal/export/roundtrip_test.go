@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/export"
-	"acp/internal/protocol"
+	"dhs/internal/export"
+	"dhs/internal/protocol"
 )
 
 func sampleSnapshot() *export.Snapshot {

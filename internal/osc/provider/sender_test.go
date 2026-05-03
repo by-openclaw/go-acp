@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/osc/codec"
+	"dhs/internal/osc/codec"
 )
 
 func TestUDPSender_MessageReachesListener(t *testing.T) {

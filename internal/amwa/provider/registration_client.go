@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"acp/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is04"
 )
 
 // HeartbeatInterval is the IS-04 §6.1 default for POST

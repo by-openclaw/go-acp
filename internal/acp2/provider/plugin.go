@@ -15,9 +15,9 @@ package acp2
 import (
 	"log/slog"
 
-	"acp/internal/export/canonical"
-	"acp/internal/provider"
-	iacp2 "acp/internal/acp2/consumer"
+	"dhs/internal/export/canonical"
+	"dhs/internal/provider"
+	iacp2 "dhs/internal/acp2/consumer"
 )
 
 // DefaultPort is the AN2 TCP port used for ACP2 traffic.

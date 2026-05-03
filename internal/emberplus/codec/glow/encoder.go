@@ -6,7 +6,7 @@
 package glow
 
 import (
-	"acp/internal/emberplus/codec/ber"
+	"dhs/internal/emberplus/codec/ber"
 )
 
 // --- Root messages ---

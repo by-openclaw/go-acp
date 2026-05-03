@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/amwa/codec/is07"
-	_ "acp/internal/amwa/codec/is07/v10"
-	"acp/internal/amwa/session/events"
+	"dhs/internal/amwa/codec/is07"
+	_ "dhs/internal/amwa/codec/is07/v10"
+	"dhs/internal/amwa/session/events"
 )
 
 const (

@@ -19,7 +19,7 @@ import (
 	"os"
 	"time"
 
-	"acp/internal/metrics"
+	"dhs/internal/metrics"
 )
 
 func runMetrics(ctx context.Context, args []string) error {

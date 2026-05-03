@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // UpdateNameRequest issues rx 117 UPDATE NAME REQUEST — a fire-and-

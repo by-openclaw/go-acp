@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // runWatch subscribes to live announcements and prints each event as it

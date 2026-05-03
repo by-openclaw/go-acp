@@ -16,8 +16,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"acp/internal/export"
-	"acp/internal/protocol"
+	"dhs/internal/export"
+	"dhs/internal/protocol"
 )
 
 // TreeStore manages cached tree files on disk.

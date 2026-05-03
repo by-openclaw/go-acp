@@ -6,7 +6,7 @@ import (
 	"flag"
 	"fmt"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 func runGet(ctx context.Context, args []string) error {

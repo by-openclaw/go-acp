@@ -34,29 +34,29 @@ import (
 	"os"
 	"os/signal"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 
 	// Consumer plugins — blank imports register with internal/protocol.
-	_ "acp/internal/acp1/consumer"
-	_ "acp/internal/acp2/consumer"
-	_ "acp/internal/cerebrum-nb/consumer"
-	_ "acp/internal/emberplus/consumer"
-	_ "acp/internal/osc/consumer"
-	_ "acp/internal/probel-sw02p/consumer"
-	_ "acp/internal/probel-sw08p/consumer"
-	_ "acp/internal/tsl/consumer"
+	_ "dhs/internal/acp1/consumer"
+	_ "dhs/internal/acp2/consumer"
+	_ "dhs/internal/cerebrum-nb/consumer"
+	_ "dhs/internal/emberplus/consumer"
+	_ "dhs/internal/osc/consumer"
+	_ "dhs/internal/probel-sw02p/consumer"
+	_ "dhs/internal/probel-sw08p/consumer"
+	_ "dhs/internal/tsl/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.
-	_ "acp/internal/acp1/provider"
-	_ "acp/internal/acp2/provider"
-	_ "acp/internal/emberplus/provider"
-	_ "acp/internal/osc/provider"
-	_ "acp/internal/probel-sw02p/provider"
-	_ "acp/internal/probel-sw08p/provider"
-	_ "acp/internal/tsl/provider"
+	_ "dhs/internal/acp1/provider"
+	_ "dhs/internal/acp2/provider"
+	_ "dhs/internal/emberplus/provider"
+	_ "dhs/internal/osc/provider"
+	_ "dhs/internal/probel-sw02p/provider"
+	_ "dhs/internal/probel-sw08p/provider"
+	_ "dhs/internal/tsl/provider"
 
 	// Registry plugins — blank imports register with internal/registry.
-	_ "acp/internal/amwa/registry"
+	_ "dhs/internal/amwa/registry"
 
 	// NMOS codec versions — blank imports trigger init()-time
 	// registration with the per-spec spec.Registry[T]. Each minor
@@ -64,29 +64,29 @@ import (
 	// references the concrete vXX/ packages directly. Plugin code
 	// (Layer 3) goes through the host spec's Codec interface only,
 	// per `internal/amwa/docs/dependencies.md` forbidden edges.
-	_ "acp/internal/amwa/codec/is04/v10"
-	_ "acp/internal/amwa/codec/is04/v11"
-	_ "acp/internal/amwa/codec/is04/v12"
-	_ "acp/internal/amwa/codec/is04/v13"
-	_ "acp/internal/amwa/codec/is05/v10"
-	_ "acp/internal/amwa/codec/is05/v11"
-	_ "acp/internal/amwa/codec/is07/v10"
-	_ "acp/internal/amwa/codec/is08/v10"
-	_ "acp/internal/amwa/codec/is09/v10"
-	_ "acp/internal/amwa/codec/is12/v10"
-	_ "acp/internal/amwa/codec/ms05/v10"
+	_ "dhs/internal/amwa/codec/is04/v10"
+	_ "dhs/internal/amwa/codec/is04/v11"
+	_ "dhs/internal/amwa/codec/is04/v12"
+	_ "dhs/internal/amwa/codec/is04/v13"
+	_ "dhs/internal/amwa/codec/is05/v10"
+	_ "dhs/internal/amwa/codec/is05/v11"
+	_ "dhs/internal/amwa/codec/is07/v10"
+	_ "dhs/internal/amwa/codec/is08/v10"
+	_ "dhs/internal/amwa/codec/is09/v10"
+	_ "dhs/internal/amwa/codec/is12/v10"
+	_ "dhs/internal/amwa/codec/ms05/v10"
 
 	// BCP validator packages — register into the shared bcp registry
 	// at init() time so the host-resource fanout in
 	// `internal/amwa/codec/bcp/Run` sees them.
-	_ "acp/internal/amwa/codec/bcp/bcp00201"
-	_ "acp/internal/amwa/codec/bcp/bcp00202"
-	_ "acp/internal/amwa/codec/bcp/bcp00401"
-	_ "acp/internal/amwa/codec/bcp/bcp00402"
-	_ "acp/internal/amwa/codec/bcp/bcp00601"
-	_ "acp/internal/amwa/codec/bcp/bcp00604"
-	_ "acp/internal/amwa/codec/bcp/bcp00801"
-	_ "acp/internal/amwa/codec/bcp/bcp00802"
+	_ "dhs/internal/amwa/codec/bcp/bcp00201"
+	_ "dhs/internal/amwa/codec/bcp/bcp00202"
+	_ "dhs/internal/amwa/codec/bcp/bcp00401"
+	_ "dhs/internal/amwa/codec/bcp/bcp00402"
+	_ "dhs/internal/amwa/codec/bcp/bcp00601"
+	_ "dhs/internal/amwa/codec/bcp/bcp00604"
+	_ "dhs/internal/amwa/codec/bcp/bcp00801"
+	_ "dhs/internal/amwa/codec/bcp/bcp00802"
 )
 
 // Build-time variables injected via -ldflags. See Makefile LDFLAGS_FULL.

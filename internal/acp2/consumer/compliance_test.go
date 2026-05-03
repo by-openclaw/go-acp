@@ -20,7 +20,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"acp/internal/acp2/consumer"
+	"dhs/internal/acp2/consumer"
 )
 
 // findACP2Error walks every frame in the capture and returns the

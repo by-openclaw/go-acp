@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"acp/internal/acp2/consumer"
+	"dhs/internal/acp2/consumer"
 )
 
 // captureRecord mirrors transport.CaptureRecord — duplicated here to

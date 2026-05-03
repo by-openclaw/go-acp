@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // WriteJSON emits a Snapshot as pretty-printed JSON. Uses stdlib

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	iacp2 "acp/internal/acp2/consumer"
+	iacp2 "dhs/internal/acp2/consumer"
 )
 
 // Version constants advertised by this provider.

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
-	"acp/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/export/canonical"
 )
 
 // TestKeepaliveSchedulerSendsPings: with a short interval, the server

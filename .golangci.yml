@@ -22,15 +22,15 @@ linters:
           deny:
             - pkg: github.com
               desc: "codec layer is stdlib-only (lift-to-own-repo ready)"
-            - pkg: acp/cmd
+            - pkg: dhs/cmd
               desc: "codec must not depend on cmd/"
-            - pkg: acp/internal/amwa/session
+            - pkg: dhs/internal/amwa/session
               desc: "codec must not depend on session/ (Layer 1 cannot import Layer 2)"
-            - pkg: acp/internal/amwa/consumer
+            - pkg: dhs/internal/amwa/consumer
               desc: "codec must not depend on consumer/ (Layer 1 cannot import Layer 3)"
-            - pkg: acp/internal/amwa/provider
+            - pkg: dhs/internal/amwa/provider
               desc: "codec must not depend on provider/ (Layer 1 cannot import Layer 3)"
-            - pkg: acp/internal/amwa/registry
+            - pkg: dhs/internal/amwa/registry
               desc: "codec must not depend on registry/ (Layer 1 cannot import Layer 3)"
 
         # Layer 2 — session may import Layer 1 codec + neutral
@@ -40,13 +40,13 @@ linters:
           files:
             - "**/internal/amwa/session/**"
           deny:
-            - pkg: acp/internal/amwa/consumer
+            - pkg: dhs/internal/amwa/consumer
               desc: "session must not import plugin layer (back-arrow)"
-            - pkg: acp/internal/amwa/provider
+            - pkg: dhs/internal/amwa/provider
               desc: "session must not import plugin layer (back-arrow)"
-            - pkg: acp/internal/amwa/registry
+            - pkg: dhs/internal/amwa/registry
               desc: "session must not import plugin layer (back-arrow)"
-            - pkg: acp/cmd
+            - pkg: dhs/cmd
               desc: "session must not import cmd/"
 
         # Layer 3 — plugins may import Layer 2 session + Layer 1 codec
@@ -59,7 +59,7 @@ linters:
             - "**/internal/amwa/provider/**"
             - "**/internal/amwa/registry/**"
           deny:
-            - pkg: acp/cmd
+            - pkg: dhs/cmd
               desc: "plugin layer must not import cmd/"
 
 issues:

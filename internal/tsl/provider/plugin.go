@@ -12,9 +12,9 @@ import (
 	"log/slog"
 	"net"
 
-	"acp/internal/export/canonical"
-	"acp/internal/provider"
-	"acp/internal/tsl/codec"
+	"dhs/internal/export/canonical"
+	"dhs/internal/provider"
+	"dhs/internal/tsl/codec"
 )
 
 func init() {

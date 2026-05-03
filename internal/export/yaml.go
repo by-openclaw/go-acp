@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // WriteYAML emits a Snapshot as YAML. We deliberately avoid importing

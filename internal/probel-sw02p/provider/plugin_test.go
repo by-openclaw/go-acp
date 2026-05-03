@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"acp/internal/export/canonical"
-	"acp/internal/provider"
+	"dhs/internal/export/canonical"
+	"dhs/internal/provider"
 )
 
 // TestFactoryMeta verifies the provider registration contract.

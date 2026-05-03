@@ -3,8 +3,8 @@ package emberplus
 import (
 	"testing"
 
-	"acp/internal/export/canonical"
-	"acp/internal/protocol/compliance"
+	"dhs/internal/export/canonical"
+	"dhs/internal/protocol/compliance"
 )
 
 // TestResolveMatrixLabels_MultiLevel exercises the N>=2 case that the

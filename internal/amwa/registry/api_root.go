@@ -4,7 +4,7 @@ import (
 	"context"
 	stdhttp "net/http"
 
-	httpsession "acp/internal/amwa/session/http"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // installAPIRootRoutes wires the discovery roots that AMWA IS-04-02

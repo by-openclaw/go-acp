@@ -4,7 +4,7 @@ import (
 	"sort"
 	"sync"
 
-	"acp/internal/amwa/codec/spec"
+	"dhs/internal/amwa/codec/spec"
 )
 
 // Kind is the NMOS resource kind a Validator targets.

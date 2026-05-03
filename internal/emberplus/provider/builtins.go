@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 // lockStore holds per-target locks keyed by matrixOID -> target.

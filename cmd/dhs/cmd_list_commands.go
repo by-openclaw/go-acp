@@ -8,11 +8,11 @@ import (
 	"sort"
 	"strings"
 
-	acp1 "acp/internal/acp1/consumer"
-	acp2 "acp/internal/acp2/consumer"
-	emberplus "acp/internal/emberplus/consumer"
-	codecsw02 "acp/internal/probel-sw02p/codec"
-	codecsw08 "acp/internal/probel-sw08p/codec"
+	acp1 "dhs/internal/acp1/consumer"
+	acp2 "dhs/internal/acp2/consumer"
+	emberplus "dhs/internal/emberplus/consumer"
+	codecsw02 "dhs/internal/probel-sw02p/codec"
+	codecsw08 "dhs/internal/probel-sw08p/codec"
 )
 
 // catalogueRow is the rendered shape used by `dhs list-commands` —

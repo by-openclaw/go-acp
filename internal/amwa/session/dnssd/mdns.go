@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/dnssd"
 )
 
 // mDNS link-local addresses (RFC 6762 ??3). IPv6 is staged for a

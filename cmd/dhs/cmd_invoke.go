@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	emberplus "acp/internal/emberplus/consumer"
+	emberplus "dhs/internal/emberplus/consumer"
 )
 
 func runInvoke(ctx context.Context, args []string) error {

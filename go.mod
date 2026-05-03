@@ -1,4 +1,4 @@
-module acp
+module dhs
 
 go 1.23.0
 

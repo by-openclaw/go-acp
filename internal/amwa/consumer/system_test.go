@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	dnssdcodec "acp/internal/amwa/codec/dnssd"
-	"acp/internal/amwa/codec/is09"
-	httpsession "acp/internal/amwa/session/http"
+	dnssdcodec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is09"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 func TestSelectInstanceFiltersByProto(t *testing.T) {

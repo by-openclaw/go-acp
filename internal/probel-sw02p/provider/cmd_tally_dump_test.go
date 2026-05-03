@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // TestEmitExtendedProtectTallyDumpFanout drives EmitExtendedProtect

@@ -3,7 +3,7 @@ package glow
 import (
 	"testing"
 
-	"acp/internal/emberplus/codec/ber"
+	"dhs/internal/emberplus/codec/ber"
 )
 
 func TestEncodeDecodeGetDirectory(t *testing.T) {

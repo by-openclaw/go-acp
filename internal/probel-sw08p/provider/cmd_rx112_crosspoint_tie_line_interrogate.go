@@ -1,7 +1,7 @@
 package probelsw08p
 
 import (
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // handleTieLineInterrogate: rx 112 → tx 113.

@@ -14,8 +14,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"acp/internal/cerebrum-nb/codec"
-	"acp/internal/cerebrum-nb/codec/ws"
+	"dhs/internal/cerebrum-nb/codec"
+	"dhs/internal/cerebrum-nb/codec/ws"
 )
 
 // Session is the live WebSocket session against one Cerebrum host. It

@@ -13,11 +13,11 @@ import (
 	"fmt"
 	"sort"
 
-	"acp/internal/protocol"
-	"acp/internal/acp1/consumer"
-	"acp/internal/acp2/consumer"
-	"acp/internal/protocol/compliance"
-	emberplus "acp/internal/emberplus/consumer"
+	"dhs/internal/protocol"
+	"dhs/internal/acp1/consumer"
+	"dhs/internal/acp2/consumer"
+	"dhs/internal/protocol/compliance"
+	emberplus "dhs/internal/emberplus/consumer"
 )
 
 // pluginProfile returns the compliance profile attached to the given

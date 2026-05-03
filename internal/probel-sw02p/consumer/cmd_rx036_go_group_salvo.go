@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // SendGoGroupSalvo emits rx 36 (§3.2.37) and waits for tx 38 GO DONE

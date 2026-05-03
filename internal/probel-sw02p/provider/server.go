@@ -8,10 +8,10 @@ import (
 	"net"
 	"sync"
 
-	"acp/internal/export/canonical"
-	"acp/internal/metrics"
-	"acp/internal/probel-sw02p/codec"
-	"acp/internal/protocol/compliance"
+	"dhs/internal/export/canonical"
+	"dhs/internal/metrics"
+	"dhs/internal/probel-sw02p/codec"
+	"dhs/internal/protocol/compliance"
 )
 
 // Server is the exported alias for the concrete SW-P-02 provider.

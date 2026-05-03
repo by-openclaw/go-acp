@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	codec02 "acp/internal/probel-sw02p/codec"
-	probelsw02proto "acp/internal/probel-sw02p/consumer"
-	"acp/internal/transport"
+	codec02 "dhs/internal/probel-sw02p/codec"
+	probelsw02proto "dhs/internal/probel-sw02p/consumer"
+	"dhs/internal/transport"
 )
 
 // runProbelsw02p dispatches `dhs consumer probel-sw02p <subcommand>`.

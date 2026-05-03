@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // SendExtendedInterrogate emits rx 65 Extended INTERROGATE (§3.2.47)

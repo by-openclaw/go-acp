@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"acp/internal/export/canonical"
-	iacp1 "acp/internal/acp1/consumer"
+	"dhs/internal/export/canonical"
+	iacp1 "dhs/internal/acp1/consumer"
 )
 
 // groupName -> ObjGroup constant. Mirrors buildSlotNode in

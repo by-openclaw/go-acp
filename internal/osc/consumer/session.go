@@ -7,8 +7,8 @@ import (
 	"sync"
 	"syscall"
 
-	"acp/internal/osc/codec"
-	"acp/internal/transport"
+	"dhs/internal/osc/codec"
+	"dhs/internal/transport"
 )
 
 // PacketEvent is delivered to every subscriber whose pattern matches

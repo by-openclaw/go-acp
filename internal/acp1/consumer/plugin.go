@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/protocol"
-	"acp/internal/protocol/compliance"
-	"acp/internal/transport"
+	"dhs/internal/protocol"
+	"dhs/internal/protocol/compliance"
+	"dhs/internal/transport"
 )
 
 // init registers the ACP1 plugin with the global protocol registry.

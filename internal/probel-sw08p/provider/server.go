@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/export/canonical"
-	"acp/internal/metrics"
-	"acp/internal/probel-sw08p/codec"
-	"acp/internal/protocol/compliance"
+	"dhs/internal/export/canonical"
+	"dhs/internal/metrics"
+	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/protocol/compliance"
 )
 
 // Server is the exported alias for the concrete Probel provider. Mirrors

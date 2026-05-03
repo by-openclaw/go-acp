@@ -1,7 +1,7 @@
 package probelsw02p
 
 import (
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // handleStatusRequest processes rx 07 STATUS REQUEST (§3.2.9).

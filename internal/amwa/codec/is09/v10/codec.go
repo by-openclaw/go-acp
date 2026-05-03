@@ -10,7 +10,7 @@
 package v10
 
 import (
-	"acp/internal/amwa/codec/is09"
+	"dhs/internal/amwa/codec/is09"
 )
 
 // SpecPatch is the spec-text revision this codec strictly complies

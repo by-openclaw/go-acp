@@ -3,7 +3,7 @@ package probelsw02p
 import (
 	"log/slog"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // handlerResult is what a per-command handler returns. The dispatcher

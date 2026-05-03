@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/tsl/codec"
-	consumer "acp/internal/tsl/consumer"
-	provider "acp/internal/tsl/provider"
+	"dhs/internal/tsl/codec"
+	consumer "dhs/internal/tsl/consumer"
+	provider "dhs/internal/tsl/provider"
 )
 
 func TestV31_Loopback(t *testing.T) {

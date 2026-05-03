@@ -6,7 +6,7 @@ import (
 	"context"
 	"log/slog"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // Register this plugin on import.

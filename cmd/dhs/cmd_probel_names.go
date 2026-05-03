@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // parseNameLen maps the --size flag (4 | 8 | 12 | 16) into the

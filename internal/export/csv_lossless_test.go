@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/export"
-	"acp/internal/protocol"
+	"dhs/internal/export"
+	"dhs/internal/protocol"
 )
 
 // dryRunMock is the minimal plugin stub Apply needs to reach its

@@ -1,7 +1,7 @@
 package probelsw08p
 
 import (
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // handleSingleDestAssocName: rx 103 → tx 107 with NumNames=1.

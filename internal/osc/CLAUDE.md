@@ -148,7 +148,7 @@ RFC 1055 with double-END encoding (OSC 1.1):
 
 ## What NOT to do
 
-- Do NOT import `acp/internal/*` from `internal/osc/codec/` — codec is stdlib-only.
+- Do NOT import `dhs/internal/*` from `internal/osc/codec/` — codec is stdlib-only.
 - Do NOT hardcode address semantics (`/tally/preview_on`, etc.) in the plugin. Semantic mapping lives in consumer/UI config; the plugin surfaces raw addresses + args.
 - Do NOT silently pad-align non-compliant inputs — fire `osc_alignment_violation` and accept what we can.
 - Do NOT mix 1.0 length-prefix and 1.1 SLIP on the same TCP connection — they're different framings. Registry split (`osc-v10` vs `osc-v11`) enforces this at the API level.

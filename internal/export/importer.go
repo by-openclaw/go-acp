@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // Ensure the readers satisfy a common shape.

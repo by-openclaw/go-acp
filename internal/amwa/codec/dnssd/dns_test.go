@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	"acp/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/dnssd"
 )
 
 func TestHeaderRoundTrip(t *testing.T) {

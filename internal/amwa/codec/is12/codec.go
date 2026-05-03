@@ -1,7 +1,7 @@
 package is12
 
 import (
-	"acp/internal/amwa/codec/spec"
+	"dhs/internal/amwa/codec/spec"
 )
 
 // SpecID is the AMWA NMOS catalogue slug for IS-12 (Control Protocol).

@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/protocol/compliance"
-	"acp/internal/emberplus/codec/glow"
-	"acp/internal/emberplus/codec/s101"
-	"acp/internal/transport"
+	"dhs/internal/protocol/compliance"
+	"dhs/internal/emberplus/codec/glow"
+	"dhs/internal/emberplus/codec/s101"
+	"dhs/internal/transport"
 )
 
 // Session manages a single TCP connection to an Ember+ provider.

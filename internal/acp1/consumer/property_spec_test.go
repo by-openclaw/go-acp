@@ -5,7 +5,7 @@ package acp1_test
 import (
 	"testing"
 
-	"acp/internal/acp1/consumer"
+	"dhs/internal/acp1/consumer"
 )
 
 func TestSpec_DecodeRoot(t *testing.T) {

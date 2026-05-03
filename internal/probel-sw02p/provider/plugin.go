@@ -19,9 +19,9 @@ package probelsw02p
 import (
 	"log/slog"
 
-	"acp/internal/export/canonical"
-	"acp/internal/probel-sw02p/codec"
-	"acp/internal/provider"
+	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw02p/codec"
+	"dhs/internal/provider"
 )
 
 // DefaultPort mirrors the consumer's default SW-P-02 TCP port.

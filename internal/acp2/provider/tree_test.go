@@ -3,8 +3,8 @@ package acp2
 import (
 	"testing"
 
-	"acp/internal/export/canonical"
-	iacp2 "acp/internal/acp2/consumer"
+	"dhs/internal/export/canonical"
+	iacp2 "dhs/internal/acp2/consumer"
 )
 
 func TestTree_FlattensAndIndexesBySlot(t *testing.T) {

@@ -60,7 +60,7 @@ Provider deferred. Consumer-first.
 
 ### WebSocket (RFC 6455) — hand-rolled
 
-Implemented in [codec/ws/](codec/ws/). Stdlib-only, no `acp/*` imports —
+Implemented in [codec/ws/](codec/ws/). Stdlib-only, no `dhs/*` imports —
 lift-ready per `feedback_codec_isolation`.
 
 ### XML

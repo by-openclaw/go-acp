@@ -4,9 +4,10 @@ Read this file completely before touching any code, then read the atomic
 per-protocol context under `internal/<proto>/CLAUDE.md` for whichever
 protocol you're working on.
 
-> Go module path is `acp` — that's the legacy name and stays put to avoid
-> import churn. The binary, CLI, and product name are **`dhs`** (Device Hub
-> Systems, locked 2026-04-21).
+Go module path, binary, CLI, and product name are all **`dhs`** (Device
+Hub Systems, locked 2026-04-21). The legacy `acp` token only survives where
+it refers to the **ACP1** or **ACP2** wire protocols (`internal/acp1/`,
+`internal/acp2/`, `ACP1Error`, `ACP2Error`, etc.).
 
 ---
 
@@ -247,7 +248,7 @@ explicit sign-off.
    (spec-deviation absorption), `wireshark/` (Lua only). No cross-imports
    between consumer and provider.
 4. **Library independence.** `internal/<proto>/codec/` is stdlib-only
-   and lift-to-own-repo ready. Codec never imports `acp/*`.
+   and lift-to-own-repo ready. Codec never imports `dhs/*`.
 5. **No hidden state.** No package-level mutable vars outside the
    compile-time registries; cross-cutting concerns thread through
    constructors or `context.Context`.
@@ -325,7 +326,7 @@ See [feedback_wireshark_fully_implemented] in memory.
 ## Error hierarchy
 
 ```
-ACPError (base)
+DHSError (base)
 ├── TransportError
 │   ├── ConnectionRefusedError
 │   ├── ConnectionLostError
@@ -398,7 +399,7 @@ for the same object, the announcement wins.
 - Command files per-protocol follow `cmd_rxNNN_xxx.go` / `cmd_txNNN_xxx.go`
   where NNN is the decimal command byte, zero-padded to 3 digits.
 - Codec packages under `internal/<proto>/codec/` are stdlib-only — they
-  must not import `acp/*`. They should be lift-to-own-repo ready.
+  must not import `dhs/*`. They should be lift-to-own-repo ready.
 
 ### Testing
 
@@ -480,7 +481,7 @@ See `feedback_amwa_strict_all_versions` in memory.
 - Never add Redis, PostgreSQL, or any external data store.
 - Never skip `AN2 EnableProtocolEvents` before expecting ACP2 announces.
 - Never reuse a live mtid for a new ACP2 request.
-- Never import `acp/*` from `internal/<proto>/codec/` packages.
+- Never import `dhs/*` from `internal/<proto>/codec/` packages.
 - Never assume a matrix is small — every plugin must cope with 65535×65535
   per matrix and 100 matrices per fleet; use sparse maps, stream decoders,
   and extended wire forms unconditionally.
@@ -508,8 +509,8 @@ See `feedback_amwa_strict_all_versions` in memory.
    Use `Proto("dhs_<name>", ...)` and `dhs_<name>.<field>` abbrevs throughout
    to avoid namespace clashes with Wireshark built-ins. See
    "Wireshark dissectors" above.
-6. Add `import _ "acp/internal/<name>/consumer"` and
-   `import _ "acp/internal/<name>/provider"` to `cmd/dhs/main.go`.
+6. Add `import _ "dhs/internal/<name>/consumer"` and
+   `import _ "dhs/internal/<name>/provider"` to `cmd/dhs/main.go`.
 7. Unit tests live inside the package (`internal/<name>/*/*_test.go`).
 8. Done — `dhs consumer <name> <verb>` and `dhs producer <name> serve`
    pick it up automatically via the registries.

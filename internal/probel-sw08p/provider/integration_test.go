@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/export/canonical"
-	"acp/internal/probel-sw08p/codec"
-	cons "acp/internal/probel-sw08p/consumer"
+	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
+	cons "dhs/internal/probel-sw08p/consumer"
 )
 
 // emptyExport is the smallest tree the provider accepts — enough to

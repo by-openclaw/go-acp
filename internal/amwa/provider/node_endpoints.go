@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"acp/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is04"
 )
 
 // expandNodeEndpoints normalises the Node's `api.endpoints` array so
