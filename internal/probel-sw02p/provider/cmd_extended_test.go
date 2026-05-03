@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // newBareTestServer returns a provider with no canonical tree —

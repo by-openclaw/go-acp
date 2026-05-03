@@ -3,7 +3,7 @@
 package v10
 
 import (
-	"acp/internal/amwa/codec/is12"
+	"dhs/internal/amwa/codec/is12"
 )
 
 // SpecPatch — the patch release the codec is audited against.

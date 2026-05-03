@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"acp/internal/protocol"
-	"acp/internal/protocol/compliance"
+	"dhs/internal/protocol"
+	"dhs/internal/protocol/compliance"
 )
 
 // walkerClient is the minimum contract the Walker needs from whatever

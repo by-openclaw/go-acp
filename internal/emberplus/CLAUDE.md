@@ -152,4 +152,4 @@ S101 layer. Respond to every request promptly.
 - Do NOT trust tag numbers by position — always read APPLICATION tags.
 - Do NOT assume matrix targets/sources are contiguous (holes are legal).
 - Do NOT silently swallow formula errors — route through `compliance.Profile`.
-- Do NOT import `acp/internal/*` from `codec/` subpackages (stdlib-only rule).
+- Do NOT import `dhs/internal/*` from `codec/` subpackages (stdlib-only rule).

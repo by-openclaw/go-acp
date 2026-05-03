@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/protocol"
-	"acp/internal/protocol/compliance"
-	"acp/internal/transport"
+	"dhs/internal/protocol"
+	"dhs/internal/protocol/compliance"
+	"dhs/internal/transport"
 )
 
 // Session manages an AN2/TCP connection to an ACP2 device. It handles:

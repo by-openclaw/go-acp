@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
-	probelproto "acp/internal/probel-sw08p/consumer"
+	"dhs/internal/probel-sw08p/codec"
+	probelproto "dhs/internal/probel-sw08p/consumer"
 )
 
 // TestMaintenanceClearProtectsUnit exercises the rx 007 ClearProtects

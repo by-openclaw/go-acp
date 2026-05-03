@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
-	probelproto "acp/internal/probel-sw08p/consumer"
+	"dhs/internal/probel-sw08p/codec"
+	probelproto "dhs/internal/probel-sw08p/consumer"
 )
 
 // TestProtectRoundTripLoopback exercises the full protect life-cycle

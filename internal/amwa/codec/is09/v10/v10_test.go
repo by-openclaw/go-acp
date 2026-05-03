@@ -1,8 +1,8 @@
 package v10
 
 import (
-	"acp/internal/amwa/codec/is09"
-	"acp/internal/amwa/codec/spec"
+	"dhs/internal/amwa/codec/is09"
+	"dhs/internal/amwa/codec/spec"
 	"testing"
 )
 

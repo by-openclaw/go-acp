@@ -1,7 +1,7 @@
 package probelsw08p
 
 import (
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // handleMasterProtectConnect is Protect Connect with override=true —

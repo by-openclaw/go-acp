@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"acp/internal/export/canonical"
-	"acp/internal/protocol"
+	"dhs/internal/export/canonical"
+	"dhs/internal/protocol"
 )
 
 // TestCanonicalize_Empty verifies a fresh plugin emits a root device

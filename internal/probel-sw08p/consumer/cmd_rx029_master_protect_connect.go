@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"acp/internal/probel-sw08p/codec"
-	"acp/internal/protocol"
+	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/protocol"
 )
 
 // MasterProtectConnect is the override-flavoured Protect Connect used

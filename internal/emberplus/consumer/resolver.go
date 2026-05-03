@@ -3,7 +3,7 @@ package emberplus
 import (
 	"strconv"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 // modePointer / modeInline / modeBoth are the three values of each

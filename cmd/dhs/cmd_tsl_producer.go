@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/tsl/codec"
-	tslprov "acp/internal/tsl/provider"
+	"dhs/internal/tsl/codec"
+	tslprov "dhs/internal/tsl/provider"
 )
 
 // runTSLProducer dispatches `dhs producer <tsl-vXX> <verb> [args]`.

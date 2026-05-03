@@ -3,7 +3,7 @@ package probelsw02p
 import (
 	"testing"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // TestStatusRequestRepliesHealthyResponse2 locks in the rx 07 / tx 09

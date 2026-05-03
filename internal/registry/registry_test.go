@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"acp/internal/registry"
+	"dhs/internal/registry"
 )
 
 type stubFactory struct {

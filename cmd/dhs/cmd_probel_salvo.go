@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 func runProbelSalvoConnect(ctx context.Context, args []string) error {

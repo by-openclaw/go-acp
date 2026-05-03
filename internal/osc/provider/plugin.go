@@ -13,9 +13,9 @@ import (
 	"log/slog"
 	"net"
 
-	"acp/internal/export/canonical"
-	"acp/internal/osc/codec"
-	"acp/internal/provider"
+	"dhs/internal/export/canonical"
+	"dhs/internal/osc/codec"
+	"dhs/internal/provider"
 )
 
 func init() {

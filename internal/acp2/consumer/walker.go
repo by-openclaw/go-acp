@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // WalkedTree is the decoded object tree for one slot, analogous to

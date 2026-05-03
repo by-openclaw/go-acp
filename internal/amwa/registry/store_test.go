@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is04"
 )
 
 func validNode(id string) is04.Node {

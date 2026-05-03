@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/amwa/codec/is09"
+	"dhs/internal/amwa/codec/is09"
 )
 
 func validGlobal() *is09.Global {

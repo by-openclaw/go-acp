@@ -30,9 +30,9 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/osc/codec"
-	osccons "acp/internal/osc/consumer"
-	oscprov "acp/internal/osc/provider"
+	"dhs/internal/osc/codec"
+	osccons "dhs/internal/osc/consumer"
+	oscprov "dhs/internal/osc/provider"
 )
 
 // runOSCConsumer dispatches `dhs consumer osc-vXX <verb> [args]`.

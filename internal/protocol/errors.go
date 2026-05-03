@@ -34,12 +34,12 @@ var ErrWriteCoerced = errors.New("protocol: write accepted but value coerced")
 // access denied). Tree's value stays unchanged.
 var ErrWriteRejected = errors.New("protocol: write rejected by provider")
 
-// ACPError is the root of all protocol-family errors. Both transport-layer
+// DHSError is the root of all protocol-family errors. Both transport-layer
 // and object-layer failures implement this, so call sites can do one
 // errors.As check.
-type ACPError interface {
+type DHSError interface {
 	error
-	acpError() // tag method
+	dhsError() // tag method
 }
 
 // TransportError is returned for socket, framing, and timeout failures —
@@ -58,7 +58,7 @@ func (e *TransportError) Error() string {
 }
 
 func (e *TransportError) Unwrap() error { return e.Err }
-func (e *TransportError) acpError()     {}
+func (e *TransportError) dhsError()     {}
 
 // ValidationError is raised client-side before a request hits the wire
 // (out-of-range value, wrong type for the object, string too long, unknown
@@ -71,4 +71,4 @@ type ValidationError struct {
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation: %s: %s", e.Field, e.Reason)
 }
-func (e *ValidationError) acpError() {}
+func (e *ValidationError) dhsError() {}

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/osc/codec"
-	consumer "acp/internal/osc/consumer"
-	provider "acp/internal/osc/provider"
+	"dhs/internal/osc/codec"
+	consumer "dhs/internal/osc/consumer"
+	provider "dhs/internal/osc/provider"
 )
 
 // TestV11_SLIP_Loopback_Message drives a v1.1 TCP round-trip with SLIP

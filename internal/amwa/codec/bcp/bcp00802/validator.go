@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"acp/internal/amwa/codec/bcp"
-	"acp/internal/amwa/codec/ms05"
-	"acp/internal/amwa/codec/spec"
+	"dhs/internal/amwa/codec/bcp"
+	"dhs/internal/amwa/codec/ms05"
+	"dhs/internal/amwa/codec/spec"
 )
 
 const (

@@ -13,8 +13,8 @@ package export_test
 import (
 	"testing"
 
-	"acp/internal/export"
-	"acp/internal/protocol"
+	"dhs/internal/export"
+	"dhs/internal/protocol"
 )
 
 // TestFilter_EmptyPassesEverything — nil filter and zero-value filter

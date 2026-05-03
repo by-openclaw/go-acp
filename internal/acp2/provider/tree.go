@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"acp/internal/export/canonical"
-	iacp2 "acp/internal/acp2/consumer"
+	"dhs/internal/export/canonical"
+	iacp2 "dhs/internal/acp2/consumer"
 )
 
 // entry is one object in the served tree. Holds the canonical source

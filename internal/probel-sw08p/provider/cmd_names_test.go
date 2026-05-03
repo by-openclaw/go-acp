@@ -3,7 +3,7 @@ package probelsw08p
 import (
 	"testing"
 
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // TestHandleAllSourceNames: loopback dispatch returns a tx 106 with

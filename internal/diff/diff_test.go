@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 // stringPtr + helpers for building synthetic elements.

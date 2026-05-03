@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"sync"
 
-	"acp/internal/export/canonical"
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // matrixKey identifies one (matrix, level) pair within an SW-P-02

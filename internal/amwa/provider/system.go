@@ -21,10 +21,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	dnssdcodec "acp/internal/amwa/codec/dnssd"
-	"acp/internal/amwa/codec/is09"
-	dnssdsession "acp/internal/amwa/session/dnssd"
-	httpsession "acp/internal/amwa/session/http"
+	dnssdcodec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is09"
+	dnssdsession "dhs/internal/amwa/session/dnssd"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // IS09Config wires the System provider together. APIVer overrides the

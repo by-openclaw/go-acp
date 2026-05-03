@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"acp/internal/acp1/consumer"
+	"dhs/internal/acp1/consumer"
 )
 
 type captureRecord struct {

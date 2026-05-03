@@ -1,8 +1,8 @@
 package v12
 
 import (
-	"acp/internal/amwa/codec/is04"
-	"acp/internal/amwa/codec/spec"
+	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/spec"
 	"encoding/json"
 	"strings"
 	"testing"

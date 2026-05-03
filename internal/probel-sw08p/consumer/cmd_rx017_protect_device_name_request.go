@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"acp/internal/probel-sw08p/codec"
-	"acp/internal/protocol"
+	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/protocol"
 )
 
 // ProtectDeviceName resolves a deviceID (0-1023) to its 8-char ASCII

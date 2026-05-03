@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/cerebrum-nb/codec"
+	"dhs/internal/cerebrum-nb/codec"
 )
 
 func liveTarget(t *testing.T) (host string, port int, user, pass string) {

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // session is one connected SW-P-08 client (typically a controller).

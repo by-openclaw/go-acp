@@ -26,9 +26,9 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/osc/codec"
-	consumer "acp/internal/osc/consumer"
-	provider "acp/internal/osc/provider"
+	"dhs/internal/osc/codec"
+	consumer "dhs/internal/osc/consumer"
+	provider "dhs/internal/osc/provider"
 )
 
 func quietLogger() *slog.Logger {

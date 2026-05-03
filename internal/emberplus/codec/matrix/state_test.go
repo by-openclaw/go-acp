@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"acp/internal/emberplus/codec/glow"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 func TestCanConnect_OneToN(t *testing.T) {

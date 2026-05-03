@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/tsl/codec"
+	"dhs/internal/tsl/codec"
 )
 
 func TestUDPSession_V31ReceiveAndDispatch(t *testing.T) {

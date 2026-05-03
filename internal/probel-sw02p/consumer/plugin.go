@@ -23,11 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/metrics"
-	"acp/internal/probel-sw02p/codec"
-	"acp/internal/protocol"
-	"acp/internal/protocol/compliance"
-	"acp/internal/transport"
+	"dhs/internal/metrics"
+	"dhs/internal/probel-sw02p/codec"
+	"dhs/internal/protocol"
+	"dhs/internal/protocol/compliance"
+	"dhs/internal/transport"
 )
 
 // DefaultOnlineStaleAfter is the default "no rx traffic observed for

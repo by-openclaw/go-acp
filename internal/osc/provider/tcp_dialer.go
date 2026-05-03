@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/osc/codec"
+	"dhs/internal/osc/codec"
 )
 
 // DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied

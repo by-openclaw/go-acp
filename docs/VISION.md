@@ -398,9 +398,9 @@ From the conversation, not yet decided:
 
 ---
 
-## 13. Relationship to `acp` today
+## 13. Relationship to `dhs` today
 
-This vision is **a destination**. `acp` today is **Part A-complete**: three consumer plugins (ACP1, ACP2, Ember+) emitting canonical trees, with a compliance profile, offline CSV round-trip, and a CLI.
+This vision is **a destination**. `dhs` today is **Part A-complete**: three consumer plugins (ACP1, ACP2, Ember+) emitting canonical trees, with a compliance profile, offline CSV round-trip, and a CLI.
 
 Parts that already exist in some form:
 

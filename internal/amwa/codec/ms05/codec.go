@@ -1,7 +1,7 @@
 package ms05
 
 import (
-	"acp/internal/amwa/codec/spec"
+	"dhs/internal/amwa/codec/spec"
 )
 
 // SpecID is the AMWA NMOS catalogue slug for MS-05-02 (Control

@@ -13,10 +13,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	dnssdcodec "acp/internal/amwa/codec/dnssd"
-	"acp/internal/amwa/codec/is04"
-	dnssdsession "acp/internal/amwa/session/dnssd"
-	httpsession "acp/internal/amwa/session/http"
+	dnssdcodec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is04"
+	dnssdsession "dhs/internal/amwa/session/dnssd"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // encodeOne wraps a per-resource codec Encode method into a

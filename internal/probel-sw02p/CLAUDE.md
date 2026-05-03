@@ -279,7 +279,7 @@ Next-session priority: app-layer retry policy + reconnect + keepalive.
   one file.
 - Do NOT silently work around a spec deviation — always route through
   `compliance.Profile` so the event is observable.
-- Do NOT import `acp/internal/*` from `internal/probel-sw02p/codec/` —
+- Do NOT import `dhs/internal/*` from `internal/probel-sw02p/codec/` —
   codec is stdlib-only.
 - Do NOT add DLE-stuffing logic — SW-P-02 is transparent. If you
   find yourself reaching for DLE, STX, ETX, ACK, or NAK byte escapes,

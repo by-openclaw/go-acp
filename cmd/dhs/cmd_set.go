@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 func runSet(ctx context.Context, args []string) error {

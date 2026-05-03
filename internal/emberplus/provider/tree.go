@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 // tree is the provider's in-memory snapshot of the served element tree.

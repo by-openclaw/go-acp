@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	codec "acp/internal/amwa/codec/dnssd"
+	codec "dhs/internal/amwa/codec/dnssd"
 )
 
 // TestPickRegistryServices_LegacyConditional pins the spec-strict rule

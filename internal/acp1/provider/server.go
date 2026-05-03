@@ -8,8 +8,8 @@ import (
 	"net"
 	"sync"
 
-	"acp/internal/export/canonical"
-	iacp1 "acp/internal/acp1/consumer"
+	"dhs/internal/export/canonical"
+	iacp1 "dhs/internal/acp1/consumer"
 )
 
 // Server is the exported alias for the concrete ACP1 provider — lets

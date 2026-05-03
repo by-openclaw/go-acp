@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/amwa/codec/is07"
-	httpsession "acp/internal/amwa/session/http"
+	"dhs/internal/amwa/codec/is07"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // MessageHandler receives every IS-07 sender-to-receiver wire frame

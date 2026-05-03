@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"acp/internal/amwa/codec/is07"
-	httpsession "acp/internal/amwa/session/http"
+	"dhs/internal/amwa/codec/is07"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // Publisher is the IS-07 WebSocket server attached to a Node. One

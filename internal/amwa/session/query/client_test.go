@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"acp/internal/amwa/codec/is04"
-	v13 "acp/internal/amwa/codec/is04/v13"
+	"dhs/internal/amwa/codec/is04"
+	v13 "dhs/internal/amwa/codec/is04/v13"
 )
 
 func TestNewClientRejectsBadInput(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/transport"
+	"dhs/internal/transport"
 )
 
 // TCPClient is the ACP1 session layer for TCP direct mode (spec v1.4

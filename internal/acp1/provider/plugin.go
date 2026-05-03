@@ -20,9 +20,9 @@ package acp1
 import (
 	"log/slog"
 
-	"acp/internal/export/canonical"
-	"acp/internal/provider"
-	iacp1 "acp/internal/acp1/consumer"
+	"dhs/internal/export/canonical"
+	"dhs/internal/provider"
+	iacp1 "dhs/internal/acp1/consumer"
 )
 
 // DefaultPort is the IANA-assigned ACP port for both UDP and TCP direct.

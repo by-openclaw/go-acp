@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"acp/internal/export/canonical"
-	iacp2 "acp/internal/acp2/consumer"
+	"dhs/internal/export/canonical"
+	iacp2 "dhs/internal/acp2/consumer"
 )
 
 // helper — round-trips a tree through buildProperties + EncodeProperties

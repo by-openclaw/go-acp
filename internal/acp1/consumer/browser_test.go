@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // TestWalker_HappyPath runs a full slot walk against a canned sequence of

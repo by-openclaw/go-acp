@@ -8,8 +8,8 @@ import (
 	"sync"
 	"syscall"
 
-	"acp/internal/osc/codec"
-	"acp/internal/transport"
+	"dhs/internal/osc/codec"
+	"dhs/internal/transport"
 )
 
 // udpSender owns the outbound UDP socket for OSC. SO_REUSEADDR lets

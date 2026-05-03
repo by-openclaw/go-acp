@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	dnssdcodec "acp/internal/amwa/codec/dnssd"
-	dnssdsession "acp/internal/amwa/session/dnssd"
+	dnssdcodec "dhs/internal/amwa/codec/dnssd"
+	dnssdsession "dhs/internal/amwa/session/dnssd"
 )
 
 // RegistryCandidate is one Registry instance discovered via DNS-SD,

@@ -20,7 +20,7 @@ import (
 	"log/slog"
 	"net"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 func init() {

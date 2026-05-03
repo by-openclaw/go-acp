@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/logging"
-	"acp/internal/protocol"
-	"acp/internal/acp1/consumer"
-	"acp/internal/storage"
-	"acp/internal/transport"
+	"dhs/internal/logging"
+	"dhs/internal/protocol"
+	"dhs/internal/acp1/consumer"
+	"dhs/internal/storage"
+	"dhs/internal/transport"
 )
 
 // treeStore is the global file-backed tree store, initialized once.

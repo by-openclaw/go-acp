@@ -3,9 +3,9 @@ package emberplus
 import (
 	"fmt"
 
-	"acp/internal/export/canonical"
-	"acp/internal/emberplus/codec/ber"
-	"acp/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
+	"dhs/internal/emberplus/codec/ber"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 // encodeQualifiedMatrix emits a [APPLICATION 17] QualifiedMatrix. Contents

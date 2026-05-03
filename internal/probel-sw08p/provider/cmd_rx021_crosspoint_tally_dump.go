@@ -1,7 +1,7 @@
 package probelsw08p
 
 import (
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // Per-frame tally caps. SW-P-08 soft-caps DATA at 128 bytes (§2), so:

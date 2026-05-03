@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/export"
-	"acp/internal/protocol"
+	"dhs/internal/export"
+	"dhs/internal/protocol"
 )
 
 // runExport walks every present slot on the device and writes the

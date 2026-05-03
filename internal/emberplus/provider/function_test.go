@@ -3,8 +3,8 @@ package emberplus
 import (
 	"testing"
 
-	"acp/internal/export/canonical"
-	"acp/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 // TestRoundTrip_Function checks a Function with 2 integer args → 1 result

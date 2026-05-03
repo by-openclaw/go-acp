@@ -8,7 +8,7 @@
 package v11
 
 import (
-	"acp/internal/amwa/codec/is05"
+	"dhs/internal/amwa/codec/is05"
 )
 
 // SpecPatch — the patch release the codec is audited against.

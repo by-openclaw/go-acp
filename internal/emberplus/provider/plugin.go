@@ -19,8 +19,8 @@ package emberplus
 import (
 	"log/slog"
 
-	"acp/internal/export/canonical"
-	"acp/internal/provider"
+	"dhs/internal/export/canonical"
+	"dhs/internal/provider"
 )
 
 // DefaultPort matches the scope of issue #66 — non-overlapping with the

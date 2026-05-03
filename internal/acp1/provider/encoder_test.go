@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"acp/internal/export/canonical"
-	iacp1 "acp/internal/acp1/consumer"
+	"dhs/internal/export/canonical"
+	iacp1 "dhs/internal/acp1/consumer"
 )
 
 // TestEncodeDecodeRoundTrip asserts that every object type produced by

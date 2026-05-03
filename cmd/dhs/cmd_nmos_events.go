@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/amwa/codec/is07"
-	"acp/internal/amwa/session/events"
+	"dhs/internal/amwa/codec/is07"
+	"dhs/internal/amwa/session/events"
 )
 
 // runNMOSEventsConsumer dispatches `dhs consumer nmos events <verb>`.

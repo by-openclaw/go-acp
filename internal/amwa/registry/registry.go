@@ -18,11 +18,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	codec "acp/internal/amwa/codec/dnssd"
-	"acp/internal/amwa/codec/is04"
-	session "acp/internal/amwa/session/dnssd"
-	httpsession "acp/internal/amwa/session/http"
-	registryslot "acp/internal/registry"
+	codec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is04"
+	session "dhs/internal/amwa/session/dnssd"
+	httpsession "dhs/internal/amwa/session/http"
+	registryslot "dhs/internal/registry"
 )
 
 // Plugin name registered with internal/registry/.

@@ -22,13 +22,13 @@ import (
 	"strings"
 	"time"
 
-	codec "acp/internal/amwa/codec/dnssd"
-	"acp/internal/amwa/codec/is09"
-	"acp/internal/amwa/codec/spec"
-	"acp/internal/amwa/consumer"
-	"acp/internal/amwa/provider"
-	session "acp/internal/amwa/session/dnssd"
-	registryslot "acp/internal/registry"
+	codec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is09"
+	"dhs/internal/amwa/codec/spec"
+	"dhs/internal/amwa/consumer"
+	"dhs/internal/amwa/provider"
+	session "dhs/internal/amwa/session/dnssd"
+	registryslot "dhs/internal/registry"
 )
 
 // runNMOSConsumer dispatches `dhs consumer nmos <verb> [args]`.

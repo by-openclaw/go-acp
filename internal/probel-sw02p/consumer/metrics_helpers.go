@@ -1,6 +1,6 @@
 package probelsw02p
 
-import "acp/internal/probel-sw02p/codec"
+import "dhs/internal/probel-sw02p/codec"
 
 // probelCmdFromBytes extracts the SW-P-02 command byte from a raw
 // frame's wire bytes. Returns (cmd, true) for a well-formed frame

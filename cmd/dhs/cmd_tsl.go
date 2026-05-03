@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	tslconsumer "acp/internal/tsl/consumer"
+	tslconsumer "dhs/internal/tsl/consumer"
 )
 
 // runTSLConsumer dispatches `dhs consumer <tsl-vXX> <verb> [args]`.

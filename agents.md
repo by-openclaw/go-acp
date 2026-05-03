@@ -7,8 +7,10 @@ Shared session rules for AI agents working on this project. Read alongside:
 - `internal/<proto>/CLAUDE.md` — atomic per-protocol wire-format context
   (one file per protocol).
 
-The Go module path is `acp` (legacy, kept to avoid churn). The binary,
-CLI, and product name are **`dhs`** (Device Hub Systems, locked 2026-04-21).
+Go module path, binary, CLI, and product name are all **`dhs`** (Device
+Hub Systems, locked 2026-04-21). The legacy `acp` token only survives
+where it refers to the **ACP1** or **ACP2** wire protocols
+(`internal/acp1/`, `internal/acp2/`, `ACP1Error`, `ACP2Error`, etc.).
 
 ---
 

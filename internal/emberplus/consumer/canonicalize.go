@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"acp/internal/export/canonical"
-	"acp/internal/protocol"
-	"acp/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
+	"dhs/internal/protocol"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 // CanonicalOptions controls which form the exporter emits for

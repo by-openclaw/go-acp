@@ -3,7 +3,7 @@ package probelsw08p
 import (
 	"testing"
 
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // TestHandleTieLineInterrogateEmpty: unrouted dst yields NumSrcs=0.

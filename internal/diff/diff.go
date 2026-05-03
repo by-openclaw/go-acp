@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"sort"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 // Category labels — one of these per Entry. Values match the

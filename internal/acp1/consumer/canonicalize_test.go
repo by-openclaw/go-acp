@@ -5,8 +5,8 @@ import (
 	"container/list"
 	"testing"
 
-	"acp/internal/export/canonical"
-	"acp/internal/protocol"
+	"dhs/internal/export/canonical"
+	"dhs/internal/protocol"
 )
 
 // TestCanonicalize_Empty covers the fresh-Plugin case: no Connect,

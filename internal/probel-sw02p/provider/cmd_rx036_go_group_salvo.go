@@ -1,7 +1,7 @@
 package probelsw02p
 
 import (
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // handleGoGroupSalvo processes rx 36 GO GROUP SALVO (§3.2.37). Drains

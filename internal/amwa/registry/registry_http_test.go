@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/amwa/codec/is04"
-	httpsession "acp/internal/amwa/session/http"
+	"dhs/internal/amwa/codec/is04"
+	httpsession "dhs/internal/amwa/session/http"
 )
 
 // startRegistryHTTP boots only the HTTP face (no mDNS, no GC) for

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/osc/codec"
+	"dhs/internal/osc/codec"
 )
 
 func TestUDPSession_ReceiveMessage(t *testing.T) {

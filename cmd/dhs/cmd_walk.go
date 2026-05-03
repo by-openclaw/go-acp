@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"acp/internal/export"
-	"acp/internal/protocol"
-	"acp/internal/acp1/consumer"
-	"acp/internal/acp2/consumer"
-	"acp/internal/emberplus/consumer"
+	"dhs/internal/export"
+	"dhs/internal/protocol"
+	"dhs/internal/acp1/consumer"
+	"dhs/internal/acp2/consumer"
+	"dhs/internal/emberplus/consumer"
 )
 
 func runWalk(ctx context.Context, args []string) error {

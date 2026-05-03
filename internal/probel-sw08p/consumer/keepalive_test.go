@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // TestKeepaliveAutoResponder: when the peer sends TxAppKeepaliveRequest

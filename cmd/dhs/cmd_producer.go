@@ -17,12 +17,12 @@ import (
 	"syscall"
 	"time"
 
-	"acp/internal/export/canonical"
-	"acp/internal/metrics"
-	"acp/internal/provider"
+	"dhs/internal/export/canonical"
+	"dhs/internal/metrics"
+	"dhs/internal/provider"
 
-	acp1provider "acp/internal/acp1/provider"
-	acp2provider "acp/internal/acp2/provider"
+	acp1provider "dhs/internal/acp1/provider"
+	acp2provider "dhs/internal/acp2/provider"
 )
 
 // metricsExposer is the optional interface provider servers implement

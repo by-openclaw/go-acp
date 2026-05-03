@@ -3,7 +3,7 @@ package probelsw08p
 import (
 	"testing"
 
-	"acp/internal/probel-sw08p/codec"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // TestHandleUpdateNameSource: rx 117 with NameType=Source overwrites

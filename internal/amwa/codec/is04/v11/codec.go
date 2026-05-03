@@ -27,7 +27,7 @@
 package v11
 
 import (
-	"acp/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is04"
 	"bytes"
 	"encoding/json"
 	"fmt"

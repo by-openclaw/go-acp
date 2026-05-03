@@ -30,7 +30,7 @@ import (
 	"strings"
 	"sync"
 
-	"acp/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/dnssd"
 
 	"github.com/godbus/dbus/v5"
 )

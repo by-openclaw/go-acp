@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"acp/internal/diff"
-	"acp/internal/export/canonical"
+	"dhs/internal/diff"
+	"dhs/internal/export/canonical"
 )
 
 // runDiff drives `acp diff <before> <after>` — issue #49. Compares two

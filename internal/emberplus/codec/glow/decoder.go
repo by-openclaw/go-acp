@@ -8,7 +8,7 @@ package glow
 import (
 	"fmt"
 
-	"acp/internal/emberplus/codec/ber"
+	"dhs/internal/emberplus/codec/ber"
 )
 
 // DecodeRoot decodes a top-level Glow payload.

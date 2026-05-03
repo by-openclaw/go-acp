@@ -33,8 +33,8 @@ Compile-time registration via `init()`. Each protocol package calls
 main files import the protocol packages as blank imports:
 
 ```go
-import _ "acp/internal/protocol/acp1"
-import _ "acp/internal/protocol/acp2"
+import _ "dhs/internal/protocol/acp1"
+import _ "dhs/internal/protocol/acp2"
 ```
 
 No runtime plugin loading. No external config. Adding a protocol means
@@ -51,8 +51,8 @@ adding one import line.
 
 | Binary    | Purpose                              |
 |-----------|--------------------------------------|
-| `acp`     | CLI -- direct device I/O, no server  |
-| `acp-srv` | HTTP REST + WebSocket API            |
+| `dhs`     | CLI -- direct device I/O, no server  |
+| `dhs-srv` | HTTP REST + WebSocket API            |
 
 Both share `internal/`. Neither imports the other.
 

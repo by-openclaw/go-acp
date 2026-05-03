@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // TestSendStatusRequestRoundTrip drives SendStatusRequest through a

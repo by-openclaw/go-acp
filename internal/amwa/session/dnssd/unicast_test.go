@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/dnssd"
 )
 
 // runFakeDNSServer binds to a free UDP/127.0.0.1 port and replies to a

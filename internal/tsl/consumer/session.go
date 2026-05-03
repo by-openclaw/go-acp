@@ -7,8 +7,8 @@ import (
 	"sync"
 	"syscall"
 
-	"acp/internal/transport"
-	"acp/internal/tsl/codec"
+	"dhs/internal/transport"
+	"dhs/internal/tsl/codec"
 )
 
 // FrameV31Event is delivered to registered v3.1 handlers.

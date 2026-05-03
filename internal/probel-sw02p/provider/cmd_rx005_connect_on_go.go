@@ -1,7 +1,7 @@
 package probelsw02p
 
 import (
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // handleConnectOnGo processes rx 05 CONNECT ON GO (§3.2.7). Each frame

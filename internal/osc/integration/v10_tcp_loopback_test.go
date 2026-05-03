@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/osc/codec"
-	consumer "acp/internal/osc/consumer"
-	provider "acp/internal/osc/provider"
+	"dhs/internal/osc/codec"
+	consumer "dhs/internal/osc/consumer"
+	provider "dhs/internal/osc/provider"
 )
 
 // TestV10_TCP_Loopback drives a v1.0 length-prefix TCP round-trip:

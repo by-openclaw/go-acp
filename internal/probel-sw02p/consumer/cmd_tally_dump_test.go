@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // TestSubscribeExtendedProtectTallyDump drives a tx 100 across a

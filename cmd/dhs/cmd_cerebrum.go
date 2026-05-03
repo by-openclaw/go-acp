@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/cerebrum-nb/codec"
-	"acp/internal/cerebrum-nb/codec/ws"
-	cerebrum "acp/internal/cerebrum-nb/consumer"
+	"dhs/internal/cerebrum-nb/codec"
+	"dhs/internal/cerebrum-nb/codec/ws"
+	cerebrum "dhs/internal/cerebrum-nb/consumer"
 )
 
 // cerebrumFlags is the common flag set for every dhs consumer cerebrum-nb

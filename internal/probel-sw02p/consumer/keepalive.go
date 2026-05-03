@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // startKeepalive spawns the background goroutine that handles two

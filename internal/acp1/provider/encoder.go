@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"acp/internal/export/canonical"
-	iacp1 "acp/internal/acp1/consumer"
+	"dhs/internal/export/canonical"
+	iacp1 "dhs/internal/acp1/consumer"
 )
 
 // encodeObject builds the Value bytes returned by a getObject reply

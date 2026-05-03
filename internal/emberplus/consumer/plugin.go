@@ -24,11 +24,11 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/protocol"
-	"acp/internal/protocol/compliance"
-	"acp/internal/emberplus/codec/glow"
-	"acp/internal/emberplus/codec/matrix"
-	"acp/internal/transport"
+	"dhs/internal/protocol"
+	"dhs/internal/protocol/compliance"
+	"dhs/internal/emberplus/codec/glow"
+	"dhs/internal/emberplus/codec/matrix"
+	"dhs/internal/transport"
 )
 
 func init() {

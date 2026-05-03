@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"acp/internal/protocol"
+	"dhs/internal/protocol"
 )
 
 // slotTreeCache is a bounded LRU + TTL cache for walked SlotTree

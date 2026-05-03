@@ -3,7 +3,7 @@ package probelsw02p
 import (
 	"fmt"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // EmitExtendedProtectTallyDump broadcasts tx 100 Extended PROTECT

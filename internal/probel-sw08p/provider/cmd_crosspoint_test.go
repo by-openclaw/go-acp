@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
-	"acp/internal/export/canonical"
-	probelproto "acp/internal/probel-sw08p/consumer"
+	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/export/canonical"
+	probelproto "dhs/internal/probel-sw08p/consumer"
 )
 
 // TestCrosspointInterrogateLoopback exercises the full rx 001 → tx 003

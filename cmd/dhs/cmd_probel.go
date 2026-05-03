@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"acp/internal/probel-sw08p/codec"
-	probelproto "acp/internal/probel-sw08p/consumer"
-	"acp/internal/transport"
+	"dhs/internal/probel-sw08p/codec"
+	probelproto "dhs/internal/probel-sw08p/consumer"
+	"dhs/internal/transport"
 )
 
 // runProbel dispatches `dhs consumer probel-sw08p <subcommand>` — the Probel SW-P-08

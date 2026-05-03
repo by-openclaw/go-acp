@@ -3,15 +3,15 @@ package bcp_test
 import (
 	"testing"
 
-	"acp/internal/amwa/codec/bcp"
-	_ "acp/internal/amwa/codec/bcp/bcp00201"
-	_ "acp/internal/amwa/codec/bcp/bcp00202"
-	_ "acp/internal/amwa/codec/bcp/bcp00401"
-	_ "acp/internal/amwa/codec/bcp/bcp00402"
-	_ "acp/internal/amwa/codec/bcp/bcp00601"
-	_ "acp/internal/amwa/codec/bcp/bcp00604"
-	_ "acp/internal/amwa/codec/bcp/bcp00801"
-	_ "acp/internal/amwa/codec/bcp/bcp00802"
+	"dhs/internal/amwa/codec/bcp"
+	_ "dhs/internal/amwa/codec/bcp/bcp00201"
+	_ "dhs/internal/amwa/codec/bcp/bcp00202"
+	_ "dhs/internal/amwa/codec/bcp/bcp00401"
+	_ "dhs/internal/amwa/codec/bcp/bcp00402"
+	_ "dhs/internal/amwa/codec/bcp/bcp00601"
+	_ "dhs/internal/amwa/codec/bcp/bcp00604"
+	_ "dhs/internal/amwa/codec/bcp/bcp00801"
+	_ "dhs/internal/amwa/codec/bcp/bcp00802"
 )
 
 func TestAllValidatorsRegistered(t *testing.T) {

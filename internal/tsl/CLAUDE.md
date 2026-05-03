@@ -158,7 +158,7 @@ Never silently absorb a deviation — fire the relevant compliance event.
 
 ## What NOT to do
 
-- Do NOT import `acp/internal/*` from `internal/tsl/codec/` — codec is stdlib-only.
+- Do NOT import `dhs/internal/*` from `internal/tsl/codec/` — codec is stdlib-only.
 - Do NOT hardcode tally-position semantics (`lh=preview` etc.) in the
   plugin. The plugin surfaces raw positional tallies; semantic mapping
   lives in the consumer UI / config layer.

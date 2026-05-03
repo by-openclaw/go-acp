@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"os"
 
-	"acp/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is04"
 )
 
 // NodeConfig is the on-disk Node bundle. Fields parallel the Node API

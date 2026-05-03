@@ -18,9 +18,9 @@ package probelsw08p
 import (
 	"log/slog"
 
-	"acp/internal/probel-sw08p/codec"
-	"acp/internal/export/canonical"
-	"acp/internal/provider"
+	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/export/canonical"
+	"dhs/internal/provider"
 )
 
 // DefaultPort mirrors the consumer's default Probel TCP port.

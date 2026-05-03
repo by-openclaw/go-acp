@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"acp/internal/scenario"
+	"dhs/internal/scenario"
 )
 
 // TestScenarios discovers every committed scenario under

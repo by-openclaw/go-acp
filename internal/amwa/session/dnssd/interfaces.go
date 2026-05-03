@@ -3,7 +3,7 @@ package dnssd
 import (
 	"context"
 
-	"acp/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/dnssd"
 )
 
 // Browser scans the link for instances of one or more service types and

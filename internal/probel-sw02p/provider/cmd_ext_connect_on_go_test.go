@@ -3,7 +3,7 @@ package probelsw02p
 import (
 	"testing"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // TestExtendedConnectOnGoStagesAndAcks locks rx 069 / tx 070: one

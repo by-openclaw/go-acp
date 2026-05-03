@@ -11,7 +11,7 @@
 //   - No sub-protocol negotiation.
 //
 // Lift-ready per the project's codec-isolation rule: imports stdlib
-// only and never touches `acp/*` symbols.
+// only and never touches `dhs/*` symbols.
 //
 // Spec: RFC 6455 (https://www.rfc-editor.org/rfc/rfc6455).
 package ws

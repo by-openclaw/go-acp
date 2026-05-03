@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"acp/internal/probel-sw02p/codec"
+	"dhs/internal/probel-sw02p/codec"
 )
 
 // TestSubscribeExtendedProtectTally confirms a matrix-side tx 96 is

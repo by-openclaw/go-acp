@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"sync"
 
-	"acp/internal/export/canonical"
+	"dhs/internal/export/canonical"
 )
 
 // matrixKey identifies one (matrix, level) pair within a Probel tree.
