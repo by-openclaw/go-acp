@@ -2,7 +2,6 @@ package wiretrace_test
 
 import (
 	"bytes"
-	"errors"
 	"strings"
 	"testing"
 
@@ -25,14 +24,6 @@ func TestReadTrames_basic(t *testing.T) {
 	}
 	if got[1].Note != "reply_v1" {
 		t.Errorf("trame 1 note = %q, want reply_v1", got[1].Note)
-	}
-}
-
-func TestReadTrames_lfsPointer(t *testing.T) {
-	const input = "version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 12345\n"
-	_, err := wiretrace.ReadTrames(strings.NewReader(input))
-	if !errors.Is(err, wiretrace.ErrLFSPointer) {
-		t.Fatalf("want ErrLFSPointer, got %v", err)
 	}
 }
 

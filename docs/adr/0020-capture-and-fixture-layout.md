@@ -74,25 +74,29 @@ tests/fixtures/products/<manufacturer>/<product>/<proto>/<role>/<version>/
 `<manufacturer>/<product>/<proto>/<role>/` summarises DM evolution
 across versions.
 
-### Bucket 4 — Live captures (gitignored)
+### Bucket 4 — Live captures (gitignored, local-only)
 
-Output of the `--capture` flag during dev runs. Two sub-trees by
+Output of the `--capture` flag during dev runs, plus every captured
+wire trace consumed by tests and the `validate` verb. Two sub-trees by
 lifecycle.
 
 ```text
 .cache/devices/<ip>/slot_N.json                            CLI tree cache (auto-written, regenerable)
-captures/<proto>/<ip>/[<slot>/]<scenario>/                 manual replay archive
+captures/<proto>/<scenario>/                               manual replay archive — single canonical layout
 ├── frames.jsonl                                           wire-trace per ADR-0021
 ├── tree.json                                              canonical (post-walk)
 ├── glow.json                                              optional, Ember+ specific
 └── capture.pcapng                                         optional OS-socket capture
 ```
 
-Both `.cache/` and `captures/` at repo root, both gitignored. The
-sub-keying after `<proto>/<ip>/` is per-protocol — `<slot>/` for
-ACP1/ACP2, `<api-ver>/` for NMOS, just `<scenario>/` for slot-less
-protocols (Ember+, OSC, TSL, Probel SW-P-08/02). Each connector's
-`internal/<proto>/CLAUDE.md` declares its sub-keying.
+Both `.cache/` and `captures/` are at repo root and BOTH gitignored —
+no LFS, no committed blobs (per ADR-0021). The two-segment
+`<proto>/<scenario>/` keying is uniform across every protocol; nest
+deeper inside the scenario folder if a protocol needs slot / API
+version disambiguation (e.g. `captures/acp2/slot0_walk/frames.jsonl`,
+`captures/nmos/v1.3_lawo_node/frames.jsonl`). Tests resolve their
+input as `captures/<proto>/<scenario>/frames.jsonl` and skip cleanly
+on `os.IsNotExist` so a fresh clone is green without a re-capture.
 
 ## `meta.json` schema (Bucket 3)
 
@@ -120,7 +124,7 @@ protocols (Ember+, OSC, TSL, Probel SW-P-08/02). Each connector's
 ```
 
 | Field | Required | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `schema_version` | yes | starts at 1 |
 | `protocol` | yes | matches the directory segment |
 | `manufacturer` | yes | matches the directory segment (lowercase slug) |
@@ -143,7 +147,7 @@ fingerprints.
 ## Naming rules
 
 | Rule | Why |
-|---|---|
+| --- | --- |
 | One folder per wire-type-or-verb under `protocol_types/` | Codec test discovery is `for d in protocol_types/*/`, no manifest |
 | One folder per scenario under `scenarios/` | Same discovery pattern |
 | `frames.jsonl` is the canonical name in Buckets 1 + 2 + 4 | Same name, same shape (per ADR-0021), no per-bucket dialect |
@@ -151,7 +155,7 @@ fingerprints.
 | `capture.pcapng` is the canonical name in every bucket | Single name across the project; reviewers know what to open |
 | Every committed `.pcapng` MUST have a sibling `README.md` | A binary alone is unreadable in 6 months |
 | Per-type fixtures MUST also ship `tshark.tree` | Reviewers diff dissector output without launching Wireshark |
-| `.pcapng` ≥ 100 KB → git-LFS; if LFS quota exhausted → keep under `captures/` (local-only) and reference in `README.md` | LFS quota is a hard constraint |
+| Wire traces (`.jsonl`, `.pcapng` ≥ 100 KB) live under `captures/` (Bucket 4, gitignored) — never LFS, never committed | Per ADR-0021 traces are local-only; LFS is reserved for spec PDFs / vendor tools / images |
 
 ## Forbidden
 

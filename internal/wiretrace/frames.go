@@ -15,7 +15,6 @@ package wiretrace
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 )
@@ -26,22 +25,15 @@ import (
 // than this constant.
 const SchemaVersion = 1
 
-// ErrLFSPointer is returned by ReadTrames when the input's first
-// non-empty line does not start with '{'. This means the file is a
-// Git LFS pointer text rather than the actual JSONL content (the
-// runner did not run `git lfs pull`). Callers — tests, the validate
-// verb — typically handle this by skipping the run cleanly rather
-// than failing.
-var ErrLFSPointer = errors.New("wiretrace: file is a Git LFS pointer, not actual content (run `git lfs pull`)")
-
 // ReadTrames decodes a frames.jsonl stream into a slice of Trame.
 // Empty lines are skipped. Any line whose schema_version exceeds
 // SchemaVersion or whose required fields (dir, hex) are missing or
 // invalid yields a parse error that includes the line number for
 // debuggability.
 //
-// Returns ErrLFSPointer the moment a non-JSON first byte is seen,
-// without consuming the rest of the input.
+// Captured traces are local-only per ADR-0021 (no LFS, no committed
+// blobs); callers handle a missing file with os.IsNotExist before
+// reaching this function.
 func ReadTrames(r io.Reader) ([]Trame, error) {
 	sc := bufio.NewScanner(r)
 	// Some captured trames are large; allow up to 1 MB per line.
@@ -54,9 +46,6 @@ func ReadTrames(r io.Reader) ([]Trame, error) {
 		line := sc.Bytes()
 		if len(line) == 0 {
 			continue
-		}
-		if line[0] != '{' {
-			return nil, ErrLFSPointer
 		}
 		var t Trame
 		if err := json.Unmarshal(line, &t); err != nil {

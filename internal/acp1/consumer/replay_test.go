@@ -17,22 +17,23 @@ import (
 	"dhs/internal/wiretrace"
 )
 
-// loadTrames reads a JSONL fixture from the testdata/fixtures
-// directory. Skips the test if the file is a Git LFS pointer
-// (CI runners without `git lfs pull`).
-func loadTrames(t *testing.T, name string) []wiretrace.Trame {
+// loadTrames reads a captured wire trace from
+// captures/acp1/<scenario>/frames.jsonl (gitignored, local-only per
+// ADR-0021). Skips cleanly when the file is missing — re-capture with
+// `dhs consumer acp1 walk <ip> --slot N --capture <path>`.
+func loadTrames(t *testing.T, scenario string) []wiretrace.Trame {
 	t.Helper()
-	path := filepath.Join("..", "testdata", "fixtures", name)
+	path := filepath.Join("..", "..", "..", "captures", "acp1", scenario, "frames.jsonl")
 	f, err := os.Open(path)
+	if errors.Is(err, os.ErrNotExist) {
+		t.Skipf("capture %s missing — recapture with `dhs consumer acp1 walk <ip> --slot N --capture %s`", path, path)
+	}
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)
 	}
 	defer func() { _ = f.Close() }()
 
 	trames, err := wiretrace.ReadTrames(f)
-	if errors.Is(err, wiretrace.ErrLFSPointer) {
-		t.Skipf("%s is a Git LFS pointer; install git-lfs or run `git lfs pull`", name)
-	}
 	if err != nil {
 		t.Fatalf("ReadTrames: %v", err)
 	}
@@ -54,7 +55,7 @@ func newPlugin(t *testing.T) protocol.Validator {
 // and asserts no decode errors and no invariant violations on the
 // reference slot 0 walk capture.
 func TestReplay_ACP1MessageDecode(t *testing.T) {
-	trames := loadTrames(t, "slot0_walk.json")
+	trames := loadTrames(t, "slot0_walk")
 	if len(trames) == 0 {
 		t.Fatal("no trames in capture")
 	}
@@ -84,7 +85,7 @@ func TestReplay_ACP1MessageDecode(t *testing.T) {
 // counts reply objects via the ACP1 decoder directly (Validate covers
 // the smoke; this asserts the spec-cited object-count floor).
 func TestReplay_ACP1PropertyDecode(t *testing.T) {
-	trames := loadTrames(t, "slot0_walk.json")
+	trames := loadTrames(t, "slot0_walk")
 
 	var objects int
 	typeCounts := map[acp1.ObjectType]int{}

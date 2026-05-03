@@ -48,10 +48,6 @@ func runValidate(ctx context.Context, args []string) error {
 	defer func() { _ = f.Close() }()
 
 	trames, err := wiretrace.ReadTrames(f)
-	if errors.Is(err, wiretrace.ErrLFSPointer) {
-		fmt.Fprintf(os.Stderr, "skip: %s is a Git LFS pointer — run `git lfs pull` to fetch the content\n", tramesPath)
-		return nil
-	}
 	if err != nil {
 		return err
 	}
@@ -120,10 +116,14 @@ Flags:
   --out-params <path>   also write a canonical params dump (csv/json by ext)
   --stop-at <note>      halt at the first trame whose .note matches
 
-IN   dhs consumer acp1 validate internal/acp1/testdata/fixtures/slot0_walk.json
+IN   dhs consumer acp1 validate captures/acp1/slot0_walk/frames.jsonl
 OUT  validate: 642 trames decoded
        rx: 321
        tx: 321
+
+Captures live under captures/<proto>/<scenario>/frames.jsonl by
+convention (per ADR-0020 Bucket 4); the captures/ tree is gitignored
+in its entirety, no LFS, no committed blobs.
 
 `)
 }

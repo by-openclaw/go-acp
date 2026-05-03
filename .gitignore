@@ -54,28 +54,22 @@ desktop.ini
 # Ember+ reference material (user's TypeScript lib with nested git repos)
 internal/emberplus/assets/smh/
 
-# Local capture files produced by --capture
+# Local capture files produced by --capture. Default: ignore every
+# .jsonl wire trace. Small hand-trimmed JSONL test fixtures kept under
+# internal/<proto>/testdata/fixtures/ are explicitly re-included
+# (golden compliance fixtures, never live captures).
 *.jsonl
+!internal/**/testdata/fixtures/*.jsonl
+!internal/**/testdata/protocol_types/**/*.jsonl
+!internal/**/testdata/scenarios/**/*.jsonl
 !tests/fixtures/**/*.jsonl
 
-# Raw per-device captures (walk/watch/frames). These can reach 50-100+
-# MB each and would blow through the GitHub free-plan LFS quota (10 GB)
-# or exceed the 100 MB per-file blob limit. Keep them local only.
-# Drop new VM / device capture dumps under tests/fixtures/<proto>/vm_*/,
-# device_*/, or raw/ so this rule catches them. Hand-trimmed golden
-# fixtures (<100 KB) can still be committed at tests/fixtures/<proto>/
-# root or any other subdirectory that doesn't match the patterns below.
-tests/fixtures/**/vm_*/
-tests/fixtures/**/device_*/
-tests/fixtures/**/raw/
-
-# Per ADR-0020 Bucket 4: cache + manual capture archive at repo root.
-# Both gitignored. Cache regenerates from each walk; captures are kept
-# locally for offline replay until promoted to a committed fixture
-# (per ADR-0020 Buckets 1, 2, or 3).
-# Note: /captures/ uses /* + ! exception so the README is committable —
-# git negation cannot re-include a child if the parent dir itself is
-# excluded.
+# ADR-0020 Bucket 4: cache + manual capture archive at repo root.
+# Both gitignored — wire traces are LOCAL ONLY (no LFS, no committed
+# blobs, per ADR-0021). Cache regenerates from each walk; captures stay
+# local for offline replay. /captures/ uses /* + ! exception so the
+# README is committable (git negation can't re-include a child if the
+# parent dir is excluded).
 /.cache/
 /captures/*
 !/captures/README.md
@@ -84,12 +78,9 @@ tests/fixtures/**/raw/
 # validation runs. Real spec assets live under internal/<proto>/assets/.
 /assets/
 
-# Stale per-protocol test-data fixtures. None of these specific files
-# are loaded by any test; they are pure LFS / blob bloat. The two
-# slot0_walk.json files used by replay_test.go (acp1 + acp2) stay
-# committed as LFS pointers so the skip-on-pointer logic in
-# loadCapture() works on CI runners without `git lfs pull`. The free-
-# plan LFS quota (10 GB) is the hard constraint.
+# Stale per-protocol test-data dumps. None of these are loaded by any
+# test; pure blob bloat. Per ADR-0021 wire traces stay local under
+# captures/, never under testdata/.
 internal/acp1/testdata/exports/*.json
 internal/acp2/testdata/exports/*.json
 internal/acp2/testdata/fixtures/slot0.json

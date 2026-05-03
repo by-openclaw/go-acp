@@ -123,6 +123,29 @@ and satisfies the `protocol.Validator` interface. Connectors that
 have not yet been migrated return `protocol.ErrNotImplemented` at the
 CLI boundary.
 
+## Storage: local-only, never committed
+
+Captured wire traces (`frames.jsonl`, `capture.pcapng`) live under the
+repo-root `captures/` tree (per ADR-0020 Bucket 4) and are gitignored
+in their entirety. **No LFS, no committed blobs.** The two-segment
+layout is uniform across protocols:
+
+```text
+captures/<proto>/<scenario>/frames.jsonl
+captures/<proto>/<scenario>/capture.pcapng        (optional)
+captures/<proto>/<scenario>/tree.json             (optional, post-walk)
+```
+
+Tests that need a trace resolve the canonical path and skip cleanly on
+`os.IsNotExist` — a fresh clone is green without anyone running `git
+lfs pull` or pre-loading captures. Re-capture with the connector's
+`--capture` flag to populate locally.
+
+The two committed JSONL fixtures that DO live alongside the connector
+(`internal/<proto>/testdata/fixtures/*.jsonl`) are hand-trimmed
+single-message golden files (under 1 KB) used by compliance unit
+tests, not captured traces.
+
 ## `replay` semantics (DEFERRED)
 
 The `replay` verb consumes the same `frames.jsonl` but emits bytes on
