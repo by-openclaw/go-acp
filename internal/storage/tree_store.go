@@ -1,10 +1,10 @@
 // Package storage provides file-backed persistence for walked object
-// trees. The cache file uses the EXACT same format as `acp export
+// trees. The cache file uses the EXACT same format as `dhs export
 // --format json` (hierarchical tree) with values stripped.
 //
-// File layout (relative to the binary):
+// File layout (relative to the project cache root, per ADR-0020 Bucket 4):
 //
-//	devices/{ip}/slot_{n}.json
+//	.cache/devices/{ip}/slot_{n}.json
 //
 // On load, the store validates against the live device Card Name.
 // If the card was swapped, the cache is discarded.
@@ -30,14 +30,27 @@ func NewTreeStore(baseDir string) *TreeStore {
 	return &TreeStore{baseDir: baseDir}
 }
 
-// NewTreeStoreNextToBinary creates a store rooted at the directory
-// containing the running binary.
-func NewTreeStoreNextToBinary() (*TreeStore, error) {
+// NewTreeStoreInProjectCache creates a store rooted at .cache/ next to
+// the project (or install) root. Per ADR-0020 Bucket 4: cache is
+// gitignored and regeneratable, separate from manual captures.
+//
+// Path resolution:
+//
+//   - if the binary lives at <X>/bin/dhs[.exe] (dev / convention layout),
+//     cache root is <X>/.cache/  — keeping cache OUT of bin/.
+//   - otherwise (production, dropped binary), cache root is
+//     <binary-dir>/.cache/.
+func NewTreeStoreInProjectCache() (*TreeStore, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return nil, fmt.Errorf("storage: locate binary: %w", err)
 	}
-	return NewTreeStore(filepath.Dir(exe)), nil
+	parent := filepath.Dir(exe)
+	base := parent
+	if filepath.Base(parent) == "bin" {
+		base = filepath.Dir(parent)
+	}
+	return NewTreeStore(filepath.Join(base, ".cache")), nil
 }
 
 // slotPath returns the file path for a cached slot.
@@ -49,7 +62,7 @@ func (s *TreeStore) slotPath(ip string, slot int) string {
 
 
 // Save writes a walked tree to disk using the same hierarchical JSON
-// format as `acp export --format json`. Values are stripped before
+// format as `dhs export --format json`. Values are stripped before
 // writing — per CLAUDE.md, property values are NEVER written to disk.
 func (s *TreeStore) Save(ip, proto string, slot int, objs []protocol.Object) error {
 	// Strip values from objects.
@@ -65,7 +78,7 @@ func (s *TreeStore) Save(ip, proto string, slot int, objs []protocol.Object) err
 			IP:       ip,
 			Protocol: proto,
 		},
-		Generator: "acp cache",
+		Generator: "dhs cache",
 		CreatedAt: time.Now().UTC(),
 		Slots: []export.SlotDump{{
 			Slot:     slot,

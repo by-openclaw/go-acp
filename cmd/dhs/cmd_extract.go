@@ -90,7 +90,7 @@ func runExtract(ctx context.Context, args []string) error {
 	}
 
 	// Rename raw.<transport>.jsonl → wire.jsonl so the fixture layout
-	// matches docs/fixtures-products.md exactly (the protocol is still
+	// matches docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md) exactly (the protocol is still
 	// identifiable via meta.json). Best-effort: a missing raw file
 	// isn't fatal (recorder may have been inactive for brief walks).
 	rawPath := filepath.Join(*outDir, rawFrameFilename(cf.protocol))
@@ -129,7 +129,7 @@ func runExtract(ctx context.Context, args []string) error {
 	return nil
 }
 
-// metaJSON mirrors the locked schema in docs/fixtures-products.md.
+// metaJSON mirrors the locked schema in docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md).
 // Unexported on purpose — external consumers read the JSON file, not
 // the Go struct.
 type metaJSON struct {

@@ -48,6 +48,9 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0016](0016-multi-os-support.md) | Multi-OS support per connector | accepted |
 | 0017 | File-header template | parked |
 | [0018](0018-info-verb-build-identity.md) | `info` verb build identity | accepted |
+| [0019](0019-documentation-structure.md) | Documentation structure (split-aware) | accepted |
+| [0020](0020-capture-and-fixture-layout.md) | Capture and fixture file layout | accepted |
+| [0021](0021-wire-trace-jsonl-contract.md) | Wire-trace JSONL contract + replay semantics | accepted |
 
 ## ADR-0017 parking note
 

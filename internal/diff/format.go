@@ -53,7 +53,7 @@ func (r *Report) WriteText(w io.Writer) error {
 
 // WriteChangelog emits a Keep-a-Changelog markdown block for one
 // version bump. Section headings match the fixture library's
-// CHANGELOG convention (docs/fixtures-products.md §CHANGELOG).
+// CHANGELOG convention (docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md) §CHANGELOG).
 func (r *Report) WriteChangelog(w io.Writer, version, date string) error {
 	if _, err := fmt.Fprintf(w, "## [%s] — %s\n\n", version, date); err != nil {
 		return err

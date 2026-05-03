@@ -216,13 +216,14 @@ internal/
 tests/unit/                   table-driven + replay tests
 tests/integration/            real-device tests (build tag)
 tests/smoke/                  simple-path sanity per protocol
-tests/fixtures/               version-controlled test input
-docs/                         cross-cutting only:
-                              ARCHITECTURE.md · CONNECTOR.md · VISION.md ·
-                              wireshark.md · protocols/schema.md ·
-                              protocols/elements/ · examples/ ·
-                              deployment/ · references/ ·
-                              fixtures-products.md · hub/ · links/
+tests/fixtures/products/      per-product DM library (per ADR-0020 Bucket 3)
+docs/                         shared meta docs (per ADR-0019 Tier 2):
+                              adr/ · CONNECTOR.md · ARCHITECTURE.md · VISION.md
+                              wireshark.md · protocols/{schema,use-cases,elements/}.md
+                              deployment/
+
+.cache/                       CLI tree cache (gitignored, per ADR-0020 Bucket 4)
+captures/                     manual wire-trace archive (gitignored, per ADR-0020 Bucket 4)
 ```
 
 ---

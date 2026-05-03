@@ -290,7 +290,7 @@ CHANGELOG MODE
   today (UTC). With --into PATH, the block is prepended to the named
   CHANGELOG.md (creating the file with a preamble if absent). Used to
   auto-maintain the per-product-per-protocol changelogs inside the
-  product fixture layout — see docs/fixtures-products.md §CHANGELOG.
+  product fixture layout — see docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md) §CHANGELOG.
 
 EXAMPLES
   acp diff before.json after.json

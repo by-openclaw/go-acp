@@ -69,21 +69,17 @@ tests/fixtures/**/vm_*/
 tests/fixtures/**/device_*/
 tests/fixtures/**/raw/
 
-# The bin/devices/ folder is where the CLI writes --capture output and
-# the local tree cache during development. Never commit it.
-bin/devices/
+# Per ADR-0020 Bucket 4: cache + manual capture archive at repo root.
+# Both gitignored. Cache regenerates from each walk; captures are kept
+# locally for offline replay until promoted to a committed fixture
+# (per ADR-0020 Buckets 1, 2, or 3).
+# Note: /captures/ uses /* + ! exception so the README is committable —
+# git negation cannot re-include a child if the parent dir itself is
+# excluded.
+/.cache/
+/captures/*
+!/captures/README.md
 
-# Debug/validation scratch — root-level assets/ is a scratch dir (real
-# spec assets live under internal/<proto>/assets/). captures/ keeps
-# hand-curated _final reports committed; newer per-run debug dumps
-# (pcapng, per-run csv/md, ember59*/, vsm_trace/, salvo_*.pcapng, etc.)
-# stay local.
+# Root-level assets/ is reserved as a scratch dir for ad-hoc debug /
+# validation runs. Real spec assets live under internal/<proto>/assets/.
 /assets/
-captures/*.pcapng
-captures/*.py
-captures/*.txt
-captures/commie_salvo/
-captures/ember59*/
-captures/vsm_trace/
-captures/w6b1_provider_metrics.csv
-captures/w6b1_provider_metrics.md

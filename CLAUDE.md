@@ -90,12 +90,14 @@ internal/
   scenario/                   scenario-driven test runner
   storage/                    file-backed persistence (planned)
 
-tests/                        unit / integration / smoke / fixtures
-docs/                         cross-cutting only:
-                                ARCHITECTURE.md · CONNECTOR.md · VISION.md
-                                wireshark.md · protocols/schema.md
-                                protocols/elements/ · examples/ · deployment/
-                                references/ · links/ · fixtures-products.md
+tests/                        unit / integration / smoke / fixtures (per ADR-0020 Bucket 3)
+docs/                         shared meta docs (per ADR-0019 Tier 2):
+                                adr/ · CONNECTOR.md · ARCHITECTURE.md · VISION.md
+                                wireshark.md · protocols/{schema,use-cases,elements/}.md
+                                deployment/
+
+.cache/                       CLI tree cache (per ADR-0020 Bucket 4) — gitignored
+captures/                     manual wire-trace archive (per ADR-0020 Bucket 4) — gitignored
 ```
 
 Per-protocol `internal/<proto>/CLAUDE.md` is authoritative for that
