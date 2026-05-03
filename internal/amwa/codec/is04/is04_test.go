@@ -64,12 +64,17 @@ func TestNodeRequiredMissing(t *testing.T) {
 	}{
 		{"href missing", func(n *Node) { n.Href = "" }, "href"},
 		{"caps missing", func(n *Node) { n.Caps = nil }, "caps"},
-		{"versions empty", func(n *Node) { n.API.Versions = nil }, "api.versions"},
-		{"endpoints empty", func(n *Node) { n.API.Endpoints = nil }, "api.endpoints"},
+		// `versions empty`, `endpoints empty`, `clocks missing`,
+		// `interfaces missing` are intentionally NOT error cases in
+		// the canonical validator: v1.0.3 Node schema has no `api`
+		// property at all (added in v1.1), no `clocks` (added in
+		// v1.1), no `interfaces` (added in v1.2), so a v1.0 wire
+		// shape decoded into the canonical struct has zero-value
+		// API/Clocks/Interfaces. Strict per-version presence
+		// requirements live in
+		// `internal/amwa/registry/store.go validateRegistrationPresenceVersioned`.
 		{"bad protocol", func(n *Node) { n.API.Endpoints[0].Protocol = "ftp" }, "protocol"},
 		{"port out of range", func(n *Node) { n.API.Endpoints[0].Port = 70000 }, "port"},
-		{"clocks missing", func(n *Node) { n.Clocks = nil }, "clocks"},
-		{"interfaces missing", func(n *Node) { n.Interfaces = nil }, "interfaces"},
 		{"interface bad mac", func(n *Node) { n.Interfaces[0].PortID = "not-a-mac" }, "port_id"},
 	}
 	for _, tc := range cases {
@@ -170,15 +175,21 @@ func TestSourceClockNameNullable(t *testing.T) {
 	}
 }
 
-func TestSourceAudioRequiresChannels(t *testing.T) {
+func TestSourceAudioChannelsValidatedWhenPresent(t *testing.T) {
+	// canonical Validate is lenient when `channels` is absent on an
+	// audio Source (v1.0 audio Source has no channels field at all;
+	// added in v1.1). Strict per-version presence lives in registry's
+	// `validateRegistrationPresenceVersioned`. Here we only confirm
+	// the per-element validation fires when channels ARE present.
 	s := validSource()
 	s.Format = FormatAudio
-	if err := s.Validate(); err == nil || !strings.Contains(err.Error(), "channels") {
-		t.Fatalf("audio source without channels must reject: %v", err)
+	s.Channels = []SourceAudioChannel{{Label: ""}} // bad label
+	if err := s.Validate(); err == nil || !strings.Contains(err.Error(), "channels[0].label") {
+		t.Fatalf("audio source with empty channel label should reject: %v", err)
 	}
 	s.Channels = []SourceAudioChannel{{Label: "L"}}
 	if err := s.Validate(); err != nil {
-		t.Fatalf("audio source with channels rejected: %v", err)
+		t.Fatalf("audio source with valid channels rejected: %v", err)
 	}
 }
 
@@ -222,8 +233,14 @@ func TestFlowAudioRequiresSampleRate(t *testing.T) {
 	f.FrameWidth = 0
 	f.FrameHeight = 0
 	f.Interlace = ""
+	// Set bit_depth to trigger the canonical "audio-fields-present"
+	// branch that demands sample_rate. canonical Validate is lenient
+	// when ALL audio fields are absent (v1.0 audio Flow has no
+	// per-format breakdown); strict per-version presence lives in
+	// registry's `validateRegistrationPresenceVersioned`.
+	f.BitDepth = 24
 	if err := f.Validate(); err == nil || !strings.Contains(err.Error(), "sample_rate") {
-		t.Fatalf("audio flow without sample_rate should reject: %v", err)
+		t.Fatalf("audio flow with bit_depth but no sample_rate should reject: %v", err)
 	}
 	f.SampleRate = &GrainRate{Numerator: 48000, Denominator: 1}
 	if err := f.Validate(); err != nil {
@@ -247,7 +264,7 @@ func validSender() Sender {
 		DeviceID:          "3b8be755-08ff-452b-b217-c9151eb21193",
 		ManifestHref:      &href,
 		InterfaceBindings: []string{"eth0"},
-		Subscription:      Subscription{Active: false},
+		Subscription:      SenderSubscription{Active: false},
 	}
 }
 
@@ -292,7 +309,7 @@ func validReceiver() Receiver {
 		InterfaceBindings: []string{"eth0"},
 		Format:            FormatVideo,
 		Caps:              ReceiverCaps{MediaTypes: []string{"video/raw"}},
-		Subscription:      Subscription{Active: false},
+		Subscription:      ReceiverSubscription{Active: false},
 	}
 }
 

@@ -15,6 +15,14 @@ import (
 	"time"
 
 	"acp/internal/amwa/codec/is04"
+	// Blank import to register the v1.3 IS-04 Codec via init() so that
+	// NewIS04NodeServer's spec.Registry lookup succeeds in unit tests.
+	// Layer 3 plugin code (which provider/ lives in) MUST NOT depend on
+	// vXX/ packages directly per docs/dependencies.md — but tests are
+	// the explicit exemption: unit tests need the codec wired up to
+	// exercise the plugin end-to-end. Mirrors the pattern in
+	// internal/amwa/registry/*_test.go.
+	_ "acp/internal/amwa/codec/is04/v13"
 )
 
 func validNode() is04.Node {
@@ -104,6 +112,21 @@ func TestValidateBundleRequiresExistingDevice(t *testing.T) {
 	}
 }
 
+func TestNodeInstanceName(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"", "dhs-nmos-node"},
+		{"dhs-debian-node", "dhs-debian-node"},
+		{"Studio A — Camera 3", "Studio A — Camera 3"},
+	}
+	for _, c := range cases {
+		if got := nodeInstanceName(c.in); got != c.want {
+			t.Errorf("nodeInstanceName(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
 func TestNodeServerEndToEnd(t *testing.T) {
 	addr := freeAddr(t)
 	s, err := NewIS04NodeServer(nil, validBundle(), IS04NodeConfig{
@@ -184,6 +207,56 @@ func TestNodeServerEndToEnd(t *testing.T) {
 	stats := s.Stats()
 	if stats["self"] == 0 {
 		t.Fatalf("self counter not incremented: %+v", stats)
+	}
+
+	// Parent listings the AMWA NMOS Testing tool's auto_node_1 / auto_node_2
+	// require. /x-nmos -> ["node/"], /x-nmos/node -> [<api_ver>/].
+	for _, c := range []struct {
+		path string
+		want string
+	}{
+		{"/x-nmos", "node/"},
+		{"/x-nmos/", "node/"},
+		{"/x-nmos/node", "v1.3/"},
+		{"/x-nmos/node/", "v1.3/"},
+	} {
+		rp, gerr := stdhttp.Get("http://" + addr + c.path)
+		if gerr != nil {
+			t.Fatalf("GET %s: %v", c.path, gerr)
+		}
+		body, _ := io.ReadAll(rp.Body)
+		_ = rp.Body.Close()
+		if rp.StatusCode != 200 {
+			t.Fatalf("%s status = %d, want 200", c.path, rp.StatusCode)
+		}
+		var arr []string
+		if err := json.Unmarshal(body, &arr); err != nil {
+			t.Fatalf("%s decode: %v body=%s", c.path, err, body)
+		}
+		if len(arr) != 1 || arr[0] != c.want {
+			t.Fatalf("%s = %v, want [%q]", c.path, arr, c.want)
+		}
+	}
+
+	// CORS header should be on every response.
+	rcors, _ := stdhttp.Get("http://" + addr + "/x-nmos/node/v1.3/self")
+	if got := rcors.Header.Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("Access-Control-Allow-Origin = %q on /self", got)
+	}
+	_ = rcors.Body.Close()
+
+	// OPTIONS preflight on any /x-nmos/node path — auto_node_10 hits
+	// receivers/{id}/target and expects NOT 405. Even on a path with
+	// no registered method handler the dispatcher returns 204.
+	req, _ := stdhttp.NewRequest(stdhttp.MethodOptions,
+		"http://"+addr+"/x-nmos/node/v1.3/receivers/00000000-0000-1000-8000-000000000000/target", nil)
+	ropt, err := stdhttp.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("OPTIONS receivers target: %v", err)
+	}
+	defer func() { _ = ropt.Body.Close() }()
+	if ropt.StatusCode != stdhttp.StatusOK {
+		t.Fatalf("OPTIONS receivers/{id}/target status = %d, want 200", ropt.StatusCode)
 	}
 }
 

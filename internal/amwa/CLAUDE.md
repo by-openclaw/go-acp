@@ -86,6 +86,42 @@ api_auth  = true | false
 pri       = <int>          # lower = higher priority
 ```
 
+### DNS-SD service-name version transition (binding)
+
+IS-04 v1.2 renamed the registration service from
+`_nmos-registration._tcp` (legacy) to `_nmos-register._tcp` (modern).
+v1.0 / v1.1 Registries advertise on the legacy name only; v1.2+ on the
+modern one. The watcher MUST browse BOTH concurrently — a Node that
+browsed only the modern name would miss every legacy Registry on the
+link. See `feedback_amwa_strict_all_versions` and the
+`internal/amwa/codec/dnssd/types.go` constants `ServiceRegister` +
+`ServiceRegisterLegacy`.
+
+### DNS-SD backend selection (multi-OS)
+
+`internal/amwa/session/dnssd/` exposes [Browser] / [Responder]
+**interfaces**, picked at process start by `NewBrowser` /
+`NewResponder` based on what's reachable on the host:
+
+| Host | Backend | Why |
+|---|---|---|
+| Linux + avahi-daemon on system DBus | **Avahi** via `org.freedesktop.Avahi.Server` (pure-Go via `github.com/godbus/dbus/v5`) | sub-ms cascade-timing per AMWA test_05/15/16; full RFC 6762/6763 corner-case handling |
+| macOS | **Bonjour** via `libSystem` (CGo, planned #196) | Bonjour daemon always present; canonical path |
+| Windows + Bonjour Service installed | **Bonjour** via `dnssd.dll` (CGo, planned #195) | matches Cerebrum / nmos-cpp Windows behaviour |
+| anything else (no daemon, slim containers, etc.) | **stdlib** — pure Go `net.UDPConn` on 224.0.0.251:5353 | universal fallback; never removed; lower perf (500 ms read-deadline jitter) means cascade-timing tests degrade |
+
+The choice is logged at INFO at start (`dnssd: using Avahi via DBus
+(system daemon)` / `dnssd: using stdlib browser (no system daemon
+detected)`). **Stdlib path is the floor — never delete it.** Future
+contributors keep all OS paths so that a slim container (or a Windows
+host without Bonjour, or a misconfigured systemd-less Linux box) still
+runs dhs — degraded conformance, never broken.
+
+Tracking: epic #194 (full daemon delegation), Phase A landed on
+`feat/nmos-is04-amwa-conformance` for Linux Avahi; Phases B-windows
+(#195) + B-macos (#196) + C (LXC multi-distro #197) follow on the same
+protocol branch per `feedback_pr_per_protocol`.
+
 ---
 
 ## Resource graph (the IS-04 universe)
@@ -115,7 +151,7 @@ numbers come from `internal/amwa/reference.md`.
 
 | Spec | Wire `api_ver` (URL) | Spec text patch (strict-comply) |
 |---|---|---|
-| IS-04 | v1.1, v1.2, v1.3 | v1.1.3 / v1.2.2 / v1.3.3 |
+| IS-04 | v1.0, v1.1, v1.2, v1.3 | v1.0.3 / v1.1.3 / v1.2.2 / v1.3.3 |
 | IS-05 | v1.0, v1.1 | v1.0.2 / v1.1.2 |
 | IS-07 | v1.0 | v1.0.1 |
 | IS-08 | v1.0 | v1.0.1 |
@@ -127,17 +163,27 @@ numbers come from `internal/amwa/reference.md`.
 | BCP-006-01 / BCP-006-04 | v1.0 | v1.0.0 |
 | BCP-008-01 / BCP-008-02 | v1.0 | v1.0.0 |
 
+**Strict-spec rule (binding, no exceptions for AMWA-published versions):**
+every minor AMWA has published is in scope. There is **no "deferred",
+no "out of scope by design", no "we don't see it in the wild"** for
+any minor in this table. If a minor is not implemented today, it is
+a *missing* implementation to be added — never framed as a stable
+product decision. See memory `feedback_amwa_strict_all_versions.md`.
+
 Convention: every listed version is a selectable parameter on the
 plugin (mirroring `proto:tsl` v3.1/v4.0/v5.0). DNS-SD `api_ver` TXT
 advertises every supported minor comma-separated
-(e.g. `api_ver=v1.1,v1.2,v1.3`). Server URL trees serve every minor
-in parallel (`/x-nmos/registration/v1.1/`, `/v1.2/`, `/v1.3/`, …) on
+(e.g. `api_ver=v1.0,v1.1,v1.2,v1.3`). Server URL trees serve every
+minor in parallel
+(`/x-nmos/registration/v1.0/`, `/v1.1/`, `/v1.2/`, `/v1.3/`, …) on
 the same store. Default to the highest mutually-supported minor;
 **never silently downgrade**, never silently drop a track. Skipping
 any version listed above is a spec violation, not a deferral.
 
 Genuinely WIP at AMWA (no stable release yet — land when stable):
 IS-13 Annotation, BCP-006-02 H.264, BCP-006-03 H.265, BCP-007-01 NDI.
+These are the ONLY legitimate "land when stable" carve-outs; they
+land the moment AMWA publishes a stable release.
 
 ---
 

@@ -62,12 +62,24 @@ var nodeV12PlusFields = []string{"interfaces"}
 // in v1.2 or later. v1.1 wire MUST NOT carry these.
 var senderV12PlusFields = []string{"caps", "interface_bindings", "subscription"}
 
-// EncodeNode marshals a Node for v1.1.3 — strips v1.2+ properties.
+// EncodeNode marshals a Node for v1.1.3 — strips v1.2+ properties
+// and the v1.3-only `authorization` flag from services + api.endpoints.
+// The auth flag landed with IS-10 in v1.3.3, so v1.1 wire MUST NOT
+// carry it (AMWA IS-04-02 test_31 checks the SYNC body byte-for-byte
+// against the per-version downgraded fixture).
 func (Codec) EncodeNode(n is04.Node) ([]byte, error) {
 	if err := n.Validate(); err != nil {
 		return nil, err
 	}
-	return stripFields(n, nodeV12PlusFields)
+	raw, err := stripFields(n, nodeV12PlusFields)
+	if err != nil {
+		return nil, err
+	}
+	raw, err = stripNestedKey(raw, []string{"services"}, "authorization")
+	if err != nil {
+		return nil, err
+	}
+	return stripNestedKey(raw, []string{"api", "endpoints"}, "authorization")
 }
 
 // DecodeNode parses a v1.1.3 Node payload. Rejects v1.2+ properties.
@@ -107,12 +119,17 @@ func (Codec) ValidateNode(n is04.Node) error {
 }
 
 // EncodeDevice marshals a Device for v1.1.3 — top-level shape matches
-// later minors so we delegate.
+// later minors but the v1.3-only `controls[].authorization` flag is
+// stripped (added with IS-10 in v1.3).
 func (Codec) EncodeDevice(d is04.Device) ([]byte, error) {
 	if err := d.Validate(); err != nil {
 		return nil, err
 	}
-	return json.MarshalIndent(d, "", "  ")
+	raw, err := json.MarshalIndent(d, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return stripNestedKey(raw, []string{"controls"}, "authorization")
 }
 
 // DecodeDevice parses a v1.1.3 Device payload.
@@ -188,16 +205,29 @@ func (Codec) EncodeSender(s is04.Sender) ([]byte, error) {
 	return stripFields(s, senderV12PlusFields)
 }
 
-// DecodeSender parses a v1.1.3 Sender payload. Rejects v1.2+ keys.
+// DecodeSender parses a v1.1.3 Sender payload. Rejects v1.2+ keys
+// and applies only the v1.1 required-field set — bypasses
+// is04.DecodeSender because that runs the canonical (v1.3)
+// validator which requires interface_bindings, a v1.2 addition.
+// AMWA test_13 sends a v1.1-shaped Sender body (no interface_bindings,
+// no caps, no subscription) — the v1.3 validator rejected it as 400.
 func (Codec) DecodeSender(raw []byte) (is04.Sender, error) {
 	if err := rejectFields(raw, senderV12PlusFields, "sender"); err != nil {
 		return is04.Sender{}, err
 	}
-	s, err := is04.DecodeSender(raw)
-	if err != nil {
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.DisallowUnknownFields()
+	var s is04.Sender
+	if err := d.Decode(&s); err != nil {
+		return is04.Sender{}, fmt.Errorf("is04 v1.1: decode sender: %w", err)
+	}
+	if d.More() {
+		return is04.Sender{}, fmt.Errorf("is04 v1.1: decode sender: trailing JSON content")
+	}
+	if err := validateSenderV11(s); err != nil {
 		return is04.Sender{}, err
 	}
-	return *s, nil
+	return s, nil
 }
 
 // ValidateSender applies the v1.1.3 required-field set — drops the
@@ -244,12 +274,28 @@ func validateSenderV11(s is04.Sender) error {
 	return nil
 }
 
-// EncodeReceiver marshals a Receiver for v1.1.3.
+// EncodeReceiver marshals a Receiver for v1.1.3 — strips
+// `interface_bindings` (added v1.2) AND `subscription.active`
+// (added v1.2 alongside the connection_management activation
+// model). IS04Utils.downgrade_resource removes both for v_minor <= 1.
 func (Codec) EncodeReceiver(r is04.Receiver) ([]byte, error) {
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}
-	return json.MarshalIndent(r, "", "  ")
+	raw, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, err
+	}
+	delete(m, "interface_bindings")
+	raw, err = json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return stripNestedKey(raw, []string{"subscription"}, "active")
 }
 
 // DecodeReceiver parses a v1.1.3 Receiver payload.
@@ -264,6 +310,40 @@ func (Codec) DecodeReceiver(raw []byte) (is04.Receiver, error) {
 // ValidateReceiver applies the v1.1.3 required-field set.
 func (Codec) ValidateReceiver(r is04.Receiver) error {
 	return r.Validate()
+}
+
+// stripNestedKey walks a JSON object body to the leaf at `path`
+// (e.g. `subscription`) and deletes `key` from it. When the leaf is
+// an ARRAY (e.g. `services`, `controls`, `api.endpoints`), `key` is
+// deleted from every element. Idempotent on missing paths.
+func stripNestedKey(raw []byte, path []string, key string) ([]byte, error) {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, err
+	}
+	cur := v
+	for _, p := range path[:len(path)-1] {
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return raw, nil
+		}
+		cur = m[p]
+	}
+	leaf, ok := cur.(map[string]any)
+	if !ok {
+		return raw, nil
+	}
+	switch t := leaf[path[len(path)-1]].(type) {
+	case []any:
+		for _, el := range t {
+			if em, ok := el.(map[string]any); ok {
+				delete(em, key)
+			}
+		}
+	case map[string]any:
+		delete(t, key)
+	}
+	return json.MarshalIndent(v, "", "  ")
 }
 
 // stripFields marshals v into JSON, drops the named top-level keys,

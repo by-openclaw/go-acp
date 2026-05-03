@@ -12,22 +12,29 @@ import (
 type Sender struct {
 	ResourceCore
 
-	FlowID            *string        `json:"flow_id"` // UUID OR null
-	Transport         string         `json:"transport"`
-	DeviceID          string         `json:"device_id"`
-	ManifestHref      *string        `json:"manifest_href"` // URI OR null
-	InterfaceBindings []string       `json:"interface_bindings"`
-	Caps              map[string]any `json:"caps,omitempty"`
-	Subscription      Subscription   `json:"subscription"`
+	FlowID            *string            `json:"flow_id"` // UUID OR null
+	Transport         string             `json:"transport"`
+	DeviceID          string             `json:"device_id"`
+	ManifestHref      *string            `json:"manifest_href"` // URI OR null
+	InterfaceBindings []string           `json:"interface_bindings"`
+	Caps              map[string]any     `json:"caps,omitempty"`
+	Subscription      SenderSubscription `json:"subscription"`
 }
 
-// Subscription is shared by Sender and Receiver. Sender carries
-// receiver_id (the receiver currently consuming this sender's flow);
-// Receiver carries sender_id. Both also carry `active`.
-type Subscription struct {
-	ReceiverID *string `json:"receiver_id,omitempty"`
-	SenderID   *string `json:"sender_id,omitempty"`
+// SenderSubscription mirrors sender.json `subscription`. Per IS-04
+// v1.3 sender.json the field is REQUIRED with type ["string","null"]
+// — it MUST appear on the wire even when there's no consumer (then
+// `null`). No omitempty.
+type SenderSubscription struct {
+	ReceiverID *string `json:"receiver_id"`
 	Active     bool    `json:"active"`
+}
+
+// ReceiverSubscription mirrors receiver_core.json `subscription`.
+// Same required-but-nullable rule as SenderSubscription.
+type ReceiverSubscription struct {
+	SenderID *string `json:"sender_id"`
+	Active   bool    `json:"active"`
 }
 
 // Validate enforces sender.json rules.
@@ -43,9 +50,9 @@ func (s *Sender) Validate() error {
 	if s.DeviceID == "" || !IsValidUUID(s.DeviceID) {
 		errs = append(errs, fmt.Sprintf("sender.device_id %q: must match UUID v1-5", s.DeviceID))
 	}
-	if s.InterfaceBindings == nil {
-		errs = append(errs, "sender.interface_bindings: required (may be empty array)")
-	}
+	// interface_bindings landed in IS-04 v1.2 — when present, it must
+	// be an array of MAC strings; when absent (a v1.0/v1.1 wire shape)
+	// we accept the field's omission silently.
 	// manifest_href is required (string OR null) — the field must be
 	// present in the JSON. Nil pointer = absent; empty string = invalid.
 	if s.ManifestHref != nil && *s.ManifestHref == "" {

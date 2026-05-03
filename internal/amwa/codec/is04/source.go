@@ -81,9 +81,12 @@ func (s *Source) Validate() error {
 		errs = append(errs, fmt.Sprintf("source.format %q: must be a known NMOS format URN or non-NMOS URI", s.Format))
 	}
 	if s.Format == FormatAudio {
-		if len(s.Channels) == 0 {
-			errs = append(errs, "source.channels: required when format=audio (>=1 channel)")
-		}
+		// canonical Validate is lenient when `channels` is absent —
+		// v1.0 audio Source has no `channels` field at all (added in
+		// v1.1). Per-element validation runs only when channels are
+		// present. Strict per-version presence (require channels at
+		// v1.1+) lives in
+		// `internal/amwa/registry/store.go validateRegistrationPresenceVersioned`.
 		for i, ch := range s.Channels {
 			if ch.Label == "" {
 				errs = append(errs, fmt.Sprintf("source.channels[%d].label: required", i))

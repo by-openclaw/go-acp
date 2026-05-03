@@ -34,6 +34,7 @@ type Change struct {
 	Kind         ChangeKind
 	ResourceType is04.ResourceType
 	ID           string
+	APIVer       string // wire version this resource was registered at
 	Pre          json.RawMessage // nil on create
 	Post         json.RawMessage // nil on delete
 	Timestamp    time.Time
@@ -61,6 +62,19 @@ type Store struct {
 	// this map every tick.
 	health map[string]time.Time
 
+	// updateTSByType tracks the per-resource last-update TAI timestamp
+	// per IS-04 §6.1.6 — Query API pagination indexes resources by
+	// this. Keyed type → id → "<secs>:<nanos>". Maintained on every
+	// Put and pruned on every Delete.
+	updateTSByType map[is04.ResourceType]map[string]string
+
+	// apiVerByType tracks the IS-04 wire version each resource was
+	// registered at. Drives the no-downgrade-by-default Query
+	// semantics IS-04 §6.1.5 (and AMWA test_22 / test_32) — a Node
+	// posted at /registration/v1.0 doesn't appear at /query/v1.3
+	// unless the client opts in via `?query.downgrade=v1.0`.
+	apiVerByType map[is04.ResourceType]map[string]string
+
 	listeners []changeListener
 }
 
@@ -68,14 +82,92 @@ type Store struct {
 // via AddListener — the subscription manager registers itself there.
 func NewStore() *Store {
 	return &Store{
-		nodes:     make(map[string]is04.Node),
-		devices:   make(map[string]is04.Device),
-		sources:   make(map[string]is04.Source),
-		flows:     make(map[string]is04.Flow),
-		senders:   make(map[string]is04.Sender),
-		receivers: make(map[string]is04.Receiver),
-		health:    make(map[string]time.Time),
+		nodes:          make(map[string]is04.Node),
+		devices:        make(map[string]is04.Device),
+		sources:        make(map[string]is04.Source),
+		flows:          make(map[string]is04.Flow),
+		senders:        make(map[string]is04.Sender),
+		receivers:      make(map[string]is04.Receiver),
+		health:         make(map[string]time.Time),
+		updateTSByType: make(map[is04.ResourceType]map[string]string, 6),
+		apiVerByType:   make(map[is04.ResourceType]map[string]string, 6),
 	}
+}
+
+// markUpdated stamps id's update_ts to "now (TAI)" under the type
+// bucket. Caller MUST hold the write lock.
+func (s *Store) markUpdated(t is04.ResourceType, id string) {
+	bucket, ok := s.updateTSByType[t]
+	if !ok {
+		bucket = make(map[string]string)
+		s.updateTSByType[t] = bucket
+	}
+	bucket[id] = nowTAI()
+}
+
+// dropUpdated drops id from the type bucket on delete. Caller MUST
+// hold the write lock.
+func (s *Store) dropUpdated(t is04.ResourceType, id string) {
+	if bucket, ok := s.updateTSByType[t]; ok {
+		delete(bucket, id)
+	}
+	if bucket, ok := s.apiVerByType[t]; ok {
+		delete(bucket, id)
+	}
+}
+
+// markAPIVer records the wire version a resource was registered at.
+// Caller MUST hold the write lock. Empty apiVer is treated as "any"
+// (drops the entry so subsequent queries return the resource at any
+// version) — used by tests that pre-populate the store directly.
+func (s *Store) markAPIVer(t is04.ResourceType, id, apiVer string) {
+	if apiVer == "" {
+		if bucket, ok := s.apiVerByType[t]; ok {
+			delete(bucket, id)
+		}
+		return
+	}
+	bucket, ok := s.apiVerByType[t]
+	if !ok {
+		bucket = make(map[string]string)
+		s.apiVerByType[t] = bucket
+	}
+	bucket[id] = apiVer
+}
+
+// apiVerOfLocked is the lock-free reader used by Put* + fanOut paths
+// that already hold the store mutex. Returns "" when the resource has
+// no api_ver stamp.
+func (s *Store) apiVerOfLocked(t is04.ResourceType, id string) string {
+	if bucket, ok := s.apiVerByType[t]; ok {
+		return bucket[id]
+	}
+	return ""
+}
+
+// APIVerOf returns the registered wire version for (t, id), or "" if
+// the resource isn't registered or was registered without a version
+// stamp. Read-locked.
+func (s *Store) APIVerOf(t is04.ResourceType, id string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.apiVerOfLocked(t, id)
+}
+
+// maxUpdateTSLocked returns the largest update_ts across ALL resources
+// of type t, irrespective of any filter. Used by the Query API
+// pagination layer to anchor X-Paging-Until at the head of the time
+// series. Returns "" when the type bucket is empty. Caller MUST hold
+// the read or write lock.
+func (s *Store) maxUpdateTSLocked(t is04.ResourceType) string {
+	bucket := s.updateTSByType[t]
+	max := ""
+	for _, ts := range bucket {
+		if max == "" || taiCmp(ts, max) > 0 {
+			max = ts
+		}
+	}
+	return max
 }
 
 // AddListener registers a callback for every Change emission. Returns
@@ -113,12 +205,13 @@ func (s *Store) PutNode(n is04.Node) error {
 	defer s.mu.Unlock()
 	prev, hadPrev := s.nodes[n.ID]
 	s.nodes[n.ID] = n
+	s.markUpdated(is04.ResourceNode, n.ID)
 	// On insert, mark health = now so the GC doesn't immediately evict.
 	if !hadPrev {
 		s.health[n.ID] = time.Now()
 	}
 	post, _ := json.Marshal(n)
-	c := Change{ResourceType: is04.ResourceNode, ID: n.ID, Post: post, Timestamp: time.Now()}
+	c := Change{ResourceType: is04.ResourceNode, ID: n.ID, APIVer: s.apiVerOfLocked(is04.ResourceNode, n.ID), Post: post, Timestamp: time.Now()}
 	if hadPrev {
 		pre, _ := json.Marshal(prev)
 		c.Kind = ChangeUpdated
@@ -143,8 +236,9 @@ func (s *Store) PutDevice(d is04.Device) error {
 	}
 	prev, hadPrev := s.devices[d.ID]
 	s.devices[d.ID] = d
+	s.markUpdated(is04.ResourceDevice, d.ID)
 	post, _ := json.Marshal(d)
-	c := Change{ResourceType: is04.ResourceDevice, ID: d.ID, Post: post, Timestamp: time.Now()}
+	c := Change{ResourceType: is04.ResourceDevice, ID: d.ID, APIVer: s.apiVerOfLocked(is04.ResourceDevice, d.ID), Post: post, Timestamp: time.Now()}
 	if hadPrev {
 		pre, _ := json.Marshal(prev)
 		c.Kind = ChangeUpdated
@@ -168,8 +262,9 @@ func (s *Store) PutSource(src is04.Source) error {
 	}
 	prev, hadPrev := s.sources[src.ID]
 	s.sources[src.ID] = src
+	s.markUpdated(is04.ResourceSource, src.ID)
 	post, _ := json.Marshal(src)
-	c := Change{ResourceType: is04.ResourceSource, ID: src.ID, Post: post, Timestamp: time.Now()}
+	c := Change{ResourceType: is04.ResourceSource, ID: src.ID, APIVer: s.apiVerOfLocked(is04.ResourceSource, src.ID), Post: post, Timestamp: time.Now()}
 	if hadPrev {
 		pre, _ := json.Marshal(prev)
 		c.Kind = ChangeUpdated
@@ -181,20 +276,29 @@ func (s *Store) PutSource(src is04.Source) error {
 	return nil
 }
 
-// PutFlow inserts/updates. Requires parent Device.
+// PutFlow inserts/updates. Requires parent Device — except on the
+// v1.0 wire shape, which removes `device_id` from the Flow object
+// entirely (Flow's parent in v1.0 is the Source, not the Device). In
+// every IS-04 minor the source_id MUST point at a registered Source.
 func (s *Store) PutFlow(f is04.Flow) error {
 	if err := f.Validate(); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, ok := s.devices[f.DeviceID]; !ok {
-		return fmt.Errorf("registry: flow %s.device_id %q not registered", f.ID, f.DeviceID)
+	if f.DeviceID != "" {
+		if _, ok := s.devices[f.DeviceID]; !ok {
+			return fmt.Errorf("registry: flow %s.device_id %q not registered", f.ID, f.DeviceID)
+		}
+	}
+	if _, ok := s.sources[f.SourceID]; !ok {
+		return fmt.Errorf("registry: flow %s.source_id %q not registered", f.ID, f.SourceID)
 	}
 	prev, hadPrev := s.flows[f.ID]
 	s.flows[f.ID] = f
+	s.markUpdated(is04.ResourceFlow, f.ID)
 	post, _ := json.Marshal(f)
-	c := Change{ResourceType: is04.ResourceFlow, ID: f.ID, Post: post, Timestamp: time.Now()}
+	c := Change{ResourceType: is04.ResourceFlow, ID: f.ID, APIVer: s.apiVerOfLocked(is04.ResourceFlow, f.ID), Post: post, Timestamp: time.Now()}
 	if hadPrev {
 		pre, _ := json.Marshal(prev)
 		c.Kind = ChangeUpdated
@@ -218,8 +322,9 @@ func (s *Store) PutSender(snd is04.Sender) error {
 	}
 	prev, hadPrev := s.senders[snd.ID]
 	s.senders[snd.ID] = snd
+	s.markUpdated(is04.ResourceSender, snd.ID)
 	post, _ := json.Marshal(snd)
-	c := Change{ResourceType: is04.ResourceSender, ID: snd.ID, Post: post, Timestamp: time.Now()}
+	c := Change{ResourceType: is04.ResourceSender, ID: snd.ID, APIVer: s.apiVerOfLocked(is04.ResourceSender, snd.ID), Post: post, Timestamp: time.Now()}
 	if hadPrev {
 		pre, _ := json.Marshal(prev)
 		c.Kind = ChangeUpdated
@@ -243,8 +348,9 @@ func (s *Store) PutReceiver(r is04.Receiver) error {
 	}
 	prev, hadPrev := s.receivers[r.ID]
 	s.receivers[r.ID] = r
+	s.markUpdated(is04.ResourceReceiver, r.ID)
 	post, _ := json.Marshal(r)
-	c := Change{ResourceType: is04.ResourceReceiver, ID: r.ID, Post: post, Timestamp: time.Now()}
+	c := Change{ResourceType: is04.ResourceReceiver, ID: r.ID, APIVer: s.apiVerOfLocked(is04.ResourceReceiver, r.ID), Post: post, Timestamp: time.Now()}
 	if hadPrev {
 		pre, _ := json.Marshal(prev)
 		c.Kind = ChangeUpdated
@@ -276,18 +382,26 @@ func (s *Store) deleteNodeLocked(id string) {
 		if d.NodeID != id {
 			continue
 		}
-		// Evict children of this device.
+		// Evict children of this device. Walk Sources first, then
+		// Flows — IS-04 v1.0 Flows DO NOT carry device_id, only
+		// source_id, so we cascade them via the just-deleted source's
+		// id rather than via the device id.
+		removedSourceIDs := make(map[string]struct{})
 		for sid, src := range s.sources {
 			if src.DeviceID == did {
 				pre, _ := json.Marshal(src)
 				delete(s.sources, sid)
+				s.dropUpdated(is04.ResourceSource, sid)
+				removedSourceIDs[sid] = struct{}{}
 				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceSource, ID: sid, Pre: pre, Timestamp: now})
 			}
 		}
 		for fid, f := range s.flows {
-			if f.DeviceID == did {
+			_, sourceGone := removedSourceIDs[f.SourceID]
+			if f.DeviceID == did || sourceGone {
 				pre, _ := json.Marshal(f)
 				delete(s.flows, fid)
+				s.dropUpdated(is04.ResourceFlow, fid)
 				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceFlow, ID: fid, Pre: pre, Timestamp: now})
 			}
 		}
@@ -295,6 +409,7 @@ func (s *Store) deleteNodeLocked(id string) {
 			if snd.DeviceID == did {
 				pre, _ := json.Marshal(snd)
 				delete(s.senders, sid)
+				s.dropUpdated(is04.ResourceSender, sid)
 				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceSender, ID: sid, Pre: pre, Timestamp: now})
 			}
 		}
@@ -302,16 +417,19 @@ func (s *Store) deleteNodeLocked(id string) {
 			if r.DeviceID == did {
 				pre, _ := json.Marshal(r)
 				delete(s.receivers, rid)
+				s.dropUpdated(is04.ResourceReceiver, rid)
 				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceReceiver, ID: rid, Pre: pre, Timestamp: now})
 			}
 		}
 		pre, _ := json.Marshal(d)
 		delete(s.devices, did)
+		s.dropUpdated(is04.ResourceDevice, did)
 		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceDevice, ID: did, Pre: pre, Timestamp: now})
 	}
 	pre, _ := json.Marshal(s.nodes[id])
 	delete(s.nodes, id)
 	delete(s.health, id)
+	s.dropUpdated(is04.ResourceNode, id)
 	s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceNode, ID: id, Pre: pre, Timestamp: now})
 }
 
@@ -331,6 +449,7 @@ func (s *Store) DeleteResource(t is04.ResourceType, id string) error {
 		}
 		pre, _ := json.Marshal(d)
 		delete(s.devices, id)
+		s.dropUpdated(t, id)
 		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
 	case is04.ResourceSource:
 		v, ok := s.sources[id]
@@ -339,6 +458,7 @@ func (s *Store) DeleteResource(t is04.ResourceType, id string) error {
 		}
 		pre, _ := json.Marshal(v)
 		delete(s.sources, id)
+		s.dropUpdated(t, id)
 		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
 	case is04.ResourceFlow:
 		v, ok := s.flows[id]
@@ -347,6 +467,7 @@ func (s *Store) DeleteResource(t is04.ResourceType, id string) error {
 		}
 		pre, _ := json.Marshal(v)
 		delete(s.flows, id)
+		s.dropUpdated(t, id)
 		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
 	case is04.ResourceSender:
 		v, ok := s.senders[id]
@@ -355,6 +476,7 @@ func (s *Store) DeleteResource(t is04.ResourceType, id string) error {
 		}
 		pre, _ := json.Marshal(v)
 		delete(s.senders, id)
+		s.dropUpdated(t, id)
 		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
 	case is04.ResourceReceiver:
 		v, ok := s.receivers[id]
@@ -363,6 +485,7 @@ func (s *Store) DeleteResource(t is04.ResourceType, id string) error {
 		}
 		pre, _ := json.Marshal(v)
 		delete(s.receivers, id)
+		s.dropUpdated(t, id)
 		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
 	default:
 		return fmt.Errorf("registry: invalid resource type %q", t)
@@ -525,42 +648,155 @@ func (s *Store) GetReceiver(id string) (is04.Receiver, error) {
 }
 
 // SnapshotChanges returns a `sync` change per existing resource —
-// used to bootstrap a new WS subscriber.
-func (s *Store) SnapshotChanges() []Change {
+// used to bootstrap a new WS subscriber. When wireVer is empty the
+// resources are marshaled in their canonical shape; when set, each
+// body is run through the matching is04.Codec so the SYNC payload
+// matches the wire shape AMWA test_31 expects (which compares
+// pre/post against the per-version fixture the test posted).
+func (s *Store) SnapshotChanges(wireVer string) []Change {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	now := time.Now()
 	out := make([]Change, 0, len(s.nodes)+len(s.devices)+len(s.sources)+len(s.flows)+len(s.senders)+len(s.receivers))
+
+	codec, _ := is04.Get(wireVer)
+	encNode := func(n is04.Node) []byte {
+		if codec != nil {
+			if b, err := codec.EncodeNode(n); err == nil {
+				return b
+			}
+		}
+		b, _ := json.Marshal(n)
+		return b
+	}
+	encDevice := func(d is04.Device) []byte {
+		if codec != nil {
+			if b, err := codec.EncodeDevice(d); err == nil {
+				return b
+			}
+		}
+		b, _ := json.Marshal(d)
+		return b
+	}
+	encSource := func(v is04.Source) []byte {
+		if codec != nil {
+			if b, err := codec.EncodeSource(v); err == nil {
+				return b
+			}
+		}
+		b, _ := json.Marshal(v)
+		return b
+	}
+	encFlow := func(v is04.Flow) []byte {
+		if codec != nil {
+			if b, err := codec.EncodeFlow(v); err == nil {
+				return b
+			}
+		}
+		b, _ := json.Marshal(v)
+		return b
+	}
+	encSender := func(v is04.Sender) []byte {
+		if codec != nil {
+			if b, err := codec.EncodeSender(v); err == nil {
+				return b
+			}
+		}
+		b, _ := json.Marshal(v)
+		return b
+	}
+	encReceiver := func(v is04.Receiver) []byte {
+		if codec != nil {
+			if b, err := codec.EncodeReceiver(v); err == nil {
+				return b
+			}
+		}
+		b, _ := json.Marshal(v)
+		return b
+	}
+
 	for _, v := range s.nodes {
-		raw, _ := json.Marshal(v)
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceNode, ID: v.ID, Post: raw, Timestamp: now})
+		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceNode, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceNode, v.ID), Post: encNode(v), Timestamp: now})
 	}
 	for _, v := range s.devices {
-		raw, _ := json.Marshal(v)
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceDevice, ID: v.ID, Post: raw, Timestamp: now})
+		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceDevice, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceDevice, v.ID), Post: encDevice(v), Timestamp: now})
 	}
 	for _, v := range s.sources {
-		raw, _ := json.Marshal(v)
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceSource, ID: v.ID, Post: raw, Timestamp: now})
+		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceSource, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceSource, v.ID), Post: encSource(v), Timestamp: now})
 	}
 	for _, v := range s.flows {
-		raw, _ := json.Marshal(v)
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceFlow, ID: v.ID, Post: raw, Timestamp: now})
+		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceFlow, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceFlow, v.ID), Post: encFlow(v), Timestamp: now})
 	}
 	for _, v := range s.senders {
-		raw, _ := json.Marshal(v)
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceSender, ID: v.ID, Post: raw, Timestamp: now})
+		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceSender, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceSender, v.ID), Post: encSender(v), Timestamp: now})
 	}
 	for _, v := range s.receivers {
-		raw, _ := json.Marshal(v)
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceReceiver, ID: v.ID, Post: raw, Timestamp: now})
+		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceReceiver, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceReceiver, v.ID), Post: encReceiver(v), Timestamp: now})
 	}
 	return out
 }
 
 // IngestRegistration decodes the envelope, decodes the inner data per
-// type, and writes through to the store.
+// type, and writes through to the store. Defaults to the v1.3 presence
+// rules — registry handlers wired against an older minor should call
+// IngestRegistrationVersioned to swap in a per-spec required-key set.
 func (s *Store) IngestRegistration(env *is04.RegistrationRequest) error {
+	return s.IngestRegistrationVersioned(env, is04.APIVersion)
+}
+
+// ErrAPIVerConflict is returned when a registration POST targets an
+// existing (type, id) but at a different wire version than the one
+// it was originally registered with — IS-04 §6.1.1 mandates HTTP 409
+// (Conflict) for this case (AMWA test_32 verifies it).
+var ErrAPIVerConflict = errors.New("registry: api_ver conflict — resource already registered at a different wire version")
+
+// IngestRegistrationVersioned runs the same path as IngestRegistration
+// but applies the per-version JSON-Schema "required" set on the raw
+// envelope before unmarshal. v1.0 of the spec doesn't carry `tags` or
+// `description` on most resources; v1.1+ does. AMWA IS-04-02 test_03
+// (and friends) post the per-version downgraded fixtures to the
+// version-specific URL, so the registry must accept a v1.0 body
+// without `tags`/`description` and reject a v1.0 body that's missing
+// `id` or `label`.
+//
+// Returns ErrAPIVerConflict when a record already exists for (type, id)
+// but at a different api_ver — the registration handler maps this to
+// HTTP 409.
+func (s *Store) IngestRegistrationVersioned(env *is04.RegistrationRequest, apiVer string) error {
+	if err := validateRegistrationPresenceVersioned(env, apiVer); err != nil {
+		return err
+	}
+	id := idFromEnvelope(env)
+	if id != "" {
+		if existing := s.APIVerOf(env.Type, id); existing != "" && apiVer != "" && existing != apiVer {
+			return ErrAPIVerConflict
+		}
+	}
+	// Stamp the api_ver BEFORE the typed Put so the Change emitted on
+	// fanOut carries the correct version (the manager's onChange
+	// listener reads it without re-locking).
+	if id != "" && apiVer != "" {
+		s.mu.Lock()
+		s.markAPIVer(env.Type, id, apiVer)
+		s.mu.Unlock()
+	}
+	if err := s.ingestTyped(env); err != nil {
+		// Roll back the api_ver stamp on failure so we don't end up
+		// with an api_ver entry pointing at a resource that doesn't
+		// exist.
+		if id != "" && apiVer != "" {
+			s.mu.Lock()
+			if bucket, ok := s.apiVerByType[env.Type]; ok {
+				delete(bucket, id)
+			}
+			s.mu.Unlock()
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *Store) ingestTyped(env *is04.RegistrationRequest) error {
 	switch env.Type {
 	case is04.ResourceNode:
 		var n is04.Node
@@ -600,4 +836,36 @@ func (s *Store) IngestRegistration(env *is04.RegistrationRequest) error {
 		return s.PutReceiver(v)
 	}
 	return fmt.Errorf("registry: invalid resource type %q", env.Type)
+}
+
+// validateRegistrationPresenceVersioned enforces the per-API-version
+// JSON-Schema "required" set for the resource_core fields. The
+// inbound JSON shape differs across minors:
+//
+//   - v1.0:        required = {id, version, label}
+//                  (`tags` and `description` were added in v1.1)
+//   - v1.1, v1.2:  required = {id, version, label, description, tags}
+//   - v1.3:        required = {id, version, label, description, tags}
+//
+// AMWA test_04 (and its do_400_check siblings test_06/test_08/...)
+// delete the `label` key and expect HTTP 400 — that's the canonical
+// schema-validation gate the AMWA tool exercises. Without an explicit
+// presence check the typed Validate() can't distinguish "field
+// absent" from "field present with zero value" since json.Unmarshal
+// collapses both into the Go zero value.
+func validateRegistrationPresenceVersioned(env *is04.RegistrationRequest, apiVer string) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(env.Data, &raw); err != nil {
+		return fmt.Errorf("registry: data is not a JSON object: %w", err)
+	}
+	required := []string{"id", "version", "label", "description", "tags"}
+	if apiVer == "v1.0" {
+		required = []string{"id", "version", "label"}
+	}
+	for _, key := range required {
+		if _, ok := raw[key]; !ok {
+			return fmt.Errorf("registry: %s.%s: required (resource_core)", env.Type, key)
+		}
+	}
+	return nil
 }

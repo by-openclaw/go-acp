@@ -27,20 +27,25 @@ type NodeAPI struct {
 	Endpoints []NodeEndpoint `json:"endpoints"`
 }
 
-// NodeEndpoint is one entry in NodeAPI.Endpoints.
+// NodeEndpoint is one entry in NodeAPI.Endpoints. `authorization` is
+// required by IS-04 v1.3 endpoint schema, so we always emit it
+// (omitempty would drop the field on `false`, breaking round-trip
+// equality the AMWA test_31 SYNC grain check enforces).
 type NodeEndpoint struct {
 	Host          string `json:"host"`
 	Port          int    `json:"port"`
 	Protocol      string `json:"protocol"`
-	Authorization bool   `json:"authorization,omitempty"`
+	Authorization bool   `json:"authorization"`
 }
 
 // NodeService is one entry in Node.Services — a non-NMOS service
-// running on the Node addressed by URN type.
+// running on the Node addressed by URN type. `authorization` is a
+// required field per IS-04 v1.3 services schema; same rationale as
+// NodeEndpoint above.
 type NodeService struct {
 	Href          string `json:"href"`
 	Type          string `json:"type"`
-	Authorization bool   `json:"authorization,omitempty"`
+	Authorization bool   `json:"authorization"`
 }
 
 // NodeClock is one entry in Node.Clocks. Polymorphic per `clock_*.json`
@@ -73,6 +78,12 @@ type AttachedNetworkDevice struct {
 
 // Validate enforces every required-field + pattern rule from
 // node.json. Optional fields with empty/zero values are skipped.
+//
+// The `api` sub-object (versions + endpoints) is only required from
+// IS-04 v1.1 onward — v1.0 nodes carry only the top-level `href`.
+// We therefore validate the api block when it is supplied, but we
+// don't require it. Per-version registry handlers enforce stricter
+// presence at the URL boundary.
 func (n *Node) Validate() error {
 	errs := validateCore(&n.ResourceCore, "node")
 
@@ -83,32 +94,31 @@ func (n *Node) Validate() error {
 		errs = append(errs, "node.caps: required (may be empty object)")
 	}
 
-	if len(n.API.Versions) == 0 {
-		errs = append(errs, "node.api.versions: required (>=1 entry)")
-	}
-	for i, v := range n.API.Versions {
-		if !IsValidAPIVersion(v) {
-			errs = append(errs, fmt.Sprintf("node.api.versions[%d] %q: must match `vMAJOR.MINOR`", i, v))
+	// `api` is OPTIONAL in canonical Validate — IS-04 v1.0.3 Node
+	// schema has no `api` property at all (added in v1.1). When
+	// present we validate per-element shape; when absent we don't
+	// reject. Strict per-version presence requirements live in
+	// `internal/amwa/registry/store.go validateRegistrationPresenceVersioned`.
+	if len(n.API.Versions) > 0 || len(n.API.Endpoints) > 0 {
+		for i, v := range n.API.Versions {
+			if !IsValidAPIVersion(v) {
+				errs = append(errs, fmt.Sprintf("node.api.versions[%d] %q: must match `vMAJOR.MINOR`", i, v))
+			}
 		}
-	}
-	if len(n.API.Endpoints) == 0 {
-		errs = append(errs, "node.api.endpoints: required (>=1 entry)")
-	}
-	for i, e := range n.API.Endpoints {
-		if e.Host == "" {
-			errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].host: required", i))
-		}
-		if e.Port < 1 || e.Port > 65535 {
-			errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].port=%d: out of [1..65535]", i, e.Port))
-		}
-		if !IsValidHTTPProtocol(e.Protocol) {
-			errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].protocol %q: must be \"http\" or \"https\"", i, e.Protocol))
+		for i, e := range n.API.Endpoints {
+			if e.Host == "" {
+				errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].host: required", i))
+			}
+			if e.Port < 1 || e.Port > 65535 {
+				errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].port=%d: out of [1..65535]", i, e.Port))
+			}
+			if !IsValidHTTPProtocol(e.Protocol) {
+				errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].protocol %q: must be \"http\" or \"https\"", i, e.Protocol))
+			}
 		}
 	}
 
-	if n.Services == nil {
-		errs = append(errs, "node.services: required (may be empty array)")
-	}
+	// services existed since v1.0 — present-but-array validations only.
 	for i, s := range n.Services {
 		if s.Href == "" {
 			errs = append(errs, fmt.Sprintf("node.services[%d].href: required", i))
@@ -118,9 +128,10 @@ func (n *Node) Validate() error {
 		}
 	}
 
-	if n.Clocks == nil {
-		errs = append(errs, "node.clocks: required (may be empty array)")
-	}
+	// clocks landed in IS-04 v1.1, interfaces in v1.2 — both are
+	// optional from this validator's point of view (a v1.0 fixture
+	// has neither). When the caller does ship them we still enforce
+	// per-element shape.
 	for i, c := range n.Clocks {
 		if c.Name == "" {
 			errs = append(errs, fmt.Sprintf("node.clocks[%d].name: required", i))
@@ -132,9 +143,6 @@ func (n *Node) Validate() error {
 		}
 	}
 
-	if n.Interfaces == nil {
-		errs = append(errs, "node.interfaces: required (may be empty array)")
-	}
 	for i, iface := range n.Interfaces {
 		if iface.Name == "" {
 			errs = append(errs, fmt.Sprintf("node.interfaces[%d].name: required", i))

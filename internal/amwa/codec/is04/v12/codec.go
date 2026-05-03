@@ -1,29 +1,37 @@
-// Package v12 is the AMWA NMOS IS-04 v1.2.2 wire codec — one of three
+// Package v12 is the AMWA NMOS IS-04 v1.2.2 wire codec — one of four
 // minors required by `internal/amwa/CLAUDE.md` "Versioning". It is a
 // thin Strategy implementation of [is04.Codec] that wraps the
 // canonical struct types in is04/ and post-processes JSON encode /
 // decode to gate fields per the v1.2.2 spec text.
 //
 // Schema diffs vs v1.3.3 (computed from the AMWA schema bundle in
-// internal/amwa/codec/is04/testdata/schemas/):
+// internal/amwa/codec/is04/testdata/schemas/, verified live against
+// the AMWA NMOS Testing tool 2026-05-02 — closes #191):
 //
-//   - Node:     identical to v1.3.3
-//   - Device:   identical to v1.3.3
-//   - Source:   identical top-level (polymorphic oneOf on format)
-//   - Flow:     identical top-level (polymorphic oneOf on format)
-//   - Sender:   identical to v1.3.3
-//   - Receiver: identical top-level (polymorphic oneOf on format)
+//   - Node:     v1.3 added `interfaces[].attached_network_device`.
+//               v1.2 wire MUST NOT carry it. Strip on encode, reject
+//               on decode.
+//   - Device:   identical to v1.3.3 (top level).
+//   - Source:   identical top-level (polymorphic oneOf on format).
+//   - Flow:     identical top-level (polymorphic oneOf on format).
+//   - Sender:   identical to v1.3.3 (caps + interface_bindings +
+//               subscription added in v1.2 — present in both).
+//   - Receiver: v1.3 added `caps.constraint_sets[]` and
+//               `caps.version` (BCP-004-01 receiver capabilities).
+//               v1.2 wire MUST NOT carry either. Strip on encode,
+//               reject on decode.
 //
-// The v1.3 → v1.2 wire is therefore an additive-fields-empty case for
-// every top-level resource. The codec exists today as the locked
-// Strategy slot so peers advertising `api_ver=v1.2` route through it
-// rather than v1.3; future schema deltas (e.g. format-specific oneOf
-// branches that DO differ between v1.2 and v1.3) get layered in here
-// without touching the plugin.
+// Implementation: Encode methods deep-copy the canonical struct, nil
+// out v1.3-only fields, then marshal. Decode methods pre-check the
+// raw JSON has none of the v1.3-only nested keys before delegating
+// to the canonical decoder.
 package v12
 
 import (
 	"acp/internal/amwa/codec/is04"
+	"bytes"
+	"encoding/json"
+	"fmt"
 )
 
 // SpecPatch is the spec-text revision this codec strictly complies
@@ -47,14 +55,39 @@ func (Codec) APIVer() string { return "v1.2" }
 // SpecPatch returns the latest patch release — "v1.2.2".
 func (Codec) SpecPatch() string { return SpecPatch }
 
-// EncodeNode marshals a Node for v1.2.2. Top-level shape matches
-// v1.3.3, so we delegate to the canonical encoder.
+// EncodeNode marshals a Node for v1.2.2 — strips
+// `interfaces[].attached_network_device` (added v1.3) and the
+// v1.3-only `authorization` flag from services + api.endpoints
+// (IS-10 added it in v1.3).
 func (Codec) EncodeNode(n is04.Node) ([]byte, error) {
-	return n.Encode()
+	if err := n.Validate(); err != nil {
+		return nil, err
+	}
+	cp := n
+	if len(cp.Interfaces) > 0 {
+		cp.Interfaces = make([]is04.NodeIface, len(n.Interfaces))
+		for i, iface := range n.Interfaces {
+			cp.Interfaces[i] = iface
+			cp.Interfaces[i].AttachedNetworkDevice = nil
+		}
+	}
+	raw, err := marshalIndent(cp)
+	if err != nil {
+		return nil, err
+	}
+	raw, err = stripNestedKey(raw, []string{"services"}, "authorization")
+	if err != nil {
+		return nil, err
+	}
+	return stripNestedKey(raw, []string{"api", "endpoints"}, "authorization")
 }
 
-// DecodeNode parses a v1.2.2 Node payload.
+// DecodeNode parses a v1.2.2 Node payload. Rejects v1.3-only nested
+// fields under interfaces[].
 func (Codec) DecodeNode(raw []byte) (is04.Node, error) {
+	if err := rejectNodeV13Nested(raw); err != nil {
+		return is04.Node{}, err
+	}
 	n, err := is04.DecodeNode(raw)
 	if err != nil {
 		return is04.Node{}, err
@@ -67,13 +100,17 @@ func (Codec) ValidateNode(n is04.Node) error {
 	return n.Validate()
 }
 
-// EncodeDevice / DecodeDevice / ValidateDevice — identical to v1.3.3
-// for top-level shape.
+// EncodeDevice marshals a Device for v1.2.2 — strips the v1.3-only
+// `controls[].authorization` flag (IS-10 added it in v1.3).
 func (Codec) EncodeDevice(d is04.Device) ([]byte, error) {
 	if err := d.Validate(); err != nil {
 		return nil, err
 	}
-	return marshalIndent(d)
+	raw, err := marshalIndent(d)
+	if err != nil {
+		return nil, err
+	}
+	return stripNestedKey(raw, []string{"controls"}, "authorization")
 }
 
 // DecodeDevice parses a v1.2.2 Device payload.
@@ -156,16 +193,25 @@ func (Codec) ValidateSender(s is04.Sender) error {
 	return s.Validate()
 }
 
-// EncodeReceiver marshals a Receiver for v1.2.2.
+// EncodeReceiver marshals a Receiver for v1.2.2 — strips BCP-004-01
+// receiver-capabilities fields `caps.constraint_sets[]` and
+// `caps.version` (added v1.3).
 func (Codec) EncodeReceiver(r is04.Receiver) ([]byte, error) {
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}
-	return marshalIndent(r)
+	cp := r
+	cp.Caps.ConstraintSets = nil
+	cp.Caps.Version = ""
+	return marshalIndent(cp)
 }
 
-// DecodeReceiver parses a v1.2.2 Receiver payload.
+// DecodeReceiver parses a v1.2.2 Receiver payload. Rejects
+// `caps.constraint_sets` and `caps.version` (v1.3-only).
 func (Codec) DecodeReceiver(raw []byte) (is04.Receiver, error) {
+	if err := rejectReceiverV13Caps(raw); err != nil {
+		return is04.Receiver{}, err
+	}
 	r, err := is04.DecodeReceiver(raw)
 	if err != nil {
 		return is04.Receiver{}, err
@@ -177,6 +223,56 @@ func (Codec) DecodeReceiver(raw []byte) (is04.Receiver, error) {
 func (Codec) ValidateReceiver(r is04.Receiver) error {
 	return r.Validate()
 }
+
+// rejectNodeV13Nested fails decode if any element of the raw Node JSON's
+// `interfaces[]` array carries `attached_network_device` (added v1.3).
+func rejectNodeV13Nested(raw []byte) error {
+	d := json.NewDecoder(bytes.NewReader(raw))
+	var m map[string]json.RawMessage
+	if err := d.Decode(&m); err != nil {
+		return fmt.Errorf("is04 v1.2: decode node: %w", err)
+	}
+	ifacesRaw, present := m["interfaces"]
+	if !present {
+		return nil
+	}
+	var ifaces []map[string]json.RawMessage
+	if err := json.Unmarshal(ifacesRaw, &ifaces); err != nil {
+		return nil // let canonical decode handle the error
+	}
+	for i, iface := range ifaces {
+		if _, has := iface["attached_network_device"]; has {
+			return fmt.Errorf("is04 v1.2: node.interfaces[%d].attached_network_device: forbidden in v1.2 (introduced in v1.3)", i)
+		}
+	}
+	return nil
+}
+
+// rejectReceiverV13Caps fails decode if the raw Receiver JSON's
+// `caps` object carries `constraint_sets` or `version` (added v1.3).
+func rejectReceiverV13Caps(raw []byte) error {
+	d := json.NewDecoder(bytes.NewReader(raw))
+	var m map[string]json.RawMessage
+	if err := d.Decode(&m); err != nil {
+		return fmt.Errorf("is04 v1.2: decode receiver: %w", err)
+	}
+	capsRaw, present := m["caps"]
+	if !present {
+		return nil
+	}
+	var caps map[string]json.RawMessage
+	if err := json.Unmarshal(capsRaw, &caps); err != nil {
+		return nil // let canonical decode handle the error
+	}
+	for _, k := range []string{"constraint_sets", "version"} {
+		if _, has := caps[k]; has {
+			return fmt.Errorf("is04 v1.2: receiver.caps.%s: forbidden in v1.2 (introduced in v1.3)", k)
+		}
+	}
+	return nil
+}
+
+// marshalIndent lives in helpers.go.
 
 func init() {
 	is04.Register(Codec{})

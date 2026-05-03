@@ -13,6 +13,22 @@ const (
 	TXTKeyAPIVer   = "api_ver"   // comma-separated, e.g. "v1.2,v1.3"
 	TXTKeyAPIAuth  = "api_auth"  // "true" | "false"
 	TXTKeyPriority = "pri"       // integer 0-99 prod, 100+ dev
+
+	// Peer-to-Peer Node TXT counters per IS-04 §3.1.1 — one per
+	// resource type. Each is a uint8 (0..255, wraps mod 256) that
+	// MUST increment whenever the matching Node API resource list
+	// changes (POST/PUT/DELETE on /sources, /flows, /devices,
+	// /senders, /receivers, or PATCH on /self via IS-05). Mode-D
+	// peers watch these to know when to re-fetch the underlying
+	// Node API. AMWA NMOS Testing IS-04-03 test_01 requires every
+	// key present on `_nmos-node._tcp` advertisements; test_02
+	// (manual) probes the increment-on-change behaviour.
+	TXTKeyVerSlf = "ver_slf" // /self
+	TXTKeyVerSrc = "ver_src" // /sources
+	TXTKeyVerFlw = "ver_flw" // /flows
+	TXTKeyVerDvc = "ver_dvc" // /devices
+	TXTKeyVerSnd = "ver_snd" // /senders
+	TXTKeyVerRcv = "ver_rcv" // /receivers
 )
 
 // EncodeTXT serialises a key=value map to RFC 6763 §6 TXT segments.

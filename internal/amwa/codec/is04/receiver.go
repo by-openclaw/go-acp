@@ -16,12 +16,12 @@ import (
 type Receiver struct {
 	ResourceCore
 
-	DeviceID          string         `json:"device_id"`
-	Transport         string         `json:"transport"`
-	InterfaceBindings []string       `json:"interface_bindings"`
-	Format            string         `json:"format"`
-	Caps              ReceiverCaps   `json:"caps"`
-	Subscription      Subscription   `json:"subscription"`
+	DeviceID          string               `json:"device_id"`
+	Transport         string               `json:"transport"`
+	InterfaceBindings []string             `json:"interface_bindings"`
+	Format            string               `json:"format"`
+	Caps              ReceiverCaps         `json:"caps"`
+	Subscription      ReceiverSubscription `json:"subscription"`
 }
 
 // ReceiverCaps mirrors the receiver_*.json `caps` object. v1.3 supports
@@ -31,6 +31,10 @@ type ReceiverCaps struct {
 	MediaTypes     []string         `json:"media_types,omitempty"`
 	EventTypes     []string         `json:"event_types,omitempty"`
 	ConstraintSets []map[string]any `json:"constraint_sets,omitempty"`
+	// Version stamps when the constraint_sets / media_types last changed
+	// (BCP-004-01 §1.0). Mandatory only when constraint_sets is present;
+	// AMWA test_27_2 enforces it.
+	Version string `json:"version,omitempty"`
 }
 
 // Validate enforces receiver_core + per-format rules.
@@ -43,9 +47,8 @@ func (r *Receiver) Validate() error {
 	if r.Transport == "" || !IsValidTransportURN(r.Transport) {
 		errs = append(errs, fmt.Sprintf("receiver.transport %q: must be a known NMOS transport URN or non-NMOS URI", r.Transport))
 	}
-	if r.InterfaceBindings == nil {
-		errs = append(errs, "receiver.interface_bindings: required (may be empty array)")
-	}
+	// interface_bindings landed in IS-04 v1.2 — accept its absence on
+	// v1.0/v1.1 wire shapes.
 	if r.Format == "" || !IsValidFormatURN(r.Format) {
 		errs = append(errs, fmt.Sprintf("receiver.format %q: required, must be NMOS format URN or non-NMOS URI", r.Format))
 	}

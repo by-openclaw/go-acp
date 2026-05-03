@@ -1,0 +1,104 @@
+{
+  "node": {
+    "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0001",
+    "version": "1777651501:0",
+    "label": "dhs-test-node",
+    "description": "dhs Phase 2 - AMWA NMOS Testing harness (full bundle)",
+    "tags": {},
+    "href": "http://host.docker.internal:18080/",
+    "caps": {},
+    "api": {
+      "versions": ["v1.3"],
+      "endpoints": [
+        {"host": "host.docker.internal", "port": 18080, "protocol": "http"},
+        {"host": "10.6.239.113", "port": 18080, "protocol": "http"}
+      ]
+    },
+    "services": [],
+    "clocks": [
+      {"name": "clk0", "ref_type": "internal"}
+    ],
+    "interfaces": [
+      {"chassis_id": "ff-ff-ff-ff-ff-ff", "port_id": "ff-ff-ff-ff-ff-ff", "name": "eth0"}
+    ]
+  },
+  "devices": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "version": "1777651501:0",
+      "label": "dhs-test-device",
+      "description": "single device under dhs-test-node",
+      "tags": {},
+      "type": "urn:x-nmos:device:generic",
+      "node_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0001",
+      "senders": ["2c47bf5e-1b2c-4abc-9def-deadbeef0005"],
+      "receivers": ["2c47bf5e-1b2c-4abc-9def-deadbeef0006"],
+      "controls": []
+    }
+  ],
+  "sources": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0003",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-audio",
+      "description": "stereo audio source",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:audio",
+      "channels": [
+        {"label": "Left", "symbol": "L"},
+        {"label": "Right", "symbol": "R"}
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0004",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-audio-l24",
+      "description": "audio L24 48kHz stereo",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0003",
+      "parents": [],
+      "format": "urn:x-nmos:format:audio",
+      "media_type": "audio/L24",
+      "sample_rate": {"numerator": 48000, "denominator": 1},
+      "bit_depth": 24
+    }
+  ],
+  "senders": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0005",
+      "version": "1777651501:0",
+      "label": "dhs-test-sender-rtp",
+      "description": "RTP unicast sender carrying the audio L24 flow",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0004",
+      "transport": "urn:x-nmos:transport:rtp.ucast",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": "http://10.6.239.113:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0005/transportfile",
+      "interface_bindings": ["eth0"],
+      "caps": {},
+      "subscription": {"receiver_id": null, "active": false}
+    }
+  ],
+  "receivers": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0006",
+      "version": "1777651501:0",
+      "label": "dhs-test-receiver-audio",
+      "description": "RTP audio receiver",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": ["eth0"],
+      "format": "urn:x-nmos:format:audio",
+      "caps": {"media_types": ["audio/L24", "audio/L16"]},
+      "subscription": {"sender_id": null, "active": false}
+    }
+  ]
+}

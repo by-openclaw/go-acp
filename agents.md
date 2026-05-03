@@ -78,6 +78,64 @@ against AMWA NMOS Testing tool's Mock Registry next. dhs Node
 running at 10.6.239.113:18080. Bundle file:
 `tests/fixtures/nmos/cerebrum-test-node.json`.
 
+**AMWA NMOS Testing IS-04-01 (Node) — FULL CONFORMANCE 2026-05-02
+across every AMWA-published minor:**
+
+| API ver | Pass | Fail | Warning |
+|---|---:|---:|---:|
+| v1.0 | 53 | 0 | 0 |
+| v1.1 | 56 | 0 | 0 |
+| v1.2 | 50 | 0 | 0 |
+| v1.3 | 59 | 0 | 0 |
+
+**218 Pass / 0 Fail / 0 Warning total.**
+
+**AMWA NMOS Testing IS-04-02 (Registry — Registration + Query API)
+— round 21, 2026-05-02:**
+
+| API ver | Pass | Fail | Note |
+|---|---:|---:|---|
+| v1.0 | 46 | 1 | only test_01 mDNS Zeroconf-cache flake |
+| v1.1 | 61 | 1 | only test_01 |
+| v1.2 | 61 | 1 | only test_01 |
+| **v1.3** | **65** | **0** | ✅ clean |
+
+**233 Pass / 3 Fail total** — every remaining fail is the same
+test_01 mDNS announcement check. The dhs-registry's `_nmos-register._tcp`
+and `_nmos-query._tcp` are advertised live (visible in `avahi-browse`
+from every other LXC), but the AMWA Testing tool's Python Zeroconf
+cache lags between docker-compose restarts on the early v1.X rounds.
+v1.3 (last in sequence) consistently sees the announcement. Same
+test_01-class flake the IS-04-01 round sees on `test_16`/`test_16_01`
+under Docker Desktop multicast — bounded to the test harness, not
+the wire path. Real-peer Cerebrum interop on the LXC rig is unaffected.
+
+Branch `feat/nmos-is04-amwa-conformance` carries the IS-04-01 +
+IS-04-02 work cumulatively.
+Fixed across the final round: per-version registration codec
+(closes test_04 cluster on v1.0/v1.1/v1.2), v10 keeps tags+description
+(test_28), `/transportfile` SDP route + `manifest_href` rewrite
+(auto_node_11/12), v1.1 sender validator (test_13), full api_ver TXT
+comma-list + suspend mDNS while registered (test_12_01), watcher
+dedupe by URL (kills the dual-name register/deregister flap).
+
+Test rig: 4 Proxmox LXCs on DMZ VLAN — dhs-debian (Debian 12,
+10.100.0.102), dhs-ubuntu (Ubuntu 24, 10.100.0.103), dhs-rocky
+(Rocky 9, 10.100.0.104) as Node test targets; dhs-tools (Ubuntu 24,
+10.100.0.105) hosting AMWA Testing tool image
+`amwa/nmos-testing:master-902dd5d` (the `:latest` tag regressed to a
+Controller Façade UI on port 5001 — pin the July 2024 tag for IS-04
+Node testing). Cerebrum @ 10.100.0.5 visible on the same VLAN for
+real-peer interop. SSH key on desk-03 at `~/.ssh/by-rune_lxc`.
+Per-row caveats + closed-issue table in
+[`tests/integration/nmos/amwa/NOTES.md`](tests/integration/nmos/amwa/NOTES.md).
+
+Run a single conformance round:
+```bash
+ssh -i ~/.ssh/by-rune_lxc root@10.100.0.105 'bash /tmp/run-one.sh v1.3'
+```
+(Helper scripts live in `bin/amwa-*.sh` on desk-03.)
+
 Per-spec status table (driving order, separate provider+controller
 status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amwa/docs/integration-plan.md).
 
@@ -95,15 +153,19 @@ status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amw
 >   BCP-002/004/006/008 literally; fire compliance events on peer
 >   deviations (see `internal/amwa/docs/matrix-compliance.md` —
 >   Lawo VSM verified). NEVER mix with cross-protocol mux concepts.
-> - **Multi-version is required, not optional** (per
->   `internal/amwa/CLAUDE.md` "Versioning" + `feedback_nmos_multi_version.md`):
->   IS-04 v1.1.3 + v1.2.2 + v1.3.3, IS-05 v1.0.2 + v1.1.2, IS-07/08/12
->   v1.0.1, IS-09 v1.0.0, MS-05-01/02 v1.0.0, BCP-002/004/006/008
->   v1.0.0. DNS-SD `api_ver` TXT advertises every supported minor
->   comma-separated; URL trees serve every minor in parallel. Skipping
->   any version listed is a spec violation, not a deferral. Genuinely
->   WIP at AMWA (no stable release): IS-13 Annotation, BCP-006-02 H.264,
->   BCP-006-03 H.265, BCP-007-01 NDI — those land when stable.
+> - **Strict every AMWA-published version. No deferral, no out-of-scope.**
+>   (per `internal/amwa/CLAUDE.md` "Versioning" +
+>   `feedback_amwa_strict_all_versions.md` + `feedback_nmos_multi_version.md`):
+>   IS-04 v1.0.3 + v1.1.3 + v1.2.2 + v1.3.3, IS-05 v1.0.2 + v1.1.2,
+>   IS-07/08/12 v1.0.1, IS-09 v1.0.0, MS-05-01/02 v1.0.0,
+>   BCP-002/004/006/008 v1.0.0. DNS-SD `api_ver` TXT advertises every
+>   supported minor comma-separated; URL trees serve every minor in
+>   parallel. Skipping any version listed is a spec violation. NO minor
+>   is ever framed as "deferred", "out of scope by design", or "we don't
+>   see it in the wild" — if it's not implemented, it's missing and gets
+>   added. Only legitimate "land when stable" carve-outs are
+>   AMWA-WIP-without-stable-release: IS-13 Annotation, BCP-006-02 H.264,
+>   BCP-006-03 H.265, BCP-007-01 NDI.
 > - **Cross-protocol mux is parked.** The ingress→canonical→egress
 >   matrix (Ember+ ingress fan-out to glow+router egresses) is real
 >   architecture but tied to a planned CLI refactor. NO epic, NO PR
@@ -120,6 +182,23 @@ status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amw
 > - **Reference impl: sony/nmos-cpp** (Apache-2.0, JT-NM Tested) — use
 >   as cross-impl byte oracle + interop peer. Same role as `osc.js` for
 >   OSC and Commie for Probel.
+> - **DNS-SD backend: multi-OS, daemon-delegated where available, stdlib
+>   fallback always.** `internal/amwa/session/dnssd/` exposes Browser +
+>   Responder INTERFACES picked at process start: Avahi (Linux,
+>   `org.freedesktop.Avahi.Server` via DBus, pure-Go), Bonjour (macOS
+>   `libSystem` / Windows `dnssd.dll`, CGo), stdlib (universal
+>   fallback). Phase A (Linux Avahi) landed in `eb55fb2`; Phase B-windows
+>   (#195) + B-macos (#196) + C-multi-distro-LXC (#197) pending.
+>   **Never remove the stdlib path** — it's the floor when no daemon is
+>   reachable (slim containers, Windows without Bonjour, systemd-less
+>   Linux). Performance degrades but the Node still runs. See
+>   `internal/amwa/CLAUDE.md` "DNS-SD backend selection (multi-OS)".
+> - **Don't break OS coverage.** When extending the DNS-SD layer, every
+>   change must compile + test green on Linux (Avahi path) AND on
+>   macOS/Windows (stdlib path until B-macos / B-windows land).
+>   `go build ./...` is the cross-OS smoke test; CI runs it on all
+>   three. Removing one platform's support to "simplify" breaks the
+>   fleet — user fleet is WinSrv + Debian + Ubuntu + RHEL + Rocky.
 > - **Real-world testbed peers:** Lawo VSM Studio (NMOS Controller —
 >   IS-04 Node API + IS-05 v1.0/1.1, HTTP only, no Query API, no
 >   WebSocket, no scheduled activations); EVS Cerebrum (cerebrum-nb

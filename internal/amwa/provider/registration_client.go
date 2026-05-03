@@ -21,6 +21,11 @@ import (
 // /health/nodes/{id} cadence — every 5 seconds.
 const HeartbeatInterval = 5 * time.Second
 
+// MaxFailoverChain caps how many Registries we'll cycle through in a
+// single tick. AMWA test_15/16 advertise up to ~6 mocks; cascading
+// failure means we need to try each within the test's window.
+const MaxFailoverChain = 8
+
 // HeartbeatGracePeriod (12 s) is the spec default the Registry uses
 // to GC unresponsive Nodes; we re-register if heartbeats keep failing
 // past this.
@@ -44,15 +49,42 @@ type RegistrationClient struct {
 	logger *slog.Logger
 
 	// Base URL of the Registration API including version, e.g.
-	// `http://10.6.239.113:8235/x-nmos/registration/v1.3`.
+	// `http://10.6.239.113:8235/x-nmos/registration/v1.3`. Empty when
+	// the watcher is driving discovery — base is set per-cycle then.
 	base   string
+	apiVer string
 	bundle *NodeConfig
+	// codec encodes every resource POSTed to the registry in the wire
+	// shape for the configured api_ver. Without this, the registry
+	// stores canonical (v1.3) JSON, the Node API serves per-version
+	// JSON, and AMWA test_04 / test_07-11 fail Node-API vs registry
+	// coherence on every minor < v1.3.
+	codec is04.Codec
+
+	// watcher, when non-nil, supplies the current Registry (Mode A).
+	// When nil, base is fixed (Mode B).
+	watcher *RegistryWatcher
+	// currentRegistry is the FullName of the watcher pick the loop is
+	// currently registered against — used for Disqualify on failure.
+	currentRegistry string
 
 	http *stdhttp.Client
 
 	mu          sync.Mutex
 	cancelLoop  context.CancelFunc
 	registered  atomic.Bool
+	// onRegistered fires whenever the registered flag transitions
+	// (true→false or false→true). The callback is invoked synchronously
+	// from the loop goroutine so handlers must be quick + non-blocking
+	// (e.g. toggle the mDNS responder via a goroutine internally if
+	// needed). Used by IS04NodeServer to satisfy IS-04 §4.2.1: a
+	// registered Node MUST stop advertising _nmos-node._tcp until
+	// registration is lost (AMWA test_12_01).
+	onRegistered atomic.Pointer[func(bool)]
+	// everRegistered flips true after the first successful registerAll.
+	// On subsequent failovers we use rejoinOrRegister (heartbeat-first)
+	// per IS-04 §6.1. Touched only inside the Run loop, no mutex.
+	everRegistered bool
 	registrations uint64
 	heartbeats    uint64
 	reregister    uint64
@@ -73,16 +105,22 @@ func NewRegistrationClient(logger *slog.Logger, registryURL, apiVer string, bund
 	if apiVer == "" {
 		apiVer = is04.APIVersion
 	}
-	base := strings.TrimRight(registryURL, "/")
-	// Accept both forms: bare host (we append /x-nmos/registration/v1.3)
-	// or a URL that already includes the suffix.
-	if !strings.Contains(base, "/x-nmos/registration/") {
-		base = base + "/x-nmos/registration/" + apiVer
+	base := ""
+	if registryURL != "" {
+		base = strings.TrimRight(registryURL, "/")
+		// Accept both forms: bare host (we append /x-nmos/registration/v1.3)
+		// or a URL that already includes the suffix.
+		if !strings.Contains(base, "/x-nmos/registration/") {
+			base = base + "/x-nmos/registration/" + apiVer
+		}
 	}
+	codec, _ := is04.Get(apiVer) // nil-codec falls back to canonical shape in EncodeRegistrationVersioned
 	return &RegistrationClient{
 		logger: logger,
 		base:   base,
+		apiVer: apiVer,
 		bundle: bundle,
+		codec:  codec,
 		http: &stdhttp.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -90,9 +128,120 @@ func NewRegistrationClient(logger *slog.Logger, registryURL, apiVer string, bund
 	}
 }
 
+// SetOnRegistered installs a callback fired on every transition of
+// the registered flag (true→false or false→true). Used by
+// IS04NodeServer to suspend the _nmos-node._tcp mDNS announce while
+// registered (IS-04 §4.2.1, AMWA test_12_01).
+func (c *RegistrationClient) SetOnRegistered(cb func(bool)) {
+	if cb == nil {
+		c.onRegistered.Store(nil)
+		return
+	}
+	c.onRegistered.Store(&cb)
+}
+
+// setRegistered atomically updates the registered flag and fires the
+// onRegistered callback when the value actually changes — replaces
+// every direct c.registered.Store call so transitions never get
+// missed by the consumer.
+func (c *RegistrationClient) setRegistered(v bool) {
+	prev := c.registered.Swap(v)
+	if prev == v {
+		return
+	}
+	if cb := c.onRegistered.Load(); cb != nil && *cb != nil {
+		(*cb)(v)
+	}
+}
+
+// SetWatcher attaches a RegistryWatcher; when set, Run picks the
+// highest-pri Registry from the watcher each cycle and falls over to
+// the next-best on registration / heartbeat failure.
+func (c *RegistrationClient) SetWatcher(w *RegistryWatcher) {
+	c.mu.Lock()
+	c.watcher = w
+	c.mu.Unlock()
+}
+
+// pickBase chooses the Registry base URL for the next cycle. With a
+// fixed base (Mode B) it's a no-op. With a watcher (Mode A) it picks
+// the current best candidate and stamps c.currentRegistry so failures
+// can disqualify it. Returns ok=false when no registry is known yet.
+func (c *RegistrationClient) pickBase() (string, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.watcher == nil {
+		// Mode B — fixed base.
+		return c.base, c.base != ""
+	}
+	cand, ok := c.watcher.Best()
+	if !ok {
+		c.currentRegistry = ""
+		c.base = ""
+		return "", false
+	}
+	apiVer := cand.APIVer
+	if apiVer == "" {
+		apiVer = c.apiVer
+	}
+	url := strings.TrimRight(cand.URL, "/") + "/x-nmos/registration/" + apiVer
+	c.base = url
+	c.currentRegistry = cand.FullName
+	return url, true
+}
+
+// disqualifyCurrent tells the watcher to skip the current Registry
+// for its disqualifyTTL, so the next cycle picks the next-best.
+func (c *RegistrationClient) disqualifyCurrent() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.watcher != nil && c.currentRegistry != "" {
+		c.watcher.Disqualify(c.currentRegistry)
+	}
+}
+
+// rejoinOrRegister implements IS-04 v1.3.3 §6.1 failover semantics:
+// when moving to a different Registry the Node SHOULD attempt a
+// heartbeat first (cheaper, preserves UUIDs) and only fall back to
+// full re-registration if the new Registry returns 404. AMWA test_16
+// fails the Node if it POSTs /resource on every failover.
+func (c *RegistrationClient) rejoinOrRegister(ctx context.Context) error {
+	if err := c.sendHeartbeat(ctx); err == nil {
+		c.setRegistered(true)
+		return nil
+	} else if errors.Is(err, ErrRegistryNotFound) {
+		// New Registry doesn't have our resources — register fresh.
+		return c.registerAll(ctx)
+	} else {
+		return err
+	}
+}
+
+// shouldSwitchToBetter reports whether the currently-best Registry in
+// the watcher is a different (higher-priority) instance than the one
+// we're presently registered with. Always false in Mode B (fixed URL).
+func (c *RegistrationClient) shouldSwitchToBetter() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.watcher == nil || c.currentRegistry == "" {
+		return false
+	}
+	cand, ok := c.watcher.Best()
+	if !ok {
+		return false
+	}
+	return cand.FullName != c.currentRegistry
+}
+
 // Run drives the registration + heartbeat loop until ctx is
 // cancelled. Performs initial registration, starts the heartbeat
 // ticker, handles 404 → re-register, then deregisters on cancel.
+//
+// In Mode A (watcher attached, no fixed URL), the loop:
+//   - waits until the watcher reports at least one Registry,
+//   - picks the highest-pri one and registers,
+//   - on POST/heartbeat failure (5xx, timeout) disqualifies the pick
+//     and the next cycle tries the next-best — IS-04 §3.1 fallback.
 func (c *RegistrationClient) Run(ctx context.Context) {
 	defer close(c.closed)
 	loopCtx, cancel := context.WithCancel(ctx)
@@ -100,14 +249,21 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 	c.cancelLoop = cancel
 	c.mu.Unlock()
 
-	if err := c.registerAll(loopCtx); err != nil {
-		c.logger.Warn("provider/node: initial registration failed", "err", err)
-		atomic.AddUint64(&c.failures, 1)
-		// Keep trying via the heartbeat loop's reregister path.
+	if _, ok := c.pickBase(); ok {
+		if err := c.registerAll(loopCtx); err != nil {
+			c.logger.Warn("provider/node: initial registration failed", "err", err)
+			atomic.AddUint64(&c.failures, 1)
+			c.disqualifyCurrent()
+		}
 	}
 
-	ticker := time.NewTicker(HeartbeatInterval)
+	// AMWA test_15/16 cascade-disables mocks every (HeartbeatInterval+1)
+	// seconds. To detect dead mocks reliably and fail over within that
+	// window, the loop ticks faster than the heartbeat cadence. We
+	// throttle actual heartbeats to HeartbeatInterval below.
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
+	lastHeartbeat := time.Time{}
 
 	for {
 		select {
@@ -115,21 +271,107 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 			c.deregisterAll()
 			return
 		case <-ticker.C:
+			// IS-04 v1.3.3 §3.1 — Node selects the highest-priority
+			// Registry from those *currently* advertised. If a
+			// higher-priority one appeared after we registered, switch:
+			// DELETE from the old one, then re-register with the new.
+			if c.registered.Load() && c.shouldSwitchToBetter() {
+				c.logger.Info("provider/node: better registry available — switching")
+				c.deregisterAll()
+				c.setRegistered(false)
+			}
 			if !c.registered.Load() {
-				if err := c.registerAll(loopCtx); err != nil {
-					c.logger.Warn("provider/node: re-register attempt failed", "err", err)
+				// Try every advertised Registry in priority order
+				// before giving up this tick. AMWA test_15 cascades
+				// failures faster than HeartbeatInterval.
+				//
+				// On failover (everRegistered) we follow IS-04 §6.1:
+				// heartbeat first, register only if Registry returns 404.
+				// AMWA test_16 fails any Node that POSTs /resource on
+				// every failover.
+				done := false
+				for i := 0; i < MaxFailoverChain; i++ {
+					if _, ok := c.pickBase(); !ok {
+						break
+					}
+					var err error
+					if c.everRegistered {
+						err = c.rejoinOrRegister(loopCtx)
+					} else {
+						err = c.registerAll(loopCtx)
+					}
+					if err == nil {
+						done = true
+						c.everRegistered = true
+						// Force a heartbeat to the new Registry on the
+						// next tick — the test framework counts those.
+						lastHeartbeat = time.Time{}
+						break
+					}
+					c.logger.Warn("provider/node: re-register attempt failed", "step", i, "err", err)
 					atomic.AddUint64(&c.failures, 1)
+					c.disqualifyCurrent()
+				}
+				if !done {
 					continue
 				}
 			}
+			// Throttle actual /health POSTs near HeartbeatInterval — the
+			// 1 s tick above is for fast failover detection only. AMWA
+			// test_05 enforces 5 s ± 0.5 s between heartbeats, so we
+			// fire when the elapsed budget is within 0.5 s of due to
+			// keep the tick-quantisation jitter inside the window.
+			if time.Since(lastHeartbeat) < HeartbeatInterval-500*time.Millisecond {
+				continue
+			}
+			lastHeartbeat = time.Now()
 			err := c.sendHeartbeat(loopCtx)
 			if errors.Is(err, ErrRegistryNotFound) {
 				c.logger.Warn("provider/node: heartbeat 404 — re-registering")
 				atomic.AddUint64(&c.reregister, 1)
-				c.registered.Store(false)
+				c.setRegistered(false)
 			} else if err != nil {
 				c.logger.Warn("provider/node: heartbeat failed", "err", err)
 				atomic.AddUint64(&c.failures, 1)
+				// IS-04 v1.3.3 §6.1 — on heartbeat failure (5xx /
+				// timeout) the Node fails over but does NOT DELETE its
+				// resources from the failing Registry. Many real
+				// Registries share resource state (e.g. AMWA's mock
+				// suite shares one resource map across all 6 mocks);
+				// a stray DELETE there would also remove the Node from
+				// the new Registry's view, forcing a needless re-POST
+				// and tripping AMWA test_16. Just disqualify + cascade.
+				c.disqualifyCurrent()
+				c.setRegistered(false)
+				// Immediate failover loop — try the next-best Registry
+				// right now rather than waiting another HeartbeatInterval.
+				// AMWA test_15/16 cascade mocks down faster than 5 s.
+				//
+				// Per IS-04 v1.3.3 §6.1: failover MUST attempt a heartbeat
+				// first against the new Registry. Only if that returns 404
+				// (Registry doesn't have us yet) do we fall back to
+				// registerAll. AMWA test_16 explicitly fails any Node that
+				// POSTs /resource on every failover instead of probing
+				// with a heartbeat — that test detail reads:
+				// "Node re-registered its resources when it failed over to
+				// a new registry, when it should only have issued a
+				// heartbeat". rejoinOrRegister implements that semantic;
+				// previously this loop called registerAll unconditionally,
+				// which is wire-correct only on the very first cascade
+				// step into a never-seen Registry.
+				for i := 0; i < MaxFailoverChain; i++ {
+					if _, ok := c.pickBase(); !ok {
+						break
+					}
+					regErr := c.rejoinOrRegister(loopCtx)
+					if regErr == nil {
+						lastHeartbeat = time.Time{}
+						break
+					}
+					c.logger.Warn("provider/node: cascade rejoin/register failed", "step", i, "err", regErr)
+					atomic.AddUint64(&c.failures, 1)
+					c.disqualifyCurrent()
+				}
 			}
 		}
 	}
@@ -163,6 +405,12 @@ func (c *RegistrationClient) Stats() map[string]uint64 {
 }
 
 // registerAll POSTs every owned resource in dependency order.
+//
+// IS-04 v1.3.3 §4 distinguishes 201 Created (fresh registration) from
+// 200 OK (the Registry already had this UUID — typically from a stale
+// session that wasn't deregistered). On 200 for the Node we DELETE
+// the stale entries from the Registry and re-POST as fresh state
+// (AMWA test_21). Subsequent resources naturally follow.
 func (c *RegistrationClient) registerAll(ctx context.Context) error {
 	if err := c.postResource(ctx, is04.ResourceNode, &c.bundle.Node); err != nil {
 		return err
@@ -192,33 +440,86 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 			return err
 		}
 	}
-	c.registered.Store(true)
+	c.setRegistered(true)
 	return nil
 }
 
+// postResource POSTs one IS-04 resource. Per IS-04 v1.3.3 §4.0:
+//   - 201 Created  → fresh registration, accept it.
+//   - 200 OK       → Registry already had this UUID (stale state). The
+//                    Node MUST DELETE the stale entry and re-POST as
+//                    fresh — AMWA test_21 enforces this.
+//   - other        → error.
 func (c *RegistrationClient) postResource(ctx context.Context, t is04.ResourceType, data any) error {
-	body, err := is04.EncodeRegistration(t, data)
+	status, err := c.postResourceOnce(ctx, t, data)
 	if err != nil {
 		return err
+	}
+	if status == stdhttp.StatusOK {
+		// Stale data on the Registry — DELETE then re-POST.
+		id := resourceID(t, data)
+		c.deleteResource(ctx, t, id)
+		status, err = c.postResourceOnce(ctx, t, data)
+		if err != nil {
+			return err
+		}
+	}
+	if status != stdhttp.StatusOK && status != stdhttp.StatusCreated {
+		return fmt.Errorf("provider/node: POST resource (%s): unexpected HTTP %d", t, status)
+	}
+	atomic.AddUint64(&c.registrations, 1)
+	return nil
+}
+
+// postResourceOnce performs a single POST and returns the status code
+// + an error for transport / 4xx / 5xx failures. 200 + 201 surface as
+// (status, nil) so the caller can distinguish them.
+func (c *RegistrationClient) postResourceOnce(ctx context.Context, t is04.ResourceType, data any) (int, error) {
+	body, err := is04.EncodeRegistrationVersioned(c.codec, t, data)
+	if err != nil {
+		return 0, err
 	}
 	url := c.base + "/resource"
 	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("provider/node: build POST: %w", err)
+		return 0, fmt.Errorf("provider/node: build POST: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("provider/node: POST %s/resource: %w", c.base, err)
+		return 0, fmt.Errorf("provider/node: POST %s/resource: %w", c.base, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != stdhttp.StatusOK && resp.StatusCode != stdhttp.StatusCreated {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("provider/node: POST resource (%s): HTTP %d: %s",
-			t, resp.StatusCode, strings.TrimSpace(string(body)))
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		bodyText := strings.TrimSpace(string(respBody))
+		if len(bodyText) > 120 {
+			bodyText = bodyText[:120] + "..."
+		}
+		return resp.StatusCode, fmt.Errorf("provider/node: POST %s: HTTP %d: %s",
+			url, resp.StatusCode, bodyText)
 	}
-	atomic.AddUint64(&c.registrations, 1)
-	return nil
+	return resp.StatusCode, nil
+}
+
+// resourceID extracts the IS-04 resource UUID from an arbitrary
+// payload. The codec tags ResourceCore.ID consistently across types.
+func resourceID(t is04.ResourceType, data any) string {
+	switch v := data.(type) {
+	case *is04.Node:
+		return v.ID
+	case *is04.Device:
+		return v.ID
+	case *is04.Source:
+		return v.ID
+	case *is04.Flow:
+		return v.ID
+	case *is04.Sender:
+		return v.ID
+	case *is04.Receiver:
+		return v.ID
+	}
+	return ""
 }
 
 // sendHeartbeat POSTs to /health/nodes/{node-id}. Returns
@@ -276,7 +577,7 @@ func (c *RegistrationClient) deregisterAll() {
 		c.deleteResource(delCtx, is04.ResourceDevice, c.bundle.Devices[i].ID)
 	}
 	c.deleteResource(delCtx, is04.ResourceNode, c.bundle.Node.ID)
-	c.registered.Store(false)
+	c.setRegistered(false)
 }
 
 func (c *RegistrationClient) deleteResource(ctx context.Context, t is04.ResourceType, id string) {

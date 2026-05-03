@@ -134,7 +134,7 @@ func TestSenderEncodeStripsV12Fields(t *testing.T) {
 	rid := "22222222-2222-4222-8222-222222222222"
 	s.Caps = map[string]any{"k": "v"}
 	s.InterfaceBindings = []string{"eth0"}
-	s.Subscription = is04.Subscription{ReceiverID: &rid, Active: true}
+	s.Subscription = is04.SenderSubscription{ReceiverID: &rid, Active: true}
 
 	body, err := c.EncodeSender(s)
 	if err != nil {

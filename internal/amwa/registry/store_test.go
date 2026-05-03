@@ -158,7 +158,7 @@ func TestStoreEmitsChangeEvents(t *testing.T) {
 func TestStoreSnapshotChanges(t *testing.T) {
 	s := NewStore()
 	_ = s.PutNode(validNode("f47ac10b-58cc-4372-a567-0e02b2c3d479"))
-	snaps := s.SnapshotChanges()
+	snaps := s.SnapshotChanges("")
 	if len(snaps) != 1 {
 		t.Fatalf("snap = %v", snaps)
 	}

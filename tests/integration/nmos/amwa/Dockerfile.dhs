@@ -1,0 +1,36 @@
+# Minimal runtime image for the cross-compiled dhs Linux binary.
+# Built locally from bin/dhs.linux — no Go toolchain pulled into the image.
+#
+# avahi-daemon + dbus are bundled so dhs's DNS-SD path can delegate to
+# Avahi via DBus (`org.freedesktop.Avahi.Server`). nmos-cpp does the
+# equivalent via Bonjour; without a system daemon, our stdlib mDNS
+# path's 500 ms read-deadline jitter fails AMWA cascade-timing tests
+# (test_05/15/16) under tight cycles. See tests/integration/nmos/amwa/
+# NOTES.md and #194.
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates dbus avahi-daemon avahi-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Avahi defaults to disallow-other-stacks=yes which fails when no
+# Apple/Bonjour daemon is present on the box. Permissive bridge config
+# for the test environment.
+RUN sed -i \
+    -e 's/^#\?use-ipv4=.*/use-ipv4=yes/' \
+    -e 's/^#\?use-ipv6=.*/use-ipv6=no/' \
+    -e 's/^#\?disallow-other-stacks=.*/disallow-other-stacks=no/' \
+    -e 's/^#\?rlimit-nproc=.*/rlimit-nproc=10/' \
+    /etc/avahi/avahi-daemon.conf
+
+WORKDIR /app
+COPY dhs /usr/local/bin/dhs
+COPY amwa-test-node.json /app/amwa-test-node.json
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+# scp from a Windows host loses the unix execute bit on the
+# cross-compiled binary, so set it explicitly here. entrypoint.sh
+# is also marked executable so the ENTRYPOINT can exec it.
+RUN chmod +x /usr/local/bin/dhs /usr/local/bin/entrypoint.sh
+
+# entrypoint.sh starts dbus + avahi-daemon, waits for the bus name to
+# appear, then exec's dhs with the original arguments.
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

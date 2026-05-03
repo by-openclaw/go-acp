@@ -243,6 +243,87 @@ func startServer(t *testing.T, srv *Server) (string, func()) {
 	return addr, stop
 }
 
+func TestServerEmitsCORSHeaderOnSuccess(t *testing.T) {
+	srv := NewServer(nil)
+	srv.Handle(stdhttp.MethodGet, "/x", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		return 0, []string{"y/"}, nil
+	})
+	addr, stop := startServer(t, srv)
+	defer stop()
+
+	resp, err := stdhttp.Get("http://" + addr + "/x")
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("Access-Control-Allow-Origin = %q", got)
+	}
+}
+
+func TestServerEmitsCORSHeaderOnError(t *testing.T) {
+	srv := NewServer(nil)
+	addr, stop := startServer(t, srv)
+	defer stop()
+
+	resp, err := stdhttp.Get("http://" + addr + "/missing-too")
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("Access-Control-Allow-Origin = %q (404 must still set CORS)", got)
+	}
+}
+
+func TestServerOPTIONSPreflight(t *testing.T) {
+	srv := NewServer(nil)
+	srv.Handle(stdhttp.MethodGet, "/r", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		return 0, nil, nil
+	})
+	srv.Handle(stdhttp.MethodPut, "/r", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		return 0, nil, nil
+	})
+	addr, stop := startServer(t, srv)
+	defer stop()
+
+	req, _ := stdhttp.NewRequest(stdhttp.MethodOptions, "http://"+addr+"/r", nil)
+	resp, err := stdhttp.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("OPTIONS: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != stdhttp.StatusOK {
+		t.Fatalf("OPTIONS status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("Access-Control-Allow-Origin = %q", got)
+	}
+	allow := resp.Header.Get("Access-Control-Allow-Methods")
+	if !strings.Contains(allow, "GET") || !strings.Contains(allow, "PUT") || !strings.Contains(allow, "OPTIONS") {
+		t.Fatalf("Access-Control-Allow-Methods = %q must list GET, PUT, OPTIONS", allow)
+	}
+	if resp.Header.Get("Allow") == "" {
+		t.Fatalf("Allow header missing on OPTIONS preflight")
+	}
+}
+
+func TestServerOPTIONSUnknownPath(t *testing.T) {
+	srv := NewServer(nil)
+	addr, stop := startServer(t, srv)
+	defer stop()
+
+	req, _ := stdhttp.NewRequest(stdhttp.MethodOptions, "http://"+addr+"/none", nil)
+	resp, err := stdhttp.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("OPTIONS: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != stdhttp.StatusOK {
+		t.Fatalf("OPTIONS on unknown path = %d, want 200 (CORS preflight is global)", resp.StatusCode)
+	}
+}
+
 // Sanity check — ensure error-body decode shape.
 func TestErrorBodyShape(t *testing.T) {
 	eb := ErrorBody{Code: 404, Error: "Not Found", Debug: "/x"}

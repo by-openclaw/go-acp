@@ -152,6 +152,19 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		}
 	}()
 
+	// CORS preflight: any OPTIONS request gets a 200 with the CORS
+	// allow-headers set. The AMWA NMOS Testing tool's auto_node_10
+	// expects 200 (not 204) on OPTIONS — we return an empty JSON body
+	// to keep the Content-Type consistent with every other response.
+	if r.Method == stdhttp.MethodOptions {
+		allowed := s.methodsForPath(r.URL.Path)
+		setCORSHeaders(w, allowed)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(stdhttp.StatusOK)
+		_, _ = w.Write([]byte("{}"))
+		return
+	}
+
 	s.mu.RLock()
 	fn, ok := s.routes[routeKey{method: r.Method, path: r.URL.Path}]
 	if !ok {
@@ -206,9 +219,51 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	writeJSON(w, status, body)
 }
 
+// RawBody lets a handler return a non-JSON response (e.g. SDP text on
+// IS-04 senders/{id}/transportfile). Set Body + ContentType; the
+// server emits them verbatim with CORS headers attached.
+type RawBody struct {
+	ContentType string
+	Body        []byte
+}
+
+// WithHeaders lets a handler attach extra response headers (e.g. the
+// `Location` header IS-04 §6.1.1 mandates on Registration POST/PUT,
+// or `X-Paging-*` on Query API list responses) without changing the
+// HandlerFunc signature. Body is JSON-encoded as usual; Headers are
+// applied verbatim before WriteHeader. Body may itself be a *RawBody
+// to combine non-JSON content with custom headers.
+type WithHeaders struct {
+	Body    any
+	Headers map[string]string
+}
+
 // writeJSON serialises body as JSON with the spec-mandated header set.
+// As a special case, *RawBody emits a non-JSON response — used for
+// IS-04 transportfile (SDP) routes that the spec requires to be
+// served as text/plain or application/sdp, NOT JSON. *WithHeaders
+// applies extra headers before delegating to the inner body.
 func writeJSON(w stdhttp.ResponseWriter, status int, body any) {
+	if wh, ok := body.(*WithHeaders); ok {
+		for k, v := range wh.Headers {
+			w.Header().Set(k, v)
+		}
+		writeJSON(w, status, wh.Body)
+		return
+	}
+	if rb, ok := body.(*RawBody); ok {
+		ct := rb.ContentType
+		if ct == "" {
+			ct = "application/octet-stream"
+		}
+		w.Header().Set("Content-Type", ct)
+		setCORSHeaders(w, "")
+		w.WriteHeader(status)
+		_, _ = w.Write(rb.Body)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
+	setCORSHeaders(w, "")
 	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
@@ -226,4 +281,50 @@ func writeErrorJSON(w stdhttp.ResponseWriter, status int, errStr, debug string) 
 		Error: errStr,
 		Debug: debug,
 	})
+}
+
+// setCORSHeaders adds the CORS header set every NMOS API response
+// emits per IS-04 §4.5 (and the AMWA NMOS Testing tool requires).
+// allowMethods, when non-empty, also sets Access-Control-Allow-Methods
+// + Allow — used on OPTIONS preflight responses.
+func setCORSHeaders(w stdhttp.ResponseWriter, allowMethods string) {
+	h := w.Header()
+	h.Set("Access-Control-Allow-Origin", "*")
+	h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	h.Set("Access-Control-Max-Age", "3600")
+	if allowMethods != "" {
+		h.Set("Access-Control-Allow-Methods", allowMethods)
+		h.Set("Allow", allowMethods)
+	}
+}
+
+// methodsForPath returns the comma-separated set of HTTP methods the
+// route table accepts at path. Always includes OPTIONS. Used for the
+// CORS preflight response so the peer learns which verbs are real.
+func (s *Server) methodsForPath(path string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	seen := map[string]struct{}{stdhttp.MethodOptions: {}}
+	for k := range s.routes {
+		if k.path == path {
+			seen[k.method] = struct{}{}
+		}
+	}
+	for _, pr := range s.prefixes {
+		if strings.HasPrefix(path, pr.prefix) {
+			seen[pr.method] = struct{}{}
+		}
+	}
+	// Stable order: OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE.
+	order := []string{
+		stdhttp.MethodOptions, stdhttp.MethodGet, stdhttp.MethodHead,
+		stdhttp.MethodPost, stdhttp.MethodPut, stdhttp.MethodPatch, stdhttp.MethodDelete,
+	}
+	out := make([]string, 0, len(seen))
+	for _, m := range order {
+		if _, ok := seen[m]; ok {
+			out = append(out, m)
+		}
+	}
+	return strings.Join(out, ", ")
 }
