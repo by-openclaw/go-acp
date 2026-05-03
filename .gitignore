@@ -83,3 +83,18 @@ tests/fixtures/**/raw/
 # Root-level assets/ is reserved as a scratch dir for ad-hoc debug /
 # validation runs. Real spec assets live under internal/<proto>/assets/.
 /assets/
+
+# Stale per-protocol test-data fixtures. None of these specific files
+# are loaded by any test; they are pure LFS / blob bloat. The two
+# slot0_walk.json files used by replay_test.go (acp1 + acp2) stay
+# committed as LFS pointers so the skip-on-pointer logic in
+# loadCapture() works on CI runners without `git lfs pull`. The free-
+# plan LFS quota (10 GB) is the hard constraint.
+internal/acp1/testdata/exports/*.json
+internal/acp2/testdata/exports/*.json
+internal/acp2/testdata/fixtures/slot0.json
+internal/acp2/testdata/fixtures/slot1.json
+internal/acp2/testdata/fixtures/slot1_walk.json
+internal/emberplus/testdata/fixtures/[0-9]*/tree.json
+internal/emberplus/testdata/fixtures/[0-9]*/glow.json
+internal/emberplus/testdata/fixtures/[0-9]*/raw.s101.jsonl
