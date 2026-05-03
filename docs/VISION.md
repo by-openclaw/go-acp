@@ -359,7 +359,7 @@ OpenMedia (NCS) ── MOS XML/TCP ──► [MOS control connector]
 | Client Driver | Outbound device connector | Same role |
 | — | **Inbound control connector (MOS/GPI/LTC/OSC)** | New category |
 | Preset / Value split | ✅ kept | Continuously persisted per role for failover |
-| Hot-plug registry (DLL drop-in) | ✅ revived | Reverses acp's current compile-time Tier-1 — needs explicit policy revision |
+| Hot-plug registry (DLL drop-in) | ✅ revived | Reverses dhs's current compile-time Tier-1 — needs explicit policy revision |
 | SI Topology Manager | UI (deferred) | Not in core scope yet |
 | Guid-based stable identity | SI-assigned UUID anchor | More explicit than DHS's CommandID |
 | — | **Catalog with categories + online state + availability** | New first-class block |
@@ -553,7 +553,7 @@ T-2  SI: "Re-discover + Restore" in NetBox UI
             · access still writable?
             · range still contains the saved value?
             · enum item still present?
-     └─► Fabric applies restorable set via `acp import --force-by-id`
+     └─► Fabric applies restorable set via `dhs <proto> import --force-by-id`
      └─► Returns report: applied N, skipped M (per-item reason), failed X
      └─► NetBox displays diff + journal-logs the outcome
 ```
@@ -562,12 +562,12 @@ T-2  SI: "Re-discover + Restore" in NetBox UI
 
 | Step | Fabric tooling | State |
 |---|---|---|
-| Snapshot capture | `acp extract` | #36.b in flight |
-| Apply snapshot | `acp import` | exists |
+| Snapshot capture | `dhs <proto> extract` | #36.b in flight |
+| Apply snapshot | `dhs <proto> import` | exists |
 | Per-param ID-stable matching | PR #39 per-protocol resolver | shipped |
 | Lossless carrier format | JSON always; CSV since PR #39 | shipped |
-| Schema diff (pre vs post) | `acp diff` | #36.c in flight |
-| Live snapshot endpoint | `acp-srv` REST | planned |
+| Schema diff (pre vs post) | `dhs <proto> diff` | #36.c in flight |
+| Live snapshot endpoint | `dhs-srv` REST | planned |
 
 ### Reporting categories after restore
 
@@ -594,7 +594,7 @@ Plugin must detect if the device is bound to an active Production (§8):
 | Engineer writes values on paper, types them back, misses some | Full auto-snapshot + auto-restore |
 | No audit trail of post-upgrade drift | Journal entry with before/after |
 | Silent breakage of values that moved/renamed | Restore report names every unrestored item |
-| Discovery of schema-breaking changes only after show fails | `acp diff` surfaces them before firmware install |
+| Discovery of schema-breaking changes only after show fails | `dhs <proto> diff` surfaces them before firmware install |
 
 ---
 

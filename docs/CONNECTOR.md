@@ -131,10 +131,3 @@ dhs-<proto>/                          single Go module per connector
 ADR-0017 (file-header template) is parked pending the project
 owner's pick of license model + corporate identity values. Template
 structure preserved in agent memory until activated.
-
-## Legacy ACP-specific architecture (superseded by ADRs above)
-
-The previous content of this file (ACP1-only data-model definitions,
-walk semantics, freshness states, etc.) has been superseded by the
-ADR series. Per-protocol wire facts now live in
-`internal/<proto>/CLAUDE.md`; cross-cutting rules in `docs/adr/`.

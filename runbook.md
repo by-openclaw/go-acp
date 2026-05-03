@@ -1,4 +1,4 @@
-# runbook.md — acp developer runbook
+# runbook.md — dhs developer runbook
 
 Step-by-step guide to set up the dev environment, build, test, and release.
 
@@ -6,8 +6,8 @@ Two supported workflows:
 
 - **Devcontainer (recommended)** — everything in a Linux container, one-time
   install on Windows. Reproducible, no host pollution.
-- **Native Windows** — Go + Node installed directly on Windows. Required for
-  talking to real ACP devices over UDP broadcast (devcontainers NAT UDP).
+- **Native Windows** — Go installed directly on Windows. Required for
+  talking to real devices over UDP broadcast (devcontainers NAT UDP).
 
 Pick one. The commands in each section are labelled **[container]**,
 **[windows]**, or **[both]**.
@@ -46,8 +46,7 @@ You land in a bash shell inside the container at `/workspaces/acp`.
 Verify:
 
 ```bash
-go version        # go1.22.x
-node --version    # v20.x or v22.x
+go version        # go1.23.x or newer
 git --version
 golangci-lint --version
 ```
@@ -56,22 +55,20 @@ golangci-lint --version
 
 ```powershell
 winget install --id GoLang.Go -e
-winget install --id OpenJS.NodeJS.LTS -e
 winget install --id Git.Git -e
 winget install --id golangci-lint.golangci-lint -e
 winget install --id GnuWin32.Make -e              # for `make` targets
-winget install --id WiresharkFoundation.Wireshark -e   # for ACP capture
+winget install --id WiresharkFoundation.Wireshark -e
 ```
 
 **Open a new shell** after installing so PATH refreshes. Verify:
 
 ```powershell
 go version
-node --version
 make --version
 ```
 
-Then clone/open the repo:
+Then open the repo:
 
 ```powershell
 cd C:\Users\BY-SYSTEMSSRLBoujraf\Downloads\acp
@@ -82,23 +79,10 @@ go mod tidy
 
 ## 2. Build
 
-All targets work in both environments.
-
-| Target              | Command                                | Produces                         |
-|---------------------|----------------------------------------|----------------------------------|
-| Both binaries       | `make build`                           | `bin/acp`, `bin/acp-srv`         |
-| CLI only            | `make build-cli`                       | `bin/acp`                        |
-| Server only         | `make build-srv`                       | `bin/acp-srv`                    |
-| Plain `go build`    | `go build ./...`                       | cached, no output files          |
-
-Without `make`:
-
-```bash
-go build -o bin/acp       ./cmd/acp
-go build -o bin/acp-srv   ./cmd/acp-srv
-```
-
-On Windows the binaries are `bin\acp.exe` and `bin\acp-srv.exe`.
+| Target           | Command                                         | Produces                             |
+|------------------|-------------------------------------------------|--------------------------------------|
+| CLI binary       | `make build` or `go build -o bin/dhs ./cmd/dhs` | `bin/dhs` (`bin\dhs.exe` on Windows) |
+| Plain `go build` | `go build ./...`                                | cached, no output files              |
 
 ---
 
@@ -153,29 +137,22 @@ CI runs all three.
 
 ## 4. Run
 
-### 4a. CLI
-
 After `make build`:
 
 ```bash
-./bin/acp discover --protocol acp1
-./bin/acp connect  192.168.1.5 --protocol acp1
-./bin/acp walk     192.168.1.5 --protocol acp1 --slot 1
-./bin/acp get      192.168.1.5 --protocol acp1 --slot 1 --group control --label "Video Gain"
-./bin/acp set      192.168.1.5 --protocol acp1 --slot 1 --group control --label "Video Gain" --value -3.0
-./bin/acp watch    192.168.1.5 --protocol acp1 --slot 1
+./bin/dhs consumer acp1 discover
+./bin/dhs consumer acp1 walk     192.168.1.5 --slot 1
+./bin/dhs consumer acp1 get      192.168.1.5 --slot 1 --path "control.video_gain"
+./bin/dhs consumer acp1 set      192.168.1.5 --slot 1 --path "control.video_gain" --value -3.0
+./bin/dhs consumer acp1 watch    192.168.1.5 --slot 1
+
+./bin/dhs producer acp1 serve    --tree tree.json --port 2071
+
+./bin/dhs registry serve         --port 8080
 ```
 
-Full CLI reference in [CLAUDE.md](CLAUDE.md).
-
-### 4b. Server
-
-```bash
-./bin/acp-srv --addr :8080 --log-level info
-```
-
-Then `acp-ui` talks to it at `http://localhost:8080`. In a devcontainer,
-port 8080 is forwarded to the Windows host automatically.
+Full CLI reference per protocol in `internal/<proto>/CLAUDE.md`. Canonical
+verbs + flags are locked by ADR-0002.
 
 ---
 
@@ -190,13 +167,13 @@ make build-all
 
 Output layout:
 
-```
+```text
 dist/
-  acp_linux_amd64/{acp, acp-srv}
-  acp_linux_arm64/{acp, acp-srv}
-  acp_darwin_amd64/{acp, acp-srv}
-  acp_darwin_arm64/{acp, acp-srv}
-  acp_windows_amd64/{acp.exe, acp-srv.exe}
+  dhs_linux_amd64/dhs
+  dhs_linux_arm64/dhs
+  dhs_darwin_amd64/dhs
+  dhs_darwin_arm64/dhs
+  dhs_windows_amd64/dhs.exe
 ```
 
 Per-target builds if you only need one:
@@ -219,7 +196,7 @@ make package           # creates dist/*.tar.gz (linux/darwin) and dist/*.zip (wi
 
 ## 6. Wireshark verification (optional but recommended)
 
-When touching the ACP1 codec, capture real traffic and compare bytes
+When touching any wire codec, capture real traffic and compare bytes
 against your unit-test expectations.
 
 1. Install Wireshark (see section 1).
@@ -247,7 +224,7 @@ attaches the archives to a GitHub Release.
 ```bash
 git checkout main
 git pull
-git tag -a v0.1.0 -m "acp v0.1.0"
+git tag -a v0.1.0 -m "dhs v0.1.0"
 git push origin v0.1.0
 ```
 
@@ -256,11 +233,11 @@ git push origin v0.1.0
 ## 8. Troubleshooting
 
 | Symptom | Cause | Fix |
-|---|---|---|
+| --- | --- | --- |
 | `go: command not found` inside container | PATH not refreshed | Exit VS Code terminal, reopen (`Ctrl+` `` ` ``) |
 | `make: command not found` on Windows | `GnuWin32.Make` not installed or PATH not refreshed | Install + reopen shell |
-| `discover` finds nothing in container | UDP broadcast NAT'd by Docker | Run `./bin/acp discover` from Windows instead |
-| `go build` fails with import cycle | Something outside `cmd/` imported `internal/protocol/acp1` | Only `cmd/` may import plugin packages |
+| `discover` finds nothing in container | UDP broadcast NAT'd by Docker | Run `./bin/dhs consumer acp1 discover` from Windows instead |
+| `go build` fails with import cycle | Something outside `cmd/` imported `internal/<proto>/consumer` or `internal/<proto>/provider` | Only `cmd/dhs/` may import plugin packages |
 | Integration test hangs | Device not reachable | `ping $ACP1_TEST_HOST` first; check firewall for UDP 2071 |
 | Post-create script fails | Network inside container | Rebuild container: VS Code → `Dev Containers: Rebuild Container` |
 | `winget` says package not found | Old winget / no internet | `winget source update` then retry |
@@ -269,20 +246,25 @@ git push origin v0.1.0
 
 ## 9. Per-protocol runbooks
 
-Each protocol has its own README with CLI examples, integration test
-instructions, and known limitations:
+Each protocol has its own atomic context and (where applicable) docs:
 
-- [ACP1](internal/acp1/docs/README.md) — implemented, UDP/TCP direct
-- [ACP2](internal/acp2/docs/README.md) — not yet implemented, AN2/TCP
+- [internal/acp1/CLAUDE.md](internal/acp1/CLAUDE.md) — UDP/TCP direct
+- [internal/acp2/CLAUDE.md](internal/acp2/CLAUDE.md) — AN2/TCP
+- [internal/emberplus/CLAUDE.md](internal/emberplus/CLAUDE.md)
+- [internal/probel-sw08p/CLAUDE.md](internal/probel-sw08p/CLAUDE.md)
+- [internal/probel-sw02p/CLAUDE.md](internal/probel-sw02p/CLAUDE.md)
+- [internal/osc/CLAUDE.md](internal/osc/CLAUDE.md)
+- [internal/tsl/CLAUDE.md](internal/tsl/CLAUDE.md)
+- [internal/cerebrum-nb/CLAUDE.md](internal/cerebrum-nb/CLAUDE.md)
+- [internal/amwa/CLAUDE.md](internal/amwa/CLAUDE.md) — NMOS
 
 ---
 
 ## 10. What to read next
 
-- [CLAUDE.md](CLAUDE.md) — protocol reference, architecture rules, wire formats
+- [CLAUDE.md](CLAUDE.md) — Go conventions, error hierarchy, scale targets
 - [agents.md](agents.md) — cross-repo task patterns, testing rules, invariants
+- [docs/adr/](docs/adr/README.md) — Architecture Decision Records (binding)
+- [docs/CONNECTOR.md](docs/CONNECTOR.md) — connector contract (collated ADRs)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — three-layer architecture overview
 - [docs/deployment/README.md](docs/deployment/README.md) — cross-compile and firewall rules
-- `docs/protocols/AXON-ACP_v1_4.pdf` — authoritative ACP1 spec
-- `internal/acp2/assets/acp2_protocol.pdf` — authoritative ACP2 spec
-- `docs/protocols/an2_protocol.pdf` — AN2 transport spec
