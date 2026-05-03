@@ -43,7 +43,7 @@ adding one import line.
 ## Future direction
 
 - Each protocol will eventually be its own repository/module
-- The REST API (`acp-srv`) imports the library, does not access protocol
+- The REST API (`dhs-srv`) imports the library, does not access protocol
   code directly
 - Documentation is split into small focused files, not one monolith
 

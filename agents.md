@@ -37,22 +37,17 @@ Read alongside:
 - `internal/<proto>/CLAUDE.md` — atomic per-protocol wire-format
   context (one file per protocol).
 
-Go module path, binary, CLI, and product name are all **`dhs`** (Device
-Hub Systems, locked 2026-04-21). The legacy `acp` token only survives
-where it refers to the **ACP1** or **ACP2** wire protocols
-(`internal/acp1/`, `internal/acp2/`, `ACP1Error`, `ACP2Error`, etc.).
-
 ---
 
 ## Repositories
 
 ```
-acp/     Go module — core library + dhs CLI + planned REST/WS server
+dhs/     Go module — core library + dhs CLI + planned REST/WS server
 acp-ui/  separate React 19 repo — consumes the future dhs-srv REST + WS API
 ```
 
-Integration point: `acp/api/openapi.yaml` defines the REST + WebSocket
-contract. `acp-ui` generates its types from that spec and has zero
+Integration point: `dhs/api/openapi.yaml` defines the REST + WebSocket
+contract. `dhs-ui` generates its types from that spec and has zero
 knowledge of Go or protocol internals.
 
 ---

@@ -51,7 +51,7 @@ Locked schema. Extra keys allowed but not required.
   "dm_fingerprint": "sha256:abc123…",
   "object_count": 214,
   "capture_tool": {
-    "name": "acp",
+    "name": "dhs",
     "version": "0.2.0",
     "git_tag": "v0.2.0",
     "git_commit": "7db5149"
@@ -91,11 +91,11 @@ Instance-level facts live in the **Catalog** at a higher layer. The DM fixture l
 
 ### `capture_tool` object
 
-Four fields — all required once `acp extract` (#36.b) ships. Stamped automatically by the extractor from `-ldflags`-embedded build info.
+Four fields — all required once `dhs <proto> extract` (#36.b) ships. Stamped automatically by the extractor from `-ldflags`-embedded build info.
 
 | Field | Meaning | Example |
 |---|---|---|
-| `name` | Which binary produced the capture | `"acp"` |
+| `name` | Which binary produced the capture | `"dhs"` |
 | `version` | Release version (semver, matches the git tag without `v` prefix) | `"0.2.0"` |
 | `git_tag` | Git tag at the exact build commit — `vX.Y.Z` on a tagged release, `<nearest-tag>-<N>-g<sha>` otherwise (output of `git describe --tags`) | `"v0.2.0"` |
 | `git_commit` | Short SHA (7 chars, output of `git rev-parse --short HEAD`) | `"7db5149"` |
@@ -108,7 +108,7 @@ If a capture is produced from an untagged, dirty worktree, `git_tag` carries the
 
 ### Fingerprint rule
 
-`dm_fingerprint` is the SHA-256 of `tree.json` rendered with canonical JSON encoding (sorted keys, UTF-8, LF line endings, no trailing newline). Recompute with `acp extract` or `openssl dgst -sha256 tree.json`.
+`dm_fingerprint` is the SHA-256 of `tree.json` rendered with canonical JSON encoding (sorted keys, UTF-8, LF line endings, no trailing newline). Recompute with `dhs <proto> extract` or `openssl dgst -sha256 tree.json`.
 
 Identical firmware → identical fingerprint across captures. Different fingerprint on the same stated version = the device wasn't what the label claimed, or the canonical encoder moved underneath. Audit first, then re-extract.
 
@@ -118,7 +118,7 @@ Identical firmware → identical fingerprint across captures. Different fingerpr
 
 One `CHANGELOG.md` per `<manufacturer>/<product>/<protocol>/<direction>/` folder. A dual-protocol product (e.g. DDB08 exposed on both ACP2 and Ember+) gets two independent changelogs because each protocol's DM evolves on its own cadence. A protocol that's spoken in two directions (we both read and publish) gets one changelog per direction when the DM differs between roles.
 
-Generated on new version addition by `acp diff <existing-version> <new-version>` (#36.c).
+Generated on new version addition by `dhs <proto> diff <existing-version> <new-version>` (#36.c).
 
 Format:
 
@@ -168,12 +168,12 @@ Ordering: newest version at top. Initial capture at bottom with "Initial capture
 
 | Source | Command | Generates |
 |---|---|---|
-| Live device | `acp extract <host> --protocol <p> --direction <d> --out tests/fixtures/products/<manufacturer>/<product>/<p>/<d>/<version>/` | Full triple (meta + wire + tree) — see `acp help extract` |
+| Live device | `dhs <proto> extract <host> --protocol <p> --direction <d> --out tests/fixtures/products/<manufacturer>/<product>/<p>/<d>/<version>/` | Full triple (meta + wire + tree) — see `dhs help extract` |
 | Existing `wire.jsonl` | Replay through plugin decoder + re-emit canonical | `tree.json` (regenerate-only), `meta.json` fields refreshed |
-| Existing `tree.json` snapshot | `acp convert --in tree.json --out <any-other-format>` | Format conversions — already supported today |
-| Diff between two versions | `acp diff <v1>/tree.json <v2>/tree.json` | `CHANGELOG.md` entry — shipping as **#36.c** |
+| Existing `tree.json` snapshot | `dhs <proto> convert --in tree.json --out <any-other-format>` | Format conversions — already supported today |
+| Diff between two versions | `dhs <proto> diff <v1>/tree.json <v2>/tree.json` | `CHANGELOG.md` entry — shipping as **#36.c** |
 
-Until `acp extract` (#36.b) lands, fixtures are populated manually by the engineer who captured the device (one-time run of `acp walk --capture <tmpdir>` + hand-stamping `meta.json`).
+Until `dhs <proto> extract` (#36.b) lands, fixtures are populated manually by the engineer who captured the device (one-time run of `dhs <proto> walk --capture <tmpdir>` + hand-stamping `meta.json`).
 
 ---
 
@@ -197,4 +197,4 @@ Regression catch: if tests/unit/<proto>/replay_test.go decodes the wire.jsonl an
 
 - `tests/fixtures/acp1/slot0_walk.json`, `tests/fixtures/acp2/slot*.json`, `tests/fixtures/emberplus/<port>/` — legacy fixtures, stay in place, tests keep using them.
 - `tests/fixtures/products/` — new generated layout, populated by tooling as it ships.
-- Eventual full migration is a separate task once `acp extract` and `acp diff` are both live.
+- Eventual full migration is a separate task once `dhs <proto> extract` and `dhs <proto> diff` are both live.

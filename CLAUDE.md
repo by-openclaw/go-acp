@@ -4,11 +4,6 @@ Read this file completely before touching any code, then read the atomic
 per-protocol context under `internal/<proto>/CLAUDE.md` for whichever
 protocol you're working on.
 
-Go module path, binary, CLI, and product name are all **`dhs`** (Device
-Hub Systems, locked 2026-04-21). The legacy `acp` token only survives where
-it refers to the **ACP1** or **ACP2** wire protocols (`internal/acp1/`,
-`internal/acp2/`, `ACP1Error`, `ACP2Error`, etc.).
-
 ## ⚠️ ADRs are the binding source of truth
 
 Every architectural rule lives in [`docs/adr/`](docs/adr/README.md) — see
@@ -46,7 +41,7 @@ dhs consumer <proto> <verb> <target>    outbound — query/control a device
 dhs producer <proto> <verb> [flags]     inbound  — serve a canonical tree
 ```
 
-A separate repository `acp-ui` (React 19) consumes a future `cmd/dhs-srv`
+A separate repository `dhs-ui` (React 19) consumes a future `cmd/dhs-srv`
 HTTP/WebSocket API. This repo has zero frontend code.
 
 ---

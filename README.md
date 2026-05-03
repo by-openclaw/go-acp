@@ -12,10 +12,6 @@ One binary covers both directions:
 | `dhs consumer <proto> <verb> ...` | Outbound — query / control device |
 | `dhs producer <proto> serve ...`  | Inbound  — serve a canonical tree |
 
-> Go module path, binary, and CLI are all `dhs`. The `acp` token only
-> survives where it refers to the **ACP1** / **ACP2** wire protocols
-> (`internal/acp1/`, `internal/acp2/`, `ACP1Error`, `ACP2Error`, etc.).
-
 ---
 
 ## Protocols
