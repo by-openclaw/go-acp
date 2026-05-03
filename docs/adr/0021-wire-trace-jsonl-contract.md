@@ -2,17 +2,36 @@
 
 Status: accepted
 
+## Naming: Trame, not Frame
+
+The in-code data type for one captured wire-level data unit is
+**`wiretrace.Trame`**, NOT `Frame`. "Trame" is the French / Belgian
+broadcast term for a transport-level data unit and is used here
+intentionally to disambiguate from "Frame", which is overloaded in
+this codebase:
+
+- `protocol.KindFrame` / `SlotStatus` / `FrameStatus` mean a chassis
+  frame holding slot cards (ACP1 / ACP2 spec vocabulary).
+- `s101.Frame`, `probel.Frame`, `cerebrum.Frame`, `tsl.FrameV31Event`
+  mean one wire-format unit per protocol codec.
+
+A Trame is at a higher level than either: it is the captured record
+OF a wire frame, with timestamp and direction. The file-level naming
+convention (`frames.jsonl`, per ADR-0020 Bucket 1) is kept for
+compatibility with existing tooling; the in-code type avoids the
+overload.
+
 ## Context
 
 The same wire-byte trace serves three uses across the project:
 
 1. **Live captures** — every connector's `--capture` flag emits a
-   line per frame so dev runs can be replayed offline.
+   Trame per wire-level data unit so dev runs can be replayed offline.
 2. **Codec test fixtures** — encoder + decoder round-trip tests load
    committed `frames.jsonl` files (per ADR-0020 Buckets 1, 2, 3).
-3. **Replay** — the `replay` verb (ADR-0002) feeds the same lines back
-   onto the wire (or into the codec) to reproduce a session against a
-   real or fake peer.
+3. **Replay / Validate** — the `validate` verb decodes the Trames
+   offline; the deferred `replay` verb (ADR-0002) feeds them back onto
+   the wire to reproduce a session against a real or fake peer.
 
 If the line schema differs across uses, every consumer grows
 per-source dialect handling and every codec change risks silently
@@ -28,7 +47,7 @@ or consumes the file.
 ### Required fields
 
 | Field | Type | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `schema_version` | int | starts at `1`; bumps on a breaking change to required fields or to the meaning of an existing field |
 | `dir` | string | `"tx"` (sent by `dhs`) or `"rx"` (received from peer) |
 | `hex` | string | raw wire bytes the codec encodes / decodes — lowercase, no spaces, no `0x` prefix |
@@ -36,7 +55,7 @@ or consumes the file.
 ### Optional fields
 
 | Field | Type | When recommended |
-|---|---|---|
+| --- | --- | --- |
 | `ts` | RFC3339Nano string | live captures: real timestamp; fixtures: frozen value or omitted |
 | `proto` | string | `"acp1"` / `"acp2"` / `"emberplus"` / ... — redundant with folder location, but lets a single `frames.jsonl` be self-describing if extracted |
 | `transport` | string | `"udp"` / `"tcp"` / `"tcp-slip"` / `"an2"` / `"s101"` / `"ws"` / ... — REQUIRED when the same protocol runs over multiple transports (Ember+ over S101, OSC over UDP / TCP-LP / TCP-SLIP, ...) |
@@ -48,7 +67,7 @@ or consumes the file.
 ### Reader / writer rules
 
 | Rule | Why |
-|---|---|
+| --- | --- |
 | Every writer MUST set `schema_version` (no implicit default) | Forward-compat readers refuse unversioned input |
 | A reader MUST tolerate unknown optional fields | Forward-compat: optional fields can be added without bumping schema_version |
 | A reader MUST reject lines whose `schema_version` is HIGHER than it knows | Loud break if a producer outpaces a consumer |
@@ -72,23 +91,55 @@ A committed fixture has the same shape but typically omits `peer` /
 {"schema_version":1,"dir":"rx","hex":"c635000001010003000001","proto":"acp2","transport":"an2","note":"version_reply"}
 ```
 
-## Replay semantics
+## Two consumer verbs share this contract
 
-The `replay` verb (per ADR-0002) consumes a `frames.jsonl` and
-operates in one of three modes.
+The same `frames.jsonl` is consumed by two distinct verbs (per
+ADR-0002):
+
+| Verb | Today / future | What it does |
+| --- | --- | --- |
+| `validate <frames.jsonl>` | TODAY | decode every frame through the codec offline (no live peer); report per-direction counts + invariant violations |
+| `replay <frames.jsonl>` | DEFERRED | peer-simulate the captured session against a real or fake peer (`--as-client` / `--as-server` modes) |
+
+The line schema above is identical for both. The verbs differ only in
+what they DO with the decoded sequence — pure offline assertion vs
+live wire emission.
+
+## `validate` semantics
+
+The `validate` verb is the offline-only mode. Read the JSONL, decode
+every frame through the connector's codec, return a report. No peer,
+no timing, no socket.
+
+| Flag | Behaviour |
+| --- | --- |
+| (default) | decode every frame; exit 0 on a clean capture, 1 on any decode failure or invariant violation |
+| `--out-tree <path>` | additionally canonicalise and write `tree.json` (per-protocol support) |
+| `--out-params <path>` | additionally canonicalise and write a params dump (CSV / JSON by extension) |
+| `--stop-at <note>` | halt at the first frame whose `note` matches |
+
+Per-connector implementation lives at `internal/<proto>/consumer/validate.go`
+and satisfies the `protocol.Validator` interface. Connectors that
+have not yet been migrated return `protocol.ErrNotImplemented` at the
+CLI boundary.
+
+## `replay` semantics (DEFERRED)
+
+The `replay` verb consumes the same `frames.jsonl` but emits bytes on
+the wire. Implementation is deferred — this section locks the
+contract for when it lands.
 
 ### Modes
 
 | Mode flag | Interpretation of `dir` | Use case |
-|---|---|---|
+| --- | --- | --- |
 | `--as-client` (default) | `tx` → send to peer; `rx` → expect from peer (assert match within tolerance) | Reproduce a bug against a real device without scripting |
 | `--as-server` | `rx` → wait for peer to send (assert match); `tx` → send to peer | Replace a missing device — stand up a fake matrix from a captured session |
-| `--validate-only` | `dir` ignored — decode every line, assert codec succeeds | Codec smoke test, no peer required |
 
 ### Timing
 
 | Flag | Behaviour |
-|---|---|
+| --- | --- |
 | (default) | as-fast-as-possible — back-to-back |
 | `--realtime` | honor `ts` deltas between consecutive frames |
 | `--delay D` | constant delay D between frames |
@@ -96,10 +147,10 @@ operates in one of three modes.
 ### Mismatch handling
 
 | Flag | Behaviour |
-|---|---|
+| --- | --- |
 | (default) | abort on first mismatch (`expected hex vs got hex`) and exit non-zero |
 | `--continue-on-mismatch` | record every mismatch, replay to end, exit non-zero with summary |
-| `--stop-at <note>` | abort after reaching the frame whose `note` equals `<note>`, regardless of mismatch |
+| `--stop-at <note>` | halt at the frame whose `note` matches (shared with `validate`) |
 
 ### Required by replayer
 
