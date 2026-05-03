@@ -83,3 +83,15 @@ tests/fixtures/**/raw/
 # Root-level assets/ is reserved as a scratch dir for ad-hoc debug /
 # validation runs. Real spec assets live under internal/<proto>/assets/.
 /assets/
+
+# Stale per-protocol test-data fixtures. None of these files are loaded
+# by any test (verified via grep at audit time, 2026-05-04). Tracked in
+# LFS or as regular blobs prior to the audit; now ignored so re-extracts
+# stay local. The free-plan LFS quota (10 GB) is the hard constraint.
+internal/acp1/testdata/exports/*.json
+internal/acp1/testdata/fixtures/*_walk.json
+internal/acp2/testdata/exports/*.json
+internal/acp2/testdata/fixtures/slot*.json
+internal/emberplus/testdata/fixtures/[0-9]*/tree.json
+internal/emberplus/testdata/fixtures/[0-9]*/glow.json
+internal/emberplus/testdata/fixtures/[0-9]*/raw.s101.jsonl
