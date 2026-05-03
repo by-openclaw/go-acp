@@ -410,27 +410,10 @@ WIP-at-AMWA specs (IS-13 Annotation, BCP-006-02 H.264,
 BCP-006-03 H.265, BCP-007-01 NDI) are the only legitimate "not yet"
 scope — they land when AMWA stabilises them.
 
-## Conformance gate — AMWA NMOS Testing tool
-
-Every NMOS PR that ships an implementation chunk MUST pass the matching
-**AMWA NMOS Testing** suite (<https://github.com/AMWA-TV/nmos-testing>).
-The tool runs as Docker, acts as Mock Registry / Mock Node /
-probe-client, and exercises every claimed IS-* / BCP-* / MS-* suite.
-
-Per-phase suite mapping in
-[`docs/sequenced-tasks.md`](docs/sequenced-tasks.md). Pass / Fail /
-Could-Not-Test gating + scope-outs documented in
-[`docs/conformance.md`](docs/conformance.md).
-
-This is the canonical NMOS gate. Vendor-specific integration tests
-(Lawo VSM, nmos-cpp, etc.) layer on top — passing AMWA is necessary,
-not sufficient.
-
 ## Implementation order
 
-See [`docs/sequenced-tasks.md`](docs/sequenced-tasks.md). Minimum viable
-slice for "9th protocol plugin works": **IS-09 → IS-04 → IS-05 → IS-07
-(WebSocket only) + BCP-002 + BCP-004 conformance.**
+Minimum viable slice for "9th protocol plugin works":
+**IS-09 → IS-04 → IS-05 → IS-07 (WebSocket only) + BCP-002 + BCP-004**.
 
 ---
 
