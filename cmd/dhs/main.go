@@ -39,6 +39,7 @@ import (
 	// Consumer plugins — blank imports register with internal/protocol.
 	_ "acp/internal/acp1/consumer"
 	_ "acp/internal/acp2/consumer"
+	_ "acp/internal/blackmagic-hyperdeck/consumer"
 	_ "acp/internal/cerebrum-nb/consumer"
 	_ "acp/internal/emberplus/consumer"
 	_ "acp/internal/osc/consumer"
@@ -49,6 +50,7 @@ import (
 	// Provider plugins — blank imports register with internal/provider.
 	_ "acp/internal/acp1/provider"
 	_ "acp/internal/acp2/provider"
+	_ "acp/internal/blackmagic-hyperdeck/provider"
 	_ "acp/internal/emberplus/provider"
 	_ "acp/internal/osc/provider"
 	_ "acp/internal/probel-sw02p/provider"
