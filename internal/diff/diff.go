@@ -3,7 +3,7 @@
 //
 //   - surface breaking schema changes before a firmware rollout
 //   - auto-populate the per-product CHANGELOG.md inside the product
-//     fixture layout (docs/fixtures-products.md §CHANGELOG)
+//     fixture layout (docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md) §CHANGELOG)
 //   - feed the firmware-upgrade restore workflow (VISION.md §16)
 //
 // The diff matches elements by OID across the two trees — the stable
@@ -20,7 +20,7 @@ import (
 )
 
 // Category labels — one of these per Entry. Values match the
-// Keep-a-Changelog section headings used by docs/fixtures-products.md.
+// Keep-a-Changelog section headings used by docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md).
 const (
 	CategoryBreaking = "Breaking"
 	CategoryChanged  = "Changed"

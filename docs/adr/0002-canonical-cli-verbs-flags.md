@@ -19,8 +19,8 @@ as replacements or aliases of canonical verbs.
 
 | Role | Verbs |
 |---|---|
-| consumer | `discover` · `connect` · `disconnect` · `info` · `walk` · `get <path>` · `set <path> <value>` · `subscribe <path>` · `unsubscribe <path>` · `status` · `ensure` |
-| producer | `serve` · `stop` · `status` · `peers` · `tree` · `ensure` |
+| consumer | `discover` · `connect` · `disconnect` · `info` · `walk` · `get <path>` · `set <path> <value>` · `subscribe <path>` · `unsubscribe <path>` · `status` · `ensure` · `replay <frames.jsonl>` |
+| producer | `serve` · `stop` · `status` · `peers` · `tree` · `ensure` · `replay <frames.jsonl>` |
 | registry | `serve` · `stop` · `status` · `peers` · `dump` · `ensure` |
 | admin (every binary) | `version` · `--help` · `license install` · `license show` · `license verify` · `license features` · `completion <shell>` |
 
@@ -42,6 +42,10 @@ as replacements or aliases of canonical verbs.
 | `--verbose` / `-v` | log level escalation |
 | `--state <present\|absent>` | desired state for `ensure` (see ADR-0007) |
 | `--check` | dry-run for `ensure` (see ADR-0007) |
+| `--as-client` / `--as-server` / `--validate-only` | `replay` mode (see ADR-0021) |
+| `--realtime` / `--delay <dur>` | `replay` timing (see ADR-0021) |
+| `--continue-on-mismatch` / `--stop-at <note>` | `replay` mismatch handling (see ADR-0021) |
+| `--capture <path>` | live wire-trace capture (consumer + producer); writes `frames.jsonl` per ADR-0021 |
 
 ## Consequences
 

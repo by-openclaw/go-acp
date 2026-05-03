@@ -10,7 +10,7 @@ import (
 
 // TestSHA256File — byte-identical tree.json produces the identical
 // fingerprint. Protects the replay-test contract documented in
-// docs/fixtures-products.md.
+// docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md).
 func TestSHA256File(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "tree.json")
@@ -55,7 +55,7 @@ func TestSHA256File_DifferentBytes(t *testing.T) {
 
 // TestMetaJSONRoundTrip — write + read with the locked schema. Catches
 // any field-name drift between the Go struct and the persisted JSON
-// (the docs/fixtures-products.md schema is load-bearing for every
+// (the docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md) schema is load-bearing for every
 // replay test downstream).
 func TestMetaJSONRoundTrip(t *testing.T) {
 	dir := t.TempDir()

@@ -150,9 +150,10 @@ format is for offline replay in Go tests, **not** a pcap file. To inspect raw
 frames in Wireshark:
 
 1. Re-run the same CLI command with `tcpdump`/`dumpcap` open in parallel, or
-2. Use the captures stored under `bin/devices/captures/<proto>/<ip>/<slot>/`
-   when `dhs ... --capture` was invoked against the device. These are pcap
-   sidecars (not generated automatically today — follow-up work).
+2. Use the captures stored under `captures/<proto>/<ip>/[<slot>/]<scenario>/`
+   (per ADR-0020 Bucket 4) when `dhs ... --capture` was invoked against
+   the device. These are pcap sidecars (not generated automatically
+   today — follow-up work).
 
 For fixture-driven offline inspection, the JSONL replay already gives
 round-trip tests the byte-for-byte content; Wireshark is only needed for

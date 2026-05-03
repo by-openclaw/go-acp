@@ -1,29 +1,37 @@
-# Product fixture library
+# Per-product DM fixture library
 
-Per-product, per-firmware captures used by offline replay tests and by `acp diff` for cross-version regression tracking.
+The full layout, naming, and `meta.json` schema for this directory are
+defined in [ADR-0020](../../../docs/adr/0020-capture-and-fixture-layout.md)
+(Bucket 3 — Per-product DM library).
 
-## One rule
+## Path shape
 
-**Generated, never hand-edited.** If a file here is wrong, fix the generator (`acp extract` #36.b, `acp diff` #36.c, or the plugin decoder) and regenerate.
-
-## Layout
-
-```
-products/
-└── <manufacturer>/<product>/<protocol>/<direction>/
-    ├── CHANGELOG.md        generated on each new version add
-    └── <version>/
-        ├── meta.json       identity + fingerprint + capture_tool build info
-        ├── wire.jsonl      raw frames (replay source)
-        └── tree.json       canonical export (replay destination)
+```text
+tests/fixtures/products/<manufacturer>/<product>/<proto>/<role>/<version>/
+├── meta.json          provenance + capture context
+├── wire.jsonl         wire-trace per ADR-0021
+├── tree.json          canonical tree
+└── capture.pcapng     optional OS-socket capture
 ```
 
-A product folder can hold multiple `<protocol>` subfolders — one physical card sometimes exposes several interfaces (e.g. an Axon card speaking both ACP2 and Ember+). Each protocol splits further by `<direction>`: `consumer` (we read the device), `provider` (we expose a tree to external consumers), or `both` (same DM in both roles). Each direction has its own version lineage and its own CHANGELOG.
+`<role>` ∈ `{consumer, producer, registry}` per ADR-0001.
 
-Full spec + schema: [docs/fixtures-products.md](../../../docs/fixtures-products.md).
+## CHANGELOG
 
-## Status
+Each `<manufacturer>/<product>/<proto>/<role>/` folder ships a
+`CHANGELOG.md` summarising DM evolution across versions, in
+[Keep a Changelog](https://keepachangelog.com/) format.
 
-Empty today. Populated as `acp extract` (#36.b) and `acp diff` (#36.c) ship and engineers capture real devices.
+## Generating a fixture
 
-Legacy fixtures at `tests/fixtures/{acp1,acp2,emberplus}/<non-products-paths>` stay in place — tests keep using them.
+Once the `replay` verb (ADR-0002 + ADR-0021) lands and the `extract`
+verb is implemented:
+
+```text
+dhs consumer <proto> extract <host> \
+    --role consumer \
+    --out tests/fixtures/products/<manufacturer>/<product>/<proto>/consumer/<version>/
+```
+
+For now, fixtures are populated manually — capture with `--capture`,
+hand-stamp `meta.json` per the schema in ADR-0020.

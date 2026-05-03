@@ -17,11 +17,12 @@ import (
 )
 
 // treeStore is the global file-backed tree store, initialized once.
-// Placed next to the binary: devices/{ip}/slot_{n}.json
+// Per ADR-0020 Bucket 4: rooted at <project>/.cache/devices/{ip}/slot_{n}.json
+// (gitignored, regeneratable; separate from manual captures under captures/).
 var treeStore *storage.TreeStore
 
 func init() {
-	store, err := storage.NewTreeStoreNextToBinary()
+	store, err := storage.NewTreeStoreInProjectCache()
 	if err == nil {
 		treeStore = store
 	}
