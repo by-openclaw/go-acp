@@ -81,6 +81,11 @@ func (i Instance) PTRName() string {
 //
 // The cache-flush bit is set on SRV/TXT/A/AAAA per RFC 6762 §10.2 since
 // they are unique records; PTR is shared and never gets flush.
+//
+// To send an RFC 6762 §10.1 GOODBYE packet (TTL=0 explicitly), use
+// [EncodeGoodbye] — `EncodeAnnounce` substitutes [DefaultAnnounceTTL]
+// when `i.TTL == 0` (since most callers leave TTL zero-valued and
+// expect a sensible default), so it cannot be used to emit goodbyes.
 func EncodeAnnounce(i Instance, asResponse bool) ([]byte, error) {
 	if i.Name == "" || i.Service == "" || i.Host == "" || i.Port == 0 {
 		return nil, fmt.Errorf("dnssd: instance missing required fields")
@@ -150,6 +155,92 @@ func EncodeAnnounce(i Instance, asResponse bool) ([]byte, error) {
 			Type:  TypeAAAA,
 			Class: ClassIN | ClassFlushBit,
 			TTL:   ttl,
+			AAAA:  ip6,
+		})
+	}
+	return msg.Encode()
+}
+
+// EncodeGoodbye builds an RFC 6762 §10.1 goodbye packet for the
+// instance: the same record set as `EncodeAnnounce` but with TTL=0
+// on every record. Peers that receive a goodbye MUST evict the
+// matching cache entries within ~1 s (RFC 6762 §10.4), so this is
+// what suspend / shutdown paths emit to avoid stale records
+// surviving for the full TTL window.
+//
+// `EncodeAnnounce` cannot be repurposed by setting `i.TTL = 0`
+// because that field's zero-value triggers the
+// `DefaultAnnounceTTL` substitution — leaving callers who set
+// TTL=0 explicitly with regular announce packets, not goodbyes.
+// AMWA NMOS Testing IS-04-01 `test_12` (registered Node MUST NOT
+// advertise `_nmos-node._tcp` while registered) only Pass'es when
+// real TTL=0 records hit the wire — the substitution bug is the
+// reason `test_12` reproduces on every minor of dhs even after
+// suspend (verified via tshark on the docker bridge).
+func EncodeGoodbye(i Instance, asResponse bool) ([]byte, error) {
+	if i.Name == "" || i.Service == "" || i.Host == "" || i.Port == 0 {
+		return nil, fmt.Errorf("dnssd: instance missing required fields")
+	}
+	full := i.FullName()
+	ptrName := i.PTRName()
+
+	msg := &Message{}
+	msg.Header.SetResponse(asResponse)
+	msg.Header.SetAuthoritative(asResponse)
+
+	msg.Answers = append(msg.Answers, RR{
+		Name:  ptrName,
+		Type:  TypePTR,
+		Class: ClassIN,
+		TTL:   0,
+		PTR:   full,
+	})
+	msg.Answers = append(msg.Answers, RR{
+		Name:  full,
+		Type:  TypeSRV,
+		Class: ClassIN | ClassFlushBit,
+		TTL:   0,
+		SRV: &SRVData{
+			Priority: 0,
+			Weight:   0,
+			Port:     i.Port,
+			Target:   strings.TrimSuffix(i.Host, "."),
+		},
+	})
+	txtSegs, err := EncodeTXT(i.TXT)
+	if err != nil {
+		return nil, err
+	}
+	msg.Answers = append(msg.Answers, RR{
+		Name:  full,
+		Type:  TypeTXT,
+		Class: ClassIN | ClassFlushBit,
+		TTL:   0,
+		TXT:   txtSegs,
+	})
+	for _, ip := range i.IPv4 {
+		ip4 := ip.To4()
+		if ip4 == nil {
+			continue
+		}
+		msg.Answers = append(msg.Answers, RR{
+			Name:  strings.TrimSuffix(i.Host, "."),
+			Type:  TypeA,
+			Class: ClassIN | ClassFlushBit,
+			TTL:   0,
+			A:     ip4,
+		})
+	}
+	for _, ip := range i.IPv6 {
+		ip6 := ip.To16()
+		if ip6 == nil || ip.To4() != nil {
+			continue
+		}
+		msg.Answers = append(msg.Answers, RR{
+			Name:  strings.TrimSuffix(i.Host, "."),
+			Type:  TypeAAAA,
+			Class: ClassIN | ClassFlushBit,
+			TTL:   0,
 			AAAA:  ip6,
 		})
 	}

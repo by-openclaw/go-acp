@@ -311,9 +311,11 @@ func (r *stdlibResponder) Close() error {
 	}
 	r.closed = true
 	for _, ins := range r.instances {
-		bye := ins
-		bye.TTL = 0
-		if pkt, err := dnssd.EncodeAnnounce(bye, true); err == nil {
+		// EncodeGoodbye, NOT EncodeAnnounce — the latter substitutes
+		// DefaultAnnounceTTL when ins.TTL==0, producing regular
+		// announce packets. EncodeGoodbye unconditionally encodes
+		// every record with TTL=0 per RFC 6762 §10.1.
+		if pkt, err := dnssd.EncodeGoodbye(ins, true); err == nil {
 			for _, c := range r.conns {
 				_, _ = c.WriteToUDP(pkt, &mdnsIPv4)
 			}

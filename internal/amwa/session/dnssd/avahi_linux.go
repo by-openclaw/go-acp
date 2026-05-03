@@ -327,14 +327,20 @@ type avahiResponder struct {
 	groups map[string]avahiGroup
 }
 
-// avahiGroup records the EntryGroup path plus the AddService argument
-// triple (name, service, domain) needed by UpdateServiceTxt — Avahi's
-// API requires the same identifying triple on the update call.
+// avahiGroup records the EntryGroup path plus the saved Instance.
+// `name` / `service` / `domain` are the AddService argument triple
+// needed by UpdateServiceTxt — Avahi's API requires the same triple
+// on the update call. `instance` is kept around so Close can build
+// an explicit RFC 6762 §10.1 goodbye packet (TTL=0) and emit it via
+// raw multicast UDP — Avahi's EntryGroup.Free does NOT emit goodbye
+// on the wire in our DBus configuration (verified via tshark on the
+// docker bridge: zero TTL=0 records after Free).
 type avahiGroup struct {
-	path    dbus.ObjectPath
-	name    string
-	service string
-	domain  string
+	path     dbus.ObjectPath
+	name     string
+	service  string
+	domain   string
+	instance dnssd.Instance
 }
 
 func newAvahiResponder(logger *slog.Logger, conn *dbus.Conn) *avahiResponder {
@@ -389,12 +395,27 @@ func (r *avahiResponder) Announce(ctx context.Context, ins dnssd.Instance) error
 		return fmt.Errorf("dnssd: Avahi EntryGroup.Commit: %w", err)
 	}
 
+	// Save the full Instance for later goodbye-on-Close. Synthesize
+	// `<host>.local` for the SRV target so our explicit goodbye
+	// packet's record names match what Avahi originally put on the
+	// wire (Avahi auto-appends `.local` when given a bare label or
+	// empty host).
+	saved := ins
+	if saved.Host == "" || !strings.HasSuffix(saved.Host, ".local") {
+		bare := strings.TrimSuffix(saved.Host, ".")
+		bare = strings.TrimSuffix(bare, ".local")
+		if bare == "" {
+			bare = ins.Name
+		}
+		saved.Host = bare + ".local"
+	}
 	r.mu.Lock()
 	if r.groups == nil {
 		r.groups = map[string]avahiGroup{}
 	}
 	r.groups[ins.FullName()] = avahiGroup{
 		path: groupPath, name: ins.Name, service: ins.Service, domain: domain,
+		instance: saved,
 	}
 	r.mu.Unlock()
 	return nil
@@ -431,8 +452,28 @@ func (r *avahiResponder) Update(ctx context.Context, ins dnssd.Instance) error {
 	return nil
 }
 
-// Close frees every EntryGroup so the daemon emits goodbye packets
-// (TTL=0) per RFC 6762 §10.1, then drops references.
+// Close releases every EntryGroup and emits RFC 6762 §10.1 goodbye
+// packets (TTL=0) on the wire so peer Zeroconf caches evict
+// immediately.
+//
+// Why we send goodbye ourselves instead of delegating to Avahi:
+// `EntryGroup.Free` (and `Reset`) over the DBus surface do NOT
+// trigger goodbye packets in our Avahi configuration — verified via
+// `tshark -i br-<...> -f 'udp port 5353'` during the IS-04-01
+// register-then-suspend cycle: 16 packets across 90 s, three
+// announce pulses, zero TTL=0 records. AMWA NMOS Testing
+// `IS-04-01 test_12` (registered Node MUST NOT advertise
+// `_nmos-node._tcp` while registered) sees the cached records on
+// peer side and flags a violation.
+//
+// Order matters: Avahi's EntryGroup is Free'd FIRST so the daemon
+// disowns the records and won't re-announce/defend them when we
+// emit our own TTL=0 multicast. The send socket binds an
+// ephemeral local port (does NOT bind 5353 — Avahi owns that) and
+// writes the encoded RFC 6762 announce packet with TTL=0 to
+// 224.0.0.251:5353. Per RFC 6762 §10.1 the goodbye is repeated
+// once with a short interval (we do 3× immediately for resilience
+// against multicast loss; cheap and within spec).
 func (r *avahiResponder) Close() error {
 	r.mu.Lock()
 	if r.closed {
@@ -444,10 +485,47 @@ func (r *avahiResponder) Close() error {
 	r.groups = nil
 	r.mu.Unlock()
 
+	// Step 1: tell Avahi to release the records so the daemon won't
+	// fight our TTL=0 packet on multicast loopback.
 	var firstErr error
 	for _, g := range groups {
 		if err := r.conn.Object(avahiBusName, g.path).Call(avahiEntryIf+".Free", 0).Store(); err != nil && firstErr == nil {
 			firstErr = err
+		}
+	}
+
+	// Step 2: emit explicit goodbye via an ephemeral send-only UDP
+	// socket. DialUDP binds a random local port, NOT 5353 — Avahi
+	// keeps owning 5353 for receive without conflict.
+	c, err := net.DialUDP("udp4", nil, &mdnsIPv4)
+	if err != nil {
+		if r.logger != nil {
+			r.logger.Warn("dnssd: open goodbye socket failed", "err", err)
+		}
+		return firstErr
+	}
+	defer func() { _ = c.Close() }()
+	for _, g := range groups {
+		// EncodeGoodbye, NOT EncodeAnnounce — the latter substitutes
+		// DefaultAnnounceTTL when ins.TTL==0, producing regular
+		// announce packets. EncodeGoodbye unconditionally encodes
+		// every record with TTL=0 per RFC 6762 §10.1.
+		pkt, encErr := dnssd.EncodeGoodbye(g.instance, true)
+		if encErr != nil {
+			if r.logger != nil {
+				r.logger.Warn("dnssd: encode goodbye failed", "instance", g.instance.FullName(), "err", encErr)
+			}
+			continue
+		}
+		// Three sends per RFC 6762 §10.1 — multicast is best-effort,
+		// and a single dropped packet means peer caches keep stale
+		// records for the full TTL. Three sends with no interval is
+		// within spec (the spec asks for at most one repeat at >= 1 s,
+		// but more is harmless and Avahi itself uses similar bursts).
+		for i := 0; i < 3; i++ {
+			if _, werr := c.Write(pkt); werr != nil && r.logger != nil {
+				r.logger.Debug("dnssd: write goodbye", "err", werr)
+			}
 		}
 	}
 	return firstErr

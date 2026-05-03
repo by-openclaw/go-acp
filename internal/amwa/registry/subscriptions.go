@@ -28,14 +28,47 @@ type SubscriptionRequest struct {
 
 // SubscriptionResource is the body returned by POST /subscriptions
 // and listed by GET /subscriptions, per IS-04 §4.2.
+//
+// Schema notes — every field in this struct is required by some
+// minor we serve, so omitempty is dropped:
+//   - v1.0 (queryapi-subscription-response.json): `id`, `ws_href`,
+//     `max_update_rate_ms`, `persist`, `resource_path`, `params`
+//     (all required, `secure` not in schema).
+//   - v1.1+: same six + `secure` (required).
+//
+// Per-version stripping happens in `subscriptionForVersion` (drops
+// `secure` for v1.0). `params` is forced to `{}` when nil so the
+// `required` + `type=object` constraint always passes.
 type SubscriptionResource struct {
 	ID            string `json:"id"`
 	WSHref        string `json:"ws_href"`
-	MaxUpdateRate int    `json:"max_update_rate_ms,omitempty"`
+	MaxUpdateRate int    `json:"max_update_rate_ms"`
 	Persist       bool   `json:"persist"`
 	Secure        bool   `json:"secure"`
 	ResourcePath  string `json:"resource_path"`
-	Params        any    `json:"params,omitempty"`
+	Params        any    `json:"params"`
+}
+
+// subscriptionForVersion returns the per-API-version JSON shape of a
+// SubscriptionResource. Drops `secure` for v1.0 (the field landed in
+// v1.1) and forces `params` to an empty object when nil. Returns the
+// canonical struct unchanged for v1.1+, where every field maps
+// directly to the v1.X schema.
+func subscriptionForVersion(r SubscriptionResource, apiVer string) any {
+	if r.Params == nil {
+		r.Params = map[string]any{}
+	}
+	if apiVer == "v1.0" {
+		return map[string]any{
+			"id":                 r.ID,
+			"ws_href":            r.WSHref,
+			"max_update_rate_ms": r.MaxUpdateRate,
+			"persist":            r.Persist,
+			"resource_path":      r.ResourcePath,
+			"params":             r.Params,
+		}
+	}
+	return r
 }
 
 // Grain is the IS-04 §5.2 envelope shipped on every WebSocket frame.
@@ -199,7 +232,7 @@ func (m *SubscriptionManager) HandlePost(base string) httpsession.HandlerFunc {
 		// test_31 explicitly check this header.
 		loc := base + "/subscriptions/" + id
 		return stdhttp.StatusCreated, &httpsession.WithHeaders{
-			Body:    res,
+			Body:    subscriptionForVersion(res, m.apiVer),
 			Headers: map[string]string{"Location": loc},
 		}, nil
 	}
@@ -210,13 +243,13 @@ func (m *SubscriptionManager) HandleList() httpsession.HandlerFunc {
 	return func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		out := make([]SubscriptionResource, 0, len(m.subs))
+		out := make([]any, 0, len(m.subs))
 		for _, s := range m.subs {
-			out = append(out, SubscriptionResource{
+			out = append(out, subscriptionForVersion(SubscriptionResource{
 				ID: s.ID, WSHref: s.WSHref, MaxUpdateRate: s.MaxUpdateRate,
 				Persist: s.Persist, Secure: s.Secure, ResourcePath: s.ResourcePath,
 				Params: queryAsParams(s.params),
-			})
+			}, m.apiVer))
 		}
 		return 0, out, nil
 	}
@@ -237,11 +270,11 @@ func (m *SubscriptionManager) HandleGetByID(prefix string) httpsession.HandlerFu
 		if !ok {
 			return stdhttp.StatusNotFound, httpsession.ErrorBody{Code: 404, Error: "Not Found", Debug: id}, nil
 		}
-		return 0, SubscriptionResource{
+		return 0, subscriptionForVersion(SubscriptionResource{
 			ID: s.ID, WSHref: s.WSHref, MaxUpdateRate: s.MaxUpdateRate,
 			Persist: s.Persist, Secure: s.Secure, ResourcePath: s.ResourcePath,
 			Params: queryAsParams(s.params),
-		}, nil
+		}, m.apiVer), nil
 	}
 }
 

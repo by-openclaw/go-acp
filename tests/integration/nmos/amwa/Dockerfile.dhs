@@ -26,7 +26,10 @@ WORKDIR /app
 COPY dhs /usr/local/bin/dhs
 COPY amwa-test-node.json /app/amwa-test-node.json
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# scp from a Windows host loses the unix execute bit on the
+# cross-compiled binary, so set it explicitly here. entrypoint.sh
+# is also marked executable so the ENTRYPOINT can exec it.
+RUN chmod +x /usr/local/bin/dhs /usr/local/bin/entrypoint.sh
 
 # entrypoint.sh starts dbus + avahi-daemon, waits for the bus name to
 # appear, then exec's dhs with the original arguments.

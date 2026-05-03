@@ -94,32 +94,27 @@ func (n *Node) Validate() error {
 		errs = append(errs, "node.caps: required (may be empty object)")
 	}
 
-	// api.versions + api.endpoints are required at every IS-04 minor
-	// (v1.0+). The Versioning relaxation that allowed empty values
-	// here was overshoot — clocks (v1.1+) and interfaces (v1.2+) are
-	// the only fields that should be optional in the canonical
-	// validator; api/* must always be present. Per-version codec strip
-	// covers wire-shape divergence on emit.
-	if len(n.API.Versions) == 0 {
-		errs = append(errs, "node.api.versions: required")
-	}
-	for i, v := range n.API.Versions {
-		if !IsValidAPIVersion(v) {
-			errs = append(errs, fmt.Sprintf("node.api.versions[%d] %q: must match `vMAJOR.MINOR`", i, v))
+	// `api` is OPTIONAL in canonical Validate — IS-04 v1.0.3 Node
+	// schema has no `api` property at all (added in v1.1). When
+	// present we validate per-element shape; when absent we don't
+	// reject. Strict per-version presence requirements live in
+	// `internal/amwa/registry/store.go validateRegistrationPresenceVersioned`.
+	if len(n.API.Versions) > 0 || len(n.API.Endpoints) > 0 {
+		for i, v := range n.API.Versions {
+			if !IsValidAPIVersion(v) {
+				errs = append(errs, fmt.Sprintf("node.api.versions[%d] %q: must match `vMAJOR.MINOR`", i, v))
+			}
 		}
-	}
-	if len(n.API.Endpoints) == 0 {
-		errs = append(errs, "node.api.endpoints: required")
-	}
-	for i, e := range n.API.Endpoints {
-		if e.Host == "" {
-			errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].host: required", i))
-		}
-		if e.Port < 1 || e.Port > 65535 {
-			errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].port=%d: out of [1..65535]", i, e.Port))
-		}
-		if !IsValidHTTPProtocol(e.Protocol) {
-			errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].protocol %q: must be \"http\" or \"https\"", i, e.Protocol))
+		for i, e := range n.API.Endpoints {
+			if e.Host == "" {
+				errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].host: required", i))
+			}
+			if e.Port < 1 || e.Port > 65535 {
+				errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].port=%d: out of [1..65535]", i, e.Port))
+			}
+			if !IsValidHTTPProtocol(e.Protocol) {
+				errs = append(errs, fmt.Sprintf("node.api.endpoints[%d].protocol %q: must be \"http\" or \"https\"", i, e.Protocol))
+			}
 		}
 	}
 

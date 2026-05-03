@@ -113,13 +113,19 @@ func (f *Flow) Validate() error {
 			}
 		}
 	case FormatAudio:
-		// IS-04 §3.2.4: every audio Flow MUST carry sample_rate
-		// (positive numerator). The "only validate when other audio
-		// fields present" relaxation was a v1.0 wire-shape overshoot —
-		// per-version codec strip handles wire emission, but the
-		// canonical struct always represents a complete Flow.
-		if f.SampleRate == nil || f.SampleRate.Numerator <= 0 {
-			errs = append(errs, "flow.sample_rate: required for audio flows (positive numerator)")
+		// canonical Validate is lenient when audio fields are absent
+		// because v1.0 audio Flow has no per-format breakdown (no
+		// sample_rate / bit_depth / media_type) at all — those landed
+		// in v1.1. When the caller does carry any of those audio
+		// fields, sample_rate is enforced per IS-04 §3.2.4. Strict
+		// per-version presence checks (require sample_rate at
+		// v1.1+) live in registry's
+		// `validateRegistrationPresenceVersioned`.
+		hasAudioFields := f.SampleRate != nil || f.BitDepth > 0 || f.MediaType != ""
+		if hasAudioFields {
+			if f.SampleRate == nil || f.SampleRate.Numerator <= 0 {
+				errs = append(errs, "flow.sample_rate: required for audio flows (positive numerator)")
+			}
 		}
 	}
 
