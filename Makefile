@@ -92,8 +92,7 @@ package: build-all
 # ---------------------------------------------------------------- Test
 
 .PHONY: test test-race test-cover test-integration \
-        test-integration-acp1 test-integration-acp2 \
-        test-conformance-nmos
+        test-integration-acp1 test-integration-acp2
 
 test:
 	$(GO) test $(PKG)
@@ -113,16 +112,6 @@ test-integration-acp1:
 
 test-integration-acp2:
 	$(GO) test -tags integration ./internal/acp2/integration/...
-
-# AMWA NMOS conformance — runs the AMWA NMOS Testing tool against dhs
-# in an isolated docker-compose bridge per
-# internal/amwa/docs/conformance.md. Phase 1 step #1 ships only the
-# harness skeleton (smoke-test the docker-compose bring-up + image
-# pull); later phases add per-suite directories (01-discovery,
-# 02-is09, 03-is04-node, ...).
-test-conformance-nmos: SUITE_DIR ?= tests/integration/nmos/_template
-test-conformance-nmos:
-	bash scripts/nmos-run-suite.sh $(SUITE_DIR)
 
 # ---------------------------------------------------------------- Fixtures
 

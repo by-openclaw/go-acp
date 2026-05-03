@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "default": "stdlib-only",
+    "exception_process_adr": "0014",
+    "codec_layer_rule_adr": "0006",
+    "multi_os_rule_adr": "0016",
+    "ci_gate": "tools/check-deps.sh"
+  },
+  "deps": [
+    {
+      "id": "coder-websocket",
+      "name": "Coder WebSocket",
+      "module": "github.com/coder/websocket",
+      "url": "https://github.com/coder/websocket",
+      "owner": {
+        "name": "Coder Technologies, Inc.",
+        "type": "company",
+        "url": "https://coder.com"
+      },
+      "license": {
+        "spdx": "ISC",
+        "file_url": "https://github.com/coder/websocket/blob/master/LICENSE"
+      },
+      "version": null,
+      "commit": null,
+      "release_date": null,
+      "go_module": true,
+      "pure_go": true,
+      "cgo": false,
+      "transitive_deps": null,
+      "cve_last_check": null,
+      "cve_status": null,
+      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
+      "scope": ["linux", "darwin", "windows"],
+      "reason": "no stdlib WebSocket; ws+wss native via stdlib TLS",
+      "adr_refs": ["0003"],
+      "approved_at": "2026-05-03",
+      "approved_by": "yboujraf"
+    },
+    {
+      "id": "godbus-dbus",
+      "name": "godbus DBus protocol talker",
+      "module": "github.com/godbus/dbus/v5",
+      "url": "https://github.com/godbus/dbus",
+      "owner": {
+        "name": "godbus org (community)",
+        "type": "community",
+        "url": "https://github.com/godbus"
+      },
+      "license": {
+        "spdx": "BSD-2-Clause",
+        "file_url": "https://github.com/godbus/dbus/blob/master/LICENSE"
+      },
+      "version": null,
+      "commit": null,
+      "release_date": null,
+      "go_module": true,
+      "pure_go": true,
+      "cgo": false,
+      "transitive_deps": null,
+      "cve_last_check": null,
+      "cve_status": null,
+      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
+      "scope": ["linux"],
+      "reason": "Linux Avahi via DBus; no stdlib DBus",
+      "adr_refs": ["0012", "0016"],
+      "approved_at": "2026-05-03",
+      "approved_by": "yboujraf"
+    },
+    {
+      "id": "hashicorp-vault-api",
+      "name": "HashiCorp Vault Go client",
+      "module": "github.com/hashicorp/vault/api",
+      "url": "https://github.com/hashicorp/vault",
+      "owner": {
+        "name": "HashiCorp, Inc.",
+        "type": "company",
+        "url": "https://www.hashicorp.com"
+      },
+      "license": {
+        "spdx": "MPL-2.0",
+        "file_url": "https://github.com/hashicorp/vault/blob/main/api/LICENSE"
+      },
+      "version": null,
+      "commit": null,
+      "release_date": null,
+      "go_module": true,
+      "pure_go": true,
+      "cgo": false,
+      "transitive_deps": null,
+      "cve_last_check": null,
+      "cve_status": null,
+      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
+      "scope": ["linux", "darwin", "windows"],
+      "reason": "secrets manager client SDK; signs licenses via Transit engine (ADR-0003), reads runtime secrets via KV",
+      "adr_refs": ["0003", "0010", "0011"],
+      "approved_at": "2026-05-03",
+      "approved_by": "yboujraf"
+    },
+    {
+      "id": "hashicorp-go-plugin",
+      "name": "HashiCorp go-plugin supervisor",
+      "module": "github.com/hashicorp/go-plugin",
+      "url": "https://github.com/hashicorp/go-plugin",
+      "owner": {
+        "name": "HashiCorp, Inc.",
+        "type": "company",
+        "url": "https://www.hashicorp.com"
+      },
+      "license": {
+        "spdx": "MPL-2.0",
+        "file_url": "https://github.com/hashicorp/go-plugin/blob/main/LICENSE"
+      },
+      "version": null,
+      "commit": null,
+      "release_date": null,
+      "go_module": true,
+      "pure_go": true,
+      "cgo": false,
+      "transitive_deps": null,
+      "cve_last_check": null,
+      "cve_status": null,
+      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
+      "scope": ["linux", "darwin", "windows"],
+      "reason": "plugin hot un-register supervisor (ADR-0009)",
+      "adr_refs": ["0009"],
+      "approved_at": "2026-05-03",
+      "approved_by": "yboujraf"
+    },
+    {
+      "id": "golang-jwt-v5",
+      "name": "golang-jwt v5 (JWT with EdDSA support)",
+      "module": "github.com/golang-jwt/jwt/v5",
+      "url": "https://github.com/golang-jwt/jwt",
+      "owner": {
+        "name": "golang-jwt org (community)",
+        "type": "community",
+        "url": "https://github.com/golang-jwt"
+      },
+      "license": {
+        "spdx": "MIT",
+        "file_url": "https://github.com/golang-jwt/jwt/blob/main/LICENSE"
+      },
+      "version": null,
+      "commit": null,
+      "release_date": null,
+      "go_module": true,
+      "pure_go": true,
+      "cgo": false,
+      "transitive_deps": null,
+      "cve_last_check": null,
+      "cve_status": null,
+      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
+      "scope": ["linux", "darwin", "windows"],
+      "reason": "license format JWT-EdDSA (ADR-0003); native Ed25519 support per RFC 8037",
+      "adr_refs": ["0003"],
+      "approved_at": "2026-05-03",
+      "approved_by": "yboujraf"
+    }
+  ]
+}

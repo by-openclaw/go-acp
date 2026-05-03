@@ -9,6 +9,29 @@ Hub Systems, locked 2026-04-21). The legacy `acp` token only survives where
 it refers to the **ACP1** or **ACP2** wire protocols (`internal/acp1/`,
 `internal/acp2/`, `ACP1Error`, `ACP2Error`, etc.).
 
+## ⚠️ ADRs are the binding source of truth
+
+Every architectural rule lives in [`docs/adr/`](docs/adr/README.md) — see
+[`docs/CONNECTOR.md`](docs/CONNECTOR.md) for the connector contract.
+
+Per **ADR-0015** (single source of truth) this file MUST NOT restate
+ADR content. Where this file appears to disagree with an ADR, the
+ADR wins.
+
+Foundational ADRs every agent reads first:
+
+| ADR | Topic |
+|---|---|
+| [0001](docs/adr/0001-per-connector-binary-and-repo.md) | per-connector binary + own repo |
+| [0002](docs/adr/0002-canonical-cli-verbs-flags.md) | canonical CLI verbs + flags |
+| [0005](docs/adr/0005-dep-policy.md) | external dependency policy + manifest |
+| [0006](docs/adr/0006-codec-stdlib-only.md) | codec stdlib-only forever |
+| [0009](docs/adr/0009-plugin-supervisor.md) | plugin supervisor (`hashicorp/go-plugin`) |
+| [0013](docs/adr/0013-no-commit-churn.md) | one approved unit = one commit |
+| [0014](docs/adr/0014-issue-tracking-discipline.md) | issue → branch → tests → PR → CI green → `@yboujraf` approval → merge |
+| [0015](docs/adr/0015-single-source-of-truth.md) | no duplicated rules across docs |
+| [0016](docs/adr/0016-multi-os-support.md) | multi-OS support per connector |
+
 ---
 
 ## Project purpose

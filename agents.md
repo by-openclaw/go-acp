@@ -1,11 +1,41 @@
 # agents.md — dhs (Device Hub Systems)
 
-Shared session rules for AI agents working on this project. Read alongside:
+Shared session rules for AI agents working on this project.
 
-- `CLAUDE.md` — cross-cutting Go conventions, registry pattern, compliance
-  pattern, error hierarchy, storage rules.
-- `internal/<proto>/CLAUDE.md` — atomic per-protocol wire-format context
-  (one file per protocol).
+## ⚠️ ADRs are the binding source of truth
+
+Every architectural rule lives in [`docs/adr/`](docs/adr/README.md).
+The connector contract is collated in [`docs/CONNECTOR.md`](docs/CONNECTOR.md).
+
+Per **ADR-0015** (single source of truth) this file MUST NOT restate
+ADR content. Read the ADR index first; only protocol-specific status
+and session bootstrap material lives here.
+
+Foundational ADRs:
+
+| ADR | Topic |
+| --- | --- |
+| [0001](docs/adr/0001-per-connector-binary-and-repo.md) | per-connector binary + own repo |
+| [0002](docs/adr/0002-canonical-cli-verbs-flags.md) | canonical CLI verbs + flags |
+| [0003](docs/adr/0003-license-jwt-eddsa-vault-transit.md) | license JWT-EdDSA + Vault Transit |
+| [0005](docs/adr/0005-dep-policy.md) | external dependency policy |
+| [0006](docs/adr/0006-codec-stdlib-only.md) | codec stdlib-only forever |
+| [0007](docs/adr/0007-ensure-verb.md) | `ensure --state --check` verb contract |
+| [0008](docs/adr/0008-compliance-audit-pack.md) | per-connector COMPLIANCE.md |
+| [0009](docs/adr/0009-plugin-supervisor.md) | plugin supervisor |
+| [0011](docs/adr/0011-odoo-record-of-truth.md) | Odoo as customer + license + asset record |
+| [0013](docs/adr/0013-no-commit-churn.md) | one approved unit = one commit |
+| [0014](docs/adr/0014-issue-tracking-discipline.md) | issue → branch → tests → PR → CI green → `@yboujraf` approval → merge |
+| [0015](docs/adr/0015-single-source-of-truth.md) | no duplicated rules across docs |
+| [0016](docs/adr/0016-multi-os-support.md) | multi-OS support |
+| [0018](docs/adr/0018-info-verb-build-identity.md) | `info` verb build identity |
+
+Read alongside:
+
+- `CLAUDE.md` (root) — Go conventions, error hierarchy, storage,
+  Wireshark dissectors, scale targets (the bits not yet in an ADR).
+- `internal/<proto>/CLAUDE.md` — atomic per-protocol wire-format
+  context (one file per protocol).
 
 Go module path, binary, CLI, and product name are all **`dhs`** (Device
 Hub Systems, locked 2026-04-21). The legacy `acp` token only survives
@@ -80,67 +110,6 @@ against AMWA NMOS Testing tool's Mock Registry next. dhs Node
 running at 10.6.239.113:18080. Bundle file:
 `tests/fixtures/nmos/cerebrum-test-node.json`.
 
-**AMWA NMOS Testing IS-04-01 (Node) — FULL CONFORMANCE 2026-05-02
-across every AMWA-published minor:**
-
-| API ver | Pass | Fail | Warning |
-|---|---:|---:|---:|
-| v1.0 | 53 | 0 | 0 |
-| v1.1 | 56 | 0 | 0 |
-| v1.2 | 50 | 0 | 0 |
-| v1.3 | 59 | 0 | 0 |
-
-**218 Pass / 0 Fail / 0 Warning total.**
-
-**AMWA NMOS Testing IS-04-02 (Registry — Registration + Query API)
-— round 21, 2026-05-02:**
-
-| API ver | Pass | Fail | Note |
-|---|---:|---:|---|
-| v1.0 | 46 | 1 | only test_01 mDNS Zeroconf-cache flake |
-| v1.1 | 61 | 1 | only test_01 |
-| v1.2 | 61 | 1 | only test_01 |
-| **v1.3** | **65** | **0** | ✅ clean |
-
-**233 Pass / 3 Fail total** — every remaining fail is the same
-test_01 mDNS announcement check. The dhs-registry's `_nmos-register._tcp`
-and `_nmos-query._tcp` are advertised live (visible in `avahi-browse`
-from every other LXC), but the AMWA Testing tool's Python Zeroconf
-cache lags between docker-compose restarts on the early v1.X rounds.
-v1.3 (last in sequence) consistently sees the announcement. Same
-test_01-class flake the IS-04-01 round sees on `test_16`/`test_16_01`
-under Docker Desktop multicast — bounded to the test harness, not
-the wire path. Real-peer Cerebrum interop on the LXC rig is unaffected.
-
-Branch `feat/nmos-is04-amwa-conformance` carries the IS-04-01 +
-IS-04-02 work cumulatively.
-Fixed across the final round: per-version registration codec
-(closes test_04 cluster on v1.0/v1.1/v1.2), v10 keeps tags+description
-(test_28), `/transportfile` SDP route + `manifest_href` rewrite
-(auto_node_11/12), v1.1 sender validator (test_13), full api_ver TXT
-comma-list + suspend mDNS while registered (test_12_01), watcher
-dedupe by URL (kills the dual-name register/deregister flap).
-
-Test rig: 4 Proxmox LXCs on DMZ VLAN — dhs-debian (Debian 12,
-10.100.0.102), dhs-ubuntu (Ubuntu 24, 10.100.0.103), dhs-rocky
-(Rocky 9, 10.100.0.104) as Node test targets; dhs-tools (Ubuntu 24,
-10.100.0.105) hosting AMWA Testing tool image
-`amwa/nmos-testing:master-902dd5d` (the `:latest` tag regressed to a
-Controller Façade UI on port 5001 — pin the July 2024 tag for IS-04
-Node testing). Cerebrum @ 10.100.0.5 visible on the same VLAN for
-real-peer interop. SSH key on desk-03 at `~/.ssh/by-rune_lxc`.
-Per-row caveats + closed-issue table in
-[`tests/integration/nmos/amwa/NOTES.md`](tests/integration/nmos/amwa/NOTES.md).
-
-Run a single conformance round:
-```bash
-ssh -i ~/.ssh/by-rune_lxc root@10.100.0.105 'bash /tmp/run-one.sh v1.3'
-```
-(Helper scripts live in `bin/amwa-*.sh` on desk-03.)
-
-Per-spec status table (driving order, separate provider+controller
-status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amwa/docs/integration-plan.md).
-
 > **NMOS is the odd one out.** It is a suite of ~14 specs
 > (IS-04/05/07/08/09/12/13, MS-05-01/02, BCP-002/004/006/007/008) with a
 > 3-role topology — Node + Registry + Controller (Registry is a dual-
@@ -176,11 +145,6 @@ status columns) lives in [`internal/amwa/docs/integration-plan.md`](internal/amw
 >   stay extractable to its own Go module repo. Codec rule already in
 >   `feedback_codec_isolation.md`; extend to consumer + provider +
 >   future registry plugin. Only neutral interfaces cross the seam.
-> - **Conformance gate is AMWA NMOS Testing** (Apache-2.0 Python tool,
->   Docker `amwa/nmos-testing`). Per-phase suite mapping in
->   `internal/amwa/docs/conformance.md`; runs via devcontainer +
->   isolated bridge (NEVER `network_mode: host`); pinned by image
->   digest; trap-based cleanup so no garbage.
 > - **Reference impl: sony/nmos-cpp** (Apache-2.0, JT-NM Tested) — use
 >   as cross-impl byte oracle + interop peer. Same role as `osc.js` for
 >   OSC and Commie for Probel.
