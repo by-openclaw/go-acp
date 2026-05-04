@@ -12,8 +12,13 @@ type CrosspointTallyDumpWordParams struct {
 	SourceIDs          []uint16
 }
 
+// needsExtended fires only on matrix/level overflow. Per SW-P-08 Issue
+// 30 §3.3.11 (narrow word, cmd 23) and §3.5.7 (extended word, cmd 151),
+// BOTH forms support FirstDestinationID and any SourceID in the full
+// 0-65535 range via the DIV/MOD 256 split — only the matrix/level
+// packing differs (4-bit nibble vs full 8-bit byte).
 func (p CrosspointTallyDumpWordParams) needsExtended() bool {
-	return p.MatrixID > 15 || p.LevelID > 15 || p.FirstDestinationID > 895
+	return p.MatrixID > 15 || p.LevelID > 15
 }
 
 // EncodeCrosspointTallyDumpWord builds one TX 023 / TX 151 frame.
