@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"dhs/internal/export/canonical"
-	iacp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 // encodeObject builds the Value bytes returned by a getObject reply
@@ -42,27 +42,27 @@ func encodeObject(e *entry) ([]byte, error) {
 		return nil, fmt.Errorf("encodeObject: nil entry")
 	}
 	switch e.acpType {
-	case iacp1.TypeRoot:
+	case codec.TypeRoot:
 		return encodeRoot(e)
-	case iacp1.TypeInteger:
+	case codec.TypeInteger:
 		return encodeInteger(e)
-	case iacp1.TypeIPAddr:
+	case codec.TypeIPAddr:
 		return encodeIPAddr(e)
-	case iacp1.TypeFloat:
+	case codec.TypeFloat:
 		return encodeFloat(e)
-	case iacp1.TypeEnum:
+	case codec.TypeEnum:
 		return encodeEnum(e)
-	case iacp1.TypeString:
+	case codec.TypeString:
 		return encodeString(e)
-	case iacp1.TypeFrame:
+	case codec.TypeFrame:
 		return encodeFrame(e)
-	case iacp1.TypeAlarm:
+	case codec.TypeAlarm:
 		return encodeAlarm(e)
-	case iacp1.TypeFile:
+	case codec.TypeFile:
 		return encodeFile(e)
-	case iacp1.TypeLong:
+	case codec.TypeLong:
 		return encodeLong(e)
-	case iacp1.TypeByte:
+	case codec.TypeByte:
 		return encodeByte(e)
 	}
 	return nil, fmt.Errorf("encodeObject: unsupported ACP1 type %d", e.acpType)
@@ -106,37 +106,37 @@ func encodeValue(e *entry) ([]byte, error) {
 		return nil, fmt.Errorf("encodeValue: nil entry")
 	}
 	switch e.acpType {
-	case iacp1.TypeInteger:
+	case codec.TypeInteger:
 		v, err := asInt16(e.param.Value, "value")
 		if err != nil {
 			return nil, err
 		}
 		return writeI16(v), nil
-	case iacp1.TypeIPAddr:
+	case codec.TypeIPAddr:
 		v, err := ipv4ToUint32(e.param.Value)
 		if err != nil {
 			return nil, err
 		}
 		return writeU32(v), nil
-	case iacp1.TypeFloat:
+	case codec.TypeFloat:
 		v, err := asFloat32(e.param.Value, "value")
 		if err != nil {
 			return nil, err
 		}
 		return writeF32(v), nil
-	case iacp1.TypeEnum:
+	case codec.TypeEnum:
 		v, err := asUint8(e.param.Value, "value")
 		if err != nil {
 			return nil, err
 		}
 		return []byte{v}, nil
-	case iacp1.TypeString:
+	case codec.TypeString:
 		s, err := asString(e.param.Value, "value")
 		if err != nil {
 			return nil, err
 		}
 		return writeCStr(s), nil
-	case iacp1.TypeAlarm:
+	case codec.TypeAlarm:
 		v, err := asBool(e.param.Value, "value")
 		if err != nil {
 			return nil, err
@@ -145,25 +145,25 @@ func encodeValue(e *entry) ([]byte, error) {
 			return []byte{1}, nil
 		}
 		return []byte{0}, nil
-	case iacp1.TypeLong:
+	case codec.TypeLong:
 		v, err := asInt32(e.param.Value, "value")
 		if err != nil {
 			return nil, err
 		}
 		return writeI32(v), nil
-	case iacp1.TypeByte:
+	case codec.TypeByte:
 		v, err := asUint8(e.param.Value, "value")
 		if err != nil {
 			return nil, err
 		}
 		return []byte{v}, nil
-	case iacp1.TypeFile:
+	case codec.TypeFile:
 		v, err := asInt16(e.param.Default, "num_fragments") // File's "value" is num_fragments (see spec p.26)
 		if err != nil {
 			return nil, err
 		}
 		return writeI16(v), nil
-	case iacp1.TypeFrame:
+	case codec.TypeFrame:
 		return encodeFrameValue(e)
 	}
 	return nil, fmt.Errorf("encodeValue: unsupported ACP1 type %d", e.acpType)
@@ -237,7 +237,7 @@ func encodeInteger(e *entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := newBuf(iacp1.TypeInteger, 10)
+	buf := newBuf(codec.TypeInteger, 10)
 	buf.u8(e.access)
 	buf.i16(value)
 	buf.i16(def)
@@ -288,7 +288,7 @@ func encodeLong(e *entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := newBuf(iacp1.TypeLong, 10)
+	buf := newBuf(codec.TypeLong, 10)
 	buf.u8(e.access)
 	buf.i32(value)
 	buf.i32(def)
@@ -339,7 +339,7 @@ func encodeByte(e *entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := newBuf(iacp1.TypeByte, 10)
+	buf := newBuf(codec.TypeByte, 10)
 	buf.u8(e.access)
 	buf.u8(value)
 	buf.u8(def)
@@ -390,7 +390,7 @@ func encodeFloat(e *entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := newBuf(iacp1.TypeFloat, 10)
+	buf := newBuf(codec.TypeFloat, 10)
 	buf.u8(e.access)
 	buf.f32(value)
 	buf.f32(def)
@@ -441,7 +441,7 @@ func encodeIPAddr(e *entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := newBuf(iacp1.TypeIPAddr, 10)
+	buf := newBuf(codec.TypeIPAddr, 10)
 	buf.u8(e.access)
 	buf.u32(value)
 	buf.u32(def)
@@ -486,7 +486,7 @@ func encodeEnum(e *entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := newBuf(iacp1.TypeEnum, 8)
+	buf := newBuf(codec.TypeEnum, 8)
 	buf.u8(e.access)
 	buf.u8(value)
 	buf.u8(uint8(len(items)))
@@ -518,7 +518,7 @@ func encodeString(e *entry) ([]byte, error) {
 		return nil, err
 	}
 	maxLen := stringMaxLen(p)
-	buf := newBuf(iacp1.TypeString, 6)
+	buf := newBuf(codec.TypeString, 6)
 	buf.u8(e.access)
 	buf.cstr(limitString(value, int(maxLen)))
 	buf.u8(maxLen)
@@ -550,13 +550,13 @@ func encodeAlarm(e *entry) ([]byte, error) {
 	priority, tag := alarmPriorityTag(p)
 	onMsg, offMsg := alarmMessages(p)
 
-	buf := newBuf(iacp1.TypeAlarm, 8)
+	buf := newBuf(codec.TypeAlarm, 8)
 	buf.u8(e.access)
 	buf.u8(priority)
 	buf.u8(tag)
 	buf.cstr(limitLabel(p.Identifier))
-	buf.cstrWithLimit(onMsg, iacp1.MaxAlarmMsg)
-	buf.cstrWithLimit(offMsg, iacp1.MaxAlarmMsg)
+	buf.cstrWithLimit(onMsg, codec.MaxAlarmMsg)
+	buf.cstrWithLimit(offMsg, codec.MaxAlarmMsg)
 	return buf.bytes(), nil
 }
 
@@ -585,7 +585,7 @@ func encodeFile(e *entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := newBuf(iacp1.TypeFile, 5)
+	buf := newBuf(codec.TypeFile, 5)
 	buf.u8(e.access)
 	buf.i16(frags)
 	buf.cstr(name)
@@ -612,7 +612,7 @@ func encodeFrame(e *entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := newBuf(iacp1.TypeFrame, 4)
+	buf := newBuf(codec.TypeFrame, 4)
 	buf.u8(e.access)
 	buf.u8(uint8(len(slots)))
 	for _, s := range slots {
@@ -644,7 +644,7 @@ type objBuf struct {
 	buf []byte
 }
 
-func newBuf(typ iacp1.ObjectType, nProps uint8) *objBuf {
+func newBuf(typ codec.ObjectType, nProps uint8) *objBuf {
 	return &objBuf{buf: []byte{uint8(typ), nProps}}
 }
 
@@ -714,8 +714,8 @@ func writeCStr(s string) []byte {
 // limitLabel truncates identifiers to the spec-p.20 max (MaxLabelLen
 // excluding the NUL terminator). A real Axon device won't emit longer.
 func limitLabel(s string) string {
-	if len(s) > iacp1.MaxLabelLen {
-		return s[:iacp1.MaxLabelLen]
+	if len(s) > codec.MaxLabelLen {
+		return s[:codec.MaxLabelLen]
 	}
 	return s
 }
@@ -732,8 +732,8 @@ func unitOf(p *canonical.Parameter) string {
 		return ""
 	}
 	u := *p.Unit
-	if len(u) > iacp1.MaxUnitLen {
-		u = u[:iacp1.MaxUnitLen]
+	if len(u) > codec.MaxUnitLen {
+		u = u[:codec.MaxUnitLen]
 	}
 	return u
 }

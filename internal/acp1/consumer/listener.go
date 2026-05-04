@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"dhs/internal/transport"
+	"dhs/internal/acp1/codec"
 )
 
 // Listener receives ACP1 announcements broadcast by rack controllers on
@@ -30,7 +31,7 @@ import (
 // wiring. The public protocol.EventFunc is wrapped around this at the
 // Plugin.Subscribe layer so higher-level code sees decoded protocol.Event
 // values with resolved labels, not raw Messages.
-type RawEventFunc func(msg *Message)
+type RawEventFunc func(msg *codec.Message)
 
 // Listener is safe for concurrent Subscribe/Unsubscribe and for one
 // Receive goroutine. Stop is idempotent.
@@ -152,7 +153,7 @@ func (l *Listener) loop(ctx context.Context) {
 			return
 		}
 
-		raw, _, err := l.conn.Receive(ctx, MaxPacket)
+		raw, _, err := l.conn.Receive(ctx, codec.MaxPacket)
 		if err != nil {
 			// Deliberate shutdown: ctx cancelled or socket closed.
 			if ctx.Err() != nil {
@@ -180,7 +181,7 @@ func (l *Listener) loop(ctx context.Context) {
 			"len", len(raw),
 			"hex", fmt.Sprintf("%x", raw))
 
-		msg, derr := Decode(raw)
+		msg, derr := codec.Decode(raw)
 		if derr != nil {
 			l.logger.Debug("acp1 listener: malformed datagram",
 				"err", derr, "bytes", len(raw))
@@ -215,7 +216,7 @@ func (l *Listener) loop(ctx context.Context) {
 // callbacks. Callbacks are invoked synchronously inside the receive
 // goroutine — subscribers must not block or the listener stops draining
 // the socket.
-func (l *Listener) dispatch(msg *Message) {
+func (l *Listener) dispatch(msg *codec.Message) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	for _, s := range l.subs {

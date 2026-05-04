@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"dhs/internal/protocol"
+	"dhs/internal/acp1/codec"
 )
 
 // TestWalker_HappyPath runs a full slot walk against a canned sequence of
@@ -78,10 +79,10 @@ func TestWalker_HappyPath(t *testing.T) {
 	}
 
 	ft.recv = [][]byte{
-		buildReply(t, 1001, MTypeReply, byte(MethodGetObject), GroupRoot, 0, rootValue),
-		buildReply(t, 1002, MTypeReply, byte(MethodGetObject), GroupIdentity, 0, idValue),
-		buildReply(t, 1003, MTypeReply, byte(MethodGetObject), GroupControl, 0, ctrlValue),
-		buildReply(t, 1004, MTypeReply, byte(MethodGetObject), GroupStatus, 0, statValue),
+		buildReply(t, 1001, codec.MTypeReply, byte(codec.MethodGetObject), codec.GroupRoot, 0, rootValue),
+		buildReply(t, 1002, codec.MTypeReply, byte(codec.MethodGetObject), codec.GroupIdentity, 0, idValue),
+		buildReply(t, 1003, codec.MTypeReply, byte(codec.MethodGetObject), codec.GroupControl, 0, ctrlValue),
+		buildReply(t, 1004, codec.MTypeReply, byte(codec.MethodGetObject), codec.GroupStatus, 0, statValue),
 	}
 
 	w := NewWalker(c)
@@ -170,13 +171,13 @@ func TestResolve(t *testing.T) {
 
 	// 1. Label lookup with explicit group
 	g, id, err := resolve(protocol.ValueRequest{Slot: 1, Group: "control", Label: "Gain"}, tree)
-	if err != nil || g != GroupControl || id != 7 {
+	if err != nil || g != codec.GroupControl || id != 7 {
 		t.Errorf("label+group: got g=%d id=%d err=%v", g, id, err)
 	}
 
 	// 2. Label lookup without group (searches all)
 	g, id, err = resolve(protocol.ValueRequest{Slot: 1, Label: "Temp"}, tree)
-	if err != nil || g != GroupStatus || id != 3 {
+	if err != nil || g != codec.GroupStatus || id != 3 {
 		t.Errorf("label-only: got g=%d id=%d err=%v", g, id, err)
 	}
 
@@ -194,7 +195,7 @@ func TestResolve(t *testing.T) {
 
 	// 5. Group+ID fallback (no label)
 	g, id, err = resolve(protocol.ValueRequest{Slot: 1, Group: "alarm", ID: 5}, nil)
-	if err != nil || g != GroupAlarm || id != 5 {
+	if err != nil || g != codec.GroupAlarm || id != 5 {
 		t.Errorf("group+id: got g=%d id=%d err=%v", g, id, err)
 	}
 

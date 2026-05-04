@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 	"time"
+	"dhs/internal/acp1/codec"
 )
 
 // fakeTransport is an in-memory Transport for deterministic client tests.
@@ -45,10 +46,10 @@ func (f *fakeTransport) Close() error {
 
 // buildReply encodes a canned reply with the requested MTID. Used to
 // hand-feed the fake transport with what a real device would return.
-func buildReply(t *testing.T, mtid uint32, mtype MType, mcode byte,
-	group ObjGroup, id byte, value []byte) []byte {
+func buildReply(t *testing.T, mtid uint32, mtype codec.MType, mcode byte,
+	group codec.ObjGroup, id byte, value []byte) []byte {
 	t.Helper()
-	m := &Message{
+	m := &codec.Message{
 		MTID:     mtid,
 		MType:    mtype,
 		MAddr:    0,
@@ -75,18 +76,18 @@ func TestClient_Do_HappyPath(t *testing.T) {
 
 	// Seed a matching reply. We don't know the MTID yet (client allocates),
 	// so we queue nothing and rebuild after we see what the client sent.
-	req := &Message{
-		MType:    MTypeRequest,
+	req := &codec.Message{
+		MType:    codec.MTypeRequest,
 		MAddr:    0,
-		MCode:    byte(MethodGetValue),
-		ObjGroup: GroupFrame,
+		MCode:    byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupFrame,
 		ObjID:    0,
 	}
 
 	// Intercept: before Do runs we pre-seed recv with a placeholder; after
 	// Do encodes we patch the MTID. Simpler: pre-allocate nextMTID ourselves.
 	c.nextMTID = 41 // next allocMTID() will return 42
-	reply := buildReply(t, 42, MTypeReply, byte(MethodGetValue), GroupFrame, 0, []byte{0x02, 0x02, 0x02})
+	reply := buildReply(t, 42, codec.MTypeReply, byte(codec.MethodGetValue), codec.GroupFrame, 0, []byte{0x02, 0x02, 0x02})
 	ft.recv = [][]byte{reply}
 
 	got, err := c.Do(context.Background(), req)
@@ -96,8 +97,8 @@ func TestClient_Do_HappyPath(t *testing.T) {
 	if got.MTID != 42 {
 		t.Errorf("reply MTID: got %d, want 42", got.MTID)
 	}
-	if got.MType != MTypeReply {
-		t.Errorf("reply MType: got %d", got.MType)
+	if got.MType != codec.MTypeReply {
+		t.Errorf("reply codec.MType: got %d", got.MType)
 	}
 	if len(ft.sent) != 1 {
 		t.Errorf("sent count: got %d, want 1", len(ft.sent))
@@ -117,14 +118,14 @@ func TestClient_Do_SkipsAnnouncement(t *testing.T) {
 	c.nextMTID = 0xAA
 	// First: an announcement (MTID=0, MType=0, ObjGroup=frame) → skipped.
 	// Second: the real reply (MTID=0xAB).
-	announce := buildReply(t, 0, MTypeAnnounce, 0, GroupFrame, 0, []byte{0x02, 0x02})
-	reply := buildReply(t, 0xAB, MTypeReply, byte(MethodGetValue), GroupFrame, 0, []byte{0x03})
+	announce := buildReply(t, 0, codec.MTypeAnnounce, 0, codec.GroupFrame, 0, []byte{0x02, 0x02})
+	reply := buildReply(t, 0xAB, codec.MTypeReply, byte(codec.MethodGetValue), codec.GroupFrame, 0, []byte{0x03})
 	ft.recv = [][]byte{announce, reply}
 
-	req := &Message{
-		MType:    MTypeRequest,
-		MCode:    byte(MethodGetValue),
-		ObjGroup: GroupFrame,
+	req := &codec.Message{
+		MType:    codec.MTypeRequest,
+		MCode:    byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupFrame,
 	}
 	got, err := c.Do(context.Background(), req)
 	if err != nil {
@@ -149,14 +150,14 @@ func TestClient_Do_SkipsMTIDMismatch(t *testing.T) {
 	defer func() { _ = c.Close() }()
 
 	c.nextMTID = 99
-	stale := buildReply(t, 7, MTypeReply, byte(MethodGetValue), GroupFrame, 0, []byte{0xDE})
-	real := buildReply(t, 100, MTypeReply, byte(MethodGetValue), GroupFrame, 0, []byte{0xAD})
+	stale := buildReply(t, 7, codec.MTypeReply, byte(codec.MethodGetValue), codec.GroupFrame, 0, []byte{0xDE})
+	real := buildReply(t, 100, codec.MTypeReply, byte(codec.MethodGetValue), codec.GroupFrame, 0, []byte{0xAD})
 	ft.recv = [][]byte{stale, real}
 
-	req := &Message{
-		MType:    MTypeRequest,
-		MCode:    byte(MethodGetValue),
-		ObjGroup: GroupFrame,
+	req := &codec.Message{
+		MType:    codec.MTypeRequest,
+		MCode:    byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupFrame,
 	}
 	got, err := c.Do(context.Background(), req)
 	if err != nil {
@@ -182,13 +183,13 @@ func TestClient_Do_RetryOnTimeout(t *testing.T) {
 
 	c.nextMTID = 0xDEADBEE0
 	// nil = simulated timeout on the first attempt
-	reply := buildReply(t, 0xDEADBEE1, MTypeReply, byte(MethodGetValue), GroupControl, 5, []byte{0x00})
+	reply := buildReply(t, 0xDEADBEE1, codec.MTypeReply, byte(codec.MethodGetValue), codec.GroupControl, 5, []byte{0x00})
 	ft.recv = [][]byte{nil, reply}
 
-	req := &Message{
-		MType:    MTypeRequest,
-		MCode:    byte(MethodGetValue),
-		ObjGroup: GroupControl,
+	req := &codec.Message{
+		MType:    codec.MTypeRequest,
+		MCode:    byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupControl,
 		ObjID:    5,
 	}
 	got, err := c.Do(context.Background(), req)
@@ -226,7 +227,7 @@ func TestClient_Do_MaxRetriesExceeded(t *testing.T) {
 	})
 	defer func() { _ = c.Close() }()
 
-	req := &Message{MType: MTypeRequest, MCode: byte(MethodGetValue), ObjGroup: GroupFrame}
+	req := &codec.Message{MType: codec.MTypeRequest, MCode: byte(codec.MethodGetValue), ObjGroup: codec.GroupFrame}
 	_, err := c.Do(context.Background(), req)
 	if !errors.Is(err, ErrMaxRetries) {
 		t.Errorf("got err=%v, want ErrMaxRetries", err)
@@ -251,7 +252,7 @@ func TestClient_Do_CtxCancelDuringBackoff(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	req := &Message{MType: MTypeRequest, MCode: byte(MethodGetValue), ObjGroup: GroupFrame}
+	req := &codec.Message{MType: codec.MTypeRequest, MCode: byte(codec.MethodGetValue), ObjGroup: codec.GroupFrame}
 	_, err := c.Do(ctx, req)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("got err=%v, want DeadlineExceeded", err)
@@ -274,14 +275,14 @@ func TestClient_Do_ErrorReplyPropagates(t *testing.T) {
 	// be just the MCODE byte (spec p. 9) — no ObjGrp/ObjId.
 	errReply := []byte{
 		0x00, 0x00, 0x00, 0x0B, // MTID = 11
-		0x01,       // PVER
-		0x03,       // MType = error
+		0x01,       // codec.PVER
+		0x03,       // codec.MType = error
 		0x00,       // MAddr
 		0x13,       // MCODE = 19 (no write access)
 	}
 	ft.recv = [][]byte{errReply}
 
-	req := &Message{MType: MTypeRequest, MCode: byte(MethodSetValue), ObjGroup: GroupControl, ObjID: 7}
+	req := &codec.Message{MType: codec.MTypeRequest, MCode: byte(codec.MethodSetValue), ObjGroup: codec.GroupControl, ObjID: 7}
 	got, err := c.Do(context.Background(), req)
 	if err != nil {
 		t.Fatalf("Do: %v", err)
@@ -289,8 +290,8 @@ func TestClient_Do_ErrorReplyPropagates(t *testing.T) {
 	if !got.IsError() {
 		t.Fatal("expected IsError true")
 	}
-	oerr, ok := got.ErrCode().(ObjectErr)
-	if !ok || oerr.Code != OErrNoWriteAccess {
+	oerr, ok := got.ErrCode().(codec.ObjectErr)
+	if !ok || oerr.Code != codec.OErrNoWriteAccess {
 		t.Errorf("unexpected err code: %v", got.ErrCode())
 	}
 	if len(ft.sent) != 1 {
@@ -324,11 +325,11 @@ func TestClient_Do_Serialisation(t *testing.T) {
 	defer func() { _ = c.Close() }()
 
 	c.nextMTID = 100
-	r1 := buildReply(t, 101, MTypeReply, byte(MethodGetValue), GroupFrame, 0, []byte{0x02})
-	r2 := buildReply(t, 102, MTypeReply, byte(MethodGetValue), GroupFrame, 0, []byte{0x02})
+	r1 := buildReply(t, 101, codec.MTypeReply, byte(codec.MethodGetValue), codec.GroupFrame, 0, []byte{0x02})
+	r2 := buildReply(t, 102, codec.MTypeReply, byte(codec.MethodGetValue), codec.GroupFrame, 0, []byte{0x02})
 	ft.recv = [][]byte{r1, r2}
 
-	req := &Message{MType: MTypeRequest, MCode: byte(MethodGetValue), ObjGroup: GroupFrame}
+	req := &codec.Message{MType: codec.MTypeRequest, MCode: byte(codec.MethodGetValue), ObjGroup: codec.GroupFrame}
 	got1, err := c.Do(context.Background(), req)
 	if err != nil {
 		t.Fatalf("Do1: %v", err)

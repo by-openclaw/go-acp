@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"dhs/internal/export/canonical"
-	iacp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 // Server is the exported alias for the concrete ACP1 provider — lets
@@ -163,7 +163,7 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.applyMutation(e, iacp1.MethodSetValue, bytes); err != nil {
+	if _, err := s.applyMutation(e, codec.MethodSetValue, bytes); err != nil {
 		return nil, err
 	}
 	return convertStoredValue(e.param), nil
@@ -174,7 +174,7 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 // mutating method per spec §"Announcements" p.14. Silent on send error
 // — announcements are fire-and-forget, and the consumer that made the
 // setX call already has the change confirmed via the reply.
-func (s *server) broadcastAnnounce(ann *iacp1.Message) {
+func (s *server) broadcastAnnounce(ann *codec.Message) {
 	s.mu.Lock()
 	bc := s.bcast
 	s.mu.Unlock()

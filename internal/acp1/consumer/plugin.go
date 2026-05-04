@@ -10,6 +10,7 @@ import (
 	"dhs/internal/protocol"
 	"dhs/internal/protocol/compliance"
 	"dhs/internal/transport"
+	"dhs/internal/acp1/codec"
 )
 
 // init registers the ACP1 plugin with the global protocol registry.
@@ -25,7 +26,7 @@ type Factory struct{}
 func (f *Factory) Meta() protocol.ProtocolMeta {
 	return protocol.ProtocolMeta{
 		Name:        "acp1",
-		DefaultPort: DefaultPort,
+		DefaultPort: codec.DefaultPort,
 		Description: "Axon Control Protocol v1.4 (UDP direct)",
 	}
 }
@@ -55,7 +56,7 @@ const (
 // layer. Both the UDP Client and the TCPClient satisfy it, so the rest
 // of the plugin code is transport-agnostic.
 type clientIface interface {
-	Do(ctx context.Context, req *Message) (*Message, error)
+	Do(ctx context.Context, req *codec.Message) (*codec.Message, error)
 	Close() error
 }
 
@@ -158,7 +159,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		return fmt.Errorf("acp1: already connected to %s:%d", p.host, p.port)
 	}
 	if port == 0 {
-		port = DefaultPort
+		port = codec.DefaultPort
 	}
 
 	switch p.transport {
@@ -282,11 +283,11 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error)
 
 	// getValue(frame, 0) at slot 0 returns [num_slots, status_array...].
 	// Spec p. 24 Frame Status Object.
-	req := &Message{
-		MType:    MTypeRequest,
+	req := &codec.Message{
+		MType:    codec.MTypeRequest,
 		MAddr:    0,
-		MCode:    byte(MethodGetValue),
-		ObjGroup: GroupFrame,
+		MCode:    byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupFrame,
 		ObjID:    0,
 	}
 	reply, err := c.Do(ctx, req)
@@ -326,11 +327,11 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, 
 	info := protocol.SlotInfo{Slot: slot}
 
 	// Read the rack controller's frame status for the status byte.
-	req := &Message{
-		MType:    MTypeRequest,
+	req := &codec.Message{
+		MType:    codec.MTypeRequest,
 		MAddr:    0,
-		MCode:    byte(MethodGetValue),
-		ObjGroup: GroupFrame,
+		MCode:    byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupFrame,
 		ObjID:    0,
 	}
 	reply, err := c.Do(ctx, req)
@@ -411,10 +412,10 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 		return protocol.Value{}, err
 	}
 
-	m := &Message{
-		MType:    MTypeRequest,
+	m := &codec.Message{
+		MType:    codec.MTypeRequest,
 		MAddr:    byte(req.Slot),
-		MCode:    byte(MethodGetValue),
+		MCode:    byte(codec.MethodGetValue),
 		ObjGroup: group,
 		ObjID:    id,
 	}
@@ -440,17 +441,17 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 // doesn't traverse (root, frame, file). It infers the ObjectType from
 // the group alone and calls DecodeValueBytes with a synthetic empty
 // Object. Unknown groups return raw bytes.
-func decodeByGroup(group ObjGroup, raw []byte) (protocol.Value, error) {
+func decodeByGroup(group codec.ObjGroup, raw []byte) (protocol.Value, error) {
 	var synth protocol.Object
-	var t ObjectType
+	var t codec.ObjectType
 	switch group {
-	case GroupFrame:
+	case codec.GroupFrame:
 		synth.Kind = protocol.KindFrame
-		t = TypeFrame
-	case GroupRoot:
-		t = TypeRoot
-	case GroupFile:
-		t = TypeFile
+		t = codec.TypeFrame
+	case codec.GroupRoot:
+		t = codec.TypeRoot
+	case codec.GroupFile:
+		t = codec.TypeFile
 	default:
 		return protocol.Value{
 			Kind: protocol.KindRaw,
@@ -498,10 +499,10 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		return protocol.Value{}, fmt.Errorf("acp1 set: no walked tree for slot %d, use raw bytes", req.Slot)
 	}
 
-	m := &Message{
-		MType:    MTypeRequest,
+	m := &codec.Message{
+		MType:    codec.MTypeRequest,
 		MAddr:    byte(req.Slot),
-		MCode:    byte(MethodSetValue),
+		MCode:    byte(codec.MethodSetValue),
 		ObjGroup: group,
 		ObjID:    id,
 		Value:    wireBytes,
@@ -527,7 +528,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 // findObject looks up an Object and its ACP1 type inside a walked tree
 // by (group, id). Returns false if the tree is nil or the object wasn't
 // walked. O(n) — acceptable for typical tree sizes under 512 objects.
-func findObject(tree *SlotTree, group ObjGroup, id byte) (protocol.Object, ObjectType, bool) {
+func findObject(tree *SlotTree, group codec.ObjGroup, id byte) (protocol.Object, codec.ObjectType, bool) {
 	if tree == nil {
 		return protocol.Object{}, 0, false
 	}
@@ -585,7 +586,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 
 	// Wrap the user's high-level callback with a low-level RawEventFunc
 	// that decodes the value bytes using the cached tree.
-	wrapper := func(msg *Message) {
+	wrapper := func(msg *codec.Message) {
 		p.mu.Lock()
 		cache := p.trees
 		p.mu.Unlock()
@@ -638,7 +639,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 	// filtering is applied inside the wrapper for the TCP path.
 	if tcpOK {
 		base := wrapper
-		filtered := func(msg *Message) {
+		filtered := func(msg *codec.Message) {
 			if slot >= 0 && int(msg.MAddr) != slot {
 				return
 			}
@@ -696,7 +697,7 @@ func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
 // exists in a different group, the error message suggests where it was
 // found — a common source of confusion for users who forget which group
 // a label belongs to.
-func resolve(req protocol.ValueRequest, tree *SlotTree) (ObjGroup, byte, error) {
+func resolve(req protocol.ValueRequest, tree *SlotTree) (codec.ObjGroup, byte, error) {
 	if req.Label != "" {
 		if tree == nil {
 			return 0, 0, fmt.Errorf("%w: no walked tree for slot %d",
@@ -707,7 +708,7 @@ func resolve(req protocol.ValueRequest, tree *SlotTree) (ObjGroup, byte, error) 
 		if req.Group != "" {
 			if idx := tree.Lookup(req.Group, req.Label); idx >= 0 {
 				obj := tree.Objects[idx]
-				g, ok := ParseGroup(obj.Group)
+				g, ok := codec.ParseGroup(obj.Group)
 				if !ok {
 					return 0, 0, fmt.Errorf("acp1: bad group %q in tree", obj.Group)
 				}
@@ -718,7 +719,7 @@ func resolve(req protocol.ValueRequest, tree *SlotTree) (ObjGroup, byte, error) 
 			for _, gname := range []string{"identity", "control", "status", "alarm"} {
 				if idx := tree.Lookup(gname, req.Label); idx >= 0 {
 					obj := tree.Objects[idx]
-					g, ok := ParseGroup(obj.Group)
+					g, ok := codec.ParseGroup(obj.Group)
 					if !ok {
 						return 0, 0, fmt.Errorf("acp1: bad group %q in tree", obj.Group)
 					}
@@ -744,7 +745,7 @@ func resolve(req protocol.ValueRequest, tree *SlotTree) (ObjGroup, byte, error) 
 	}
 
 	// Address by explicit group + id — no walker needed.
-	g, ok := ParseGroup(req.Group)
+	g, ok := codec.ParseGroup(req.Group)
 	if !ok {
 		return 0, 0, fmt.Errorf("acp1: invalid group %q", req.Group)
 	}

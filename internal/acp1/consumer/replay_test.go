@@ -15,6 +15,7 @@ import (
 	"dhs/internal/acp1/consumer"
 	"dhs/internal/protocol"
 	"dhs/internal/wiretrace"
+	"dhs/internal/acp1/codec"
 )
 
 // loadTrames reads a captured wire trace from
@@ -88,21 +89,21 @@ func TestReplay_ACP1PropertyDecode(t *testing.T) {
 	trames := loadTrames(t, "slot0_walk")
 
 	var objects int
-	typeCounts := map[acp1.ObjectType]int{}
+	typeCounts := map[codec.ObjectType]int{}
 
 	for _, tr := range trames {
 		raw, err := hex.DecodeString(tr.Hex)
 		if err != nil {
 			continue
 		}
-		msg, err := acp1.Decode(raw)
+		msg, err := codec.Decode(raw)
 		if err != nil {
 			continue
 		}
-		if msg.MType != acp1.MTypeReply || msg.MCode != byte(acp1.MethodGetObject) {
+		if msg.MType != codec.MTypeReply || msg.MCode != byte(codec.MethodGetObject) {
 			continue
 		}
-		obj, err := acp1.DecodeObject(msg.Value)
+		obj, err := codec.DecodeObject(msg.Value)
 		if err != nil {
 			t.Errorf("DecodeObject(group=%d, id=%d): %v", msg.ObjGroup, msg.ObjID, err)
 			continue

@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+	"dhs/internal/acp1/codec"
 )
 
 // Transport is the minimal send/receive contract the ACP1 client needs.
@@ -129,7 +130,7 @@ func (c *Client) Close() error {
 //   - Error-reply messages (MType=3) are returned as successful replies;
 //     the caller inspects msg.IsError() / msg.ErrCode().
 //   - Exhaustion returns ErrMaxRetries.
-func (c *Client) Do(ctx context.Context, req *Message) (*Message, error) {
+func (c *Client) Do(ctx context.Context, req *codec.Message) (*codec.Message, error) {
 	if req == nil {
 		return nil, errors.New("acp1: Do nil request")
 	}
@@ -197,7 +198,7 @@ func (c *Client) Do(ctx context.Context, req *Message) (*Message, error) {
 // ReceiveTimeout window. It sends the payload once, then drains the
 // receive pipe, discarding announcements and MTID mismatches, until
 // either the matching reply arrives or the attempt window expires.
-func (c *Client) doOneAttempt(parent context.Context, payload []byte, wantMTID uint32) (*Message, error) {
+func (c *Client) doOneAttempt(parent context.Context, payload []byte, wantMTID uint32) (*codec.Message, error) {
 	attemptCtx, cancel := context.WithTimeout(parent, c.cfg.ReceiveTimeout)
 	defer cancel()
 
@@ -206,11 +207,11 @@ func (c *Client) doOneAttempt(parent context.Context, payload []byte, wantMTID u
 	}
 
 	for {
-		raw, err := c.tr.Receive(attemptCtx, MaxPacket)
+		raw, err := c.tr.Receive(attemptCtx, codec.MaxPacket)
 		if err != nil {
 			return nil, err
 		}
-		msg, err := Decode(raw)
+		msg, err := codec.Decode(raw)
 		if err != nil {
 			c.logger.Debug("acp1 malformed reply, skipping", "err", err, "bytes", len(raw))
 			continue

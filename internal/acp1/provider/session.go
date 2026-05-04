@@ -2,8 +2,7 @@ package acp1
 
 import (
 	"log/slog"
-
-	iacp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 // handleRequest dispatches a decoded request to the right handler and
@@ -17,12 +16,12 @@ import (
 //
 // Returns (nil, nil) for messages that should be silently dropped
 // (announcements and replies from other providers, error messages).
-func (s *server) handleRequest(msg *iacp1.Message) (*iacp1.Message, *iacp1.Message) {
-	if msg.MType != iacp1.MTypeRequest {
+func (s *server) handleRequest(msg *codec.Message) (*codec.Message, *codec.Message) {
+	if msg.MType != codec.MTypeRequest {
 		return nil, nil
 	}
 
-	if msg.ObjGroup == iacp1.GroupRoot && msg.ObjID == 0 {
+	if msg.ObjGroup == codec.GroupRoot && msg.ObjID == 0 {
 		return s.handleRoot(msg), nil
 	}
 
@@ -32,31 +31,31 @@ func (s *server) handleRequest(msg *iacp1.Message) (*iacp1.Message, *iacp1.Messa
 		return errorReply(msg, groupOrInstanceMissing(s, key)), nil
 	}
 
-	method := iacp1.Method(msg.MCode)
+	method := codec.Method(msg.MCode)
 	if !methodSupported(e.acpType, method) {
-		return errorReply(msg, iacp1.OErrIllegalForType), nil
+		return errorReply(msg, codec.OErrIllegalForType), nil
 	}
 	if err := checkAccess(e.access, method); err != 0 {
 		return errorReply(msg, err), nil
 	}
 
 	switch method {
-	case iacp1.MethodGetValue:
+	case codec.MethodGetValue:
 		raw, err := encodeValue(e)
 		if err != nil {
 			s.logger.Error("getValue encode", slog.String("oid", e.param.OID), slog.String("err", err.Error()))
-			return errorReply(msg, iacp1.OErrIllegalForType), nil
+			return errorReply(msg, codec.OErrIllegalForType), nil
 		}
 		return reply(msg, raw), nil
-	case iacp1.MethodGetObject:
+	case codec.MethodGetObject:
 		raw, err := encodeObject(e)
 		if err != nil {
 			s.logger.Error("getObject encode", slog.String("oid", e.param.OID), slog.String("err", err.Error()))
-			return errorReply(msg, iacp1.OErrIllegalForType), nil
+			return errorReply(msg, codec.OErrIllegalForType), nil
 		}
 		return reply(msg, raw), nil
-	case iacp1.MethodSetValue, iacp1.MethodSetIncValue,
-		iacp1.MethodSetDecValue, iacp1.MethodSetDefValue:
+	case codec.MethodSetValue, codec.MethodSetIncValue,
+		codec.MethodSetDecValue, codec.MethodSetDefValue:
 		raw, err := s.applyMutation(e, method, msg.Value)
 		if err != nil {
 			s.logger.Warn("acp1 mutation",
@@ -64,11 +63,11 @@ func (s *server) handleRequest(msg *iacp1.Message) (*iacp1.Message, *iacp1.Messa
 				slog.String("method", methodName(method)),
 				slog.String("err", err.Error()),
 			)
-			return errorReply(msg, iacp1.OErrIllegalForType), nil
+			return errorReply(msg, codec.OErrIllegalForType), nil
 		}
 		return reply(msg, raw), announce(msg, raw)
 	}
-	return errorReply(msg, iacp1.OErrIllegalMethod), nil
+	return errorReply(msg, codec.OErrIllegalMethod), nil
 }
 
 // announce builds the unsolicited value-change announcement that every
@@ -76,10 +75,10 @@ func (s *server) handleRequest(msg *iacp1.Message) (*iacp1.Message, *iacp1.Messa
 //
 // Shape: MTID=0 (announcement marker), MType=2 (Reply), MCode=set*,
 // MAddr=slot, ObjGroup/ObjID=changed object, Value=new stored bytes.
-func announce(req *iacp1.Message, value []byte) *iacp1.Message {
-	return &iacp1.Message{
+func announce(req *codec.Message, value []byte) *codec.Message {
+	return &codec.Message{
 		MTID:     0,
-		MType:    iacp1.MTypeReply,
+		MType:    codec.MTypeReply,
 		MAddr:    req.MAddr,
 		MCode:    req.MCode,
 		ObjGroup: req.ObjGroup,
@@ -89,19 +88,19 @@ func announce(req *iacp1.Message, value []byte) *iacp1.Message {
 }
 
 // methodName is a small helper so debug logs read "setValue" not "1".
-func methodName(m iacp1.Method) string {
+func methodName(m codec.Method) string {
 	switch m {
-	case iacp1.MethodGetValue:
+	case codec.MethodGetValue:
 		return "getValue"
-	case iacp1.MethodSetValue:
+	case codec.MethodSetValue:
 		return "setValue"
-	case iacp1.MethodSetIncValue:
+	case codec.MethodSetIncValue:
 		return "setIncValue"
-	case iacp1.MethodSetDecValue:
+	case codec.MethodSetDecValue:
 		return "setDecValue"
-	case iacp1.MethodSetDefValue:
+	case codec.MethodSetDefValue:
 		return "setDefValue"
-	case iacp1.MethodGetObject:
+	case codec.MethodGetObject:
 		return "getObject"
 	}
 	return "unknown"
@@ -110,24 +109,24 @@ func methodName(m iacp1.Method) string {
 // handleRoot synthesises the Root (group=0, id=0) reply for the
 // requested slot. Real Axon cards answer Root for their own slot with
 // the per-slot object counters; we do the same from tree.slots.
-func (s *server) handleRoot(msg *iacp1.Message) *iacp1.Message {
+func (s *server) handleRoot(msg *codec.Message) *codec.Message {
 	s.tree.mu.RLock()
 	counts, ok := s.tree.slots[msg.MAddr]
 	s.tree.mu.RUnlock()
 	if !ok {
-		return errorReply(msg, iacp1.OErrInstanceNoExist)
+		return errorReply(msg, codec.OErrInstanceNoExist)
 	}
 
-	switch iacp1.Method(msg.MCode) {
-	case iacp1.MethodGetValue:
+	switch codec.Method(msg.MCode) {
+	case codec.MethodGetValue:
 		// Spec p.21: Root.getValue returns the single "boot_mode" byte.
 		// We report boot_mode=0 (normal operation). Firmware-upgrade
 		// mode (1) is out of scope for the provider.
 		return reply(msg, []byte{0})
-	case iacp1.MethodGetObject:
+	case codec.MethodGetObject:
 		return reply(msg, encodeRootObject(counts))
 	}
-	return errorReply(msg, iacp1.OErrIllegalMethod)
+	return errorReply(msg, codec.OErrIllegalMethod)
 }
 
 // encodeRootObject builds the 9-property getObject reply for the Root
@@ -135,9 +134,9 @@ func (s *server) handleRoot(msg *iacp1.Message) *iacp1.Message {
 // num_control, num_status, num_alarm, num_file.
 func encodeRootObject(c *slotCounts) []byte {
 	return []byte{
-		byte(iacp1.TypeRoot),        // object_type
+		byte(codec.TypeRoot),        // object_type
 		9,                           // num_properties
-		iacp1.AccessRead,            // access — Root is always read-only
+		codec.AccessRead,            // access — Root is always read-only
 		0,                           // boot_mode
 		c.numIdentity,               // num_identity
 		c.numControl,                // num_control
@@ -150,10 +149,10 @@ func encodeRootObject(c *slotCounts) []byte {
 // reply builds a successful reply message mirroring the request's
 // MTID, slot (MAddr), method (MCode), and object addressing. Per spec
 // the reply MUST carry the same MTID so the client can correlate.
-func reply(req *iacp1.Message, value []byte) *iacp1.Message {
-	return &iacp1.Message{
+func reply(req *codec.Message, value []byte) *codec.Message {
+	return &codec.Message{
 		MTID:     req.MTID,
-		MType:    iacp1.MTypeReply,
+		MType:    codec.MTypeReply,
 		MAddr:    req.MAddr,
 		MCode:    req.MCode,
 		ObjGroup: req.ObjGroup,
@@ -168,10 +167,10 @@ func reply(req *iacp1.Message, value []byte) *iacp1.Message {
 // Encode() writes only the MCode byte for Error messages — ObjGroup/
 // ObjID are ignored on the wire — but keeping them set helps any
 // middleware that inspects the struct.
-func errorReply(req *iacp1.Message, code iacp1.ObjectErrCode) *iacp1.Message {
-	return &iacp1.Message{
+func errorReply(req *codec.Message, code codec.ObjectErrCode) *codec.Message {
+	return &codec.Message{
 		MTID:     req.MTID,
-		MType:    iacp1.MTypeError,
+		MType:    codec.MTypeError,
 		MAddr:    req.MAddr,
 		MCode:    byte(code),
 		ObjGroup: req.ObjGroup,
@@ -182,30 +181,30 @@ func errorReply(req *iacp1.Message, code iacp1.ObjectErrCode) *iacp1.Message {
 // methodSupported implements the spec "Method Support Matrix" (CLAUDE.md
 // under §ACP1 Method Support Matrix). Ensures we emit OErrIllegalForType
 // rather than crashing on e.g. setIncValue of an Alarm.
-func methodSupported(t iacp1.ObjectType, m iacp1.Method) bool {
+func methodSupported(t codec.ObjectType, m codec.Method) bool {
 	switch t {
-	case iacp1.TypeRoot:
-		return m == iacp1.MethodGetValue || m == iacp1.MethodGetObject
-	case iacp1.TypeInteger, iacp1.TypeLong, iacp1.TypeFloat, iacp1.TypeByte, iacp1.TypeIPAddr:
+	case codec.TypeRoot:
+		return m == codec.MethodGetValue || m == codec.MethodGetObject
+	case codec.TypeInteger, codec.TypeLong, codec.TypeFloat, codec.TypeByte, codec.TypeIPAddr:
 		// Numeric-with-step types support all six methods.
 		return true
-	case iacp1.TypeEnum:
+	case codec.TypeEnum:
 		// No inc/dec on enums (no step).
 		switch m {
-		case iacp1.MethodGetValue, iacp1.MethodSetValue,
-			iacp1.MethodSetDefValue, iacp1.MethodGetObject:
+		case codec.MethodGetValue, codec.MethodSetValue,
+			codec.MethodSetDefValue, codec.MethodGetObject:
 			return true
 		}
 		return false
-	case iacp1.TypeString:
+	case codec.TypeString:
 		// No inc/dec/setDef on strings.
 		switch m {
-		case iacp1.MethodGetValue, iacp1.MethodSetValue, iacp1.MethodGetObject:
+		case codec.MethodGetValue, codec.MethodSetValue, codec.MethodGetObject:
 			return true
 		}
 		return false
-	case iacp1.TypeAlarm, iacp1.TypeFile, iacp1.TypeFrame:
-		return m == iacp1.MethodGetValue || m == iacp1.MethodGetObject
+	case codec.TypeAlarm, codec.TypeFile, codec.TypeFrame:
+		return m == codec.MethodGetValue || m == codec.MethodGetObject
 	}
 	return false
 }
@@ -213,22 +212,22 @@ func methodSupported(t iacp1.ObjectType, m iacp1.Method) bool {
 // checkAccess maps the requested method to the access bit required by
 // spec p.20 and returns 0 if the entry grants it, or the appropriate
 // OErrNo*Access code otherwise.
-func checkAccess(access uint8, m iacp1.Method) iacp1.ObjectErrCode {
+func checkAccess(access uint8, m codec.Method) codec.ObjectErrCode {
 	switch m {
-	case iacp1.MethodGetValue, iacp1.MethodGetObject:
-		if access&iacp1.AccessRead == 0 {
-			return iacp1.OErrNoReadAccess
+	case codec.MethodGetValue, codec.MethodGetObject:
+		if access&codec.AccessRead == 0 {
+			return codec.OErrNoReadAccess
 		}
-	case iacp1.MethodSetValue, iacp1.MethodSetIncValue, iacp1.MethodSetDecValue:
-		if access&iacp1.AccessWrite == 0 {
-			return iacp1.OErrNoWriteAccess
+	case codec.MethodSetValue, codec.MethodSetIncValue, codec.MethodSetDecValue:
+		if access&codec.AccessWrite == 0 {
+			return codec.OErrNoWriteAccess
 		}
-	case iacp1.MethodSetDefValue:
-		if access&iacp1.AccessSetDef == 0 {
-			return iacp1.OErrNoSetDefAccess
+	case codec.MethodSetDefValue:
+		if access&codec.AccessSetDef == 0 {
+			return codec.OErrNoSetDefAccess
 		}
 	default:
-		return iacp1.OErrIllegalMethod
+		return codec.OErrIllegalMethod
 	}
 	return 0
 }
@@ -238,15 +237,15 @@ func checkAccess(access uint8, m iacp1.Method) iacp1.ObjectErrCode {
 // group (spec code 17). Walk the flat index once looking for any entry
 // matching slot+group — cheap at the 2-3k-object scale a real frame
 // carries.
-func groupOrInstanceMissing(s *server, k objectKey) iacp1.ObjectErrCode {
+func groupOrInstanceMissing(s *server, k objectKey) codec.ObjectErrCode {
 	s.tree.mu.RLock()
 	defer s.tree.mu.RUnlock()
 	for key := range s.tree.entries {
 		if key.slot == k.slot && key.group == k.group {
-			return iacp1.OErrInstanceNoExist
+			return codec.OErrInstanceNoExist
 		}
 	}
-	return iacp1.OErrGroupNoExist
+	return codec.OErrGroupNoExist
 }
 
 // -----------------------------------------------------------------
@@ -261,7 +260,7 @@ func (s *server) handleDatagram2(data []byte, srcStr string, send func([]byte) e
 		slog.String("src", srcStr),
 		slog.Int("bytes", len(data)),
 	)
-	msg, err := iacp1.Decode(data)
+	msg, err := codec.Decode(data)
 	if err != nil {
 		s.logger.Warn("acp1 provider: decode failed",
 			slog.String("src", srcStr),

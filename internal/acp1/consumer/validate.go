@@ -7,6 +7,7 @@ import (
 
 	"dhs/internal/protocol"
 	"dhs/internal/wiretrace"
+	"dhs/internal/acp1/codec"
 )
 
 // Validate decodes captured ACP1 wire-trace records (Trames per ADR-0021)
@@ -44,7 +45,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 			continue
 		}
 
-		msg, err := Decode(raw)
+		msg, err := codec.Decode(raw)
 		if err != nil {
 			report.Errors = append(report.Errors, protocol.ValidateError{
 				TrameIndex: i,
@@ -61,17 +62,17 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 		// PVER must always be 1 for v1.4 devices.
 		if msg.PVER != 1 {
 			report.Invariants = append(report.Invariants,
-				fmt.Sprintf("trame %d: PVER %d, want 1", i, msg.PVER))
+				fmt.Sprintf("trame %d: codec.PVER %d, want 1", i, msg.PVER))
 		}
 
 		switch msg.MType {
-		case MTypeRequest:
+		case codec.MTypeRequest:
 			if msg.MTID == 0 {
 				report.Invariants = append(report.Invariants,
 					fmt.Sprintf("trame %d: request with MTID=0 (spec: must be non-zero)", i))
 			}
 			lastReqMTID = msg.MTID
-		case MTypeReply:
+		case codec.MTypeReply:
 			if msg.MTID != lastReqMTID {
 				report.Invariants = append(report.Invariants,
 					fmt.Sprintf("trame %d: reply MTID=%d does not match last request MTID=%d", i, msg.MTID, lastReqMTID))

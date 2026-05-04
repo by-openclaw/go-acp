@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"dhs/internal/export/canonical"
-	iacp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 // TestEncodeDecodeRoundTrip asserts that every object type produced by
@@ -16,13 +16,13 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	tests := []struct {
 		name  string
 		entry *entry
-		check func(*testing.T, *iacp1.DecodedObject)
+		check func(*testing.T, *codec.DecodedObject)
 	}{
 		{
 			name: "integer",
 			entry: &entry{
-				acpType: iacp1.TypeInteger,
-				access:  iacp1.AccessRead | iacp1.AccessWrite,
+				acpType: codec.TypeInteger,
+				access:  codec.AccessRead | codec.AccessWrite,
 				param: param("Level", canonical.ParamInteger,
 					withValue(int64(-6)),
 					withMin(int64(-60)),
@@ -32,9 +32,9 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 					withUnit("dB"),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeInteger {
-					t.Fatalf("type=%d want %d", o.Type, iacp1.TypeInteger)
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeInteger {
+					t.Fatalf("type=%d want %d", o.Type, codec.TypeInteger)
 				}
 				if o.IntVal != -6 {
 					t.Errorf("value=%d want -6", o.IntVal)
@@ -49,7 +49,7 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 				if o.Unit != "dB" {
 					t.Errorf("unit=%q", o.Unit)
 				}
-				if o.Access != iacp1.AccessRead|iacp1.AccessWrite {
+				if o.Access != codec.AccessRead|codec.AccessWrite {
 					t.Errorf("access=%08b", o.Access)
 				}
 			},
@@ -57,8 +57,8 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		{
 			name: "long",
 			entry: &entry{
-				acpType: iacp1.TypeLong,
-				access:  iacp1.AccessRead,
+				acpType: codec.TypeLong,
+				access:  codec.AccessRead,
 				param: param("Counter", canonical.ParamInteger,
 					withFormat("int32"),
 					withValue(int64(1_000_000)),
@@ -66,9 +66,9 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 					withMax(int64(2_000_000)),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeLong {
-					t.Fatalf("type=%d want %d", o.Type, iacp1.TypeLong)
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeLong {
+					t.Fatalf("type=%d want %d", o.Type, codec.TypeLong)
 				}
 				if o.IntVal != 1_000_000 || o.MinInt != 0 || o.MaxInt != 2_000_000 {
 					t.Errorf("value=%d min=%d max=%d", o.IntVal, o.MinInt, o.MaxInt)
@@ -78,8 +78,8 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		{
 			name: "byte",
 			entry: &entry{
-				acpType: iacp1.TypeByte,
-				access:  iacp1.AccessRead | iacp1.AccessWrite,
+				acpType: codec.TypeByte,
+				access:  codec.AccessRead | codec.AccessWrite,
 				param: param("Saturation", canonical.ParamInteger,
 					withFormat("uint8"),
 					withValue(int64(128)),
@@ -87,9 +87,9 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 					withMax(int64(255)),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeByte {
-					t.Fatalf("type=%d want %d", o.Type, iacp1.TypeByte)
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeByte {
+					t.Fatalf("type=%d want %d", o.Type, codec.TypeByte)
 				}
 				if o.ByteVal != 128 || o.MinByte != 0 || o.MaxByte != 255 {
 					t.Errorf("value=%d min=%d max=%d", o.ByteVal, o.MinByte, o.MaxByte)
@@ -99,8 +99,8 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		{
 			name: "float",
 			entry: &entry{
-				acpType: iacp1.TypeFloat,
-				access:  iacp1.AccessRead | iacp1.AccessWrite,
+				acpType: codec.TypeFloat,
+				access:  codec.AccessRead | codec.AccessWrite,
 				param: param("Frequency", canonical.ParamReal,
 					withValue(float64(440.0)),
 					withMin(float64(20.0)),
@@ -110,8 +110,8 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 					withUnit("Hz"),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeFloat {
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeFloat {
 					t.Fatalf("type=%d want float", o.Type)
 				}
 				if o.FloatVal < 439.99 || o.FloatVal > 440.01 {
@@ -125,15 +125,15 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		{
 			name: "ipaddr",
 			entry: &entry{
-				acpType: iacp1.TypeIPAddr,
-				access:  iacp1.AccessRead | iacp1.AccessWrite,
+				acpType: codec.TypeIPAddr,
+				access:  codec.AccessRead | codec.AccessWrite,
 				param: param("Gateway", canonical.ParamString,
 					withFormat("ipv4"),
 					withValue("192.168.1.1"),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeIPAddr {
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeIPAddr {
 					t.Fatalf("type=%d want ipaddr", o.Type)
 				}
 				want := uint32(192)<<24 | uint32(168)<<16 | uint32(1)<<8 | uint32(1)
@@ -145,16 +145,16 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		{
 			name: "enum",
 			entry: &entry{
-				acpType: iacp1.TypeEnum,
-				access:  iacp1.AccessRead | iacp1.AccessWrite,
+				acpType: codec.TypeEnum,
+				access:  codec.AccessRead | codec.AccessWrite,
 				param: param("Mode", canonical.ParamEnum,
 					withValue(int64(2)),
 					withDefault(int64(0)),
 					withEnumMap("Off", "On", "Auto"),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeEnum {
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeEnum {
 					t.Fatalf("type=%d want enum", o.Type)
 				}
 				if o.ByteVal != 2 || o.NumItems != 3 {
@@ -168,15 +168,15 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		{
 			name: "string",
 			entry: &entry{
-				acpType: iacp1.TypeString,
-				access:  iacp1.AccessRead | iacp1.AccessWrite,
+				acpType: codec.TypeString,
+				access:  codec.AccessRead | codec.AccessWrite,
 				param: param("Label", canonical.ParamString,
 					withValue("hello"),
 					withFormat("maxLen=32"),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeString {
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeString {
 					t.Fatalf("type=%d want string", o.Type)
 				}
 				if o.StrValue != "hello" {
@@ -190,16 +190,16 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		{
 			name: "alarm",
 			entry: &entry{
-				acpType: iacp1.TypeAlarm,
-				access:  iacp1.AccessRead,
+				acpType: codec.TypeAlarm,
+				access:  codec.AccessRead,
 				param: param("OverTemp", canonical.ParamBoolean,
 					withValue(false),
 					withFormat("alarm,priority=2,tag=17"),
 					withDescription("on: Overheat / off: OK"),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeAlarm {
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeAlarm {
 					t.Fatalf("type=%d want alarm", o.Type)
 				}
 				if o.Priority != 2 || o.Tag != 17 {
@@ -213,16 +213,16 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		{
 			name: "file",
 			entry: &entry{
-				acpType: iacp1.TypeFile,
-				access:  iacp1.AccessRead | iacp1.AccessWrite,
+				acpType: codec.TypeFile,
+				access:  codec.AccessRead | codec.AccessWrite,
 				param: param("firmware.bin", canonical.ParamString,
 					withFormat("file"),
 					withValue("firmware.bin"),
 					withDefault(int64(42)),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeFile {
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeFile {
 					t.Fatalf("type=%d want file", o.Type)
 				}
 				if o.FileName != "firmware.bin" {
@@ -236,15 +236,15 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		{
 			name: "frame",
 			entry: &entry{
-				acpType: iacp1.TypeFrame,
-				access:  iacp1.AccessRead,
+				acpType: codec.TypeFrame,
+				access:  codec.AccessRead,
 				param: param("slotStatus", canonical.ParamOctets,
 					withFormat("frame"),
 					withValue([]any{int64(2), int64(2), int64(0), int64(3)}),
 				),
 			},
-			check: func(t *testing.T, o *iacp1.DecodedObject) {
-				if o.Type != iacp1.TypeFrame {
+			check: func(t *testing.T, o *codec.DecodedObject) {
+				if o.Type != codec.TypeFrame {
 					t.Fatalf("type=%d want frame", o.Type)
 				}
 				if o.NumSlots != 4 {
@@ -263,7 +263,7 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			o, err := iacp1.DecodeObject(raw)
+			o, err := codec.DecodeObject(raw)
 			if err != nil {
 				t.Fatalf("decode %q: %v", hexString(raw), err)
 			}
@@ -282,52 +282,52 @@ func TestEncodeValue(t *testing.T) {
 	}{
 		{
 			name: "int16 positive",
-			entry: &entry{acpType: iacp1.TypeInteger, param: param("v", canonical.ParamInteger, withValue(int64(300)))},
+			entry: &entry{acpType: codec.TypeInteger, param: param("v", canonical.ParamInteger, withValue(int64(300)))},
 			want: []byte{0x01, 0x2C},
 		},
 		{
 			name: "int16 negative",
-			entry: &entry{acpType: iacp1.TypeInteger, param: param("v", canonical.ParamInteger, withValue(int64(-1)))},
+			entry: &entry{acpType: codec.TypeInteger, param: param("v", canonical.ParamInteger, withValue(int64(-1)))},
 			want: []byte{0xFF, 0xFF},
 		},
 		{
 			name: "byte",
-			entry: &entry{acpType: iacp1.TypeByte, param: param("v", canonical.ParamInteger, withFormat("uint8"), withValue(int64(200)))},
+			entry: &entry{acpType: codec.TypeByte, param: param("v", canonical.ParamInteger, withFormat("uint8"), withValue(int64(200)))},
 			want: []byte{0xC8},
 		},
 		{
 			name: "long",
-			entry: &entry{acpType: iacp1.TypeLong, param: param("v", canonical.ParamInteger, withFormat("int32"), withValue(int64(1_000_000)))},
+			entry: &entry{acpType: codec.TypeLong, param: param("v", canonical.ParamInteger, withFormat("int32"), withValue(int64(1_000_000)))},
 			want: []byte{0x00, 0x0F, 0x42, 0x40},
 		},
 		{
 			name: "ipaddr",
-			entry: &entry{acpType: iacp1.TypeIPAddr, param: param("v", canonical.ParamString, withFormat("ipv4"), withValue("10.0.0.1"))},
+			entry: &entry{acpType: codec.TypeIPAddr, param: param("v", canonical.ParamString, withFormat("ipv4"), withValue("10.0.0.1"))},
 			want: []byte{0x0A, 0x00, 0x00, 0x01},
 		},
 		{
 			name: "enum",
-			entry: &entry{acpType: iacp1.TypeEnum, param: param("v", canonical.ParamEnum, withValue(int64(1)))},
+			entry: &entry{acpType: codec.TypeEnum, param: param("v", canonical.ParamEnum, withValue(int64(1)))},
 			want: []byte{0x01},
 		},
 		{
 			name: "string",
-			entry: &entry{acpType: iacp1.TypeString, param: param("v", canonical.ParamString, withValue("hi"))},
+			entry: &entry{acpType: codec.TypeString, param: param("v", canonical.ParamString, withValue("hi"))},
 			want: []byte{'h', 'i', 0},
 		},
 		{
 			name: "alarm active",
-			entry: &entry{acpType: iacp1.TypeAlarm, param: param("v", canonical.ParamBoolean, withFormat("alarm"), withValue(true))},
+			entry: &entry{acpType: codec.TypeAlarm, param: param("v", canonical.ParamBoolean, withFormat("alarm"), withValue(true))},
 			want: []byte{0x01},
 		},
 		{
 			name: "frame",
-			entry: &entry{acpType: iacp1.TypeFrame, param: param("v", canonical.ParamOctets, withFormat("frame"), withValue([]any{int64(2), int64(0), int64(2)}))},
+			entry: &entry{acpType: codec.TypeFrame, param: param("v", canonical.ParamOctets, withFormat("frame"), withValue([]any{int64(2), int64(0), int64(2)}))},
 			want: []byte{0x03, 0x02, 0x00, 0x02},
 		},
 		{
 			name:    "overflow int16",
-			entry:   &entry{acpType: iacp1.TypeInteger, param: param("v", canonical.ParamInteger, withValue(int64(40000)))},
+			entry:   &entry{acpType: codec.TypeInteger, param: param("v", canonical.ParamInteger, withValue(int64(40000)))},
 			wantErr: true,
 		},
 	}
@@ -356,21 +356,21 @@ func TestDeriveACPType(t *testing.T) {
 	cases := []struct {
 		name   string
 		p      *canonical.Parameter
-		want   iacp1.ObjectType
+		want   codec.ObjectType
 		wantOK bool
 	}{
-		{"integer default", param("x", canonical.ParamInteger), iacp1.TypeInteger, true},
-		{"integer int32", param("x", canonical.ParamInteger, withFormat("int32")), iacp1.TypeLong, true},
-		{"integer uint8", param("x", canonical.ParamInteger, withFormat("uint8")), iacp1.TypeByte, true},
+		{"integer default", param("x", canonical.ParamInteger), codec.TypeInteger, true},
+		{"integer int32", param("x", canonical.ParamInteger, withFormat("int32")), codec.TypeLong, true},
+		{"integer uint8", param("x", canonical.ParamInteger, withFormat("uint8")), codec.TypeByte, true},
 		{"integer bad", param("x", canonical.ParamInteger, withFormat("uint16")), 0, false},
-		{"real", param("x", canonical.ParamReal), iacp1.TypeFloat, true},
-		{"enum", param("x", canonical.ParamEnum), iacp1.TypeEnum, true},
-		{"string default", param("x", canonical.ParamString), iacp1.TypeString, true},
-		{"ipv4", param("x", canonical.ParamString, withFormat("ipv4")), iacp1.TypeIPAddr, true},
-		{"file", param("x", canonical.ParamString, withFormat("file")), iacp1.TypeFile, true},
-		{"alarm", param("x", canonical.ParamBoolean, withFormat("alarm")), iacp1.TypeAlarm, true},
+		{"real", param("x", canonical.ParamReal), codec.TypeFloat, true},
+		{"enum", param("x", canonical.ParamEnum), codec.TypeEnum, true},
+		{"string default", param("x", canonical.ParamString), codec.TypeString, true},
+		{"ipv4", param("x", canonical.ParamString, withFormat("ipv4")), codec.TypeIPAddr, true},
+		{"file", param("x", canonical.ParamString, withFormat("file")), codec.TypeFile, true},
+		{"alarm", param("x", canonical.ParamBoolean, withFormat("alarm")), codec.TypeAlarm, true},
 		{"boolean no hint REJECTED", param("x", canonical.ParamBoolean), 0, false},
-		{"frame", param("x", canonical.ParamOctets, withFormat("frame")), iacp1.TypeFrame, true},
+		{"frame", param("x", canonical.ParamOctets, withFormat("frame")), codec.TypeFrame, true},
 		{"octets no hint REJECTED", param("x", canonical.ParamOctets), 0, false},
 	}
 	for _, tc := range cases {

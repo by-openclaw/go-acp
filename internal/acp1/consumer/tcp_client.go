@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"dhs/internal/transport"
+	"dhs/internal/acp1/codec"
 )
 
 // TCPClient is the ACP1 session layer for TCP direct mode (spec v1.4
@@ -48,7 +49,7 @@ type TCPClient struct {
 
 	// pendingMu guards pending + listeners + closed.
 	pendingMu sync.Mutex
-	pending   map[uint32]chan *Message
+	pending   map[uint32]chan *codec.Message
 	listeners []RawEventFunc
 	closed    bool
 
@@ -82,7 +83,7 @@ func NewTCPClient(conn *transport.TCPConn, logger *slog.Logger, cfg ClientConfig
 		logger:     logger,
 		cfg:        cfg,
 		nextMTID:   seed,
-		pending:    map[uint32]chan *Message{},
+		pending:    map[uint32]chan *codec.Message{},
 		readerDone: make(chan struct{}),
 	}
 	go c.readerLoop()
@@ -119,7 +120,7 @@ func (c *TCPClient) Close() error {
 // Do is the ACP1 Client contract: send a request, return the matching
 // reply. Implements the clientIface interface the Plugin uses, so it's
 // a drop-in replacement for UDP Client at the Plugin layer.
-func (c *TCPClient) Do(ctx context.Context, req *Message) (*Message, error) {
+func (c *TCPClient) Do(ctx context.Context, req *codec.Message) (*codec.Message, error) {
 	if req == nil {
 		return nil, errors.New("acp1 tcp: Do nil request")
 	}
@@ -134,7 +135,7 @@ func (c *TCPClient) Do(ctx context.Context, req *Message) (*Message, error) {
 	// sending, so a fast device can't beat us with a reply we haven't
 	// subscribed to yet.
 	req.MTID = c.allocMTID()
-	replyCh := make(chan *Message, 1)
+	replyCh := make(chan *codec.Message, 1)
 
 	c.pendingMu.Lock()
 	c.pending[req.MTID] = replyCh
@@ -219,7 +220,7 @@ func (c *TCPClient) readerLoop() {
 	for {
 		// Blocking read with no deadline — closing the socket (via
 		// Close) unblocks it with an error.
-		raw, err := c.conn.Receive(context.Background(), MaxPacket)
+		raw, err := c.conn.Receive(context.Background(), codec.MaxPacket)
 		if err != nil {
 			// Close → exit. Any other error → also exit, since a
 			// framing error on a TCP stream means we can't resync.
@@ -233,7 +234,7 @@ func (c *TCPClient) readerLoop() {
 			return
 		}
 
-		msg, derr := Decode(raw)
+		msg, derr := codec.Decode(raw)
 		if derr != nil {
 			c.logger.Debug("acp1 tcp reader: malformed frame", "err", derr, "bytes", len(raw))
 			continue
