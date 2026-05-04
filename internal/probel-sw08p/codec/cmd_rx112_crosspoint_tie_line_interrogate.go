@@ -2,11 +2,19 @@ package codec
 
 // TieLineInterrogateParams: rx 112 CROSSPOINT TIE LINE INTERROGATE —
 // asks the matrix for the per-level tally of a destination association.
+// The matrix replies with tx 113 CROSSPOINT TIE LINE TALLY (one row
+// per destination level).
 //
-// Reference: SW-P-08 §3.2.28.
+// No extended pair — there is no cmd 240 in SW-P-08 Issue 30. The
+// narrow form is already wide enough: byte 1 is a FULL 8-bit matrix
+// byte (the spec quotes a device range of 0-19 but the wire field is
+// the full 0-255), and DestAssociationID is 16-bit (DIV/MOD 256). The
+// tie-line family does not need a needsExtended() method.
+//
+// Reference: SW-P-08 Issue 30 §3.2.28.
 type TieLineInterrogateParams struct {
-	MatrixID          uint8  // 0-19
-	DestAssociationID uint16 // u16
+	MatrixID          uint8  // wire range 0-255 (spec device limit 0-19)
+	DestAssociationID uint16 // 0-65535 (DIV/MOD 256)
 }
 
 // EncodeTieLineInterrogate packs rx 112.
