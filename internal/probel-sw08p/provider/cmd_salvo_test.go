@@ -32,7 +32,7 @@ func TestSalvoBuildFireInterrogate(t *testing.T) {
 		codec.SalvoTallyValidMore, codec.SalvoTallyValidLast,
 	} {
 		res, err := srv.handle(codec.EncodeSalvoGroupInterrogate(codec.SalvoGroupInterrogateParams{
-			SalvoID: 5, ConnectIndex: uint8(idx),
+			SalvoID: 5, ConnectIndex: uint16(idx),
 		}))
 		if err != nil {
 			t.Fatalf("interrogate #%d: %v", idx, err)
