@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"dhs/internal/export/canonical"
-	iacp2 "dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // buildProperties assembles the ACP2 property list a get_object reply
@@ -30,47 +30,47 @@ import (
 //
 // We emit in this order. The codec's EncodeProperties takes care of
 // the per-property alignment.
-func buildProperties(e *entry) ([]iacp2.Property, error) {
-	props := make([]iacp2.Property, 0, 8)
+func buildProperties(e *entry) ([]codec.Property, error) {
+	props := make([]codec.Property, 0, 8)
 
-	props = append(props, propInline(iacp2.PIDObjectType, uint8(e.objType)))
-	props = append(props, propStringData0(iacp2.PIDLabel, e.label))
-	props = append(props, propInline(iacp2.PIDAccess, e.access))
+	props = append(props, propInline(codec.PIDObjectType, uint8(e.objType)))
+	props = append(props, propStringData0(codec.PIDLabel, e.label))
+	props = append(props, propInline(codec.PIDAccess, e.access))
 
 	switch e.objType {
-	case iacp2.ObjTypeNode:
+	case codec.ObjTypeNode:
 		props = append(props, propChildren(e.children))
-	case iacp2.ObjTypeNumber:
-		props = append(props, propInline(iacp2.PIDNumberType, uint8(e.numType)))
-		val, err := encodeValueProp(iacp2.PIDValue, e)
+	case codec.ObjTypeNumber:
+		props = append(props, propInline(codec.PIDNumberType, uint8(e.numType)))
+		val, err := encodeValueProp(codec.PIDValue, e)
 		if err != nil {
 			return nil, err
 		}
 		props = append(props, val)
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDDefaultValue, e.numType, e.param.Default); err != nil {
+		if cp, ok, err := encodeOptionalConstraint(codec.PIDDefaultValue, e.numType, e.param.Default); err != nil {
 			return nil, err
 		} else if ok {
 			props = append(props, cp)
 		}
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDMinValue, e.numType, e.param.Minimum); err != nil {
+		if cp, ok, err := encodeOptionalConstraint(codec.PIDMinValue, e.numType, e.param.Minimum); err != nil {
 			return nil, err
 		} else if ok {
 			props = append(props, cp)
 		}
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDMaxValue, e.numType, e.param.Maximum); err != nil {
+		if cp, ok, err := encodeOptionalConstraint(codec.PIDMaxValue, e.numType, e.param.Maximum); err != nil {
 			return nil, err
 		} else if ok {
 			props = append(props, cp)
 		}
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDStepSize, e.numType, e.param.Step); err != nil {
+		if cp, ok, err := encodeOptionalConstraint(codec.PIDStepSize, e.numType, e.param.Step); err != nil {
 			return nil, err
 		} else if ok {
 			props = append(props, cp)
 		}
 		if e.param.Unit != nil && *e.param.Unit != "" {
-			props = append(props, propStringData0(iacp2.PIDUnit, *e.param.Unit))
+			props = append(props, propStringData0(codec.PIDUnit, *e.param.Unit))
 		}
-	case iacp2.ObjTypeEnum:
+	case codec.ObjTypeEnum:
 		// Enum per spec §5.1: pid 5 number_type does NOT apply (Number only),
 		// and pid 9 default_value is depth-indexed ([d]) — only valid for
 		// preset children which carry pid 7 preset_depth. A plain Enum is
@@ -79,66 +79,66 @@ func buildProperties(e *entry) ([]iacp2.Property, error) {
 		// "Index was outside the bounds of the array" — the preset array
 		// hasn't been sized.
 		// pid 8 value uses vtype = 9 (preset/enum), stored as u32 index.
-		val, err := encodeValueProp(iacp2.PIDValue, e)
+		val, err := encodeValueProp(codec.PIDValue, e)
 		if err != nil {
 			return nil, err
 		}
 		props = append(props, val)
 		props = append(props, propOptions(enumOptions(e.param)))
-	case iacp2.ObjTypePreset:
+	case codec.ObjTypePreset:
 		// Preset child per spec §5: pid 7 preset_depth lists the N valid
 		// idx values; pids 8/9/10/11 each appear N times in the reply,
 		// once per idx. Number-style numeric fields (pid 5, 12, 13) are
 		// emitted once. For N=1 the shape degenerates to "Number + pid 7".
-		props = append(props, propInline(iacp2.PIDNumberType, uint8(e.numType)))
+		props = append(props, propInline(codec.PIDNumberType, uint8(e.numType)))
 		props = append(props, propPresetDepth(e.presetDepth))
 		for i := uint32(0); i < e.presetDepth; i++ {
-			val, err := encodeValueProp(iacp2.PIDValue, e)
+			val, err := encodeValueProp(codec.PIDValue, e)
 			if err != nil {
 				return nil, err
 			}
 			props = append(props, val)
 		}
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDDefaultValue, e.numType, e.param.Default); err != nil {
+		if cp, ok, err := encodeOptionalConstraint(codec.PIDDefaultValue, e.numType, e.param.Default); err != nil {
 			return nil, err
 		} else if ok {
 			for i := uint32(0); i < e.presetDepth; i++ {
 				props = append(props, cp)
 			}
 		}
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDMinValue, e.numType, e.param.Minimum); err != nil {
+		if cp, ok, err := encodeOptionalConstraint(codec.PIDMinValue, e.numType, e.param.Minimum); err != nil {
 			return nil, err
 		} else if ok {
 			for i := uint32(0); i < e.presetDepth; i++ {
 				props = append(props, cp)
 			}
 		}
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDMaxValue, e.numType, e.param.Maximum); err != nil {
+		if cp, ok, err := encodeOptionalConstraint(codec.PIDMaxValue, e.numType, e.param.Maximum); err != nil {
 			return nil, err
 		} else if ok {
 			for i := uint32(0); i < e.presetDepth; i++ {
 				props = append(props, cp)
 			}
 		}
-		if cp, ok, err := encodeOptionalConstraint(iacp2.PIDStepSize, e.numType, e.param.Step); err != nil {
+		if cp, ok, err := encodeOptionalConstraint(codec.PIDStepSize, e.numType, e.param.Step); err != nil {
 			return nil, err
 		} else if ok {
 			props = append(props, cp)
 		}
 		if e.param.Unit != nil && *e.param.Unit != "" {
-			props = append(props, propStringData0(iacp2.PIDUnit, *e.param.Unit))
+			props = append(props, propStringData0(codec.PIDUnit, *e.param.Unit))
 		}
-	case iacp2.ObjTypeIPv4:
-		val, err := encodeValueProp(iacp2.PIDValue, e)
+	case codec.ObjTypeIPv4:
+		val, err := encodeValueProp(codec.PIDValue, e)
 		if err != nil {
 			return nil, err
 		}
 		props = append(props, val)
-	case iacp2.ObjTypeString:
+	case codec.ObjTypeString:
 		if ml := maxLenHint(e.param); ml > 0 {
-			props = append(props, propU16Pad(iacp2.PIDStringMaxLength, uint16(ml)))
+			props = append(props, propU16Pad(codec.PIDStringMaxLength, uint16(ml)))
 		}
-		val, err := encodeValueProp(iacp2.PIDValue, e)
+		val, err := encodeValueProp(codec.PIDValue, e)
 		if err != nil {
 			return nil, err
 		}
@@ -161,10 +161,10 @@ func buildProperties(e *entry) ([]iacp2.Property, error) {
 //	| 4+len  | NUL   | 1        | 0x00 terminator                         |
 //
 // Spec reference: acp2_protocol.pdf §5.4 (pid 2 label, pid 13 unit)
-func propStringData0(pid uint8, s string) iacp2.Property {
+func propStringData0(pid uint8, s string) codec.Property {
 	body := make([]byte, len(s)+1) // +1 for NUL terminator
 	copy(body, s)
-	return iacp2.Property{
+	return codec.Property{
 		PID:   pid,
 		VType: 0,
 		PLen:  uint16(4 + len(body)),
@@ -184,8 +184,8 @@ func propStringData0(pid uint8, s string) iacp2.Property {
 //	| 2-3    | plen  | u16 BE | 4 (header only)                           |
 //
 // Spec reference: acp2_protocol.pdf §5.4 (inline-data properties)
-func propInline(pid uint8, val uint8) iacp2.Property {
-	return iacp2.Property{
+func propInline(pid uint8, val uint8) codec.Property {
+	return codec.Property{
 		PID:   pid,
 		VType: val, // the "data" byte carries the value itself
 		PLen:  4,   // header only; no body
@@ -207,10 +207,10 @@ func propInline(pid uint8, val uint8) iacp2.Property {
 //	| 6-7    | pad   | 2      | zero bytes added by EncodeProperty        |
 //
 // Spec reference: acp2_protocol.pdf §5.4 pid=6 string_max_length
-func propU16Pad(pid uint8, v uint16) iacp2.Property {
+func propU16Pad(pid uint8, v uint16) codec.Property {
 	body := make([]byte, 2)
 	binary.BigEndian.PutUint16(body, v)
-	return iacp2.Property{
+	return codec.Property{
 		PID:   pid,
 		VType: 0,
 		PLen:  uint16(4 + 2), // plen excludes padding per spec §5.3
@@ -229,13 +229,13 @@ func propU16Pad(pid uint8, v uint16) iacp2.Property {
 //	| 4 + 4*i   | child_i | u32 BE   | one entry per child obj-id         |
 //
 // Spec reference: acp2_protocol.pdf §5.4 pid=14 children
-func propChildren(ids []uint32) iacp2.Property {
+func propChildren(ids []uint32) codec.Property {
 	data := make([]byte, 4*len(ids))
 	for i, id := range ids {
 		binary.BigEndian.PutUint32(data[i*4:], id)
 	}
-	return iacp2.Property{
-		PID:   iacp2.PIDChildren,
+	return codec.Property{
+		PID:   codec.PIDChildren,
 		VType: 0,
 		PLen:  uint16(4 + len(data)),
 		Data:  data,
@@ -256,13 +256,13 @@ func propChildren(ids []uint32) iacp2.Property {
 //
 // Spec reference: acp2_protocol.pdf §5 Preset depth,
 // internal/acp2/CLAUDE.md "Preset depth".
-func propPresetDepth(depth uint32) iacp2.Property {
+func propPresetDepth(depth uint32) codec.Property {
 	data := make([]byte, 4*depth)
 	for i := uint32(0); i < depth; i++ {
 		binary.BigEndian.PutUint32(data[i*4:], i)
 	}
-	return iacp2.Property{
-		PID:   iacp2.PIDPresetDepth,
+	return codec.Property{
+		PID:   codec.PIDPresetDepth,
 		VType: 0,
 		PLen:  uint16(4 + len(data)),
 		Data:  data,
@@ -291,7 +291,7 @@ const acp2OptionSize = 72
 //	| 8 + 72*i        | name_i  | 68     | UTF-8, zero-padded, truncates |
 //
 // Spec reference: acp2_protocol.pdf §5.4 pid=15 options
-func propOptions(opts []string) iacp2.Property {
+func propOptions(opts []string) codec.Property {
 	n := len(opts)
 	data := make([]byte, acp2OptionSize*n)
 	for i, opt := range opts {
@@ -306,8 +306,8 @@ func propOptions(opts []string) iacp2.Property {
 		}
 		copy(data[off+4:off+acp2OptionSize], name)
 	}
-	return iacp2.Property{
-		PID:   iacp2.PIDOptions,
+	return codec.Property{
+		PID:   codec.PIDOptions,
 		VType: uint8(n), // spec §5.4: "data: num option" — inline count
 		PLen:  uint16(4 + acp2OptionSize*n),
 		Data:  data,
@@ -327,47 +327,47 @@ func propOptions(opts []string) iacp2.Property {
 //	| String  | NumTypeString (11)    | len(s)+1    | UTF-8 + NUL + pad     |
 //
 // Spec reference: acp2_protocol.pdf §5.2.x (per-type value)
-func encodeValueProp(pid uint8, e *entry) (iacp2.Property, error) {
+func encodeValueProp(pid uint8, e *entry) (codec.Property, error) {
 	switch e.objType {
-	case iacp2.ObjTypeNumber, iacp2.ObjTypePreset:
+	case codec.ObjTypeNumber, codec.ObjTypePreset:
 		// Preset children reuse the Number wire shape per depth slot
 		// (pid 8/9/10/11 typed by e.numType). pid 7 preset_depth is
 		// emitted separately in buildProperties.
 		return encodeNumericProp(pid, e.numType, e.param.Value)
-	case iacp2.ObjTypeEnum:
+	case codec.ObjTypeEnum:
 		v, err := asUint32(e.param.Value, "value")
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
 		// Enum value uses vtype=9 (preset/enum) per spec §5.2.2, stored as u32.
-		return numericProp(pid, iacp2.NumTypePreset, u32Data(v)), nil
-	case iacp2.ObjTypeIPv4:
+		return numericProp(pid, codec.NumTypePreset, u32Data(v)), nil
+	case codec.ObjTypeIPv4:
 		v, err := ipv4Uint32(e.param.Value)
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
-		return numericProp(pid, iacp2.NumTypeIPv4, u32Data(v)), nil
-	case iacp2.ObjTypeString:
+		return numericProp(pid, codec.NumTypeIPv4, u32Data(v)), nil
+	case codec.ObjTypeString:
 		s, err := asString(e.param.Value, "value")
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
-		return iacp2.MakeStringProperty(pid, s), nil
+		return codec.MakeStringProperty(pid, s), nil
 	}
-	return iacp2.Property{}, fmt.Errorf("encodeValueProp: type %d not supported", e.objType)
+	return codec.Property{}, fmt.Errorf("encodeValueProp: type %d not supported", e.objType)
 }
 
 // encodeOptionalConstraint emits a pid=9/10/11/12 property from a
 // constraint field (Default/Min/Max/Step) if present on the canonical
 // Parameter. Returns (prop, false, nil) when the field is nil so the
 // caller can skip emission.
-func encodeOptionalConstraint(pid uint8, nt iacp2.NumberType, v any) (iacp2.Property, bool, error) {
+func encodeOptionalConstraint(pid uint8, nt codec.NumberType, v any) (codec.Property, bool, error) {
 	if v == nil {
-		return iacp2.Property{}, false, nil
+		return codec.Property{}, false, nil
 	}
 	p, err := encodeNumericProp(pid, nt, v)
 	if err != nil {
-		return iacp2.Property{}, false, err
+		return codec.Property{}, false, err
 	}
 	return p, true, nil
 }
@@ -385,72 +385,72 @@ func encodeOptionalConstraint(pid uint8, nt iacp2.NumberType, v any) (iacp2.Prop
 //	| 4..    | value | 4 or 8     | big-endian per §Number Types table    |
 //
 // Spec reference: acp2_protocol.pdf §Number Types, §Wire Sizes
-func encodeNumericProp(pid uint8, nt iacp2.NumberType, v any) (iacp2.Property, error) {
+func encodeNumericProp(pid uint8, nt codec.NumberType, v any) (codec.Property, error) {
 	switch nt {
-	case iacp2.NumTypeS8, iacp2.NumTypeS16, iacp2.NumTypeS32:
+	case codec.NumTypeS8, codec.NumTypeS16, codec.NumTypeS32:
 		n, err := asInt64(v, "numeric")
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
-		data, err := iacp2.EncodeNumericValue(nt, n, 0, 0)
+		data, err := codec.EncodeNumericValue(nt, n, 0, 0)
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
 		return numericProp(pid, nt, data), nil
-	case iacp2.NumTypeS64:
+	case codec.NumTypeS64:
 		n, err := asInt64(v, "numeric")
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
-		data, err := iacp2.EncodeNumericValue(nt, n, 0, 0)
+		data, err := codec.EncodeNumericValue(nt, n, 0, 0)
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
 		return numericProp(pid, nt, data), nil
-	case iacp2.NumTypeU8, iacp2.NumTypeU16, iacp2.NumTypeU32, iacp2.NumTypePreset:
+	case codec.NumTypeU8, codec.NumTypeU16, codec.NumTypeU32, codec.NumTypePreset:
 		u, err := asUint64(v, "numeric")
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
-		data, err := iacp2.EncodeNumericValue(nt, 0, u, 0)
+		data, err := codec.EncodeNumericValue(nt, 0, u, 0)
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
 		return numericProp(pid, nt, data), nil
-	case iacp2.NumTypeU64:
+	case codec.NumTypeU64:
 		u, err := asUint64(v, "numeric")
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
-		data, err := iacp2.EncodeNumericValue(nt, 0, u, 0)
+		data, err := codec.EncodeNumericValue(nt, 0, u, 0)
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
 		return numericProp(pid, nt, data), nil
-	case iacp2.NumTypeFloat:
+	case codec.NumTypeFloat:
 		f, err := asFloat64(v, "numeric")
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
-		data, err := iacp2.EncodeNumericValue(nt, 0, 0, f)
+		data, err := codec.EncodeNumericValue(nt, 0, 0, f)
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
 		return numericProp(pid, nt, data), nil
-	case iacp2.NumTypeIPv4:
+	case codec.NumTypeIPv4:
 		u, err := ipv4Uint32(v)
 		if err != nil {
-			return iacp2.Property{}, err
+			return codec.Property{}, err
 		}
 		return numericProp(pid, nt, u32Data(u)), nil
 	}
-	return iacp2.Property{}, fmt.Errorf("encodeNumericProp: unsupported NumberType %d", nt)
+	return codec.Property{}, fmt.Errorf("encodeNumericProp: unsupported codec.NumberType %d", nt)
 }
 
 // numericProp wraps an already-encoded value in a Property with its
 // vtype set to the NumberType so the consumer decodes correctly.
-func numericProp(pid uint8, nt iacp2.NumberType, data []byte) iacp2.Property {
-	return iacp2.Property{
+func numericProp(pid uint8, nt codec.NumberType, data []byte) codec.Property {
+	return codec.Property{
 		PID:   pid,
 		VType: uint8(nt),
 		PLen:  uint16(4 + len(data)),

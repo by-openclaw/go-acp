@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // Run dispatches the scenario to the right per-protocol runner and
@@ -87,8 +88,8 @@ func runACP2(t *testing.T, s *Scenario) {
 	}
 	recs := readCapture(t, wirePath)
 
-	var errMsg *acp2.ACP2Message
-	var errStat acp2.ACP2ErrStatus
+	var errMsg *codec.ACP2Message
+	var errStat codec.ACP2ErrStatus
 
 	for _, r := range recs {
 		if r.Direction != "rx" {
@@ -98,20 +99,20 @@ func runACP2(t *testing.T, s *Scenario) {
 		if err != nil {
 			t.Fatalf("scenario %q: hex decode: %v", s.Name, err)
 		}
-		frame, err := acp2.ReadAN2Frame(bytes.NewReader(raw))
+		frame, err := codec.ReadAN2Frame(bytes.NewReader(raw))
 		if err != nil {
 			continue
 		}
-		if frame.Proto != acp2.AN2ProtoACP2 || frame.Type != acp2.AN2TypeData {
+		if frame.Proto != codec.AN2ProtoACP2 || frame.Type != codec.AN2TypeData {
 			continue
 		}
-		msg, err := acp2.DecodeACP2Message(frame.Payload)
+		msg, err := codec.DecodeACP2Message(frame.Payload)
 		if err != nil {
 			continue
 		}
-		if msg.Type == acp2.ACP2TypeError {
+		if msg.Type == codec.ACP2TypeError {
 			errMsg = msg
-			errStat = acp2.ACP2ErrStatus(msg.Func)
+			errStat = codec.ACP2ErrStatus(msg.Func)
 			break
 		}
 	}
@@ -136,7 +137,7 @@ func runACP2(t *testing.T, s *Scenario) {
 	if s.ExpectErrorClass != "" {
 		err := errMsg.ToACP2Error()
 		typeName := fmt.Sprintf("%T", err)
-		// Accept either the fully-qualified type "*acp2.ACP2Error" or
+		// Accept either the fully-qualified type "*codec.ACP2Error" or
 		// the short form "ACP2Error" for ergonomic scenario files.
 		short := typeName[strings.LastIndex(typeName, ".")+1:]
 		short = strings.TrimPrefix(short, "*")
@@ -146,7 +147,7 @@ func runACP2(t *testing.T, s *Scenario) {
 		}
 	}
 	if s.ExpectErrorStatus != nil {
-		want := acp2.ACP2ErrStatus(*s.ExpectErrorStatus)
+		want := codec.ACP2ErrStatus(*s.ExpectErrorStatus)
 		if errStat != want {
 			t.Errorf("scenario %q: error status got %d, want %d",
 				s.Name, errStat, want)

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"dhs/internal/protocol"
+	"dhs/internal/acp2/codec"
 )
 
 // WalkedTree is the decoded object tree for one slot, analogous to
@@ -16,9 +17,9 @@ type WalkedTree struct {
 	Slot    int
 	Objects []protocol.Object
 	// ObjTypes parallels Objects — the ACP2 object type for each entry.
-	ObjTypes []ACP2ObjType
+	ObjTypes []codec.ACP2ObjType
 	// NumTypes parallels Objects — the NumberType for numeric objects.
-	NumTypes []NumberType
+	NumTypes []codec.NumberType
 	// OptionsMaps parallels Objects — wire-index→label map for enum/preset objects.
 	OptionsMaps []map[uint32]string
 	// Labels maps label → index into Objects for label-based lookup.
@@ -94,9 +95,9 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 
 	w.logger.Debug("acp2: walker: get_object", "slot", slot, "obj_id", objID)
 
-	msg, err := w.session.DoACP2(ctx, uint8(slot), &ACP2Message{
-		Type:  ACP2TypeRequest,
-		Func:  ACP2FuncGetObject,
+	msg, err := w.session.DoACP2(ctx, uint8(slot), &codec.ACP2Message{
+		Type:  codec.ACP2TypeRequest,
+		Func:  codec.ACP2FuncGetObject,
 		ObjID: objID,
 		Idx:   0, // active index
 	})
@@ -138,17 +139,17 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 }
 
 // parseObjectProperties extracts a protocol.Object from ACP2 property headers.
-func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32, parentPath []string) (protocol.Object, ACP2ObjType, NumberType, map[uint32]string, []uint32) {
+func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID uint32, parentPath []string) (protocol.Object, codec.ACP2ObjType, codec.NumberType, map[uint32]string, []uint32) {
 	obj := protocol.Object{
 		Slot: slot,
 		ID:   int(objID),
 	}
 
-	var objType ACP2ObjType
-	var numType NumberType
+	var objType codec.ACP2ObjType
+	var numType codec.NumberType
 	var children []uint32
 	var optionsMap map[uint32]string
-	var valueProp *Property // deferred — options may come after value on the wire
+	var valueProp *codec.Property // deferred — options may come after value on the wire
 
 	// First pass: collect metadata, options, constraints, children.
 	// Value decode is deferred because pid=8 often arrives before pid=15
@@ -157,76 +158,76 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 	for i := range props {
 		p := &props[i]
 		switch p.PID {
-		case PIDObjectType:
+		case codec.PIDObjectType:
 			if len(p.Data) >= 4 {
-				objType = ACP2ObjType(p.Data[3]) // u32, but only low byte matters
+				objType = codec.ACP2ObjType(p.Data[3]) // u32, but only low byte matters
 			} else {
-				objType = ACP2ObjType(p.VType)
+				objType = codec.ACP2ObjType(p.VType)
 			}
 
-		case PIDLabel:
-			obj.Label = PropertyString(p)
+		case codec.PIDLabel:
+			obj.Label = codec.PropertyString(p)
 
-		case PIDAccess:
+		case codec.PIDAccess:
 			if len(p.Data) >= 4 {
 				obj.Access = uint8(p.Data[3])
 			} else {
 				obj.Access = p.VType
 			}
 
-		case PIDNumberType:
+		case codec.PIDNumberType:
 			if len(p.Data) >= 4 {
-				numType = NumberType(p.Data[3])
+				numType = codec.NumberType(p.Data[3])
 			} else {
-				numType = NumberType(p.VType)
+				numType = codec.NumberType(p.VType)
 			}
 
-		case PIDStringMaxLength:
-			if v, err := PropertyU16(p); err == nil {
+		case codec.PIDStringMaxLength:
+			if v, err := codec.PropertyU16(p); err == nil {
 				obj.MaxLen = int(v)
 			} else if len(p.Data) >= 4 {
 				obj.MaxLen = int(p.Data[3])
 			}
 
-		case PIDValue:
+		case codec.PIDValue:
 			valueProp = p // defer until options are collected
 
-		case PIDDefaultValue:
+		case codec.PIDDefaultValue:
 			w.decodeConstraint(p, objType, numType, &obj, "default")
 
-		case PIDMinValue:
+		case codec.PIDMinValue:
 			w.decodeConstraint(p, objType, numType, &obj, "min")
 
-		case PIDMaxValue:
+		case codec.PIDMaxValue:
 			w.decodeConstraint(p, objType, numType, &obj, "max")
 
-		case PIDStepSize:
+		case codec.PIDStepSize:
 			w.decodeConstraint(p, objType, numType, &obj, "step")
 
-		case PIDUnit:
-			obj.Unit = strings.TrimSpace(PropertyString(p))
+		case codec.PIDUnit:
+			obj.Unit = strings.TrimSpace(codec.PropertyString(p))
 
-		case PIDChildren:
-			if ids, err := PropertyChildren(p); err == nil {
+		case codec.PIDChildren:
+			if ids, err := codec.PropertyChildren(p); err == nil {
 				children = ids
 			}
 
-		case PIDOptions:
-			obj.EnumItems = PropertyOptions(p)
-			optionsMap = PropertyOptionsMap(p)
+		case codec.PIDOptions:
+			obj.EnumItems = codec.PropertyOptions(p)
+			optionsMap = codec.PropertyOptionsMap(p)
 
-		case PIDEventTag:
+		case codec.PIDEventTag:
 			if len(p.Data) >= 2 {
 				obj.AlarmTag = p.Data[1]
 			}
 
-		case PIDEventPrio:
+		case codec.PIDEventPrio:
 			if len(p.Data) >= 4 {
 				obj.AlarmPriority = uint8(p.Data[3])
 			}
 
-		case PIDEventMessages:
-			obj.AlarmOnMsg, obj.AlarmOffMsg = PropertyEventMessages(p)
+		case codec.PIDEventMessages:
+			obj.AlarmOnMsg, obj.AlarmOffMsg = codec.PropertyEventMessages(p)
 		}
 	}
 
@@ -236,7 +237,7 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 	}
 
 	// Resolve enum/preset default to label via optionsMap.
-	if (objType == ObjTypeEnum || objType == ObjTypePreset) && obj.Def != nil && optionsMap != nil {
+	if (objType == codec.ObjTypeEnum || objType == codec.ObjTypePreset) && obj.Def != nil && optionsMap != nil {
 		if defIdx, ok := obj.Def.(uint64); ok {
 			if label, found := optionsMap[uint32(defIdx)]; found {
 				obj.Def = label
@@ -259,17 +260,17 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 
 	// Map ACP2 object type to protocol.ValueKind.
 	switch objType {
-	case ObjTypeNode:
+	case codec.ObjTypeNode:
 		obj.Kind = protocol.KindRaw // containers have no scalar value
-	case ObjTypeEnum:
+	case codec.ObjTypeEnum:
 		obj.Kind = protocol.KindEnum
-	case ObjTypeNumber:
+	case codec.ObjTypeNumber:
 		obj.Kind = numberTypeToKind(numType)
-	case ObjTypeIPv4:
+	case codec.ObjTypeIPv4:
 		obj.Kind = protocol.KindIPAddr
-	case ObjTypeString:
+	case codec.ObjTypeString:
 		obj.Kind = protocol.KindString
-	case ObjTypePreset:
+	case codec.ObjTypePreset:
 		obj.Kind = protocol.KindEnum // presets are enumeration-like
 	}
 
@@ -277,14 +278,14 @@ func (w *Walker) parseObjectProperties(props []Property, slot int, objID uint32,
 }
 
 // decodeValue decodes a pid=8 (value) property into the Object's Value field.
-func (w *Walker) decodeValue(p *Property, objType ACP2ObjType, numType NumberType, obj *protocol.Object, optMap map[uint32]string) {
+func (w *Walker) decodeValue(p *codec.Property, objType codec.ACP2ObjType, numType codec.NumberType, obj *protocol.Object, optMap map[uint32]string) {
 	switch objType {
-	case ObjTypeNumber:
-		nt := NumberType(p.VType)
+	case codec.ObjTypeNumber:
+		nt := codec.NumberType(p.VType)
 		if nt == 0 && numType != 0 {
 			nt = numType
 		}
-		intV, uintV, floatV, err := DecodeNumericValue(nt, p.Data)
+		intV, uintV, floatV, err := codec.DecodeNumericValue(nt, p.Data)
 		if err != nil {
 			w.logger.Debug("acp2: walker: decode numeric value", "err", err)
 			obj.Value = protocol.Value{Kind: protocol.KindRaw, Raw: p.Data}
@@ -299,7 +300,7 @@ func (w *Walker) decodeValue(p *Property, objType ACP2ObjType, numType NumberTyp
 			obj.Value = protocol.Value{Kind: protocol.KindFloat, Float: floatV, Raw: p.Data}
 		}
 
-	case ObjTypeEnum, ObjTypePreset:
+	case codec.ObjTypeEnum, codec.ObjTypePreset:
 		if len(p.Data) >= 4 {
 			fullIdx := binary.BigEndian.Uint32(p.Data[0:4])
 			ev := protocol.Value{
@@ -316,7 +317,7 @@ func (w *Walker) decodeValue(p *Property, objType ACP2ObjType, numType NumberTyp
 			obj.Value = ev
 		}
 
-	case ObjTypeIPv4:
+	case codec.ObjTypeIPv4:
 		if len(p.Data) >= 4 {
 			obj.Value = protocol.Value{
 				Kind: protocol.KindIPAddr,
@@ -327,10 +328,10 @@ func (w *Walker) decodeValue(p *Property, objType ACP2ObjType, numType NumberTyp
 			}
 		}
 
-	case ObjTypeString:
+	case codec.ObjTypeString:
 		obj.Value = protocol.Value{
 			Kind: protocol.KindString,
-			Str:  PropertyString(p),
+			Str:  codec.PropertyString(p),
 			Raw:  p.Data,
 		}
 
@@ -342,23 +343,23 @@ func (w *Walker) decodeValue(p *Property, objType ACP2ObjType, numType NumberTyp
 }
 
 // decodeConstraint decodes min/max/step/default properties.
-func (w *Walker) decodeConstraint(p *Property, objType ACP2ObjType, numType NumberType, obj *protocol.Object, which string) {
+func (w *Walker) decodeConstraint(p *codec.Property, objType codec.ACP2ObjType, numType codec.NumberType, obj *protocol.Object, which string) {
 	// Enum/preset: only default makes sense (u32 index).
-	if (objType == ObjTypeEnum || objType == ObjTypePreset) && which == "default" {
+	if (objType == codec.ObjTypeEnum || objType == codec.ObjTypePreset) && which == "default" {
 		if len(p.Data) >= 4 {
 			obj.Def = uint64(binary.BigEndian.Uint32(p.Data[0:4]))
 		}
 		return
 	}
 
-	if objType != ObjTypeNumber {
+	if objType != codec.ObjTypeNumber {
 		return
 	}
-	nt := NumberType(p.VType)
+	nt := codec.NumberType(p.VType)
 	if nt == 0 && numType != 0 {
 		nt = numType
 	}
-	intV, uintV, floatV, err := DecodeNumericValue(nt, p.Data)
+	intV, uintV, floatV, err := codec.DecodeNumericValue(nt, p.Data)
 	if err != nil {
 		return
 	}
@@ -388,19 +389,19 @@ func (w *Walker) decodeConstraint(p *Property, objType ACP2ObjType, numType Numb
 }
 
 // numberTypeToKind maps an ACP2 NumberType to a protocol.ValueKind.
-func numberTypeToKind(nt NumberType) protocol.ValueKind {
+func numberTypeToKind(nt codec.NumberType) protocol.ValueKind {
 	switch nt {
-	case NumTypeS8, NumTypeS16, NumTypeS32, NumTypeS64:
+	case codec.NumTypeS8, codec.NumTypeS16, codec.NumTypeS32, codec.NumTypeS64:
 		return protocol.KindInt
-	case NumTypeU8, NumTypeU16, NumTypeU32, NumTypeU64:
+	case codec.NumTypeU8, codec.NumTypeU16, codec.NumTypeU32, codec.NumTypeU64:
 		return protocol.KindUint
-	case NumTypeFloat:
+	case codec.NumTypeFloat:
 		return protocol.KindFloat
-	case NumTypePreset:
+	case codec.NumTypePreset:
 		return protocol.KindEnum
-	case NumTypeIPv4:
+	case codec.NumTypeIPv4:
 		return protocol.KindIPAddr
-	case NumTypeString:
+	case codec.NumTypeString:
 		return protocol.KindString
 	default:
 		return protocol.KindRaw

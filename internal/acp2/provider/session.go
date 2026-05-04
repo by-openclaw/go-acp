@@ -6,8 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
-
-	iacp2 "dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // session is one TCP connection. Holds the conn, a write mutex so
@@ -19,7 +18,7 @@ type session struct {
 	conn net.Conn
 
 	writeMu sync.Mutex
-	enabled map[iacp2.AN2Proto]bool
+	enabled map[codec.AN2Proto]bool
 }
 
 func newSession(srv *server, conn net.Conn) *session {
@@ -35,7 +34,7 @@ func (s *session) run() {
 	s.srv.logger.Info("acp2 session accepted", slog.String("remote", remote))
 
 	for {
-		frame, err := iacp2.ReadAN2Frame(s.conn)
+		frame, err := codec.ReadAN2Frame(s.conn)
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
 				s.srv.logger.Debug("acp2 session closed", slog.String("remote", remote))
@@ -52,6 +51,6 @@ func (s *session) run() {
 }
 
 // handleFrame dispatches one incoming AN2 frame via handlers.go.
-func (s *session) handleFrame(f *iacp2.AN2Frame) {
+func (s *session) handleFrame(f *codec.AN2Frame) {
 	s.dispatch(f)
 }

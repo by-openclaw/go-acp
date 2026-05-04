@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // captureRecord mirrors transport.CaptureRecord — duplicated here to
@@ -93,7 +93,7 @@ func TestReplay_AN2FrameDecode(t *testing.T) {
 			t.Fatalf("record %d: hex decode: %v", i, err)
 		}
 
-		frame, err := acp2.ReadAN2Frame(bytes.NewReader(raw))
+		frame, err := codec.ReadAN2Frame(bytes.NewReader(raw))
 		if err != nil {
 			t.Errorf("record %d (%s): AN2 decode: %v", i, r.Direction, err)
 			failed++
@@ -102,7 +102,7 @@ func TestReplay_AN2FrameDecode(t *testing.T) {
 		decoded++
 
 		// Verify basic AN2 invariants.
-		if frame.Proto != acp2.AN2ProtoACP2 && frame.Proto != acp2.AN2ProtoInternal {
+		if frame.Proto != codec.AN2ProtoACP2 && frame.Proto != codec.AN2ProtoInternal {
 			t.Errorf("record %d: unexpected proto %d", i, frame.Proto)
 		}
 	}
@@ -125,20 +125,20 @@ func TestReplay_ACP2MessageDecode(t *testing.T) {
 			t.Fatalf("record %d: hex decode: %v", i, err)
 		}
 
-		frame, err := acp2.ReadAN2Frame(bytes.NewReader(raw))
+		frame, err := codec.ReadAN2Frame(bytes.NewReader(raw))
 		if err != nil {
 			continue // already tested in AN2 test
 		}
 
 		// Only decode ACP2 data frames.
-		if frame.Proto != acp2.AN2ProtoACP2 {
+		if frame.Proto != codec.AN2ProtoACP2 {
 			continue
 		}
-		if frame.Type != acp2.AN2TypeData {
+		if frame.Type != codec.AN2TypeData {
 			continue
 		}
 
-		msg, err := acp2.DecodeACP2Message(frame.Payload)
+		msg, err := codec.DecodeACP2Message(frame.Payload)
 		if err != nil {
 			t.Errorf("record %d (%s): ACP2 decode: %v (hex=%s)",
 				i, r.Direction, err, r.Hex)
@@ -148,12 +148,12 @@ func TestReplay_ACP2MessageDecode(t *testing.T) {
 		messages++
 
 		switch msg.Type {
-		case acp2.ACP2TypeRequest:
+		case codec.ACP2TypeRequest:
 			requests++
-		case acp2.ACP2TypeReply:
+		case codec.ACP2TypeReply:
 			replies++
 			// Replies to get_object should have properties.
-			if msg.Func == acp2.ACP2FuncGetObject && len(msg.Properties) == 0 {
+			if msg.Func == codec.ACP2FuncGetObject && len(msg.Properties) == 0 {
 				t.Errorf("record %d: get_object reply with 0 properties, obj_id=%d",
 					i, msg.ObjID)
 			}
@@ -186,18 +186,18 @@ func TestReplay_PropertyDecode(t *testing.T) {
 		if err != nil {
 			continue
 		}
-		frame, err := acp2.ReadAN2Frame(bytes.NewReader(raw))
-		if err != nil || frame.Proto != acp2.AN2ProtoACP2 || frame.Type != acp2.AN2TypeData {
+		frame, err := codec.ReadAN2Frame(bytes.NewReader(raw))
+		if err != nil || frame.Proto != codec.AN2ProtoACP2 || frame.Type != codec.AN2TypeData {
 			continue
 		}
 
-		msg, err := acp2.DecodeACP2Message(frame.Payload)
+		msg, err := codec.DecodeACP2Message(frame.Payload)
 		if err != nil {
 			continue
 		}
 
 		// Only interested in get_object replies.
-		if msg.Type != acp2.ACP2TypeReply || msg.Func != acp2.ACP2FuncGetObject {
+		if msg.Type != codec.ACP2TypeReply || msg.Func != codec.ACP2FuncGetObject {
 			continue
 		}
 

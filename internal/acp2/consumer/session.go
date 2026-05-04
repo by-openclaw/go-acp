@@ -12,6 +12,7 @@ import (
 	"dhs/internal/protocol"
 	"dhs/internal/protocol/compliance"
 	"dhs/internal/transport"
+	"dhs/internal/acp2/codec"
 )
 
 // Session manages an AN2/TCP connection to an ACP2 device. It handles:
@@ -40,7 +41,7 @@ type Session struct {
 
 	// Pending request waiters: keyed by ACP2 mtid.
 	waitMu  sync.Mutex
-	waiters map[uint8]chan *ACP2Message
+	waiters map[uint8]chan *codec.ACP2Message
 
 	// Announce listeners.
 	annMu     sync.Mutex
@@ -66,7 +67,7 @@ type Session struct {
 }
 
 // AnnounceFunc is the callback signature for ACP2 announce subscriptions.
-type AnnounceFunc func(slot uint8, msg *ACP2Message)
+type AnnounceFunc func(slot uint8, msg *codec.ACP2Message)
 
 // SetRecorder attaches a traffic recorder to this session.
 // Call before Connect. All sent and received AN2 frames are recorded.
@@ -96,7 +97,7 @@ func (s *Session) note(event string) {
 func NewSession(logger *slog.Logger) *Session {
 	s := &Session{
 		logger:  logger,
-		waiters: make(map[uint8]chan *ACP2Message),
+		waiters: make(map[uint8]chan *codec.ACP2Message),
 		annSubs: make(map[int]AnnounceFunc),
 		done:    make(chan struct{}),
 	}
@@ -114,7 +115,7 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 		return fmt.Errorf("acp2: already connected to %s:%d", s.host, s.port)
 	}
 	if port == 0 {
-		port = DefaultPort
+		port = codec.DefaultPort
 	}
 
 	s.logger.Debug("acp2: dialing", "host", ip, "port", port)
@@ -131,7 +132,7 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 	s.host = ip
 	s.port = port
 	s.done = make(chan struct{})
-	s.waiters = make(map[uint8]chan *ACP2Message)
+	s.waiters = make(map[uint8]chan *codec.ACP2Message)
 
 	// Start the reader goroutine before the handshake so replies are routed.
 	go s.readLoop()
@@ -160,7 +161,7 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 func (s *Session) an2Handshake(ctx context.Context) error {
 	// 1. AN2 GetVersion
 	s.logger.Debug("acp2: AN2 GetVersion")
-	reply, err := s.an2Request(ctx, AN2FuncGetVersion, 0, nil)
+	reply, err := s.an2Request(ctx, codec.AN2FuncGetVersion, 0, nil)
 	if err != nil {
 		return fmt.Errorf("an2 GetVersion: %w", err)
 	}
@@ -175,7 +176,7 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 
 	// 2. AN2 GetDeviceInfo
 	s.logger.Debug("acp2: AN2 GetDeviceInfo")
-	reply, err = s.an2Request(ctx, AN2FuncGetDeviceInfo, 0, nil)
+	reply, err = s.an2Request(ctx, codec.AN2FuncGetDeviceInfo, 0, nil)
 	if err != nil {
 		return fmt.Errorf("an2 GetDeviceInfo: %w", err)
 	}
@@ -199,7 +200,7 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 		s.logger.Debug("acp2: AN2 GetSlotInfo", "slot", slot)
 		// AN2 spec §3.3.3: dlen=1 (just funcID). Slot is in the AN2 header,
 		// NOT duplicated in the payload.
-		reply, err = s.an2Request(ctx, AN2FuncGetSlotInfo, byte(slot), nil)
+		reply, err = s.an2Request(ctx, codec.AN2FuncGetSlotInfo, byte(slot), nil)
 		if err != nil {
 			s.logger.Debug("acp2: GetSlotInfo failed", "slot", slot, "err", err)
 			continue
@@ -215,17 +216,17 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 
 	// 4. AN2 EnableProtocolEvents([2]) — required for ACP2 announces
 	s.logger.Debug("acp2: AN2 EnableProtocolEvents")
-	enablePayload := []byte{1, byte(AN2ProtoACP2)} // count=1, proto=2
-	_, err = s.an2Request(ctx, AN2FuncEnableProtocolEvents, 0, enablePayload)
+	enablePayload := []byte{1, byte(codec.AN2ProtoACP2)} // count=1, proto=2
+	_, err = s.an2Request(ctx, codec.AN2FuncEnableProtocolEvents, 0, enablePayload)
 	if err != nil {
 		return fmt.Errorf("an2 EnableProtocolEvents: %w", err)
 	}
 
 	// 5. ACP2 GetVersion
 	s.logger.Debug("acp2: ACP2 GetVersion")
-	acp2Reply, err := s.DoACP2(ctx, 0, &ACP2Message{
-		Type: ACP2TypeRequest,
-		Func: ACP2FuncGetVersion,
+	acp2Reply, err := s.DoACP2(ctx, 0, &codec.ACP2Message{
+		Type: codec.ACP2TypeRequest,
+		Func: codec.ACP2FuncGetVersion,
 	})
 	if err != nil {
 		return fmt.Errorf("acp2 GetVersion: %w", err)
@@ -248,11 +249,11 @@ func (s *Session) an2Request(ctx context.Context, funcID uint8, slot uint8, payl
 	reqPayload[0] = funcID
 	copy(reqPayload[1:], payload)
 
-	frame := &AN2Frame{
-		Proto:   AN2ProtoInternal,
+	frame := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoInternal,
 		Slot:    slot,
 		MTID:    an2MTID,
-		Type:    AN2TypeRequest,
+		Type:    codec.AN2TypeRequest,
 		Payload: reqPayload,
 	}
 
@@ -260,7 +261,7 @@ func (s *Session) an2Request(ctx context.Context, funcID uint8, slot uint8, payl
 	// with a convention: AN2 internal replies come back with proto=0 and
 	// AN2 mtid matching. The reader goroutine routes them to a synthetic
 	// ACP2Message with MTID=an2MTID.
-	ch := make(chan *ACP2Message, 1)
+	ch := make(chan *codec.ACP2Message, 1)
 	s.waitMu.Lock()
 	s.waiters[an2MTID] = ch
 	s.waitMu.Unlock()
@@ -289,7 +290,7 @@ func (s *Session) an2Request(ctx context.Context, funcID uint8, slot uint8, payl
 
 // DoACP2 sends an ACP2 request (inside an AN2 data frame) and waits for
 // the corresponding reply. Allocates and releases an ACP2 mtid.
-func (s *Session) DoACP2(ctx context.Context, slot uint8, req *ACP2Message) (*ACP2Message, error) {
+func (s *Session) DoACP2(ctx context.Context, slot uint8, req *codec.ACP2Message) (*codec.ACP2Message, error) {
 	// Allocate a mtid.
 	mtid, err := s.allocMTID(ctx)
 	if err != nil {
@@ -299,24 +300,24 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *ACP2Message) (*AC
 
 	req.MTID = mtid
 	if req.Type == 0 {
-		req.Type = ACP2TypeRequest
+		req.Type = codec.ACP2TypeRequest
 	}
 
-	payload, err := EncodeACP2Message(req)
+	payload, err := codec.EncodeACP2Message(req)
 	if err != nil {
 		return nil, err
 	}
 
 	// ACP2 messages are carried in AN2 data frames (type=4, AN2 mtid=0).
-	frame := &AN2Frame{
-		Proto:   AN2ProtoACP2,
+	frame := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoACP2,
 		Slot:    slot,
 		MTID:    0, // AN2 mtid always 0 for data frames
-		Type:    AN2TypeData,
+		Type:    codec.AN2TypeData,
 		Payload: payload,
 	}
 
-	ch := make(chan *ACP2Message, 1)
+	ch := make(chan *codec.ACP2Message, 1)
 	s.waitMu.Lock()
 	s.waiters[mtid] = ch
 	s.waitMu.Unlock()
@@ -344,14 +345,14 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *ACP2Message) (*AC
 		if reply == nil {
 			return nil, fmt.Errorf("acp2: nil reply for mtid=%d", mtid)
 		}
-		if reply.Type == ACP2TypeError {
+		if reply.Type == codec.ACP2TypeError {
 			// Fire the per-stat-code compliance event so the session
 			// profile reflects spec-listed error frequencies. Status
 			// codes 0..5 defined in acp2_protocol.pdf p.5; error
 			// replies carry the code in the Func slot (codec.go
 			// ACP2Message.Func comment). Switch lives in the pure
 			// helper EventForErrStatus so replay tests can assert it.
-			if label := EventForErrStatus(ACP2ErrStatus(reply.Func)); label != "" {
+			if label := EventForErrStatus(codec.ACP2ErrStatus(reply.Func)); label != "" {
 				s.note(label)
 			}
 			return reply, reply.ToACP2Error()
@@ -364,8 +365,8 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *ACP2Message) (*AC
 }
 
 // sendFrame encodes and sends one AN2 frame on the TCP connection.
-func (s *Session) sendFrame(ctx context.Context, f *AN2Frame) error {
-	data, err := EncodeAN2Frame(f)
+func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
+	data, err := codec.EncodeAN2Frame(f)
 	if err != nil {
 		return err
 	}
@@ -406,7 +407,7 @@ func (s *Session) readLoop() {
 		if conn == nil {
 			return
 		}
-		frame, err := ReadAN2Frame(conn)
+		frame, err := codec.ReadAN2Frame(conn)
 		if err != nil {
 			if err == io.EOF || isClosedErr(err) {
 				s.logger.Debug("acp2: reader: connection closed")
@@ -419,16 +420,16 @@ func (s *Session) readLoop() {
 
 		// Record raw frame for capture (includes announces — tests need them).
 		if s.recorder != nil {
-			if raw, encErr := EncodeAN2Frame(frame); encErr == nil {
+			if raw, encErr := codec.EncodeAN2Frame(frame); encErr == nil {
 				s.recorder.Record("acp2", "rx", raw)
 			}
 		}
 
 		// Log full frame hex for requests/replies; skip for ACP2 announces
 		// (they flood the log with large SDP payloads every ~2s).
-		isAnnounce := frame.Proto == AN2ProtoACP2 &&
+		isAnnounce := frame.Proto == codec.AN2ProtoACP2 &&
 			len(frame.Payload) >= 1 &&
-			frame.Payload[0] == byte(ACP2TypeAnnounce)
+			frame.Payload[0] == byte(codec.ACP2TypeAnnounce)
 		if !isAnnounce {
 			s.logger.Debug("acp2: reader: frame",
 				"proto", frame.Proto, "slot", frame.Slot,
@@ -438,9 +439,9 @@ func (s *Session) readLoop() {
 		}
 
 		switch frame.Proto {
-		case AN2ProtoInternal:
+		case codec.AN2ProtoInternal:
 			s.handleAN2Internal(frame)
-		case AN2ProtoACP2:
+		case codec.AN2ProtoACP2:
 			s.handleACP2Frame(frame)
 		default:
 			s.logger.Debug("acp2: reader: ignoring frame with proto", "proto", frame.Proto)
@@ -449,18 +450,18 @@ func (s *Session) readLoop() {
 }
 
 // handleAN2Internal routes AN2 internal (proto=0) replies and events.
-func (s *Session) handleAN2Internal(f *AN2Frame) {
+func (s *Session) handleAN2Internal(f *codec.AN2Frame) {
 	switch f.Type {
-	case AN2TypeReply:
+	case codec.AN2TypeReply:
 		// Route to waiter by AN2 mtid.
-		synth := &ACP2Message{
-			Type: ACP2TypeReply,
+		synth := &codec.ACP2Message{
+			Type: codec.ACP2TypeReply,
 			MTID: f.MTID,
 			Body: f.Payload,
 		}
 		s.routeReply(f.MTID, synth)
 
-	case AN2TypeEvent:
+	case codec.AN2TypeEvent:
 		// AN2 slot events (e.g. card insertion/removal).
 		s.logger.Debug("acp2: AN2 slot event", "slot", f.Slot, "payload_len", len(f.Payload))
 		if len(f.Payload) >= 1 {
@@ -472,10 +473,10 @@ func (s *Session) handleAN2Internal(f *AN2Frame) {
 			s.mu.Unlock()
 		}
 
-	case AN2TypeError:
+	case codec.AN2TypeError:
 		s.logger.Warn("acp2: AN2 error", "slot", f.Slot, "mtid", f.MTID)
-		synth := &ACP2Message{
-			Type: ACP2TypeError,
+		synth := &codec.ACP2Message{
+			Type: codec.ACP2TypeError,
 			MTID: f.MTID,
 			Body: f.Payload,
 		}
@@ -487,23 +488,23 @@ func (s *Session) handleAN2Internal(f *AN2Frame) {
 }
 
 // handleACP2Frame routes ACP2 data/event frames.
-func (s *Session) handleACP2Frame(f *AN2Frame) {
-	if f.Type != AN2TypeData {
+func (s *Session) handleACP2Frame(f *codec.AN2Frame) {
+	if f.Type != codec.AN2TypeData {
 		s.logger.Debug("acp2: non-data ACP2 frame", "type", f.Type)
 		return
 	}
-	if len(f.Payload) < ACP2HeaderSize {
+	if len(f.Payload) < codec.ACP2HeaderSize {
 		s.logger.Warn("acp2: ACP2 payload too short", "len", len(f.Payload))
 		return
 	}
 
-	msg, err := DecodeACP2Message(f.Payload)
+	msg, err := codec.DecodeACP2Message(f.Payload)
 	if err != nil {
 		s.logger.Warn("acp2: decode ACP2 message", "err", err)
 		return
 	}
 
-	if msg.Type == ACP2TypeAnnounce {
+	if msg.Type == codec.ACP2TypeAnnounce {
 		// Announce debug: include first 20 bytes hex for diagnosis.
 		hexDump := fmt.Sprintf("%x", f.Payload)
 		if len(hexDump) > 40 {
@@ -537,7 +538,7 @@ func (s *Session) handleACP2Frame(f *AN2Frame) {
 }
 
 // routeReply sends a message to the waiter registered for the given mtid.
-func (s *Session) routeReply(mtid uint8, msg *ACP2Message) {
+func (s *Session) routeReply(mtid uint8, msg *codec.ACP2Message) {
 	s.waitMu.Lock()
 	ch, ok := s.waiters[mtid]
 	s.waitMu.Unlock()

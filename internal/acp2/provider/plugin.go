@@ -15,13 +15,13 @@ package acp2
 import (
 	"log/slog"
 
+	"dhs/internal/acp2/codec"
 	"dhs/internal/export/canonical"
 	"dhs/internal/provider"
-	iacp2 "dhs/internal/acp2/consumer"
 )
 
 // DefaultPort is the AN2 TCP port used for ACP2 traffic.
-const DefaultPort = iacp2.DefaultPort
+const DefaultPort = codec.DefaultPort
 
 func init() {
 	provider.Register(&Factory{})
@@ -34,7 +34,7 @@ type Factory struct{}
 func (f *Factory) Meta() provider.Meta {
 	return provider.Meta{
 		Name:        "acp2",
-		DefaultPort: DefaultPort,
+		DefaultPort: codec.DefaultPort,
 		Description: "ACP2 (AN2/TCP) provider — serves a canonical tree to consumers on port 2072",
 	}
 }

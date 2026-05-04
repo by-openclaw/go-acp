@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"dhs/internal/export/canonical"
-	iacp2 "dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // Server is the exported alias for the concrete provider — lets
@@ -138,7 +138,7 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 // ([ACP2]) subscribed — spec §"ACP2 Announces" p.88. Sessions that
 // haven't subscribed are silently skipped (matching how a real Axon
 // device ignores unregistered listeners).
-func (s *server) broadcastAnnounce(slot uint8, ann *iacp2.ACP2Message) {
+func (s *server) broadcastAnnounce(slot uint8, ann *codec.ACP2Message) {
 	// Bypass EncodeACP2Message (which is request-shaped for the four
 	// ACP2 funcs) and build the reply/announce frame manually. See
 	// replyACP2 for the same rationale.
@@ -148,11 +148,11 @@ func (s *server) broadcastAnnounce(slot uint8, ann *iacp2.ACP2Message) {
 	raw[2] = byte(ann.Func)
 	raw[3] = ann.PID
 	copy(raw[4:], ann.Body)
-	frame := &iacp2.AN2Frame{
-		Proto:   iacp2.AN2ProtoACP2,
+	frame := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoACP2,
 		Slot:    slot,
 		MTID:    0,
-		Type:    iacp2.AN2TypeData,
+		Type:    codec.AN2TypeData,
 		Payload: raw,
 	}
 
@@ -160,7 +160,7 @@ func (s *server) broadcastAnnounce(slot uint8, ann *iacp2.ACP2Message) {
 	totalSessions := len(s.sessions)
 	targets := make([]*session, 0, len(s.sessions))
 	for sess := range s.sessions {
-		if sess.enabled[iacp2.AN2ProtoACP2] {
+		if sess.enabled[codec.AN2ProtoACP2] {
 			targets = append(targets, sess)
 		}
 	}

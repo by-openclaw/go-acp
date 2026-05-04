@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"dhs/internal/export/canonical"
-	iacp2 "dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // entry is one object in the served tree. Holds the canonical source
@@ -20,8 +20,8 @@ type entry struct {
 	parent   uint32             // 0 for the slot root (ROOT_NODE_V2)
 	label    string
 	access   uint8              // bit 0 read, bit 1 write (spec pid=3)
-	objType  iacp2.ACP2ObjType  // node / number / enum / ipv4 / string / preset
-	numType  iacp2.NumberType   // meaningful for ObjTypeNumber, ObjTypeEnum (u32 index)
+	objType  codec.ACP2ObjType  // node / number / enum / ipv4 / string / preset
+	numType  codec.NumberType   // meaningful for codec.ObjTypeNumber, codec.ObjTypeEnum (u32 index)
 	children []uint32           // pid=14 u32[] — direct child obj-ids
 	node     *canonical.Node    // set when objType=node
 	param    *canonical.Parameter // set for leaf types
@@ -129,7 +129,7 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			parent:  parent,
 			label:   x.Identifier,
 			access:  deriveAccess(x.Access),
-			objType: iacp2.ObjTypeNode,
+			objType: codec.ObjTypeNode,
 			node:    x,
 		}
 		index[id] = e
@@ -161,7 +161,7 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			param:       x,
 			presetDepth: presetDepthHint(x),
 		}
-		if objType == iacp2.ObjTypePreset && e.presetDepth == 0 {
+		if objType == codec.ObjTypePreset && e.presetDepth == 0 {
 			// Spec §5 requires at least one idx in pid 7 for preset children.
 			// Default to depth=1 (single ACTIVE INDEX slot) when the
 			// canonical format omits "depth=N".
@@ -233,7 +233,7 @@ func deriveAccess(a string) uint8 {
 //	string   + "ipv4"                                          -> IPv4  + NumTypeIPv4
 //	string   + no hint | maxLen=N                              -> String + NumTypeString
 //	boolean                                                    -> REJECT (ACP2 has no bool; use enum Off,On)
-func deriveACP2Type(p *canonical.Parameter) (iacp2.ACP2ObjType, iacp2.NumberType, error) {
+func deriveACP2Type(p *canonical.Parameter) (codec.ACP2ObjType, codec.NumberType, error) {
 	parts := formatParts(p.Format)
 	hint, known := pickTypeHint(parts)
 	if !known {
@@ -246,60 +246,60 @@ func deriveACP2Type(p *canonical.Parameter) (iacp2.ACP2ObjType, iacp2.NumberType
 	if hasPreset(parts) {
 		switch hint {
 		case "", "s32":
-			return iacp2.ObjTypePreset, iacp2.NumTypeS32, nil
+			return codec.ObjTypePreset, codec.NumTypeS32, nil
 		case "s8":
-			return iacp2.ObjTypePreset, iacp2.NumTypeS8, nil
+			return codec.ObjTypePreset, codec.NumTypeS8, nil
 		case "s16":
-			return iacp2.ObjTypePreset, iacp2.NumTypeS16, nil
+			return codec.ObjTypePreset, codec.NumTypeS16, nil
 		case "s64":
-			return iacp2.ObjTypePreset, iacp2.NumTypeS64, nil
+			return codec.ObjTypePreset, codec.NumTypeS64, nil
 		case "u8":
-			return iacp2.ObjTypePreset, iacp2.NumTypeU8, nil
+			return codec.ObjTypePreset, codec.NumTypeU8, nil
 		case "u16":
-			return iacp2.ObjTypePreset, iacp2.NumTypeU16, nil
+			return codec.ObjTypePreset, codec.NumTypeU16, nil
 		case "u32":
-			return iacp2.ObjTypePreset, iacp2.NumTypeU32, nil
+			return codec.ObjTypePreset, codec.NumTypeU32, nil
 		case "u64":
-			return iacp2.ObjTypePreset, iacp2.NumTypeU64, nil
+			return codec.ObjTypePreset, codec.NumTypeU64, nil
 		case "float":
-			return iacp2.ObjTypePreset, iacp2.NumTypeFloat, nil
+			return codec.ObjTypePreset, codec.NumTypeFloat, nil
 		}
 		return 0, 0, fmt.Errorf("preset: unknown number type %q", hint)
 	}
 
 	switch p.Type {
 	case canonical.ParamReal:
-		return iacp2.ObjTypeNumber, iacp2.NumTypeFloat, nil
+		return codec.ObjTypeNumber, codec.NumTypeFloat, nil
 	case canonical.ParamEnum:
-		return iacp2.ObjTypeEnum, iacp2.NumTypeU32, nil
+		return codec.ObjTypeEnum, codec.NumTypeU32, nil
 	case canonical.ParamInteger:
 		switch hint {
 		case "", "s32":
-			return iacp2.ObjTypeNumber, iacp2.NumTypeS32, nil
+			return codec.ObjTypeNumber, codec.NumTypeS32, nil
 		case "s8":
-			return iacp2.ObjTypeNumber, iacp2.NumTypeS8, nil
+			return codec.ObjTypeNumber, codec.NumTypeS8, nil
 		case "s16":
-			return iacp2.ObjTypeNumber, iacp2.NumTypeS16, nil
+			return codec.ObjTypeNumber, codec.NumTypeS16, nil
 		case "s64":
-			return iacp2.ObjTypeNumber, iacp2.NumTypeS64, nil
+			return codec.ObjTypeNumber, codec.NumTypeS64, nil
 		case "u8":
-			return iacp2.ObjTypeNumber, iacp2.NumTypeU8, nil
+			return codec.ObjTypeNumber, codec.NumTypeU8, nil
 		case "u16":
-			return iacp2.ObjTypeNumber, iacp2.NumTypeU16, nil
+			return codec.ObjTypeNumber, codec.NumTypeU16, nil
 		case "u32":
-			return iacp2.ObjTypeNumber, iacp2.NumTypeU32, nil
+			return codec.ObjTypeNumber, codec.NumTypeU32, nil
 		case "u64":
-			return iacp2.ObjTypeNumber, iacp2.NumTypeU64, nil
+			return codec.ObjTypeNumber, codec.NumTypeU64, nil
 		case "float":
-			return iacp2.ObjTypeNumber, iacp2.NumTypeFloat, nil
+			return codec.ObjTypeNumber, codec.NumTypeFloat, nil
 		}
 		return 0, 0, fmt.Errorf("integer: unknown number type %q", hint)
 	case canonical.ParamString:
 		switch hint {
 		case "", "string":
-			return iacp2.ObjTypeString, iacp2.NumTypeString, nil
+			return codec.ObjTypeString, codec.NumTypeString, nil
 		case "ipv4", "ipaddr":
-			return iacp2.ObjTypeIPv4, iacp2.NumTypeIPv4, nil
+			return codec.ObjTypeIPv4, codec.NumTypeIPv4, nil
 		}
 		return 0, 0, fmt.Errorf("string: unknown type hint %q (want ipv4 or omit)", hint)
 	case canonical.ParamBoolean:

@@ -10,19 +10,20 @@ import (
 	"testing"
 
 	"dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // TestAN2FrameRoundTrip verifies that an AN2 frame survives encode → decode.
 func TestAN2FrameRoundTrip(t *testing.T) {
-	frame := &acp2.AN2Frame{
-		Proto:   acp2.AN2ProtoACP2,
+	frame := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoACP2,
 		Slot:    3,
 		MTID:    0,
-		Type:    acp2.AN2TypeData,
+		Type:    codec.AN2TypeData,
 		Payload: []byte{0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x00},
 	}
 
-	data, err := acp2.EncodeAN2Frame(frame)
+	data, err := codec.EncodeAN2Frame(frame)
 	if err != nil {
 		t.Fatalf("Encode: %v", err)
 	}
@@ -38,11 +39,11 @@ func TestAN2FrameRoundTrip(t *testing.T) {
 	}
 
 	// Decode via stream reader (as real TCP would).
-	decoded, err := acp2.ReadAN2Frame(bytes.NewReader(data))
+	decoded, err := codec.ReadAN2Frame(bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("ReadAN2Frame: %v", err)
 	}
-	if decoded.Proto != acp2.AN2ProtoACP2 {
+	if decoded.Proto != codec.AN2ProtoACP2 {
 		t.Errorf("decoded proto: got %d, want 2", decoded.Proto)
 	}
 	if decoded.Slot != 3 {
@@ -56,7 +57,7 @@ func TestAN2FrameRoundTrip(t *testing.T) {
 // TestAN2MagicValidation ensures bad magic is rejected.
 func TestAN2MagicValidation(t *testing.T) {
 	badData := []byte{0xFF, 0xFF, 0x02, 0x00, 0x00, 0x04, 0x00, 0x00}
-	_, _, err := acp2.DecodeAN2Frame(badData)
+	_, _, err := codec.DecodeAN2Frame(badData)
 	if err == nil {
 		t.Fatal("expected error for bad magic")
 	}
@@ -64,16 +65,16 @@ func TestAN2MagicValidation(t *testing.T) {
 
 // TestACP2MessageHeader verifies the 4-byte ACP2 header layout.
 func TestACP2MessageHeader(t *testing.T) {
-	msg := &acp2.ACP2Message{
-		Type: acp2.ACP2TypeRequest,
+	msg := &codec.ACP2Message{
+		Type: codec.ACP2TypeRequest,
 		MTID: 7,
-		Func: acp2.ACP2FuncGetObject,
+		Func: codec.ACP2FuncGetObject,
 		PID:  0,
 		ObjID: 1,
 		Idx:   0,
 	}
 
-	data, err := acp2.EncodeACP2Message(msg)
+	data, err := codec.EncodeACP2Message(msg)
 	if err != nil {
 		t.Fatalf("Encode: %v", err)
 	}
@@ -97,11 +98,11 @@ func TestACP2ErrorDecode(t *testing.T) {
 	binary.BigEndian.PutUint32(body, 50)
 	data := append([]byte{3, 2, 4, 0}, body...)
 
-	msg, err := acp2.DecodeACP2Message(data)
+	msg, err := codec.DecodeACP2Message(data)
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
-	if msg.Type != acp2.ACP2TypeError {
+	if msg.Type != codec.ACP2TypeError {
 		t.Errorf("type: got %d, want 3", msg.Type)
 	}
 	if msg.ObjID != 50 {
@@ -117,8 +118,8 @@ func TestACP2ErrorDecode(t *testing.T) {
 // TestPropertyAlignment verifies the 4-byte alignment rule.
 func TestPropertyAlignment(t *testing.T) {
 	// String "AB\0" = 3 bytes, plen = 7, pad = (4-7%4)%4 = 1.
-	prop := acp2.MakeStringProperty(acp2.PIDLabel, "AB")
-	encoded, err := acp2.EncodeProperty(&prop)
+	prop := codec.MakeStringProperty(codec.PIDLabel, "AB")
+	encoded, err := codec.EncodeProperty(&prop)
 	if err != nil {
 		t.Fatalf("Encode: %v", err)
 	}
@@ -133,27 +134,27 @@ func TestPropertyAlignment(t *testing.T) {
 	}
 
 	// Decode should still work.
-	props, err := acp2.DecodeProperties(encoded)
+	props, err := codec.DecodeProperties(encoded)
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
 	if len(props) != 1 {
 		t.Fatalf("expected 1 property, got %d", len(props))
 	}
-	if acp2.PropertyString(&props[0]) != "AB" {
-		t.Errorf("string: got %q, want %q", acp2.PropertyString(&props[0]), "AB")
+	if codec.PropertyString(&props[0]) != "AB" {
+		t.Errorf("string: got %q, want %q", codec.PropertyString(&props[0]), "AB")
 	}
 }
 
 // TestPropertyAlignmentMultiple verifies alignment across multiple properties.
 func TestPropertyAlignmentMultiple(t *testing.T) {
 	// Two properties: "X\0" (plen=5, pad=3) + u32 (plen=8, pad=0).
-	p1 := acp2.MakeStringProperty(acp2.PIDLabel, "X")
+	p1 := codec.MakeStringProperty(codec.PIDLabel, "X")
 	u32data := make([]byte, 4)
 	binary.BigEndian.PutUint32(u32data, 999)
-	p2 := acp2.Property{PID: acp2.PIDValue, VType: uint8(acp2.NumTypeU32), PLen: 8, Data: u32data}
+	p2 := codec.Property{PID: codec.PIDValue, VType: uint8(codec.NumTypeU32), PLen: 8, Data: u32data}
 
-	encoded, err := acp2.EncodeProperties([]acp2.Property{p1, p2})
+	encoded, err := codec.EncodeProperties([]codec.Property{p1, p2})
 	if err != nil {
 		t.Fatalf("Encode: %v", err)
 	}
@@ -163,17 +164,17 @@ func TestPropertyAlignmentMultiple(t *testing.T) {
 		t.Fatalf("expected 16 bytes, got %d", len(encoded))
 	}
 
-	decoded, err := acp2.DecodeProperties(encoded)
+	decoded, err := codec.DecodeProperties(encoded)
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
 	if len(decoded) != 2 {
 		t.Fatalf("expected 2 properties, got %d", len(decoded))
 	}
-	if acp2.PropertyString(&decoded[0]) != "X" {
-		t.Errorf("first: got %q, want %q", acp2.PropertyString(&decoded[0]), "X")
+	if codec.PropertyString(&decoded[0]) != "X" {
+		t.Errorf("first: got %q, want %q", codec.PropertyString(&decoded[0]), "X")
 	}
-	v, err := acp2.PropertyU32(&decoded[1])
+	v, err := codec.PropertyU32(&decoded[1])
 	if err != nil {
 		t.Fatalf("PropertyU32: %v", err)
 	}
@@ -188,7 +189,7 @@ func TestNumberTypeMapping(t *testing.T) {
 	var s32val int32 = -500
 	s32data := make([]byte, 4)
 	binary.BigEndian.PutUint32(s32data, uint32(s32val))
-	intV, _, _, err := acp2.DecodeNumericValue(acp2.NumTypeS32, s32data)
+	intV, _, _, err := codec.DecodeNumericValue(codec.NumTypeS32, s32data)
 	if err != nil {
 		t.Fatalf("S32: %v", err)
 	}
@@ -199,7 +200,7 @@ func TestNumberTypeMapping(t *testing.T) {
 	// Float = 1.5
 	fdata := make([]byte, 4)
 	binary.BigEndian.PutUint32(fdata, math.Float32bits(1.5))
-	_, _, floatV, err := acp2.DecodeNumericValue(acp2.NumTypeFloat, fdata)
+	_, _, floatV, err := codec.DecodeNumericValue(codec.NumTypeFloat, fdata)
 	if err != nil {
 		t.Fatalf("Float: %v", err)
 	}
