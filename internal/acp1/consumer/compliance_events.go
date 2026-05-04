@@ -95,4 +95,11 @@ const (
 	// (coerced / clamped), we accept it but fire this so the
 	// operator sees write-path coercion. Informational.
 	SetValueCoerced = "acp1_set_value_coerced"
+
+	// Spec p.20 ("Identity Object Group"): Card Label (id 0) is
+	// mandatory on every slot. When GetIdentity probes id 0 and the
+	// device returns a transport or object error, we fire this and
+	// return protocol.ErrIdentityUnresolved so the DM-library lookup
+	// falls through to walk-only. Informational.
+	IdentityNAK = "acp1_identity_nak"
 )
