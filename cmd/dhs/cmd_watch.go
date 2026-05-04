@@ -41,17 +41,21 @@ func runWatch(ctx context.Context, args []string) error {
 	defer cleanup()
 
 	// Load disk cache for instant label/unit resolution while walk runs.
-	labelCache := map[int]string{} // objID → label
-	unitCache := map[int]string{}  // objID → unit
+	// Key by watchCacheKey so ACP1 groups that re-use the same object-id
+	// space (control / status / alarm / identity / file / frame all
+	// addressable as 0..N within one slot) don't collide. (refs #236)
+	labelCache := map[string]string{}
+	unitCache := map[string]string{}
 	if treeStore != nil && *slot >= 0 {
 		if snap, lerr := treeStore.Load(host, *slot); lerr == nil && snap != nil {
 			for _, sd := range snap.Slots {
 				for _, o := range sd.Objects {
+					k := watchCacheKey(o.Group, o.ID)
 					if o.Label != "" {
-						labelCache[o.ID] = o.Label
+						labelCache[k] = o.Label
 					}
 					if o.Unit != "" {
-						unitCache[o.ID] = o.Unit
+						unitCache[k] = o.Unit
 					}
 				}
 			}
@@ -127,7 +131,7 @@ func runWatch(ctx context.Context, args []string) error {
 			label := ev.Label
 			src := "live"
 			if label == "" {
-				if cached, ok := labelCache[ev.ID]; ok {
+				if cached, ok := labelCache[watchCacheKey(ev.Group, ev.ID)]; ok {
 					label = cached
 					src = "cache"
 				}
@@ -173,7 +177,7 @@ func runWatch(ctx context.Context, args []string) error {
 
 			// Parameter event — value column.
 			valStr := formatValueInline(ev.Value)
-			if unit, ok := unitCache[ev.ID]; ok && unit != "" {
+			if unit, ok := unitCache[watchCacheKey(ev.Group, ev.ID)]; ok && unit != "" {
 				valStr += " " + unit
 			}
 			// Live description + access + freshness + changes tag.
@@ -202,4 +206,15 @@ func runWatch(ctx context.Context, args []string) error {
 			)
 		}
 	}
+}
+
+// watchCacheKey builds a stable per-(group, id) cache key for label and
+// unit lookups in the watch verb. ACP1 groups (control / status / alarm
+// / identity / file / frame) re-use the same small object-id space within
+// one slot, so a flat ID-only map collides distinct labels — e.g. slot 1
+// has both control.0=IO-Ctrl and status.0=sInp1 (refs #236). ACP2 has no
+// Group concept; the empty group reduces the key to ".N" and stays
+// unique per slot.
+func watchCacheKey(group string, id int) string {
+	return fmt.Sprintf("%s.%d", group, id)
 }
