@@ -47,7 +47,7 @@ type Fingerprint struct {
 }
 
 // Schema is one resolved product entry: per-slot tree snapshots for one
-// (Model, SwRev, Proto) tuple.
+// (Model, SwRev, Proto) tuple plus optional cross-protocol metadata.
 type Schema struct {
 	Fingerprint Fingerprint
 
@@ -55,6 +55,23 @@ type Schema struct {
 	// frames (Synapse) every slot has its own snapshot. For single-slot
 	// devices the map has one entry, conventionally slot 1.
 	Slots map[int]*export.Snapshot
+
+	// Product is the cross-protocol product metadata loaded from
+	// product.yaml at the model-rev directory root. Optional — schemas
+	// without product.yaml resolve cleanly with Product zero-valued.
+	Product ProductMeta
+
+	// Identity holds the per-protocol identity-probe configuration
+	// loaded from product.yaml. Optional.
+	Identity IdentityProbe
+
+	// Walk records when/by-what-tool the schema was captured.
+	// Optional.
+	Walk WalkMetadata
+
+	// SupportedProtocols lists every protocol with a sibling proto dir
+	// at the model-rev root. Loaded from product.yaml.
+	SupportedProtocols []string
 }
 
 // Diff is the per-slot delta between two Schemas of the same Fingerprint.
@@ -132,7 +149,22 @@ func (r *fileResolver) Resolve(fp Fingerprint) (*Schema, error) {
 	if len(slots) == 0 {
 		return nil, ErrNotFound
 	}
-	return &Schema{Fingerprint: fp, Slots: slots}, nil
+	s := &Schema{Fingerprint: fp, Slots: slots}
+
+	// Load product.yaml from the model-rev root if present. Absence is
+	// fine — schemas may exist without cross-protocol metadata.
+	pyPath, perr := r.productYAMLPath(fp)
+	if perr == nil {
+		if pm, ip, wm, sp, lerr := LoadProductYAML(pyPath); lerr == nil {
+			s.Product = *pm
+			s.Identity = *ip
+			s.Walk = *wm
+			s.SupportedProtocols = sp
+		} else if !os.IsNotExist(unwrapPathErr(lerr)) {
+			return nil, lerr
+		}
+	}
+	return s, nil
 }
 
 // LookupAlternate scans the same vendor/product/model dir for sibling
@@ -184,7 +216,9 @@ func (r *fileResolver) LookupAlternate(fp Fingerprint) ([]Fingerprint, error) {
 	return out, nil
 }
 
-// Persist writes every slot's snapshot atomically.
+// Persist writes every slot's snapshot atomically and, when the schema
+// carries cross-protocol metadata, writes product.yaml at the model-rev
+// root.
 func (r *fileResolver) Persist(s *Schema) error {
 	if s == nil {
 		return ErrInvalid
@@ -204,6 +238,18 @@ func (r *fileResolver) Persist(s *Schema) error {
 			continue
 		}
 		if err := writeSlot(dir, slot, snap); err != nil {
+			return err
+		}
+	}
+
+	// Save product.yaml if the schema carries metadata. The Product
+	// struct's Model + SwRev are the trigger; both must be non-empty.
+	if s.Product.Model != "" && s.Product.SwRev != "" {
+		pyPath, perr := r.productYAMLPath(s.Fingerprint)
+		if perr != nil {
+			return perr
+		}
+		if err := SaveProductYAML(pyPath, &s.Product, &s.Identity, &s.Walk, s.SupportedProtocols); err != nil {
 			return err
 		}
 	}
@@ -258,6 +304,39 @@ func (r *fileResolver) productDir(fp Fingerprint) (string, error) {
 		return "", fmt.Errorf("dmlib: product: %w", err)
 	}
 	return filepath.Join(r.root, v, p), nil
+}
+
+// productYAMLPath returns <root>/<vendor>/<product>/<model>-<sw_rev>/product.yaml.
+func (r *fileResolver) productYAMLPath(fp Fingerprint) (string, error) {
+	pd, err := r.productDir(fp)
+	if err != nil {
+		return "", err
+	}
+	m, err := identity.PathSegment(fp.Model)
+	if err != nil {
+		return "", fmt.Errorf("dmlib: model: %w", err)
+	}
+	sw, err := identity.PathSegment(fp.SwRev)
+	if err != nil {
+		return "", fmt.Errorf("dmlib: sw_rev: %w", err)
+	}
+	return filepath.Join(pd, m+"-"+sw, "product.yaml"), nil
+}
+
+// unwrapPathErr peels wrapping layers to find an os.PathError that
+// carries the actual not-exist signal. Used in Resolve to distinguish
+// "metadata absent" from real I/O failures.
+func unwrapPathErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	for {
+		inner := errors.Unwrap(err)
+		if inner == nil {
+			return err
+		}
+		err = inner
+	}
 }
 
 // protoDir returns <root>/<vendor>/<product>/<model>-<sw_rev>/<proto>/.
