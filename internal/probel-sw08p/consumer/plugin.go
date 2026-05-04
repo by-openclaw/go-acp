@@ -224,6 +224,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 				met.ObserveRx(len(b))
 			}
 		},
+		OnEvent: p.keepaliveAutoResponder(),
 	}
 	if p.recorder != nil {
 		rec := p.recorder
@@ -247,7 +248,6 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.port = port
 	p.profile = prof
 	p.metricsConn = met
-	p.installKeepaliveAutoResponder(cli)
 	p.logger.Info("probel connected",
 		slog.String("host", ip),
 		slog.Int("port", port),

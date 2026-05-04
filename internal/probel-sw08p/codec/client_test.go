@@ -115,3 +115,58 @@ func TestClientCloseWakesPending(t *testing.T) {
 	}
 	_ = client.Close()
 }
+
+// TestClientOnEventFiresBeforeSubscribe proves that ClientConfig.OnEvent is
+// wired in before the reader goroutine starts: a frame already on the wire
+// when Dial returns is delivered to OnEvent without a separate Subscribe
+// call. Pinned regression for #234 (keepalive Subscribe vs reader race).
+func TestClientOnEventFiresBeforeSubscribe(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer func() { _ = ln.Close() }()
+
+	// Server side: accept + immediately write a keepalive ping. The
+	// ping is on the wire before the client's reader goroutine starts.
+	go func() {
+		c, aerr := ln.Accept()
+		if aerr != nil {
+			return
+		}
+		defer func() { _ = c.Close() }()
+		_, _ = c.Write(Pack(EncodeKeepaliveRequest()))
+		// Hold the socket open so the client's reader can drain it.
+		time.Sleep(2 * time.Second)
+	}()
+
+	got := make(chan Frame, 1)
+	disable := false
+	cfg := ClientConfig{
+		WireHexLog: &disable,
+		OnEvent: func(c *Client, f Frame) {
+			select {
+			case got <- f:
+			default:
+			}
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cli, err := Dial(ctx, ln.Addr().String(), logger, cfg)
+	if err != nil {
+		t.Fatalf("Dial: %v", err)
+	}
+	defer func() { _ = cli.Close() }()
+
+	select {
+	case f := <-got:
+		if f.ID != TxAppKeepaliveRequest {
+			t.Fatalf("OnEvent got cmd %02x; want %02x", f.ID, TxAppKeepaliveRequest)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("OnEvent never fired for pre-Dial wire frame")
+	}
+}
