@@ -224,6 +224,16 @@ type ClientConfig struct {
 	// OnNoACK fires when a reply frame arrives before the peer's ACK.
 	// Spec deviation per SW-P-08 §2; frame accepted regardless.
 	OnNoACK func()
+
+	// OnEvent is an async-event listener installed BEFORE the reader
+	// goroutine starts, so frames arriving immediately after Dial
+	// returns are not lost to a Subscribe-vs-readLoop race. The Client
+	// pointer is the same one Dial returns; callers typically use it
+	// to write a reply (e.g. keepalive auto-response) without going
+	// through a captured-by-closure variable that may still be unset
+	// when the reader fires. Subscribe remains the right surface for
+	// listeners attached after the session is established.
+	OnEvent func(c *Client, f Frame)
 }
 
 // Dial opens a TCP connection to addr (host:port) and starts the reader
@@ -302,7 +312,7 @@ func newClient(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
 	if max <= 0 {
 		max = DefaultMaxAttempts
 	}
-	return &Client{
+	c := &Client{
 		logger:      logger,
 		conn:        conn,
 		readerDone:  make(chan struct{}),
@@ -317,6 +327,14 @@ func newClient(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
 		onRetry:     cfg.OnRetry,
 		onNoACK:     cfg.OnNoACK,
 	}
+	// Pre-register OnEvent BEFORE Dial spawns the reader goroutine, so
+	// the very first inbound frame can never lose to a post-Dial
+	// Subscribe (refs #234).
+	if cfg.OnEvent != nil {
+		onEv := cfg.OnEvent
+		c.readers = append(c.readers, func(f Frame) { onEv(c, f) })
+	}
+	return c
 }
 
 // Close stops the reader goroutine and releases the socket. Safe to
