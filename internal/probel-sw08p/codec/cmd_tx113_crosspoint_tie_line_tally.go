@@ -14,7 +14,14 @@ type TieLineSource struct {
 // TieLineTallyParams: tx 113 CROSSPOINT TIE LINE TALLY. One row per
 // destination level.
 //
-// Reference: SW-P-08 §3.3.23.
+// No extended pair — there is no cmd 241 in SW-P-08 Issue 30. The
+// narrow form is already wide enough: byte 1 is a FULL 8-bit matrix
+// byte (not 4-bit packed like other commands), and DestAssociationID
+// + per-source SourceID are 16-bit (DIV/MOD 256). Per-source Matrix
+// and Level are also full 8-bit bytes. The tie-line family does not
+// need a needsExtended() method.
+//
+// Reference: SW-P-08 Issue 30 §3.3.23.
 type TieLineTallyParams struct {
 	DestMatrixID      uint8
 	DestAssociationID uint16
