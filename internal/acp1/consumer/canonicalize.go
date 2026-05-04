@@ -8,6 +8,7 @@ import (
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/protocol"
+	"dhs/internal/acp1/codec"
 )
 
 // Canonicalize walks every cached SlotTree on this plugin and emits
@@ -135,7 +136,7 @@ func buildGroupNode(slot int, slotOID, slotPath string, groupNumber int, groupNa
 		if obj.Group != groupName {
 			continue
 		}
-		acpType := ObjectType(0)
+		acpType := codec.ObjectType(0)
 		if i < len(tree.ACPTypes) {
 			acpType = tree.ACPTypes[i]
 		}
@@ -170,7 +171,7 @@ func buildGroupNode(slot int, slotOID, slotPath string, groupNumber int, groupNa
 
 // buildParameter maps a protocol.Object to a canonical.Parameter. Spec
 // cross-refs are in per-kind switch below.
-func buildParameter(obj protocol.Object, acpType ObjectType, parentOID, parentPath string) *canonical.Parameter {
+func buildParameter(obj protocol.Object, acpType codec.ObjectType, parentOID, parentPath string) *canonical.Parameter {
 	oid := parentOID + "." + strconv.Itoa(obj.ID)
 	path := parentPath + "." + obj.Label
 	// Use Label as identifier; fall back to "#<id>" when a device
@@ -257,7 +258,7 @@ func buildParameter(obj protocol.Object, acpType ObjectType, parentOID, parentPa
 
 // kindToCanonicalType maps ValueKind + ACP1 ObjectType to the canonical
 // parameter type string (docs/protocols/elements/parameter.md).
-func kindToCanonicalType(k protocol.ValueKind, acpType ObjectType) string {
+func kindToCanonicalType(k protocol.ValueKind, acpType codec.ObjectType) string {
 	switch k {
 	case protocol.KindBool:
 		return canonical.ParamBoolean
@@ -282,7 +283,7 @@ func kindToCanonicalType(k protocol.ValueKind, acpType ObjectType) string {
 	}
 	// Fallback: File objects (acpType=TypeFile) and unknown kinds end
 	// up here. File is a named resource — surface as string.
-	if acpType == TypeFile {
+	if acpType == codec.TypeFile {
 		return canonical.ParamString
 	}
 	return canonical.ParamString

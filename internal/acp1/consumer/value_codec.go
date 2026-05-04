@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"dhs/internal/protocol"
+	"dhs/internal/acp1/codec"
 )
 
 // ValueCodec encodes and decodes the "value bytes" that ACP1 getValue and
@@ -54,41 +55,41 @@ import (
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" pp. 21–27.
-func DecodeValueBytes(obj protocol.Object, acpType ObjectType, raw []byte) (protocol.Value, error) {
+func DecodeValueBytes(obj protocol.Object, acpType codec.ObjectType, raw []byte) (protocol.Value, error) {
 	v := protocol.Value{
 		Kind: obj.Kind,
 		Raw:  append([]byte(nil), raw...),
 	}
 	switch acpType {
-	case TypeInteger:
+	case codec.TypeInteger:
 		if len(raw) < 2 {
 			return v, fmt.Errorf("acp1 decode integer: need 2 bytes, got %d", len(raw))
 		}
 		v.Int = int64(int16(binary.BigEndian.Uint16(raw)))
 		return v, nil
 
-	case TypeLong:
+	case codec.TypeLong:
 		if len(raw) < 4 {
 			return v, fmt.Errorf("acp1 decode long: need 4 bytes, got %d", len(raw))
 		}
 		v.Int = int64(int32(binary.BigEndian.Uint32(raw)))
 		return v, nil
 
-	case TypeByte:
+	case codec.TypeByte:
 		if len(raw) < 1 {
 			return v, fmt.Errorf("acp1 decode byte: need 1 byte, got %d", len(raw))
 		}
 		v.Uint = uint64(raw[0])
 		return v, nil
 
-	case TypeFloat:
+	case codec.TypeFloat:
 		if len(raw) < 4 {
 			return v, fmt.Errorf("acp1 decode float: need 4 bytes, got %d", len(raw))
 		}
 		v.Float = float64(math.Float32frombits(binary.BigEndian.Uint32(raw)))
 		return v, nil
 
-	case TypeIPAddr:
+	case codec.TypeIPAddr:
 		if len(raw) < 4 {
 			return v, fmt.Errorf("acp1 decode ipaddr: need 4 bytes, got %d", len(raw))
 		}
@@ -99,7 +100,7 @@ func DecodeValueBytes(obj protocol.Object, acpType ObjectType, raw []byte) (prot
 		}
 		return v, nil
 
-	case TypeEnum:
+	case codec.TypeEnum:
 		if len(raw) < 1 {
 			return v, fmt.Errorf("acp1 decode enum: need 1 byte, got %d", len(raw))
 		}
@@ -111,7 +112,7 @@ func DecodeValueBytes(obj protocol.Object, acpType ObjectType, raw []byte) (prot
 		}
 		return v, nil
 
-	case TypeString:
+	case codec.TypeString:
 		// Strings on the wire are NUL-terminated, but some replies omit
 		// the trailing NUL. Strip at the first NUL if present, otherwise
 		// take everything.
@@ -125,7 +126,7 @@ func DecodeValueBytes(obj protocol.Object, acpType ObjectType, raw []byte) (prot
 		v.Str = string(raw[:end])
 		return v, nil
 
-	case TypeAlarm:
+	case codec.TypeAlarm:
 		// getValue on an Alarm returns a single byte = the current
 		// priority (0 = disabled, 1..255 = enabled with that priority).
 		// Surface it as a Uint so formatValue can render it cleanly.
@@ -136,7 +137,7 @@ func DecodeValueBytes(obj protocol.Object, acpType ObjectType, raw []byte) (prot
 		v.Uint = uint64(raw[0])
 		return v, nil
 
-	case TypeFrame:
+	case codec.TypeFrame:
 		// Frame-status announcements and getValue replies both carry
 		// [num_slots, status_0, status_1, ...] per spec p. 24. Decode
 		// the byte array into the structured SlotStatus slice so
@@ -156,7 +157,7 @@ func DecodeValueBytes(obj protocol.Object, acpType ObjectType, raw []byte) (prot
 		}
 		return v, nil
 
-	case TypeRoot, TypeFile, TypeReserved:
+	case codec.TypeRoot, codec.TypeFile, codec.TypeReserved:
 		// Other compound types — leave as raw bytes.
 		v.Kind = protocol.KindRaw
 		return v, nil
@@ -189,9 +190,9 @@ func DecodeValueBytes(obj protocol.Object, acpType ObjectType, raw []byte) (prot
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" pp. 21–27.
-func EncodeValueBytes(obj protocol.Object, acpType ObjectType, val protocol.Value) ([]byte, error) {
+func EncodeValueBytes(obj protocol.Object, acpType codec.ObjectType, val protocol.Value) ([]byte, error) {
 	switch acpType {
-	case TypeInteger:
+	case codec.TypeInteger:
 		n, err := coerceInt(val, -32768, 32767)
 		if err != nil {
 			return nil, fmt.Errorf("acp1 encode integer: %w", err)
@@ -200,7 +201,7 @@ func EncodeValueBytes(obj protocol.Object, acpType ObjectType, val protocol.Valu
 		binary.BigEndian.PutUint16(out, uint16(int16(n)))
 		return out, nil
 
-	case TypeLong:
+	case codec.TypeLong:
 		n, err := coerceInt(val, math.MinInt32, math.MaxInt32)
 		if err != nil {
 			return nil, fmt.Errorf("acp1 encode long: %w", err)
@@ -209,14 +210,14 @@ func EncodeValueBytes(obj protocol.Object, acpType ObjectType, val protocol.Valu
 		binary.BigEndian.PutUint32(out, uint32(int32(n)))
 		return out, nil
 
-	case TypeByte:
+	case codec.TypeByte:
 		n, err := coerceUint(val, 255)
 		if err != nil {
 			return nil, fmt.Errorf("acp1 encode byte: %w", err)
 		}
 		return []byte{byte(n)}, nil
 
-	case TypeFloat:
+	case codec.TypeFloat:
 		f, err := coerceFloat(val)
 		if err != nil {
 			return nil, fmt.Errorf("acp1 encode float: %w", err)
@@ -225,7 +226,7 @@ func EncodeValueBytes(obj protocol.Object, acpType ObjectType, val protocol.Valu
 		binary.BigEndian.PutUint32(out, math.Float32bits(float32(f)))
 		return out, nil
 
-	case TypeIPAddr:
+	case codec.TypeIPAddr:
 		u, err := coerceIP(val)
 		if err != nil {
 			return nil, fmt.Errorf("acp1 encode ipaddr: %w", err)
@@ -234,14 +235,14 @@ func EncodeValueBytes(obj protocol.Object, acpType ObjectType, val protocol.Valu
 		binary.BigEndian.PutUint32(out, u)
 		return out, nil
 
-	case TypeEnum:
+	case codec.TypeEnum:
 		idx, err := coerceEnum(obj.EnumItems, val)
 		if err != nil {
 			return nil, fmt.Errorf("acp1 encode enum: %w", err)
 		}
 		return []byte{idx}, nil
 
-	case TypeString:
+	case codec.TypeString:
 		s := val.Str
 		if obj.MaxLen > 0 && len(s) > obj.MaxLen {
 			return nil, fmt.Errorf("acp1 encode string: %d > max %d", len(s), obj.MaxLen)

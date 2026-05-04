@@ -1,18 +1,19 @@
-// Package acp1 implements the Axon Control Protocol v1.4 wire format and
-// plugin for the internal/protocol interface.
+// Package codec implements the ACP1 (Axon Control Protocol v1.4) wire
+// format. Stdlib-only, lift-to-own-repo ready per ADR-0006.
 //
-// Authoritative spec: assets/AXON-ACP_v1_4.pdf.
-// Cross-reference: the Axon Wireshark dissector in wireshark/dhs_acpv1.lua
-// and the C# reference driver (ByResearch.DHS.AxonACP.DeviceDriver).
+// Authoritative spec: ../assets/AXON-ACP_v1_4.pdf.
+// Cross-reference: the Axon Wireshark dissector in
+// ../wireshark/dhs_acpv1.lua and the C# reference driver
+// (ByResearch.DHS.AxonACP.DeviceDriver).
 //
 // Scope of this package:
 //   - UDP direct mode (port 2071) — current target
 //   - TCP direct mode with MLEN prefix — later
-//   - AN2 transport — out of scope for v1 (see CLAUDE.md)
+//   - AN2 transport — out of scope for v1 (see ../CLAUDE.md)
 //
-// Nothing outside cmd/ and this package's own files may import acp1. The
-// rest of the system talks to the Protocol interface only.
-package acp1
+// Imported by internal/acp1/consumer and internal/acp1/provider for the
+// Protocol / Provider interface implementations.
+package codec
 
 // Spec §"ACP Port Number" p. 7.
 const (

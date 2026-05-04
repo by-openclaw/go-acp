@@ -7,27 +7,27 @@ import (
 	"sync"
 
 	"dhs/internal/export/canonical"
-	iacp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 // groupName -> ObjGroup constant. Mirrors buildSlotNode in
 // internal/protocol/acp1/canonicalize.go. Canonical uses lowercase group
 // identifiers; ACP1 wire uses the numeric group code.
-var groupByName = map[string]iacp1.ObjGroup{
-	"root":     iacp1.GroupRoot,
-	"identity": iacp1.GroupIdentity,
-	"control":  iacp1.GroupControl,
-	"status":   iacp1.GroupStatus,
-	"alarm":    iacp1.GroupAlarm,
-	"file":     iacp1.GroupFile,
-	"frame":    iacp1.GroupFrame,
+var groupByName = map[string]codec.ObjGroup{
+	"root":     codec.GroupRoot,
+	"identity": codec.GroupIdentity,
+	"control":  codec.GroupControl,
+	"status":   codec.GroupStatus,
+	"alarm":    codec.GroupAlarm,
+	"file":     codec.GroupFile,
+	"frame":    codec.GroupFrame,
 }
 
 // objectKey uniquely identifies an AxonNet object on the wire.
 // slot fits in a byte (0-31 per spec); group+id likewise.
 type objectKey struct {
 	slot  uint8
-	group iacp1.ObjGroup
+	group codec.ObjGroup
 	id    uint8
 }
 
@@ -37,7 +37,7 @@ type objectKey struct {
 type entry struct {
 	key     objectKey
 	param   *canonical.Parameter // points into the loaded canonical.Export
-	acpType iacp1.ObjectType
+	acpType codec.ObjectType
 	access  uint8 // ACP1 access bits 0/1/2
 }
 
@@ -127,23 +127,23 @@ func newTree(exp *canonical.Export) (*tree, error) {
 				t.entries[e.key] = e
 
 				switch grp {
-				case iacp1.GroupIdentity:
+				case codec.GroupIdentity:
 					if id >= counts.numIdentity {
 						counts.numIdentity = id + 1
 					}
-				case iacp1.GroupControl:
+				case codec.GroupControl:
 					if id >= counts.numControl {
 						counts.numControl = id + 1
 					}
-				case iacp1.GroupStatus:
+				case codec.GroupStatus:
 					if id >= counts.numStatus {
 						counts.numStatus = id + 1
 					}
-				case iacp1.GroupAlarm:
+				case codec.GroupAlarm:
 					if id >= counts.numAlarm {
 						counts.numAlarm = id + 1
 					}
-				case iacp1.GroupFile:
+				case codec.GroupFile:
 					if id >= counts.numFile {
 						counts.numFile = id + 1
 					}
@@ -182,7 +182,7 @@ func (t *tree) lookup(k objectKey) (*entry, bool) {
 //	boolean without "alarm" hint  -> ERROR (ACP1 has no Boolean — use
 //	                                 Enum with "Off,On" items for plain
 //	                                 booleans, Alarm for alarm objects)
-func deriveACPType(p *canonical.Parameter) (iacp1.ObjectType, error) {
+func deriveACPType(p *canonical.Parameter) (codec.ObjectType, error) {
 	// Parameter.Format is a free-form comma-separated hint carrying
 	// ACP1 type information AND other attributes (e.g. "maxLen=N" on
 	// strings, "priority=N,tag=M" on alarms). Split and scan: first
@@ -196,27 +196,27 @@ func deriveACPType(p *canonical.Parameter) (iacp1.ObjectType, error) {
 
 	switch p.Type {
 	case canonical.ParamReal:
-		return iacp1.TypeFloat, nil
+		return codec.TypeFloat, nil
 	case canonical.ParamEnum:
-		return iacp1.TypeEnum, nil
+		return codec.TypeEnum, nil
 	case canonical.ParamInteger:
 		switch typeHint {
 		case "", "int16":
-			return iacp1.TypeInteger, nil
+			return codec.TypeInteger, nil
 		case "int32", "long":
-			return iacp1.TypeLong, nil
+			return codec.TypeLong, nil
 		case "uint8", "byte":
-			return iacp1.TypeByte, nil
+			return codec.TypeByte, nil
 		}
 		return 0, fmt.Errorf("integer: unknown type hint %q (want int16|int32|uint8)", typeHint)
 	case canonical.ParamString:
 		switch typeHint {
 		case "", "string":
-			return iacp1.TypeString, nil
+			return codec.TypeString, nil
 		case "ipv4", "ipaddr":
-			return iacp1.TypeIPAddr, nil
+			return codec.TypeIPAddr, nil
 		case "file":
-			return iacp1.TypeFile, nil
+			return codec.TypeFile, nil
 		}
 		return 0, fmt.Errorf("string: unknown type hint %q (want ipv4|file or omit)", typeHint)
 	case canonical.ParamBoolean:
@@ -225,10 +225,10 @@ func deriveACPType(p *canonical.Parameter) (iacp1.ObjectType, error) {
 				"boolean has no ACP1 mapping — use enum with Off,On for plain booleans, " +
 					"or set format=\"alarm\" with description=\"on: … / off: …\" for spec-p.25 Alarm objects")
 		}
-		return iacp1.TypeAlarm, nil
+		return codec.TypeAlarm, nil
 	case canonical.ParamOctets:
 		if typeHint == "frame" {
-			return iacp1.TypeFrame, nil
+			return codec.TypeFrame, nil
 		}
 		return 0, fmt.Errorf("octets: type hint %q unsupported in ACP1 (only \"frame\" is defined)", typeHint)
 	}
@@ -297,11 +297,11 @@ func pickTypeHint(parts []string) (string, bool) {
 func deriveAccess(a string) uint8 {
 	switch a {
 	case canonical.AccessRead:
-		return iacp1.AccessRead
+		return codec.AccessRead
 	case canonical.AccessWrite:
-		return iacp1.AccessWrite | iacp1.AccessSetDef
+		return codec.AccessWrite | codec.AccessSetDef
 	case canonical.AccessReadWrite:
-		return iacp1.AccessRead | iacp1.AccessWrite | iacp1.AccessSetDef
+		return codec.AccessRead | codec.AccessWrite | codec.AccessSetDef
 	}
 	return 0
 }
@@ -339,7 +339,7 @@ func parsePath(path string) (objectKey, error) {
 	}
 	return objectKey{
 		slot:  uint8(slot1based - 1),
-		group: iacp1.ObjGroup(grpNum),
+		group: codec.ObjGroup(grpNum),
 		id:    uint8(id),
 	}, nil
 }

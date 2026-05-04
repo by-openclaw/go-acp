@@ -6,8 +6,7 @@ import (
 	"log/slog"
 	"math"
 	"time"
-
-	iacp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 // RunAnnounceDemo oscillates the integer value at (slot, group, id)
@@ -28,7 +27,7 @@ func (s *server) RunAnnounceDemo(ctx context.Context, slot uint8, group, id uint
 	if interval <= 0 {
 		interval = 2 * time.Second
 	}
-	key := objectKey{slot: slot, group: iacp1.ObjGroup(group), id: id}
+	key := objectKey{slot: slot, group: codec.ObjGroup(group), id: id}
 	e, ok := s.tree.lookup(key)
 	if !ok {
 		s.logger.Warn("acp1 demo: target not found",
@@ -38,7 +37,7 @@ func (s *server) RunAnnounceDemo(ctx context.Context, slot uint8, group, id uint
 		)
 		return
 	}
-	if e.acpType != iacp1.TypeInteger {
+	if e.acpType != codec.TypeInteger {
 		s.logger.Warn("acp1 demo: target is not Integer (s16), skipping",
 			slog.Int("acp_type", int(e.acpType)),
 			slog.String("path", e.param.Path),
@@ -97,19 +96,19 @@ func (s *server) RunAnnounceDemo(ctx context.Context, slot uint8, group, id uint
 		// Route through the SAME path as a client setValue so the
 		// canonical.Parameter.Value update + reply bytes match what
 		// getValue would return after the change.
-		stored, err := s.applyMutation(e, iacp1.MethodSetValue, valBytes)
+		stored, err := s.applyMutation(e, codec.MethodSetValue, valBytes)
 		if err != nil {
 			s.logger.Warn("acp1 demo: apply failed", slog.String("err", err.Error()))
 			continue
 		}
 
-		announce := &iacp1.Message{
+		announce := &codec.Message{
 			MTID:     0,
 			PVER:     1,
-			MType:    iacp1.MTypeReply,
+			MType:    codec.MTypeReply,
 			MAddr:    slot,
-			MCode:    byte(iacp1.MethodSetValue),
-			ObjGroup: iacp1.ObjGroup(group),
+			MCode:    byte(codec.MethodSetValue),
+			ObjGroup: codec.ObjGroup(group),
 			ObjID:    id,
 			Value:    stored,
 		}

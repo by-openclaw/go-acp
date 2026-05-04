@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"dhs/internal/export/canonical"
-	iacp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 // newTestServer builds a server with a hand-crafted tree containing two
@@ -113,17 +113,17 @@ func newTestServer(t *testing.T) *server {
 
 func TestSession_GetValue_ReadOnlyString(t *testing.T) {
 	s := newTestServer(t)
-	req := &iacp1.Message{
-		MTID: 42, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode: byte(iacp1.MethodGetValue),
-		ObjGroup: iacp1.GroupIdentity, ObjID: 0,
+	req := &codec.Message{
+		MTID: 42, MType: codec.MTypeRequest, MAddr: 1,
+		MCode: byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupIdentity, ObjID: 0,
 	}
 	rep, _ := s.handleRequest(req)
 	if rep == nil {
 		t.Fatal("nil reply")
 	}
-	if rep.MType != iacp1.MTypeReply {
-		t.Fatalf("MType=%d want reply", rep.MType)
+	if rep.MType != codec.MTypeReply {
+		t.Fatalf("codec.MType=%d want reply", rep.MType)
 	}
 	if rep.MTID != 42 {
 		t.Fatalf("MTID mirror broken: got %d", rep.MTID)
@@ -137,20 +137,20 @@ func TestSession_GetValue_ReadOnlyString(t *testing.T) {
 
 func TestSession_GetObject_Integer(t *testing.T) {
 	s := newTestServer(t)
-	req := &iacp1.Message{
-		MTID: 7, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode: byte(iacp1.MethodGetObject),
-		ObjGroup: iacp1.GroupControl, ObjID: 0,
+	req := &codec.Message{
+		MTID: 7, MType: codec.MTypeRequest, MAddr: 1,
+		MCode: byte(codec.MethodGetObject),
+		ObjGroup: codec.GroupControl, ObjID: 0,
 	}
 	rep, _ := s.handleRequest(req)
-	if rep == nil || rep.MType != iacp1.MTypeReply {
+	if rep == nil || rep.MType != codec.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
-	o, err := iacp1.DecodeObject(rep.Value)
+	o, err := codec.DecodeObject(rep.Value)
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if o.Type != iacp1.TypeInteger {
+	if o.Type != codec.TypeInteger {
 		t.Fatalf("type=%d", o.Type)
 	}
 	if o.IntVal != -6 || o.MinInt != -60 || o.MaxInt != 12 {
@@ -164,13 +164,13 @@ func TestSession_GetObject_Integer(t *testing.T) {
 func TestSession_Root_Synthesised(t *testing.T) {
 	s := newTestServer(t)
 	// getValue on Root returns boot_mode byte (0 = normal).
-	req := &iacp1.Message{
-		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode: byte(iacp1.MethodGetValue),
-		ObjGroup: iacp1.GroupRoot, ObjID: 0,
+	req := &codec.Message{
+		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
+		MCode: byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupRoot, ObjID: 0,
 	}
 	rep, _ := s.handleRequest(req)
-	if rep == nil || rep.MType != iacp1.MTypeReply {
+	if rep == nil || rep.MType != codec.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
 	if len(rep.Value) != 1 || rep.Value[0] != 0 {
@@ -180,9 +180,9 @@ func TestSession_Root_Synthesised(t *testing.T) {
 	// getObject on Root returns 9 properties: type(0), numProps(9),
 	// access(1=read), boot_mode(0), numIdentity(1), numControl(1),
 	// numStatus(0), numAlarm(0), numFile(0).
-	req.MCode = byte(iacp1.MethodGetObject)
+	req.MCode = byte(codec.MethodGetObject)
 	rep, _ = s.handleRequest(req)
-	if rep == nil || rep.MType != iacp1.MTypeReply {
+	if rep == nil || rep.MType != codec.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
 	want := []byte{0, 9, 1, 0, 1, 1, 0, 0, 0}
@@ -194,34 +194,34 @@ func TestSession_Root_Synthesised(t *testing.T) {
 func TestSession_UnknownObject_InstanceError(t *testing.T) {
 	s := newTestServer(t)
 	// control group exists, id=99 does not.
-	req := &iacp1.Message{
-		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode: byte(iacp1.MethodGetValue),
-		ObjGroup: iacp1.GroupControl, ObjID: 99,
+	req := &codec.Message{
+		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
+		MCode: byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupControl, ObjID: 99,
 	}
 	rep, _ := s.handleRequest(req)
-	if rep.MType != iacp1.MTypeError {
-		t.Fatalf("want error, got MType=%d", rep.MType)
+	if rep.MType != codec.MTypeError {
+		t.Fatalf("want error, got codec.MType=%d", rep.MType)
 	}
-	if rep.MCode != byte(iacp1.OErrInstanceNoExist) {
-		t.Errorf("mcode=%d want %d", rep.MCode, iacp1.OErrInstanceNoExist)
+	if rep.MCode != byte(codec.OErrInstanceNoExist) {
+		t.Errorf("mcode=%d want %d", rep.MCode, codec.OErrInstanceNoExist)
 	}
 }
 
 func TestSession_UnknownGroup_GroupError(t *testing.T) {
 	s := newTestServer(t)
 	// Alarm group has no entries on slot 1.
-	req := &iacp1.Message{
-		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode: byte(iacp1.MethodGetValue),
-		ObjGroup: iacp1.GroupAlarm, ObjID: 0,
+	req := &codec.Message{
+		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
+		MCode: byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupAlarm, ObjID: 0,
 	}
 	rep, _ := s.handleRequest(req)
-	if rep.MType != iacp1.MTypeError {
+	if rep.MType != codec.MTypeError {
 		t.Fatalf("want error")
 	}
-	if rep.MCode != byte(iacp1.OErrGroupNoExist) {
-		t.Errorf("mcode=%d want %d", rep.MCode, iacp1.OErrGroupNoExist)
+	if rep.MCode != byte(codec.OErrGroupNoExist) {
+		t.Errorf("mcode=%d want %d", rep.MCode, codec.OErrGroupNoExist)
 	}
 }
 
@@ -229,21 +229,21 @@ func TestSession_SetValue_RoundTrip(t *testing.T) {
 	s := newTestServer(t)
 	// Control slot-1 id=0 is Level (int16, min=-60 max=12, currently -6).
 	// Write 5, expect echo 5.
-	req := &iacp1.Message{
-		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode:    byte(iacp1.MethodSetValue),
-		ObjGroup: iacp1.GroupControl, ObjID: 0,
+	req := &codec.Message{
+		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
+		MCode:    byte(codec.MethodSetValue),
+		ObjGroup: codec.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x05},
 	}
 	rep, _ := s.handleRequest(req)
-	if rep.MType != iacp1.MTypeReply {
+	if rep.MType != codec.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
 	if string(rep.Value) != string([]byte{0x00, 0x05}) {
 		t.Fatalf("echo bytes=%x want 0005", rep.Value)
 	}
 	// Re-read via getValue to confirm persistence.
-	req.MCode = byte(iacp1.MethodGetValue)
+	req.MCode = byte(codec.MethodGetValue)
 	req.Value = nil
 	rep, _ = s.handleRequest(req)
 	if string(rep.Value) != string([]byte{0x00, 0x05}) {
@@ -254,14 +254,14 @@ func TestSession_SetValue_RoundTrip(t *testing.T) {
 func TestSession_SetValue_ClampsToMax(t *testing.T) {
 	s := newTestServer(t)
 	// Level max=12; request 100 -> clamped to 12.
-	req := &iacp1.Message{
-		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode:    byte(iacp1.MethodSetValue),
-		ObjGroup: iacp1.GroupControl, ObjID: 0,
+	req := &codec.Message{
+		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
+		MCode:    byte(codec.MethodSetValue),
+		ObjGroup: codec.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x64}, // 100
 	}
 	rep, _ := s.handleRequest(req)
-	if rep.MType != iacp1.MTypeReply {
+	if rep.MType != codec.MTypeReply {
 		t.Fatalf("bad reply: %+v", rep)
 	}
 	if string(rep.Value) != string([]byte{0x00, 0x0C}) {
@@ -272,18 +272,18 @@ func TestSession_SetValue_ClampsToMax(t *testing.T) {
 func TestSession_SetIncDec_RespectsStepAndLimits(t *testing.T) {
 	s := newTestServer(t)
 	// Level: start at -6, step=1, min=-60, max=12.
-	req := &iacp1.Message{
-		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode:    byte(iacp1.MethodSetIncValue),
-		ObjGroup: iacp1.GroupControl, ObjID: 0,
+	req := &codec.Message{
+		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
+		MCode:    byte(codec.MethodSetIncValue),
+		ObjGroup: codec.GroupControl, ObjID: 0,
 	}
 	// Inc from -6 -> -5.
 	rep, _ := s.handleRequest(req)
-	if rep.MType != iacp1.MTypeReply || string(rep.Value) != string([]byte{0xFF, 0xFB}) {
+	if rep.MType != codec.MTypeReply || string(rep.Value) != string([]byte{0xFF, 0xFB}) {
 		t.Fatalf("setInc bytes=%x want FFFB (-5)", rep.Value)
 	}
 	// Dec from -5 -> -6.
-	req.MCode = byte(iacp1.MethodSetDecValue)
+	req.MCode = byte(codec.MethodSetDecValue)
 	rep, _ = s.handleRequest(req)
 	if string(rep.Value) != string([]byte{0xFF, 0xFA}) {
 		t.Fatalf("setDec bytes=%x want FFFA (-6)", rep.Value)
@@ -294,26 +294,26 @@ func TestSession_SetDefValue_ResetsToDefault(t *testing.T) {
 	s := newTestServer(t)
 	// Level default=0.
 	// First set to 5 so we can observe the reset.
-	setReq := &iacp1.Message{
-		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode:    byte(iacp1.MethodSetValue),
-		ObjGroup: iacp1.GroupControl, ObjID: 0,
+	setReq := &codec.Message{
+		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
+		MCode:    byte(codec.MethodSetValue),
+		ObjGroup: codec.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x05},
 	}
 	if _, ann := s.handleRequest(setReq); ann == nil {
 		t.Fatal("setValue should have produced an announcement")
 	}
 
-	defReq := &iacp1.Message{
-		MTID: 2, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode:    byte(iacp1.MethodSetDefValue),
-		ObjGroup: iacp1.GroupControl, ObjID: 0,
+	defReq := &codec.Message{
+		MTID: 2, MType: codec.MTypeRequest, MAddr: 1,
+		MCode:    byte(codec.MethodSetDefValue),
+		ObjGroup: codec.GroupControl, ObjID: 0,
 	}
 	rep, ann := s.handleRequest(defReq)
-	if rep.MType != iacp1.MTypeReply || string(rep.Value) != string([]byte{0x00, 0x00}) {
+	if rep.MType != codec.MTypeReply || string(rep.Value) != string([]byte{0x00, 0x00}) {
 		t.Fatalf("setDef bytes=%x want 0000", rep.Value)
 	}
-	if ann == nil || ann.MTID != 0 || ann.MType != iacp1.MTypeReply {
+	if ann == nil || ann.MTID != 0 || ann.MType != codec.MTypeReply {
 		t.Fatalf("announce missing or wrong shape: %+v", ann)
 	}
 	if string(ann.Value) != string([]byte{0x00, 0x00}) {
@@ -324,18 +324,18 @@ func TestSession_SetDefValue_ResetsToDefault(t *testing.T) {
 func TestSession_SetValue_DeniedOnReadOnly(t *testing.T) {
 	s := newTestServer(t)
 	// Identity slot-1 group=1 id=0 is Model (read-only string).
-	req := &iacp1.Message{
-		MTID: 1, MType: iacp1.MTypeRequest, MAddr: 1,
-		MCode:    byte(iacp1.MethodSetValue),
-		ObjGroup: iacp1.GroupIdentity, ObjID: 0,
+	req := &codec.Message{
+		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
+		MCode:    byte(codec.MethodSetValue),
+		ObjGroup: codec.GroupIdentity, ObjID: 0,
 		Value: []byte("X\x00"),
 	}
 	rep, _ := s.handleRequest(req)
-	if rep.MType != iacp1.MTypeError {
+	if rep.MType != codec.MTypeError {
 		t.Fatalf("want error, got %+v", rep)
 	}
-	if rep.MCode != byte(iacp1.OErrNoWriteAccess) {
-		t.Errorf("mcode=%d want %d (NoWriteAccess)", rep.MCode, iacp1.OErrNoWriteAccess)
+	if rep.MCode != byte(codec.OErrNoWriteAccess) {
+		t.Errorf("mcode=%d want %d (NoWriteAccess)", rep.MCode, codec.OErrNoWriteAccess)
 	}
 }
 
@@ -354,41 +354,41 @@ func TestServer_SetValueAPIPath(t *testing.T) {
 func TestSession_MethodSupport_InvalidForAlarm(t *testing.T) {
 	// Alarm objects do not support setValue per the spec matrix.
 	// Verify methodSupported table directly.
-	if methodSupported(iacp1.TypeAlarm, iacp1.MethodSetValue) {
+	if methodSupported(codec.TypeAlarm, codec.MethodSetValue) {
 		t.Error("Alarm should not support setValue")
 	}
-	if methodSupported(iacp1.TypeEnum, iacp1.MethodSetIncValue) {
+	if methodSupported(codec.TypeEnum, codec.MethodSetIncValue) {
 		t.Error("Enum should not support setIncValue")
 	}
-	if !methodSupported(iacp1.TypeInteger, iacp1.MethodSetDefValue) {
+	if !methodSupported(codec.TypeInteger, codec.MethodSetDefValue) {
 		t.Error("Integer should support setDefValue")
 	}
-	if !methodSupported(iacp1.TypeFrame, iacp1.MethodGetValue) {
+	if !methodSupported(codec.TypeFrame, codec.MethodGetValue) {
 		t.Error("Frame should support getValue")
 	}
 }
 
 func TestSession_AccessCheck(t *testing.T) {
-	if checkAccess(iacp1.AccessRead, iacp1.MethodSetValue) != iacp1.OErrNoWriteAccess {
+	if checkAccess(codec.AccessRead, codec.MethodSetValue) != codec.OErrNoWriteAccess {
 		t.Error("read-only should deny write")
 	}
-	if checkAccess(iacp1.AccessWrite, iacp1.MethodGetValue) != iacp1.OErrNoReadAccess {
+	if checkAccess(codec.AccessWrite, codec.MethodGetValue) != codec.OErrNoReadAccess {
 		t.Error("write-only should deny read")
 	}
-	if checkAccess(iacp1.AccessRead|iacp1.AccessWrite, iacp1.MethodSetDefValue) != iacp1.OErrNoSetDefAccess {
+	if checkAccess(codec.AccessRead|codec.AccessWrite, codec.MethodSetDefValue) != codec.OErrNoSetDefAccess {
 		t.Error("no-setDef access should deny setDefValue")
 	}
-	if checkAccess(iacp1.AccessRead|iacp1.AccessWrite|iacp1.AccessSetDef, iacp1.MethodSetDefValue) != 0 {
+	if checkAccess(codec.AccessRead|codec.AccessWrite|codec.AccessSetDef, codec.MethodSetDefValue) != 0 {
 		t.Error("all-access should permit setDefValue")
 	}
 }
 
 func TestSession_NonRequestIgnored(t *testing.T) {
 	s := newTestServer(t)
-	for _, mt := range []iacp1.MType{iacp1.MTypeAnnounce, iacp1.MTypeReply, iacp1.MTypeError} {
-		req := &iacp1.Message{MTID: 1, MType: mt, MAddr: 1}
+	for _, mt := range []codec.MType{codec.MTypeAnnounce, codec.MTypeReply, codec.MTypeError} {
+		req := &codec.Message{MTID: 1, MType: mt, MAddr: 1}
 		if rep, _ := s.handleRequest(req); rep != nil {
-			t.Errorf("MType=%d should be dropped, got %+v", mt, rep)
+			t.Errorf("codec.MType=%d should be dropped, got %+v", mt, rep)
 		}
 	}
 }

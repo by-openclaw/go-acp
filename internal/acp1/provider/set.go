@@ -6,7 +6,7 @@ import (
 	"math"
 
 	"dhs/internal/export/canonical"
-	iacp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 // applyMutation dispatches the four mutating methods (setValue,
@@ -50,24 +50,24 @@ import (
 //	| String    | len+1 | NUL-terminated bytes (setValue only)          |
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28.
-func (s *server) applyMutation(e *entry, method iacp1.Method, incoming []byte) ([]byte, error) {
+func (s *server) applyMutation(e *entry, method codec.Method, incoming []byte) ([]byte, error) {
 	s.tree.mu.Lock()
 	defer s.tree.mu.Unlock()
 
 	switch e.acpType {
-	case iacp1.TypeInteger:
+	case codec.TypeInteger:
 		return s.mutateInteger(e, method, incoming)
-	case iacp1.TypeLong:
+	case codec.TypeLong:
 		return s.mutateLong(e, method, incoming)
-	case iacp1.TypeByte:
+	case codec.TypeByte:
 		return s.mutateByte(e, method, incoming)
-	case iacp1.TypeFloat:
+	case codec.TypeFloat:
 		return s.mutateFloat(e, method, incoming)
-	case iacp1.TypeIPAddr:
+	case codec.TypeIPAddr:
 		return s.mutateIPAddr(e, method, incoming)
-	case iacp1.TypeEnum:
+	case codec.TypeEnum:
 		return s.mutateEnum(e, method, incoming)
-	case iacp1.TypeString:
+	case codec.TypeString:
 		return s.mutateString(e, method, incoming)
 	}
 	return nil, fmt.Errorf("applyMutation: unsupported type %d", e.acpType)
@@ -89,7 +89,7 @@ func (s *server) applyMutation(e *entry, method iacp1.Method, incoming []byte) (
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" p. 22.
-func (s *server) mutateInteger(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
+func (s *server) mutateInteger(e *entry, m codec.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := asInt16(p.Value, "value")
 	if err != nil {
@@ -102,16 +102,16 @@ func (s *server) mutateInteger(e *entry, m iacp1.Method, incoming []byte) ([]byt
 
 	var next int32 // widen so increment/decrement can overflow cleanly
 	switch m {
-	case iacp1.MethodSetValue:
+	case codec.MethodSetValue:
 		if len(incoming) < 2 {
 			return nil, fmt.Errorf("setValue integer: need 2 bytes, got %d", len(incoming))
 		}
 		next = int32(int16(binary.BigEndian.Uint16(incoming)))
-	case iacp1.MethodSetIncValue:
+	case codec.MethodSetIncValue:
 		next = int32(cur) + int32(step)
-	case iacp1.MethodSetDecValue:
+	case codec.MethodSetDecValue:
 		next = int32(cur) - int32(step)
-	case iacp1.MethodSetDefValue:
+	case codec.MethodSetDefValue:
 		next = int32(def)
 	default:
 		return nil, fmt.Errorf("unexpected method %d", m)
@@ -138,7 +138,7 @@ func (s *server) mutateInteger(e *entry, m iacp1.Method, incoming []byte) ([]byt
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" p. 26.
-func (s *server) mutateLong(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
+func (s *server) mutateLong(e *entry, m codec.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := asInt32(p.Value, "value")
 	if err != nil {
@@ -151,16 +151,16 @@ func (s *server) mutateLong(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 
 	var next int64
 	switch m {
-	case iacp1.MethodSetValue:
+	case codec.MethodSetValue:
 		if len(incoming) < 4 {
 			return nil, fmt.Errorf("setValue long: need 4 bytes, got %d", len(incoming))
 		}
 		next = int64(int32(binary.BigEndian.Uint32(incoming)))
-	case iacp1.MethodSetIncValue:
+	case codec.MethodSetIncValue:
 		next = int64(cur) + int64(step)
-	case iacp1.MethodSetDecValue:
+	case codec.MethodSetDecValue:
 		next = int64(cur) - int64(step)
-	case iacp1.MethodSetDefValue:
+	case codec.MethodSetDefValue:
 		next = int64(def)
 	default:
 		return nil, fmt.Errorf("unexpected method %d", m)
@@ -187,7 +187,7 @@ func (s *server) mutateLong(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" p. 27.
-func (s *server) mutateByte(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
+func (s *server) mutateByte(e *entry, m codec.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := asUint8(p.Value, "value")
 	if err != nil {
@@ -200,16 +200,16 @@ func (s *server) mutateByte(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 
 	var next int32
 	switch m {
-	case iacp1.MethodSetValue:
+	case codec.MethodSetValue:
 		if len(incoming) < 1 {
 			return nil, fmt.Errorf("setValue byte: need 1 byte, got 0")
 		}
 		next = int32(incoming[0])
-	case iacp1.MethodSetIncValue:
+	case codec.MethodSetIncValue:
 		next = int32(cur) + int32(step)
-	case iacp1.MethodSetDecValue:
+	case codec.MethodSetDecValue:
 		next = int32(cur) - int32(step)
-	case iacp1.MethodSetDefValue:
+	case codec.MethodSetDefValue:
 		next = int32(def)
 	default:
 		return nil, fmt.Errorf("unexpected method %d", m)
@@ -236,7 +236,7 @@ func (s *server) mutateByte(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" p. 23.
-func (s *server) mutateFloat(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
+func (s *server) mutateFloat(e *entry, m codec.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := asFloat32(p.Value, "value")
 	if err != nil {
@@ -249,16 +249,16 @@ func (s *server) mutateFloat(e *entry, m iacp1.Method, incoming []byte) ([]byte,
 
 	var next float64
 	switch m {
-	case iacp1.MethodSetValue:
+	case codec.MethodSetValue:
 		if len(incoming) < 4 {
 			return nil, fmt.Errorf("setValue float: need 4 bytes, got %d", len(incoming))
 		}
 		next = float64(math.Float32frombits(binary.BigEndian.Uint32(incoming)))
-	case iacp1.MethodSetIncValue:
+	case codec.MethodSetIncValue:
 		next = float64(cur) + float64(step)
-	case iacp1.MethodSetDecValue:
+	case codec.MethodSetDecValue:
 		next = float64(cur) - float64(step)
-	case iacp1.MethodSetDefValue:
+	case codec.MethodSetDefValue:
 		next = float64(def)
 	default:
 		return nil, fmt.Errorf("unexpected method %d", m)
@@ -285,7 +285,7 @@ func (s *server) mutateFloat(e *entry, m iacp1.Method, incoming []byte) ([]byte,
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" p. 22.
-func (s *server) mutateIPAddr(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
+func (s *server) mutateIPAddr(e *entry, m codec.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	cur, err := ipv4ToUint32(p.Value)
 	if err != nil {
@@ -298,20 +298,20 @@ func (s *server) mutateIPAddr(e *entry, m iacp1.Method, incoming []byte) ([]byte
 
 	var next uint64 // widen so overflow maths stays clean
 	switch m {
-	case iacp1.MethodSetValue:
+	case codec.MethodSetValue:
 		if len(incoming) < 4 {
 			return nil, fmt.Errorf("setValue ipaddr: need 4 bytes, got %d", len(incoming))
 		}
 		next = uint64(binary.BigEndian.Uint32(incoming))
-	case iacp1.MethodSetIncValue:
+	case codec.MethodSetIncValue:
 		next = uint64(cur) + uint64(step)
-	case iacp1.MethodSetDecValue:
+	case codec.MethodSetDecValue:
 		if uint64(cur) < uint64(step) {
 			next = 0
 		} else {
 			next = uint64(cur) - uint64(step)
 		}
-	case iacp1.MethodSetDefValue:
+	case codec.MethodSetDefValue:
 		next = uint64(def)
 	default:
 		return nil, fmt.Errorf("unexpected method %d", m)
@@ -343,7 +343,7 @@ func (s *server) mutateIPAddr(e *entry, m iacp1.Method, incoming []byte) ([]byte
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" p. 23.
-func (s *server) mutateEnum(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
+func (s *server) mutateEnum(e *entry, m codec.Method, incoming []byte) ([]byte, error) {
 	p := e.param
 	items := enumItems(p)
 	if len(items) == 0 {
@@ -353,7 +353,7 @@ func (s *server) mutateEnum(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 
 	var next uint8
 	switch m {
-	case iacp1.MethodSetValue:
+	case codec.MethodSetValue:
 		if len(incoming) < 1 {
 			return nil, fmt.Errorf("setValue enum: need 1 byte, got 0")
 		}
@@ -363,7 +363,7 @@ func (s *server) mutateEnum(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 			// ACP1's closest fit is OErrIllegalForType. Caller handles.
 			return nil, fmt.Errorf("enum %q: index %d > max %d", p.Identifier, next, maxIdx)
 		}
-	case iacp1.MethodSetDefValue:
+	case codec.MethodSetDefValue:
 		def, _ := asUint8Opt(p.Default, "default", 0)
 		next = def
 		if next > maxIdx {
@@ -392,8 +392,8 @@ func (s *server) mutateEnum(e *entry, m iacp1.Method, incoming []byte) ([]byte, 
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" p. 24.
-func (s *server) mutateString(e *entry, m iacp1.Method, incoming []byte) ([]byte, error) {
-	if m != iacp1.MethodSetValue {
+func (s *server) mutateString(e *entry, m codec.Method, incoming []byte) ([]byte, error) {
+	if m != codec.MethodSetValue {
 		return nil, fmt.Errorf("string %q: only setValue supported", e.param.Identifier)
 	}
 	// incoming is NUL-terminated on the wire. Strip the terminator if
@@ -472,43 +472,43 @@ func uint32ToDottedQuad(v uint32) string {
 // §"Objects by Type" pp. 21–27.
 func (s *server) encodeIncomingFromAny(e *entry, val any) ([]byte, error) {
 	switch e.acpType {
-	case iacp1.TypeInteger:
+	case codec.TypeInteger:
 		v, err := asInt16(val, "value")
 		if err != nil {
 			return nil, err
 		}
 		return writeI16(v), nil
-	case iacp1.TypeLong:
+	case codec.TypeLong:
 		v, err := asInt32(val, "value")
 		if err != nil {
 			return nil, err
 		}
 		return writeI32(v), nil
-	case iacp1.TypeByte:
+	case codec.TypeByte:
 		v, err := asUint8(val, "value")
 		if err != nil {
 			return nil, err
 		}
 		return []byte{v}, nil
-	case iacp1.TypeFloat:
+	case codec.TypeFloat:
 		v, err := asFloat32(val, "value")
 		if err != nil {
 			return nil, err
 		}
 		return writeF32(v), nil
-	case iacp1.TypeIPAddr:
+	case codec.TypeIPAddr:
 		v, err := ipv4ToUint32(val)
 		if err != nil {
 			return nil, err
 		}
 		return writeU32(v), nil
-	case iacp1.TypeEnum:
+	case codec.TypeEnum:
 		v, err := asUint8(val, "value")
 		if err != nil {
 			return nil, err
 		}
 		return []byte{v}, nil
-	case iacp1.TypeString:
+	case codec.TypeString:
 		v, err := asString(val, "value")
 		if err != nil {
 			return nil, err

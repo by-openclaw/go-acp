@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"dhs/internal/transport"
+	"dhs/internal/acp1/codec"
 )
 
 // DiscoverResult is one device seen during a discovery run.
@@ -64,7 +65,7 @@ type DiscoverConfig struct {
 // logged to stderr but do not abort passive discovery.
 func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error) {
 	if cfg.Port == 0 {
-		cfg.Port = DefaultPort
+		cfg.Port = codec.DefaultPort
 	}
 	if cfg.Duration == 0 {
 		cfg.Duration = 5 * time.Second
@@ -92,7 +93,7 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error)
 				return
 			}
 			rxCtx, cancel := context.WithTimeout(ctx, remaining)
-			raw, addr, err := listener.Receive(rxCtx, MaxPacket)
+			raw, addr, err := listener.Receive(rxCtx, codec.MaxPacket)
 			cancel()
 			if err != nil {
 				// Timeout or ctx cancel → exit loop.
@@ -104,7 +105,7 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error)
 			}
 			// Decode to confirm it's valid ACP1. Malformed datagrams
 			// from unrelated services on the same port are skipped.
-			msg, derr := Decode(raw)
+			msg, derr := codec.Decode(raw)
 			if derr != nil {
 				continue
 			}
@@ -128,7 +129,7 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error)
 			}
 			r.LastSeen = time.Now()
 			// If this is a FrameStatus reply, decode num_slots from it.
-			if msg.ObjGroup == GroupFrame && msg.ObjID == 0 && len(msg.Value) >= 1 {
+			if msg.ObjGroup == codec.GroupFrame && msg.ObjID == 0 && len(msg.Value) >= 1 {
 				r.NumSlots = int(msg.Value[0])
 			}
 			mu.Unlock()
@@ -184,13 +185,13 @@ func probeActive(port int) error {
 
 	// Build a getValue(FrameStatus, 0) request. Per spec p. 8 this is
 	// "the only broadcast message clients are allowed to invoke".
-	req := &Message{
+	req := &codec.Message{
 		MTID:     0, // broadcast marker
-		PVER:     PVER,
-		MType:    MTypeRequest,
+		PVER:     codec.PVER,
+		MType:    codec.MTypeRequest,
 		MAddr:    0,
-		MCode:    byte(MethodGetValue),
-		ObjGroup: GroupFrame,
+		MCode:    byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupFrame,
 		ObjID:    0,
 	}
 	payload, err := req.Encode()

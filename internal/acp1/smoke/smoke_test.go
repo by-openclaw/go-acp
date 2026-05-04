@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"dhs/internal/protocol"
+	"dhs/internal/acp1/codec"
 	"dhs/internal/acp1/consumer"
 )
 
@@ -36,7 +37,7 @@ func connectPlugin(t *testing.T) protocol.Protocol {
 	plug := f.New(slog.Default())
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := plug.Connect(ctx, testHost(), acp1.DefaultPort); err != nil {
+	if err := plug.Connect(ctx, testHost(), codec.DefaultPort); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = plug.Disconnect() })

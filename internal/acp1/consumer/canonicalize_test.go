@@ -7,6 +7,7 @@ import (
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/protocol"
+	"dhs/internal/acp1/codec"
 )
 
 // TestCanonicalize_Empty covers the fresh-Plugin case: no Connect,
@@ -65,7 +66,7 @@ func TestCanonicalize_SlotTree(t *testing.T) {
 				EnumItems: []string{"Off", "On", "Auto"},
 				Value: protocol.Value{Kind: protocol.KindEnum, Enum: 2}},
 		},
-		ACPTypes: []ObjectType{TypeString, TypeFloat, TypeInteger, TypeEnum},
+		ACPTypes: []codec.ObjectType{codec.TypeString, codec.TypeFloat, codec.TypeInteger, codec.TypeEnum},
 	}
 
 	p := &Plugin{host: "10.6.239.113"}

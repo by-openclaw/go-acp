@@ -1,20 +1,20 @@
 // Black-box spec-compliance tests for ACP1 property decoders.
 // Byte sequences from spec v1.4 pages 21-27.
-package acp1_test
+package codec_test
 
 import (
 	"testing"
 
-	"dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 func TestSpec_DecodeRoot(t *testing.T) {
 	in := []byte{0x00, 0x09, 0x01, 0x00, 0x08, 0x10, 0x04, 0x02, 0x01}
-	o, err := acp1.DecodeObject(in)
+	o, err := codec.DecodeObject(in)
 	if err != nil {
 		t.Fatalf("DecodeObject: %v", err)
 	}
-	if o.Type != acp1.TypeRoot || o.NumProps != 9 {
+	if o.Type != codec.TypeRoot || o.NumProps != 9 {
 		t.Errorf("type/numprops: %d/%d", o.Type, o.NumProps)
 	}
 	if o.NumIdentity != 8 || o.NumControl != 16 {
@@ -33,7 +33,7 @@ func TestSpec_DecodeFloat(t *testing.T) {
 		'G', 'a', 'i', 'n', 0x00,
 		'd', 'B', 0x00,
 	}
-	o, err := acp1.DecodeObject(in)
+	o, err := codec.DecodeObject(in)
 	if err != nil {
 		t.Fatalf("DecodeObject: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestSpec_DecodeEnum(t *testing.T) {
 		'M', 'o', 'd', 'e', 0x00,
 		'O', 'f', 'f', ',', 'O', 'n', ',', 'A', 'u', 't', 'o', 0x00,
 	}
-	o, err := acp1.DecodeObject(in)
+	o, err := codec.DecodeObject(in)
 	if err != nil {
 		t.Fatalf("DecodeObject: %v", err)
 	}

@@ -22,12 +22,12 @@ import (
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/provider"
-	iacp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 // DefaultPort is the IANA-assigned ACP port for both UDP and TCP direct.
 // Matches the consumer plugin's default.
-const DefaultPort = iacp1.DefaultPort
+const DefaultPort = codec.DefaultPort
 
 func init() {
 	provider.Register(&Factory{})
@@ -40,7 +40,7 @@ type Factory struct{}
 func (f *Factory) Meta() provider.Meta {
 	return provider.Meta{
 		Name:        "acp1",
-		DefaultPort: DefaultPort,
+		DefaultPort: codec.DefaultPort,
 		Description: "ACP1 (AxonNet) provider — serves a canonical tree to consumers over UDP:2071",
 	}
 }

@@ -7,13 +7,14 @@ import (
 
 	"dhs/internal/protocol"
 	"dhs/internal/protocol/compliance"
+	"dhs/internal/acp1/codec"
 )
 
 // walkerClient is the minimum contract the Walker needs from whatever
 // client backs it. Both the UDP Client and the TCPClient satisfy this,
 // so the Walker is transport-agnostic.
 type walkerClient interface {
-	Do(ctx context.Context, req *Message) (*Message, error)
+	Do(ctx context.Context, req *codec.Message) (*codec.Message, error)
 }
 
 // Walker walks the AxonNet object tree of one slot on one device.
@@ -63,7 +64,7 @@ type SlotTree struct {
 	// the widened ValueKind (Integer and Long both map to KindInt), so
 	// the value codec needs this side channel to pick the correct wire
 	// width at get/set time.
-	ACPTypes []ObjectType
+	ACPTypes []codec.ObjectType
 	// Labels maps group name → label string → index into Objects.
 	// Labels are unique within a group per spec p. 34. Using an index
 	// keeps Object slice the source of truth (no duplicated data).
@@ -98,11 +99,11 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*SlotTree, error) {
 
 	// Step 1: read the root object to learn how many objects live in
 	// each group on this slot.
-	root, err := w.getObject(ctx, slot, GroupRoot, 0)
+	root, err := w.getObject(ctx, slot, codec.GroupRoot, 0)
 	if err != nil {
 		return nil, fmt.Errorf("walk slot %d: root: %w", slot, err)
 	}
-	if root.Type != TypeRoot {
+	if root.Type != codec.TypeRoot {
 		return nil, fmt.Errorf("walk slot %d: root is type %d, want 0", slot, root.Type)
 	}
 
@@ -111,7 +112,7 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*SlotTree, error) {
 		Slot:     slot,
 		BootMode: root.BootMode,
 		Objects:  make([]protocol.Object, 0, cap),
-		ACPTypes: make([]ObjectType, 0, cap),
+		ACPTypes: make([]codec.ObjectType, 0, cap),
 		Labels:   map[string]map[string]int{},
 	}
 
@@ -119,13 +120,13 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*SlotTree, error) {
 	// order the C# reference walker uses, for stable output in the CLI
 	// tree view.
 	walks := []struct {
-		group ObjGroup
+		group codec.ObjGroup
 		count uint8
 	}{
-		{GroupIdentity, root.NumIdentity},
-		{GroupControl, root.NumControl},
-		{GroupStatus, root.NumStatus},
-		{GroupAlarm, root.NumAlarm},
+		{codec.GroupIdentity, root.NumIdentity},
+		{codec.GroupControl, root.NumControl},
+		{codec.GroupStatus, root.NumStatus},
+		{codec.GroupAlarm, root.NumAlarm},
 	}
 	for _, g := range walks {
 		for id := uint8(0); id < g.count; id++ {
@@ -156,11 +157,11 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*SlotTree, error) {
 // getObject is the one primitive the walker uses: send a getObject
 // request for (slot, group, id) and return the typed DecodedObject.
 // Handles both transport errors and protocol error replies.
-func (w *Walker) getObject(ctx context.Context, slot int, group ObjGroup, id uint8) (*DecodedObject, error) {
-	req := &Message{
-		MType:    MTypeRequest,
+func (w *Walker) getObject(ctx context.Context, slot int, group codec.ObjGroup, id uint8) (*codec.DecodedObject, error) {
+	req := &codec.Message{
+		MType:    codec.MTypeRequest,
 		MAddr:    byte(slot),
-		MCode:    byte(MethodGetObject),
+		MCode:    byte(codec.MethodGetObject),
 		ObjGroup: group,
 		ObjID:    id,
 	}
@@ -184,7 +185,7 @@ func (w *Walker) getObject(ctx context.Context, slot int, group ObjGroup, id uin
 		}
 		return nil, reply.ErrCode()
 	}
-	return DecodeObject(reply.Value)
+	return codec.DecodeObject(reply.Value)
 }
 
 // toProtocolObject projects one DecodedObject into the protocol-agnostic
@@ -196,7 +197,7 @@ func (w *Walker) getObject(ctx context.Context, slot int, group ObjGroup, id uin
 //   - Byte / Enum / Alarm priority → uint64
 //   - Float → float64
 //   - IPAddr → uint64 (u32 widened)
-func toProtocolObject(d *DecodedObject, slot int, group ObjGroup, id uint8) protocol.Object {
+func toProtocolObject(d *codec.DecodedObject, slot int, group codec.ObjGroup, id uint8) protocol.Object {
 	o := protocol.Object{
 		Slot:  slot,
 		Group: group.String(),
@@ -210,28 +211,28 @@ func toProtocolObject(d *DecodedObject, slot int, group ObjGroup, id uint8) prot
 		Access: d.Access,
 	}
 	switch d.Type {
-	case TypeInteger, TypeLong:
+	case codec.TypeInteger, codec.TypeLong:
 		o.Kind = protocol.KindInt
 		o.Min = d.MinInt
 		o.Max = d.MaxInt
 		o.Step = d.StepInt
 		o.Def = d.DefInt
 		o.Value = protocol.Value{Kind: protocol.KindInt, Int: d.IntVal}
-	case TypeByte:
+	case codec.TypeByte:
 		o.Kind = protocol.KindUint
 		o.Min = uint64(d.MinByte)
 		o.Max = uint64(d.MaxByte)
 		o.Step = uint64(d.StepByte)
 		o.Def = uint64(d.DefByte)
 		o.Value = protocol.Value{Kind: protocol.KindUint, Uint: uint64(d.ByteVal)}
-	case TypeFloat:
+	case codec.TypeFloat:
 		o.Kind = protocol.KindFloat
 		o.Min = d.MinFloat
 		o.Max = d.MaxFloat
 		o.Step = d.StepFloat
 		o.Def = d.DefFloat
 		o.Value = protocol.Value{Kind: protocol.KindFloat, Float: d.FloatVal}
-	case TypeIPAddr:
+	case codec.TypeIPAddr:
 		o.Kind = protocol.KindIPAddr
 		o.Min = d.MinUint
 		o.Max = d.MaxUint
@@ -244,7 +245,7 @@ func toProtocolObject(d *DecodedObject, slot int, group ObjGroup, id uint8) prot
 				byte(u >> 24), byte(u >> 16), byte(u >> 8), byte(u),
 			},
 		}
-	case TypeEnum:
+	case codec.TypeEnum:
 		o.Kind = protocol.KindEnum
 		o.EnumItems = d.EnumItems
 		o.Def = uint64(d.DefByte)
@@ -258,12 +259,12 @@ func toProtocolObject(d *DecodedObject, slot int, group ObjGroup, id uint8) prot
 			ev.Str = d.EnumItems[d.ByteVal]
 		}
 		o.Value = ev
-	case TypeString:
+	case codec.TypeString:
 		o.Kind = protocol.KindString
 		o.MaxLen = int(d.MaxLen)
 		o.SubGroupMarker = d.IsSubGroupMarker()
 		o.Value = protocol.Value{Kind: protocol.KindString, Str: d.StrValue}
-	case TypeAlarm:
+	case codec.TypeAlarm:
 		o.Kind = protocol.KindAlarm
 		o.AlarmPriority = d.Priority
 		o.AlarmTag = d.Tag
@@ -272,7 +273,7 @@ func toProtocolObject(d *DecodedObject, slot int, group ObjGroup, id uint8) prot
 		// Surface the priority byte as a Uint so the CLI has a single
 		// formatter path for "current value".
 		o.Value = protocol.Value{Kind: protocol.KindUint, Uint: uint64(d.Priority)}
-	case TypeFrame:
+	case codec.TypeFrame:
 		o.Kind = protocol.KindFrame
 		statuses := make([]protocol.SlotStatus, len(d.SlotStatus))
 		for i, s := range d.SlotStatus {

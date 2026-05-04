@@ -1,4 +1,4 @@
-package acp1
+package codec
 
 import (
 	"errors"

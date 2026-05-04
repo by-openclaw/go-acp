@@ -1,22 +1,22 @@
 // Black-box spec-compliance tests for ACP1 message encode/decode.
 // Every byte sequence is derived from spec v1.4 pages 9-14 and 32.
 // These tests use only the exported API — no internal symbols.
-package acp1_test
+package codec_test
 
 import (
 	"bytes"
 	"testing"
 
-	"dhs/internal/acp1/consumer"
+	"dhs/internal/acp1/codec"
 )
 
 func TestSpec_EncodeGetFrameStatus(t *testing.T) {
-	m := &acp1.Message{
+	m := &codec.Message{
 		MTID:     0,
-		MType:    acp1.MTypeRequest,
+		MType:    codec.MTypeRequest,
 		MAddr:    0,
-		MCode:    byte(acp1.MethodGetValue),
-		ObjGroup: acp1.GroupFrame,
+		MCode:    byte(codec.MethodGetValue),
+		ObjGroup: codec.GroupFrame,
 		ObjID:    0,
 	}
 	want := []byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x06, 0x00}
@@ -31,7 +31,7 @@ func TestSpec_EncodeGetFrameStatus(t *testing.T) {
 
 func TestSpec_DecodeRoundTrip(t *testing.T) {
 	wire := []byte{0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x05, 0x00, 0x02, 0x0A, 0xAA, 0xBB}
-	m, err := acp1.Decode(wire)
+	m, err := codec.Decode(wire)
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
