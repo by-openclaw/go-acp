@@ -45,6 +45,43 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.7.0](https://github.com/by-openclaw/go-acp/compare/v0.6.0...v0.7.0) (2026-05-04)
+
+
+### Features
+
+* **emberplus:** implement Plugin.Validate() per ADR-0021 (closes [#218](https://github.com/by-openclaw/go-acp/issues/218)) ([#219](https://github.com/by-openclaw/go-acp/issues/219)) ([a4ddc71](https://github.com/by-openclaw/go-acp/commit/a4ddc71f8adce106c9ab439ba1bec63b3631ec12))
+* **nmos/bcp:** validators for BCP-002/004/006/008 (Steps 10-13, closes [#168](https://github.com/by-openclaw/go-acp/issues/168) [#169](https://github.com/by-openclaw/go-acp/issues/169) [#170](https://github.com/by-openclaw/go-acp/issues/170) [#171](https://github.com/by-openclaw/go-acp/issues/171)) ([#181](https://github.com/by-openclaw/go-acp/issues/181)) ([d6ed87f](https://github.com/by-openclaw/go-acp/commit/d6ed87f48e24e42bbc45970c9ca1d43f07a7186f))
+* **nmos/is-04:** IS-04-01 + IS-04-02 + IS-04-03 conformance — 516 Pass / 3 Fail (all AMWA upstream MdnsListener bug) ([#189](https://github.com/by-openclaw/go-acp/issues/189)) ([b395f1a](https://github.com/by-openclaw/go-acp/commit/b395f1ad4088fbe2205f4bbf0e486b99dac02f5d))
+* **nmos/is05:** codec base + v1.0.2 + v1.1.2 Strategy impls (Step 5, closes [#163](https://github.com/by-openclaw/go-acp/issues/163)) ([#174](https://github.com/by-openclaw/go-acp/issues/174)) ([b2a17bf](https://github.com/by-openclaw/go-acp/commit/b2a17bf39ae4c7f01463e19ef92f901607ab9dd3))
+* **nmos/is07:** codec base + v1.0.1 Strategy impl (Step 6) ([#176](https://github.com/by-openclaw/go-acp/issues/176)) ([f7224b3](https://github.com/by-openclaw/go-acp/commit/f7224b355cc723d8e1042d67ccb275d8fd44d075))
+* **nmos/is07:** WS publisher + subscriber + CLI verbs (Step 6, closes [#164](https://github.com/by-openclaw/go-acp/issues/164)) ([#177](https://github.com/by-openclaw/go-acp/issues/177)) ([21bba98](https://github.com/by-openclaw/go-acp/commit/21bba9897271843ec55145abe715fa1d5d4abe71))
+* **nmos/is08:** codec base + v1.0.1 Strategy impl (Step 7, closes [#165](https://github.com/by-openclaw/go-acp/issues/165)) ([#178](https://github.com/by-openclaw/go-acp/issues/178)) ([3c16936](https://github.com/by-openclaw/go-acp/commit/3c16936135a3f3fe86ef88d092ee2ef983d88471))
+* **nmos/is09:** retrofit onto spec.Codec pattern (Step 3) ([#161](https://github.com/by-openclaw/go-acp/issues/161)) ([af3ca66](https://github.com/by-openclaw/go-acp/commit/af3ca66725a45be2cac446ba22a3ed2e04858469))
+* **nmos/is12:** codec base + v1.0.1 Strategy impl (Step 8, refs [#166](https://github.com/by-openclaw/go-acp/issues/166)) ([#179](https://github.com/by-openclaw/go-acp/issues/179)) ([3adb035](https://github.com/by-openclaw/go-acp/commit/3adb035c86eee11fa73d6d482a960341dc3703d7))
+* **nmos/ms05:** codec base + v1.0.0 Strategy impl (Step 9, refs [#167](https://github.com/by-openclaw/go-acp/issues/167)) ([#180](https://github.com/by-openclaw/go-acp/issues/180)) ([eaaa660](https://github.com/by-openclaw/go-acp/commit/eaaa660fc9694b33a9194d9755275d447f6a4b65))
+* **nmos/wireshark:** HTTP + WebSocket layers in dhs_nmos.lua (Step 14, closes [#172](https://github.com/by-openclaw/go-acp/issues/172)) ([#182](https://github.com/by-openclaw/go-acp/issues/182)) ([a1dae55](https://github.com/by-openclaw/go-acp/commit/a1dae5541df74dbf03be851f4b4edc38234f4a9a))
+* **nmos:** codec base — spec.Versioned + Registry[T] + Reporter ([#159](https://github.com/by-openclaw/go-acp/issues/159)) ([c370911](https://github.com/by-openclaw/go-acp/commit/c3709113797b720c6ebd56e3d5918b95a42e35a8))
+* **nmos:** IS-04 Controller consumer (Step 4) ([#162](https://github.com/by-openclaw/go-acp/issues/162)) ([26bca70](https://github.com/by-openclaw/go-acp/commit/26bca7085040a0535226f22fbd52a43c8e4cb3b9))
+* **nmos:** IS-04 multi-version codec — v1.1.3 + v1.2.2 + v1.3.3 in parallel ([#4](https://github.com/by-openclaw/go-acp/issues/4)b) ([#160](https://github.com/by-openclaw/go-acp/issues/160)) ([db4f73b](https://github.com/by-openclaw/go-acp/commit/db4f73b5f7841d1101e8ca257d87ac95766714b3))
+* **nmos:** IS-04 Registry — Registration + Query + WS subscriptions + GC ([#157](https://github.com/by-openclaw/go-acp/issues/157)) ([7813f38](https://github.com/by-openclaw/go-acp/commit/7813f388001b5706af0936fe918a067bbac35e0f))
+* **nmos:** IS-04 v1.3 Node API — provider + Registration client ([#155](https://github.com/by-openclaw/go-acp/issues/155)) ([8293d4f](https://github.com/by-openclaw/go-acp/commit/8293d4f956f52185f17666961ef1b5886110fb6b))
+* **nmos:** IS-09 System API — server + client + selection rule ([#153](https://github.com/by-openclaw/go-acp/issues/153)) ([6f89db8](https://github.com/by-openclaw/go-acp/commit/6f89db8aca78be2b6135891b54538212859c4f98))
+* **nmos:** Phase 1 step [#1](https://github.com/by-openclaw/go-acp/issues/1) — DNS-SD codec + 3 modes + plugin slot + dep gates + harness ([#149](https://github.com/by-openclaw/go-acp/issues/149)) ([7e474ba](https://github.com/by-openclaw/go-acp/commit/7e474ba66c32362daad7595b4b7588bcf84ef380))
+* **probel-sw02p:** Validate() + Canonicalize() + testdata/protocol_types/ (closes [#222](https://github.com/by-openclaw/go-acp/issues/222)) ([#223](https://github.com/by-openclaw/go-acp/issues/223)) ([e5062b7](https://github.com/by-openclaw/go-acp/commit/e5062b7ca68cc8025ecf3996c3beeb9041b7bc2f))
+* **probel-sw08p:** Validate() + Canonicalize() + testdata/protocol_types/ (closes [#220](https://github.com/by-openclaw/go-acp/issues/220)) ([#221](https://github.com/by-openclaw/go-acp/issues/221)) ([e4915ee](https://github.com/by-openclaw/go-acp/commit/e4915eeab58d90a3c60b0d71fea2ceddd468dd80))
+* **probel-sw08p:** wire names-family extended-form (rx 228/229/230/231 + tx 234/235) + boundary tests (advances [#227](https://github.com/by-openclaw/go-acp/issues/227)) ([#229](https://github.com/by-openclaw/go-acp/issues/229)) ([f6941b7](https://github.com/by-openclaw/go-acp/commit/f6941b77ae2a07e4683bc4d6336cbb1d233cf897))
+* **probel-sw08p:** wire salvo extended-form (rx 248 / tx 250 / rx 252 / tx 253) + boundary tests (advances [#227](https://github.com/by-openclaw/go-acp/issues/227)) ([#228](https://github.com/by-openclaw/go-acp/issues/228)) ([8ac312b](https://github.com/by-openclaw/go-acp/commit/8ac312bb0c908cb05ef5cd4db9438c2fcaeaee72))
+* **tsl:** compliance_events + Validate() + Canonicalize() + testdata/protocol_types/ (closes [#224](https://github.com/by-openclaw/go-acp/issues/224), [#212](https://github.com/by-openclaw/go-acp/issues/212)) ([#225](https://github.com/by-openclaw/go-acp/issues/225)) ([66b6aa2](https://github.com/by-openclaw/go-acp/commit/66b6aa235f9f2ea89542c5c983e904208575779f))
+* **validate:** canonical validate verb + Trame wire-trace contract (closes [#212](https://github.com/by-openclaw/go-acp/issues/212) partially) ([#213](https://github.com/by-openclaw/go-acp/issues/213)) ([a3e42da](https://github.com/by-openclaw/go-acp/commit/a3e42da4bb84c1e1c411372c3991073a821f56af))
+
+
+### Bug Fixes
+
+* **probel-sw02p:** TestEmitExtendedProtectTallyDumpFanout port-collision flake on rhel9 / rocky9 ([#233](https://github.com/by-openclaw/go-acp/issues/233)) ([cbf2c05](https://github.com/by-openclaw/go-acp/commit/cbf2c0574d63044ae829aa2f8a8da54419bb177c))
+* **probel-sw08p:** tally-dump byte→word→ext-word promotion ladder + boundary tests (advances [#227](https://github.com/by-openclaw/go-acp/issues/227)) ([#230](https://github.com/by-openclaw/go-acp/issues/230)) ([260f4f4](https://github.com/by-openclaw/go-acp/commit/260f4f4929b11e85153bd335ed061a2859d94649))
+* **probel-sw08p:** wire keepalive auto-responder before reader goroutine starts (closes [#234](https://github.com/by-openclaw/go-acp/issues/234)) ([#235](https://github.com/by-openclaw/go-acp/issues/235)) ([8dfd860](https://github.com/by-openclaw/go-acp/commit/8dfd8600c1ca74b7054d19c759665cf8c38ecab5))
+
 ## [0.6.0](https://github.com/by-openclaw/go-acp/compare/v0.5.0...v0.6.0) (2026-04-30)
 
 
