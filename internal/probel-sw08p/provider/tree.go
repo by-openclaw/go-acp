@@ -406,8 +406,12 @@ func (t *tree) salvoApply(id uint8) []salvoSlot {
 
 // salvoSlotAt returns the stored slot at (id, index). Returns ok=false
 // when the salvo is empty or the index is out of range. Used by rx 124
-// Salvo Group Interrogate.
-func (t *tree) salvoSlotAt(id uint8, idx uint8) (salvoSlot, bool, bool) {
+// / rx 252 Salvo Group Interrogate.
+//
+// idx is widened to uint16 to fit the extended-form range (cmd 252's
+// 2-byte index, 0-65535) per SW-P-08 §3.4.17. Narrow callers pass an
+// implicit-cast uint8.
+func (t *tree) salvoSlotAt(id uint8, idx uint16) (salvoSlot, bool, bool) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	slots, ok := t.salvos[id]
