@@ -5,8 +5,7 @@ import (
 	"log/slog"
 	"math"
 	"time"
-
-	iacp2 "dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // RunAnnounceDemo mutates slot=1 / obj=18 (GainFloat) every `interval`
@@ -62,7 +61,7 @@ func (s *server) emitFloatAnnounce(slot uint8, objID uint32, phase float64) {
 		)
 		return
 	}
-	if e.objType != iacp2.ObjTypeNumber || e.numType != iacp2.NumTypeFloat {
+	if e.objType != codec.ObjTypeNumber || e.numType != codec.NumTypeFloat {
 		s.logger.Debug("acp2 demo: obj is not Number+Float",
 			slog.Int("obj_id", int(objID)),
 			slog.Int("obj_type", int(e.objType)),
@@ -91,12 +90,12 @@ func (s *server) emitFloatAnnounce(slot uint8, objID uint32, phase float64) {
 		slog.Float64("value", v),
 	)
 
-	prop, err := encodeNumericProp(iacp2.PIDValue, iacp2.NumTypeFloat, v)
+	prop, err := encodeNumericProp(codec.PIDValue, codec.NumTypeFloat, v)
 	if err != nil {
 		s.logger.Debug("acp2 demo: encode failed", slog.String("err", err.Error()))
 		return
 	}
-	body, err := iacp2.EncodeProperty(&prop)
+	body, err := codec.EncodeProperty(&prop)
 	if err != nil {
 		s.logger.Debug("acp2 demo: property encode failed", slog.String("err", err.Error()))
 		return
@@ -104,11 +103,11 @@ func (s *server) emitFloatAnnounce(slot uint8, objID uint32, phase float64) {
 	// Spec §3.2 ACP2 Announce header: [type=2, mtid=0, stat=0, pid].
 	// Byte 2 is stat (always 0) — see handlers.go handleSetProperty for the
 	// same constraint on the client-set path.
-	announce := &iacp2.ACP2Message{
-		Type:  iacp2.ACP2TypeAnnounce,
+	announce := &codec.ACP2Message{
+		Type:  codec.ACP2TypeAnnounce,
 		MTID:  0,
 		Func:  0, // stat=0 per spec §3.2
-		PID:   iacp2.PIDValue,
+		PID:   codec.PIDValue,
 		ObjID: objID,
 		Idx:   0,
 		Body:  appendObjIDIdx(objID, 0, body),

@@ -6,6 +6,7 @@ import (
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/protocol"
+	"dhs/internal/acp2/codec"
 )
 
 // TestCanonicalize_Empty verifies a fresh plugin emits a root device
@@ -63,8 +64,8 @@ func TestCanonicalize_SingleSlot(t *testing.T) {
 				Value:  protocol.Value{Kind: protocol.KindString, Str: "ACP2-OK"},
 			},
 		},
-		ObjTypes: []ACP2ObjType{ObjTypeNode, ObjTypeNode, ObjTypeEnum, ObjTypeString},
-		NumTypes: []NumberType{0, 0, 0, 0},
+		ObjTypes: []codec.ACP2ObjType{codec.ObjTypeNode, codec.ObjTypeNode, codec.ObjTypeEnum, codec.ObjTypeString},
+		NumTypes: []codec.NumberType{0, 0, 0, 0},
 	}
 
 	p := &Plugin{}

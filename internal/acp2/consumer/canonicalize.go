@@ -8,6 +8,7 @@ import (
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/protocol"
+	"dhs/internal/acp2/codec"
 )
 
 // Canonicalize walks every cached WalkedTree on this plugin and emits
@@ -107,11 +108,11 @@ func buildACP2SlotNode(slot int, tree *WalkedTree) *canonical.Node {
 	}
 
 	for i, obj := range tree.Objects {
-		objType := ObjTypeNode
+		objType := codec.ObjTypeNode
 		if i < len(tree.ObjTypes) {
 			objType = tree.ObjTypes[i]
 		}
-		numType := NumberType(0)
+		numType := codec.NumberType(0)
 		if i < len(tree.NumTypes) {
 			numType = tree.NumTypes[i]
 		}
@@ -133,7 +134,7 @@ func buildACP2SlotNode(slot int, tree *WalkedTree) *canonical.Node {
 // segment is the element's identifier; everything before is the parent
 // path. Node-type objects are attached as Nodes; everything else as
 // Parameter.
-func placeACP2Object(slot int, slotOID, slotIdent string, obj protocol.Object, objType ACP2ObjType, numType NumberType, nodeByPath map[string]*canonical.Node) {
+func placeACP2Object(slot int, slotOID, slotIdent string, obj protocol.Object, objType codec.ACP2ObjType, numType codec.NumberType, nodeByPath map[string]*canonical.Node) {
 	if len(obj.Path) == 0 {
 		return
 	}
@@ -156,7 +157,7 @@ func placeACP2Object(slot int, slotOID, slotIdent string, obj protocol.Object, o
 		parent = nodeByPath[""]
 	}
 
-	if objType == ObjTypeNode {
+	if objType == codec.ObjTypeNode {
 		// Node container. If we've already seen this path (e.g. parent
 		// was prematurely materialised by ensureACP2Chain), upgrade the
 		// placeholder's metadata rather than re-adding.
@@ -222,7 +223,7 @@ func ensureACP2Chain(slot int, slotOID, slotIdent string, segments []string, nod
 
 // buildACP2Parameter maps a protocol.Object (leaf) to a canonical.Parameter.
 // Spec cross-refs for each property come from acp2_protocol.pdf.
-func buildACP2Parameter(obj protocol.Object, objType ACP2ObjType, numType NumberType, slotOID, path string) *canonical.Parameter {
+func buildACP2Parameter(obj protocol.Object, objType codec.ACP2ObjType, numType codec.NumberType, slotOID, path string) *canonical.Parameter {
 	oid := slotOID + "." + strconv.Itoa(obj.ID)
 
 	p := &canonical.Parameter{
@@ -260,7 +261,7 @@ func buildACP2Parameter(obj protocol.Object, objType ACP2ObjType, numType Number
 	// Enum / preset (ACP2 object types 2 and "preset" per pid=5=9).
 	// Spec acp2_protocol.pdf §"Property IDs" pid=15 delivers the options
 	// list; the walker already exposes them as EnumItems + OptionsMap.
-	if (objType == ObjTypeEnum || objType == ObjTypePreset) && len(obj.EnumItems) > 0 {
+	if (objType == codec.ObjTypeEnum || objType == codec.ObjTypePreset) && len(obj.EnumItems) > 0 {
 		entries := make([]canonical.EnumEntry, 0, len(obj.EnumItems))
 		for i, item := range obj.EnumItems {
 			entries = append(entries, canonical.EnumEntry{
@@ -275,7 +276,7 @@ func buildACP2Parameter(obj protocol.Object, objType ACP2ObjType, numType Number
 
 	// String maxLength — pid=6 (spec §"Property IDs"). Expose via the
 	// canonical format hint since the schema has no dedicated maxLen.
-	if objType == ObjTypeString && obj.MaxLen > 0 {
+	if objType == codec.ObjTypeString && obj.MaxLen > 0 {
 		hint := "maxLen=" + strconv.Itoa(obj.MaxLen)
 		p.Format = &hint
 	}
@@ -296,7 +297,7 @@ func acp2Identifier(obj protocol.Object) string {
 // an ACP2 leaf. The walker has already mapped ACP2ObjType → ValueKind
 // (see walker.go parseObjectProperties), so we mostly dispatch on Kind;
 // objType / numType disambiguate the special cases.
-func acp2KindToCanonicalType(k protocol.ValueKind, objType ACP2ObjType, numType NumberType) string {
+func acp2KindToCanonicalType(k protocol.ValueKind, objType codec.ACP2ObjType, numType codec.NumberType) string {
 	switch k {
 	case protocol.KindBool:
 		return canonical.ParamBoolean
@@ -315,16 +316,16 @@ func acp2KindToCanonicalType(k protocol.ValueKind, objType ACP2ObjType, numType 
 	}
 	// Unknown kind — fall back on objType / numType for leaf disambiguation.
 	switch objType {
-	case ObjTypeString:
+	case codec.ObjTypeString:
 		return canonical.ParamString
-	case ObjTypeIPv4:
+	case codec.ObjTypeIPv4:
 		return canonical.ParamString
-	case ObjTypeNumber:
-		if numType == NumTypeFloat {
+	case codec.ObjTypeNumber:
+		if numType == codec.NumTypeFloat {
 			return canonical.ParamReal
 		}
 		return canonical.ParamInteger
-	case ObjTypeEnum, ObjTypePreset:
+	case codec.ObjTypeEnum, codec.ObjTypePreset:
 		return canonical.ParamEnum
 	}
 	return canonical.ParamString

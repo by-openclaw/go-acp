@@ -5,23 +5,23 @@ import (
 	"testing"
 
 	"dhs/internal/export/canonical"
-	iacp2 "dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // helper — round-trips a tree through buildProperties + EncodeProperties
 // + DecodeProperties so we assert wire-level correctness rather than
 // just struct equality.
-func buildAndDecode(t *testing.T, e *entry) []iacp2.Property {
+func buildAndDecode(t *testing.T, e *entry) []codec.Property {
 	t.Helper()
 	props, err := buildProperties(e)
 	if err != nil {
 		t.Fatalf("buildProperties: %v", err)
 	}
-	raw, err := iacp2.EncodeProperties(props)
+	raw, err := codec.EncodeProperties(props)
 	if err != nil {
 		t.Fatalf("encode: %v", err)
 	}
-	decoded, err := iacp2.DecodeProperties(raw)
+	decoded, err := codec.DecodeProperties(raw)
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -37,13 +37,13 @@ func TestBuildProperties_Node(t *testing.T) {
 	e := &entry{
 		objID: 1, label: n.Identifier,
 		access:   0x01,
-		objType:  iacp2.ObjTypeNode,
+		objType:  codec.ObjTypeNode,
 		children: []uint32{2, 3, 4},
 		node:     n,
 	}
 	got := buildAndDecode(t, e)
-	want := map[uint8]bool{iacp2.PIDObjectType: true, iacp2.PIDLabel: true,
-		iacp2.PIDAccess: true, iacp2.PIDChildren: true}
+	want := map[uint8]bool{codec.PIDObjectType: true, codec.PIDLabel: true,
+		codec.PIDAccess: true, codec.PIDChildren: true}
 	for _, p := range got {
 		delete(want, p.PID)
 	}
@@ -51,8 +51,8 @@ func TestBuildProperties_Node(t *testing.T) {
 		t.Errorf("missing pids: %v", want)
 	}
 	for _, p := range got {
-		if p.PID == iacp2.PIDChildren {
-			kids, err := iacp2.PropertyChildren(&p)
+		if p.PID == codec.PIDChildren {
+			kids, err := codec.PropertyChildren(&p)
 			if err != nil {
 				t.Fatalf("children decode: %v", err)
 			}
@@ -76,29 +76,29 @@ func TestBuildProperties_NumberS32(t *testing.T) {
 	}
 	e := &entry{
 		objID: 5, label: p.Identifier, access: 0x03,
-		objType: iacp2.ObjTypeNumber, numType: iacp2.NumTypeS32,
+		objType: codec.ObjTypeNumber, numType: codec.NumTypeS32,
 		param: p,
 	}
 	got := buildAndDecode(t, e)
-	seen := map[uint8]iacp2.Property{}
+	seen := map[uint8]codec.Property{}
 	for i := range got {
 		seen[got[i].PID] = got[i]
 	}
-	for _, pid := range []uint8{iacp2.PIDObjectType, iacp2.PIDLabel, iacp2.PIDAccess,
-		iacp2.PIDNumberType, iacp2.PIDValue, iacp2.PIDDefaultValue,
-		iacp2.PIDMinValue, iacp2.PIDMaxValue, iacp2.PIDStepSize, iacp2.PIDUnit} {
+	for _, pid := range []uint8{codec.PIDObjectType, codec.PIDLabel, codec.PIDAccess,
+		codec.PIDNumberType, codec.PIDValue, codec.PIDDefaultValue,
+		codec.PIDMinValue, codec.PIDMaxValue, codec.PIDStepSize, codec.PIDUnit} {
 		if _, ok := seen[pid]; !ok {
 			t.Errorf("missing pid=%d", pid)
 		}
 	}
 	// Verify value round-trip through DecodeNumericValue.
-	vp := seen[iacp2.PIDValue]
-	iv, _, _, err := iacp2.DecodeNumericValue(iacp2.NumTypeS32, vp.Data)
+	vp := seen[codec.PIDValue]
+	iv, _, _, err := codec.DecodeNumericValue(codec.NumTypeS32, vp.Data)
 	if err != nil || iv != -6 {
 		t.Errorf("value decode: got %d err=%v want -6", iv, err)
 	}
 	// Unit string.
-	if s := iacp2.PropertyString(&[]iacp2.Property{seen[iacp2.PIDUnit]}[0]); s != "dB" {
+	if s := codec.PropertyString(&[]codec.Property{seen[codec.PIDUnit]}[0]); s != "dB" {
 		t.Errorf("unit=%q want dB", s)
 	}
 }
@@ -114,24 +114,24 @@ func TestBuildProperties_Enum(t *testing.T) {
 	}
 	e := &entry{
 		objID: 6, label: p.Identifier, access: 0x03,
-		objType: iacp2.ObjTypeEnum, numType: iacp2.NumTypeU32,
+		objType: codec.ObjTypeEnum, numType: codec.NumTypeU32,
 		param: p,
 	}
 	got := buildAndDecode(t, e)
-	var optsProp, valProp iacp2.Property
+	var optsProp, valProp codec.Property
 	for _, pr := range got {
 		switch pr.PID {
-		case iacp2.PIDOptions:
+		case codec.PIDOptions:
 			optsProp = pr
-		case iacp2.PIDValue:
+		case codec.PIDValue:
 			valProp = pr
 		}
 	}
-	opts := iacp2.PropertyOptions(&optsProp)
+	opts := codec.PropertyOptions(&optsProp)
 	if len(opts) != 2 || opts[0] != "Off" || opts[1] != "On" {
 		t.Errorf("options=%v want [Off On]", opts)
 	}
-	_, uv, _, err := iacp2.DecodeNumericValue(iacp2.NumTypeU32, valProp.Data)
+	_, uv, _, err := codec.DecodeNumericValue(codec.NumTypeU32, valProp.Data)
 	if err != nil || uv != 1 {
 		t.Errorf("enum value=%d want 1 err=%v", uv, err)
 	}
@@ -146,20 +146,20 @@ func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	}
 	e := &entry{
 		objID: 7, label: p.Identifier, access: 0x03,
-		objType: iacp2.ObjTypeString, numType: iacp2.NumTypeString,
+		objType: codec.ObjTypeString, numType: codec.NumTypeString,
 		param: p,
 	}
 	got := buildAndDecode(t, e)
-	var maxLen, val iacp2.Property
+	var maxLen, val codec.Property
 	for _, pr := range got {
 		switch pr.PID {
-		case iacp2.PIDStringMaxLength:
+		case codec.PIDStringMaxLength:
 			maxLen = pr
-		case iacp2.PIDValue:
+		case codec.PIDValue:
 			val = pr
 		}
 	}
-	if maxLen.PID != iacp2.PIDStringMaxLength {
+	if maxLen.PID != codec.PIDStringMaxLength {
 		t.Fatal("missing pid=6 string_max_length")
 	}
 	// pid 6 per spec §5.4: plen=6, body = u16 len + u16 pad.
@@ -167,7 +167,7 @@ func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	if len(maxLen.Data) < 2 || binary.BigEndian.Uint16(maxLen.Data[0:2]) != 16 {
 		t.Errorf("maxLen data=%x want u16=16", maxLen.Data)
 	}
-	if s := iacp2.PropertyString(&val); s != "Input-A" {
+	if s := codec.PropertyString(&val); s != "Input-A" {
 		t.Errorf("string value=%q want Input-A", s)
 	}
 }
@@ -181,13 +181,13 @@ func TestBuildProperties_IPv4(t *testing.T) {
 	}
 	e := &entry{
 		objID: 8, label: p.Identifier, access: 0x03,
-		objType: iacp2.ObjTypeIPv4, numType: iacp2.NumTypeIPv4,
+		objType: codec.ObjTypeIPv4, numType: codec.NumTypeIPv4,
 		param: p,
 	}
 	got := buildAndDecode(t, e)
-	var val iacp2.Property
+	var val codec.Property
 	for _, pr := range got {
-		if pr.PID == iacp2.PIDValue {
+		if pr.PID == codec.PIDValue {
 			val = pr
 		}
 	}

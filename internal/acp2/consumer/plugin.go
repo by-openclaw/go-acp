@@ -13,6 +13,7 @@ import (
 	"dhs/internal/protocol"
 	"dhs/internal/protocol/compliance"
 	"dhs/internal/transport"
+	"dhs/internal/acp2/codec"
 )
 
 // init registers the ACP2 plugin with the global protocol registry.
@@ -28,7 +29,7 @@ type Factory struct{}
 func (f *Factory) Meta() protocol.ProtocolMeta {
 	return protocol.ProtocolMeta{
 		Name:        "acp2",
-		DefaultPort: DefaultPort,
+		DefaultPort: codec.DefaultPort,
 		Description: "Axon Control Protocol v2 (AN2/TCP)",
 	}
 }
@@ -242,15 +243,15 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 
 	// req.PID overrides pid=8 (value); req.Idx overrides idx=0 (active).
 	// Zero defaults preserve historical behaviour.
-	targetPID := uint8(PIDValue)
+	targetPID := uint8(codec.PIDValue)
 	if req.PID > 0 {
 		targetPID = uint8(req.PID)
 	}
 	targetIdx := uint32(req.Idx)
 
-	msg, err := s.DoACP2(ctx, uint8(req.Slot), &ACP2Message{
-		Type:  ACP2TypeRequest,
-		Func:  ACP2FuncGetProperty,
+	msg, err := s.DoACP2(ctx, uint8(req.Slot), &codec.ACP2Message{
+		Type:  codec.ACP2TypeRequest,
+		Func:  codec.ACP2FuncGetProperty,
 		PID:   targetPID,
 		ObjID: objID,
 		Idx:   targetIdx,
@@ -265,7 +266,7 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 	for i := range msg.Properties {
 		prop := &msg.Properties[i]
 		if prop.PID == targetPID {
-			if targetPID == PIDValue {
+			if targetPID == codec.PIDValue {
 				return decodePropertyValue(prop, objType, numType, tree, objID)
 			}
 			return protocol.Value{Kind: protocol.KindRaw, Raw: prop.Data}, nil
@@ -324,13 +325,13 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		return protocol.Value{}, err
 	}
 
-	msg, err := s.DoACP2(ctx, uint8(req.Slot), &ACP2Message{
-		Type:       ACP2TypeRequest,
-		Func:       ACP2FuncSetProperty,
-		PID:        PIDValue,
+	msg, err := s.DoACP2(ctx, uint8(req.Slot), &codec.ACP2Message{
+		Type:       codec.ACP2TypeRequest,
+		Func:       codec.ACP2FuncSetProperty,
+		PID:        codec.PIDValue,
 		ObjID:      objID,
 		Idx:        0,
-		Properties: []Property{prop},
+		Properties: []codec.Property{prop},
 	})
 	if err != nil {
 		return protocol.Value{}, err
@@ -339,7 +340,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	// Decode the confirmed value from the reply.
 	for i := range msg.Properties {
 		rp := &msg.Properties[i]
-		if rp.PID == PIDValue {
+		if rp.PID == codec.PIDValue {
 			return decodePropertyValue(rp, objType, numType, tree, objID)
 		}
 	}
@@ -360,7 +361,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 	wantID := req.ID
 	wantLabel := req.Label
 
-	id := s.SubscribeAnnounces(func(annSlot uint8, msg *ACP2Message) {
+	id := s.SubscribeAnnounces(func(annSlot uint8, msg *codec.ACP2Message) {
 		if slot >= 0 && int(annSlot) != slot {
 			return
 		}
@@ -396,7 +397,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		// Decode value from announce properties.
 		for i := range msg.Properties {
 			prop := &msg.Properties[i]
-			if prop.PID == PIDValue || prop.PID == msg.PID {
+			if prop.PID == codec.PIDValue || prop.PID == msg.PID {
 				if treeIdx >= 0 {
 					val, derr := decodePropertyValue(prop, tree.ObjTypes[treeIdx], tree.NumTypes[treeIdx], tree, msg.ObjID)
 					if derr == nil {
@@ -406,9 +407,9 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 				// Fallback: use vtype from announce property to decode
 				// when tree doesn't contain this object.
 				if ev.Value.Kind == protocol.KindUnknown && prop.Data != nil {
-					nt := NumberType(prop.VType)
+					nt := codec.NumberType(prop.VType)
 					if nt > 0 {
-						val, derr := decodePropertyValue(prop, ObjTypeNumber, nt, nil, msg.ObjID)
+						val, derr := decodePropertyValue(prop, codec.ObjTypeNumber, nt, nil, msg.ObjID)
 						if derr == nil {
 							ev.Value = val
 						}
@@ -450,7 +451,7 @@ func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
 
 // resolveRequest translates a ValueRequest into an ACP2 obj-id, object type,
 // number type, and (optionally) the cached protocol.Object.
-func (p *Plugin) resolveRequest(req protocol.ValueRequest, tree *WalkedTree) (uint32, ACP2ObjType, NumberType, *protocol.Object, error) {
+func (p *Plugin) resolveRequest(req protocol.ValueRequest, tree *WalkedTree) (uint32, codec.ACP2ObjType, codec.NumberType, *protocol.Object, error) {
 	if req.Label != "" {
 		if tree == nil {
 			return 0, 0, 0, nil, fmt.Errorf("%w: no walked tree for slot %d",
@@ -480,14 +481,14 @@ func (p *Plugin) resolveRequest(req protocol.ValueRequest, tree *WalkedTree) (ui
 }
 
 // decodePropertyValue decodes a value Property into a protocol.Value.
-func decodePropertyValue(p *Property, objType ACP2ObjType, numType NumberType, tree *WalkedTree, objID uint32) (protocol.Value, error) {
+func decodePropertyValue(p *codec.Property, objType codec.ACP2ObjType, numType codec.NumberType, tree *WalkedTree, objID uint32) (protocol.Value, error) {
 	switch objType {
-	case ObjTypeNumber:
-		nt := NumberType(p.VType)
+	case codec.ObjTypeNumber:
+		nt := codec.NumberType(p.VType)
 		if nt == 0 && numType != 0 {
 			nt = numType
 		}
-		intV, uintV, floatV, err := DecodeNumericValue(nt, p.Data)
+		intV, uintV, floatV, err := codec.DecodeNumericValue(nt, p.Data)
 		if err != nil {
 			return protocol.Value{Kind: protocol.KindRaw, Raw: p.Data}, nil
 		}
@@ -500,7 +501,7 @@ func decodePropertyValue(p *Property, objType ACP2ObjType, numType NumberType, t
 			return protocol.Value{Kind: protocol.KindFloat, Float: floatV, Raw: p.Data}, nil
 		}
 
-	case ObjTypeEnum, ObjTypePreset:
+	case codec.ObjTypeEnum, codec.ObjTypePreset:
 		if len(p.Data) >= 4 {
 			fullIdx := binary.BigEndian.Uint32(p.Data[0:4])
 			ev := protocol.Value{
@@ -525,7 +526,7 @@ func decodePropertyValue(p *Property, objType ACP2ObjType, numType NumberType, t
 			return ev, nil
 		}
 
-	case ObjTypeIPv4:
+	case codec.ObjTypeIPv4:
 		if len(p.Data) >= 4 {
 			return protocol.Value{
 				Kind: protocol.KindIPAddr,
@@ -536,10 +537,10 @@ func decodePropertyValue(p *Property, objType ACP2ObjType, numType NumberType, t
 			}, nil
 		}
 
-	case ObjTypeString:
+	case codec.ObjTypeString:
 		return protocol.Value{
 			Kind: protocol.KindString,
-			Str:  PropertyString(p),
+			Str:  codec.PropertyString(p),
 			Raw:  p.Data,
 		}, nil
 	}
@@ -548,21 +549,21 @@ func decodePropertyValue(p *Property, objType ACP2ObjType, numType NumberType, t
 }
 
 // encodeSetProperty builds the value Property for a set_property request.
-func encodeSetProperty(objType ACP2ObjType, numType NumberType, obj *protocol.Object, val protocol.Value, reverseEnum map[string]uint32) (Property, error) {
+func encodeSetProperty(objType codec.ACP2ObjType, numType codec.NumberType, obj *protocol.Object, val protocol.Value, reverseEnum map[string]uint32) (codec.Property, error) {
 	// If raw bytes are provided, use them directly.
 	if len(val.Raw) > 0 && val.Str == "" && val.Int == 0 && val.Float == 0 && val.Uint == 0 {
-		return MakeValueProperty(PIDValue, numType, val.Raw), nil
+		return codec.MakeValueProperty(codec.PIDValue, numType, val.Raw), nil
 	}
 
 	switch objType {
-	case ObjTypeNumber:
-		data, err := EncodeNumericValue(numType, val.Int, val.Uint, val.Float)
+	case codec.ObjTypeNumber:
+		data, err := codec.EncodeNumericValue(numType, val.Int, val.Uint, val.Float)
 		if err != nil {
-			return Property{}, err
+			return codec.Property{}, err
 		}
-		return MakeValueProperty(PIDValue, numType, data), nil
+		return codec.MakeValueProperty(codec.PIDValue, numType, data), nil
 
-	case ObjTypeEnum, ObjTypePreset:
+	case codec.ObjTypeEnum, codec.ObjTypePreset:
 		// Accept enum index from Enum field or resolve label via reverse map.
 		enumIdx := uint32(val.Enum)
 		if val.Str != "" && reverseEnum != nil {
@@ -570,13 +571,13 @@ func encodeSetProperty(objType ACP2ObjType, numType NumberType, obj *protocol.Ob
 				enumIdx = wireIdx
 			}
 		}
-		data, err := EncodeNumericValue(NumTypeU32, 0, uint64(enumIdx), 0)
+		data, err := codec.EncodeNumericValue(codec.NumTypeU32, 0, uint64(enumIdx), 0)
 		if err != nil {
-			return Property{}, err
+			return codec.Property{}, err
 		}
-		return MakeValueProperty(PIDValue, NumTypePreset, data), nil
+		return codec.MakeValueProperty(codec.PIDValue, codec.NumTypePreset, data), nil
 
-	case ObjTypeIPv4:
+	case codec.ObjTypeIPv4:
 		ip := val.IPAddr
 		// Parse from string if IPAddr is zero (CLI passes --value "x.x.x.x" as Str).
 		if ip == [4]byte{} && val.Str != "" {
@@ -592,16 +593,16 @@ func encodeSetProperty(objType ACP2ObjType, numType NumberType, obj *protocol.Ob
 		}
 		data := make([]byte, 4)
 		copy(data, ip[:])
-		return MakeValueProperty(PIDValue, NumTypeIPv4, data), nil
+		return codec.MakeValueProperty(codec.PIDValue, codec.NumTypeIPv4, data), nil
 
-	case ObjTypeString:
-		return MakeStringProperty(PIDValue, val.Str), nil
+	case codec.ObjTypeString:
+		return codec.MakeStringProperty(codec.PIDValue, val.Str), nil
 
 	default:
 		if len(val.Raw) > 0 {
-			return MakeValueProperty(PIDValue, numType, val.Raw), nil
+			return codec.MakeValueProperty(codec.PIDValue, numType, val.Raw), nil
 		}
-		return Property{}, fmt.Errorf("acp2: cannot encode value for object type %d", objType)
+		return codec.Property{}, fmt.Errorf("acp2: cannot encode value for object type %d", objType)
 	}
 }
 
@@ -609,10 +610,10 @@ func encodeSetProperty(objType ACP2ObjType, numType NumberType, obj *protocol.Ob
 // number type, and options map for an obj-id. Builds a minimal single-object
 // WalkedTree so decodePropertyValue can resolve enum labels.
 // Used when no walked tree is available (same pattern as ACP1's findObject fallback).
-func (p *Plugin) fetchObjectMeta(ctx context.Context, s *Session, slot uint8, objID uint32) (ACP2ObjType, NumberType, *WalkedTree, error) {
-	msg, err := s.DoACP2(ctx, slot, &ACP2Message{
-		Type:  ACP2TypeRequest,
-		Func:  ACP2FuncGetObject,
+func (p *Plugin) fetchObjectMeta(ctx context.Context, s *Session, slot uint8, objID uint32) (codec.ACP2ObjType, codec.NumberType, *WalkedTree, error) {
+	msg, err := s.DoACP2(ctx, slot, &codec.ACP2Message{
+		Type:  codec.ACP2TypeRequest,
+		Func:  codec.ACP2FuncGetObject,
 		ObjID: objID,
 		Idx:   0,
 	})
@@ -620,29 +621,29 @@ func (p *Plugin) fetchObjectMeta(ctx context.Context, s *Session, slot uint8, ob
 		return 0, 0, nil, fmt.Errorf("get_object(%d): %w", objID, err)
 	}
 
-	var objType ACP2ObjType
-	var numType NumberType
+	var objType codec.ACP2ObjType
+	var numType codec.NumberType
 	var optMap map[uint32]string
 	var label string
 	for i := range msg.Properties {
 		prop := &msg.Properties[i]
 		switch prop.PID {
-		case PIDObjectType:
+		case codec.PIDObjectType:
 			if len(prop.Data) >= 4 {
-				objType = ACP2ObjType(prop.Data[3])
+				objType = codec.ACP2ObjType(prop.Data[3])
 			} else {
-				objType = ACP2ObjType(prop.VType)
+				objType = codec.ACP2ObjType(prop.VType)
 			}
-		case PIDNumberType:
+		case codec.PIDNumberType:
 			if len(prop.Data) >= 4 {
-				numType = NumberType(prop.Data[3])
+				numType = codec.NumberType(prop.Data[3])
 			} else {
-				numType = NumberType(prop.VType)
+				numType = codec.NumberType(prop.VType)
 			}
-		case PIDOptions:
-			optMap = PropertyOptionsMap(prop)
-		case PIDLabel:
-			label = PropertyString(prop)
+		case codec.PIDOptions:
+			optMap = codec.PropertyOptionsMap(prop)
+		case codec.PIDLabel:
+			label = codec.PropertyString(prop)
 		}
 	}
 
@@ -652,8 +653,8 @@ func (p *Plugin) fetchObjectMeta(ctx context.Context, s *Session, slot uint8, ob
 		Objects: []protocol.Object{
 			{Slot: int(slot), ID: int(objID), Label: label},
 		},
-		ObjTypes:    []ACP2ObjType{objType},
-		NumTypes:    []NumberType{numType},
+		ObjTypes:    []codec.ACP2ObjType{objType},
+		NumTypes:    []codec.NumberType{numType},
 		OptionsMaps: []map[uint32]string{optMap},
 		Labels:      map[string]int{},
 	}

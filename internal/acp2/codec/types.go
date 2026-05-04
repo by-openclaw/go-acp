@@ -1,13 +1,18 @@
-// Package acp2 implements the ACP v2 protocol plugin for the
-// internal/protocol interface.
+// Package codec implements the ACP2 (Axon Control Protocol v2) wire
+// format and the AN2 transport framer it always rides on. Stdlib-only,
+// lift-to-own-repo ready per ADR-0006.
 //
-// ACP2 runs exclusively over AN2/TCP (port 2072). The AN2 transport
-// layer handles framing; ACP2 messages are carried inside AN2 data
-// frames with proto=2.
+// ACP2 runs exclusively over AN2/TCP (port 2072). AN2 frames carry
+// ACP2 messages with proto=2; this package owns both the AN2 frame
+// codec (framer.go) and the ACP2 message codec (codec.go) plus the
+// per-property codec (property_codec.go).
 //
-// Authoritative spec: internal/acp2/assets/acp2_protocol.pdf.
-// Cross-reference: CLAUDE.md ACP2 section, dhs_acpv2.lua.
-package acp2
+// Authoritative spec: ../assets/acp2_protocol.pdf. Cross-reference:
+// ../wireshark/dhs_acpv2.lua + ../CLAUDE.md ACP2 section.
+//
+// Imported by internal/acp2/consumer + internal/acp2/provider for
+// the Protocol / Provider interface implementations.
+package codec
 
 import "fmt"
 

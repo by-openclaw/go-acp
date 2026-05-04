@@ -1,4 +1,4 @@
-package acp2
+package codec
 
 import (
 	"encoding/binary"

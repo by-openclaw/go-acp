@@ -4,8 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-
-	iacp2 "dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // applySet mutates e per an incoming set_property request and returns
@@ -31,31 +30,31 @@ import (
 // idx=0 is ACTIVE INDEX on preset children; never "first preset slot".
 //
 // Spec reference: acp2_protocol.pdf §set_property (func=3), §Error stat codes
-func (s *server) applySet(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
+func (s *server) applySet(e *entry, in *codec.Property) (codec.Property, codec.ACP2ErrStatus, error) {
 	if e.access&0x02 == 0 {
-		return iacp2.Property{}, iacp2.ErrNoAccess, fmt.Errorf("no write access")
+		return codec.Property{}, codec.ErrNoAccess, fmt.Errorf("no write access")
 	}
-	if in.PID != iacp2.PIDValue {
+	if in.PID != codec.PIDValue {
 		// MVP only accepts writes to pid=8 (value). announce_delay
 		// (pid=4) and event_prio (pid=17) are spec-writable too but
 		// out of MVP scope.
-		return iacp2.Property{}, iacp2.ErrInvalidPID, fmt.Errorf("only pid=8 is writable in MVP")
+		return codec.Property{}, codec.ErrInvalidPID, fmt.Errorf("only pid=8 is writable in MVP")
 	}
 
 	s.tree.mu.Lock()
 	defer s.tree.mu.Unlock()
 
 	switch e.objType {
-	case iacp2.ObjTypeNumber:
+	case codec.ObjTypeNumber:
 		return s.applySetNumber(e, in)
-	case iacp2.ObjTypeEnum:
+	case codec.ObjTypeEnum:
 		return s.applySetEnum(e, in)
-	case iacp2.ObjTypeIPv4:
+	case codec.ObjTypeIPv4:
 		return s.applySetIPv4(e, in)
-	case iacp2.ObjTypeString:
+	case codec.ObjTypeString:
 		return s.applySetString(e, in)
 	}
-	return iacp2.Property{}, iacp2.ErrInvalidPID, fmt.Errorf("set on unsupported object type %d", e.objType)
+	return codec.Property{}, codec.ErrInvalidPID, fmt.Errorf("set on unsupported object type %d", e.objType)
 }
 
 // applySetNumber decodes the incoming numeric bytes per the entry's
@@ -72,15 +71,15 @@ func (s *server) applySet(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.A
 //	| 4..    | value | 4 or 8 | clamped to [Minimum, Maximum] when set    |
 //
 // Spec reference: acp2_protocol.pdf §Number Types, §set_property clamping
-func (s *server) applySetNumber(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
+func (s *server) applySetNumber(e *entry, in *codec.Property) (codec.Property, codec.ACP2ErrStatus, error) {
 	nt := e.numType
-	iv, uv, fv, err := iacp2.DecodeNumericValue(nt, in.Data)
+	iv, uv, fv, err := codec.DecodeNumericValue(nt, in.Data)
 	if err != nil {
-		return iacp2.Property{}, iacp2.ErrInvalidValue, err
+		return codec.Property{}, codec.ErrInvalidValue, err
 	}
 
 	switch nt {
-	case iacp2.NumTypeS8, iacp2.NumTypeS16, iacp2.NumTypeS32, iacp2.NumTypeS64:
+	case codec.NumTypeS8, codec.NumTypeS16, codec.NumTypeS32, codec.NumTypeS64:
 		if minV, ok := intConstraint(e.param.Minimum); ok && iv < minV {
 			iv = minV
 		}
@@ -88,13 +87,13 @@ func (s *server) applySetNumber(e *entry, in *iacp2.Property) (iacp2.Property, i
 			iv = maxV
 		}
 		e.param.Value = iv
-		data, err := iacp2.EncodeNumericValue(nt, iv, 0, 0)
+		data, err := codec.EncodeNumericValue(nt, iv, 0, 0)
 		if err != nil {
-			return iacp2.Property{}, iacp2.ErrInvalidValue, err
+			return codec.Property{}, codec.ErrInvalidValue, err
 		}
-		return numericProp(iacp2.PIDValue, nt, data), 0, nil
+		return numericProp(codec.PIDValue, nt, data), 0, nil
 
-	case iacp2.NumTypeU8, iacp2.NumTypeU16, iacp2.NumTypeU32, iacp2.NumTypeU64, iacp2.NumTypePreset:
+	case codec.NumTypeU8, codec.NumTypeU16, codec.NumTypeU32, codec.NumTypeU64, codec.NumTypePreset:
 		if minV, ok := uintConstraint(e.param.Minimum); ok && uv < minV {
 			uv = minV
 		}
@@ -102,13 +101,13 @@ func (s *server) applySetNumber(e *entry, in *iacp2.Property) (iacp2.Property, i
 			uv = maxV
 		}
 		e.param.Value = uv
-		data, err := iacp2.EncodeNumericValue(nt, 0, uv, 0)
+		data, err := codec.EncodeNumericValue(nt, 0, uv, 0)
 		if err != nil {
-			return iacp2.Property{}, iacp2.ErrInvalidValue, err
+			return codec.Property{}, codec.ErrInvalidValue, err
 		}
-		return numericProp(iacp2.PIDValue, nt, data), 0, nil
+		return numericProp(codec.PIDValue, nt, data), 0, nil
 
-	case iacp2.NumTypeFloat:
+	case codec.NumTypeFloat:
 		if minV, ok := floatConstraint(e.param.Minimum); ok && fv < minV {
 			fv = minV
 		}
@@ -116,13 +115,13 @@ func (s *server) applySetNumber(e *entry, in *iacp2.Property) (iacp2.Property, i
 			fv = maxV
 		}
 		e.param.Value = fv
-		data, err := iacp2.EncodeNumericValue(nt, 0, 0, fv)
+		data, err := codec.EncodeNumericValue(nt, 0, 0, fv)
 		if err != nil {
-			return iacp2.Property{}, iacp2.ErrInvalidValue, err
+			return codec.Property{}, codec.ErrInvalidValue, err
 		}
-		return numericProp(iacp2.PIDValue, nt, data), 0, nil
+		return numericProp(codec.PIDValue, nt, data), 0, nil
 	}
-	return iacp2.Property{}, iacp2.ErrInvalidValue, fmt.Errorf("number_type %d not writable", nt)
+	return codec.Property{}, codec.ErrInvalidValue, fmt.Errorf("number_type %d not writable", nt)
 }
 
 // applySetEnum validates the incoming index against the entry's options
@@ -138,17 +137,17 @@ func (s *server) applySetNumber(e *entry, in *iacp2.Property) (iacp2.Property, i
 //	| 4-7    | idx   | u32 BE | option index; >= len(options) -> Invalid  |
 //
 // Spec reference: acp2_protocol.pdf §5.2.2 enum value
-func (s *server) applySetEnum(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
+func (s *server) applySetEnum(e *entry, in *codec.Property) (codec.Property, codec.ACP2ErrStatus, error) {
 	if len(in.Data) < 4 {
-		return iacp2.Property{}, iacp2.ErrInvalidValue, fmt.Errorf("enum needs u32")
+		return codec.Property{}, codec.ErrInvalidValue, fmt.Errorf("enum needs u32")
 	}
 	idx := binary.BigEndian.Uint32(in.Data[0:4])
 	opts := enumOptions(e.param)
 	if int(idx) >= len(opts) {
-		return iacp2.Property{}, iacp2.ErrInvalidValue, fmt.Errorf("enum index %d >= %d", idx, len(opts))
+		return codec.Property{}, codec.ErrInvalidValue, fmt.Errorf("enum index %d >= %d", idx, len(opts))
 	}
 	e.param.Value = int64(idx)
-	return numericProp(iacp2.PIDValue, iacp2.NumTypeU32, u32Data(idx)), 0, nil
+	return numericProp(codec.PIDValue, codec.NumTypeU32, u32Data(idx)), 0, nil
 }
 
 // applySetIPv4 decodes four packed octets and stores them as a dotted-quad
@@ -164,13 +163,13 @@ func (s *server) applySetEnum(e *entry, in *iacp2.Property) (iacp2.Property, iac
 //	| 4-7    | octets| 4      | d[0].d[1].d[2].d[3] big-endian packed     |
 //
 // Spec reference: acp2_protocol.pdf §Number Types (ipv4), §Wire Sizes
-func (s *server) applySetIPv4(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
+func (s *server) applySetIPv4(e *entry, in *codec.Property) (codec.Property, codec.ACP2ErrStatus, error) {
 	if len(in.Data) < 4 {
-		return iacp2.Property{}, iacp2.ErrInvalidValue, fmt.Errorf("ipv4 needs 4 bytes")
+		return codec.Property{}, codec.ErrInvalidValue, fmt.Errorf("ipv4 needs 4 bytes")
 	}
 	d := in.Data
 	e.param.Value = fmt.Sprintf("%d.%d.%d.%d", d[0], d[1], d[2], d[3])
-	return numericProp(iacp2.PIDValue, iacp2.NumTypeIPv4, d[:4]), 0, nil
+	return numericProp(codec.PIDValue, codec.NumTypeIPv4, d[:4]), 0, nil
 }
 
 // applySetString strips the trailing NUL, truncates to the per-entry
@@ -187,7 +186,7 @@ func (s *server) applySetIPv4(e *entry, in *iacp2.Property) (iacp2.Property, iac
 //	| end    | NUL   | 1        | 0x00 terminator                         |
 //
 // Spec reference: acp2_protocol.pdf §Wire Sizes (string), §5.4 pid=6
-func (s *server) applySetString(e *entry, in *iacp2.Property) (iacp2.Property, iacp2.ACP2ErrStatus, error) {
+func (s *server) applySetString(e *entry, in *codec.Property) (codec.Property, codec.ACP2ErrStatus, error) {
 	raw := in.Data
 	if n := len(raw); n > 0 && raw[n-1] == 0 {
 		raw = raw[:n-1]
@@ -197,7 +196,7 @@ func (s *server) applySetString(e *entry, in *iacp2.Property) (iacp2.Property, i
 		str = str[:ml]
 	}
 	e.param.Value = str
-	return iacp2.MakeStringProperty(iacp2.PIDValue, str), 0, nil
+	return codec.MakeStringProperty(codec.PIDValue, str), 0, nil
 }
 
 // intConstraint pulls an int64 from a canonical constraint field

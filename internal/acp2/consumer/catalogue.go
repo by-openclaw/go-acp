@@ -1,5 +1,7 @@
 package acp2
 
+import "dhs/internal/acp2/codec"
+
 // CommandKind groups ACP2 catalogue entries. ACP2 mixes AN2 transport
 // constants (frame type, internal func IDs) with ACP2 application
 // constants (message type, function IDs, object types, property IDs,
@@ -41,29 +43,29 @@ func (c CatalogueEntry) Address() string {
 func Catalogue() []CatalogueEntry {
 	return []CatalogueEntry{
 		// AN2 frame types
-		{Kind: KindAN2Type, ID: uint8(AN2TypeRequest), Name: "request", SpecRef: "AN2"},
-		{Kind: KindAN2Type, ID: uint8(AN2TypeReply), Name: "reply", SpecRef: "AN2"},
-		{Kind: KindAN2Type, ID: uint8(AN2TypeEvent), Name: "event", SpecRef: "AN2"},
-		{Kind: KindAN2Type, ID: uint8(AN2TypeError), Name: "error", SpecRef: "AN2"},
-		{Kind: KindAN2Type, ID: uint8(AN2TypeData), Name: "data", SpecRef: "AN2", Notes: "ACP1/ACP2 messages travel in data frames"},
+		{Kind: KindAN2Type, ID: uint8(codec.AN2TypeRequest), Name: "request", SpecRef: "AN2"},
+		{Kind: KindAN2Type, ID: uint8(codec.AN2TypeReply), Name: "reply", SpecRef: "AN2"},
+		{Kind: KindAN2Type, ID: uint8(codec.AN2TypeEvent), Name: "event", SpecRef: "AN2"},
+		{Kind: KindAN2Type, ID: uint8(codec.AN2TypeError), Name: "error", SpecRef: "AN2"},
+		{Kind: KindAN2Type, ID: uint8(codec.AN2TypeData), Name: "data", SpecRef: "AN2", Notes: "ACP1/ACP2 messages travel in data frames"},
 
 		// AN2 internal funcs (proto=0)
-		{Kind: KindAN2Func, ID: AN2FuncGetVersion, Name: "GetVersion", SpecRef: "AN2 §4"},
-		{Kind: KindAN2Func, ID: AN2FuncGetDeviceInfo, Name: "GetDeviceInfo", SpecRef: "AN2 §4"},
-		{Kind: KindAN2Func, ID: AN2FuncGetSlotInfo, Name: "GetSlotInfo", SpecRef: "AN2 §4"},
-		{Kind: KindAN2Func, ID: AN2FuncEnableProtocolEvents, Name: "EnableProtocolEvents", SpecRef: "AN2 §4", Notes: "REQUIRED for ACP2 announces"},
+		{Kind: KindAN2Func, ID: codec.AN2FuncGetVersion, Name: "GetVersion", SpecRef: "AN2 §4"},
+		{Kind: KindAN2Func, ID: codec.AN2FuncGetDeviceInfo, Name: "GetDeviceInfo", SpecRef: "AN2 §4"},
+		{Kind: KindAN2Func, ID: codec.AN2FuncGetSlotInfo, Name: "GetSlotInfo", SpecRef: "AN2 §4"},
+		{Kind: KindAN2Func, ID: codec.AN2FuncEnableProtocolEvents, Name: "EnableProtocolEvents", SpecRef: "AN2 §4", Notes: "REQUIRED for ACP2 announces"},
 
 		// ACP2 message types
-		{Kind: KindACP2Type, ID: uint8(ACP2TypeRequest), Name: "request", SpecRef: "ACP2 §1"},
-		{Kind: KindACP2Type, ID: uint8(ACP2TypeReply), Name: "reply", SpecRef: "ACP2 §1"},
-		{Kind: KindACP2Type, ID: uint8(ACP2TypeAnnounce), Name: "announce", SpecRef: "ACP2 §1", Notes: "NOT 'event'"},
-		{Kind: KindACP2Type, ID: uint8(ACP2TypeError), Name: "error", SpecRef: "ACP2 §1"},
+		{Kind: KindACP2Type, ID: uint8(codec.ACP2TypeRequest), Name: "request", SpecRef: "ACP2 §1"},
+		{Kind: KindACP2Type, ID: uint8(codec.ACP2TypeReply), Name: "reply", SpecRef: "ACP2 §1"},
+		{Kind: KindACP2Type, ID: uint8(codec.ACP2TypeAnnounce), Name: "announce", SpecRef: "ACP2 §1", Notes: "NOT 'event'"},
+		{Kind: KindACP2Type, ID: uint8(codec.ACP2TypeError), Name: "error", SpecRef: "ACP2 §1"},
 
 		// ACP2 application funcs
-		{Kind: KindACP2Func, ID: uint8(ACP2FuncGetVersion), Name: "get_version", SpecRef: "ACP2 §3"},
-		{Kind: KindACP2Func, ID: uint8(ACP2FuncGetObject), Name: "get_object", SpecRef: "ACP2 §3", Notes: "all property headers for obj-id"},
-		{Kind: KindACP2Func, ID: uint8(ACP2FuncGetProperty), Name: "get_property", SpecRef: "ACP2 §3"},
-		{Kind: KindACP2Func, ID: uint8(ACP2FuncSetProperty), Name: "set_property", SpecRef: "ACP2 §3"},
+		{Kind: KindACP2Func, ID: uint8(codec.ACP2FuncGetVersion), Name: "get_version", SpecRef: "ACP2 §3"},
+		{Kind: KindACP2Func, ID: uint8(codec.ACP2FuncGetObject), Name: "get_object", SpecRef: "ACP2 §3", Notes: "all property headers for obj-id"},
+		{Kind: KindACP2Func, ID: uint8(codec.ACP2FuncGetProperty), Name: "get_property", SpecRef: "ACP2 §3"},
+		{Kind: KindACP2Func, ID: uint8(codec.ACP2FuncSetProperty), Name: "set_property", SpecRef: "ACP2 §3"},
 
 		// Object types
 		{Kind: KindObjType, ID: 0, Name: "node", SpecRef: "ACP2 §4", Notes: "container; children via pid 14"},

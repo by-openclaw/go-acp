@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+	"dhs/internal/acp2/codec"
 )
 
 // DiagResult is one diagnostic probe result.
@@ -32,7 +33,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	var results []DiagResult
 
 	// Helper: send raw ACP2 bytes inside AN2 data frame, wait for reply.
-	sendRaw := func(name string, an2Slot uint8, an2Type AN2Type, payload []byte) DiagResult {
+	sendRaw := func(name string, an2Slot uint8, an2Type codec.AN2Type, payload []byte) DiagResult {
 		r := DiagResult{Name: name, Sent: fmt.Sprintf("%x", payload)}
 
 		// Allocate mtid
@@ -49,15 +50,15 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		}
 		r.Sent = fmt.Sprintf("%x", payload)
 
-		frame := &AN2Frame{
-			Proto:   AN2ProtoACP2,
+		frame := &codec.AN2Frame{
+			Proto:   codec.AN2ProtoACP2,
 			Slot:    an2Slot,
 			MTID:    0,
 			Type:    an2Type,
 			Payload: payload,
 		}
 
-		ch := make(chan *ACP2Message, 1)
+		ch := make(chan *codec.ACP2Message, 1)
 		sess.waitMu.Lock()
 		sess.waiters[mtid] = ch
 		sess.waitMu.Unlock()
@@ -82,7 +83,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		case msg := <-ch:
 			if msg == nil {
 				r.Status = "error: nil reply"
-			} else if msg.Type == ACP2TypeError {
+			} else if msg.Type == codec.ACP2TypeError {
 				r.Status = fmt.Sprintf("error: stat=%d", msg.Func)
 				r.Reply = fmt.Sprintf("%x", msg.Body)
 			} else {
@@ -96,7 +97,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	// --- Probe 1: get_object as spec says (12 bytes) on target slot via AN2 data ---
 	results = append(results, sendRaw(
 		"get_object spec (AN2 data, 12 bytes)",
-		slot, AN2TypeData,
+		slot, codec.AN2TypeData,
 		[]byte{0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 	))
 
@@ -104,7 +105,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	// Tests if ANY body-carrying function works.
 	results = append(results, sendRaw(
 		"get_property pid=1 (AN2 data, 16 bytes)",
-		slot, AN2TypeData,
+		slot, codec.AN2TypeData,
 		[]byte{
 			0x00, 0x00, 0x02, 0x01, // type=req, mtid, func=get_property, pid=1
 			0x00, 0x00, 0x00, 0x00, // obj-id=0
@@ -116,21 +117,21 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	// --- Probe 3: get_object without idx (8 bytes) ---
 	results = append(results, sendRaw(
 		"get_object no idx (AN2 data, 8 bytes)",
-		slot, AN2TypeData,
+		slot, codec.AN2TypeData,
 		[]byte{0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00},
 	))
 
 	// --- Probe 4: get_object minimal (4 bytes, like get_version but func=1) ---
 	results = append(results, sendRaw(
 		"get_object minimal (AN2 data, 4 bytes)",
-		slot, AN2TypeData,
+		slot, codec.AN2TypeData,
 		[]byte{0x00, 0x00, 0x01, 0x00},
 	))
 
 	// --- Probe 5: get_object via AN2 type=request instead of type=data ---
 	results = append(results, sendRaw(
 		"get_object spec (AN2 REQUEST, 12 bytes)",
-		slot, AN2TypeRequest,
+		slot, codec.AN2TypeRequest,
 		[]byte{0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 	))
 
@@ -138,7 +139,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	// What if the device expects: funcID(u8) + ACP2 payload?
 	results = append(results, sendRaw(
 		"get_object with func prefix (AN2 data, 13 bytes)",
-		slot, AN2TypeData,
+		slot, codec.AN2TypeData,
 		[]byte{0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 	))
 
@@ -146,7 +147,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	if slot != 0 {
 		results = append(results, sendRaw(
 			"get_object spec on slot 0 (AN2 data, 12 bytes)",
-			0, AN2TypeData,
+			0, codec.AN2TypeData,
 			[]byte{0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		))
 	}
@@ -158,7 +159,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	// legal-framed probe can produce.
 	results = append(results, sendRaw(
 		"unknown func=0xFF (AN2 data, 4 bytes)",
-		slot, AN2TypeData,
+		slot, codec.AN2TypeData,
 		[]byte{0x00, 0x00, 0xFF, 0x00},
 	))
 
@@ -181,15 +182,15 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		}
 		r.Sent = fmt.Sprintf("%x", payload)
 
-		frame := &AN2Frame{
+		frame := &codec.AN2Frame{
 			Proto:   3, // ACMP
 			Slot:    an2Slot,
 			MTID:    0,
-			Type:    AN2TypeData,
+			Type:    codec.AN2TypeData,
 			Payload: payload,
 		}
 
-		ch := make(chan *ACP2Message, 1)
+		ch := make(chan *codec.ACP2Message, 1)
 		sess.waitMu.Lock()
 		sess.waiters[mtid] = ch
 		sess.waitMu.Unlock()
@@ -214,7 +215,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		case msg := <-ch:
 			if msg == nil {
 				r.Status = "error: nil reply"
-			} else if msg.Type == ACP2TypeError {
+			} else if msg.Type == codec.ACP2TypeError {
 				r.Status = fmt.Sprintf("error: stat=%d", msg.Func)
 				r.Reply = fmt.Sprintf("%x", msg.Body)
 			} else {
@@ -262,15 +263,15 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		}
 		r.Sent = fmt.Sprintf("%x", payload)
 
-		frame := &AN2Frame{
+		frame := &codec.AN2Frame{
 			Proto:   4, // vendor extension
 			Slot:    slot,
 			MTID:    0,
-			Type:    AN2TypeData,
+			Type:    codec.AN2TypeData,
 			Payload: payload,
 		}
 
-		ch := make(chan *ACP2Message, 1)
+		ch := make(chan *codec.ACP2Message, 1)
 		sess.waitMu.Lock()
 		sess.waiters[mtid] = ch
 		sess.waitMu.Unlock()
@@ -295,7 +296,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		case msg := <-ch:
 			if msg == nil {
 				r.Status = "error: nil reply"
-			} else if msg.Type == ACP2TypeError {
+			} else if msg.Type == codec.ACP2TypeError {
 				r.Status = fmt.Sprintf("error: stat=%d", msg.Func)
 				r.Reply = fmt.Sprintf("%x", msg.Body)
 			} else {
@@ -346,7 +347,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		}
 		results = append(results, sendRaw(
 			fmt.Sprintf("get_object obj-id=0x%08X", objID),
-			slot, AN2TypeData,
+			slot, codec.AN2TypeData,
 			payload,
 		))
 	}

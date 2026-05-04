@@ -1,5 +1,7 @@
 package acp2
 
+import "dhs/internal/acp2/codec"
+
 // Compliance event labels — per-spec named deviations the ACP2
 // consumer absorbs on the wire. Every constant here maps to one code
 // path that tolerated a device defect without failing the operation
@@ -138,19 +140,19 @@ const (
 // received. Returns "" for status codes outside the defined range —
 // caller should not fire an event in that case. Exposed so replay
 // tests can assert the correct mapping without standing up a session.
-func EventForErrStatus(s ACP2ErrStatus) string {
+func EventForErrStatus(s codec.ACP2ErrStatus) string {
 	switch s {
-	case ErrProtocol:
+	case codec.ErrProtocol:
 		return ProtocolErrorReceived
-	case ErrInvalidObjID:
+	case codec.ErrInvalidObjID:
 		return InvalidObjectReceived
-	case ErrInvalidIdx:
+	case codec.ErrInvalidIdx:
 		return InvalidIndexReceived
-	case ErrInvalidPID:
+	case codec.ErrInvalidPID:
 		return InvalidPidReceived
-	case ErrNoAccess:
+	case codec.ErrNoAccess:
 		return AccessDeniedReceived
-	case ErrInvalidValue:
+	case codec.ErrInvalidValue:
 		return InvalidValueReceived
 	}
 	return ""

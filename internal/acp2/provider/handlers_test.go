@@ -7,8 +7,7 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	iacp2 "dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 // newTestSession builds a session bound to a net.Pipe so handshake
@@ -34,10 +33,10 @@ func newTestSession(t *testing.T) (*session, net.Conn) {
 
 // roundtrip runs one request frame through the provider and waits up
 // to 500 ms for a single reply frame on the test side.
-func roundtrip(t *testing.T, sess *session, peer net.Conn, req *iacp2.AN2Frame) *iacp2.AN2Frame {
+func roundtrip(t *testing.T, sess *session, peer net.Conn, req *codec.AN2Frame) *codec.AN2Frame {
 	t.Helper()
 
-	raw, err := iacp2.EncodeAN2Frame(req)
+	raw, err := codec.EncodeAN2Frame(req)
 	if err != nil {
 		t.Fatalf("encode: %v", err)
 	}
@@ -55,7 +54,7 @@ func roundtrip(t *testing.T, sess *session, peer net.Conn, req *iacp2.AN2Frame) 
 
 	// Session goroutine reads + dispatches + writes reply.
 	go func() {
-		frame, err := iacp2.ReadAN2Frame(sess.conn)
+		frame, err := codec.ReadAN2Frame(sess.conn)
 		if err != nil {
 			return
 		}
@@ -63,10 +62,10 @@ func roundtrip(t *testing.T, sess *session, peer net.Conn, req *iacp2.AN2Frame) 
 	}()
 
 	// Consumer: read reply from the peer side.
-	done := make(chan *iacp2.AN2Frame, 1)
+	done := make(chan *codec.AN2Frame, 1)
 	errCh := make(chan error, 1)
 	go func() {
-		rep, err := iacp2.ReadAN2Frame(peer)
+		rep, err := codec.ReadAN2Frame(peer)
 		if err != nil {
 			errCh <- err
 			return
@@ -91,20 +90,20 @@ func TestAN2Handshake_GetVersion(t *testing.T) {
 	defer func() { _ = sess.conn.Close() }()
 	defer func() { _ = peer.Close() }()
 
-	req := &iacp2.AN2Frame{
-		Proto:   iacp2.AN2ProtoInternal,
+	req := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoInternal,
 		Slot:    0,
 		MTID:    1,
-		Type:    iacp2.AN2TypeRequest,
-		Payload: []byte{iacp2.AN2FuncGetVersion},
+		Type:    codec.AN2TypeRequest,
+		Payload: []byte{codec.AN2FuncGetVersion},
 	}
 	rep := roundtrip(t, sess, peer, req)
-	if rep.Proto != iacp2.AN2ProtoInternal || rep.Type != iacp2.AN2TypeReply || rep.MTID != 1 {
+	if rep.Proto != codec.AN2ProtoInternal || rep.Type != codec.AN2TypeReply || rep.MTID != 1 {
 		t.Fatalf("reply frame wrong: %+v", rep)
 	}
 	// Payload: [funcID=0, major, minor]
 	if len(rep.Payload) != 3 ||
-		rep.Payload[0] != iacp2.AN2FuncGetVersion ||
+		rep.Payload[0] != codec.AN2FuncGetVersion ||
 		rep.Payload[1] != an2VersionMajor ||
 		rep.Payload[2] != an2VersionMinor {
 		t.Fatalf("GetVersion payload=%v want [0, %d, %d]",
@@ -117,16 +116,16 @@ func TestAN2Handshake_GetDeviceInfo(t *testing.T) {
 	defer func() { _ = sess.conn.Close() }()
 	defer func() { _ = peer.Close() }()
 
-	req := &iacp2.AN2Frame{
-		Proto:   iacp2.AN2ProtoInternal,
+	req := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoInternal,
 		Slot:    0,
 		MTID:    2,
-		Type:    iacp2.AN2TypeRequest,
-		Payload: []byte{iacp2.AN2FuncGetDeviceInfo},
+		Type:    codec.AN2TypeRequest,
+		Payload: []byte{codec.AN2FuncGetDeviceInfo},
 	}
 	rep := roundtrip(t, sess, peer, req)
 	if len(rep.Payload) != 2 ||
-		rep.Payload[0] != iacp2.AN2FuncGetDeviceInfo ||
+		rep.Payload[0] != codec.AN2FuncGetDeviceInfo ||
 		rep.Payload[1] != 2 {
 		t.Fatalf("GetDeviceInfo payload=%v want [1, 2]", rep.Payload)
 	}
@@ -138,17 +137,17 @@ func TestAN2Handshake_GetSlotInfo(t *testing.T) {
 	defer func() { _ = peer.Close() }()
 
 	// Slot 0 (controller): status=present, protos=[AN2Internal]
-	req := &iacp2.AN2Frame{
-		Proto:   iacp2.AN2ProtoInternal,
+	req := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoInternal,
 		Slot:    0,
 		MTID:    3,
-		Type:    iacp2.AN2TypeRequest,
-		Payload: []byte{iacp2.AN2FuncGetSlotInfo},
+		Type:    codec.AN2TypeRequest,
+		Payload: []byte{codec.AN2FuncGetSlotInfo},
 	}
 	rep := roundtrip(t, sess, peer, req)
 	// payload: [funcID=2, status=present, num_protos=2, AN2Internal, ACP2]
-	want := []byte{iacp2.AN2FuncGetSlotInfo, slotStatusPresent, 2,
-		uint8(iacp2.AN2ProtoInternal), uint8(iacp2.AN2ProtoACP2)}
+	want := []byte{codec.AN2FuncGetSlotInfo, slotStatusPresent, 2,
+		uint8(codec.AN2ProtoInternal), uint8(codec.AN2ProtoACP2)}
 	if !bytesEq(rep.Payload, want) {
 		t.Fatalf("slot 0 info=%x want %x", rep.Payload, want)
 	}
@@ -160,16 +159,16 @@ func TestAN2Handshake_GetSlotInfo_CardSlot(t *testing.T) {
 	defer func() { _ = peer.Close() }()
 
 	// Slot 1 (card): present, protos=[AN2Internal, ACP2]
-	req := &iacp2.AN2Frame{
-		Proto:   iacp2.AN2ProtoInternal,
+	req := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoInternal,
 		Slot:    1,
 		MTID:    4,
-		Type:    iacp2.AN2TypeRequest,
-		Payload: []byte{iacp2.AN2FuncGetSlotInfo},
+		Type:    codec.AN2TypeRequest,
+		Payload: []byte{codec.AN2FuncGetSlotInfo},
 	}
 	rep := roundtrip(t, sess, peer, req)
-	want := []byte{iacp2.AN2FuncGetSlotInfo, slotStatusPresent, 2,
-		uint8(iacp2.AN2ProtoInternal), uint8(iacp2.AN2ProtoACP2)}
+	want := []byte{codec.AN2FuncGetSlotInfo, slotStatusPresent, 2,
+		uint8(codec.AN2ProtoInternal), uint8(codec.AN2ProtoACP2)}
 	if !bytesEq(rep.Payload, want) {
 		t.Fatalf("slot 1 info=%x want %x", rep.Payload, want)
 	}
@@ -181,15 +180,15 @@ func TestAN2Handshake_GetSlotInfo_OutOfRange(t *testing.T) {
 	defer func() { _ = peer.Close() }()
 
 	// Slot 9 (> slotN=2): status=empty, protos=[]
-	req := &iacp2.AN2Frame{
-		Proto:   iacp2.AN2ProtoInternal,
+	req := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoInternal,
 		Slot:    9,
 		MTID:    5,
-		Type:    iacp2.AN2TypeRequest,
-		Payload: []byte{iacp2.AN2FuncGetSlotInfo},
+		Type:    codec.AN2TypeRequest,
+		Payload: []byte{codec.AN2FuncGetSlotInfo},
 	}
 	rep := roundtrip(t, sess, peer, req)
-	want := []byte{iacp2.AN2FuncGetSlotInfo, slotStatusEmpty, 0}
+	want := []byte{codec.AN2FuncGetSlotInfo, slotStatusEmpty, 0}
 	if !bytesEq(rep.Payload, want) {
 		t.Fatalf("slot 9 info=%x want %x", rep.Payload, want)
 	}
@@ -200,20 +199,20 @@ func TestAN2Handshake_EnableProtocolEvents(t *testing.T) {
 	defer func() { _ = sess.conn.Close() }()
 	defer func() { _ = peer.Close() }()
 
-	req := &iacp2.AN2Frame{
-		Proto:   iacp2.AN2ProtoInternal,
+	req := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoInternal,
 		Slot:    0,
 		MTID:    6,
-		Type:    iacp2.AN2TypeRequest,
+		Type:    codec.AN2TypeRequest,
 		// count=1, proto=ACP2
-		Payload: []byte{iacp2.AN2FuncEnableProtocolEvents, 1, uint8(iacp2.AN2ProtoACP2)},
+		Payload: []byte{codec.AN2FuncEnableProtocolEvents, 1, uint8(codec.AN2ProtoACP2)},
 	}
 	rep := roundtrip(t, sess, peer, req)
-	want := []byte{iacp2.AN2FuncEnableProtocolEvents, 0}
+	want := []byte{codec.AN2FuncEnableProtocolEvents, 0}
 	if !bytesEq(rep.Payload, want) {
 		t.Fatalf("enable payload=%x want %x", rep.Payload, want)
 	}
-	if !sess.enabled[iacp2.AN2ProtoACP2] {
+	if !sess.enabled[codec.AN2ProtoACP2] {
 		t.Errorf("ACP2 announce subscription not recorded")
 	}
 }

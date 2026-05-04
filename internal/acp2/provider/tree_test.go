@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"dhs/internal/export/canonical"
-	iacp2 "dhs/internal/acp2/consumer"
+	"dhs/internal/acp2/codec"
 )
 
 func TestTree_FlattensAndIndexesBySlot(t *testing.T) {
@@ -67,7 +67,7 @@ func TestTree_FlattensAndIndexesBySlot(t *testing.T) {
 
 	// Lookup ROOT_NODE_V2
 	e, ok := tr.lookup(1, 1)
-	if !ok || e.objType != iacp2.ObjTypeNode {
+	if !ok || e.objType != codec.ObjTypeNode {
 		t.Fatalf("root lookup failed: %+v", e)
 	}
 	if len(e.children) != 1 || e.children[0] != 2 {
@@ -76,7 +76,7 @@ func TestTree_FlattensAndIndexesBySlot(t *testing.T) {
 
 	// Lookup BOARD
 	e, ok = tr.lookup(1, 2)
-	if !ok || e.objType != iacp2.ObjTypeNode {
+	if !ok || e.objType != codec.ObjTypeNode {
 		t.Fatalf("board lookup failed: %+v", e)
 	}
 	if len(e.children) != 1 || e.children[0] != 3 {
@@ -88,7 +88,7 @@ func TestTree_FlattensAndIndexesBySlot(t *testing.T) {
 	if !ok {
 		t.Fatal("label lookup failed")
 	}
-	if e.objType != iacp2.ObjTypeString || e.numType != iacp2.NumTypeString {
+	if e.objType != codec.ObjTypeString || e.numType != codec.NumTypeString {
 		t.Errorf("label obj=%d num=%d want String/NumString", e.objType, e.numType)
 	}
 	if e.access != 0x03 {
@@ -119,20 +119,20 @@ func TestDeriveACP2Type(t *testing.T) {
 	cases := []struct {
 		name   string
 		p      *canonical.Parameter
-		obj    iacp2.ACP2ObjType
-		num    iacp2.NumberType
+		obj    codec.ACP2ObjType
+		num    codec.NumberType
 		wantOK bool
 	}{
-		{"integer default = s32", param(canonical.ParamInteger, ""), iacp2.ObjTypeNumber, iacp2.NumTypeS32, true},
-		{"integer s16", param(canonical.ParamInteger, "s16"), iacp2.ObjTypeNumber, iacp2.NumTypeS16, true},
-		{"integer u8", param(canonical.ParamInteger, "u8"), iacp2.ObjTypeNumber, iacp2.NumTypeU8, true},
-		{"integer u64", param(canonical.ParamInteger, "u64"), iacp2.ObjTypeNumber, iacp2.NumTypeU64, true},
+		{"integer default = s32", param(canonical.ParamInteger, ""), codec.ObjTypeNumber, codec.NumTypeS32, true},
+		{"integer s16", param(canonical.ParamInteger, "s16"), codec.ObjTypeNumber, codec.NumTypeS16, true},
+		{"integer u8", param(canonical.ParamInteger, "u8"), codec.ObjTypeNumber, codec.NumTypeU8, true},
+		{"integer u64", param(canonical.ParamInteger, "u64"), codec.ObjTypeNumber, codec.NumTypeU64, true},
 		{"integer bad", param(canonical.ParamInteger, "u128"), 0, 0, false},
-		{"real", param(canonical.ParamReal, ""), iacp2.ObjTypeNumber, iacp2.NumTypeFloat, true},
-		{"enum", param(canonical.ParamEnum, ""), iacp2.ObjTypeEnum, iacp2.NumTypeU32, true},
-		{"string default", param(canonical.ParamString, ""), iacp2.ObjTypeString, iacp2.NumTypeString, true},
-		{"string + maxLen", param(canonical.ParamString, "maxLen=32"), iacp2.ObjTypeString, iacp2.NumTypeString, true},
-		{"ipv4", param(canonical.ParamString, "ipv4"), iacp2.ObjTypeIPv4, iacp2.NumTypeIPv4, true},
+		{"real", param(canonical.ParamReal, ""), codec.ObjTypeNumber, codec.NumTypeFloat, true},
+		{"enum", param(canonical.ParamEnum, ""), codec.ObjTypeEnum, codec.NumTypeU32, true},
+		{"string default", param(canonical.ParamString, ""), codec.ObjTypeString, codec.NumTypeString, true},
+		{"string + maxLen", param(canonical.ParamString, "maxLen=32"), codec.ObjTypeString, codec.NumTypeString, true},
+		{"ipv4", param(canonical.ParamString, "ipv4"), codec.ObjTypeIPv4, codec.NumTypeIPv4, true},
 		{"boolean REJECTED", param(canonical.ParamBoolean, ""), 0, 0, false},
 	}
 	for _, tc := range cases {
