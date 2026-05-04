@@ -122,6 +122,12 @@ func runWatch(ctx context.Context, args []string) error {
 	fmt.Printf("%-8s  %-18s  %-30s  %-20s  %-3s  %-7s  value\n",
 		"time", "oid", "path", "label", "acc", "fr")
 	fmt.Println(strings.Repeat("-", 117))
+
+	// prevFrame remembers the last frame-status slice so we can emit
+	// per-slot deltas instead of dumping the full 31-slot strip on every
+	// announce. Kept slot-list-empty until the first frame event arrives.
+	var prevFrame []protocol.SlotStatus
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -175,6 +181,45 @@ func runWatch(ctx context.Context, args []string) error {
 				continue
 			}
 
+			// Frame-status announce — emit per-slot deltas instead of
+			// dumping the full 31-slot strip every time. First event of
+			// the session prints a baseline; subsequent events with no
+			// change are suppressed entirely. (refs #239)
+			if ev.Value.Kind == protocol.KindFrame {
+				cur := ev.Value.SlotStatus
+				ts := ev.Timestamp.Format("15:04:05")
+				fr := ev.Freshness
+				if fr == "" {
+					fr = src
+				}
+				if prevFrame == nil {
+					fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s\n",
+						ts,
+						truncate(oid, 18),
+						truncate(ev.Path, 30),
+						truncate(label, 20),
+						accessStr(ev.Access),
+						fr,
+						"baseline "+formatFrameStatus(cur),
+					)
+				} else {
+					for _, c := range frameStatusDelta(prevFrame, cur) {
+						fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s\n",
+							ts,
+							truncate(oid, 18),
+							truncate(ev.Path, 30),
+							truncate(label, 20),
+							accessStr(ev.Access),
+							fr,
+							c,
+						)
+					}
+					// Silent on no-change re-broadcasts.
+				}
+				prevFrame = append(prevFrame[:0], cur...)
+				continue
+			}
+
 			// Parameter event — value column.
 			valStr := formatValueInline(ev.Value)
 			if unit, ok := unitCache[watchCacheKey(ev.Group, ev.ID)]; ok && unit != "" {
@@ -206,6 +251,36 @@ func runWatch(ctx context.Context, args []string) error {
 			)
 		}
 	}
+}
+
+// frameStatusDelta returns one human-readable transition line per slot
+// where prev[i] != cur[i]. The caller is expected to emit a baseline
+// line for the first observation (when prev is nil/empty); this helper
+// returns no entries in that case so the caller can branch cleanly.
+// Length mismatches between prev and cur are tolerated by treating the
+// missing positions as SlotNoCard. (refs #239)
+func frameStatusDelta(prev, cur []protocol.SlotStatus) []string {
+	if len(prev) == 0 {
+		return nil
+	}
+	n := len(cur)
+	if len(prev) > n {
+		n = len(prev)
+	}
+	var out []string
+	for i := 0; i < n; i++ {
+		var oldS, newS protocol.SlotStatus
+		if i < len(prev) {
+			oldS = prev[i]
+		}
+		if i < len(cur) {
+			newS = cur[i]
+		}
+		if oldS != newS {
+			out = append(out, fmt.Sprintf("slot %d: %s -> %s", i, oldS, newS))
+		}
+	}
+	return out
 }
 
 // watchCacheKey builds a stable per-(group, id) cache key for label and
