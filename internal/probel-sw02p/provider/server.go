@@ -114,6 +114,14 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	if err != nil {
 		return fmt.Errorf("probel-sw02p provider: listen %q: %w", addr, err)
 	}
+	return s.serveListener(ctx, ln)
+}
+
+// serveListener accepts client sessions on a pre-bound listener until
+// ctx is cancelled. Used by Serve once the listener is open and by
+// in-process tests that want to skip the close-then-rebind race
+// window of the addr-based path.
+func (s *server) serveListener(ctx context.Context, ln net.Listener) error {
 	s.mu.Lock()
 	s.listener = ln
 	s.mu.Unlock()
@@ -133,7 +141,7 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 		s.mu.Unlock()
 	}()
 
-	err = s.acceptLoop(ctx, ln)
+	err := s.acceptLoop(ctx, ln)
 	close(s.stopped)
 	if errors.Is(err, net.ErrClosed) || errors.Is(err, context.Canceled) {
 		return nil

@@ -19,23 +19,27 @@ func TestEmitExtendedProtectTallyDumpFanout(t *testing.T) {
 	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
 	defer func() { _ = srv.Stop() }()
 
+	// Pre-bind the listener so the server picks the same address with
+	// no close-and-rebind race. CI parallel runs were intermittently
+	// hitting "bind: address already in use" with the close-and-rebind
+	// pattern.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
+	addr := ln.Addr().String()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		if serr := srv.Serve(ctx, ln.Addr().String()); serr != nil {
+		if serr := srv.serveListener(ctx, ln); serr != nil {
 			t.Logf("server: %v", serr)
 		}
 	}()
-	_ = ln.Close()
 
 	deadline := time.Now().Add(2 * time.Second)
 	var conn net.Conn
 	for time.Now().Before(deadline) {
-		c, derr := net.Dial("tcp", ln.Addr().String())
+		c, derr := net.Dial("tcp", addr)
 		if derr == nil {
 			conn = c
 			break
