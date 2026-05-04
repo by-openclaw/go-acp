@@ -24,8 +24,9 @@ var (
 // Checksum8 returns the 8-bit two's-complement checksum over b, i.e.
 // (~sum + 1) & 0xFF. Applied by SW-P-08 over (DATA || BTC) pre-escape.
 //
-// Reference: TS BufferUtility.calculateChecksum8
-// (internal/probel-sw08p/assets/smh-probelsw08p/src/common/utility/buffer.utility.ts line 152).
+// Reference: SW-P-08 Issue 30 §2 (Transmission Protocol) — checksum
+// algorithm definition. Cross-checked against the Wireshark dissector
+// at internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua.
 func Checksum8(b []byte) byte {
 	var s uint32
 	for _, x := range b {

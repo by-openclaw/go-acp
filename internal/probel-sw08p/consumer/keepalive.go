@@ -15,10 +15,9 @@ import (
 // reader's own ACK/NAK emission), so it does not collide with any
 // in-flight Send's pending waiter.
 //
-// Rationale: matrices (e.g. real SW-P-08 controllers and the in-tree
-// reference emulator) ping controllers every ~30 s; a controller that
-// never responds is dropped. Auto-response keeps the session alive
-// without bothering application code.
+// Reference: NOT in SW-P-08 §3.2/§3.3 — see CLAUDE.md "Application
+// keepalive" for the byte-0x11/0x22 ping/pong pair the testbed uses
+// to keep TCP sessions warm.
 func (p *Plugin) keepaliveAutoResponder() func(*codec.Client, codec.Frame) {
 	return func(cli *codec.Client, f codec.Frame) {
 		if f.ID != codec.TxAppKeepaliveRequest {
