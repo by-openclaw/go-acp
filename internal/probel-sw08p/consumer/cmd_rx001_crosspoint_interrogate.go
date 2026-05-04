@@ -14,7 +14,6 @@ import (
 // reply.
 //
 // Reference: SW-P-08 §3.2 (interrogate) / §3.3 (tally reply).
-// TS reference: internal/probel-sw08p/assets/smh-probelsw08p/src/rx/001/ + tx/003/.
 func (p *Plugin) CrosspointInterrogate(
 	ctx context.Context,
 	matrix, level uint8,

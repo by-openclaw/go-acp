@@ -19,8 +19,10 @@ const DefaultKeepaliveInterval = 30 * time.Second
 // answer with rx 0x22 APP_KEEPALIVE_RESPONSE (the session reader already
 // accepts those frames silently — no handler wired).
 //
-// Reference: TS internal/probel-sw08p/assets/smh-probelsw08p/src/command/application-keep-alive/.
-// Not defined in SW-P-08 §3; this is a TS-emulator convention.
+// Reference: NOT defined in SW-P-08 §3 — application-layer convention
+// observed in real Lawo VSM + Commie testbeds (per CLAUDE.md
+// "Application keepalive" note). The byte-0x11/0x22 ping/pong pair
+// keeps a TCP session warm without bothering app code.
 func (s *server) SetKeepaliveInterval(d time.Duration) {
 	s.mu.Lock()
 	s.keepaliveInterval = d

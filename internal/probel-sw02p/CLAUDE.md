@@ -241,9 +241,6 @@ Next-session priority: app-layer retry policy + reconnect + keepalive.
   SW-P-02 command set definition. Use the same Commie build that
   drives SW-P-08 testing — switch its loaded .dat file to SW-P-02
   via its UI.
-- No SW-P-02 TypeScript emulator is in-tree yet; the SW-P-08 emulator
-  under `internal/probel-sw08p/assets/smh-probelsw08p/` is the closest
-  reference for codec-layer layout expectations.
 - Real VSM SW-P-02 driver — see
   `memory/project_probel_vsm_validation.md` for the SW-P-08 testbed
   pattern; same shape expected once SW-P-02 hits live validation.

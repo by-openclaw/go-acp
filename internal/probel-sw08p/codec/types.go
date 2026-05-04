@@ -7,11 +7,9 @@
 // Section §2 of that document defines the transmission protocol (ACK/NAK
 // flow, retry semantics, 10ms response target, 128-byte DATA cap).
 //
-// Secondary reference for byte layouts (NOT authoritative for flow):
-//
-//	internal/probel-sw08p/assets/smh-probelsw08p/  (TypeScript matrix-side emulator — useful as
-//	                                 a decode/layout aid; the Go implementation
-//	                                 follows the spec, not the TS code)
+// Cross-checked against the Wireshark dissector at
+// internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua — that dissector
+// is the byte-exact reference when this codec and the spec disagree.
 //
 // This package is consumer-agnostic and provider-agnostic: it only knows
 // bytes. It has ZERO dependencies outside the Go standard library so it
@@ -41,8 +39,7 @@ const (
 // General rx+tx codes are < 128 (0x00–0x7F). Extended codes are >= 128 (0x80–0xFF).
 type CommandID byte
 
-// RX general command IDs (controller → matrix). Source: SW-P-88 §5 and TS
-// internal/probel-sw08p/assets/smh-probelsw08p/src/command/command-contract.ts RX_GENERAL.
+// RX general command IDs (controller → matrix). Source: SW-P-88 §5.
 const (
 	RxCrosspointInterrogate          CommandID = 0x01 // 001 dest status request
 	RxCrosspointConnect              CommandID = 0x02 // 002 connect (route)
@@ -100,8 +97,7 @@ const (
 	RxCrosspointSalvoGroupInterrogateExt CommandID = 0xFC
 )
 
-// TX general command IDs (matrix → controller). Source: SW-P-88 §5 and TS
-// internal/probel-sw08p/assets/smh-probelsw08p/src/command/command-contract.ts TX_GENERAL.
+// TX general command IDs (matrix → controller). Source: SW-P-88 §5.
 const (
 	TxCrosspointTally              CommandID = 0x03 // 003 async tally
 	TxCrosspointConnected          CommandID = 0x04 // 004 connect ack

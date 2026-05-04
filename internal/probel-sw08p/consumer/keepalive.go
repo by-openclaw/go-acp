@@ -15,7 +15,9 @@ import (
 // controller that never responds is dropped. Auto-response keeps the
 // session alive without bothering application code.
 //
-// Reference: TS internal/probel-sw08p/assets/smh-probelsw08p/src/command/application-keep-alive/.
+// Reference: NOT in SW-P-08 §3.2/§3.3 — see CLAUDE.md "Application
+// keepalive" for the byte-0x11/0x22 ping/pong pair the testbed
+// (Lawo VSM + Commie) uses to keep TCP sessions warm.
 func (p *Plugin) installKeepaliveAutoResponder(cli *codec.Client) {
 	cli.Subscribe(func(f codec.Frame) {
 		if f.ID != codec.TxAppKeepaliveRequest {

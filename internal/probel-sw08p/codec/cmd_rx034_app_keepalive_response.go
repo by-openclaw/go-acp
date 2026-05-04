@@ -10,8 +10,9 @@ import "fmt"
 // |-------|-------|---------------------------|
 // | ID    | 1     | RxAppKeepaliveResponse    |
 //
-// Reference: TS internal/probel-sw08p/assets/smh-probelsw08p/src/command/application-keep-alive/
-// application-keepalive-response.ts.
+// Reference: NOT defined in SW-P-08 §3.2/§3.3 — pairs with
+// TxAppKeepaliveRequest (cmd 0x11). See the "Application keepalive"
+// section of internal/probel-sw08p/CLAUDE.md for testbed evidence.
 func EncodeKeepaliveResponse() Frame {
 	return Frame{ID: RxAppKeepaliveResponse}
 }

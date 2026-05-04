@@ -9,9 +9,11 @@ import "fmt"
 // |-------|-------|---------------------------|
 // | ID    | 1     | TxAppKeepaliveRequest     |
 //
-// Reference: TS internal/probel-sw08p/assets/smh-probelsw08p/src/command/application-keep-alive/
-// application-keepalive-request.ts. Not defined in SW-P-08 §3.2/§3.3 —
-// the TS module documents it as a custom application-layer liveness probe.
+// Reference: NOT defined in SW-P-08 §3.2/§3.3 — custom application-
+// layer liveness probe established by the byte-0x11/0x22 ping/pong
+// pair seen in real Lawo VSM + Commie testbeds (per CLAUDE.md
+// "Application keepalive" note). Cross-checked via the Wireshark
+// dissector at internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua.
 func EncodeKeepaliveRequest() Frame {
 	return Frame{ID: TxAppKeepaliveRequest}
 }

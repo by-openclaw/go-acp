@@ -118,10 +118,8 @@ Four peers in the testbed:
    all-1s wildcard on the wire (`FF 70 7F` = matrix 15 / level 15 /
    dst 1023). Supports up to 2048×2048, not limited to §3.1.2 caps.
    Interactive Parameters dialog drives Salvo testing via F1..F4.
-2. TS server `internal/probel-sw08p/assets/smh-probelsw08p/` — full
-   transmitter, byte-exact spec reference.
-3. Real user device — partial transmitter; NAKs unsupported commands.
-4. **Lawo VSM Studio** — both directions:
+2. Real user device — partial transmitter; NAKs unsupported commands.
+3. **Lawo VSM Studio** — both directions:
    - Controller mode: connects outbound to our `:2008`. Drives
      cmd 2/120/121 (connect + salvos) en masse. Ignores levels
      (Matrix-only navigation). Locks local-only unless forward
@@ -207,9 +205,7 @@ See root `CLAUDE.md` "Metrics surface on the producer" section +
   - `tx 003 Crosspoint Tally` broadcast per applied slot on GO-set
     (commit `514f7c5`, reverted) — VSM batching unchanged.
   - Omitting `tx 123` Go-Done — VSM disconnects; cmd 123 **is** required.
-  - Byte-layout cmp against TS emulator tx 122/123 tests — identical.
-- TS reference emulator (`smh-probelsw08p`) defines tx 122/123 but
-  server code never emits either; it's a codec-only decoder.
+  - Byte-layout cmp against the SW-P-08 spec §3.3.24 / §3.3.25 — identical.
 - Issue #92 created with full investigation log + next-step proposal
   (capture VSM against real XD/ECLIPSE router, diff handshake).
 - `handleSalvoGo` kept spec-strict (tx 123 emission restored after
