@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,10 +27,31 @@ type captureRecord struct {
 	Len       int    `json:"len"`
 }
 
-// loadCapture reads a JSONL capture file and returns all records.
+// loadCapture reads a small committed golden JSONL fixture from
+// internal/acp2/testdata/fixtures/. Used by compliance_test.go for
+// hand-trimmed error-reply captures (err_no_access.jsonl,
+// err_invalid_obj.jsonl) — regular blobs, not LFS, not traces.
 func loadCapture(t *testing.T, name string) []captureRecord {
 	t.Helper()
 	path := filepath.Join("..", "testdata", "fixtures", name)
+	return readCaptureJSONL(t, path)
+}
+
+// loadScenarioTrames reads a captured wire trace from
+// captures/acp2/<scenario>/frames.jsonl (gitignored, local-only per
+// ADR-0021). Skips cleanly when the file is missing — re-capture with
+// `dhs consumer acp2 walk <ip> --slot N --capture <path>`.
+func loadScenarioTrames(t *testing.T, scenario string) []captureRecord {
+	t.Helper()
+	path := filepath.Join("..", "..", "..", "captures", "acp2", scenario, "frames.jsonl")
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		t.Skipf("capture %s missing — recapture with `dhs consumer acp2 walk <ip> --slot N --capture %s`", path, path)
+	}
+	return readCaptureJSONL(t, path)
+}
+
+func readCaptureJSONL(t *testing.T, path string) []captureRecord {
+	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)
@@ -41,9 +63,8 @@ func loadCapture(t *testing.T, name string) []captureRecord {
 	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
 	for sc.Scan() {
 		line := sc.Bytes()
-		// Skip LFS pointer files (CI without git-lfs installed).
-		if len(line) > 0 && line[0] != '{' {
-			t.Skip("testdata file is a Git LFS pointer, not actual content — skipping (install git-lfs or run `git lfs pull`)")
+		if len(line) == 0 {
+			continue
 		}
 		var r captureRecord
 		if err := json.Unmarshal(line, &r); err != nil {
@@ -60,7 +81,7 @@ func loadCapture(t *testing.T, name string) []captureRecord {
 // TestReplay_AN2FrameDecode verifies every captured frame decodes
 // through the AN2 framer without error.
 func TestReplay_AN2FrameDecode(t *testing.T) {
-	recs := loadCapture(t, "slot0_walk.json")
+	recs := loadScenarioTrames(t, "slot0_walk")
 	if len(recs) == 0 {
 		t.Fatal("no records in capture")
 	}
@@ -95,7 +116,7 @@ func TestReplay_AN2FrameDecode(t *testing.T) {
 // TestReplay_ACP2MessageDecode decodes the ACP2 payload from every
 // AN2 data frame with proto=2 and verifies message structure.
 func TestReplay_ACP2MessageDecode(t *testing.T) {
-	recs := loadCapture(t, "slot0_walk.json")
+	recs := loadScenarioTrames(t, "slot0_walk")
 
 	var messages, requests, replies, errors int
 	for i, r := range recs {
@@ -155,7 +176,7 @@ func TestReplay_ACP2MessageDecode(t *testing.T) {
 // TestReplay_PropertyDecode verifies that properties in get_object
 // replies decode with correct alignment and known PIDs.
 func TestReplay_PropertyDecode(t *testing.T) {
-	recs := loadCapture(t, "slot0_walk.json")
+	recs := loadScenarioTrames(t, "slot0_walk")
 
 	var totalProps int
 	pidCounts := map[uint8]int{}
