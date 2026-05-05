@@ -54,6 +54,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		tcpPort       = fs.Int("tcp-port", 0, "acp1 only: TCP listen port for --transport tcp/all (0 = same as --port)")
 		an2Port       = fs.Int("an2-port", 2072, "acp1 only: AN2/TCP listen port for --transport an2/all")
 		adminName     = fs.String("name", "dhs-acp1", "acp1 only: instance name for admin RPC discovery file")
+		insertTiming  = fs.String("insert-timing", "real", "acp1 only: cascade timing for slot insert (real / fast)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -182,6 +183,14 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		if !ok {
 			return fmt.Errorf("acp1 producer: wrong server type %T", srv)
 		}
+
+		// Slot state-machine timing: --insert-timing real (default) or
+		// fast (50ms per phase, for CI integration tests).
+		timing, err := acp1provider.ParseInsertTiming(*insertTiming)
+		if err != nil {
+			return err
+		}
+		acp1Srv.SetInsertTiming(timing)
 
 		// Admin RPC always runs alongside the wire transports so the
 		// `dhs producer acp1 admin <verb>` CLI can talk to this

@@ -52,6 +52,19 @@ type server struct {
 	// UDP / TCP broadcast paths are also wrapped in AN2 frames and
 	// fanned to AN2 sessions that have called EnableProtocolEvents.
 	an2Registry *an2SessionRegistry
+
+	// slotMachine tracks pending insert/extract cascades per slot.
+	// Initialised by newServer with InsertTimingReal; the producer CLI
+	// can override via --insert-timing.
+	slotMachine *slotStateMachine
+}
+
+// SetInsertTiming switches the cascade timing for new transitions.
+// Existing in-flight cascades keep their starting timing.
+func (s *server) SetInsertTiming(t InsertTiming) {
+	if s.slotMachine != nil {
+		s.slotMachine.SetTiming(t)
+	}
 }
 
 func newServer(logger *slog.Logger, exp *canonical.Export) *server {
@@ -59,8 +72,9 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		logger = slog.Default()
 	}
 	s := &server{
-		logger:  logger,
-		stopped: make(chan struct{}),
+		logger:      logger,
+		stopped:     make(chan struct{}),
+		slotMachine: newSlotStateMachine(InsertTimingReal),
 	}
 	t, err := newTree(exp)
 	if err != nil {

@@ -12,9 +12,38 @@ func init() {
 	registerAdminHandler("slot.load", handleSlotLoad)
 	registerAdminHandler("slot.unload", handleSlotUnload)
 	registerAdminHandler("slot.state", handleSlotState)
+	registerAdminHandler("slot.insert", handleSlotInsert)
+	registerAdminHandler("slot.extract", handleSlotExtract)
 	registerAdminHandler("value.set", handleValueSet)
 	registerAdminHandler("value.get", handleValueGet)
 	registerAdminHandler("reload", handleReload)
+}
+
+// handleSlotInsert kicks off the no_card -> powerup -> boot -> present
+// cascade. Returns immediately; the cascade runs in the background
+// using the configured InsertTiming. Pre-empts any in-flight cascade.
+func handleSlotInsert(ctx context.Context, s *server, args map[string]any) (*AdminResponse, error) {
+	slot, err := readIntArg(args, "slot")
+	if err != nil {
+		return nil, err
+	}
+	s.CascadeInsert(ctx, uint8(slot))
+	return &AdminResponse{
+		Result: map[string]any{"slot": slot, "started": true},
+	}, nil
+}
+
+// handleSlotExtract drives present -> removed -> no_card immediately.
+// Pre-empts any in-flight insert cascade.
+func handleSlotExtract(_ context.Context, s *server, args map[string]any) (*AdminResponse, error) {
+	slot, err := readIntArg(args, "slot")
+	if err != nil {
+		return nil, err
+	}
+	s.CascadeExtract(uint8(slot))
+	return &AdminResponse{
+		Result: map[string]any{"slot": slot, "extracted": true},
+	}, nil
 }
 
 // handlePing is a liveness probe. Used by tests + the CLI's `admin
