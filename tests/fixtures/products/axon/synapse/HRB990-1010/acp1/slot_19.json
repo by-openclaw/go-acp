@@ -1,0 +1,4898 @@
+{
+  "created_at": "2026-05-05T10:21:45Z",
+  "device": {
+    "ip": "10.6.239.113",
+    "port": 2071,
+    "protocol": "acp1",
+    "protocol_version": 1,
+    "num_slots": 31
+  },
+  "generator": "acp dev",
+  "slots": [
+    {
+      "objects": {
+        "alarm": {
+          "Announcements": {
+            "access": "RW-",
+            "id": 0,
+            "kind": "alarm",
+            "value": 1
+          },
+          "CRC-Status1": {
+            "access": "RW-",
+            "id": 3,
+            "kind": "alarm",
+            "value": 0
+          },
+          "CRC-Status2": {
+            "access": "RW-",
+            "id": 4,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Input1": {
+            "access": "RW-",
+            "id": 1,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Input2": {
+            "access": "RW-",
+            "id": 2,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Lock-Status": {
+            "access": "RW-",
+            "id": 6,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Ref-Status": {
+            "access": "RW-",
+            "id": 5,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Silence_LocInA1": {
+            "access": "RW-",
+            "id": 7,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Silence_LocInA2": {
+            "access": "RW-",
+            "id": 8,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Silence_LocInA3": {
+            "access": "RW-",
+            "id": 9,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Silence_LocInA4": {
+            "access": "RW-",
+            "id": 10,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Silence_LocInA5": {
+            "access": "RW-",
+            "id": 11,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Silence_LocInA6": {
+            "access": "RW-",
+            "id": 12,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Silence_LocInA7": {
+            "access": "RW-",
+            "id": 13,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Silence_LocInA8": {
+            "access": "RW-",
+            "id": 14,
+            "kind": "alarm",
+            "value": 0
+          }
+        },
+        "control": {
+          "   DE-EMBEDDING": {
+            "access": "RW-",
+            "id": 28,
+            "kind": "string",
+            "max_len": 1,
+            "value": ""
+          },
+          "  DELAY": {
+            "access": "R--",
+            "id": 8,
+            "kind": "string",
+            "value": ""
+          },
+          "  METADATA": {
+            "access": "R--",
+            "id": 191,
+            "kind": "string",
+            "value": ""
+          },
+          "#AddonOutA1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 162,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Ch_1"
+          },
+          "#AddonOutA2": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 164,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "Ch_2"
+          },
+          "#AddonOutA3": {
+            "access": "RW-",
+            "default": 2,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 166,
+            "kind": "enum",
+            "value": 2,
+            "value_name": "Ch_3"
+          },
+          "#AddonOutA4": {
+            "access": "RW-",
+            "default": 3,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 168,
+            "kind": "enum",
+            "value": 3,
+            "value_name": "Ch_4"
+          },
+          "#AddonOutC1": {
+            "access": "RW-",
+            "default": 4,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 170,
+            "kind": "enum",
+            "value": 4,
+            "value_name": "Ch_5"
+          },
+          "#AddonOutC2": {
+            "access": "RW-",
+            "default": 5,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 172,
+            "kind": "enum",
+            "value": 5,
+            "value_name": "Ch_6"
+          },
+          "#AddonOutC3": {
+            "access": "RW-",
+            "default": 6,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 174,
+            "kind": "enum",
+            "value": 6,
+            "value_name": "Ch_7"
+          },
+          "#AddonOutC4": {
+            "access": "RW-",
+            "default": 7,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 176,
+            "kind": "enum",
+            "value": 7,
+            "value_name": "Ch_8"
+          },
+          "#Emb-A1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 40,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Ch_1"
+          },
+          "#Emb-A2": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 42,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "Ch_2"
+          },
+          "#Emb-A3": {
+            "access": "RW-",
+            "default": 2,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 44,
+            "kind": "enum",
+            "value": 2,
+            "value_name": "Ch_3"
+          },
+          "#Emb-A4": {
+            "access": "RW-",
+            "default": 3,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 46,
+            "kind": "enum",
+            "value": 3,
+            "value_name": "Ch_4"
+          },
+          "#Emb-AB-Mode": {
+            "access": "RW-",
+            "default": 2,
+            "enum_items": [
+              "Off",
+              "Append",
+              "Overwrite"
+            ],
+            "id": 32,
+            "kind": "enum",
+            "value": 2,
+            "value_name": "Overwrite"
+          },
+          "#Emb-B1": {
+            "access": "RW-",
+            "default": 4,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 48,
+            "kind": "enum",
+            "value": 4,
+            "value_name": "Ch_5"
+          },
+          "#Emb-B2": {
+            "access": "RW-",
+            "default": 5,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 50,
+            "kind": "enum",
+            "value": 5,
+            "value_name": "Ch_6"
+          },
+          "#Emb-B3": {
+            "access": "RW-",
+            "default": 6,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 52,
+            "kind": "enum",
+            "value": 6,
+            "value_name": "Ch_7"
+          },
+          "#Emb-B4": {
+            "access": "RW-",
+            "default": 7,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 54,
+            "kind": "enum",
+            "value": 7,
+            "value_name": "Ch_8"
+          },
+          "#Emb-C1": {
+            "access": "RW-",
+            "default": 8,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 56,
+            "kind": "enum",
+            "value": 8,
+            "value_name": "Ch_9"
+          },
+          "#Emb-C2": {
+            "access": "RW-",
+            "default": 9,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 58,
+            "kind": "enum",
+            "value": 9,
+            "value_name": "Ch_10"
+          },
+          "#Emb-C3": {
+            "access": "RW-",
+            "default": 10,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 60,
+            "kind": "enum",
+            "value": 10,
+            "value_name": "Ch_11"
+          },
+          "#Emb-C4": {
+            "access": "RW-",
+            "default": 11,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 62,
+            "kind": "enum",
+            "value": 11,
+            "value_name": "Ch_12"
+          },
+          "#Emb-CD-Mode": {
+            "access": "RW-",
+            "default": 2,
+            "enum_items": [
+              "Off",
+              "Append",
+              "Overwrite"
+            ],
+            "id": 33,
+            "kind": "enum",
+            "value": 2,
+            "value_name": "Overwrite"
+          },
+          "#Emb-D1": {
+            "access": "RW-",
+            "default": 12,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 64,
+            "kind": "enum",
+            "value": 12,
+            "value_name": "Ch_13"
+          },
+          "#Emb-D2": {
+            "access": "RW-",
+            "default": 13,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 66,
+            "kind": "enum",
+            "value": 13,
+            "value_name": "Ch_14"
+          },
+          "#Emb-D3": {
+            "access": "RW-",
+            "default": 14,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 68,
+            "kind": "enum",
+            "value": 14,
+            "value_name": "Ch_15"
+          },
+          "#Emb-D4": {
+            "access": "RW-",
+            "default": 15,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 70,
+            "kind": "enum",
+            "value": 15,
+            "value_name": "Ch_16"
+          },
+          "#EmbA1_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 103,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbA2_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 104,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbA3_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 105,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbA4_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 106,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbB1_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 107,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbB2_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 108,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbB3_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 109,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbB4_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 110,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbC1_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 111,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbC2_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 112,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbC3_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 113,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbC4_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 114,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbD1_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 115,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbD2_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 116,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbD3_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 117,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#EmbD4_Delay": {
+            "access": "RW-",
+            "default": 0,
+            "id": 118,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#Emb_A_Sel": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Group1",
+              "Group2",
+              "Group3",
+              "Group4",
+              "Off"
+            ],
+            "id": 34,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Group1"
+          },
+          "#Emb_B_Sel": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Group1",
+              "Group2",
+              "Group3",
+              "Group4",
+              "Off"
+            ],
+            "id": 35,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "Group2"
+          },
+          "#Emb_C_Sel": {
+            "access": "RW-",
+            "default": 2,
+            "enum_items": [
+              "Group1",
+              "Group2",
+              "Group3",
+              "Group4",
+              "Off"
+            ],
+            "id": 36,
+            "kind": "enum",
+            "value": 2,
+            "value_name": "Group3"
+          },
+          "#Emb_D_Sel": {
+            "access": "RW-",
+            "default": 3,
+            "enum_items": [
+              "Group1",
+              "Group2",
+              "Group3",
+              "Group4",
+              "Off"
+            ],
+            "id": 37,
+            "kind": "enum",
+            "value": 3,
+            "value_name": "Group4"
+          },
+          "#Insert_Ass_Ch": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "None",
+              "Ch01/02",
+              "Ch03/04",
+              "Ch05/06",
+              "Ch07/08",
+              "Ch09/10",
+              "Ch11/12",
+              "Ch13/14",
+              "Ch15/16"
+            ],
+            "id": 199,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "None"
+          },
+          "#LocDelayOutB1": {
+            "access": "RW-",
+            "default": 0,
+            "id": 152,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#LocDelayOutB2": {
+            "access": "RW-",
+            "default": 0,
+            "id": 153,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#LocDelayOutB3": {
+            "access": "RW-",
+            "default": 0,
+            "id": 154,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#LocDelayOutB4": {
+            "access": "RW-",
+            "default": 0,
+            "id": 155,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#LocDelayOutB5": {
+            "access": "RW-",
+            "default": 0,
+            "id": 156,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#LocDelayOutB6": {
+            "access": "RW-",
+            "default": 0,
+            "id": 157,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#LocDelayOutB7": {
+            "access": "RW-",
+            "default": 0,
+            "id": 158,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#LocDelayOutB8": {
+            "access": "RW-",
+            "default": 0,
+            "id": 159,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "#LocOutB1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 121,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Ch_1"
+          },
+          "#LocOutB2": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 123,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "Ch_2"
+          },
+          "#LocOutB3": {
+            "access": "RW-",
+            "default": 2,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 125,
+            "kind": "enum",
+            "value": 2,
+            "value_name": "Ch_3"
+          },
+          "#LocOutB4": {
+            "access": "RW-",
+            "default": 3,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 127,
+            "kind": "enum",
+            "value": 3,
+            "value_name": "Ch_4"
+          },
+          "#LocOutB5": {
+            "access": "RW-",
+            "default": 4,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 129,
+            "kind": "enum",
+            "value": 4,
+            "value_name": "Ch_5"
+          },
+          "#LocOutB6": {
+            "access": "RW-",
+            "default": 5,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 131,
+            "kind": "enum",
+            "value": 5,
+            "value_name": "Ch_6"
+          },
+          "#LocOutB7": {
+            "access": "RW-",
+            "default": 6,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 133,
+            "kind": "enum",
+            "value": 6,
+            "value_name": "Ch_7"
+          },
+          "#LocOutB8": {
+            "access": "RW-",
+            "default": 7,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16",
+              "Off"
+            ],
+            "id": 135,
+            "kind": "enum",
+            "value": 7,
+            "value_name": "Ch_8"
+          },
+          "#Preset_Name": {
+            "access": "RW-",
+            "id": 27,
+            "kind": "string",
+            "max_len": 16,
+            "value": "1"
+          },
+          "#Rail1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Pre-Delay1",
+              "Post-Delay1"
+            ],
+            "id": 29,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Pre-Delay1"
+          },
+          "#Rail2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Pre-Delay2",
+              "Post-Delay2"
+            ],
+            "id": 30,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Pre-Delay2"
+          },
+          "#S2020-Emb-AB": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "Overwrite"
+            ],
+            "id": 195,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "#S2020-Emb-CD": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "Overwrite"
+            ],
+            "id": 196,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "#SourceAddonA1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 161,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceAddonA2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 163,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceAddonA3": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 165,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceAddonA4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 167,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceAddonC1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 169,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceAddonC2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 171,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceAddonC3": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 173,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceAddonC4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 175,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-A1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 39,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-A2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 41,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-A3": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 43,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-A4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 45,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-B1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 47,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-B2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 49,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-B3": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 51,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-B4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 53,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-C1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 55,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-C2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 57,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-C3": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 59,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-C4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 61,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-D1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 63,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-D2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 65,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-D3": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 67,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceEmb-D4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 69,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceLocB1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 120,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceLocB2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 122,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceLocB3": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 124,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceLocB4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 126,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceLocB5": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 128,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceLocB6": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 130,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceLocB7": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 132,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "#SourceLocB8": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "LocalA",
+              "AddOnB",
+              "AddOnD"
+            ],
+            "id": 134,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "0dBFS-In": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "+24dBu",
+              "+18dBu",
+              "+15dBu",
+              "+12dBu"
+            ],
+            "id": 182,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "+24dBu"
+          },
+          "0dBFS-Out": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "+24dBu",
+              "+18dBu",
+              "+15dBu",
+              "+12dBu"
+            ],
+            "id": 183,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "+24dBu"
+          },
+          "ADDON AUDIO OUT": {
+            "access": "RW-",
+            "id": 160,
+            "kind": "string",
+            "max_len": 1,
+            "value": ""
+          },
+          "AUDIO IN": {
+            "access": "RW-",
+            "id": 38,
+            "kind": "string",
+            "max_len": 1,
+            "value": ""
+          },
+          "Active-Preset": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7"
+            ],
+            "id": 21,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "1"
+          },
+          "Addon-IO-Mode": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "O-I-O-I",
+              "I-I-O-O",
+              "O-O-I-I"
+            ],
+            "id": 184,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "O-I-O-I"
+          },
+          "Audio-Phase": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Off",
+              "Align"
+            ],
+            "id": 187,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "Align"
+          },
+          "AudioStatusBits": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Transparent",
+              "Overwrite"
+            ],
+            "id": 188,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Transparent"
+          },
+          "Control": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Manual",
+              "GPI",
+              "GPI+LossDetect"
+            ],
+            "id": 18,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Manual"
+          },
+          "Delay-Bypass": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 9,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "On"
+          },
+          "Delay-Status": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 16,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "On"
+          },
+          "Detect": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "Preset 1",
+              "Preset 2",
+              "Preset 3",
+              "Preset 4",
+              "Preset 5",
+              "Preset 6",
+              "Preset 7",
+              "S2020-SDID",
+              "ProgramConfig",
+              "Previous"
+            ],
+            "id": 25,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "EMBEDDING": {
+            "access": "RW-",
+            "id": 31,
+            "kind": "string",
+            "max_len": 1,
+            "value": ""
+          },
+          "Edit-Preset": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7"
+            ],
+            "id": 22,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "1"
+          },
+          "EmbA1_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 71,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbA1_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 87,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbA2_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 72,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbA2_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 88,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbA3_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 73,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbA3_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 89,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbA4_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 74,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbA4_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 90,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbB1_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 75,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbB1_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 91,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbB2_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 76,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbB2_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 92,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbB3_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 77,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbB3_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 93,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbB4_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 78,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbB4_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 94,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbC1_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 79,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbC1_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 95,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbC2_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 80,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbC2_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 96,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbC3_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 81,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbC3_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 97,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbC4_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 82,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbC4_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 98,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbD1_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 83,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbD1_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 99,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbD2_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 84,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbD2_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 100,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbD3_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 85,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbD3_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 101,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "EmbD4_Gain": {
+            "access": "RW-",
+            "default": 0,
+            "id": 86,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "EmbD4_Phase": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 102,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "Ext-Mode": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "GPIO",
+              "Metadata"
+            ],
+            "id": 20,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "GPIO"
+          },
+          "Extract_Ass_Ch": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "None",
+              "Ch01/02",
+              "Ch03/04",
+              "Ch05/06",
+              "Ch07/08",
+              "Ch09/10",
+              "Ch11/12",
+              "Ch13/14",
+              "Ch15/16",
+              "NA",
+              "Auto"
+            ],
+            "id": 194,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "None"
+          },
+          "Extract_Line": {
+            "access": "RW-",
+            "default": 0,
+            "id": 193,
+            "kind": "int",
+            "max": 1125,
+            "min": 0,
+            "step": 1,
+            "unit": "ln",
+            "value": 0
+          },
+          "F-Delay_1": {
+            "access": "RW-",
+            "default": 0,
+            "id": 10,
+            "kind": "uint",
+            "max": 125,
+            "min": 0,
+            "step": 1,
+            "unit": "F",
+            "value": 0
+          },
+          "F-Delay_2": {
+            "access": "RW-",
+            "default": 0,
+            "id": 13,
+            "kind": "uint",
+            "max": 125,
+            "min": 0,
+            "step": 1,
+            "unit": "F",
+            "value": 0
+          },
+          "Fade-Time": {
+            "access": "RW-",
+            "default": 500,
+            "id": 186,
+            "kind": "int",
+            "max": 10000,
+            "min": 100,
+            "step": 1,
+            "unit": "ms",
+            "value": 500
+          },
+          "GPI-Ctrl": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Latch",
+              "nonLatch"
+            ],
+            "id": 19,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Latch"
+          },
+          "H-Delay_1": {
+            "access": "RW-",
+            "default": 0,
+            "id": 12,
+            "kind": "int",
+            "max": 4124,
+            "min": 0,
+            "step": 1,
+            "unit": "px",
+            "value": 0
+          },
+          "H-Delay_2": {
+            "access": "RW-",
+            "default": 0,
+            "id": 15,
+            "kind": "int",
+            "max": 4124,
+            "min": 0,
+            "step": 1,
+            "unit": "px",
+            "value": 0
+          },
+          "Input-Select": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "SDI-1",
+              "SDI-2",
+              "Auto",
+              "TWINS"
+            ],
+            "id": 1,
+            "kind": "enum",
+            "value": 3,
+            "value_name": "TWINS"
+          },
+          "Insert_Line": {
+            "access": "RW-",
+            "default": 9,
+            "id": 197,
+            "kind": "int",
+            "max": 1125,
+            "min": 1,
+            "step": 1,
+            "unit": "ln",
+            "value": 9
+          },
+          "Insert_Method": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Method B"
+            ],
+            "id": 198,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Method B"
+          },
+          "LOCAL AUDIO OUT": {
+            "access": "RW-",
+            "id": 119,
+            "kind": "string",
+            "max_len": 1,
+            "value": ""
+          },
+          "LocGainOutB1": {
+            "access": "RW-",
+            "default": 0,
+            "id": 136,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "LocGainOutB2": {
+            "access": "RW-",
+            "default": 0,
+            "id": 137,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "LocGainOutB3": {
+            "access": "RW-",
+            "default": 0,
+            "id": 138,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "LocGainOutB4": {
+            "access": "RW-",
+            "default": 0,
+            "id": 139,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "LocGainOutB5": {
+            "access": "RW-",
+            "default": 0,
+            "id": 140,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "LocGainOutB6": {
+            "access": "RW-",
+            "default": 0,
+            "id": 141,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "LocGainOutB7": {
+            "access": "RW-",
+            "default": 0,
+            "id": 142,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "LocGainOutB8": {
+            "access": "RW-",
+            "default": 0,
+            "id": 143,
+            "kind": "float",
+            "max": 12,
+            "min": -144,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "LocPhaseOutB1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 144,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "LocPhaseOutB2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 145,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "LocPhaseOutB3": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 146,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "LocPhaseOutB4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 147,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "LocPhaseOutB5": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 148,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "LocPhaseOutB6": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 149,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "LocPhaseOutB7": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 150,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "LocPhaseOutB8": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 151,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "Lock-Mode": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "SDI1",
+              "SDI2",
+              "Ref1",
+              "Ref2",
+              "Auto-SDI"
+            ],
+            "id": 3,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "SDI1"
+          },
+          "Loss": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "Preset 1",
+              "Preset 2",
+              "Preset 3",
+              "Preset 4",
+              "Preset 5",
+              "Preset 6",
+              "Preset 7"
+            ],
+            "id": 24,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "LossDetect": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "S2020-Rail1",
+              "S2020-Rail2",
+              "MD-LocalIn"
+            ],
+            "id": 23,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "S2020-Rail1"
+          },
+          "MISC": {
+            "access": "RW-",
+            "id": 177,
+            "kind": "string",
+            "max_len": 1,
+            "value": ""
+          },
+          "NonPCM-Bypass": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 185,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "On"
+          },
+          "Out-Frmt": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Auto",
+              "1080p60",
+              "1080p50",
+              "1080i60",
+              "1080i50",
+              "1080p30",
+              "1080p25",
+              "1080p24",
+              "720p60",
+              "720p50",
+              "SD625",
+              "SD525"
+            ],
+            "id": 4,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Auto"
+          },
+          "PRESET": {
+            "access": "RW-",
+            "id": 17,
+            "kind": "string",
+            "max_len": 1,
+            "value": ""
+          },
+          "Phaser-Status": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 7,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "Phaser1-Offset": {
+            "access": "RW-",
+            "default": 0,
+            "id": 5,
+            "kind": "int",
+            "max": 4124,
+            "min": 0,
+            "step": 1,
+            "unit": "px",
+            "value": 5
+          },
+          "Phaser2-Offset": {
+            "access": "RW-",
+            "default": 0,
+            "id": 6,
+            "kind": "int",
+            "max": 4124,
+            "min": 0,
+            "step": 1,
+            "unit": "px",
+            "value": 0
+          },
+          "PrstEditView": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Follow Active",
+              "Independent"
+            ],
+            "id": 26,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Follow Active"
+          },
+          "S2020-Source": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Rail1",
+              "Rail2",
+              "Local"
+            ],
+            "id": 192,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Rail1"
+          },
+          "SRC_AES-A1/2": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Transparent",
+              "On",
+              "Auto"
+            ],
+            "id": 178,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "On"
+          },
+          "SRC_AES-A3/4": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Transparent",
+              "On",
+              "Auto"
+            ],
+            "id": 179,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "On"
+          },
+          "SRC_AES-A5/6": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Transparent",
+              "On",
+              "Auto"
+            ],
+            "id": 180,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "On"
+          },
+          "SRC_AES-A7/8": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Transparent",
+              "On",
+              "Auto"
+            ],
+            "id": 181,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "On"
+          },
+          "Silence-Level": {
+            "access": "RW-",
+            "default": -60,
+            "id": 190,
+            "kind": "float",
+            "max": -20,
+            "min": -100,
+            "step": 1,
+            "unit": "dBFS",
+            "value": -60
+          },
+          "Silence-Time": {
+            "access": "RW-",
+            "default": 10,
+            "id": 189,
+            "kind": "uint",
+            "max": 60,
+            "min": 1,
+            "step": 1,
+            "unit": "s",
+            "value": 10
+          },
+          "Switch-Back": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 2,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "V-Delay_1": {
+            "access": "RW-",
+            "default": 0,
+            "id": 11,
+            "kind": "int",
+            "max": 1124,
+            "min": 0,
+            "step": 1,
+            "unit": "ln",
+            "value": 0
+          },
+          "V-Delay_2": {
+            "access": "RW-",
+            "default": 0,
+            "id": 14,
+            "kind": "int",
+            "max": 1124,
+            "min": 0,
+            "step": 1,
+            "unit": "ln",
+            "value": 1
+          },
+          "VIDEO": {
+            "access": "RW-",
+            "id": 0,
+            "kind": "string",
+            "max_len": 1,
+            "value": ""
+          }
+        },
+        "identity": {
+          "3G - Capable": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Option",
+              "OK"
+            ],
+            "id": 19,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Option"
+          },
+          "Card ID": {
+            "access": "R--",
+            "id": 7,
+            "kind": "string",
+            "max_len": 16,
+            "value": "71ef060a0000001f"
+          },
+          "Card description": {
+            "access": "R--",
+            "id": 2,
+            "kind": "string",
+            "max_len": 16,
+            "value": "HRB990-1010.html"
+          },
+          "Card name": {
+            "access": "R--",
+            "id": 0,
+            "kind": "string",
+            "max_len": 8,
+            "value": "HRB990"
+          },
+          "DM-A GEG-AI": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Option",
+              "OK"
+            ],
+            "id": 23,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Option"
+          },
+          "DM-A GEG-DI": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Option",
+              "OK"
+            ],
+            "id": 24,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Option"
+          },
+          "DM-A HW Rev": {
+            "access": "R--",
+            "id": 11,
+            "kind": "string",
+            "max_len": 16,
+            "value": "0100"
+          },
+          "DM-A Name": {
+            "access": "R--",
+            "id": 10,
+            "kind": "string",
+            "max_len": 16,
+            "value": "GEG-DI"
+          },
+          "DM-A Pr.code": {
+            "access": "R--",
+            "id": 12,
+            "kind": "string",
+            "max_len": 10,
+            "value": "9490640010"
+          },
+          "DM-A Serial": {
+            "access": "R--",
+            "id": 13,
+            "kind": "string",
+            "max_len": 16,
+            "value": "PR000028"
+          },
+          "DM-A Support": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Option",
+              "OK"
+            ],
+            "id": 21,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Option"
+          },
+          "DM-B GEG-AO": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Option",
+              "OK"
+            ],
+            "id": 25,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Option"
+          },
+          "DM-B GEG-DO": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Option",
+              "OK"
+            ],
+            "id": 26,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Option"
+          },
+          "DM-B HW Rev": {
+            "access": "R--",
+            "id": 15,
+            "kind": "string",
+            "max_len": 16,
+            "value": "0100"
+          },
+          "DM-B Name": {
+            "access": "R--",
+            "id": 14,
+            "kind": "string",
+            "max_len": 16,
+            "value": "GEG-DO"
+          },
+          "DM-B Pr.code": {
+            "access": "R--",
+            "id": 16,
+            "kind": "string",
+            "max_len": 10,
+            "value": "9490610010"
+          },
+          "DM-B Serial": {
+            "access": "R--",
+            "id": 17,
+            "kind": "string",
+            "max_len": 16,
+            "value": "007"
+          },
+          "DM-B Support": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Option",
+              "OK"
+            ],
+            "id": 22,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Option"
+          },
+          "Dual Video Input": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Option",
+              "OK"
+            ],
+            "id": 20,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Option"
+          },
+          "Features": {
+            "access": "R--",
+            "id": 9,
+            "kind": "string",
+            "max_len": 8,
+            "value": "00A33E39"
+          },
+          "HD - Capable": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Option",
+              "OK"
+            ],
+            "id": 18,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Option"
+          },
+          "Hardware rev": {
+            "access": "R--",
+            "id": 4,
+            "kind": "string",
+            "max_len": 4,
+            "value": "0300"
+          },
+          "Key": {
+            "access": "RW-",
+            "id": 8,
+            "kind": "string",
+            "max_len": 15,
+            "value": "empty string"
+          },
+          "Product code": {
+            "access": "R--",
+            "id": 5,
+            "kind": "string",
+            "max_len": 10,
+            "value": "9490600011"
+          },
+          "Serial number": {
+            "access": "R--",
+            "id": 6,
+            "kind": "string",
+            "max_len": 16,
+            "value": "PR011617"
+          },
+          "Software rev": {
+            "access": "R--",
+            "id": 3,
+            "kind": "string",
+            "max_len": 4,
+            "value": "1010"
+          },
+          "User label": {
+            "access": "RW-",
+            "id": 1,
+            "kind": "string",
+            "max_len": 16,
+            "value": "3G/HD/SD Re-Emb"
+          }
+        },
+        "status": {
+          "ANC-Rl1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Error"
+            ],
+            "id": 23,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "ANC-Rl2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Error"
+            ],
+            "id": 24,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "ATC-Stat_AB": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Present",
+              "Error"
+            ],
+            "id": 21,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "ATC-Stat_CD": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Present",
+              "Error"
+            ],
+            "id": 22,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Active-Out1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "SDI1",
+              "SDI2"
+            ],
+            "id": 16,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "SDI1"
+          },
+          "Active-Out2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "SDI1",
+              "SDI2"
+            ],
+            "id": 17,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "SDI1"
+          },
+          "AddOnFrmtInB1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 41,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "AddOnFrmtInB3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 42,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "AddOnFrmtInD1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 43,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "AddOnFrmtInD3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 44,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "AddOnFrmtOutA1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 81,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "AddOnFrmtOutA3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 82,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "AddOnFrmtOutC1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 83,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "AddOnFrmtOutC3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 84,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "CRC-Stat_1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "OK",
+              "CRC Error"
+            ],
+            "id": 6,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "OK"
+          },
+          "CRC-Stat_2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "OK",
+              "CRC Error"
+            ],
+            "id": 7,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "OK"
+          },
+          "DM-A_Status": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Error"
+            ],
+            "id": 94,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "DM-A_Type": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Digital Input",
+              "Digital Output",
+              "Analog Input",
+              "Analog Output"
+            ],
+            "id": 93,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "DM-B_Status": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Error"
+            ],
+            "id": 96,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "DM-B_Type": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Digital Input",
+              "Digital Output",
+              "Analog Input",
+              "Analog Output"
+            ],
+            "id": 95,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbFrmtOutA1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 61,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbFrmtOutA3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 62,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbFrmtOutB1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 63,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbFrmtOutB3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 64,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbFrmtOutC1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 65,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbFrmtOutC3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 66,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbFrmtOutD1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 67,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbFrmtOutD3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 68,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutA1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 45,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutA2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 46,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutA3": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 47,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutA4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 48,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutB1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 49,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutB2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 50,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutB3": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 51,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutB4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 52,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutC1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 53,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutC2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 54,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutC3": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 55,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutC4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 56,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutD1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 57,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutD2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 58,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutD3": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 59,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EmbStatOutD4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 60,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "FPGA-Stat": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "OK",
+              "Error"
+            ],
+            "id": 92,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "OK"
+          },
+          "GPI": {
+            "access": "R--",
+            "default": 0,
+            "id": 20,
+            "kind": "int",
+            "max": 7,
+            "min": 0,
+            "step": 1,
+            "value": 0
+          },
+          "Grp-Ins_AB": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "Ok",
+              "Error"
+            ],
+            "id": 27,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Ok"
+          },
+          "Grp-Ins_CD": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "Ok",
+              "Error"
+            ],
+            "id": 28,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Ok"
+          },
+          "GrpInUse_AB": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "____",
+              "1___",
+              "_2__",
+              "12__",
+              "__3_",
+              "1_3_",
+              "_23_",
+              "123_",
+              "___4",
+              "1__4",
+              "_2_4",
+              "12_4",
+              "__34",
+              "1_34",
+              "_234",
+              "1234"
+            ],
+            "id": 25,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "____"
+          },
+          "GrpInUse_CD": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "____",
+              "1___",
+              "_2__",
+              "12__",
+              "__3_",
+              "1_3_",
+              "_23_",
+              "123_",
+              "___4",
+              "1__4",
+              "_2_4",
+              "12_4",
+              "__34",
+              "1_34",
+              "_234",
+              "1234"
+            ],
+            "id": 26,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "____"
+          },
+          "IO-Delay_1": {
+            "access": "R--",
+            "default": 0,
+            "id": 18,
+            "kind": "float",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "IO-Delay_2": {
+            "access": "R--",
+            "default": 0,
+            "id": 19,
+            "kind": "float",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "ms",
+            "value": 0
+          },
+          "LocFrmtInA1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 37,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocFrmtInA3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 38,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocFrmtInA5/6": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 39,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocFrmtInA7/8": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 40,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocFrmtOutB1/2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 77,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocFrmtOutB3/4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 78,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocFrmtOutB5/6": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 79,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocFrmtOutB7/8": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "PCM",
+              "Null",
+              "AC-3",
+              "TimeStmp",
+              "MPEG-1",
+              "MPEG-2",
+              "SMPTE-KLV",
+              "Dolby E",
+              "Caption data",
+              "UserDef",
+              "Rsvd",
+              "Enh AC-3"
+            ],
+            "id": 80,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocMetaProg": {
+            "access": "R--",
+            "default": 11,
+            "enum_items": [
+              "5.1+2",
+              "5.1+1+1",
+              "4+4",
+              "4x2",
+              "8x1",
+              "5.1",
+              "3x2",
+              "4",
+              "2+2",
+              "7.1",
+              "Other",
+              "NA"
+            ],
+            "id": 91,
+            "kind": "enum",
+            "value": 11,
+            "value_name": "NA"
+          },
+          "LocMetaStat": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Error"
+            ],
+            "id": 90,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatInA1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 29,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatInA2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 30,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatInA3": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 31,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatInA4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 32,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatInA5": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 33,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatInA6": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 34,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatInA7": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 35,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatInA8": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 36,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatOutB1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 69,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatOutB2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 70,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatOutB3": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 71,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatOutB4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 72,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatOutB5": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 73,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatOutB6": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 74,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatOutB7": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 75,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "LocStatOutB8": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Clipped",
+              "Silence"
+            ],
+            "id": 76,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Locked-To": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "Not Locked",
+              "Ref",
+              "SDI1",
+              "SDI2"
+            ],
+            "id": 15,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Not Locked"
+          },
+          "Phaser1_H_Pos": {
+            "access": "R--",
+            "default": 0,
+            "id": 9,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "px",
+            "value": 0
+          },
+          "Phaser1_Stat": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Safe",
+              "Warning",
+              "Critical"
+            ],
+            "id": 11,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Phaser2_H_Pos": {
+            "access": "R--",
+            "default": 0,
+            "id": 10,
+            "kind": "int",
+            "max": 5000,
+            "min": 0,
+            "step": 1,
+            "unit": "px",
+            "value": 0
+          },
+          "Phaser2_Stat": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Safe",
+              "Warning",
+              "Critical"
+            ],
+            "id": 12,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Rail1S2020Prog": {
+            "access": "R--",
+            "default": 11,
+            "enum_items": [
+              "5.1+2",
+              "5.1+1+1",
+              "4+4",
+              "4x2",
+              "8x1",
+              "5.1",
+              "3x2",
+              "4",
+              "2+2",
+              "7.1",
+              "Other",
+              "NA"
+            ],
+            "id": 86,
+            "kind": "enum",
+            "value": 11,
+            "value_name": "NA"
+          },
+          "Rail1S2020Stat": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Error"
+            ],
+            "id": 85,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Rail2S2020Prog": {
+            "access": "R--",
+            "default": 11,
+            "enum_items": [
+              "5.1+2",
+              "5.1+1+1",
+              "4+4",
+              "4x2",
+              "8x1",
+              "5.1",
+              "3x2",
+              "4",
+              "2+2",
+              "7.1",
+              "Other",
+              "NA"
+            ],
+            "id": 88,
+            "kind": "enum",
+            "value": 11,
+            "value_name": "NA"
+          },
+          "Rail2S2020Stat": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok",
+              "Error"
+            ],
+            "id": 87,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Ref-Format": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "NTSC/480i",
+              "PAL/576i",
+              "480p",
+              "576p",
+              "720p",
+              "1080i",
+              "1080p"
+            ],
+            "id": 8,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "S2020-Src_Ass_Ch": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "None",
+              "Ch01/02",
+              "Ch03/04",
+              "Ch05/06",
+              "Ch07/08",
+              "Ch09/10",
+              "Ch11/12",
+              "Ch13/14",
+              "Ch15/16"
+            ],
+            "id": 89,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "SDI-Freq_1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "1:1",
+              "1:1.001"
+            ],
+            "id": 4,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "SDI-Freq_2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "1:1",
+              "1:1.001"
+            ],
+            "id": 5,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "SDI-Input_1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "1080p60",
+              "1080p50",
+              "1080p30",
+              "1080p25",
+              "1080p24",
+              "1080i50",
+              "1080i60",
+              "1035i60",
+              "720p60",
+              "720p50",
+              "720p30",
+              "720p25",
+              "SD625",
+              "SD525"
+            ],
+            "id": 0,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "SDI-Input_2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "1080p60",
+              "1080p50",
+              "1080p30",
+              "1080p25",
+              "1080p24",
+              "1080i50",
+              "1080i60",
+              "1035i60",
+              "720p60",
+              "720p50",
+              "720p30",
+              "720p25",
+              "SD625",
+              "SD525"
+            ],
+            "id": 1,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "SDI-Map_1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Level A",
+              "Level B"
+            ],
+            "id": 2,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "SDI-Map_2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Level A",
+              "Level B"
+            ],
+            "id": 3,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "SDI1-Ref_Offset": {
+            "access": "R--",
+            "default": 0,
+            "id": 13,
+            "kind": "float",
+            "max": 40000,
+            "min": 0,
+            "step": 1,
+            "unit": "us",
+            "value": 0
+          },
+          "SDI2-Ref_Offset": {
+            "access": "R--",
+            "default": 0,
+            "id": 14,
+            "kind": "float",
+            "max": 40000,
+            "min": 0,
+            "step": 1,
+            "unit": "us",
+            "value": 0
+          }
+        }
+      },
+      "slot": 19,
+      "status": "present",
+      "walked_at": "2026-05-05T10:21:45Z"
+    }
+  ]
+}

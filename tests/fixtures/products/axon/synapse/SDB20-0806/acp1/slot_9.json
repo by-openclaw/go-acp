@@ -1,0 +1,778 @@
+{
+  "created_at": "2026-05-05T10:21:45Z",
+  "device": {
+    "ip": "10.6.239.113",
+    "port": 2071,
+    "protocol": "acp1",
+    "protocol_version": 1,
+    "num_slots": 31
+  },
+  "generator": "acp dev",
+  "slots": [
+    {
+      "objects": {
+        "alarm": {
+          "ANC-Status": {
+            "access": "RW-",
+            "id": 3,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Announcements": {
+            "access": "RW-",
+            "id": 0,
+            "kind": "alarm",
+            "value": 1
+          },
+          "EDH-Status": {
+            "access": "RW-",
+            "id": 2,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Input": {
+            "access": "RW-",
+            "id": 1,
+            "kind": "alarm",
+            "value": 0
+          }
+        },
+        "control": {
+          "AddOn_A1": {
+            "access": "RW-",
+            "default": 4,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 4,
+            "kind": "enum",
+            "value": 4,
+            "value_name": "Ch_5"
+          },
+          "AddOn_A2": {
+            "access": "RW-",
+            "default": 5,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 5,
+            "kind": "enum",
+            "value": 5,
+            "value_name": "Ch_6"
+          },
+          "AddOn_A3": {
+            "access": "RW-",
+            "default": 6,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 6,
+            "kind": "enum",
+            "value": 6,
+            "value_name": "Ch_7"
+          },
+          "AddOn_A4": {
+            "access": "RW-",
+            "default": 7,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 7,
+            "kind": "enum",
+            "value": 7,
+            "value_name": "Ch_8"
+          },
+          "AddOn_B1": {
+            "access": "RW-",
+            "default": 8,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 8,
+            "kind": "enum",
+            "value": 8,
+            "value_name": "Ch_9"
+          },
+          "AddOn_B2": {
+            "access": "RW-",
+            "default": 9,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 9,
+            "kind": "enum",
+            "value": 9,
+            "value_name": "Ch_10"
+          },
+          "AddOn_B3": {
+            "access": "RW-",
+            "default": 10,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 10,
+            "kind": "enum",
+            "value": 10,
+            "value_name": "Ch_11"
+          },
+          "AddOn_B4": {
+            "access": "RW-",
+            "default": 11,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 11,
+            "kind": "enum",
+            "value": 11,
+            "value_name": "Ch_12"
+          },
+          "EDH-Det": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Active-P",
+              "Full-F"
+            ],
+            "id": 22,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Active-P"
+          },
+          "Gain-Ch_1": {
+            "access": "RW-",
+            "default": 0,
+            "id": 12,
+            "kind": "float",
+            "max": 12,
+            "min": -999,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "Gain-Ch_2": {
+            "access": "RW-",
+            "default": 0,
+            "id": 13,
+            "kind": "float",
+            "max": 12,
+            "min": -999,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "Gain-Ch_3": {
+            "access": "RW-",
+            "default": 0,
+            "id": 14,
+            "kind": "float",
+            "max": 12,
+            "min": -999,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "Gain-Ch_4": {
+            "access": "RW-",
+            "default": 0,
+            "id": 15,
+            "kind": "float",
+            "max": 12,
+            "min": -999,
+            "step": 1,
+            "unit": "dB",
+            "value": 0
+          },
+          "Out_1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 0,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Ch_1"
+          },
+          "Out_1/2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Stereo",
+              "Mono"
+            ],
+            "id": 20,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Stereo"
+          },
+          "Out_2": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 1,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "Ch_2"
+          },
+          "Out_3": {
+            "access": "RW-",
+            "default": 2,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 2,
+            "kind": "enum",
+            "value": 2,
+            "value_name": "Ch_3"
+          },
+          "Out_3/4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Stereo",
+              "Mono"
+            ],
+            "id": 21,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Stereo"
+          },
+          "Out_4": {
+            "access": "RW-",
+            "default": 3,
+            "enum_items": [
+              "Ch_1",
+              "Ch_2",
+              "Ch_3",
+              "Ch_4",
+              "Ch_5",
+              "Ch_6",
+              "Ch_7",
+              "Ch_8",
+              "Ch_9",
+              "Ch_10",
+              "Ch_11",
+              "Ch_12",
+              "Ch_13",
+              "Ch_14",
+              "Ch_15",
+              "Ch_16"
+            ],
+            "id": 3,
+            "kind": "enum",
+            "value": 3,
+            "value_name": "Ch_4"
+          },
+          "Phase-Ch_1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 16,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "Phase-Ch_2": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 17,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "Phase-Ch_3": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 18,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          },
+          "Phase-Ch_4": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "0 deg",
+              "180 deg"
+            ],
+            "id": 19,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "0 deg"
+          }
+        },
+        "identity": {
+          "Card ID": {
+            "access": "R--",
+            "id": 7,
+            "kind": "string",
+            "max_len": 16,
+            "value": "71ef060a00000009"
+          },
+          "Card description": {
+            "access": "R--",
+            "id": 2,
+            "kind": "string",
+            "max_len": 32,
+            "value": "SDB20-0806.html"
+          },
+          "Card name": {
+            "access": "R--",
+            "id": 0,
+            "kind": "string",
+            "max_len": 8,
+            "value": "SDB20"
+          },
+          "Hardware rev": {
+            "access": "R--",
+            "id": 4,
+            "kind": "string",
+            "max_len": 4,
+            "value": "0101"
+          },
+          "Product code": {
+            "access": "R--",
+            "id": 5,
+            "kind": "string",
+            "max_len": 10,
+            "value": "9460020001"
+          },
+          "Serial number": {
+            "access": "R--",
+            "id": 6,
+            "kind": "string",
+            "max_len": 6,
+            "value": "000604"
+          },
+          "Software rev": {
+            "access": "R--",
+            "id": 3,
+            "kind": "string",
+            "max_len": 4,
+            "value": "0806"
+          },
+          "User label": {
+            "access": "RW-",
+            "id": 1,
+            "kind": "string",
+            "max_len": 16,
+            "value": "Audio De-embedder"
+          }
+        },
+        "status": {
+          "ANC-Stat": {
+            "access": "R--",
+            "default": 1,
+            "enum_items": [
+              "NA",
+              "NA",
+              "Ok",
+              "Error"
+            ],
+            "id": 14,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "NA"
+          },
+          "Audio-Ch_1": {
+            "access": "R--",
+            "default": 1,
+            "enum_items": [
+              "NA",
+              "NA",
+              "Ok",
+              "Clipped"
+            ],
+            "id": 2,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "NA"
+          },
+          "Audio-Ch_2": {
+            "access": "R--",
+            "default": 1,
+            "enum_items": [
+              "NA",
+              "NA",
+              "Ok",
+              "Clipped"
+            ],
+            "id": 3,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "NA"
+          },
+          "Audio-Ch_3": {
+            "access": "R--",
+            "default": 1,
+            "enum_items": [
+              "NA",
+              "NA",
+              "Ok",
+              "Clipped"
+            ],
+            "id": 4,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "NA"
+          },
+          "Audio-Ch_4": {
+            "access": "R--",
+            "default": 1,
+            "enum_items": [
+              "NA",
+              "NA",
+              "Ok",
+              "Clipped"
+            ],
+            "id": 5,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "NA"
+          },
+          "Audio_A1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok"
+            ],
+            "id": 6,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Audio_A2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok"
+            ],
+            "id": 7,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Audio_A3": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok"
+            ],
+            "id": 8,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Audio_A4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok"
+            ],
+            "id": 9,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Audio_B1": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok"
+            ],
+            "id": 10,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Audio_B2": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok"
+            ],
+            "id": 11,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Audio_B3": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok"
+            ],
+            "id": 12,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Audio_B4": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Ok"
+            ],
+            "id": 13,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "EDH-Stat": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "Ok",
+              "UES",
+              "EDA",
+              "EDH"
+            ],
+            "id": 15,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Ok"
+          },
+          "FPGA-Stat": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "Ok",
+              "Error"
+            ],
+            "id": 16,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Ok"
+          },
+          "GrpInUse": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "____",
+              "1___",
+              "_2__",
+              "12__",
+              "__3_",
+              "1_3_",
+              "_23_",
+              "123_",
+              "___4",
+              "1__4",
+              "_2_4",
+              "12_4",
+              "__34",
+              "1_34",
+              "_234",
+              "1234"
+            ],
+            "id": 1,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "____"
+          },
+          "SDI-Input": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "Present"
+            ],
+            "id": 0,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          }
+        }
+      },
+      "slot": 9,
+      "status": "present",
+      "walked_at": "2026-05-05T10:21:45Z"
+    }
+  ]
+}
