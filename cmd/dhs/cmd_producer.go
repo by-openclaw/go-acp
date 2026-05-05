@@ -50,6 +50,8 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		announceObj   = fs.Int("announce-demo-obj", 18, "acp2: obj-id for --announce-demo target (must be Number+Float)")
 		announceEvery = fs.Duration("announce-demo-interval", 2*time.Second, "--announce-demo tick interval")
 		metricsAddr   = fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + Go/process collectors on this address")
+		transport     = fs.String("transport", "udp", "acp1 only: udp (default, Mode A), tcp (Mode B), or all (UDP+TCP simultaneously). Other protocols ignore this flag.")
+		tcpPort       = fs.Int("tcp-port", 0, "acp1 only: TCP listen port for --transport tcp/all (0 = same as --port)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -170,10 +172,64 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		}
 	}
 
+	// ACP1 multi-transport dispatch (Mode A UDP / Mode B TCP / both).
+	// Other protocols silently ignore --transport / --tcp-port and run
+	// their default Serve.
+	if protoName == "acp1" {
+		acp1Srv, ok := srv.(*acp1provider.Server)
+		if !ok {
+			return fmt.Errorf("acp1 producer: wrong server type %T", srv)
+		}
+		switch *transport {
+		case "udp":
+			if err := acp1Srv.Serve(srvCtx, addr); err != nil && !errors.Is(err, context.Canceled) {
+				return fmt.Errorf("serve udp: %w", err)
+			}
+		case "tcp":
+			tcpAddr := tcpListenAddr(*host, listenPort, *tcpPort)
+			if err := acp1Srv.ServeTCP(srvCtx, tcpAddr); err != nil && !errors.Is(err, context.Canceled) {
+				return fmt.Errorf("serve tcp: %w", err)
+			}
+		case "all":
+			tcpAddr := tcpListenAddr(*host, listenPort, *tcpPort)
+			udpErrCh := make(chan error, 1)
+			tcpErrCh := make(chan error, 1)
+			go func() { udpErrCh <- acp1Srv.Serve(srvCtx, addr) }()
+			go func() { tcpErrCh <- acp1Srv.ServeTCP(srvCtx, tcpAddr) }()
+			select {
+			case err := <-udpErrCh:
+				cancel()
+				<-tcpErrCh
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return fmt.Errorf("serve udp: %w", err)
+				}
+			case err := <-tcpErrCh:
+				cancel()
+				<-udpErrCh
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return fmt.Errorf("serve tcp: %w", err)
+				}
+			}
+		default:
+			return fmt.Errorf("acp1 producer: unknown --transport %q (use udp / tcp / all)", *transport)
+		}
+		return nil
+	}
+
 	if err := srv.Serve(srvCtx, addr); err != nil && !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("serve: %w", err)
 	}
 	return nil
+}
+
+// tcpListenAddr resolves the TCP listen address. Defaults to the same
+// host:port pair as UDP when --tcp-port is unset.
+func tcpListenAddr(host string, udpPort, override int) string {
+	port := override
+	if port == 0 {
+		port = udpPort
+	}
+	return fmt.Sprintf("%s:%d", host, port)
 }
 
 func loadTree(path string) (*canonical.Export, error) {
