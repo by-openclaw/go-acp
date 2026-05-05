@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"sort"
+	"time"
 
+	"dhs/internal/export"
 	"dhs/internal/protocol"
 	"dhs/internal/wiretrace"
 	"dhs/internal/acp1/codec"
@@ -17,17 +21,31 @@ import (
 //
 // This is the offline counterpart to Walk: same codec, no live peer.
 //
-// `--out-tree` and `--out-params` (per ADR-0002) are not yet wired
-// here — Validate returns a clear error rather than silently ignoring
-// them. They land in a follow-up PR that integrates canonicalize.go.
+// When --out-tree is set, every successful getObject reply is converted
+// via toProtocolObject and accumulated into a per-slot map. After the
+// scan completes, the map is rendered as an export.Snapshot and written
+// to disk. The result is byte-equivalent (modulo timestamp + generator)
+// to the snapshot a live Walk would produce against the same device,
+// so capture / replay round-trips can be asserted in CI.
+//
+// --out-params remains a follow-up.
 func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts protocol.ValidateOpts) (*protocol.ValidateReport, error) {
 	report := &protocol.ValidateReport{
 		PerDirection: map[wiretrace.Direction]int{},
 	}
 
-	if opts.OutTree != "" || opts.OutParams != "" {
-		return report, fmt.Errorf("acp1.Validate: --out-tree / --out-params not implemented yet (follow-up PR)")
+	if opts.OutParams != "" {
+		return report, fmt.Errorf("acp1.Validate: --out-params not implemented yet (follow-up PR)")
 	}
+
+	// Per-(slot, group, id) latest decoded object — getObject replies
+	// can repeat (e.g. the consumer re-walked); the latest wins.
+	type objKey struct {
+		slot  int
+		group codec.ObjGroup
+		id    uint8
+	}
+	objects := map[objKey]protocol.Object{}
 
 	var lastReqMTID uint32
 	for i, t := range trames {
@@ -77,6 +95,16 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 				report.Invariants = append(report.Invariants,
 					fmt.Sprintf("trame %d: reply MTID=%d does not match last request MTID=%d", i, msg.MTID, lastReqMTID))
 			}
+			// Capture getObject replies into the per-slot tree map
+			// when --out-tree is requested. We can decode every reply
+			// regardless and just discard the result if --out-tree is
+			// off, but the decode is non-trivial — gate it.
+			if opts.OutTree != "" && msg.MCode == byte(codec.MethodGetObject) {
+				if d, derr := codec.DecodeObject(msg.Value); derr == nil {
+					obj := toProtocolObject(d, int(msg.MAddr), msg.ObjGroup, msg.ObjID)
+					objects[objKey{int(msg.MAddr), msg.ObjGroup, msg.ObjID}] = obj
+				}
+			}
 		}
 
 		if opts.StopAt != "" && t.Note == opts.StopAt {
@@ -85,7 +113,58 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 		}
 	}
 
+	if opts.OutTree != "" {
+		if err := writeReplayTree(opts.OutTree, objects); err != nil {
+			return report, fmt.Errorf("write out-tree: %w", err)
+		}
+	}
+
 	return report, nil
+}
+
+// writeReplayTree emits the captured-getObject map as an export.Snapshot
+// JSON. The format matches what `dhs consumer acp1 export --format json`
+// produces from a live walk so capture/replay round-trips compare with
+// byte-equality (after timestamp normalisation).
+func writeReplayTree[K comparable](path string, objects map[K]protocol.Object) error {
+	bySlot := map[int][]protocol.Object{}
+	for _, o := range objects {
+		bySlot[o.Slot] = append(bySlot[o.Slot], o)
+	}
+	slots := make([]int, 0, len(bySlot))
+	for s := range bySlot {
+		slots = append(slots, s)
+	}
+	sort.Ints(slots)
+	now := time.Now().UTC()
+	snap := &export.Snapshot{
+		Generator: "dhs validate --out-tree (acp1)",
+		CreatedAt: now,
+		Device: export.DeviceInfo{
+			Protocol: "acp1",
+			NumSlots: len(slots),
+		},
+	}
+	for _, s := range slots {
+		objs := bySlot[s]
+		sort.SliceStable(objs, func(i, j int) bool {
+			if objs[i].Group != objs[j].Group {
+				return objs[i].Group < objs[j].Group
+			}
+			return objs[i].ID < objs[j].ID
+		})
+		snap.Slots = append(snap.Slots, export.SlotDump{
+			Slot:     s,
+			WalkedAt: now,
+			Objects:  objs,
+		})
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return export.WriteJSON(f, snap)
 }
 
 func shortHex(b []byte) string {
