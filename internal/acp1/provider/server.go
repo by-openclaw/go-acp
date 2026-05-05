@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"dhs/internal/acp1/codec"
+	"dhs/internal/dmlib"
 	"dhs/internal/export/canonical"
 	"dhs/internal/transport"
 )
@@ -57,6 +58,10 @@ type server struct {
 	// Initialised by newServer with InsertTimingReal; the producer CLI
 	// can override via --insert-timing.
 	slotMachine *slotStateMachine
+
+	// dmLibrary, when non-nil, drives slot.load via the DM-library
+	// resolver. Set via SetDMLibrary at startup.
+	dmLibrary dmlib.Resolver
 }
 
 // SetInsertTiming switches the cascade timing for new transitions.
