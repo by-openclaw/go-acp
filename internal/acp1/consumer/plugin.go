@@ -104,6 +104,11 @@ type Plugin struct {
 	// session. See compliance_events.go for the catalog. Nil until
 	// Connect fires; callers read via ComplianceProfile().
 	profile *compliance.Profile
+
+	// tsSink tracks the most-recent rx/tx wire timestamps so
+	// SessionHealth() can compute Live without blocking. Nil until
+	// Connect fires.
+	tsSink *timestampSink
 }
 
 // ComplianceProfile returns the session-scoped compliance profile.
@@ -179,6 +184,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.trees = newSlotTreeCache(cfg.MaxSize, cfg.TTL)
 	p.subHandles = map[subKey]SubHandle{}
 	p.profile = &compliance.Profile{}
+	if p.tsSink == nil {
+		p.tsSink = &timestampSink{}
+	}
 	p.walker = NewWalker(p.client)
 	p.walker.SetProfile(p.profile)
 	p.logger.Info("acp1 connected",
@@ -199,6 +207,12 @@ func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 	if p.recorder != nil {
 		tr = p.recorder.WrapTransport(conn, "acp1")
 	}
+	// Wrap with timestamp tap so SessionHealth (#266) sees rx/tx
+	// activity without each call needing to probe the wire.
+	if p.tsSink == nil {
+		p.tsSink = &timestampSink{}
+	}
+	tr = &timestampingTransport{inner: tr, sink: p.tsSink}
 	p.client = NewClient(tr, p.logger, ClientConfig{})
 
 	if l, lerr := NewListener(p.logger, port); lerr != nil {
