@@ -41,7 +41,8 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	var (
 		treePath      = fs.String("tree", "", "path to canonical tree.json (required)")
 		port          = fs.Int("port", 0, "TCP listen port (0 = plugin default)")
-		host          = fs.String("host", "0.0.0.0", "TCP listen host")
+		host          = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
+		bind          = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
 		logLevel      = fs.String("log-level", "info", "log level: debug, info, warn, error")
 		logFormat     = fs.String("log-format", "text", "log format: text | json (json for Loki/Promtail)")
 		announceDemo  = fs.Bool("announce-demo", false, "oscillate a target value every --announce-demo-interval and broadcast announces (acp1/acp2 only)")
@@ -63,6 +64,11 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	}
 	if *treePath == "" {
 		return fmt.Errorf("--tree is required")
+	}
+	// --bind is the canonical name in the design discussion (#263);
+	// --host stays for backwards-compat. When both are set, --bind wins.
+	if *bind != "" {
+		*host = *bind
 	}
 
 	logger := newLogger(*logLevel, *logFormat)

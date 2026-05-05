@@ -105,8 +105,19 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	// Dial a second socket to the limited broadcast address. Go stdlib
 	// auto-sets SO_BROADCAST on dialed sockets with broadcast peers,
 	// which is the portable path across Windows / Linux / macOS.
+	//
+	// VIP-aware source selection (#263): when --bind <ip> selects a
+	// specific local address, we pin the broadcast dial's LocalAddr
+	// to it so the kernel routes via the matching iface and consumers
+	// see the right `From:` per emulator. Without this, multiple
+	// emulators on different VIPs would share whichever IP the kernel
+	// picks for the route, collapsing the per-emulator distinction.
 	bcastAddr := &net.UDPAddr{IP: net.IPv4bcast, Port: udpAddr.Port}
-	bconn, bErr := net.DialUDP("udp4", nil, bcastAddr)
+	var localAddr *net.UDPAddr
+	if udpAddr.IP != nil && !udpAddr.IP.IsUnspecified() {
+		localAddr = &net.UDPAddr{IP: udpAddr.IP, Port: 0}
+	}
+	bconn, bErr := net.DialUDP("udp4", localAddr, bcastAddr)
 	// Best-effort: if the OS rejects the broadcast dial (no route, no
 	// iface up) we log and continue without announcements.
 	if bErr != nil {
