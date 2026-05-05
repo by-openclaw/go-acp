@@ -5,34 +5,60 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"dhs/internal/protocol"
 )
 
 // runWatch subscribes to live announcements and prints each event as it
-// arrives. Blocks until Ctrl-C. Filters:
+// arrives. Blocks until Ctrl-C.
+//
+// Subscribe filters (what events the user sees):
 //
 //	--slot N        only this slot (default: any)
 //	--group G       only this group (default: any)
 //	--label L       only this object (requires prior walk for resolution)
 //	--id I          only this object id within --group
 //
-// Typical usage: leave filters off and watch everything on the device.
-// Useful when debugging an emulator or verifying that a UI change
-// reaches the wire.
+// Discovery scope (what slots get walked at startup):
+//
+//	(no flag)             default: walk NOTHING; rely on DM-library seed.
+//	--slot N              walk slot N only (legacy single-slot mode).
+//	--slots 1,3,7         walk listed slots only.
+//	--slots all           walk every present slot (legacy "walk-all" mode).
+//	--no-walk             suppress every on-demand walk; pure announce view.
+//	--auto-walk-on-plug   walk slot N on no_card -> present transition
+//	                      (hot-plug enrichment lands in #254).
+//
+// Default discovery scope changed: previous behaviour was to walk every
+// present slot at connect time. This caused walk-storm latency and
+// surprised operators who only wanted frame-status. New default is no
+// walks; opt in via --slot, --slots, or --auto-walk-on-plug.
 func runWatch(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("watch", flag.ExitOnError)
 	cf := addCommonFlags(fs)
-	slot := fs.Int("slot", -1, "slot filter (-1 = any)")
+	slot := fs.Int("slot", -1, "slot filter (-1 = any); also walks this slot at startup")
+	slotsArg := fs.String("slots", "",
+		`walk scope: comma-separated slot numbers (e.g. "1,3,7") or "all" `+
+			`for every present slot. Empty means walk nothing (announces only).`)
+	noWalk := fs.Bool("no-walk", false, "suppress every on-demand walk; pure announce view")
+	autoWalkOnPlug := fs.Bool("auto-walk-on-plug", false,
+		"walk a slot on no_card -> present transition (hot-plug enrichment, #254)")
 	group := fs.String("group", "", "group filter (empty = any)")
 	label := fs.String("label", "", "label filter (requires prior walk)")
 	id := fs.Int("id", -1, "object id filter (-1 = any)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp watch <host> [--slot N] [--group G] [--label L]")
+		return fmt.Errorf("usage: acp watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--group G] [--label L]")
 	}
 	_ = fs.Parse(rest)
+	_ = autoWalkOnPlug // plumbed for #254; not yet consumed in the walk-scope path
+
+	walkScope, scopeErr := parseWalkScope(*slot, *slotsArg, *noWalk)
+	if scopeErr != nil {
+		return scopeErr
+	}
 
 	plug, cleanup, err := connect(ctx, host, cf)
 	if err != nil {
@@ -66,34 +92,12 @@ func runWatch(ctx context.Context, args []string) error {
 	}
 
 	// Walk in background to populate label/type cache. Announces start
-	// immediately — labels resolve as the tree fills. ACP1 walks are fast
-	// enough to block; ACP2 slot 1 has 44k objects so must be async.
-	go func() {
-		if *slot >= 0 {
-			objs, werr := plug.Walk(ctx, *slot)
-			if werr != nil {
-				fmt.Fprintf(os.Stderr, "warning: walk slot %d failed: %v\n", *slot, werr)
-			} else if treeStore != nil {
-				if serr := treeStore.Save(host, cf.protocol, *slot, objs); serr != nil {
-					fmt.Fprintf(os.Stderr, "warning: cache save slot %d: %v\n", *slot, serr)
-				}
-			}
-		} else {
-			info, ierr := plug.GetDeviceInfo(ctx)
-			if ierr == nil {
-				for s := 0; s < info.NumSlots; s++ {
-					si, serr := plug.GetSlotInfo(ctx, s)
-					if serr != nil || si.Status != protocol.SlotPresent {
-						continue
-					}
-					objs, werr := plug.Walk(ctx, s)
-					if werr == nil && treeStore != nil {
-						_ = treeStore.Save(host, cf.protocol, s, objs)
-					}
-				}
-			}
-		}
-	}()
+	// immediately — labels resolve as the tree fills.
+	if !walkScope.empty() {
+		go func() {
+			runWalkScope(ctx, plug, host, cf.protocol, walkScope)
+		}()
+	}
 
 	req := protocol.ValueRequest{
 		Slot:  *slot,
@@ -217,4 +221,100 @@ func runWatch(ctx context.Context, args []string) error {
 // unique per slot.
 func watchCacheKey(group string, id int) string {
 	return fmt.Sprintf("%s.%d", group, id)
+}
+
+// walkScope describes which slots the watch verb should walk at startup.
+// One of three modes:
+//
+//	mode=none  → walk nothing (default, or --no-walk).
+//	mode=list  → walk every entry in slots[].
+//	mode=all   → walk every slot the device reports as present.
+type walkScope struct {
+	mode  walkMode
+	slots []int
+}
+
+type walkMode int
+
+const (
+	walkNone walkMode = iota
+	walkList
+	walkAll
+)
+
+func (s walkScope) empty() bool { return s.mode == walkNone }
+
+// parseWalkScope folds the --slot, --slots, and --no-walk flags into a
+// single decision. Mutually exclusive combinations raise a clear error.
+func parseWalkScope(slot int, slotsArg string, noWalk bool) (walkScope, error) {
+	if noWalk {
+		if slotsArg != "" {
+			return walkScope{}, fmt.Errorf("--no-walk and --slots are mutually exclusive")
+		}
+		return walkScope{mode: walkNone}, nil
+	}
+	if slotsArg != "" {
+		if strings.EqualFold(slotsArg, "all") {
+			return walkScope{mode: walkAll}, nil
+		}
+		var slots []int
+		for _, part := range strings.Split(slotsArg, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			n, err := strconv.Atoi(part)
+			if err != nil || n < 0 {
+				return walkScope{}, fmt.Errorf("--slots: %q is not a non-negative integer", part)
+			}
+			slots = append(slots, n)
+		}
+		if len(slots) == 0 {
+			return walkScope{}, fmt.Errorf(`--slots: empty list (use "all" or a non-empty comma-separated list)`)
+		}
+		return walkScope{mode: walkList, slots: slots}, nil
+	}
+	if slot >= 0 {
+		return walkScope{mode: walkList, slots: []int{slot}}, nil
+	}
+	return walkScope{mode: walkNone}, nil
+}
+
+// runWalkScope executes the walk decision against the live plugin.
+// Errors print to stderr and do not abort other slots in the batch.
+func runWalkScope(ctx context.Context, plug protocol.Protocol, host, proto string, scope walkScope) {
+	switch scope.mode {
+	case walkNone:
+		return
+	case walkList:
+		for _, s := range scope.slots {
+			walkSlotAndCache(ctx, plug, host, proto, s)
+		}
+	case walkAll:
+		info, ierr := plug.GetDeviceInfo(ctx)
+		if ierr != nil {
+			fmt.Fprintf(os.Stderr, "warning: GetDeviceInfo: %v\n", ierr)
+			return
+		}
+		for s := 0; s < info.NumSlots; s++ {
+			si, serr := plug.GetSlotInfo(ctx, s)
+			if serr != nil || si.Status != protocol.SlotPresent {
+				continue
+			}
+			walkSlotAndCache(ctx, plug, host, proto, s)
+		}
+	}
+}
+
+func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto string, slot int) {
+	objs, werr := plug.Walk(ctx, slot)
+	if werr != nil {
+		fmt.Fprintf(os.Stderr, "warning: walk slot %d failed: %v\n", slot, werr)
+		return
+	}
+	if treeStore != nil {
+		if serr := treeStore.Save(host, proto, slot, objs); serr != nil {
+			fmt.Fprintf(os.Stderr, "warning: cache save slot %d: %v\n", slot, serr)
+		}
+	}
 }
