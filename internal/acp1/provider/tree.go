@@ -54,6 +54,29 @@ type tree struct {
 	slots map[uint8]*slotCounts
 }
 
+// numSlots returns the highest slot number that carries any entry,
+// plus one (giving the count). Used by AN2 GetDeviceInfo replies.
+func (t *tree) numSlots() int {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	max := -1
+	for slot := range t.slots {
+		if int(slot) > max {
+			max = int(slot)
+		}
+	}
+	return max + 1
+}
+
+// slotPresent reports whether the tree has any entry on the given slot.
+// Used by AN2 GetSlotInfo to drive the per-slot present_flag.
+func (t *tree) slotPresent(slot uint8) bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	_, ok := t.slots[slot]
+	return ok
+}
+
 type slotCounts struct {
 	numIdentity uint8
 	numControl  uint8

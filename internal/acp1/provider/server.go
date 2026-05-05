@@ -45,6 +45,11 @@ type server struct {
 	// UDP broadcast path are also fanned to every live TCP session so
 	// TCP-only consumers see value-change events.
 	tcpRegistry *tcpSessionRegistry
+
+	// an2Registry is set when ServeAN2 runs. Announces emitted via the
+	// UDP / TCP broadcast paths are also wrapped in AN2 frames and
+	// fanned to AN2 sessions that have called EnableProtocolEvents.
+	an2Registry *an2SessionRegistry
 }
 
 func newServer(logger *slog.Logger, exp *canonical.Export) *server {
@@ -194,8 +199,9 @@ func (s *server) broadcastAnnounce(ann *codec.Message) {
 		)
 		return
 	}
-	// Bridge: also fan-out to every live TCP session.
+	// Bridge: also fan-out to every live TCP and AN2 session.
 	s.broadcastTCPAnnounce(out)
+	s.broadcastAN2Announce(out)
 	if _, err := bc.Write(out); err != nil {
 		s.logger.Warn("acp1 announce send",
 			slog.String("err", err.Error()),

@@ -50,8 +50,9 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		announceObj   = fs.Int("announce-demo-obj", 18, "acp2: obj-id for --announce-demo target (must be Number+Float)")
 		announceEvery = fs.Duration("announce-demo-interval", 2*time.Second, "--announce-demo tick interval")
 		metricsAddr   = fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + Go/process collectors on this address")
-		transport     = fs.String("transport", "udp", "acp1 only: udp (default, Mode A), tcp (Mode B), or all (UDP+TCP simultaneously). Other protocols ignore this flag.")
+		transport     = fs.String("transport", "udp", "acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), or all (every transport). Other protocols ignore this flag.")
 		tcpPort       = fs.Int("tcp-port", 0, "acp1 only: TCP listen port for --transport tcp/all (0 = same as --port)")
+		an2Port       = fs.Int("an2-port", 2072, "acp1 only: AN2/TCP listen port for --transport an2/all")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -190,28 +191,52 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 			if err := acp1Srv.ServeTCP(srvCtx, tcpAddr); err != nil && !errors.Is(err, context.Canceled) {
 				return fmt.Errorf("serve tcp: %w", err)
 			}
+		case "an2":
+			an2Addr := fmt.Sprintf("%s:%d", *host, *an2Port)
+			if err := acp1Srv.ServeAN2(srvCtx, an2Addr); err != nil && !errors.Is(err, context.Canceled) {
+				return fmt.Errorf("serve an2: %w", err)
+			}
 		case "all":
 			tcpAddr := tcpListenAddr(*host, listenPort, *tcpPort)
+			an2Addr := fmt.Sprintf("%s:%d", *host, *an2Port)
 			udpErrCh := make(chan error, 1)
 			tcpErrCh := make(chan error, 1)
+			an2ErrCh := make(chan error, 1)
 			go func() { udpErrCh <- acp1Srv.Serve(srvCtx, addr) }()
 			go func() { tcpErrCh <- acp1Srv.ServeTCP(srvCtx, tcpAddr) }()
+			go func() { an2ErrCh <- acp1Srv.ServeAN2(srvCtx, an2Addr) }()
+			drain := func(ch chan error) error {
+				err := <-ch
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return err
+				}
+				return nil
+			}
 			select {
 			case err := <-udpErrCh:
 				cancel()
-				<-tcpErrCh
+				_ = drain(tcpErrCh)
+				_ = drain(an2ErrCh)
 				if err != nil && !errors.Is(err, context.Canceled) {
 					return fmt.Errorf("serve udp: %w", err)
 				}
 			case err := <-tcpErrCh:
 				cancel()
-				<-udpErrCh
+				_ = drain(udpErrCh)
+				_ = drain(an2ErrCh)
 				if err != nil && !errors.Is(err, context.Canceled) {
 					return fmt.Errorf("serve tcp: %w", err)
 				}
+			case err := <-an2ErrCh:
+				cancel()
+				_ = drain(udpErrCh)
+				_ = drain(tcpErrCh)
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return fmt.Errorf("serve an2: %w", err)
+				}
 			}
 		default:
-			return fmt.Errorf("acp1 producer: unknown --transport %q (use udp / tcp / all)", *transport)
+			return fmt.Errorf("acp1 producer: unknown --transport %q (use udp / tcp / an2 / all)", *transport)
 		}
 		return nil
 	}
