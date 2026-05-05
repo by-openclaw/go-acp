@@ -53,6 +53,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		transport     = fs.String("transport", "udp", "acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), or all (every transport). Other protocols ignore this flag.")
 		tcpPort       = fs.Int("tcp-port", 0, "acp1 only: TCP listen port for --transport tcp/all (0 = same as --port)")
 		an2Port       = fs.Int("an2-port", 2072, "acp1 only: AN2/TCP listen port for --transport an2/all")
+		adminName     = fs.String("name", "dhs-acp1", "acp1 only: instance name for admin RPC discovery file")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -181,6 +182,17 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		if !ok {
 			return fmt.Errorf("acp1 producer: wrong server type %T", srv)
 		}
+
+		// Admin RPC always runs alongside the wire transports so the
+		// `dhs producer acp1 admin <verb>` CLI can talk to this
+		// instance (#258).
+		go func() {
+			if err := acp1Srv.ServeAdmin(srvCtx, *adminName); err != nil &&
+				!errors.Is(err, context.Canceled) {
+				logger.Warn("acp1 admin server stopped",
+					slog.String("err", err.Error()))
+			}
+		}()
 		switch *transport {
 		case "udp":
 			if err := acp1Srv.Serve(srvCtx, addr); err != nil && !errors.Is(err, context.Canceled) {
