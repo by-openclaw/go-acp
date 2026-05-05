@@ -1,0 +1,507 @@
+{
+  "created_at": "2026-05-05T10:21:44Z",
+  "device": {
+    "ip": "10.6.239.113",
+    "port": 2071,
+    "protocol": "acp1",
+    "protocol_version": 1,
+    "num_slots": 31
+  },
+  "generator": "acp dev",
+  "slots": [
+    {
+      "objects": {
+        "alarm": {
+          "Announcements": {
+            "access": "RW-",
+            "id": 0,
+            "kind": "alarm",
+            "value": 1
+          },
+          "Card-Presence": {
+            "access": "RW-",
+            "id": 5,
+            "kind": "alarm",
+            "value": 0
+          },
+          "PSU_B": {
+            "access": "RW-",
+            "id": 2,
+            "kind": "alarm",
+            "value": 0
+          },
+          "PSU_T": {
+            "access": "RW-",
+            "id": 1,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Ref_Backup": {
+            "access": "RW-",
+            "id": 4,
+            "kind": "alarm",
+            "value": 0
+          },
+          "Temperature": {
+            "access": "RW-",
+            "id": 3,
+            "kind": "alarm",
+            "value": 0
+          }
+        },
+        "control": {
+          "Broadcasts": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 4,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "On"
+          },
+          "ErrorThreshold": {
+            "access": "RW-",
+            "default": 10,
+            "id": 8,
+            "kind": "uint",
+            "max": 255,
+            "min": 0,
+            "step": 1,
+            "value": 10
+          },
+          "FW": {
+            "access": "RW-",
+            "id": 6,
+            "kind": "ipaddr",
+            "value": "0.0.0.0"
+          },
+          "Forwarding": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 5,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "IP_Conf": {
+            "access": "RW-",
+            "default": 1,
+            "enum_items": [
+              "Manual",
+              "DHCP"
+            ],
+            "id": 0,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "DHCP"
+          },
+          "NetwPrefix": {
+            "access": "RW-",
+            "default": 0,
+            "id": 7,
+            "kind": "uint",
+            "max": 32,
+            "min": 0,
+            "step": 1,
+            "unit": "bits",
+            "value": 0
+          },
+          "Redund_Pwr_Test": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 9,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "TD_0": {
+            "access": "RW-",
+            "id": 11,
+            "kind": "ipaddr",
+            "value": "0.0.0.0"
+          },
+          "TD_1": {
+            "access": "RW-",
+            "id": 13,
+            "kind": "ipaddr",
+            "value": "0.0.0.0"
+          },
+          "Trap-Dest_0": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 10,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "Trap-Dest_1": {
+            "access": "RW-",
+            "default": 0,
+            "enum_items": [
+              "Off",
+              "On"
+            ],
+            "id": 12,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Off"
+          },
+          "mGW": {
+            "access": "RW-",
+            "id": 3,
+            "kind": "ipaddr",
+            "value": "0.0.0.0"
+          },
+          "mIP": {
+            "access": "RW-",
+            "id": 1,
+            "kind": "ipaddr",
+            "value": "0.0.0.0"
+          },
+          "mNM": {
+            "access": "RW-",
+            "id": 2,
+            "kind": "ipaddr",
+            "value": "0.0.0.0"
+          }
+        },
+        "identity": {
+          "Card ID": {
+            "access": "R--",
+            "id": 7,
+            "kind": "string",
+            "max_len": 16,
+            "value": "71ef060a00000000"
+          },
+          "Card description": {
+            "access": "R--",
+            "id": 2,
+            "kind": "string",
+            "max_len": 32,
+            "value": "Virtual Rack Controller"
+          },
+          "Card name": {
+            "access": "R--",
+            "id": 0,
+            "kind": "string",
+            "max_len": 8,
+            "value": "RRS18"
+          },
+          "Hardware rev": {
+            "access": "R--",
+            "id": 4,
+            "kind": "string",
+            "max_len": 4,
+            "value": "0100"
+          },
+          "Product code": {
+            "access": "R--",
+            "id": 5,
+            "kind": "string",
+            "max_len": 10,
+            "value": "9410070001"
+          },
+          "Serial number": {
+            "access": "R--",
+            "id": 6,
+            "kind": "string",
+            "max_len": 6,
+            "value": "001633"
+          },
+          "Software rev": {
+            "access": "R--",
+            "id": 3,
+            "kind": "string",
+            "max_len": 4,
+            "value": "1601"
+          },
+          "User label": {
+            "access": "RW-",
+            "id": 1,
+            "kind": "string",
+            "max_len": 16,
+            "value": "Synapse Simulator"
+          }
+        },
+        "status": {
+          "GW": {
+            "access": "R--",
+            "id": 3,
+            "kind": "ipaddr",
+            "value": "0.0.0.0"
+          },
+          "IP": {
+            "access": "R--",
+            "id": 1,
+            "kind": "ipaddr",
+            "value": "0.0.0.0"
+          },
+          "IP_Addr": {
+            "access": "R--",
+            "default": 1,
+            "enum_items": [
+              "Manual",
+              "DHCP-Asking",
+              "DHCP-Leased",
+              "DHCP-Infin."
+            ],
+            "id": 0,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "DHCP-Asking"
+          },
+          "MIB_S0": {
+            "access": "R--",
+            "id": 12,
+            "kind": "string",
+            "max_len": 11,
+            "value": "RRS18v16   "
+          },
+          "MIB_S1": {
+            "access": "R--",
+            "id": 13,
+            "kind": "string",
+            "max_len": 11,
+            "value": "CDV08v06   "
+          },
+          "MIB_S10": {
+            "access": "R--",
+            "id": 22,
+            "kind": "string",
+            "max_len": 11,
+            "value": "SAM08v07   "
+          },
+          "MIB_S11": {
+            "access": "R--",
+            "id": 23,
+            "kind": "string",
+            "max_len": 11,
+            "value": "DAC24v04   "
+          },
+          "MIB_S12": {
+            "access": "R--",
+            "id": 24,
+            "kind": "string",
+            "max_len": 11,
+            "value": "AAD08v02   "
+          },
+          "MIB_S13": {
+            "access": "R--",
+            "id": 25,
+            "kind": "string",
+            "max_len": 11,
+            "value": "AAD08v04   "
+          },
+          "MIB_S14": {
+            "access": "R--",
+            "id": 26,
+            "kind": "string",
+            "max_len": 11,
+            "value": "empty"
+          },
+          "MIB_S15": {
+            "access": "R--",
+            "id": 27,
+            "kind": "string",
+            "max_len": 11,
+            "value": "empty"
+          },
+          "MIB_S16": {
+            "access": "R--",
+            "id": 28,
+            "kind": "string",
+            "max_len": 11,
+            "value": "empty"
+          },
+          "MIB_S17": {
+            "access": "R--",
+            "id": 29,
+            "kind": "string",
+            "max_len": 11,
+            "value": "empty"
+          },
+          "MIB_S18": {
+            "access": "R--",
+            "id": 30,
+            "kind": "string",
+            "max_len": 11,
+            "value": "HQW09v22   "
+          },
+          "MIB_S2": {
+            "access": "R--",
+            "id": 14,
+            "kind": "string",
+            "max_len": 11,
+            "value": "ASV10v12   "
+          },
+          "MIB_S3": {
+            "access": "R--",
+            "id": 15,
+            "kind": "string",
+            "max_len": 11,
+            "value": "ADC24v07   "
+          },
+          "MIB_S4": {
+            "access": "R--",
+            "id": 16,
+            "kind": "string",
+            "max_len": 11,
+            "value": "ADC24v07   "
+          },
+          "MIB_S5": {
+            "access": "R--",
+            "id": 17,
+            "kind": "string",
+            "max_len": 11,
+            "value": "ASM10v03   "
+          },
+          "MIB_S6": {
+            "access": "R--",
+            "id": 18,
+            "kind": "string",
+            "max_len": 11,
+            "value": "ADC24v07   "
+          },
+          "MIB_S7": {
+            "access": "R--",
+            "id": 19,
+            "kind": "string",
+            "max_len": 11,
+            "value": "ADC24v07   "
+          },
+          "MIB_S8": {
+            "access": "R--",
+            "id": 20,
+            "kind": "string",
+            "max_len": 11,
+            "value": "SDR08v05   "
+          },
+          "MIB_S9": {
+            "access": "R--",
+            "id": 21,
+            "kind": "string",
+            "max_len": 11,
+            "value": "SIM21v04   "
+          },
+          "NM": {
+            "access": "R--",
+            "id": 2,
+            "kind": "ipaddr",
+            "value": "0.0.0.0"
+          },
+          "PSU_Bottom": {
+            "access": "R--",
+            "default": 1,
+            "enum_items": [
+              "NA",
+              "OK"
+            ],
+            "id": 5,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "OK"
+          },
+          "PSU_Top": {
+            "access": "R--",
+            "default": 1,
+            "enum_items": [
+              "NA",
+              "OK"
+            ],
+            "id": 4,
+            "kind": "enum",
+            "value": 1,
+            "value_name": "OK"
+          },
+          "Redund_Ref_Pwr": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "NA",
+              "OK"
+            ],
+            "id": 11,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "NA"
+          },
+          "Rx_Packet_Loss": {
+            "access": "R--",
+            "default": 0,
+            "id": 10,
+            "kind": "int",
+            "max": 32767,
+            "min": 0,
+            "step": 1,
+            "value": 0
+          },
+          "SPF_Progress": {
+            "access": "R--",
+            "default": 0,
+            "id": 8,
+            "kind": "float",
+            "max": 100,
+            "min": 0,
+            "step": 1,
+            "unit": "%",
+            "value": 0
+          },
+          "SPF_Status": {
+            "access": "R--",
+            "default": 0,
+            "enum_items": [
+              "Idle",
+              "Busy",
+              "Done",
+              "Error"
+            ],
+            "id": 9,
+            "kind": "enum",
+            "value": 0,
+            "value_name": "Idle"
+          },
+          "Temp_Left": {
+            "access": "R--",
+            "default": 24,
+            "id": 6,
+            "kind": "int",
+            "max": 127,
+            "min": -128,
+            "step": 1,
+            "unit": "deg.C",
+            "value": 24
+          },
+          "Temp_Right": {
+            "access": "R--",
+            "default": 27,
+            "id": 7,
+            "kind": "int",
+            "max": 127,
+            "min": -128,
+            "step": 1,
+            "unit": "deg.C",
+            "value": 27
+          }
+        }
+      },
+      "slot": 0,
+      "status": "present",
+      "walked_at": "2026-05-05T10:21:44Z"
+    }
+  ]
+}

@@ -20,6 +20,10 @@ import (
 // prepended to the named CHANGELOG.md (creating it if absent).
 func runDiff(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("diff", flag.ExitOnError)
+	// --protocol is injected by the consumer dispatcher but diff is
+	// offline (operates on canonical tree.json files directly). Accept
+	// and ignore so `dhs consumer acp1 diff` works.
+	_ = fs.String("protocol", "", "(ignored; diff is offline)")
 	format := fs.String("format", "text", "output format: text | changelog")
 	version := fs.String("version", "", "version label for changelog entry (e.g. 2.4)")
 	date := fs.String("date", "", "date for changelog entry (YYYY-MM-DD). Default: today UTC.")
