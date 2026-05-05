@@ -7,9 +7,11 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"syscall"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/export/canonical"
+	"dhs/internal/transport"
 )
 
 // Server is the exported alias for the concrete ACP1 provider — lets
@@ -63,14 +65,37 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 
 // Serve binds addr (e.g. "0.0.0.0:2071") and runs until ctx is cancelled
 // or a fatal listen error occurs.
+//
+// Sets SO_REUSEADDR on the listening socket so a watch consumer can
+// co-bind the same port on the same host (loopback testing) and so
+// multiple provider instances on different VIPs of the same host can
+// share the canonical port. Mirrors the transport.ListenUDP pattern;
+// the transport package's helper already does this for the consumer
+// side.
 func (s *server) Serve(ctx context.Context, addr string) error {
 	udpAddr, err := net.ResolveUDPAddr("udp4", addr)
 	if err != nil {
 		return fmt.Errorf("acp1 provider: resolve %q: %w", addr, err)
 	}
-	conn, err := net.ListenUDP("udp4", udpAddr)
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			var opErr error
+			if err := c.Control(func(fd uintptr) {
+				opErr = transport.SetSocketReuseAddr(fd)
+			}); err != nil {
+				return err
+			}
+			return opErr
+		},
+	}
+	pc, err := lc.ListenPacket(ctx, "udp4", udpAddr.String())
 	if err != nil {
 		return fmt.Errorf("acp1 provider: listen %q: %w", addr, err)
+	}
+	conn, ok := pc.(*net.UDPConn)
+	if !ok {
+		_ = pc.Close()
+		return fmt.Errorf("acp1 provider: listen %q: unexpected conn type %T", addr, pc)
 	}
 
 	// Dial a second socket to the limited broadcast address. Go stdlib
