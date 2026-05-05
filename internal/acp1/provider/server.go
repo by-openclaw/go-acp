@@ -184,12 +184,17 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 // mutating method per spec §"Announcements" p.14. Silent on send error
 // — announcements are fire-and-forget, and the consumer that made the
 // setX call already has the change confirmed via the reply.
+//
+// Gated by the Broadcasts field (slot 0 / control / id 4): when the
+// served tree has Broadcasts=Off, every spontaneous announce is
+// suppressed. Replies to active requests stay on regardless — only
+// this path is gated. (#257)
 func (s *server) broadcastAnnounce(ann *codec.Message) {
-	s.mu.Lock()
-	bc := s.bcast
-	s.mu.Unlock()
-	if bc == nil {
-		s.logger.Warn("acp1 announce skipped: no broadcast socket")
+	if !s.tree.broadcastsEnabled() {
+		s.logger.Debug("acp1 announce gated by Broadcasts=Off",
+			slog.Int("objgroup", int(ann.ObjGroup)),
+			slog.Int("objid", int(ann.ObjID)),
+		)
 		return
 	}
 	out, err := ann.Encode()
@@ -199,9 +204,18 @@ func (s *server) broadcastAnnounce(ann *codec.Message) {
 		)
 		return
 	}
-	// Bridge: also fan-out to every live TCP and AN2 session.
+	// Fan-out to every live TCP and AN2 session. Standalone TCP/AN2
+	// providers (no UDP listener) still announce here.
 	s.broadcastTCPAnnounce(out)
 	s.broadcastAN2Announce(out)
+
+	s.mu.Lock()
+	bc := s.bcast
+	s.mu.Unlock()
+	if bc == nil {
+		// No UDP listener — TCP / AN2 fan-out already done above.
+		return
+	}
 	if _, err := bc.Write(out); err != nil {
 		s.logger.Warn("acp1 announce send",
 			slog.String("err", err.Error()),

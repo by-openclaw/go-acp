@@ -218,21 +218,9 @@ func (s *server) handleAN2ACP1Frame(f *an2.AN2Frame, sess *an2Session) {
 		}
 	}
 	if ann != nil {
-		body, err := ann.Encode()
-		if err == nil {
-			out := &an2.AN2Frame{
-				Proto:   an2.AN2ProtoACP1,
-				Slot:    f.Slot,
-				MTID:    0,
-				Type:    an2.AN2TypeData,
-				Payload: body,
-			}
-			if b, err := an2.EncodeAN2Frame(out); err == nil {
-				if s.an2Registry != nil {
-					s.an2Registry.broadcastACP1(b)
-				}
-			}
-		}
+		// Route through broadcastAnnounce for the Broadcasts gate
+		// (#257) plus the UDP+TCP bridges.
+		s.broadcastAnnounce(ann)
 	}
 }
 

@@ -54,6 +54,60 @@ type tree struct {
 	slots map[uint8]*slotCounts
 }
 
+// broadcastsEnabled implements the ACP1 Broadcasts gate per spec p.20:
+// slot 0 / control / id 4 is an enum that controls whether the device
+// emits spontaneous announces. When the field is absent (older trees
+// without the gate object), the default is permissive (true) so legacy
+// behaviour is preserved.
+//
+// The check is deliberately tolerant of enum encoding: any non-zero
+// value-byte counts as "On" since the spec convention is items=["Off","On"]
+// (index 0 = Off, index 1 = On). If the served tree carries a richer
+// enum map with a labelled "On" entry, the lookup honours that too.
+func (t *tree) broadcastsEnabled() bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	e, ok := t.entries[objectKey{slot: 0, group: codec.GroupControl, id: 4}]
+	if !ok {
+		return true // gate object not defined — permissive default
+	}
+	if e.param == nil {
+		return true
+	}
+	// Enum map case: the labelled "On" entry's index is authoritative.
+	if len(e.param.EnumMap) > 0 {
+		var idx uint8
+		switch v := e.param.Value.(type) {
+		case int64:
+			idx = uint8(v)
+		case uint64:
+			idx = uint8(v)
+		case int:
+			idx = uint8(v)
+		case float64:
+			idx = uint8(v)
+		}
+		for _, item := range e.param.EnumMap {
+			if int64(idx) == item.Value {
+				return strings.EqualFold(item.Key, "On")
+			}
+		}
+		return false
+	}
+	// Bare numeric value with no map: convention 0=Off, anything else=On.
+	switch v := e.param.Value.(type) {
+	case int64:
+		return v != 0
+	case uint64:
+		return v != 0
+	case int:
+		return v != 0
+	case float64:
+		return v != 0
+	}
+	return true
+}
+
 // numSlots returns the highest slot number that carries any entry,
 // plus one (giving the count). Used by AN2 GetDeviceInfo replies.
 func (t *tree) numSlots() int {

@@ -157,11 +157,11 @@ func (s *server) serveTCPSession(ctx context.Context, conn *net.TCPConn, ip stri
 			}
 		}
 		if ann != nil {
-			b, err := ann.Encode()
-			if err == nil {
-				// Fan-out: every active session including this one.
-				reg.broadcast(b)
-			}
+			// Route through broadcastAnnounce so the Broadcasts gate
+			// (#257) and UDP+AN2 bridges all apply uniformly. Slow
+			// consumers in the local TCP registry don't block the
+			// announce path — drop-on-full per session.
+			s.broadcastAnnounce(ann)
 		}
 	}
 
