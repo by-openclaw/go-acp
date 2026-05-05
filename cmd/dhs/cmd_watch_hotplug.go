@@ -34,7 +34,8 @@ import (
 type hotPlugEnricher struct {
 	mu             sync.Mutex
 	prev           map[int]protocol.SlotStatus
-	resolver       dmlib.Resolver // nil ⇒ no DM-library lookups
+	prevFP         map[int]protocol.CardIdentity // last-seen fingerprint per slot
+	resolver       dmlib.Resolver                // nil ⇒ no DM-library lookups
 	autoWalkOnPlug bool
 	out            io.Writer
 }
@@ -53,6 +54,7 @@ func newHotPlugEnricher(resolver dmlib.Resolver, autoWalkOnPlug bool, out io.Wri
 	}
 	return &hotPlugEnricher{
 		prev:           map[int]protocol.SlotStatus{},
+		prevFP:         map[int]protocol.CardIdentity{},
 		resolver:       resolver,
 		autoWalkOnPlug: autoWalkOnPlug,
 		out:            out,
@@ -110,14 +112,17 @@ func (h *hotPlugEnricher) handleTransition(ctx context.Context, plug protocol.Pr
 		// land here too. Identity probe is idempotent: re-running it
 		// on a card we've seen before just confirms or refreshes the
 		// fingerprint.
-		fp, seedRows, err := h.enrich(ctx, plug, slot)
+		swapTag, fp, seedRows, err := h.enrich(ctx, plug, slot)
 		if err != nil {
 			_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s  enrichment-failed: %v\n", tsStr, tag, err)
 			return
 		}
-		_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s  %s  %s\n", tsStr, tag, fp, seedRows)
-	case cur == protocol.SlotRemoved, prev == protocol.SlotRemoved && cur == protocol.SlotNoCard:
-		// Hot-removal cascade: keep emitting rows, no re-seed.
+		_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s  %s %s  %s\n", tsStr, tag, swapTag, fp, seedRows)
+	case cur == protocol.SlotRemoved, prev == protocol.SlotRemoved && cur == protocol.SlotNoCard, cur == protocol.SlotNoCard:
+		// Hot-removal cascade: keep emitting rows, no re-seed. Drop
+		// the cached fingerprint so a re-plug starts fresh
+		// ("discovered") rather than silently assuming continuity.
+		delete(h.prevFP, slot)
 		_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s\n", tsStr, tag)
 	case cur == protocol.SlotError:
 		_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s  card faulted\n", tsStr, tag)
@@ -129,24 +134,35 @@ func (h *hotPlugEnricher) handleTransition(ctx context.Context, plug protocol.Pr
 }
 
 // enrich runs the identity probe, DM-library lookup, plugin seed, and
-// (optionally) one-shot walk for a freshly-present slot. Returns a
-// short fingerprint string for the row and a seed-result tag.
-func (h *hotPlugEnricher) enrich(ctx context.Context, plug protocol.Protocol, slot int) (string, string, error) {
+// (optionally) one-shot walk for a freshly-present slot. Returns:
+//
+//	swapTag    diagnostic prefix: discovered / re-confirmed /
+//	           fw-upgrade / fw-downgrade / card-swap
+//	fp         current fingerprint MODEL@REV
+//	seedRows   seed-result tag (seeded(N objs) / no-resolver /
+//	           no-DM-entry / no-Seeder / schema-empty)
+func (h *hotPlugEnricher) enrich(ctx context.Context, plug protocol.Protocol, slot int) (string, string, string, error) {
 	idr, ok := plug.(protocol.Identifier)
 	if !ok {
-		return "(no Identifier)", "skipped", nil
+		return "discovered", "(no Identifier)", "skipped", nil
 	}
 	id, err := idr.GetIdentity(ctx, slot)
 	if err != nil {
 		if errors.Is(err, protocol.ErrIdentityUnresolved) {
-			return "id-unresolved", "no-DM-entry", nil
+			return "discovered", "id-unresolved", "no-DM-entry", nil
 		}
-		return "", "", fmt.Errorf("identity: %w", err)
+		return "", "", "", fmt.Errorf("identity: %w", err)
 	}
 	fp := fmt.Sprintf("%s@%s", id.Model, id.SwRev)
 
+	// Compare against the per-slot cached fingerprint to classify the
+	// transition. Caller (observe) holds h.mu so direct map access is
+	// safe.
+	swapTag := classifyFingerprintShift(h.prevFP[slot], id, h.prevFP)
+	h.prevFP[slot] = id
+
 	if h.resolver == nil {
-		return fp, "no-resolver", nil
+		return swapTag, fp, "no-resolver", nil
 	}
 	schema, rerr := h.resolver.Resolve(dmlib.Fingerprint{
 		Model: id.Model,
@@ -155,14 +171,14 @@ func (h *hotPlugEnricher) enrich(ctx context.Context, plug protocol.Protocol, sl
 	})
 	if rerr != nil {
 		if errors.Is(rerr, dmlib.ErrNotFound) {
-			return fp, "no-DM-entry", nil
+			return swapTag, fp, "no-DM-entry", nil
 		}
-		return fp, "", fmt.Errorf("dmlib.Resolve: %w", rerr)
+		return swapTag, fp, "", fmt.Errorf("dmlib.Resolve: %w", rerr)
 	}
 
 	seeder, ok := plug.(seederIface)
 	if !ok {
-		return fp, "no-Seeder", nil
+		return swapTag, fp, "no-Seeder", nil
 	}
 	snap, snapOK := schema.Slots[slot]
 	if !snapOK {
@@ -175,10 +191,10 @@ func (h *hotPlugEnricher) enrich(ctx context.Context, plug protocol.Protocol, sl
 		}
 	}
 	if !snapOK {
-		return fp, "schema-empty", nil
+		return swapTag, fp, "schema-empty", nil
 	}
 	if err := seeder.SeedFromDM(slot, snap); err != nil {
-		return fp, "", fmt.Errorf("seed: %w", err)
+		return swapTag, fp, "", fmt.Errorf("seed: %w", err)
 	}
 	objCount := 0
 	for _, sd := range snap.Slots {
@@ -196,5 +212,34 @@ func (h *hotPlugEnricher) enrich(ctx context.Context, plug protocol.Protocol, sl
 			_, _ = fmt.Fprintf(h.out,"         hot-plug s%-2d  walk=ok(%d)\n", slot, len(objs))
 		}()
 	}
-	return fp, tag, nil
+	return swapTag, fp, tag, nil
+}
+
+// classifyFingerprintShift compares the previous and current per-slot
+// fingerprint and returns the diagnostic prefix the row should carry.
+// prevFP is the entire enricher cache; we only need the per-slot prior
+// here, but passing the map keeps the signature open for future cross-
+// slot logic (e.g. card moved between slots).
+//
+// Outcomes:
+//
+//	discovered      no prior fingerprint cached
+//	re-confirmed    same Model + same SwRev (HwRev variation ignored)
+//	fw-upgrade      same Model, current SwRev > prior (lex compare)
+//	fw-downgrade    same Model, current SwRev < prior
+//	card-swap       different Model
+func classifyFingerprintShift(prev, cur protocol.CardIdentity, _ map[int]protocol.CardIdentity) string {
+	if prev.Model == "" {
+		return "discovered"
+	}
+	if prev.Model != cur.Model {
+		return fmt.Sprintf("card-swap %s@%s →", prev.Model, prev.SwRev)
+	}
+	if prev.SwRev == cur.SwRev {
+		return "re-confirmed"
+	}
+	if cur.SwRev > prev.SwRev {
+		return fmt.Sprintf("fw-upgrade %s %s →", prev.Model, prev.SwRev)
+	}
+	return fmt.Sprintf("fw-downgrade %s %s →", prev.Model, prev.SwRev)
 }

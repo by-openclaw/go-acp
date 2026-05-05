@@ -285,6 +285,103 @@ func TestHotPlugEnricher_HotRemove_NoReseed(t *testing.T) {
 	}
 }
 
+func TestClassifyFingerprintShift(t *testing.T) {
+	cases := []struct {
+		name string
+		prev protocol.CardIdentity
+		cur  protocol.CardIdentity
+		want string
+	}{
+		{"first-sight", protocol.CardIdentity{}, protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, "discovered"},
+		{"re-confirmed-same", protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, "re-confirmed"},
+		{"fw-upgrade", protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, protocol.CardIdentity{Model: "RRS18", SwRev: "1602"}, "fw-upgrade RRS18 1601 →"},
+		{"fw-downgrade", protocol.CardIdentity{Model: "RRS18", SwRev: "1602"}, protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, "fw-downgrade RRS18 1602 →"},
+		{"card-swap", protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, protocol.CardIdentity{Model: "GJA840", SwRev: "0101"}, "card-swap RRS18@1601 →"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := classifyFingerprintShift(tc.prev, tc.cur, nil)
+			if got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHotPlugEnricher_FingerprintShifts_LiveDiagnostic(t *testing.T) {
+	// Drive a real card-swap sequence and confirm the diagnostic row
+	// classifies it correctly.
+	var buf bytes.Buffer
+	enr := newHotPlugEnricher(&fakeResolver{schema: makeSchema(0, 1)}, false, &buf)
+	plug := &fakePlugin{
+		identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"},
+	}
+
+	// 1) Initial discovery.
+	t0 := time.Now()
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	if !strings.Contains(buf.String(), "discovered RRS18@1601") {
+		t.Fatalf("missing 'discovered' for initial; output: %q", buf.String())
+	}
+	buf.Reset()
+
+	// 2) Same card re-confirmed: cycle through boot then back to present.
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	if !strings.Contains(buf.String(), "re-confirmed RRS18@1601") {
+		t.Fatalf("missing 're-confirmed'; output: %q", buf.String())
+	}
+	buf.Reset()
+
+	// 3) Firmware upgrade: same model, higher sw_rev.
+	plug.identity = protocol.CardIdentity{Model: "RRS18", SwRev: "1602"}
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	if !strings.Contains(buf.String(), "fw-upgrade RRS18 1601") {
+		t.Fatalf("missing 'fw-upgrade'; output: %q", buf.String())
+	}
+	buf.Reset()
+
+	// 4) Firmware downgrade.
+	plug.identity = protocol.CardIdentity{Model: "RRS18", SwRev: "1500"}
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	if !strings.Contains(buf.String(), "fw-downgrade RRS18 1602") {
+		t.Fatalf("missing 'fw-downgrade'; output: %q", buf.String())
+	}
+	buf.Reset()
+
+	// 5) Card swap to a different model.
+	plug.identity = protocol.CardIdentity{Model: "GJA840", SwRev: "0101"}
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	if !strings.Contains(buf.String(), "card-swap RRS18@1500") {
+		t.Fatalf("missing 'card-swap'; output: %q", buf.String())
+	}
+}
+
+func TestHotPlugEnricher_NoCard_DropsCachedFingerprint(t *testing.T) {
+	// After the slot goes empty (no_card), the next time it hits
+	// present we should classify as 'discovered' even if the same
+	// physical card is re-inserted — we cannot assume continuity.
+	var buf bytes.Buffer
+	enr := newHotPlugEnricher(&fakeResolver{schema: makeSchema(0, 1)}, false, &buf)
+	plug := &fakePlugin{identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}}
+
+	t0 := time.Now()
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotRemoved})
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotNoCard})
+	buf.Reset()
+	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	if strings.Contains(buf.String(), "re-confirmed") {
+		t.Fatalf("re-plug after no_card should NOT be re-confirmed; output: %q", buf.String())
+	}
+	if !strings.Contains(buf.String(), "discovered") {
+		t.Fatalf("re-plug after no_card should classify as 'discovered'; output: %q", buf.String())
+	}
+}
+
 // TestHotPlugEnricher_AnyPathToPresent_TriggersEnrichment pins the
 // widened trigger introduced after the simulator showed shortcut
 // transitions: powerup→present and removed→present can both happen
