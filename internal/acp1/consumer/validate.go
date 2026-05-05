@@ -46,6 +46,11 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 		id    uint8
 	}
 	objects := map[objKey]protocol.Object{}
+	// frameStatuses captures the latest decoded frame-status reply
+	// (slot 0, group=frame, id=0) so the replay tree can stamp each
+	// SlotDump with the per-slot status it had at capture time —
+	// matching what GetSlotInfo populates on a live walk.
+	var frameStatuses []protocol.SlotStatus
 
 	var lastReqMTID uint32
 	for i, t := range trames {
@@ -100,9 +105,30 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 			// regardless and just discard the result if --out-tree is
 			// off, but the decode is non-trivial — gate it.
 			if opts.OutTree != "" && msg.MCode == byte(codec.MethodGetObject) {
+				// Skip root probes: the live walker reads root only for
+				// per-group counts (browser.go) and never emits it as
+				// an Object. The replay tree must match.
+				if msg.ObjGroup == codec.GroupRoot {
+					break
+				}
 				if d, derr := codec.DecodeObject(msg.Value); derr == nil {
 					obj := toProtocolObject(d, int(msg.MAddr), msg.ObjGroup, msg.ObjID)
 					objects[objKey{int(msg.MAddr), msg.ObjGroup, msg.ObjID}] = obj
+				}
+			}
+			// Capture frame-status getValue replies so the replay tree
+			// can stamp each SlotDump.Status. Format per spec p.24:
+			// MDATA = [num_slots, status_0, status_1, ...].
+			if opts.OutTree != "" &&
+				msg.MCode == byte(codec.MethodGetValue) &&
+				msg.ObjGroup == codec.GroupFrame && msg.ObjID == 0 &&
+				len(msg.Value) >= 1 {
+				num := int(msg.Value[0])
+				if num > 0 && len(msg.Value) >= 1+num {
+					frameStatuses = make([]protocol.SlotStatus, num)
+					for i := 0; i < num; i++ {
+						frameStatuses[i] = protocol.SlotStatus(msg.Value[1+i])
+					}
 				}
 			}
 		}
@@ -114,7 +140,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 	}
 
 	if opts.OutTree != "" {
-		if err := writeReplayTree(opts.OutTree, objects); err != nil {
+		if err := writeReplayTree(opts.OutTree, objects, frameStatuses); err != nil {
 			return report, fmt.Errorf("write out-tree: %w", err)
 		}
 	}
@@ -126,7 +152,11 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 // JSON. The format matches what `dhs consumer acp1 export --format json`
 // produces from a live walk so capture/replay round-trips compare with
 // byte-equality (after timestamp normalisation).
-func writeReplayTree[K comparable](path string, objects map[K]protocol.Object) error {
+//
+// frameStatuses is the per-slot status array captured from the
+// getValue(slot=0, group=frame, id=0) reply, used to stamp each
+// SlotDump.Status (matches what live GetSlotInfo populates).
+func writeReplayTree[K comparable](path string, objects map[K]protocol.Object, frameStatuses []protocol.SlotStatus) error {
 	bySlot := map[int][]protocol.Object{}
 	for _, o := range objects {
 		bySlot[o.Slot] = append(bySlot[o.Slot], o)
@@ -153,11 +183,15 @@ func writeReplayTree[K comparable](path string, objects map[K]protocol.Object) e
 			}
 			return objs[i].ID < objs[j].ID
 		})
-		snap.Slots = append(snap.Slots, export.SlotDump{
+		dump := export.SlotDump{
 			Slot:     s,
 			WalkedAt: now,
 			Objects:  objs,
-		})
+		}
+		if s >= 0 && s < len(frameStatuses) {
+			dump.Status = frameStatuses[s].String()
+		}
+		snap.Slots = append(snap.Slots, dump)
 	}
 	f, err := os.Create(path)
 	if err != nil {
