@@ -290,8 +290,13 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	switch verb {
 	case "serve":
 		return runProducer(ctx, proto, rest)
+	case "admin":
+		if proto != "acp1" {
+			return fmt.Errorf("producer %s: admin verb is acp1-only (advances #258)", proto)
+		}
+		return runACP1Admin(ctx, rest)
 	}
-	return fmt.Errorf("producer %s: unknown verb %q (expected: serve)", proto, verb)
+	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | admin)", proto, verb)
 }
 
 // dispatchRegistry routes `dhs registry <proto> <verb> [args]`. The
