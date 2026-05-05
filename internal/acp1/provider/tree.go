@@ -247,21 +247,21 @@ func (t *tree) lookup(k objectKey) (*entry, bool) {
 // identity for the slot becomes whatever the snapshot declares, so
 // subsequent identity-probe replies reflect the new card.
 //
-// Slot 0 is reserved for the rack controller (frame-status, root,
-// broadcasts gate); ReplaceSlot rejects it so a misrouted slot.load
-// can never clobber the controller's own state.
+// Slot 0 is the rack-controller card and a legitimate slot.load
+// target (Cerebrum / VSM treat slot 0 as the frame's own identity).
+// We preserve the frame-status object on (slot=0, group=frame,
+// id=0) across the replace so the addressable slot count of the
+// frame — set at tree.json load time — survives a controller
+// hot-swap. The converter already strips frame/root group objects
+// from the schema so they never reach this method.
 //
 // Errors:
 //
-//	slot==0          → invalid (controller-only)
 //	snap==nil        → snapshotToEntries surfaces a clear error
 //	conversion fails → propagated as-is so the admin verb caller can
 //	                   refuse the load with the underlying type / range
 //	                   complaint
 func (t *tree) ReplaceSlot(slot uint8, snap *export.Snapshot) error {
-	if slot == 0 {
-		return fmt.Errorf("acp1 provider: ReplaceSlot rejects slot 0 (rack controller)")
-	}
 	entries, counts, err := snapshotToEntries(slot, snap)
 	if err != nil {
 		return err
@@ -269,9 +269,15 @@ func (t *tree) ReplaceSlot(slot uint8, snap *export.Snapshot) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	for k := range t.entries {
-		if k.slot == slot {
-			delete(t.entries, k)
+		if k.slot != slot {
+			continue
 		}
+		if slot == 0 && k.group == codec.GroupFrame {
+			// Preserve frame-status — frame slot-count belongs to the
+			// starter tree, not to the swapped-in controller card.
+			continue
+		}
+		delete(t.entries, k)
 	}
 	for _, e := range entries {
 		t.entries[e.key] = e
@@ -285,19 +291,28 @@ func (t *tree) ReplaceSlot(slot uint8, snap *export.Snapshot) error {
 // served wire identity reverts to "no card present" for subsequent
 // reads. Idempotent on already-empty slots.
 //
-// Slot 0 is rejected for the same reason as ReplaceSlot.
+// On slot 0 the frame-status object is preserved (same reason as
+// ReplaceSlot): the frame keeps reporting per-slot status even when
+// the controller card is logically extracted.
 func (t *tree) ClearSlot(slot uint8) error {
-	if slot == 0 {
-		return fmt.Errorf("acp1 provider: ClearSlot rejects slot 0 (rack controller)")
-	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	for k := range t.entries {
-		if k.slot == slot {
-			delete(t.entries, k)
+		if k.slot != slot {
+			continue
 		}
+		if slot == 0 && k.group == codec.GroupFrame {
+			continue
+		}
+		delete(t.entries, k)
 	}
-	delete(t.slots, slot)
+	if slot == 0 {
+		// Reset counts to zero but keep the slot 0 entry so the
+		// frame-status remains addressable.
+		t.slots[0] = &slotCounts{}
+	} else {
+		delete(t.slots, slot)
+	}
 	return nil
 }
 

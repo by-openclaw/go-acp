@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -58,6 +60,9 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		adminName     = fs.String("name", "dhs-acp1", "acp1 only: instance name for admin RPC discovery file")
 		insertTiming  = fs.String("insert-timing", "real", "acp1 only: cascade timing for slot insert (real / fast)")
 		dmLibraryRoot = fs.String("dm-library", "", "acp1 only: DM library root for admin slot.load (#260)")
+		preload       = fs.String("preload", "", "acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1")
+		play          = fs.String("play", "", "acp1 only: comma-separated object paths the producer should oscillate with random values. Each tick fires a spontaneous status announce. Format: 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7,1.1.3.10 oscillates Temp_Left + Temp_Right + Rx_Packet_Loss on slot 0")
+		playEvery     = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -204,6 +209,51 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		// so the admin slot.load verb (#260) can resolve cards.
 		if *dmLibraryRoot != "" {
 			acp1Srv.SetDMLibrary(dmlib.New(*dmLibraryRoot))
+		}
+
+		// --preload installs schemas onto slots BEFORE Serve binds the
+		// listening socket. External controllers (Cerebrum, VSM Studio)
+		// then see a stable device on first walk and don't discard the
+		// cached template across producer restarts. Order:
+		//   1. Tree.json starter loaded (frame-status array sized).
+		//   2. SetDMLibrary attached (resolver ready).
+		//   3. Preload entries installed (ReplaceSlot + present).
+		//   4. Serve begins.
+		if *preload != "" {
+			if *dmLibraryRoot == "" {
+				return fmt.Errorf("--preload requires --dm-library")
+			}
+			for _, entry := range strings.Split(*preload, ",") {
+				entry = strings.TrimSpace(entry)
+				if entry == "" {
+					continue
+				}
+				kv := strings.SplitN(entry, "=", 2)
+				if len(kv) != 2 {
+					return fmt.Errorf("--preload: entry %q must be slot=card", entry)
+				}
+				slotN, perr := strconv.Atoi(strings.TrimSpace(kv[0]))
+				if perr != nil || slotN < 0 || slotN > 31 {
+					return fmt.Errorf("--preload: invalid slot %q", kv[0])
+				}
+				cardPath := strings.TrimSpace(kv[1])
+				if perr := acp1Srv.PreloadSlot(uint8(slotN), cardPath); perr != nil {
+					return fmt.Errorf("--preload slot %d (%s): %w", slotN, cardPath, perr)
+				}
+				logger.Info("acp1 preload",
+					slog.Int("slot", slotN),
+					slog.String("card", cardPath))
+			}
+		}
+
+		// --play kicks off a producer-internal random oscillator on
+		// the listed object paths. Models real-hardware drift
+		// (temperature, PSU rails, packet counters): the server
+		// publishes spontaneous status announces on its own without
+		// any external trigger.
+		if *play != "" {
+			paths := strings.Split(*play, ",")
+			acp1Srv.RunStatusPlay(srvCtx, paths, *playEvery)
 		}
 
 		// Admin RPC always runs alongside the wire transports so the

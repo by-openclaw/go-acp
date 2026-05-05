@@ -95,12 +95,13 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 // Serve binds addr (e.g. "0.0.0.0:2071") and runs until ctx is cancelled
 // or a fatal listen error occurs.
 //
-// Sets SO_REUSEADDR on the listening socket so a watch consumer can
-// co-bind the same port on the same host (loopback testing) and so
-// multiple provider instances on different VIPs of the same host can
-// share the canonical port. Mirrors the transport.ListenUDP pattern;
-// the transport package's helper already does this for the consumer
-// side.
+// SO_REUSEADDR is set so the listener coexists with ACP1 clients on
+// the same host that also bind 2071 to receive broadcast announces
+// (this is how Cerebrum, VSM Studio, SynapseSetUp and other Axon
+// controllers operate per ACP1 §"Announcements" p.14). Real Axon
+// racks are dedicated devices on their own IP, so the spec is silent
+// on SO_REUSEADDR — but emulators and dev rigs running on the same
+// host as those controllers must use it or fail to bind.
 func (s *server) Serve(ctx context.Context, addr string) error {
 	udpAddr, err := net.ResolveUDPAddr("udp4", addr)
 	if err != nil {

@@ -362,22 +362,50 @@ func TestSlotUnload_RemovesEntries(t *testing.T) {
 	}
 }
 
-// TestTree_ReplaceSlot_RejectsSlotZero defends the rack-controller
-// frame-status from a misrouted slot.load.
-func TestTree_ReplaceSlot_RejectsSlotZero(t *testing.T) {
+// TestTree_ReplaceSlot_SlotZero_PreservesFrameStatus loads a controller
+// card on slot 0 and verifies that the frame-status object the starter
+// tree installed is preserved (so the addressable slot count survives
+// the controller hot-swap).
+func TestTree_ReplaceSlot_SlotZero_PreservesFrameStatus(t *testing.T) {
 	s := newTestServer(t)
-	snap := schemaWithIdentity(0, "BOGUS", "0").Slots[0]
-	if err := s.tree.ReplaceSlot(0, snap); err == nil {
-		t.Fatal("ReplaceSlot(0, ...) should reject slot 0")
+	before := readEntry(t, s, 0, codec.GroupFrame, 0)
+	if before == nil {
+		t.Fatal("setup: frame-status should exist on slot 0 before replace")
+	}
+	beforeStatuses := before.param.Value
+
+	snap := schemaWithIdentity(0, "RRS18", "1601").Slots[0]
+	if err := s.tree.ReplaceSlot(0, snap); err != nil {
+		t.Fatalf("ReplaceSlot(0, RRS18): %v", err)
+	}
+	if e := readEntry(t, s, 0, codec.GroupIdentity, 0); e == nil {
+		t.Fatal("identity[0] should exist on slot 0 after replace")
+	}
+	after := readEntry(t, s, 0, codec.GroupFrame, 0)
+	if after == nil {
+		t.Fatal("frame-status should still exist on slot 0 after replace")
+	}
+	if !reflect.DeepEqual(after.param.Value, beforeStatuses) {
+		t.Fatal("frame-status value should be unchanged after slot-0 replace")
 	}
 }
 
-// TestTree_ClearSlot_RejectsSlotZero defends slot 0 from a wayward
-// SlotUnload.
-func TestTree_ClearSlot_RejectsSlotZero(t *testing.T) {
+// TestTree_ClearSlot_SlotZero_PreservesFrameStatus drops controller
+// identity but leaves the frame-status array intact.
+func TestTree_ClearSlot_SlotZero_PreservesFrameStatus(t *testing.T) {
 	s := newTestServer(t)
-	if err := s.tree.ClearSlot(0); err == nil {
-		t.Fatal("ClearSlot(0) should reject slot 0")
+	snap := schemaWithIdentity(0, "RRS18", "1601").Slots[0]
+	if err := s.tree.ReplaceSlot(0, snap); err != nil {
+		t.Fatalf("ReplaceSlot setup: %v", err)
+	}
+	if err := s.tree.ClearSlot(0); err != nil {
+		t.Fatalf("ClearSlot(0): %v", err)
+	}
+	if e := readEntry(t, s, 0, codec.GroupIdentity, 0); e != nil {
+		t.Fatal("identity[0] should be cleared on slot 0")
+	}
+	if e := readEntry(t, s, 0, codec.GroupFrame, 0); e == nil {
+		t.Fatal("frame-status should remain on slot 0 after ClearSlot")
 	}
 }
 
