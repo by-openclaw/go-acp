@@ -75,7 +75,16 @@ func (h *hotPlugEnricher) observe(ctx context.Context, plug protocol.Protocol, t
 		prev, ok := h.prev[slot]
 		h.prev[slot] = cur
 		if !ok {
-			continue // first sight; record without acting
+			// First sight: if the slot is already present (controller
+			// boot finished before our watch started), enrich now —
+			// there's no boot→present transition to catch later.
+			// Synthesise the transition as no_card → cur so the
+			// downstream switch routes it correctly.
+			if cur == protocol.SlotPresent {
+				transitioned = append(transitioned, slot)
+				h.handleTransition(ctx, plug, ts, slot, protocol.SlotNoCard, cur)
+			}
+			continue
 		}
 		if prev == cur {
 			continue
@@ -93,8 +102,14 @@ func (h *hotPlugEnricher) handleTransition(ctx context.Context, plug protocol.Pr
 	tag := fmt.Sprintf("s%-2d %s -> %s", slot, prev.State(), cur.State())
 
 	switch {
-	case prev == protocol.SlotBootMode && cur == protocol.SlotPresent:
-		// Boot → present: trigger identity + seed (+ optional walk).
+	case cur == protocol.SlotPresent && prev != protocol.SlotPresent:
+		// Any path landing on present triggers enrichment. The
+		// canonical path is boot → present (real hardware always
+		// passes through boot); simulator and post-controller-boot
+		// shortcuts (no_card / powerup / removed / error → present)
+		// land here too. Identity probe is idempotent: re-running it
+		// on a card we've seen before just confirms or refreshes the
+		// fingerprint.
 		fp, seedRows, err := h.enrich(ctx, plug, slot)
 		if err != nil {
 			_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s  enrichment-failed: %v\n", tsStr, tag, err)

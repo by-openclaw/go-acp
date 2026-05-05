@@ -105,19 +105,48 @@ func makeSchema(slot, nObjs int) *dmlib.Schema {
 	}
 }
 
-// firstFrameStatus seeds prev[]; subsequent calls drive transitions.
-func TestHotPlugEnricher_FirstSightDoesNothing(t *testing.T) {
+// firstFrameStatus seeds prev[]. Slots already present at first sight
+// are enriched immediately (controller booted before the watch started;
+// no boot→present transition will arrive). Slots in any non-present
+// state at first sight are recorded silently.
+func TestHotPlugEnricher_FirstSight_NonPresentSlotsRecordedSilently(t *testing.T) {
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(nil, false, &buf)
 	plug := &fakePlugin{}
 
+	// First-sight: slot 0 = no_card → no action.
 	transitioned := enr.observe(context.Background(), plug, time.Now(),
-		[]protocol.SlotStatus{protocol.SlotPresent, protocol.SlotNoCard})
+		[]protocol.SlotStatus{protocol.SlotNoCard})
 	if len(transitioned) != 0 {
-		t.Fatalf("first sight returned transitioned=%v, want []", transitioned)
+		t.Fatalf("first sight no_card returned transitioned=%v, want []", transitioned)
 	}
 	if buf.Len() != 0 {
-		t.Fatalf("first sight emitted output: %q", buf.String())
+		t.Fatalf("first sight no_card emitted output: %q", buf.String())
+	}
+}
+
+func TestHotPlugEnricher_FirstSight_PresentSlotEnriches(t *testing.T) {
+	// When the watch verb starts AFTER the controller has booted, the
+	// first frame-status announce shows slots already present.  We
+	// must enrich them on first sight — there will be no boot→present
+	// transition arriving later.
+	var buf bytes.Buffer
+	enr := newHotPlugEnricher(nil, false, &buf)
+	plug := &fakePlugin{
+		identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"},
+	}
+
+	transitioned := enr.observe(context.Background(), plug, time.Now(),
+		[]protocol.SlotStatus{protocol.SlotPresent})
+	if len(transitioned) != 1 || transitioned[0] != 0 {
+		t.Fatalf("first sight present returned transitioned=%v, want [0]", transitioned)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "no_card -> present") {
+		t.Fatalf("missing synthesised transition row: %q", out)
+	}
+	if !strings.Contains(out, "RRS18@1601") {
+		t.Fatalf("missing identity probe result: %q", out)
 	}
 }
 
@@ -229,21 +258,68 @@ func TestHotPlugEnricher_AutoWalkOnPlug(t *testing.T) {
 }
 
 func TestHotPlugEnricher_HotRemove_NoReseed(t *testing.T) {
+	// First-sight-present triggers enrichment (one SeedFromDM call).
+	// The remove cascade after it must NOT add further seed calls —
+	// that's what this test pins.
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(&fakeResolver{schema: makeSchema(1, 1)}, false, &buf)
 	plug := &fakePlugin{identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}}
 
 	t0 := time.Now()
 	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	seedAfterFirstSight := plug.seedCalls
+	if seedAfterFirstSight != 1 {
+		t.Fatalf("first-sight present should enrich once; seedCalls = %d", seedAfterFirstSight)
+	}
+
 	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotRemoved})
 	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotNoCard})
 
-	if plug.seedCalls != 0 {
-		t.Fatalf("SeedFromDM called %d times during hot-remove cascade; want 0", plug.seedCalls)
+	if plug.seedCalls != seedAfterFirstSight {
+		t.Fatalf("hot-remove cascade should not re-seed; seedCalls = %d, want %d",
+			plug.seedCalls, seedAfterFirstSight)
 	}
 	out := buf.String()
 	if !strings.Contains(out, "present -> removed") || !strings.Contains(out, "removed -> no_card") {
 		t.Fatalf("missing transitions in output: %q", out)
+	}
+}
+
+// TestHotPlugEnricher_AnyPathToPresent_TriggersEnrichment pins the
+// widened trigger introduced after the simulator showed shortcut
+// transitions: powerup→present and removed→present can both happen
+// without going through boot. Real hardware always passes through
+// boot (so the canonical path stays exercised), but the simulator and
+// post-controller-boot first-sight cases must enrich too.
+func TestHotPlugEnricher_AnyPathToPresent_TriggersEnrichment(t *testing.T) {
+	cases := []struct {
+		name string
+		prev protocol.SlotStatus
+	}{
+		{"boot-to-present", protocol.SlotBootMode},
+		{"powerup-to-present", protocol.SlotPowerUp},
+		{"removed-to-present", protocol.SlotRemoved},
+		{"error-to-present", protocol.SlotError},
+		{"no_card-to-present", protocol.SlotNoCard},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			enr := newHotPlugEnricher(&fakeResolver{schema: makeSchema(0, 1)}, false, &buf)
+			plug := &fakePlugin{identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}}
+
+			t0 := time.Now()
+			enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{tc.prev})
+			before := plug.seedCalls
+			enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+			if plug.seedCalls <= before {
+				t.Fatalf("%s did not trigger enrichment; seedCalls before=%d after=%d",
+					tc.name, before, plug.seedCalls)
+			}
+			if !strings.Contains(buf.String(), "RRS18@1601") {
+				t.Fatalf("%s missing fingerprint in output: %q", tc.name, buf.String())
+			}
+		})
 	}
 }
 
