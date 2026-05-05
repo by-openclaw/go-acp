@@ -295,8 +295,13 @@ func dispatchProducer(ctx context.Context, args []string) error {
 			return fmt.Errorf("producer %s: admin verb is acp1-only (advances #258)", proto)
 		}
 		return runACP1Admin(ctx, rest)
+	case "fuzz":
+		if proto != "acp1" {
+			return fmt.Errorf("producer %s: fuzz verb is acp1-only (advances #262)", proto)
+		}
+		return runACP1Fuzz(ctx, rest)
 	}
-	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | admin)", proto, verb)
+	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | admin | fuzz)", proto, verb)
 }
 
 // dispatchRegistry routes `dhs registry <proto> <verb> [args]`. The
