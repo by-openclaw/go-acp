@@ -1,0 +1,61 @@
+{
+  "root": {
+    "number": 1,
+    "identifier": "device",
+    "path": "device",
+    "oid": "1",
+    "description": null,
+    "isOnline": true,
+    "access": "read",
+    "children": [
+      {
+        "number": 0,
+        "identifier": "slot-0",
+        "path": "slot-0",
+        "oid": "1.1",
+        "description": null,
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 6,
+            "identifier": "frame",
+            "path": "slot-0.frame",
+            "oid": "1.1.6",
+            "description": null,
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 0,
+                "identifier": "frameStatus",
+                "path": "slot-0.frame.frameStatus",
+                "oid": "1.1.6.0",
+                "description": null,
+                "isOnline": true,
+                "access": "read",
+                "children": [],
+                "type": "octets",
+                "value": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                "default": null,
+                "minimum": null,
+                "maximum": null,
+                "step": null,
+                "unit": null,
+                "format": "frame",
+                "factor": null,
+                "formula": null,
+                "enumeration": null,
+                "enumMap": null,
+                "streamIdentifier": null,
+                "streamDescriptor": null,
+                "templateReference": null,
+                "schemaIdentifiers": null
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

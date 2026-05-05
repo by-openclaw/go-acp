@@ -6,8 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/export"
+	"dhs/internal/export/canonical"
 )
 
 // groupName -> ObjGroup constant. Mirrors buildSlotNode in
@@ -238,6 +239,66 @@ func (t *tree) lookup(k objectKey) (*entry, bool) {
 	defer t.mu.RUnlock()
 	e, ok := t.entries[k]
 	return e, ok
+}
+
+// ReplaceSlot drops every existing entry for the target slot and
+// installs the contents of the supplied DM-library snapshot in their
+// place. Used by SlotLoad to model a hot-plug card swap: the wire
+// identity for the slot becomes whatever the snapshot declares, so
+// subsequent identity-probe replies reflect the new card.
+//
+// Slot 0 is reserved for the rack controller (frame-status, root,
+// broadcasts gate); ReplaceSlot rejects it so a misrouted slot.load
+// can never clobber the controller's own state.
+//
+// Errors:
+//
+//	slot==0          → invalid (controller-only)
+//	snap==nil        → snapshotToEntries surfaces a clear error
+//	conversion fails → propagated as-is so the admin verb caller can
+//	                   refuse the load with the underlying type / range
+//	                   complaint
+func (t *tree) ReplaceSlot(slot uint8, snap *export.Snapshot) error {
+	if slot == 0 {
+		return fmt.Errorf("acp1 provider: ReplaceSlot rejects slot 0 (rack controller)")
+	}
+	entries, counts, err := snapshotToEntries(slot, snap)
+	if err != nil {
+		return err
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for k := range t.entries {
+		if k.slot == slot {
+			delete(t.entries, k)
+		}
+	}
+	for _, e := range entries {
+		t.entries[e.key] = e
+	}
+	t.slots[slot] = counts
+	return nil
+}
+
+// ClearSlot drops every entry for the target slot. Used by SlotUnload
+// after the cascade extract drives the slot back to no_card, so the
+// served wire identity reverts to "no card present" for subsequent
+// reads. Idempotent on already-empty slots.
+//
+// Slot 0 is rejected for the same reason as ReplaceSlot.
+func (t *tree) ClearSlot(slot uint8) error {
+	if slot == 0 {
+		return fmt.Errorf("acp1 provider: ClearSlot rejects slot 0 (rack controller)")
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for k := range t.entries {
+		if k.slot == slot {
+			delete(t.entries, k)
+		}
+	}
+	delete(t.slots, slot)
+	return nil
 }
 
 // deriveACPType maps a canonical.Parameter to the concrete ACP1 wire
