@@ -42,6 +42,11 @@ type server struct {
 	bcast   *net.UDPConn // separate socket dialed to 255.255.255.255
 	closed  bool
 	stopped chan struct{}
+
+	// tcpRegistry is set when ServeTCP runs. Announces emitted via the
+	// UDP broadcast path are also fanned to every live TCP session so
+	// TCP-only consumers see value-change events.
+	tcpRegistry *tcpSessionRegistry
 }
 
 func newServer(logger *slog.Logger, exp *canonical.Export) *server {
@@ -214,6 +219,8 @@ func (s *server) broadcastAnnounce(ann *codec.Message) {
 		)
 		return
 	}
+	// Bridge: also fan-out to every live TCP session.
+	s.broadcastTCPAnnounce(out)
 	if _, err := bc.Write(out); err != nil {
 		s.logger.Warn("acp1 announce send",
 			slog.String("err", err.Error()),
