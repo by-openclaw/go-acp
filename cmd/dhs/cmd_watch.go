@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"dhs/internal/dmlib"
 	"dhs/internal/protocol"
 )
 
@@ -48,17 +49,24 @@ func runWatch(ctx context.Context, args []string) error {
 	group := fs.String("group", "", "group filter (empty = any)")
 	label := fs.String("label", "", "label filter (requires prior walk)")
 	id := fs.Int("id", -1, "object id filter (-1 = any)")
+	dmLibrary := fs.String("dm-library", "",
+		"DM library root for hot-plug enrichment (#254). Empty disables identity probe + seed.")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--group G] [--label L]")
+		return fmt.Errorf("usage: acp watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L]")
 	}
 	_ = fs.Parse(rest)
-	_ = autoWalkOnPlug // plumbed for #254; not yet consumed in the walk-scope path
 
 	walkScope, scopeErr := parseWalkScope(*slot, *slotsArg, *noWalk)
 	if scopeErr != nil {
 		return scopeErr
 	}
+
+	var resolver dmlib.Resolver
+	if *dmLibrary != "" {
+		resolver = dmlib.New(*dmLibrary)
+	}
+	enricher := newHotPlugEnricher(resolver, *autoWalkOnPlug, os.Stdout)
 
 	plug, cleanup, err := connect(ctx, host, cf)
 	if err != nil {
@@ -131,6 +139,12 @@ func runWatch(ctx context.Context, args []string) error {
 		case <-ctx.Done():
 			return nil
 		case ev := <-events:
+			// Frame-status announce drives hot-plug enrichment (#254).
+			// ACP1 emits group=frame, id=0 with a SlotStatus[] payload.
+			if ev.Group == "frame" && ev.ID == 0 && ev.Value.Kind == protocol.KindFrame {
+				enricher.observe(ctx, plug, ev.Timestamp, ev.Value.SlotStatus)
+			}
+
 			// Use disk cache label if plugin hasn't resolved it yet.
 			label := ev.Label
 			src := "live"
