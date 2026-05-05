@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"dhs/internal/dmlib"
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/provider"
@@ -55,6 +56,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		an2Port       = fs.Int("an2-port", 2072, "acp1 only: AN2/TCP listen port for --transport an2/all")
 		adminName     = fs.String("name", "dhs-acp1", "acp1 only: instance name for admin RPC discovery file")
 		insertTiming  = fs.String("insert-timing", "real", "acp1 only: cascade timing for slot insert (real / fast)")
+		dmLibraryRoot = fs.String("dm-library", "", "acp1 only: DM library root for admin slot.load (#260)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -191,6 +193,12 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 			return err
 		}
 		acp1Srv.SetInsertTiming(timing)
+
+		// DM library: --dm-library points at tests/fixtures/products/
+		// so the admin slot.load verb (#260) can resolve cards.
+		if *dmLibraryRoot != "" {
+			acp1Srv.SetDMLibrary(dmlib.New(*dmLibraryRoot))
+		}
 
 		// Admin RPC always runs alongside the wire transports so the
 		// `dhs producer acp1 admin <verb>` CLI can talk to this

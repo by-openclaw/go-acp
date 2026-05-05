@@ -57,22 +57,39 @@ func handlePing(_ context.Context, s *server, _ map[string]any) (*AdminResponse,
 	}, nil
 }
 
-// handleSlotLoad is reserved for the DM-library loader (#260). For now
-// it returns a clear "not implemented yet" diagnostic so the verb is
-// reachable from the CLI but the actual schema-load wiring waits.
-func handleSlotLoad(_ context.Context, _ *server, _ map[string]any) (*AdminResponse, error) {
+// handleSlotLoad models a hot-plug insert by resolving a DM-library
+// card and driving CascadeInsert. The resolver must be attached via
+// SetDMLibrary on the server (the producer CLI passes --dm-library).
+func handleSlotLoad(ctx context.Context, s *server, args map[string]any) (*AdminResponse, error) {
+	slot, err := readIntArg(args, "slot")
+	if err != nil {
+		return nil, err
+	}
+	card, err := readStringArg(args, "card")
+	if err != nil {
+		return nil, err
+	}
+	if err := s.SlotLoad(ctx, uint8(slot), card); err != nil {
+		return nil, err
+	}
 	return &AdminResponse{
-		Status:  "error",
-		Message: "slot.load: DM-library loader lands in #260; verb is plumbed but not yet wired",
+		Result: map[string]any{
+			"slot":    slot,
+			"card":    card,
+			"started": true,
+		},
 	}, nil
 }
 
-// handleSlotUnload mirrors handleSlotLoad — full implementation lands
-// in #260 alongside the loader.
-func handleSlotUnload(_ context.Context, _ *server, _ map[string]any) (*AdminResponse, error) {
+// handleSlotUnload models a hot-extract.
+func handleSlotUnload(_ context.Context, s *server, args map[string]any) (*AdminResponse, error) {
+	slot, err := readIntArg(args, "slot")
+	if err != nil {
+		return nil, err
+	}
+	s.SlotUnload(uint8(slot))
 	return &AdminResponse{
-		Status:  "error",
-		Message: "slot.unload: DM-library loader lands in #260",
+		Result: map[string]any{"slot": slot, "extracted": true},
 	}, nil
 }
 
