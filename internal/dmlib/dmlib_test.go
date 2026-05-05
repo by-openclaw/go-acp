@@ -300,6 +300,72 @@ func TestDiff_AddedRemovedSlots(t *testing.T) {
 	}
 }
 
+func TestDiff_ModelMismatch_FlagsAndReturnsEmpty(t *testing.T) {
+	prev := &Schema{
+		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1601", Proto: "acp1"},
+		Slots: map[int]*export.Snapshot{
+			1: makeSnapshot("RRS18", []protocol.Object{{Slot: 1, ID: 1, Label: "A"}}),
+		},
+	}
+	cur := &Schema{
+		Fingerprint: Fingerprint{Model: "GJA840", SwRev: "0101", Proto: "acp1"},
+		Slots: map[int]*export.Snapshot{
+			1: makeSnapshot("GJA840", []protocol.Object{{Slot: 1, ID: 1, Label: "B"}}),
+		},
+	}
+	r := New(t.TempDir())
+	d := r.Diff(prev, cur)
+	if !d.Mismatch {
+		t.Fatal("Diff across different Models should flag Mismatch")
+	}
+	if len(d.AddedSlots) != 0 || len(d.RemovedSlots) != 0 || len(d.PerSlot) != 0 {
+		t.Fatalf("Mismatch diff should be empty; got %+v", d)
+	}
+}
+
+func TestDiff_SameModel_DifferentSwRev_OK(t *testing.T) {
+	// Firmware bump: same model, different sw_rev. Diff should run.
+	prev := &Schema{
+		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1601", Proto: "acp1"},
+		Slots: map[int]*export.Snapshot{
+			1: makeSnapshot("RRS18", []protocol.Object{{Slot: 1, ID: 1, Label: "A"}}),
+		},
+	}
+	cur := &Schema{
+		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1602", Proto: "acp1"},
+		Slots: map[int]*export.Snapshot{
+			1: makeSnapshot("RRS18", []protocol.Object{
+				{Slot: 1, ID: 1, Label: "A"},
+				{Slot: 1, ID: 2, Label: "NewControl"},
+			}),
+		},
+	}
+	r := New(t.TempDir())
+	d := r.Diff(prev, cur)
+	if d.Mismatch {
+		t.Fatal("same-Model different-SwRev diff should not flag Mismatch")
+	}
+	if len(d.PerSlot[1].Added) != 1 || d.PerSlot[1].Added[0] != "NewControl" {
+		t.Fatalf("expected 1 added (NewControl); got %+v", d.PerSlot[1])
+	}
+}
+
+func TestDiff_ProtoMismatch_FlagsAndReturnsEmpty(t *testing.T) {
+	prev := &Schema{
+		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1601", Proto: "acp1"},
+		Slots:       map[int]*export.Snapshot{1: makeSnapshot("X", nil)},
+	}
+	cur := &Schema{
+		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1601", Proto: "acp2"},
+		Slots:       map[int]*export.Snapshot{1: makeSnapshot("X", nil)},
+	}
+	r := New(t.TempDir())
+	d := r.Diff(prev, cur)
+	if !d.Mismatch {
+		t.Fatal("Diff across different Protos should flag Mismatch")
+	}
+}
+
 func TestPersist_RejectsUnsafeFingerprint(t *testing.T) {
 	r := New(t.TempDir())
 	s := &Schema{

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"dhs/internal/dmlib"
@@ -63,21 +64,35 @@ func TestDM_Diff_LiveCapture(t *testing.T) {
 				snap.Slots[i].Objects[j].Slot = 1
 			}
 		}
+		// Parse "MODEL@REV" so the dmlib.Diff (Model, Proto) gate can
+		// reject cross-model pairs as Mismatch. Diff is only valid
+		// between firmware revisions of the same product.
+		// fmt.Sscanf does NOT support POSIX character classes in Go;
+		// using strings.SplitN keeps the parse unambiguous.
+		parts := strings.SplitN(c.label, "@", 2)
+		if len(parts) != 2 {
+			t.Fatalf("bad label %q", c.label)
+		}
 		loaded[c.label] = &dmlib.Schema{
+			Fingerprint: dmlib.Fingerprint{
+				Model: parts[0],
+				SwRev: parts[1],
+				Proto: "acp1",
+			},
 			Slots: map[int]*export.Snapshot{1: snap},
 		}
 	}
 
 	r := dmlib.New(t.TempDir())
 
-	// Two interesting comparisons.
+	// Same-model firmware diffs (the only meaningful case). The
+	// simulator only has the 2GS110 family with two firmware revs;
+	// other models have a single rev each so no diff to run.
 	demo := []struct {
 		title       string
 		before, aft string
 	}{
 		{"firmware bump 2GS110: 2728 -> 2929", "2GS110@2728", "2GS110@2929"},
-		{"cross-model: RRS18 -> 2GS110", "RRS18@1601", "2GS110@2728"},
-		{"cross-model: 2HF110 -> GED130", "2HF110@4326", "GED130@2522"},
 	}
 	for _, d := range demo {
 		t.Run(d.title, func(t *testing.T) {
@@ -87,6 +102,9 @@ func TestDM_Diff_LiveCapture(t *testing.T) {
 				t.Skipf("schema missing: before=%v after=%v", ok1, ok2)
 			}
 			diff := r.Diff(before, after)
+			if diff.Mismatch {
+				t.Fatalf("%s: dmlib.Diff reports Mismatch — Models differ", d.title)
+			}
 			fmt.Printf("\n=== %s ===\n", d.title)
 			fmt.Printf("AddedSlots:   %v\n", diff.AddedSlots)
 			fmt.Printf("RemovedSlots: %v\n", diff.RemovedSlots)
@@ -110,6 +128,22 @@ func TestDM_Diff_LiveCapture(t *testing.T) {
 			}
 		})
 	}
+
+	// Negative case: cross-model diff must report Mismatch, not pretend
+	// to compute a delta.
+	t.Run("cross-model rejected as Mismatch", func(t *testing.T) {
+		rrs, ok1 := loaded["RRS18@1601"]
+		gjA, ok2 := loaded["2GS110@2728"]
+		if !ok1 || !ok2 {
+			t.Skip("schema missing")
+		}
+		diff := r.Diff(rrs, gjA)
+		if !diff.Mismatch {
+			t.Fatalf("cross-model diff did not flag Mismatch; got %+v", diff)
+		}
+		fmt.Println("\n=== cross-model: RRS18 -> 2GS110 ===")
+		fmt.Println("Mismatch=true (rejected: Models differ)")
+	})
 }
 
 func firstN(xs []string, n int) []string {

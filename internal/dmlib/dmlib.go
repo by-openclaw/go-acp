@@ -74,7 +74,10 @@ type Schema struct {
 	SupportedProtocols []string
 }
 
-// Diff is the per-slot delta between two Schemas of the same Fingerprint.
+// Diff is the per-slot delta between two Schemas of the SAME (Model,
+// Proto) — i.e. two firmware revisions of one product. Diffing across
+// models is conceptually meaningless and Diff returns an empty result
+// (Mismatch=true) for that case.
 type Diff struct {
 	AddedSlots   []int
 	RemovedSlots []int
@@ -82,6 +85,11 @@ type Diff struct {
 	// PerSlot holds the object-level diff for slots present in both
 	// snapshots. Keyed by slot number.
 	PerSlot map[int]SlotDiff
+
+	// Mismatch is set when the two schemas don't share (Model, Proto).
+	// Callers must check this before consuming PerSlot — a Mismatch
+	// diff is empty by design, not because the schemas are identical.
+	Mismatch bool
 }
 
 // SlotDiff is the object-level delta for one slot.
@@ -264,7 +272,12 @@ func (r *fileResolver) Diff(prev, cur *Schema) Diff {
 	if prev == nil || cur == nil {
 		return d
 	}
-	if prev.Fingerprint != cur.Fingerprint {
+	// Diff is semantically valid only between two firmware revisions of
+	// the same product. (Model, Proto) must match; SwRev / HwRev may
+	// differ — that's the whole point.
+	if prev.Fingerprint.Model != cur.Fingerprint.Model ||
+		prev.Fingerprint.Proto != cur.Fingerprint.Proto {
+		d.Mismatch = true
 		return d
 	}
 	for slot := range cur.Slots {
