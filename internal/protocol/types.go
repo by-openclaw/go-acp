@@ -97,10 +97,69 @@ func (s SlotStatus) String() string {
 	}
 }
 
+// SlotState is the semantic 6-value slot-state enum, distinct from the
+// wire-level SlotStatus byte. UI surfaces and per-slot logic use this
+// type so the diagnostic ("error" vs "removed" vs "no_card") survives;
+// collapsing them all into Online=false loses the information.
+//
+// Values map 1:1 to SlotStatus (use .State() to convert) but the names
+// follow the locked vocabulary from the design doc — "powerup" not
+// "power_up", "boot" not "boot_mode".
+type SlotState string
+
+const (
+	SlotStateNoCard  SlotState = "no_card"  // physically empty
+	SlotStatePowerup SlotState = "powerup"  // card inserted, power ramping
+	SlotStateBoot    SlotState = "boot"     // firmware booting
+	SlotStatePresent SlotState = "present"  // card up, normal operation
+	SlotStateError   SlotState = "error"    // card present, fault flagged
+	SlotStateRemoved SlotState = "removed"  // hot-removed, transient before no_card
+)
+
+// State returns the semantic SlotState for a wire-level SlotStatus. Unknown
+// values map to "no_card" (the safest default for a missing/unrecognised
+// slot).
+func (s SlotStatus) State() SlotState {
+	switch s {
+	case SlotNoCard:
+		return SlotStateNoCard
+	case SlotPowerUp:
+		return SlotStatePowerup
+	case SlotPresent:
+		return SlotStatePresent
+	case SlotError:
+		return SlotStateError
+	case SlotRemoved:
+		return SlotStateRemoved
+	case SlotBootMode:
+		return SlotStateBoot
+	}
+	return SlotStateNoCard
+}
+
 // SlotInfo describes a single card slot within a device frame.
 type SlotInfo struct {
 	Slot   int
 	Status SlotStatus
+
+	// State is the semantic enum (no_card / powerup / present / error /
+	// removed / boot). Plugins MAY populate this alongside Status; the
+	// canonical conversion is Status.State(). Callers should prefer
+	// State for UI / per-slot logic; Status remains the wire-level
+	// numeric for round-trip fidelity.
+	State SlotState
+
+	// LiveAt is the timestamp of the last announce or reply that
+	// mentioned this slot. Zero if never seen. Used by hot-plug
+	// enrichment + watch decoders to decide whether the slot is still
+	// being talked about.
+	LiveAt time.Time
+
+	// IsOnline is the derived "this slot is usable right now" bool —
+	// true exactly when State == SlotStatePresent AND the device's
+	// session is Live (see SessionHealth). Plugins compute it on
+	// SlotInfo construction; consumers read it directly.
+	IsOnline bool
 
 	// Identity is the decoded mandatory identity objects (label, description,
 	// serial, etc.) populated after Walk. May be empty before walk.

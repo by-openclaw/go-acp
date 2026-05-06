@@ -130,6 +130,7 @@ var commands = []command{
 	{"profile", "classify Ember+ provider compliance (strict / partial)", helpProfile, runProfile},
 	{"diag", "run ACP2 diagnostic probes against a device", helpDiag, runDiag},
 	{"validate", "decode a captured frames.jsonl through the codec offline (per ADR-0021)", helpValidate, runValidate},
+	{"health", "print 3-layer session health (reachable / connected / live)", helpHealth, runHealth},
 }
 
 func main() {
@@ -289,8 +290,18 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	switch verb {
 	case "serve":
 		return runProducer(ctx, proto, rest)
+	case "admin":
+		if proto != "acp1" {
+			return fmt.Errorf("producer %s: admin verb is acp1-only (advances #258)", proto)
+		}
+		return runACP1Admin(ctx, rest)
+	case "fuzz":
+		if proto != "acp1" {
+			return fmt.Errorf("producer %s: fuzz verb is acp1-only (advances #262)", proto)
+		}
+		return runACP1Fuzz(ctx, rest)
 	}
-	return fmt.Errorf("producer %s: unknown verb %q (expected: serve)", proto, verb)
+	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | admin | fuzz)", proto, verb)
 }
 
 // dispatchRegistry routes `dhs registry <proto> <verb> [args]`. The

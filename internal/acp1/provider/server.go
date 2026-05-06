@@ -7,9 +7,12 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"syscall"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/dmlib"
+	"dhs/internal/export/canonical"
+	"dhs/internal/transport"
 )
 
 // Server is the exported alias for the concrete ACP1 provider — lets
@@ -40,6 +43,33 @@ type server struct {
 	bcast   *net.UDPConn // separate socket dialed to 255.255.255.255
 	closed  bool
 	stopped chan struct{}
+
+	// tcpRegistry is set when ServeTCP runs. Announces emitted via the
+	// UDP broadcast path are also fanned to every live TCP session so
+	// TCP-only consumers see value-change events.
+	tcpRegistry *tcpSessionRegistry
+
+	// an2Registry is set when ServeAN2 runs. Announces emitted via the
+	// UDP / TCP broadcast paths are also wrapped in AN2 frames and
+	// fanned to AN2 sessions that have called EnableProtocolEvents.
+	an2Registry *an2SessionRegistry
+
+	// slotMachine tracks pending insert/extract cascades per slot.
+	// Initialised by newServer with InsertTimingReal; the producer CLI
+	// can override via --insert-timing.
+	slotMachine *slotStateMachine
+
+	// dmLibrary, when non-nil, drives slot.load via the DM-library
+	// resolver. Set via SetDMLibrary at startup.
+	dmLibrary dmlib.Resolver
+}
+
+// SetInsertTiming switches the cascade timing for new transitions.
+// Existing in-flight cascades keep their starting timing.
+func (s *server) SetInsertTiming(t InsertTiming) {
+	if s.slotMachine != nil {
+		s.slotMachine.SetTiming(t)
+	}
 }
 
 func newServer(logger *slog.Logger, exp *canonical.Export) *server {
@@ -47,8 +77,9 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		logger = slog.Default()
 	}
 	s := &server{
-		logger:  logger,
-		stopped: make(chan struct{}),
+		logger:      logger,
+		stopped:     make(chan struct{}),
+		slotMachine: newSlotStateMachine(InsertTimingReal),
 	}
 	t, err := newTree(exp)
 	if err != nil {
@@ -63,21 +94,56 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 
 // Serve binds addr (e.g. "0.0.0.0:2071") and runs until ctx is cancelled
 // or a fatal listen error occurs.
+//
+// SO_REUSEADDR is set so the listener coexists with ACP1 clients on
+// the same host that also bind 2071 to receive broadcast announces
+// (this is how Cerebrum, VSM Studio, SynapseSetUp and other Axon
+// controllers operate per ACP1 §"Announcements" p.14). Real Axon
+// racks are dedicated devices on their own IP, so the spec is silent
+// on SO_REUSEADDR — but emulators and dev rigs running on the same
+// host as those controllers must use it or fail to bind.
 func (s *server) Serve(ctx context.Context, addr string) error {
 	udpAddr, err := net.ResolveUDPAddr("udp4", addr)
 	if err != nil {
 		return fmt.Errorf("acp1 provider: resolve %q: %w", addr, err)
 	}
-	conn, err := net.ListenUDP("udp4", udpAddr)
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			var opErr error
+			if err := c.Control(func(fd uintptr) {
+				opErr = transport.SetSocketReuseAddr(fd)
+			}); err != nil {
+				return err
+			}
+			return opErr
+		},
+	}
+	pc, err := lc.ListenPacket(ctx, "udp4", udpAddr.String())
 	if err != nil {
 		return fmt.Errorf("acp1 provider: listen %q: %w", addr, err)
+	}
+	conn, ok := pc.(*net.UDPConn)
+	if !ok {
+		_ = pc.Close()
+		return fmt.Errorf("acp1 provider: listen %q: unexpected conn type %T", addr, pc)
 	}
 
 	// Dial a second socket to the limited broadcast address. Go stdlib
 	// auto-sets SO_BROADCAST on dialed sockets with broadcast peers,
 	// which is the portable path across Windows / Linux / macOS.
+	//
+	// VIP-aware source selection (#263): when --bind <ip> selects a
+	// specific local address, we pin the broadcast dial's LocalAddr
+	// to it so the kernel routes via the matching iface and consumers
+	// see the right `From:` per emulator. Without this, multiple
+	// emulators on different VIPs would share whichever IP the kernel
+	// picks for the route, collapsing the per-emulator distinction.
 	bcastAddr := &net.UDPAddr{IP: net.IPv4bcast, Port: udpAddr.Port}
-	bconn, bErr := net.DialUDP("udp4", nil, bcastAddr)
+	var localAddr *net.UDPAddr
+	if udpAddr.IP != nil && !udpAddr.IP.IsUnspecified() {
+		localAddr = &net.UDPAddr{IP: udpAddr.IP, Port: 0}
+	}
+	bconn, bErr := net.DialUDP("udp4", localAddr, bcastAddr)
 	// Best-effort: if the OS rejects the broadcast dial (no route, no
 	// iface up) we log and continue without announcements.
 	if bErr != nil {
@@ -174,12 +240,26 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 // mutating method per spec §"Announcements" p.14. Silent on send error
 // — announcements are fire-and-forget, and the consumer that made the
 // setX call already has the change confirmed via the reply.
+//
+// Gated by the Broadcasts field (slot 0 / control / id 4): when the
+// served tree has Broadcasts=Off, every spontaneous announce is
+// suppressed. Replies to active requests stay on regardless — only
+// this path is gated. (#257)
 func (s *server) broadcastAnnounce(ann *codec.Message) {
-	s.mu.Lock()
-	bc := s.bcast
-	s.mu.Unlock()
-	if bc == nil {
-		s.logger.Warn("acp1 announce skipped: no broadcast socket")
+	s.broadcastAnnounceSkip(ann, 0)
+}
+
+// broadcastAnnounceSkip is the TCP-session-aware variant. skipTCPSessionID
+// names the TCP session that originated the change so the announce is
+// NOT echoed back on that same socket — strict peers (e.g. VSM Studio)
+// RST when they see a server-pushed MTID=0 frame between their own
+// reply and their next request. UDP / AN2 / admin / demo callers pass 0.
+func (s *server) broadcastAnnounceSkip(ann *codec.Message, skipTCPSessionID uint64) {
+	if !s.tree.broadcastsEnabled() {
+		s.logger.Debug("acp1 announce gated by Broadcasts=Off",
+			slog.Int("objgroup", int(ann.ObjGroup)),
+			slog.Int("objid", int(ann.ObjID)),
+		)
 		return
 	}
 	out, err := ann.Encode()
@@ -187,6 +267,18 @@ func (s *server) broadcastAnnounce(ann *codec.Message) {
 		s.logger.Warn("acp1 announce encode",
 			slog.String("err", err.Error()),
 		)
+		return
+	}
+	// Fan-out to every live TCP and AN2 session. Standalone TCP/AN2
+	// providers (no UDP listener) still announce here.
+	s.broadcastTCPAnnounce(out, skipTCPSessionID)
+	s.broadcastAN2Announce(out)
+
+	s.mu.Lock()
+	bc := s.bcast
+	s.mu.Unlock()
+	if bc == nil {
+		// No UDP listener — TCP / AN2 fan-out already done above.
 		return
 	}
 	if _, err := bc.Write(out); err != nil {

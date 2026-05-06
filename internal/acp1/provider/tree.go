@@ -6,8 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/export"
+	"dhs/internal/export/canonical"
 )
 
 // groupName -> ObjGroup constant. Mirrors buildSlotNode in
@@ -52,6 +53,83 @@ type tree struct {
 	// slots holds per-slot counters needed to answer Root.getObject
 	// (numIdentity/Control/Status/Alarm/File). Computed at load time.
 	slots map[uint8]*slotCounts
+}
+
+// broadcastsEnabled implements the ACP1 Broadcasts gate per spec p.20:
+// slot 0 / control / id 4 is an enum that controls whether the device
+// emits spontaneous announces. When the field is absent (older trees
+// without the gate object), the default is permissive (true) so legacy
+// behaviour is preserved.
+//
+// The check is deliberately tolerant of enum encoding: any non-zero
+// value-byte counts as "On" since the spec convention is items=["Off","On"]
+// (index 0 = Off, index 1 = On). If the served tree carries a richer
+// enum map with a labelled "On" entry, the lookup honours that too.
+func (t *tree) broadcastsEnabled() bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	e, ok := t.entries[objectKey{slot: 0, group: codec.GroupControl, id: 4}]
+	if !ok {
+		return true // gate object not defined — permissive default
+	}
+	if e.param == nil {
+		return true
+	}
+	// Enum map case: the labelled "On" entry's index is authoritative.
+	if len(e.param.EnumMap) > 0 {
+		var idx uint8
+		switch v := e.param.Value.(type) {
+		case int64:
+			idx = uint8(v)
+		case uint64:
+			idx = uint8(v)
+		case int:
+			idx = uint8(v)
+		case float64:
+			idx = uint8(v)
+		}
+		for _, item := range e.param.EnumMap {
+			if int64(idx) == item.Value {
+				return strings.EqualFold(item.Key, "On")
+			}
+		}
+		return false
+	}
+	// Bare numeric value with no map: convention 0=Off, anything else=On.
+	switch v := e.param.Value.(type) {
+	case int64:
+		return v != 0
+	case uint64:
+		return v != 0
+	case int:
+		return v != 0
+	case float64:
+		return v != 0
+	}
+	return true
+}
+
+// numSlots returns the highest slot number that carries any entry,
+// plus one (giving the count). Used by AN2 GetDeviceInfo replies.
+func (t *tree) numSlots() int {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	max := -1
+	for slot := range t.slots {
+		if int(slot) > max {
+			max = int(slot)
+		}
+	}
+	return max + 1
+}
+
+// slotPresent reports whether the tree has any entry on the given slot.
+// Used by AN2 GetSlotInfo to drive the per-slot present_flag.
+func (t *tree) slotPresent(slot uint8) bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	_, ok := t.slots[slot]
+	return ok
 }
 
 type slotCounts struct {
@@ -161,6 +239,81 @@ func (t *tree) lookup(k objectKey) (*entry, bool) {
 	defer t.mu.RUnlock()
 	e, ok := t.entries[k]
 	return e, ok
+}
+
+// ReplaceSlot drops every existing entry for the target slot and
+// installs the contents of the supplied DM-library snapshot in their
+// place. Used by SlotLoad to model a hot-plug card swap: the wire
+// identity for the slot becomes whatever the snapshot declares, so
+// subsequent identity-probe replies reflect the new card.
+//
+// Slot 0 is the rack-controller card and a legitimate slot.load
+// target (Cerebrum / VSM treat slot 0 as the frame's own identity).
+// We preserve the frame-status object on (slot=0, group=frame,
+// id=0) across the replace so the addressable slot count of the
+// frame — set at tree.json load time — survives a controller
+// hot-swap. The converter already strips frame/root group objects
+// from the schema so they never reach this method.
+//
+// Errors:
+//
+//	snap==nil        → snapshotToEntries surfaces a clear error
+//	conversion fails → propagated as-is so the admin verb caller can
+//	                   refuse the load with the underlying type / range
+//	                   complaint
+func (t *tree) ReplaceSlot(slot uint8, snap *export.Snapshot) error {
+	entries, counts, err := snapshotToEntries(slot, snap)
+	if err != nil {
+		return err
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for k := range t.entries {
+		if k.slot != slot {
+			continue
+		}
+		if slot == 0 && k.group == codec.GroupFrame {
+			// Preserve frame-status — frame slot-count belongs to the
+			// starter tree, not to the swapped-in controller card.
+			continue
+		}
+		delete(t.entries, k)
+	}
+	for _, e := range entries {
+		t.entries[e.key] = e
+	}
+	t.slots[slot] = counts
+	return nil
+}
+
+// ClearSlot drops every entry for the target slot. Used by SlotUnload
+// after the cascade extract drives the slot back to no_card, so the
+// served wire identity reverts to "no card present" for subsequent
+// reads. Idempotent on already-empty slots.
+//
+// On slot 0 the frame-status object is preserved (same reason as
+// ReplaceSlot): the frame keeps reporting per-slot status even when
+// the controller card is logically extracted.
+func (t *tree) ClearSlot(slot uint8) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for k := range t.entries {
+		if k.slot != slot {
+			continue
+		}
+		if slot == 0 && k.group == codec.GroupFrame {
+			continue
+		}
+		delete(t.entries, k)
+	}
+	if slot == 0 {
+		// Reset counts to zero but keep the slot 0 entry so the
+		// frame-status remains addressable.
+		t.slots[0] = &slotCounts{}
+	} else {
+		delete(t.slots, slot)
+	}
+	return nil
 }
 
 // deriveACPType maps a canonical.Parameter to the concrete ACP1 wire

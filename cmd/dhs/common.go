@@ -62,9 +62,10 @@ type commonFlags struct {
 func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 	cf := &commonFlags{}
 	fs.StringVar(&cf.protocol, "protocol", "acp1", "protocol plugin name")
-	fs.StringVar(&cf.transport, "transport", "udp",
-		"transport: udp (default, subnet broadcast announcements) or tcp "+
-			"(ACP1 v1.4 TCP direct, crosses VLANs)")
+	fs.StringVar(&cf.transport, "transport", "auto",
+		"transport: auto (default, TCP-first with UDP fallback like real "+
+			"ACP1 controllers), udp (subnet broadcast announcements only) "+
+			"or tcp (ACP1 v1.4 TCP direct, crosses VLANs)")
 	fs.IntVar(&cf.port, "port", 0, "override default port (0 = plugin default)")
 	fs.DurationVar(&cf.timeout, "timeout", 1*time.Second, "per-operation timeout (single get/set/connect; walks ignore this and run until done)")
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
@@ -188,10 +189,12 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 		switch strings.ToLower(cf.transport) {
 		case "tcp", "tcp-direct", "tcpdirect":
 			tcfg.SetTransport(acp1.TransportTCPDirect)
-		case "udp", "":
+		case "udp":
 			tcfg.SetTransport(acp1.TransportUDP)
+		case "auto", "":
+			tcfg.SetTransport(acp1.TransportAuto)
 		default:
-			return nil, nil, fmt.Errorf("unknown --transport %q (use udp or tcp)", cf.transport)
+			return nil, nil, fmt.Errorf("unknown --transport %q (use auto / udp / tcp)", cf.transport)
 		}
 	}
 

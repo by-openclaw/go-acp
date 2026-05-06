@@ -14,9 +14,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"dhs/internal/dmlib"
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/provider"
@@ -40,7 +43,8 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	var (
 		treePath      = fs.String("tree", "", "path to canonical tree.json (required)")
 		port          = fs.Int("port", 0, "TCP listen port (0 = plugin default)")
-		host          = fs.String("host", "0.0.0.0", "TCP listen host")
+		host          = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
+		bind          = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
 		logLevel      = fs.String("log-level", "info", "log level: debug, info, warn, error")
 		logFormat     = fs.String("log-format", "text", "log format: text | json (json for Loki/Promtail)")
 		announceDemo  = fs.Bool("announce-demo", false, "oscillate a target value every --announce-demo-interval and broadcast announces (acp1/acp2 only)")
@@ -50,12 +54,26 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		announceObj   = fs.Int("announce-demo-obj", 18, "acp2: obj-id for --announce-demo target (must be Number+Float)")
 		announceEvery = fs.Duration("announce-demo-interval", 2*time.Second, "--announce-demo tick interval")
 		metricsAddr   = fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + Go/process collectors on this address")
+		transport     = fs.String("transport", "udp", "acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), udp+tcp (Mode A + Mode B, no AN2), or all (every transport). Other protocols ignore this flag.")
+		tcpPort       = fs.Int("tcp-port", 0, "acp1 only: TCP listen port for --transport tcp/all (0 = same as --port)")
+		an2Port       = fs.Int("an2-port", 2072, "acp1 only: AN2/TCP listen port for --transport an2/all")
+		adminName     = fs.String("name", "dhs-acp1", "acp1 only: instance name for admin RPC discovery file")
+		insertTiming  = fs.String("insert-timing", "real", "acp1 only: cascade timing for slot insert (real / fast)")
+		dmLibraryRoot = fs.String("dm-library", "", "acp1 only: DM library root for admin slot.load (#260)")
+		preload       = fs.String("preload", "", "acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1")
+		play          = fs.String("play", "", "acp1 only: comma-separated object paths the producer should oscillate with random values. Each tick fires a spontaneous status announce. Format: 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7,1.1.3.10 oscillates Temp_Left + Temp_Right + Rx_Packet_Loss on slot 0")
+		playEvery     = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *treePath == "" {
 		return fmt.Errorf("--tree is required")
+	}
+	// --bind is the canonical name in the design discussion (#263);
+	// --host stays for backwards-compat. When both are set, --bind wins.
+	if *bind != "" {
+		*host = *bind
 	}
 
 	logger := newLogger(*logLevel, *logFormat)
@@ -170,10 +188,188 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		}
 	}
 
+	// ACP1 multi-transport dispatch (Mode A UDP / Mode B TCP / both).
+	// Other protocols silently ignore --transport / --tcp-port and run
+	// their default Serve.
+	if protoName == "acp1" {
+		acp1Srv, ok := srv.(*acp1provider.Server)
+		if !ok {
+			return fmt.Errorf("acp1 producer: wrong server type %T", srv)
+		}
+
+		// Slot state-machine timing: --insert-timing real (default) or
+		// fast (50ms per phase, for CI integration tests).
+		timing, err := acp1provider.ParseInsertTiming(*insertTiming)
+		if err != nil {
+			return err
+		}
+		acp1Srv.SetInsertTiming(timing)
+
+		// DM library: --dm-library points at tests/fixtures/products/
+		// so the admin slot.load verb (#260) can resolve cards.
+		if *dmLibraryRoot != "" {
+			acp1Srv.SetDMLibrary(dmlib.New(*dmLibraryRoot))
+		}
+
+		// --preload installs schemas onto slots BEFORE Serve binds the
+		// listening socket. External controllers (Cerebrum, VSM Studio)
+		// then see a stable device on first walk and don't discard the
+		// cached template across producer restarts. Order:
+		//   1. Tree.json starter loaded (frame-status array sized).
+		//   2. SetDMLibrary attached (resolver ready).
+		//   3. Preload entries installed (ReplaceSlot + present).
+		//   4. Serve begins.
+		if *preload != "" {
+			if *dmLibraryRoot == "" {
+				return fmt.Errorf("--preload requires --dm-library")
+			}
+			for _, entry := range strings.Split(*preload, ",") {
+				entry = strings.TrimSpace(entry)
+				if entry == "" {
+					continue
+				}
+				kv := strings.SplitN(entry, "=", 2)
+				if len(kv) != 2 {
+					return fmt.Errorf("--preload: entry %q must be slot=card", entry)
+				}
+				slotN, perr := strconv.Atoi(strings.TrimSpace(kv[0]))
+				if perr != nil || slotN < 0 || slotN > 31 {
+					return fmt.Errorf("--preload: invalid slot %q", kv[0])
+				}
+				cardPath := strings.TrimSpace(kv[1])
+				if perr := acp1Srv.PreloadSlot(uint8(slotN), cardPath); perr != nil {
+					return fmt.Errorf("--preload slot %d (%s): %w", slotN, cardPath, perr)
+				}
+				logger.Info("acp1 preload",
+					slog.Int("slot", slotN),
+					slog.String("card", cardPath))
+			}
+		}
+
+		// --play kicks off a producer-internal random oscillator on
+		// the listed object paths. Models real-hardware drift
+		// (temperature, PSU rails, packet counters): the server
+		// publishes spontaneous status announces on its own without
+		// any external trigger.
+		if *play != "" {
+			paths := strings.Split(*play, ",")
+			acp1Srv.RunStatusPlay(srvCtx, paths, *playEvery)
+		}
+
+		// Admin RPC always runs alongside the wire transports so the
+		// `dhs producer acp1 admin <verb>` CLI can talk to this
+		// instance (#258).
+		go func() {
+			if err := acp1Srv.ServeAdmin(srvCtx, *adminName); err != nil &&
+				!errors.Is(err, context.Canceled) {
+				logger.Warn("acp1 admin server stopped",
+					slog.String("err", err.Error()))
+			}
+		}()
+		switch *transport {
+		case "udp":
+			if err := acp1Srv.Serve(srvCtx, addr); err != nil && !errors.Is(err, context.Canceled) {
+				return fmt.Errorf("serve udp: %w", err)
+			}
+		case "tcp":
+			tcpAddr := tcpListenAddr(*host, listenPort, *tcpPort)
+			if err := acp1Srv.ServeTCP(srvCtx, tcpAddr); err != nil && !errors.Is(err, context.Canceled) {
+				return fmt.Errorf("serve tcp: %w", err)
+			}
+		case "an2":
+			an2Addr := fmt.Sprintf("%s:%d", *host, *an2Port)
+			if err := acp1Srv.ServeAN2(srvCtx, an2Addr); err != nil && !errors.Is(err, context.Canceled) {
+				return fmt.Errorf("serve an2: %w", err)
+			}
+		case "all":
+			tcpAddr := tcpListenAddr(*host, listenPort, *tcpPort)
+			an2Addr := fmt.Sprintf("%s:%d", *host, *an2Port)
+			udpErrCh := make(chan error, 1)
+			tcpErrCh := make(chan error, 1)
+			an2ErrCh := make(chan error, 1)
+			go func() { udpErrCh <- acp1Srv.Serve(srvCtx, addr) }()
+			go func() { tcpErrCh <- acp1Srv.ServeTCP(srvCtx, tcpAddr) }()
+			go func() { an2ErrCh <- acp1Srv.ServeAN2(srvCtx, an2Addr) }()
+			drain := func(ch chan error) error {
+				err := <-ch
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return err
+				}
+				return nil
+			}
+			select {
+			case err := <-udpErrCh:
+				cancel()
+				_ = drain(tcpErrCh)
+				_ = drain(an2ErrCh)
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return fmt.Errorf("serve udp: %w", err)
+				}
+			case err := <-tcpErrCh:
+				cancel()
+				_ = drain(udpErrCh)
+				_ = drain(an2ErrCh)
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return fmt.Errorf("serve tcp: %w", err)
+				}
+			case err := <-an2ErrCh:
+				cancel()
+				_ = drain(udpErrCh)
+				_ = drain(tcpErrCh)
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return fmt.Errorf("serve an2: %w", err)
+				}
+			}
+		case "udp+tcp":
+			// Mode A + Mode B without AN2 (Mode C). Spec-strict ACP1 only;
+			// avoids the auto-negotiation pitfall where some controllers
+			// pick AN2 the moment 2072 is open.
+			tcpAddr := tcpListenAddr(*host, listenPort, *tcpPort)
+			udpErrCh := make(chan error, 1)
+			tcpErrCh := make(chan error, 1)
+			go func() { udpErrCh <- acp1Srv.Serve(srvCtx, addr) }()
+			go func() { tcpErrCh <- acp1Srv.ServeTCP(srvCtx, tcpAddr) }()
+			drain := func(ch chan error) error {
+				err := <-ch
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return err
+				}
+				return nil
+			}
+			select {
+			case err := <-udpErrCh:
+				cancel()
+				_ = drain(tcpErrCh)
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return fmt.Errorf("serve udp: %w", err)
+				}
+			case err := <-tcpErrCh:
+				cancel()
+				_ = drain(udpErrCh)
+				if err != nil && !errors.Is(err, context.Canceled) {
+					return fmt.Errorf("serve tcp: %w", err)
+				}
+			}
+		default:
+			return fmt.Errorf("acp1 producer: unknown --transport %q (use udp / tcp / an2 / udp+tcp / all)", *transport)
+		}
+		return nil
+	}
+
 	if err := srv.Serve(srvCtx, addr); err != nil && !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("serve: %w", err)
 	}
 	return nil
+}
+
+// tcpListenAddr resolves the TCP listen address. Defaults to the same
+// host:port pair as UDP when --tcp-port is unset.
+func tcpListenAddr(host string, udpPort, override int) string {
+	port := override
+	if port == 0 {
+		port = udpPort
+	}
+	return fmt.Sprintf("%s:%d", host, port)
 }
 
 func loadTree(path string) (*canonical.Export, error) {
