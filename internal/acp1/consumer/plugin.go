@@ -36,7 +36,7 @@ func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
 }
 
 // TransportKind selects how the ACP1 plugin talks to the device.
-// Exposed so the CLI can pass --transport udp|tcp.
+// Exposed so the CLI can pass --transport udp|tcp|auto.
 type TransportKind int
 
 const (
@@ -50,7 +50,22 @@ const (
 	// announcements multiplexed together. Routes cleanly across
 	// VLANs since everything is unicast.
 	TransportTCPDirect
+
+	// TransportAuto tries TCP direct first with a short dial timeout,
+	// falls back to UDP on connection refused / RST / timeout. Mirrors
+	// the probe-then-pick behaviour of real ACP1 controllers (VSM
+	// Studio, Cerebrum). The actual selected mode is logged after
+	// Connect returns. After fallback the Plugin reports its effective
+	// transport via Transport() — call sites that care (e.g. session
+	// health) can read it.
+	TransportAuto
 )
+
+// autoTCPProbeTimeout is the per-attempt dial budget when TransportAuto
+// races TCP first. Short enough that a refused/RST cross-VLAN attempt
+// falls back to UDP within ~half a second; long enough to absorb
+// typical LAN dial jitter.
+const autoTCPProbeTimeout = 500 * time.Millisecond
 
 // clientIface is the minimum contract the Plugin needs from a session
 // layer. Both the UDP Client and the TCPClient satisfy it, so the rest
@@ -172,6 +187,25 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		if err := p.connectTCP(ctx, ip, port); err != nil {
 			return err
 		}
+	case TransportAuto:
+		// Try TCP first with a short budget. Only fall back on
+		// transport-level errors (refused/RST/timeout) — a TCP
+		// session that connects but then fails an ACP1 round-trip
+		// is the wrong moment to switch transport. Caller's outer
+		// timeout still bounds total time.
+		probeCtx, cancel := context.WithTimeout(ctx, autoTCPProbeTimeout)
+		err := p.connectTCP(probeCtx, ip, port)
+		cancel()
+		if err == nil {
+			p.transport = TransportTCPDirect
+			break
+		}
+		p.logger.Info("acp1 auto: TCP unreachable, falling back to UDP",
+			"host", ip, "port", port, "err", err.Error())
+		if err := p.connectUDP(ctx, ip, port); err != nil {
+			return err
+		}
+		p.transport = TransportUDP
 	default: // TransportUDP
 		if err := p.connectUDP(ctx, ip, port); err != nil {
 			return err
@@ -277,9 +311,20 @@ func (k TransportKind) String() string {
 	switch k {
 	case TransportTCPDirect:
 		return "tcp"
+	case TransportAuto:
+		return "auto"
 	default:
 		return "udp"
 	}
+}
+
+// Transport reports the currently selected transport. After a Connect()
+// with TransportAuto, this returns the resolved choice (TransportUDP or
+// TransportTCPDirect), so callers can see which path was actually used.
+func (p *Plugin) Transport() TransportKind {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.transport
 }
 
 // GetDeviceInfo reads the frame status object on slot 0 (rack controller)
