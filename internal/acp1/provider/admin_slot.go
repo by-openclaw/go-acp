@@ -56,9 +56,13 @@ func (s *server) setSlotStatus(slot uint8, state uint8) error {
 	}
 	statuses[slot] = int64(state)
 	e.param.Value = statuses
-	s.tree.mu.Unlock()
-
-	// Build a frame-status announce body: [num_slots, status_0, ...].
+	// Build the announce body while still holding the lock so the
+	// slice contents are sampled atomically. Two concurrent
+	// setSlotStatus calls (e.g. an in-flight cascade goroutine and a
+	// synchronous CascadeExtract from SlotUnload) would otherwise
+	// race on the shared backing array even though each takes
+	// tree.mu — the loser's slice reference outlives the winner's
+	// unlock.
 	body := make([]byte, 1+len(statuses))
 	body[0] = byte(len(statuses))
 	for i, st := range statuses {
@@ -71,6 +75,7 @@ func (s *server) setSlotStatus(slot uint8, state uint8) error {
 			body[1+i] = byte(v)
 		}
 	}
+	s.tree.mu.Unlock()
 	ann := &codec.Message{
 		MTID:     0,
 		MType:    codec.MTypeAnnounce,

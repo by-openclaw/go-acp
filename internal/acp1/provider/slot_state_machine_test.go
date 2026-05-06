@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -108,10 +109,15 @@ func TestCascadeInsert_PassesThroughEachPhase(t *testing.T) {
 		t.Fatalf("reset: %v", err)
 	}
 
-	// Capture the sequence by polling with high frequency.
+	// Capture the sequence by polling with high frequency. The poller
+	// runs on its own goroutine, so guard the seen map with a mutex —
+	// the read-back below would otherwise race the writer under -race.
+	var seenMu sync.Mutex
 	seen := map[uint8]bool{}
 	stop := make(chan struct{})
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		ticker := time.NewTicker(2 * time.Millisecond)
 		defer ticker.Stop()
 		for {
@@ -119,7 +125,10 @@ func TestCascadeInsert_PassesThroughEachPhase(t *testing.T) {
 			case <-stop:
 				return
 			case <-ticker.C:
-				seen[readSlotStatus(t, s, 1)] = true
+				st := readSlotStatus(t, s, 1)
+				seenMu.Lock()
+				seen[st] = true
+				seenMu.Unlock()
 			}
 		}
 	}()
@@ -127,10 +136,13 @@ func TestCascadeInsert_PassesThroughEachPhase(t *testing.T) {
 	s.CascadeInsert(context.Background(), 1)
 	time.Sleep(300 * time.Millisecond)
 	close(stop)
+	<-done
 
 	// We expect to have observed at least powerup (1) and boot (5) and
 	// present (2). Initial no_card (0) may also be present depending on
 	// race but is not required.
+	seenMu.Lock()
+	defer seenMu.Unlock()
 	if !seen[1] {
 		t.Errorf("never observed powerup state")
 	}
