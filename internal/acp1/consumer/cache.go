@@ -187,17 +187,33 @@ func (c *slotTreeCache) removeElement(el *list.Element) {
 // CacheConfig exposes the two knobs that matter for long-running
 // processes. Defaults are sized for the ACP1 tool: 32 slots is enough
 // for a fully-loaded Synapse rack with room for retries, and a 10-minute
-// TTL keeps a watch session fresh enough for interactive use without
-// re-walking on every get.
+// CacheConfig holds the sizing and lifetime for the per-slot tree
+// cache. Per the DHS 2016 watch model (project_canonical_schema): the
+// schema is the long-lived part — type / kind / min / max / step /
+// label / unit don't change while a session is connected to the same
+// firmware revision. Only the *values* age, and that's tracked by a
+// per-event freshness flag, not by evicting the schema.
+//
+// TTL is therefore set very large (effectively forever for human
+// sessions). Schema gets dropped on Plugin.Disconnect (Clear) or on a
+// fingerprint shift detected by the hot-plug enricher. The keep-alive
+// dead-man (#298) flips per-value freshness to "cache" while the
+// cached schema continues to drive decoding — so the watch verb
+// keeps showing typed values, never raw(N), even across long
+// disconnects.
 type CacheConfig struct {
 	MaxSize int           // default 32
-	TTL     time.Duration // default 10m
+	TTL     time.Duration // default: effectively forever
 }
 
 // defaultCacheConfig returns the sane-default cache sizing.
 func defaultCacheConfig() CacheConfig {
 	return CacheConfig{
 		MaxSize: 32,
-		TTL:     10 * time.Minute,
+		// 24h — long enough that no human watch session ever hits
+		// the wall, while still bounding memory if a plugin instance
+		// is leaked. The proper fix is two caches (typeCache no TTL,
+		// valueCache freshness-tagged); see follow-up work.
+		TTL: 24 * time.Hour,
 	}
 }

@@ -233,6 +233,12 @@ func (c *TCPClient) readerLoop() {
 			c.logger.Debug("acp1 tcp reader: exiting on error", "err", err)
 			return
 		}
+		// Touch keep-alive RX before decoding so a malformed frame
+		// still counts as wire activity — the dead-man cares about
+		// "anything received from this peer", not "anything decoded".
+		if c.cfg.OnRx != nil {
+			c.cfg.OnRx()
+		}
 
 		msg, derr := codec.Decode(raw)
 		if derr != nil {
