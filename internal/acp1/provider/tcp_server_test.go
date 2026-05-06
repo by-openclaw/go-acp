@@ -204,7 +204,7 @@ func TestTCPSessionRegistry_BroadcastDropsOnFull(t *testing.T) {
 		}
 	}()
 
-	reg.broadcast([]byte("first"))
+	reg.broadcast([]byte("first"), 0)
 	close(stop)
 	wg.Wait()
 
@@ -212,7 +212,7 @@ func TestTCPSessionRegistry_BroadcastDropsOnFull(t *testing.T) {
 	// blocking.
 	done := make(chan struct{})
 	go func() {
-		reg.broadcast([]byte("second"))
+		reg.broadcast([]byte("second"), 0)
 		close(done)
 	}()
 	select {

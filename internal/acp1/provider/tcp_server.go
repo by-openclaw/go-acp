@@ -157,11 +157,13 @@ func (s *server) serveTCPSession(ctx context.Context, conn *net.TCPConn, ip stri
 			}
 		}
 		if ann != nil {
-			// Route through broadcastAnnounce so the Broadcasts gate
-			// (#257) and UDP+AN2 bridges all apply uniformly. Slow
-			// consumers in the local TCP registry don't block the
-			// announce path — drop-on-full per session.
-			s.broadcastAnnounce(ann)
+			// Route through broadcastAnnounceSkip so the Broadcasts gate
+			// (#257) and UDP+AN2 bridges all apply uniformly. Pass this
+			// session's id so the announce is NOT pushed back on the
+			// same socket the request arrived on — strict ACP1 Mode B
+			// peers (VSM Studio) RST when they see a server-initiated
+			// MTID=0 frame between their reply and their next request.
+			s.broadcastAnnounceSkip(ann, sess.id)
 		}
 	}
 
@@ -170,13 +172,16 @@ func (s *server) serveTCPSession(ctx context.Context, conn *net.TCPConn, ip stri
 }
 
 // broadcastTCPAnnounce sends an already-encoded announce to every TCP
-// session. Called from the UDP-side broadcast path so an announce
-// produced via UDP set still reaches TCP-only consumers.
-func (s *server) broadcastTCPAnnounce(b []byte) {
+// session except the one identified by skipID. Pass skipID=0 to fan
+// out to every session (UDP-bridged announces have no originator). The
+// originating TCP session is excluded so strict peers don't see a
+// server-pushed MTID=0 frame between their own reply and their next
+// request.
+func (s *server) broadcastTCPAnnounce(b []byte, skipID uint64) {
 	if s.tcpRegistry == nil {
 		return
 	}
-	s.tcpRegistry.broadcast(b)
+	s.tcpRegistry.broadcast(b, skipID)
 }
 
 // tcpSessionRegistry tracks live TCP sessions with per-IP caps and
@@ -239,13 +244,24 @@ func (r *tcpSessionRegistry) remove(ip string, id uint64) {
 	delete(r.sessions, id)
 }
 
-// broadcast pushes payload onto every live session's send channel.
+// broadcast pushes payload onto every live session's send channel,
+// skipping the session whose id matches skipID. The originating
+// session has already received its correlated reply, so re-pushing the
+// announce on the same socket interleaves a server-initiated MTID=0
+// frame between the client's reply and its next request — strict
+// peers (e.g. VSM Studio) RST when they see that pattern. Pass
+// skipID=0 (no real session ever has id 0) to fan out to every
+// session.
+//
 // Drop-on-full per session — never block one slow consumer behind
 // another.
-func (r *tcpSessionRegistry) broadcast(payload []byte) {
+func (r *tcpSessionRegistry) broadcast(payload []byte, skipID uint64) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for _, sess := range r.sessions {
+	for id, sess := range r.sessions {
+		if id == skipID {
+			continue
+		}
 		select {
 		case sess.send <- payload:
 		default:
@@ -274,16 +290,12 @@ func writeMLENFrame(conn *net.TCPConn, payload []byte) error {
 	if len(payload) > tcpMaxFrameBytes {
 		return fmt.Errorf("acp1 tcp: outbound frame %d > max %d", len(payload), tcpMaxFrameBytes)
 	}
-	var lenBuf [4]byte
-	binary.BigEndian.PutUint32(lenBuf[:], uint32(len(payload)))
+	frame := make([]byte, 4+len(payload))
+	binary.BigEndian.PutUint32(frame[:4], uint32(len(payload)))
+	copy(frame[4:], payload)
 	_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	if _, err := conn.Write(lenBuf[:]); err != nil {
-		return err
-	}
-	if _, err := conn.Write(payload); err != nil {
-		return err
-	}
-	return nil
+	_, err := conn.Write(frame)
+	return err
 }
 
 func readMLENFrame(conn *net.TCPConn) ([]byte, error) {

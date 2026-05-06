@@ -107,6 +107,7 @@ func (s *server) mutateInteger(e *entry, m codec.Method, incoming []byte) ([]byt
 			return nil, fmt.Errorf("setValue integer: need 2 bytes, got %d", len(incoming))
 		}
 		next = int32(int16(binary.BigEndian.Uint16(incoming)))
+		next = int32(snapInt64(int64(next), int64(minV), int64(step)))
 	case codec.MethodSetIncValue:
 		next = int32(cur) + int32(step)
 	case codec.MethodSetDecValue:
@@ -156,6 +157,7 @@ func (s *server) mutateLong(e *entry, m codec.Method, incoming []byte) ([]byte, 
 			return nil, fmt.Errorf("setValue long: need 4 bytes, got %d", len(incoming))
 		}
 		next = int64(int32(binary.BigEndian.Uint32(incoming)))
+		next = snapInt64(next, int64(minV), int64(step))
 	case codec.MethodSetIncValue:
 		next = int64(cur) + int64(step)
 	case codec.MethodSetDecValue:
@@ -205,6 +207,7 @@ func (s *server) mutateByte(e *entry, m codec.Method, incoming []byte) ([]byte, 
 			return nil, fmt.Errorf("setValue byte: need 1 byte, got 0")
 		}
 		next = int32(incoming[0])
+		next = int32(snapInt64(int64(next), int64(minV), int64(step)))
 	case codec.MethodSetIncValue:
 		next = int32(cur) + int32(step)
 	case codec.MethodSetDecValue:
@@ -254,6 +257,9 @@ func (s *server) mutateFloat(e *entry, m codec.Method, incoming []byte) ([]byte,
 			return nil, fmt.Errorf("setValue float: need 4 bytes, got %d", len(incoming))
 		}
 		next = float64(math.Float32frombits(binary.BigEndian.Uint32(incoming)))
+		// Snap to schema step so continuous slider input from
+		// controllers (Cerebrum, VSM) lands on the advertised grid.
+		next = snapFloat64(next, float64(minV), float64(step))
 	case codec.MethodSetIncValue:
 		next = float64(cur) + float64(step)
 	case codec.MethodSetDecValue:
@@ -441,6 +447,32 @@ func clampFloat64(v, minV, maxV float64) float64 {
 		return maxV
 	}
 	return v
+}
+
+// snapFloat64 rounds v to the nearest multiple of step relative to min.
+// Step <= 0 is treated as "no constraint" and v passes through. Used to
+// enforce the schema's step on incoming setValue floats — controllers
+// like Cerebrum send continuous slider values; per spec values must
+// land on the declared step grid before storage / announcement.
+func snapFloat64(v, minV, step float64) float64 {
+	if step <= 0 {
+		return v
+	}
+	n := math.Round((v - minV) / step)
+	return minV + n*step
+}
+
+// snapInt64 rounds v to the nearest multiple of step relative to min.
+// Step <= 0 is a no-op. Mirrors snapFloat64 for integer-typed setValue.
+func snapInt64(v, minV, step int64) int64 {
+	if step <= 0 {
+		return v
+	}
+	d := v - minV
+	if d >= 0 {
+		return minV + ((d+step/2)/step)*step
+	}
+	return minV + ((d-step/2)/step)*step
 }
 
 func uint32ToDottedQuad(v uint32) string {

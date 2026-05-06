@@ -340,6 +340,10 @@ func flattenJSONTree(tree map[string]json.RawMessage, slot int, path []string, o
 			obj.Unit = lf.Unit
 			obj.EnumItems = lf.EnumItems
 			obj.MaxLen = lf.MaxLen
+			obj.Min = lf.Min
+			obj.Max = lf.Max
+			obj.Step = lf.Step
+			obj.Def = lf.Default
 			if lf.Value != nil {
 				valStr := strings.Trim(string(lf.Value), "\"")
 				obj.Value = parseCSVValue(obj.Kind, valStr, lf.ValueName, lf.EnumItems)

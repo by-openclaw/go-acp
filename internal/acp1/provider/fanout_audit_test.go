@@ -186,7 +186,7 @@ func TestFanout_BroadcastIsConstantTime(t *testing.T) {
 	}
 
 	payload := []byte("announcement-bytes")
-	reg.broadcast(payload)
+	reg.broadcast(payload, 0)
 
 	// Every session must have exactly one frame; all pointing at the
 	// same payload (or an equivalent slice copy).

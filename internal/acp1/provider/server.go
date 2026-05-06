@@ -246,6 +246,15 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 // suppressed. Replies to active requests stay on regardless — only
 // this path is gated. (#257)
 func (s *server) broadcastAnnounce(ann *codec.Message) {
+	s.broadcastAnnounceSkip(ann, 0)
+}
+
+// broadcastAnnounceSkip is the TCP-session-aware variant. skipTCPSessionID
+// names the TCP session that originated the change so the announce is
+// NOT echoed back on that same socket — strict peers (e.g. VSM Studio)
+// RST when they see a server-pushed MTID=0 frame between their own
+// reply and their next request. UDP / AN2 / admin / demo callers pass 0.
+func (s *server) broadcastAnnounceSkip(ann *codec.Message, skipTCPSessionID uint64) {
 	if !s.tree.broadcastsEnabled() {
 		s.logger.Debug("acp1 announce gated by Broadcasts=Off",
 			slog.Int("objgroup", int(ann.ObjGroup)),
@@ -262,7 +271,7 @@ func (s *server) broadcastAnnounce(ann *codec.Message) {
 	}
 	// Fan-out to every live TCP and AN2 session. Standalone TCP/AN2
 	// providers (no UDP listener) still announce here.
-	s.broadcastTCPAnnounce(out)
+	s.broadcastTCPAnnounce(out, skipTCPSessionID)
 	s.broadcastAN2Announce(out)
 
 	s.mu.Lock()
