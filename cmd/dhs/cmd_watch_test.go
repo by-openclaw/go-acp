@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"dhs/internal/protocol"
+)
 
 // TestWatchCacheKey_DistinguishesGroupsForSharedID pins the fix for #236:
 // ACP1 groups (control / status / alarm / identity / file / frame) re-use
@@ -49,5 +53,84 @@ func TestWatchCacheKey_DistinguishesGroupsForSharedID(t *testing.T) {
 func TestWatchCacheKey_ACP2EmptyGroup(t *testing.T) {
 	if a, b := watchCacheKey("", 1), watchCacheKey("", 2); a == b {
 		t.Fatalf("ACP2 ids collapsed: id=1 key %q == id=2 key %q", a, b)
+	}
+}
+
+// TestFrameStatusDelta_BaselineThenSingleChange covers the common watch
+// flow: first event seeds the baseline (no transitions emitted, caller
+// prints baseline), second event with one slot delta emits one line.
+func TestFrameStatusDelta_BaselineThenSingleChange(t *testing.T) {
+	// Helper using the protocol's SlotStatus constants directly.
+	P := protocol.SlotPresent
+	N := protocol.SlotNoCard
+	U := protocol.SlotPowerUp
+
+	// First call: prev nil → no transitions returned (baseline path).
+	if got := frameStatusDelta(nil, []protocol.SlotStatus{P, N, N, P}); len(got) != 0 {
+		t.Errorf("baseline: got %d transitions, want 0: %v", len(got), got)
+	}
+
+	// Single slot transition: slot 2 N → U.
+	got := frameStatusDelta(
+		[]protocol.SlotStatus{P, N, N, P},
+		[]protocol.SlotStatus{P, N, U, P},
+	)
+	if len(got) != 1 {
+		t.Fatalf("got %d transitions, want 1: %v", len(got), got)
+	}
+	if got[0] != "slot 2: no_card -> power_up" {
+		t.Errorf("got %q, want %q", got[0], "slot 2: no_card -> power_up")
+	}
+}
+
+// TestFrameStatusDelta_NoChange covers re-broadcast suppression: same
+// strip in/out yields zero transitions so watch prints nothing.
+func TestFrameStatusDelta_NoChange(t *testing.T) {
+	strip := []protocol.SlotStatus{
+		protocol.SlotPresent, protocol.SlotPresent, protocol.SlotNoCard,
+	}
+	if got := frameStatusDelta(strip, strip); len(got) != 0 {
+		t.Errorf("idempotent re-broadcast emitted %d transitions: %v", len(got), got)
+	}
+}
+
+// TestFrameStatusDelta_FullCycle replays the live 6-state cycle the user
+// observed on slot 19 (no_card → power_up → error → removed → boot →
+// present) to lock the slot-only diff output.
+func TestFrameStatusDelta_FullCycle(t *testing.T) {
+	mkStrip := func(slot19 protocol.SlotStatus) []protocol.SlotStatus {
+		s := make([]protocol.SlotStatus, 31)
+		s[0] = protocol.SlotPresent
+		s[1] = protocol.SlotPresent
+		s[19] = slot19
+		return s
+	}
+	steps := []struct {
+		from, to protocol.SlotStatus
+		want     string
+	}{
+		{protocol.SlotNoCard, protocol.SlotPowerUp, "slot 19: no_card -> power_up"},
+		{protocol.SlotPowerUp, protocol.SlotError, "slot 19: power_up -> error"},
+		{protocol.SlotError, protocol.SlotRemoved, "slot 19: error -> removed"},
+		{protocol.SlotRemoved, protocol.SlotBootMode, "slot 19: removed -> boot_mode"},
+		{protocol.SlotBootMode, protocol.SlotPresent, "slot 19: boot_mode -> present"},
+	}
+	for _, st := range steps {
+		out := frameStatusDelta(mkStrip(st.from), mkStrip(st.to))
+		if len(out) != 1 || out[0] != st.want {
+			t.Errorf("step %s -> %s: got %v want [%q]", st.from, st.to, out, st.want)
+		}
+	}
+}
+
+// TestFrameStatusDelta_LengthMismatch verifies short/long slice handling:
+// a frame whose slot count grew gets the new positions reported as
+// no_card -> X transitions.
+func TestFrameStatusDelta_LengthMismatch(t *testing.T) {
+	prev := []protocol.SlotStatus{protocol.SlotPresent}
+	cur := []protocol.SlotStatus{protocol.SlotPresent, protocol.SlotPresent}
+	got := frameStatusDelta(prev, cur)
+	if len(got) != 1 || got[0] != "slot 1: no_card -> present" {
+		t.Errorf("length-grow: got %v want [\"slot 1: no_card -> present\"]", got)
 	}
 }
