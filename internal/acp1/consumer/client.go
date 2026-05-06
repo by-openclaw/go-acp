@@ -34,6 +34,12 @@ type ClientConfig struct {
 	ReceiveTimeout time.Duration // default 10s — per attempt
 	InitialBackoff time.Duration // default 100ms — first retry delay
 	MaxBackoff     time.Duration // default 2s — cap per-retry delay
+
+	// OnRx fires after every successfully-received frame (reply or
+	// announcement). Used by the Plugin's keep-alive watchdog to
+	// touch lastRx on the TCP path, where there's no socket-level
+	// timestampingTransport tap. Optional — nil ⇒ no-op.
+	OnRx func()
 }
 
 // defaultConfig returns a ClientConfig with all fields populated.

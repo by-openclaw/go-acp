@@ -124,6 +124,12 @@ type Plugin struct {
 	// SessionHealth() can compute Live without blocking. Nil until
 	// Connect fires.
 	tsSink *timestampSink
+
+	// Keep-alive (cross-protocol contract). kaCfg is the operator's
+	// CLI choice (set via SetKeepAlive); ka holds the running prober +
+	// watchdog goroutines for the current Connect lifetime.
+	kaCfg protocol.KeepAliveConfig
+	ka    *keepAliveState
 }
 
 // ComplianceProfile returns the session-scoped compliance profile.
@@ -225,6 +231,22 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.walker.SetProfile(p.profile)
 	p.logger.Info("acp1 connected",
 		"host", ip, "port", port, "transport", p.transport)
+
+	// Prime lastRx so SessionLive() returns true immediately after a
+	// successful connect, before any actual rx has happened. Mirrors
+	// the Ember+ pattern (session.go:230). Without this, the
+	// watchdog's first tick fires a spurious "session went silent"
+	// warning during the connect-to-first-rx grace period — and the
+	// TCP path doesn't go through timestampingTransport, so its
+	// initial lastRx stays zero indefinitely.
+	if p.tsSink != nil {
+		p.tsSink.recordRx()
+	}
+
+	// Spawn the keep-alive prober + dead-man watchdog. Honours the
+	// operator's SetKeepAlive choice; defaults to 5s probe / 15s
+	// timeout when nothing was set.
+	p.startKeepAlive(context.Background())
 	return nil
 }
 
@@ -271,7 +293,18 @@ func (p *Plugin) connectTCP(ctx context.Context, ip string, port int) error {
 	p.tcpConn = conn
 	// Note: TCP recording not yet supported — TCPClient takes *TCPConn directly.
 	// Recorder wraps the UDP path where it is used and tested.
-	p.client = NewTCPClient(conn, p.logger, ClientConfig{})
+	if p.tsSink == nil {
+		p.tsSink = &timestampSink{}
+	}
+	cfg := ClientConfig{
+		// Keep-alive RX tap — TCP doesn't go through
+		// timestampingTransport (the UDP-only wrapper), so the
+		// TCPClient surfaces every received frame through OnRx
+		// instead. Without this the watchdog never sees rx and
+		// flips the session to dead after the first timeout window.
+		OnRx: p.tsSink.recordRx,
+	}
+	p.client = NewTCPClient(conn, p.logger, cfg)
 	return nil
 }
 
@@ -280,6 +313,11 @@ func (p *Plugin) connectTCP(ctx context.Context, ip string, port int) error {
 func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	// Stop the keep-alive prober + watchdog before tearing the
+	// transport down — otherwise the prober may try one last write
+	// against a closing socket and surface a spurious error.
+	p.stopKeepAlive()
 
 	// Stop the announcement listener first so no stray callback fires
 	// during teardown.

@@ -32,12 +32,14 @@ func init() {
 // subcommand so positional args (the host) stay in position 1.
 type commonFlags struct {
 	protocol  string
-	transport string
-	port      int
-	timeout   time.Duration
-	verbose   bool
-	logLevel  string
-	capture   string
+	transport         string
+	port              int
+	timeout           time.Duration
+	keepalive         time.Duration
+	keepaliveTimeout  time.Duration
+	verbose           bool
+	logLevel          string
+	capture           string
 
 	// captureDir is populated by connect() when --capture points at a
 	// directory (or at a path without a .jsonl extension). In that
@@ -68,6 +70,13 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 			"or tcp (ACP1 v1.4 TCP direct, crosses VLANs)")
 	fs.IntVar(&cf.port, "port", 0, "override default port (0 = plugin default)")
 	fs.DurationVar(&cf.timeout, "timeout", 1*time.Second, "per-operation timeout (single get/set/connect; walks ignore this and run until done)")
+	fs.DurationVar(&cf.keepalive, "keepalive", 0,
+		"keep-alive probe interval (0 = plugin default — acp1: 5s, "+
+			"emberplus: 10s — match real-controller cadence; -1 = disable probes)")
+	fs.DurationVar(&cf.keepaliveTimeout, "keepalive-timeout", 0,
+		"keep-alive dead-man threshold (0 = 3× --keepalive; -1 = never "+
+			"declare session dead). Watch verb shows freshness=cache once "+
+			"this elapses without rx; values stay decoded against the cached schema.")
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
 	fs.StringVar(&cf.capture, "capture", "",
@@ -196,6 +205,16 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 		default:
 			return nil, nil, fmt.Errorf("unknown --transport %q (use auto / udp / tcp)", cf.transport)
 		}
+	}
+
+	// Keep-alive selection is also plugin-specific via the optional
+	// protocol.KeepAliver capability. Plugins that don't implement it
+	// silently ignore the flags.
+	if ka, ok := plug.(protocol.KeepAliver); ok {
+		ka.SetKeepAlive(protocol.KeepAliveConfig{
+			Interval: cf.keepalive,
+			Timeout:  cf.keepaliveTimeout,
+		})
 	}
 
 	port := cf.port
