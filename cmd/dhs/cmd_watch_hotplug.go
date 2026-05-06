@@ -37,7 +37,22 @@ type hotPlugEnricher struct {
 	prevFP         map[int]protocol.CardIdentity // last-seen fingerprint per slot
 	resolver       dmlib.Resolver                // nil ⇒ no DM-library lookups
 	autoWalkOnPlug bool
-	out            io.Writer
+
+	// outMu serialises writes to out. Separate from mu so the
+	// spawned post-plug walk goroutine can print without coupling
+	// to the observe-path map lock. io.Writer (e.g. *bytes.Buffer
+	// in tests) is not safe for concurrent use.
+	outMu sync.Mutex
+	out   io.Writer
+}
+
+// printf is the only path through which the enricher writes to its
+// output sink. Holds outMu so the post-plug walk goroutine and the
+// observe path don't tear each other's lines.
+func (h *hotPlugEnricher) printf(format string, a ...any) {
+	h.outMu.Lock()
+	defer h.outMu.Unlock()
+	_, _ = fmt.Fprintf(h.out, format, a...)
 }
 
 // seederIface is the optional contract a plugin satisfies when it
@@ -114,22 +129,22 @@ func (h *hotPlugEnricher) handleTransition(ctx context.Context, plug protocol.Pr
 		// fingerprint.
 		swapTag, fp, seedRows, err := h.enrich(ctx, plug, slot)
 		if err != nil {
-			_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s  enrichment-failed: %v\n", tsStr, tag, err)
+			h.printf("%s  hot-plug  %s  enrichment-failed: %v\n", tsStr, tag, err)
 			return
 		}
-		_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s  %s %s  %s\n", tsStr, tag, swapTag, fp, seedRows)
+		h.printf("%s  hot-plug  %s  %s %s  %s\n", tsStr, tag, swapTag, fp, seedRows)
 	case cur == protocol.SlotRemoved, prev == protocol.SlotRemoved && cur == protocol.SlotNoCard, cur == protocol.SlotNoCard:
 		// Hot-removal cascade: keep emitting rows, no re-seed. Drop
 		// the cached fingerprint so a re-plug starts fresh
 		// ("discovered") rather than silently assuming continuity.
 		delete(h.prevFP, slot)
-		_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s\n", tsStr, tag)
+		h.printf("%s  hot-plug  %s\n", tsStr, tag)
 	case cur == protocol.SlotError:
-		_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s  card faulted\n", tsStr, tag)
+		h.printf("%s  hot-plug  %s  card faulted\n", tsStr, tag)
 	default:
 		// Intermediate transitions (no_card→powerup, powerup→boot):
 		// surface for visibility, no action.
-		_, _ = fmt.Fprintf(h.out,"%s  hot-plug  %s\n", tsStr, tag)
+		h.printf("%s  hot-plug  %s\n", tsStr, tag)
 	}
 }
 
@@ -206,10 +221,10 @@ func (h *hotPlugEnricher) enrich(ctx context.Context, plug protocol.Protocol, sl
 		go func() {
 			objs, werr := plug.Walk(ctx, slot)
 			if werr != nil {
-				_, _ = fmt.Fprintf(h.out,"warning: post-plug walk slot %d: %v\n", slot, werr)
+				h.printf("warning: post-plug walk slot %d: %v\n", slot, werr)
 				return
 			}
-			_, _ = fmt.Fprintf(h.out,"         hot-plug s%-2d  walk=ok(%d)\n", slot, len(objs))
+			h.printf("         hot-plug s%-2d  walk=ok(%d)\n", slot, len(objs))
 		}()
 	}
 	return swapTag, fp, tag, nil
