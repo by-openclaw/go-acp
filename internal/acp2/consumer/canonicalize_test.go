@@ -66,6 +66,10 @@ func TestCanonicalize_SingleSlot(t *testing.T) {
 		},
 		ObjTypes: []codec.ACP2ObjType{codec.ObjTypeNode, codec.ObjTypeNode, codec.ObjTypeEnum, codec.ObjTypeString},
 		NumTypes: []codec.NumberType{0, 0, 0, 0},
+		// Wire-index OptionsMap parallels Objects. ACP Trace (index 2) is
+		// the only enum; its options carry their wire indices per pid 15
+		// (real-peer evidence: EVS Neuron 5.3.5 / 6.7.4 wire 2026-05-06).
+		OptionsMaps: []map[uint32]string{nil, nil, {0: "Off", 1: "On"}, nil},
 	}
 
 	p := &Plugin{}

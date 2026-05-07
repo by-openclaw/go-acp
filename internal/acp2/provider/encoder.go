@@ -269,49 +269,55 @@ func propPresetDepth(depth uint32) codec.Property {
 	}
 }
 
-// acp2OptionSize is the fixed on-wire size of one enum option (pid 15
-// entry) per spec §5.4: plen = 4 + (72 * option), so each option is
-// exactly 72 bytes: 4-byte u32 index + 68-byte NUL-padded UTF-8 name.
-const acp2OptionSize = 72
-
-// propOptions builds the pid=15 (options) property per spec §5.4:
+// propOptions builds the pid=15 (options) property.
 //
-//	header: pid=15, data=num_option (INLINE), plen=4 + 72 * N
-//	body  : N fixed-size slots, each {u32 index, 68-byte NUL-padded name}
+// Spec acp2_protocol.pdf §5.4 row 15 reads `plen = 4 + (72*option)`,
+// implying a fixed 72-byte stride per option (u32 idx + 68-byte
+// NUL-padded name). Real EVS Neuron firmware (5.3.5 + 6.7.4) and
+// every shipping ACP2 controller (Cerebrum, Lawo VSM) emit + parse
+// variable-length records instead — see codec.decodeOptions for the
+// 9,827-frame wire evidence.
 //
-// Matches real Axon firmware; Lawo VSM's driver parses with this layout.
-// Index 0..N-1 matches EnumMap ordering.
+// Output layout per option (packed back-to-back):
 //
-//	| Offset          | Field   | Width  | Notes                         |
-//	|-----------------|---------|--------|-------------------------------|
-//	| 0               | pid     | u8     | 15 = options                  |
-//	| 1               | data    | u8     | num options (N) — inline count|
-//	| 2-3             | plen    | u16 BE | 4 + 72*N                      |
-//	| 4 + 72*i        | idx_i   | u32 BE | option index (0..N-1)         |
-//	| 8 + 72*i        | name_i  | 68     | UTF-8, zero-padded, truncates |
+//	| Offset | Field   | Width  | Notes                                  |
+//	|--------|---------|--------|----------------------------------------|
+//	| 0      | idx     | u32 BE | option's wire index from EnumMap.Value |
+//	| 4..    | name    | varies | UTF-8, NUL-terminated                  |
+//	| ...    | padding | 0-3    | zero bytes to next 4-byte boundary     |
 //
-// Spec reference: acp2_protocol.pdf §5.4 pid=15 options
-func propOptions(opts []string) codec.Property {
-	n := len(opts)
-	data := make([]byte, acp2OptionSize*n)
-	for i, opt := range opts {
-		off := i * acp2OptionSize
-		binary.BigEndian.PutUint32(data[off:off+4], uint32(i))
-		// Copy the UTF-8 name into the 68-byte slot. Truncate if
-		// longer; zero-pad otherwise. No explicit NUL — the zero
-		// padding serves as the terminator.
-		name := opt
-		if len(name) > acp2OptionSize-4-1 { // reserve at least 1 NUL
-			name = name[:acp2OptionSize-4-1]
+// Property header: pid=15, data=num_option (INLINE count), plen =
+// 4 + total payload bytes. The wire index MUST come from
+// canonical EnumMap[i].Value — that is the same idx the device
+// referenced in pid=8 (value) and pid=9 (default). Synthesizing
+// 0..N-1 here breaks round-trip: e.g. EVS Neuron Path Selection has
+// options indexed 0x2a3..0x2b2 with value 0x2ac, so any positional
+// rewrite leaves the value pointing at no option and Cerebrum cannot
+// resolve the matrix crosspoint.
+func propOptions(opts []optionEntry) codec.Property {
+	var data []byte
+	for _, opt := range opts {
+		var rec [4]byte
+		binary.BigEndian.PutUint32(rec[:], opt.idx)
+		data = append(data, rec[:]...)
+		data = append(data, []byte(opt.label)...)
+		data = append(data, 0) // NUL terminator
+		for len(data)%4 != 0 {
+			data = append(data, 0)
 		}
-		copy(data[off+4:off+acp2OptionSize], name)
 	}
 	return codec.Property{
 		PID:   codec.PIDOptions,
-		VType: uint8(n), // spec §5.4: "data: num option" — inline count
-		PLen:  uint16(4 + acp2OptionSize*n),
+		VType: uint8(len(opts)), // spec § 5.4: "data: num option" — inline count
+		PLen:  uint16(4 + len(data)),
 		Data:  data,
 	}
+}
+
+// optionEntry pairs a wire index with its label for pid=15 emission.
+type optionEntry struct {
+	idx   uint32
+	label string
 }
 
 // encodeValueProp builds the pid=8 (value) property for one entry,
@@ -467,20 +473,34 @@ func u32Data(v uint32) []byte {
 // enumOptions pulls the enum option labels (ordered by ordinal) from a
 // canonical Parameter. Prefers EnumMap; falls back to parsing the
 // newline- or comma-separated Enumeration string.
-func enumOptions(p *canonical.Parameter) []string {
+// enumOptions returns the option records (wire-idx + label) ready to
+// pass to propOptions. The canonical EnumMap entries store the wire
+// index in Value and the label in Key — that's what the matrix peer
+// referenced in pid=8 / pid=9 at walk time. Falls back to positional
+// indices ONLY when the canonical tree was built without an EnumMap
+// (legacy fixtures); modern walks always populate EnumMap with wire
+// indices via canonicalize.go.
+func enumOptions(p *canonical.Parameter) []optionEntry {
 	if len(p.EnumMap) > 0 {
-		out := make([]string, len(p.EnumMap))
+		out := make([]optionEntry, len(p.EnumMap))
 		for i, e := range p.EnumMap {
-			out[i] = e.Key
+			out[i] = optionEntry{idx: uint32(e.Value), label: e.Key}
 		}
 		return out
 	}
 	if p.Enumeration != nil && *p.Enumeration != "" {
 		raw := *p.Enumeration
+		var labels []string
 		if strings.Contains(raw, "\n") {
-			return strings.Split(raw, "\n")
+			labels = strings.Split(raw, "\n")
+		} else {
+			labels = strings.Split(raw, ",")
 		}
-		return strings.Split(raw, ",")
+		out := make([]optionEntry, len(labels))
+		for i, l := range labels {
+			out[i] = optionEntry{idx: uint32(i), label: l}
+		}
+		return out
 	}
 	return nil
 }

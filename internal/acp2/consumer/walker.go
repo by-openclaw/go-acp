@@ -236,14 +236,12 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 		w.decodeValue(valueProp, objType, numType, &obj, optionsMap)
 	}
 
-	// Resolve enum/preset default to label via optionsMap.
-	if (objType == codec.ObjTypeEnum || objType == codec.ObjTypePreset) && obj.Def != nil && optionsMap != nil {
-		if defIdx, ok := obj.Def.(uint64); ok {
-			if label, found := optionsMap[uint32(defIdx)]; found {
-				obj.Def = label
-			}
-		}
-	}
+	// obj.Def stays as the wire integer (enum option index). Label
+	// resolution happens at display time via obj.EnumItems / optionsMap.
+	// Storing the label here would round-trip into canonical.Default as
+	// a string, which the provider's encoder.go cannot encode back to
+	// pid 9 (default_value) — it expects an integer for enum types and
+	// "Main"/etc. is not parseable as int.
 
 	// Build Path from parent path + this object's label.
 	if obj.Label != "" {

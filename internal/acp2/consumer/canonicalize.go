@@ -3,6 +3,7 @@ package acp2
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -116,7 +117,11 @@ func buildACP2SlotNode(slot int, tree *WalkedTree) *canonical.Node {
 		if i < len(tree.NumTypes) {
 			numType = tree.NumTypes[i]
 		}
-		placeACP2Object(slot, slotOID, slotIdent, obj, objType, numType, nodeByPath)
+		var optMap map[uint32]string
+		if i < len(tree.OptionsMaps) {
+			optMap = tree.OptionsMaps[i]
+		}
+		placeACP2Object(slot, slotOID, slotIdent, obj, objType, numType, optMap, nodeByPath)
 	}
 
 	// Sort children recursively for deterministic output.
@@ -134,7 +139,7 @@ func buildACP2SlotNode(slot int, tree *WalkedTree) *canonical.Node {
 // segment is the element's identifier; everything before is the parent
 // path. Node-type objects are attached as Nodes; everything else as
 // Parameter.
-func placeACP2Object(slot int, slotOID, slotIdent string, obj protocol.Object, objType codec.ACP2ObjType, numType codec.NumberType, nodeByPath map[string]*canonical.Node) {
+func placeACP2Object(slot int, slotOID, slotIdent string, obj protocol.Object, objType codec.ACP2ObjType, numType codec.NumberType, optMap map[uint32]string, nodeByPath map[string]*canonical.Node) {
 	if len(obj.Path) == 0 {
 		return
 	}
@@ -182,7 +187,7 @@ func placeACP2Object(slot int, slotOID, slotIdent string, obj protocol.Object, o
 		return
 	}
 
-	param := buildACP2Parameter(obj, objType, numType, slotOID, fullPath)
+	param := buildACP2Parameter(obj, objType, numType, optMap, slotOID, fullPath)
 	if param != nil {
 		parent.Children = append(parent.Children, param)
 	}
@@ -223,7 +228,7 @@ func ensureACP2Chain(slot int, slotOID, slotIdent string, segments []string, nod
 
 // buildACP2Parameter maps a protocol.Object (leaf) to a canonical.Parameter.
 // Spec cross-refs for each property come from acp2_protocol.pdf.
-func buildACP2Parameter(obj protocol.Object, objType codec.ACP2ObjType, numType codec.NumberType, slotOID, path string) *canonical.Parameter {
+func buildACP2Parameter(obj protocol.Object, objType codec.ACP2ObjType, numType codec.NumberType, optMap map[uint32]string, slotOID, path string) *canonical.Parameter {
 	oid := slotOID + "." + strconv.Itoa(obj.ID)
 
 	p := &canonical.Parameter{
@@ -259,18 +264,33 @@ func buildACP2Parameter(obj protocol.Object, objType codec.ACP2ObjType, numType 
 	}
 
 	// Enum / preset (ACP2 object types 2 and "preset" per pid=5=9).
-	// Spec acp2_protocol.pdf §"Property IDs" pid=15 delivers the options
-	// list; the walker already exposes them as EnumItems + OptionsMap.
-	if (objType == codec.ObjTypeEnum || objType == codec.ObjTypePreset) && len(obj.EnumItems) > 0 {
-		entries := make([]canonical.EnumEntry, 0, len(obj.EnumItems))
-		for i, item := range obj.EnumItems {
+	// Spec acp2_protocol.pdf §"Property IDs" pid=15: each option carries
+	// a u32 wire index. Use that index as the canonical Key so values
+	// (pid=8) and defaults (pid=9) round-trip — both reference the same
+	// wire idx, not a synthetic 0..N-1 position. Real-peer evidence:
+	// EVS Neuron 5.3.5 / 6.7.4 (2026-05-06) emits Path Selection options
+	// indexed 0x2a3..0x2b2 with value 0x2ac (684 = "C2"). Without the
+	// wire index, Cerebrum can't match value→label and shows the matrix
+	// destination as unmappable.
+	if (objType == codec.ObjTypeEnum || objType == codec.ObjTypePreset) && len(optMap) > 0 {
+		// Stable order: by ascending wire index.
+		idxs := make([]uint32, 0, len(optMap))
+		for k := range optMap {
+			idxs = append(idxs, k)
+		}
+		sort.Slice(idxs, func(i, j int) bool { return idxs[i] < idxs[j] })
+		entries := make([]canonical.EnumEntry, 0, len(idxs))
+		labels := make([]string, 0, len(idxs))
+		for _, idx := range idxs {
+			label := optMap[idx]
 			entries = append(entries, canonical.EnumEntry{
-				Key:   item,
-				Value: int64(i),
+				Key:   label,
+				Value: int64(idx),
 			})
+			labels = append(labels, label)
 		}
 		p.EnumMap = entries
-		joined := strings.Join(obj.EnumItems, "\n")
+		joined := strings.Join(labels, "\n")
 		p.Enumeration = &joined
 	}
 
@@ -365,10 +385,11 @@ func acp2ValueToAny(v protocol.Value) any {
 	case protocol.KindFloat:
 		return v.Float
 	case protocol.KindEnum:
-		if v.Str != "" {
-			return v.Str
-		}
-		return int64(v.Enum)
+		// Wire-authoritative integer index. Provider's encoder needs it
+		// to encode pid 8 (value) for enum types; round-tripping the
+		// label string back to ACP2 fails ("Main" is not an integer).
+		// Labels stay reachable via canonical.EnumMap / Enumeration.
+		return v.Uint
 	case protocol.KindString:
 		return v.Str
 	case protocol.KindIPAddr:

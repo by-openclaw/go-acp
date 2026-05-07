@@ -173,50 +173,68 @@ func PropertyChildren(p *Property) ([]uint32, error) {
 	return ids, nil
 }
 
-// ACP2OptionSize is the fixed on-wire size of one enum option per spec
-// §5.4 pid 15: 4-byte u32 index + 68-byte NUL-padded UTF-8 name = 72 bytes.
+// ACP2OptionSize was the spec's stated fixed stride per pid-15 option
+// (acp2_protocol.pdf §5.4 row 15: `plen = 4 + (72*option)`). Every
+// shipping ACP2 device + controller (real EVS Neuron, Lawo VSM,
+// Cerebrum) emits + parses variable-length option records instead —
+// see decodeOptions for the wire layout and the 9,827-frame evidence.
+// The constant is kept exported for any external code that still
+// reasons about the spec stride; new code should use decodeOptions /
+// PropertyOptions / PropertyOptionsMap.
 const ACP2OptionSize = 72
 
 // PropertyOptions extracts enum option labels (ordered by wire position)
-// from a pid=15 property. Fixed 72-byte stride per spec §5.4.
+// from a pid=15 property. Variable-length per option (see comment on
+// ACP2OptionSize for wire format).
 func PropertyOptions(p *Property) []string {
-	if len(p.Data) < ACP2OptionSize {
-		return nil
-	}
-	n := len(p.Data) / ACP2OptionSize
-	labels := make([]string, 0, n)
-	for i := 0; i < n; i++ {
-		off := i * ACP2OptionSize
-		labels = append(labels, trimZero(p.Data[off+4:off+ACP2OptionSize]))
-	}
+	_, labels := decodeOptions(p.Data)
 	return labels
 }
 
 // PropertyOptionsMap extracts enum options as a map of index → label.
-// Fixed 72-byte stride per spec §5.4 pid 15.
+// Variable-length per option (see ACP2OptionSize comment).
 func PropertyOptionsMap(p *Property) map[uint32]string {
-	if len(p.Data) < ACP2OptionSize {
+	indices, labels := decodeOptions(p.Data)
+	if len(indices) == 0 {
 		return nil
 	}
-	n := len(p.Data) / ACP2OptionSize
-	m := make(map[uint32]string, n)
-	for i := 0; i < n; i++ {
-		off := i * ACP2OptionSize
-		idx := binary.BigEndian.Uint32(p.Data[off : off+4])
-		m[idx] = trimZero(p.Data[off+4 : off+ACP2OptionSize])
+	m := make(map[uint32]string, len(indices))
+	for i, idx := range indices {
+		m[idx] = labels[i]
 	}
 	return m
 }
 
-// trimZero returns the UTF-8 prefix of b up to the first NUL byte (or
-// the full slice if none). Used for fixed-width NUL-padded name slots.
-func trimZero(b []byte) string {
-	for i, c := range b {
-		if c == 0 {
-			return string(b[:i])
+// decodeOptions scans pid 15 raw bytes as a sequence of variable-length
+// option records (idx u32be + NUL-terminated name + 4-byte align).
+// Returns parallel slices of indices and labels in wire order.
+func decodeOptions(data []byte) ([]uint32, []string) {
+	if len(data) < 5 { // need at least idx (4) + 1 name byte (\0)
+		return nil, nil
+	}
+	var indices []uint32
+	var labels []string
+	offset := 0
+	for offset+4 < len(data) {
+		idx := binary.BigEndian.Uint32(data[offset : offset+4])
+		offset += 4
+		nameStart := offset
+		for offset < len(data) && data[offset] != 0 {
+			offset++
+		}
+		if offset >= len(data) {
+			// Malformed — name not NUL-terminated. Stop.
+			break
+		}
+		labels = append(labels, string(data[nameStart:offset]))
+		indices = append(indices, idx)
+		offset++ // consume the NUL
+		// Align to next 4-byte boundary.
+		if rem := offset % 4; rem != 0 {
+			offset += 4 - rem
 		}
 	}
-	return string(b)
+	return indices, labels
 }
 
 // PropertyEventMessages extracts the two event message strings from pid=19.

@@ -3,6 +3,7 @@ package codec
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"math"
 	"testing"
 )
@@ -303,19 +304,20 @@ func TestPropertyChildren(t *testing.T) {
 	}
 }
 
-func TestPropertyOptions(t *testing.T) {
-	// Spec §5.4 pid 15: fixed 72 bytes per option = u32 BE index + 68-byte
-	// NUL-padded UTF-8 name. Build two options: idx=7 "Off", idx=8 "On".
-	data := make([]byte, 2*ACP2OptionSize)
-	binary.BigEndian.PutUint32(data[0:4], 7)
-	copy(data[4:], "Off")
-	binary.BigEndian.PutUint32(data[ACP2OptionSize:ACP2OptionSize+4], 8)
-	copy(data[ACP2OptionSize+4:], "On")
-
+// TestPropertyOptions_RealPeerWire pins the variable-length option
+// record format observed on real Neuron firmware (5.3.5 + 6.7.4) wire
+// traces 2026-05-06. Each option = u32be idx + NUL-terminated name +
+// 4-byte alignment padding. Spec §5.4 implies fixed 72 B per option;
+// every shipping ACP2 device emits variable-length instead.
+func TestPropertyOptions_RealPeerWire(t *testing.T) {
+	// Sample captured from EVS Neuron 5.3.5 slot 0:
+	// 16 B = idx=7 "Off\0" + idx=8 "On\0\0"
+	data, _ := hex.DecodeString("000000074f666600000000084f6e0000")
 	p := &Property{PID: PIDOptions, Data: data}
+
 	opts := PropertyOptions(p)
 	if len(opts) != 2 {
-		t.Fatalf("expected 2 options, got %d", len(opts))
+		t.Fatalf("expected 2 options, got %d (%v)", len(opts), opts)
 	}
 	if opts[0] != "Off" || opts[1] != "On" {
 		t.Errorf("options: got %v, want [Off, On]", opts)
@@ -330,6 +332,86 @@ func TestPropertyOptions(t *testing.T) {
 	}
 	if m[8] != "On" {
 		t.Errorf("map[8]: got %q, want %q", m[8], "On")
+	}
+}
+
+// TestPropertyOptions_VariableLengthMix pins multi-option mixed-length
+// records (short + long names). Captured from EVS Neuron 6.7.4 slot 1
+// pid 15 = 60 B with 6 options:
+// idx=710 "Off"   (8 B option record)
+// idx=711 "1 s"   (8 B)
+// idx=712 "2 s"   (8 B)
+// idx=713 "10 s"  (12 B — name+NUL extends past first 4-byte slot)
+// idx=714 "30 s"  (12 B)
+// idx=715 "60 s"  (12 B)
+func TestPropertyOptions_VariableLengthMix(t *testing.T) {
+	data := []byte{
+		// idx=710 "Off\0" — 8 B
+		0x00, 0x00, 0x02, 0xc6, 'O', 'f', 'f', 0x00,
+		// idx=711 "1 s\0" — 8 B
+		0x00, 0x00, 0x02, 0xc7, '1', ' ', 's', 0x00,
+		// idx=712 "2 s\0" — 8 B
+		0x00, 0x00, 0x02, 0xc8, '2', ' ', 's', 0x00,
+		// idx=713 "10 s\0" + 3 B pad — 12 B
+		0x00, 0x00, 0x02, 0xc9, '1', '0', ' ', 's', 0x00, 0x00, 0x00, 0x00,
+		// idx=714 "30 s\0" + 3 B pad — 12 B
+		0x00, 0x00, 0x02, 0xca, '3', '0', ' ', 's', 0x00, 0x00, 0x00, 0x00,
+		// idx=715 "60 s\0" + 3 B pad — 12 B
+		0x00, 0x00, 0x02, 0xcb, '6', '0', ' ', 's', 0x00, 0x00, 0x00, 0x00,
+	}
+
+	if got, want := len(data), 60; got != want {
+		t.Fatalf("test fixture length: got %d, want %d", got, want)
+	}
+
+	p := &Property{PID: PIDOptions, Data: data}
+	opts := PropertyOptions(p)
+	wantOpts := []string{"Off", "1 s", "2 s", "10 s", "30 s", "60 s"}
+	if len(opts) != len(wantOpts) {
+		t.Fatalf("got %d options, want %d (%v)", len(opts), len(wantOpts), opts)
+	}
+	for i, w := range wantOpts {
+		if opts[i] != w {
+			t.Errorf("opts[%d]: got %q, want %q", i, opts[i], w)
+		}
+	}
+
+	m := PropertyOptionsMap(p)
+	wantMap := map[uint32]string{
+		710: "Off", 711: "1 s", 712: "2 s",
+		713: "10 s", 714: "30 s", 715: "60 s",
+	}
+	if len(m) != len(wantMap) {
+		t.Fatalf("map size: got %d, want %d", len(m), len(wantMap))
+	}
+	for idx, w := range wantMap {
+		if got := m[idx]; got != w {
+			t.Errorf("map[%d]: got %q, want %q", idx, got, w)
+		}
+	}
+}
+
+// TestPropertyOptions_Empty covers the boundary cases the parser must
+// handle without panicking: nil, empty, less than one record, missing
+// terminator.
+func TestPropertyOptions_Empty(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		data []byte
+	}{
+		{"nil", nil},
+		{"empty", []byte{}},
+		{"too-short-3B", []byte{0, 0, 0}},
+		{"idx-only-4B", []byte{0, 0, 0, 1}},
+		{"idx+no-NUL", []byte{0, 0, 0, 1, 'x', 'y'}},
+	} {
+		p := &Property{PID: PIDOptions, Data: tc.data}
+		if got := PropertyOptions(p); got != nil {
+			t.Errorf("%s: PropertyOptions = %v, want nil", tc.name, got)
+		}
+		if got := PropertyOptionsMap(p); got != nil {
+			t.Errorf("%s: PropertyOptionsMap = %v, want nil", tc.name, got)
+		}
 	}
 }
 

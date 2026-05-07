@@ -206,7 +206,12 @@ func jsonLeaf(o protocol.Object) map[string]any {
 	case protocol.KindFloat:
 		m["value"] = v.Float
 	case protocol.KindEnum:
-		m["value"] = v.Enum
+		// v.Uint holds the full wire-idx (uint32). v.Enum is a legacy
+		// uint8 truncation that breaks any device whose enum option
+		// indices exceed 0xFF — e.g. EVS Neuron Path Selection where
+		// idx 684 (0x2ac) gets clipped to 172 (0xac) and stops matching
+		// the enum_items table.
+		m["value"] = v.Uint
 		if v.Str != "" {
 			m["value_name"] = v.Str
 		}
