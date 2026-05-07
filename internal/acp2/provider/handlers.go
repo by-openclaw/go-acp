@@ -8,12 +8,15 @@ import (
 
 // Version constants advertised by this provider.
 //
-// AN2 v1.0 matches what real Axon firmware emits today. ACP2 v1 is the
-// only ACP2 major in the wild; consumers use it to gate feature flags.
+// an2Version is the AN2 protocol version per spec §3.3.1: a single
+// u16 BE field on the wire ("ver(u16)" in the reply table on p.7-8).
+// Real EVS Neuron firmware (5.3.5 + 6.7.4) emits 0x00 0x01 = 1.
+//
+// acp2Version is the ACP2 protocol version, carried in the ACP2
+// message header's pid byte of a get_version reply (single u8).
 const (
-	an2VersionMajor uint8 = 1
-	an2VersionMinor uint8 = 0
-	acp2Version     uint8 = 1
+	an2Version  uint16 = 1
+	acp2Version uint8  = 1
 )
 
 // Slot status codes emitted by GetSlotInfo. Values mirror the consumer's
@@ -44,12 +47,12 @@ func (s *session) dispatch(f *codec.AN2Frame) {
 }
 
 // handleAN2Internal implements the proto=0 handshake a consumer runs
-// before sending any ACP2 traffic:
+// before sending any ACP2 traffic. Reply byte layouts per spec:
 //
-//	1. GetVersion           (funcID=0) -> [0, major, minor]
-//	2. GetDeviceInfo        (funcID=1) -> [1, slot_count]
-//	3. GetSlotInfo(slot)    (funcID=2) -> [2, status, num_protos, protos…]
-//	4. EnableProtocolEvents (funcID=3) -> [3, 0]  (ack)
+//	1. GetVersion           §3.3.1 -> [0, ver_hi, ver_lo]      ver=u16BE
+//	2. GetDeviceInfo        §3.3.2 -> [1, slot_count]          dlen=2
+//	3. GetSlotInfo(slot)    §3.3.3 -> [2, status, num, protos] dlen=3+num
+//	4. EnableProtocolEvents §3.3.4 -> [3]                      dlen=1
 //
 // All replies mirror the request's AN2 mtid + slot per spec §3.3 so
 // the consumer's waiter table correlates them cleanly.
@@ -69,15 +72,28 @@ func (s *session) handleAN2Internal(f *codec.AN2Frame) {
 	var body []byte
 	switch funcID {
 	case codec.AN2FuncGetVersion:
-		body = []byte{funcID, an2VersionMajor, an2VersionMinor}
+		// Spec §3.3.1 (an2_protocol.pdf p.7-8): reply payload is
+		// func(u8) + ver(u16), dlen=3. ver is a single u16 BE field,
+		// NOT a (major u8, minor u8) split. Real EVS Neuron emits
+		// 0x00 0x01 (= ver 1); a spec-strict consumer reading our
+		// previous [major=1, minor=0] bytes interpreted ver=0x0100=256.
+		body = []byte{funcID, byte(an2Version >> 8), byte(an2Version)}
 	case codec.AN2FuncGetDeviceInfo:
-		// AN2 spec §1.2.2 + §3.3.2 example: "an RC could return 5(=4+1),
-		// 9(=8+1), 19(=18+1), since slot0 is also counted." The reply value
-		// is the TOTAL slot count (cards + RC), not the max slot number.
+		// Spec §1.2.2 + §3.3.2 (p.8): info = total slot count incl
+		// slot 0. The example "5(=4+1), 9(=8+1), 19(=18+1), since
+		// slot0 is also counted" means the count is (max present
+		// slot index) + 1, not just the cardinality of present slots
+		// (which would skip empty intermediates). Real Neuron with
+		// {RC=slot0, card=slot1} reports info=2.
 		s.srv.tree.mu.RLock()
-		count := uint8(len(s.srv.tree.perSlot))
+		var maxSlot uint8
+		for sl := range s.srv.tree.perSlot {
+			if sl > maxSlot {
+				maxSlot = sl
+			}
+		}
 		s.srv.tree.mu.RUnlock()
-		body = []byte{funcID, count}
+		body = []byte{funcID, maxSlot + 1}
 	case codec.AN2FuncGetSlotInfo:
 		// AN2 spec §3.3.3: request is dlen=1 (just funcID). The requested
 		// slot is carried in the AN2 frame header's Slot field, NOT in the
@@ -103,7 +119,11 @@ func (s *session) handleAN2Internal(f *codec.AN2Frame) {
 			slog.Int("count", count),
 			slog.Any("enabled_protos", enabled),
 		)
-		body = []byte{funcID, 0} // ack
+		// Spec §3.3.4 (an2_protocol.pdf p.10): reply payload is just
+		// func(u8), dlen=1. Real EVS Neuron emits [3]; Cerebrum drops
+		// the session at the 5 s timeout if the reply carries any
+		// trailing bytes.
+		body = []byte{funcID}
 	default:
 		s.srv.logger.Debug("an2 internal: unknown funcID",
 			slog.Int("funcID", int(funcID)),
@@ -392,8 +412,17 @@ func errorACP2(req *codec.ACP2Message, stat codec.ACP2ErrStatus) *codec.ACP2Mess
 
 // slotInfo answers GetSlotInfo for a given slot per AN2 spec §3.3.3.
 // A slot is "present" iff we hold canonical ACP2 data for it in the
-// provider's tree; every other slot (0-254) is "empty". Present slots
-// advertise both AN2 internal and ACP2; empty slots advertise nothing.
+// provider's tree; every other slot (0-254) is "empty".
+//
+// The reply's protos array enumerates *payload* protocols supported by
+// the slot (§3.2.1 codes 1=ACP1, 2=ACP2, 3=ACMP). proto=0 is reserved
+// for AN2-internal signalling per §1.2.3 ("Proto 0 is reserved as
+// 'signalling' protocol for internal (Axonnet2) use") and is never
+// listed here. Real EVS Neuron slot 0 advertises [2,3,4]; slot 1
+// advertises [2,3] — never includes 0.
+//
+// Present ACP2 slots advertise [ACP2] only; ACMP and vendor-internal
+// protos (like Neuron's proto=4) are not implemented here.
 //
 // The slot number of the rack-controller endpoint is fixture-defined
 // (typically slot 0 on real Synapse frames, but any number is valid per
@@ -403,7 +432,7 @@ func (s *server) slotInfo(slot uint8) (status uint8, protos []uint8) {
 	s.tree.mu.RLock()
 	defer s.tree.mu.RUnlock()
 	if _, ok := s.tree.perSlot[slot]; ok {
-		return slotStatusPresent, []uint8{uint8(codec.AN2ProtoInternal), uint8(codec.AN2ProtoACP2)}
+		return slotStatusPresent, []uint8{uint8(codec.AN2ProtoACP2)}
 	}
 	return slotStatusEmpty, nil
 }
