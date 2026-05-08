@@ -147,13 +147,23 @@ func TestEncodeDecodeACP2Message_GetProperty(t *testing.T) {
 		t.Fatalf("Encode: %v", err)
 	}
 
-	// Should be header(4) + obj-id(4) + idx(4) + prop-header(4) = 16
-	if len(data) != 16 {
-		t.Fatalf("expected 16 bytes, got %d", len(data))
+	// Per spec §"Get property" Request (acp2_protocol.docx line 990-1020):
+	// body = obj-id (u32 BE) + idx (u32 BE). The pid is carried in ACP2
+	// header byte 3; there is NO trailing property header. Total = 12 bytes.
+	if len(data) != 12 {
+		t.Fatalf("expected 12 bytes (4 hdr + 4 obj-id + 4 idx) per spec; got %d", len(data))
 	}
 
-	// Verify the property header in the request.
-	if data[12] != PIDValue {
-		t.Errorf("prop pid: got %d, want %d", data[12], PIDValue)
+	// Verify pid in header byte 3.
+	if data[3] != PIDValue {
+		t.Errorf("ACP2 header byte 3 (pid): got %d, want %d", data[3], PIDValue)
+	}
+	// Verify obj-id at bytes 4-7.
+	if got := binary.BigEndian.Uint32(data[4:8]); got != 100 {
+		t.Errorf("obj-id: got %d, want 100", got)
+	}
+	// Verify idx at bytes 8-11.
+	if got := binary.BigEndian.Uint32(data[8:12]); got != 0 {
+		t.Errorf("idx: got %d, want 0", got)
 	}
 }

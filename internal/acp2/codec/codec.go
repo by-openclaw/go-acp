@@ -84,18 +84,27 @@ func EncodeACP2Message(m *ACP2Message) ([]byte, error) {
 		return buf, nil
 
 	case ACP2FuncGetProperty:
-		// get_property request: header + obj-id(4) + idx(4) + property header(4)
-		buf := make([]byte, ACP2HeaderSize+8+4)
+		// get_property request per spec §"Get property" Request
+		// (acp2_protocol.docx line 990-1020): body = obj-id(u32 BE) +
+		// idx(u32 BE). The requested pid is carried in the ACP2
+		// header byte 3 — there is NO trailing property header in
+		// the request body.
+		//
+		//	| Offset | Field  | Width  | Notes                          |
+		//	|--------|--------|--------|--------------------------------|
+		//	| 0      | type   | u8     | 0 = request                    |
+		//	| 1      | mtid   | u8     | 1..255                         |
+		//	| 2      | func   | u8     | 2 = get_property               |
+		//	| 3      | pid    | u8     | property id requested          |
+		//	| 4-7    | obj-id | u32 BE | target object id               |
+		//	| 8-11   | idx    | u32 BE | preset idx (0 = ACTIVE INDEX)  |
+		buf := make([]byte, ACP2HeaderSize+8)
 		buf[0] = byte(m.Type)
 		buf[1] = m.MTID
 		buf[2] = byte(m.Func)
 		buf[3] = m.PID
 		binary.BigEndian.PutUint32(buf[4:8], m.ObjID)
 		binary.BigEndian.PutUint32(buf[8:12], m.Idx)
-		// Property header for the requested pid: pid, 0, plen=4
-		buf[12] = m.PID
-		buf[13] = 0
-		binary.BigEndian.PutUint16(buf[14:16], 4)
 		return buf, nil
 
 	case ACP2FuncSetProperty:
