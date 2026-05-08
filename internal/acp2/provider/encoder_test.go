@@ -172,6 +172,159 @@ func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	}
 }
 
+// TestBuildProperties_RequiredConstraints verifies pids 9/10/11
+// (default_value, min_value, max_value) are always present on Number,
+// Enum, and Preset replies per spec §"Property fields" matrix
+// (Y on those rows). Encoder must fall back to type-derived defaults
+// when canonical lacks Default/Min/Max.
+func TestBuildProperties_RequiredConstraints(t *testing.T) {
+	t.Run("Number_no_canonical_constraints_falls_back_to_type_defaults", func(t *testing.T) {
+		// u8 number with no Default/Min/Max set on canonical.
+		p := &canonical.Parameter{
+			Header: canonical.Header{Number: 5, Identifier: "Foo",
+				Access: canonical.AccessReadWrite},
+			Type: canonical.ParamInteger, Value: int64(0),
+		}
+		e := &entry{
+			objID: 5, label: p.Identifier, access: 0x03,
+			objType: codec.ObjTypeNumber, numType: codec.NumTypeU8, param: p,
+		}
+		got := buildAndDecode(t, e)
+		bm := pidMap(got)
+		// pid 9 default = 0
+		if _, _, _, err := codec.DecodeNumericValue(codec.NumTypeU8, bm[codec.PIDDefaultValue].Data); err != nil {
+			t.Errorf("pid 9 default decode: %v", err)
+		}
+		// pid 10 min = u8 type-min = 0
+		_, mn, _, err := codec.DecodeNumericValue(codec.NumTypeU8, bm[codec.PIDMinValue].Data)
+		if err != nil || mn != 0 {
+			t.Errorf("pid 10 min=%d want 0 (u8 type-min), err=%v", mn, err)
+		}
+		// pid 11 max = u8 type-max = 255
+		_, mx, _, err := codec.DecodeNumericValue(codec.NumTypeU8, bm[codec.PIDMaxValue].Data)
+		if err != nil || mx != 255 {
+			t.Errorf("pid 11 max=%d want 255 (u8 type-max), err=%v", mx, err)
+		}
+	})
+
+	t.Run("Number_s16_type_min_max", func(t *testing.T) {
+		p := &canonical.Parameter{
+			Header: canonical.Header{Number: 5, Identifier: "Bar",
+				Access: canonical.AccessReadWrite},
+			Type: canonical.ParamInteger, Value: int64(0),
+		}
+		e := &entry{
+			objID: 5, label: p.Identifier, access: 0x03,
+			objType: codec.ObjTypeNumber, numType: codec.NumTypeS16, param: p,
+		}
+		got := buildAndDecode(t, e)
+		bm := pidMap(got)
+		mn, _, _, _ := codec.DecodeNumericValue(codec.NumTypeS16, bm[codec.PIDMinValue].Data)
+		if mn != -32768 {
+			t.Errorf("s16 type-min=%d want -32768", mn)
+		}
+		mx, _, _, _ := codec.DecodeNumericValue(codec.NumTypeS16, bm[codec.PIDMaxValue].Data)
+		if mx != 32767 {
+			t.Errorf("s16 type-max=%d want 32767", mx)
+		}
+	})
+
+	t.Run("Enum_uses_EnumMap_bounds", func(t *testing.T) {
+		// EnumMap with non-contiguous indices; pid 10 = 5, pid 11 = 99.
+		p := &canonical.Parameter{
+			Header: canonical.Header{Number: 6, Identifier: "Mode",
+				Access: canonical.AccessReadWrite},
+			Type:    canonical.ParamEnum, Value: int64(5),
+			EnumMap: []canonical.EnumEntry{{Key: "A", Value: 5}, {Key: "B", Value: 42}, {Key: "C", Value: 99}},
+		}
+		e := &entry{
+			objID: 6, label: p.Identifier, access: 0x03,
+			objType: codec.ObjTypeEnum, numType: codec.NumTypeU32, param: p,
+		}
+		got := buildAndDecode(t, e)
+		bm := pidMap(got)
+		// pid 9 default (no canonical Default → first EnumMap.Value = 5)
+		_, def, _, _ := codec.DecodeNumericValue(codec.NumTypePreset, bm[codec.PIDDefaultValue].Data)
+		if def != 5 {
+			t.Errorf("enum default=%d want 5 (first EnumMap.Value)", def)
+		}
+		_, mn, _, _ := codec.DecodeNumericValue(codec.NumTypePreset, bm[codec.PIDMinValue].Data)
+		if mn != 5 {
+			t.Errorf("enum min=%d want 5", mn)
+		}
+		_, mx, _, _ := codec.DecodeNumericValue(codec.NumTypePreset, bm[codec.PIDMaxValue].Data)
+		if mx != 99 {
+			t.Errorf("enum max=%d want 99", mx)
+		}
+	})
+
+	t.Run("Preset_emits_pid_9_10_11_per_depth", func(t *testing.T) {
+		p := &canonical.Parameter{
+			Header: canonical.Header{Number: 9, Identifier: "Slot",
+				Access: canonical.AccessReadWrite},
+			Type: canonical.ParamInteger, Value: int64(0),
+		}
+		e := &entry{
+			objID: 9, label: p.Identifier, access: 0x03,
+			objType: codec.ObjTypePreset, numType: codec.NumTypeU8,
+			presetDepth: 3, param: p,
+		}
+		got := buildAndDecode(t, e)
+		var n9, n10, n11 int
+		for _, pr := range got {
+			switch pr.PID {
+			case codec.PIDDefaultValue:
+				n9++
+			case codec.PIDMinValue:
+				n10++
+			case codec.PIDMaxValue:
+				n11++
+			}
+		}
+		if n9 != 3 || n10 != 3 || n11 != 3 {
+			t.Errorf("preset depth=3 expected pid 9/10/11 each 3 times; got 9=%d 10=%d 11=%d", n9, n10, n11)
+		}
+	})
+
+	t.Run("Number_with_canonical_constraints_keeps_canonical_values", func(t *testing.T) {
+		p := &canonical.Parameter{
+			Header: canonical.Header{Number: 5, Identifier: "Vol",
+				Access: canonical.AccessReadWrite},
+			Type:    canonical.ParamInteger, Value: int64(-3),
+			Default: int64(-5), Minimum: int64(-60), Maximum: int64(12),
+		}
+		e := &entry{
+			objID: 5, label: p.Identifier, access: 0x03,
+			objType: codec.ObjTypeNumber, numType: codec.NumTypeS32, param: p,
+		}
+		got := buildAndDecode(t, e)
+		bm := pidMap(got)
+		def, _, _, _ := codec.DecodeNumericValue(codec.NumTypeS32, bm[codec.PIDDefaultValue].Data)
+		if def != -5 {
+			t.Errorf("default=%d want -5 (canonical)", def)
+		}
+		mn, _, _, _ := codec.DecodeNumericValue(codec.NumTypeS32, bm[codec.PIDMinValue].Data)
+		if mn != -60 {
+			t.Errorf("min=%d want -60 (canonical)", mn)
+		}
+		mx, _, _, _ := codec.DecodeNumericValue(codec.NumTypeS32, bm[codec.PIDMaxValue].Data)
+		if mx != 12 {
+			t.Errorf("max=%d want 12 (canonical)", mx)
+		}
+	})
+}
+
+// pidMap collects properties keyed by pid for assertion ergonomics.
+// Last write wins for repeated pids (callers needing repetition counts
+// iterate the props slice directly).
+func pidMap(props []codec.Property) map[uint8]codec.Property {
+	out := make(map[uint8]codec.Property, len(props))
+	for _, p := range props {
+		out[p.PID] = p
+	}
+	return out
+}
+
 func TestBuildProperties_IPv4(t *testing.T) {
 	ipf := "ipv4"
 	p := &canonical.Parameter{

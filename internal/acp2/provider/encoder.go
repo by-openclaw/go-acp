@@ -3,6 +3,7 @@ package acp2
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -47,21 +48,28 @@ func buildProperties(e *entry) ([]codec.Property, error) {
 			return nil, err
 		}
 		props = append(props, val)
-		if cp, ok, err := encodeOptionalConstraint(codec.PIDDefaultValue, e.numType, e.param.Default); err != nil {
+		// pid 9/10/11 are required (Y) on Number per spec §"Property
+		// fields" matrix. When canonical lacks an explicit value, fall
+		// back to type-derived defaults (0 for default, type-min for
+		// min, type-max for max).
+		defProp, err := encodeNumericProp(codec.PIDDefaultValue, e.numType,
+			constraintOrDefault(e.numType, e.param.Default, "default"))
+		if err != nil {
 			return nil, err
-		} else if ok {
-			props = append(props, cp)
 		}
-		if cp, ok, err := encodeOptionalConstraint(codec.PIDMinValue, e.numType, e.param.Minimum); err != nil {
+		props = append(props, defProp)
+		minProp, err := encodeNumericProp(codec.PIDMinValue, e.numType,
+			constraintOrDefault(e.numType, e.param.Minimum, "min"))
+		if err != nil {
 			return nil, err
-		} else if ok {
-			props = append(props, cp)
 		}
-		if cp, ok, err := encodeOptionalConstraint(codec.PIDMaxValue, e.numType, e.param.Maximum); err != nil {
+		props = append(props, minProp)
+		maxProp, err := encodeNumericProp(codec.PIDMaxValue, e.numType,
+			constraintOrDefault(e.numType, e.param.Maximum, "max"))
+		if err != nil {
 			return nil, err
-		} else if ok {
-			props = append(props, cp)
 		}
+		props = append(props, maxProp)
 		if cp, ok, err := encodeOptionalConstraint(codec.PIDStepSize, e.numType, e.param.Step); err != nil {
 			return nil, err
 		} else if ok {
@@ -71,25 +79,42 @@ func buildProperties(e *entry) ([]codec.Property, error) {
 			props = append(props, propStringData0(codec.PIDUnit, *e.param.Unit))
 		}
 	case codec.ObjTypeEnum:
-		// Enum per spec §5.1: pid 5 number_type does NOT apply (Number only),
-		// and pid 9 default_value is depth-indexed ([d]) — only valid for
-		// preset children which carry pid 7 preset_depth. A plain Enum is
-		// not a preset child, so pid 9 is omitted. Emitting pid 9 with
-		// vtype=9 but no pid 7 trips Lawo VSM's parser:
-		// "Index was outside the bounds of the array" — the preset array
-		// hasn't been sized.
-		// pid 8 value uses vtype = 9 (preset/enum), stored as u32 index.
+		// Enum per spec §"Property fields" matrix: pid 9/10/11 are
+		// required (Y). The wire vtype for these is preset/enum (9), the
+		// same as pid 8 — the value is an option index. Defaults derive
+		// from EnumMap: pid 9 = canonical Default OR first option idx;
+		// pid 10/11 = min/max of EnumMap[].Value. pid 5 (number_type) is
+		// NOT emitted for Enum (spec: Number only).
 		val, err := encodeValueProp(codec.PIDValue, e)
 		if err != nil {
 			return nil, err
 		}
 		props = append(props, val)
+		defIdx, minIdx, maxIdx := enumConstraintBounds(e.param)
+		defProp, err := encodeNumericProp(codec.PIDDefaultValue, codec.NumTypePreset, defIdx)
+		if err != nil {
+			return nil, err
+		}
+		props = append(props, defProp)
+		minProp, err := encodeNumericProp(codec.PIDMinValue, codec.NumTypePreset, minIdx)
+		if err != nil {
+			return nil, err
+		}
+		props = append(props, minProp)
+		maxProp, err := encodeNumericProp(codec.PIDMaxValue, codec.NumTypePreset, maxIdx)
+		if err != nil {
+			return nil, err
+		}
+		props = append(props, maxProp)
 		props = append(props, propOptions(enumOptions(e.param)))
 	case codec.ObjTypePreset:
-		// Preset child per spec §5: pid 7 preset_depth lists the N valid
-		// idx values; pids 8/9/10/11 each appear N times in the reply,
-		// once per idx. Number-style numeric fields (pid 5, 12, 13) are
-		// emitted once. For N=1 the shape degenerates to "Number + pid 7".
+		// Preset child per spec §"Property fields" matrix + §"Preset
+		// depth": pid 7 preset_depth lists the N valid idx values;
+		// pids 8/9/10/11 each appear N times in the reply, once per
+		// idx. pid 5 (number_type) is also required for Preset (matrix
+		// row 5 marks Y for Preset); spec table treats Preset like
+		// Number for the wire vtype of pids 8-11. pid 12/13 are
+		// optional. For N=1 the shape degenerates to "Number + pid 7".
 		props = append(props, propInline(codec.PIDNumberType, uint8(e.numType)))
 		props = append(props, propPresetDepth(e.presetDepth))
 		for i := uint32(0); i < e.presetDepth; i++ {
@@ -99,26 +124,31 @@ func buildProperties(e *entry) ([]codec.Property, error) {
 			}
 			props = append(props, val)
 		}
-		if cp, ok, err := encodeOptionalConstraint(codec.PIDDefaultValue, e.numType, e.param.Default); err != nil {
+		// pid 9/10/11 are required (Y) on Preset per matrix; emit N
+		// times. Type-derived fallbacks when canonical lacks the value.
+		defProp, err := encodeNumericProp(codec.PIDDefaultValue, e.numType,
+			constraintOrDefault(e.numType, e.param.Default, "default"))
+		if err != nil {
 			return nil, err
-		} else if ok {
-			for i := uint32(0); i < e.presetDepth; i++ {
-				props = append(props, cp)
-			}
 		}
-		if cp, ok, err := encodeOptionalConstraint(codec.PIDMinValue, e.numType, e.param.Minimum); err != nil {
-			return nil, err
-		} else if ok {
-			for i := uint32(0); i < e.presetDepth; i++ {
-				props = append(props, cp)
-			}
+		for i := uint32(0); i < e.presetDepth; i++ {
+			props = append(props, defProp)
 		}
-		if cp, ok, err := encodeOptionalConstraint(codec.PIDMaxValue, e.numType, e.param.Maximum); err != nil {
+		minProp, err := encodeNumericProp(codec.PIDMinValue, e.numType,
+			constraintOrDefault(e.numType, e.param.Minimum, "min"))
+		if err != nil {
 			return nil, err
-		} else if ok {
-			for i := uint32(0); i < e.presetDepth; i++ {
-				props = append(props, cp)
-			}
+		}
+		for i := uint32(0); i < e.presetDepth; i++ {
+			props = append(props, minProp)
+		}
+		maxProp, err := encodeNumericProp(codec.PIDMaxValue, e.numType,
+			constraintOrDefault(e.numType, e.param.Maximum, "max"))
+		if err != nil {
+			return nil, err
+		}
+		for i := uint32(0); i < e.presetDepth; i++ {
+			props = append(props, maxProp)
 		}
 		if cp, ok, err := encodeOptionalConstraint(codec.PIDStepSize, e.numType, e.param.Step); err != nil {
 			return nil, err
@@ -357,10 +387,11 @@ func encodeValueProp(pid uint8, e *entry) (codec.Property, error) {
 	return codec.Property{}, fmt.Errorf("encodeValueProp: type %d not supported", e.objType)
 }
 
-// encodeOptionalConstraint emits a pid=9/10/11/12 property from a
-// constraint field (Default/Min/Max/Step) if present on the canonical
-// Parameter. Returns (prop, false, nil) when the field is nil so the
-// caller can skip emission.
+// encodeOptionalConstraint emits a pid=12 step_size or pid=13 unit
+// property from a canonical field if present. Returns (prop, false, nil)
+// when the field is nil so the caller can skip emission. Used only for
+// truly optional pids per the spec property-fields matrix; pids 9/10/11
+// are required and use constraintOrDefault directly.
 func encodeOptionalConstraint(pid uint8, nt codec.NumberType, v any) (codec.Property, bool, error) {
 	if v == nil {
 		return codec.Property{}, false, nil
@@ -370,6 +401,122 @@ func encodeOptionalConstraint(pid uint8, nt codec.NumberType, v any) (codec.Prop
 		return codec.Property{}, false, err
 	}
 	return p, true, nil
+}
+
+// constraintOrDefault returns the canonical-supplied value when set,
+// otherwise a NumberType-derived default. Used for pids 9/10/11 which
+// the spec property-fields matrix marks required (Y) on Number / Enum /
+// Preset — emit must always succeed even when the canonical fixture
+// omits Default/Min/Max.
+//
+//	| kind    | fallback when canonical is nil                         |
+//	|---------|--------------------------------------------------------|
+//	| default | 0 (or 0.0 for float)                                   |
+//	| min     | NumberType minimum (e.g. s8: -128, u8: 0, float: -max) |
+//	| max     | NumberType maximum (e.g. s8:  127, u8: 255, float: max)|
+//
+// Spec reference: acp2_protocol.docx §"Property fields" matrix rows
+// 9 (default_value), 10 (min_value), 11 (max_value).
+func constraintOrDefault(nt codec.NumberType, canonical any, kind string) any {
+	if canonical != nil {
+		return canonical
+	}
+	switch kind {
+	case "default":
+		if nt == codec.NumTypeFloat {
+			return float64(0)
+		}
+		return int64(0)
+	case "min":
+		return numericTypeMin(nt)
+	case "max":
+		return numericTypeMax(nt)
+	}
+	return int64(0)
+}
+
+// numericTypeMin returns the smallest representable value for an ACP2
+// NumberType, formatted as the type encodeNumericProp expects.
+func numericTypeMin(nt codec.NumberType) any {
+	switch nt {
+	case codec.NumTypeS8:
+		return int64(-128)
+	case codec.NumTypeS16:
+		return int64(-32768)
+	case codec.NumTypeS32:
+		return int64(-2147483648)
+	case codec.NumTypeS64:
+		return int64(math.MinInt64)
+	case codec.NumTypeU8, codec.NumTypeU16, codec.NumTypeU32,
+		codec.NumTypeU64, codec.NumTypePreset, codec.NumTypeIPv4:
+		return uint64(0)
+	case codec.NumTypeFloat:
+		return float64(-math.MaxFloat32)
+	}
+	return int64(0)
+}
+
+// numericTypeMax returns the largest representable value for an ACP2
+// NumberType, formatted as the type encodeNumericProp expects.
+func numericTypeMax(nt codec.NumberType) any {
+	switch nt {
+	case codec.NumTypeS8:
+		return int64(127)
+	case codec.NumTypeS16:
+		return int64(32767)
+	case codec.NumTypeS32:
+		return int64(2147483647)
+	case codec.NumTypeS64:
+		return int64(math.MaxInt64)
+	case codec.NumTypeU8:
+		return uint64(255)
+	case codec.NumTypeU16:
+		return uint64(65535)
+	case codec.NumTypeU32:
+		return uint64(0xFFFFFFFF)
+	case codec.NumTypeU64:
+		return uint64(math.MaxUint64)
+	case codec.NumTypePreset, codec.NumTypeIPv4:
+		return uint64(0xFFFFFFFF)
+	case codec.NumTypeFloat:
+		return float64(math.MaxFloat32)
+	}
+	return int64(0)
+}
+
+// enumConstraintBounds derives pid 9/10/11 values for an Enum from its
+// canonical EnumMap. Returns (default, min, max) as uint64 wire indices
+// (pid 8 / 9 / 10 / 11 on Enum all use vtype = preset/enum = 9, body
+// is u32 BE option idx).
+//
+//	default = canonical Default if set, else first EnumMap.Value
+//	min     = smallest EnumMap.Value
+//	max     = largest EnumMap.Value
+//
+// When EnumMap is empty (legacy fixtures) all three fall back to 0.
+func enumConstraintBounds(p *canonical.Parameter) (defIdx, minIdx, maxIdx uint64) {
+	if p == nil || len(p.EnumMap) == 0 {
+		return 0, 0, 0
+	}
+	first := uint64(p.EnumMap[0].Value)
+	minIdx = first
+	maxIdx = first
+	for _, em := range p.EnumMap {
+		v := uint64(em.Value)
+		if v < minIdx {
+			minIdx = v
+		}
+		if v > maxIdx {
+			maxIdx = v
+		}
+	}
+	defIdx = first
+	if p.Default != nil {
+		if u, err := asUint64(p.Default, "enum default"); err == nil {
+			defIdx = u
+		}
+	}
+	return defIdx, minIdx, maxIdx
 }
 
 // encodeNumericProp serialises a numeric constraint or value per its
