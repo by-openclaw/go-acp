@@ -133,6 +133,16 @@ const (
 	// device), we accept it + fire so the operator sees write-path
 	// coercion. Informational.
 	SetValueCoerced = "acp2_set_value_coerced"
+
+	// Spec p.4 §"Mtid": "ACP2 only uses the mtid to send a reply and
+	// does no other checks." Implies replies must carry an mtid that
+	// matches an in-flight request. When a reply arrives for a mtid
+	// the consumer is NOT currently waiting on, either:
+	//   - the peer reused a mtid we already released (peer bug), or
+	//   - our mtid pool released it too early (our bug — impossible
+	//     given defer-based release, but this catches regressions).
+	// Reply is dropped + fires. Informational.
+	OrphanReplyMtid = "acp2_orphan_reply_mtid"
 )
 
 // EventForErrStatus maps an ACP2 error status (spec p.5) to the

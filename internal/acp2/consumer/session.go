@@ -538,6 +538,12 @@ func (s *Session) handleACP2Frame(f *codec.AN2Frame) {
 }
 
 // routeReply sends a message to the waiter registered for the given mtid.
+//
+// When no waiter is registered the reply is dropped and a compliance
+// event (OrphanReplyMtid) fires. This catches both peer bugs (the
+// device emitted a stale mtid) and our own pool regressions (mtid
+// released before reply arrived). Per spec p.4 §"Mtid", replies must
+// correlate to in-flight requests; an orphan reply is a wire violation.
 func (s *Session) routeReply(mtid uint8, msg *codec.ACP2Message) {
 	s.waitMu.Lock()
 	ch, ok := s.waiters[mtid]
@@ -550,16 +556,37 @@ func (s *Session) routeReply(mtid uint8, msg *codec.ACP2Message) {
 		}
 	} else {
 		s.logger.Debug("acp2: no waiter for mtid", "mtid", mtid)
+		s.note(OrphanReplyMtid)
 	}
 }
 
-// allocMTID allocates a free ACP2 mtid (1-255). Blocks if all are in use.
+// allocMTID allocates a free ACP2 mtid (1-255). Blocks when the pool
+// is exhausted until a release signals the cond, or the caller's
+// context cancels — whichever comes first.
+//
+// Spec p.4 §"Mtid": ACP2 mtid space is 1..255 with 0 reserved for
+// announces. The pool MUST never wrap (which would alias an in-flight
+// request) and MUST be cancellable so a stuck pool doesn't leak
+// goroutines on session teardown.
 func (s *Session) allocMTID(ctx context.Context) (uint8, error) {
 	s.mtidMu.Lock()
 	defer s.mtidMu.Unlock()
 
+	// Cancellation watcher: wakes the cond when ctx fires so a
+	// blocked Wait() observes the cancellation. The watcher exits
+	// when the alloc returns (ctx.Done() fires from cancel-on-defer
+	// in the caller, or via a `done` channel we close on success).
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.mtidCond.Broadcast()
+		case <-done:
+		}
+	}()
+
 	for {
-		// Check context first.
 		select {
 		case <-ctx.Done():
 			return 0, ctx.Err()
@@ -572,7 +599,7 @@ func (s *Session) allocMTID(ctx context.Context) (uint8, error) {
 				return uint8(i + 1), nil
 			}
 		}
-		// All mtids in use — wait for a release.
+		// All mtids in use — wait for a release or for ctx to cancel.
 		s.mtidCond.Wait()
 	}
 }
