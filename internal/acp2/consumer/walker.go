@@ -16,13 +16,13 @@ import (
 type WalkedTree struct {
 	Slot    int
 	Objects []protocol.Object
-	// ObjTypes parallels Objects — the ACP2 object type for each entry.
+	// ObjTypes parallels Objects â€” the ACP2 object type for each entry.
 	ObjTypes []codec.ACP2ObjType
-	// NumTypes parallels Objects — the NumberType for numeric objects.
+	// NumTypes parallels Objects â€” the NumberType for numeric objects.
 	NumTypes []codec.NumberType
-	// OptionsMaps parallels Objects — wire-index→label map for enum/preset objects.
+	// OptionsMaps parallels Objects â€” wire-indexâ†’label map for enum/preset objects.
 	OptionsMaps []map[uint32]string
-	// Labels maps label → index into Objects for label-based lookup.
+	// Labels maps label â†’ index into Objects for label-based lookup.
 	Labels map[string]int
 }
 
@@ -108,7 +108,7 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 	// Parse properties from the reply.
 	obj, objType, numType, optMap, children := w.parseObjectProperties(msg.Properties, slot, objID, path)
 
-	// Add to tree (skip pure node containers from the flat list — they
+	// Add to tree (skip pure node containers from the flat list â€” they
 	// are structural only, not addressable objects with values).
 	// Actually, node objects ARE added so users can see the tree structure.
 	idx := len(tree.Objects)
@@ -128,7 +128,7 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 		childPath := make([]string, len(obj.Path))
 		copy(childPath, obj.Path)
 		if err := w.walkObject(ctx, slot, childID, childPath, tree); err != nil {
-			// Log and continue on child errors — partial walk is better
+			// Log and continue on child errors â€” partial walk is better
 			// than no walk.
 			w.logger.Warn("acp2: walker: child error",
 				"parent_id", objID, "child_id", childID, "err", err)
@@ -149,7 +149,7 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 	var numType codec.NumberType
 	var children []uint32
 	var optionsMap map[uint32]string
-	var valueProp *codec.Property // deferred — options may come after value on the wire
+	var valueProp *codec.Property // deferred â€” options may come after value on the wire
 
 	// First pass: collect metadata, options, constraints, children.
 	// Value decode is deferred because pid=8 often arrives before pid=15
@@ -229,15 +229,15 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 		case codec.PIDEventMessages:
 			obj.AlarmOnMsg, obj.AlarmOffMsg = codec.PropertyEventMessages(p)
 
-		case codec.PIDAnnounceDelay:
-			// pid 4 event_delay per spec §5.4 row 4: data=0, plen=8,
+		case codec.PIDEventDelay:
+			// pid 4 event_delay per spec Â§5.4 row 4: data=0, plen=8,
 			// body=u32 BE rate (announce delay in milliseconds).
 			if v, err := codec.PropertyU32(p); err == nil {
 				setMeta(&obj, "acp2.announceDelay", uint64(v))
 			}
 
 		case codec.PIDPresetDepth:
-			// pid 7 preset_depth per spec §5.4 row 7: data=0,
+			// pid 7 preset_depth per spec Â§5.4 row 7: data=0,
 			// plen=4+4*depth, body=u32 BE idx values list. Decode
 			// every idx for round-trip; consumers needing the list
 			// use Meta["acp2.presetIdxList"].
@@ -250,13 +250,13 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 			}
 
 		case codec.PIDEventState:
-			// pid 18 event_state per spec §5.4 row 18: inline
+			// pid 18 event_state per spec Â§5.4 row 18: inline
 			// state byte in the property header's data slot,
 			// plen=4 (no body).
 			setMeta(&obj, "acp2.eventState", p.VType)
 
 		case codec.PIDPresetParent:
-			// pid 20 preset_parent per spec §5.4 row 20: data=0,
+			// pid 20 preset_parent per spec Â§5.4 row 20: data=0,
 			// plen=8, body=u32 BE parent obj-id.
 			if v, err := codec.PropertyU32(p); err == nil {
 				setMeta(&obj, "acp2.presetParent", uint64(v))
@@ -272,7 +272,7 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 		setMeta(&obj, "acp2.numType", uint8(numType))
 	}
 	if optionsMap != nil {
-		// Persist as map[string]string (JSON-friendly stringly idx → label)
+		// Persist as map[string]string (JSON-friendly stringly idx â†’ label)
 		// so the snapshot round-trips through encoding/json.
 		stringly := make(map[string]string, len(optionsMap))
 		for idx, lbl := range optionsMap {
@@ -309,7 +309,7 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 	}
 
 	// Set Group from second path element (first child of root).
-	// ACP2 path: [ROOT_NODE_V2, BOARD, Card Name] → group = "BOARD"
+	// ACP2 path: [ROOT_NODE_V2, BOARD, Card Name] â†’ group = "BOARD"
 	if len(obj.Path) > 1 {
 		obj.Group = obj.Path[1]
 	}
@@ -448,7 +448,7 @@ func (w *Walker) decodeConstraint(p *codec.Property, objType codec.ACP2ObjType, 
 // setMeta writes a key/value into obj.Meta, lazily allocating the map.
 // Used by the walker to stash protocol-specific decoded values that
 // don't fit the fixed Object fields (e.g. acp2.announceDelay,
-// acp2.presetIdxList — see protocol.Object docstring).
+// acp2.presetIdxList â€” see protocol.Object docstring).
 func setMeta(obj *protocol.Object, key string, value any) {
 	if obj.Meta == nil {
 		obj.Meta = make(map[string]any)
@@ -481,14 +481,3 @@ func numberTypeToKind(nt codec.NumberType) protocol.ValueKind {
 	}
 }
 
-// setMeta writes a key/value into obj.Meta, lazily allocating the map.
-// Used by the walker to stash protocol-specific decoded values that
-// don't fit the fixed Object fields (e.g. acp2.objType / acp2.numType
-// / acp2.optionsMap — read by the cache reload path so a watch session
-// can decode announces without waiting for a re-walk).
-func setMeta(obj *protocol.Object, key string, value any) {
-	if obj.Meta == nil {
-		obj.Meta = make(map[string]any)
-	}
-	obj.Meta[key] = value
-}

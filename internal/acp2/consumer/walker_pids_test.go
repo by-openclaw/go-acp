@@ -9,7 +9,7 @@ import (
 	"dhs/internal/acp2/codec"
 )
 
-// TestWalker_DecodesPid4_AnnounceDelay covers spec §5.4 row 4: pid=4
+// TestWalker_DecodesPid4_AnnounceDelay covers spec Â§5.4 row 4: pid=4
 // data=0, plen=8, body=u32 BE rate (announce delay in milliseconds).
 // The walker must stash the decoded value into Meta["acp2.announceDelay"].
 func TestWalker_DecodesPid4_AnnounceDelay(t *testing.T) {
@@ -19,7 +19,7 @@ func TestWalker_DecodesPid4_AnnounceDelay(t *testing.T) {
 	props := []codec.Property{
 		{PID: codec.PIDObjectType, VType: uint8(codec.ObjTypeNumber), PLen: 4},
 		{PID: codec.PIDLabel, VType: 0, PLen: 4 + 5, Data: []byte("Foo\x00")},
-		{PID: codec.PIDAnnounceDelay, VType: 0, PLen: 8, Data: body},
+		{PID: codec.PIDEventDelay, VType: 0, PLen: 8, Data: body},
 	}
 	obj, _, _, _, _ := w.parseObjectProperties(props, 1, 5, nil)
 	v, ok := obj.Meta["acp2.announceDelay"]
@@ -31,12 +31,12 @@ func TestWalker_DecodesPid4_AnnounceDelay(t *testing.T) {
 	}
 }
 
-// TestWalker_DecodesPid7_PresetDepth covers spec §5.4 row 7: pid=7
+// TestWalker_DecodesPid7_PresetDepth covers spec Â§5.4 row 7: pid=7
 // data=0, plen=4+4*depth, body = u32 BE list of valid idx values.
 // Walker stashes the list into Meta["acp2.presetIdxList"].
 func TestWalker_DecodesPid7_PresetDepth(t *testing.T) {
 	w := &Walker{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	// Two idx values: 100, 200 — matches the spec example at line 2613-2632.
+	// Two idx values: 100, 200 â€” matches the spec example at line 2613-2632.
 	body := make([]byte, 8)
 	binary.BigEndian.PutUint32(body[0:4], 100)
 	binary.BigEndian.PutUint32(body[4:8], 200)
@@ -56,7 +56,7 @@ func TestWalker_DecodesPid7_PresetDepth(t *testing.T) {
 	}
 }
 
-// TestWalker_DecodesPid18_EventState covers spec §5.4 row 18: pid=18
+// TestWalker_DecodesPid18_EventState covers spec Â§5.4 row 18: pid=18
 // inline state byte in the property header's data slot, plen=4.
 // Walker stashes the state into Meta["acp2.eventState"].
 func TestWalker_DecodesPid18_EventState(t *testing.T) {
@@ -76,7 +76,7 @@ func TestWalker_DecodesPid18_EventState(t *testing.T) {
 	}
 }
 
-// TestWalker_DecodesPid20_PresetParent covers spec §5.4 row 20: pid=20
+// TestWalker_DecodesPid20_PresetParent covers spec Â§5.4 row 20: pid=20
 // data=0, plen=8, body=u32 BE parent obj-id. Walker stashes into
 // Meta["acp2.presetParent"].
 func TestWalker_DecodesPid20_PresetParent(t *testing.T) {

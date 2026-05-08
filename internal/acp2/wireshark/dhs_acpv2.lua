@@ -124,7 +124,7 @@ local acp2_pid_valstr = {
     [1]  = "object_type",
     [2]  = "label",
     [3]  = "access",
-    [4]  = "event_delay",
+    [4]  = "announce_delay",
     [5]  = "number_type",
     [6]  = "string_max_length",
     [7]  = "preset_depth",
@@ -388,7 +388,7 @@ local function parse_property(tvbuf, pktinfo, parent_tree, offset)
         tree:add(prop_f.access, tvbuf:range(offset + 1, 1))
 
     elseif pid_val == 4 then
-        -- event_delay: u32 in value area
+        -- announce_delay: u32 in value area
         if val_len >= 4 then
             tree:add(prop_f.delay, tvbuf:range(val_offset, 4))
         end
@@ -477,7 +477,7 @@ local function parse_property(tvbuf, pktinfo, parent_tree, offset)
 
     elseif pid_val == 15 then
         -- options: variable-length per option, matching every shipping
-        -- ACP2 controller (Cerebrum, VSM, real EVS Neuron firmware).
+        -- ACP2 controller (Cerebrum, VSM, real Axon Neuron firmware).
         -- Layout per record: u32 idx + NUL-terminated name + 0-3 byte
         -- pad to next 4-byte boundary. data byte = N (num options).
         --
@@ -487,6 +487,7 @@ local function parse_property(tvbuf, pktinfo, parent_tree, offset)
         local pos = val_offset
         local opt_num = 0
         while pos < (val_offset + val_len) and opt_num < data_val do
+            local rec_start = pos
             if (pos + 4) > (val_offset + val_len) then break end
             tree:add(prop_f.opt_idx, tvbuf:range(pos, 4))
             pos = pos + 4
@@ -501,8 +502,8 @@ local function parse_property(tvbuf, pktinfo, parent_tree, offset)
             if pos < (val_offset + val_len) then
                 pos = pos + 1
             end
-            -- skip pad to 4-byte boundary, relative to start of record
-            local rec_used = pos - (str_start - 4)
+            -- skip pad to next 4-byte boundary, relative to record start
+            local rec_used = pos - rec_start
             local opt_pad = (4 - (rec_used % 4)) % 4
             pos = pos + opt_pad
             opt_num = opt_num + 1

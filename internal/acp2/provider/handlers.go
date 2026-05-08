@@ -15,8 +15,14 @@ import (
 // acp2Version is the ACP2 protocol version, carried in the ACP2
 // message header's pid byte of a get_version reply (single u8).
 const (
-	an2Version  uint16 = 1
-	acp2Version uint8  = 1
+	// Version constants matched against real Axon Neuron firmware
+	// (10.41.40.4) GetVersion replies on 2026-05-09:
+	//   AN2 GetVersion reply payload:  00 00 01  -> major=0 minor=1
+	//   ACP2 GetVersion reply byte 3:  02         -> v2
+	// Spec §1.4 explicitly lists v1 as "Made v1; unsupported."
+	an2VersionMajor uint8 = 0
+	an2VersionMinor uint8 = 1
+	acp2Version     uint8 = 2
 )
 
 // Slot status codes emitted by GetSlotInfo. Values mirror the consumer's
@@ -73,11 +79,9 @@ func (s *session) handleAN2Internal(f *codec.AN2Frame) {
 	switch funcID {
 	case codec.AN2FuncGetVersion:
 		// Spec §3.3.1 (an2_protocol.pdf p.7-8): reply payload is
-		// func(u8) + ver(u16), dlen=3. ver is a single u16 BE field,
-		// NOT a (major u8, minor u8) split. Real EVS Neuron emits
-		// 0x00 0x01 (= ver 1); a spec-strict consumer reading our
-		// previous [major=1, minor=0] bytes interpreted ver=0x0100=256.
-		body = []byte{funcID, byte(an2Version >> 8), byte(an2Version)}
+		// func(u8) + ver(u16), dlen=3. Real EVS Neuron 10.41.40.4
+		// emits 00 00 01 -> major=0 minor=1 (verified 2026-05-09).
+		body = []byte{funcID, an2VersionMajor, an2VersionMinor}
 	case codec.AN2FuncGetDeviceInfo:
 		// Spec §1.2.2 + §3.3.2 (p.8): info = total slot count incl
 		// slot 0. The example "5(=4+1), 9(=8+1), 19(=18+1), since
