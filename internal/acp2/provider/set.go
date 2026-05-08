@@ -35,9 +35,9 @@ func (s *server) applySet(e *entry, in *codec.Property) (codec.Property, codec.A
 		return codec.Property{}, codec.ErrNoAccess, fmt.Errorf("no write access")
 	}
 	if in.PID != codec.PIDValue {
-		// MVP only accepts writes to pid=8 (value). announce_delay
-		// (pid=4) and event_prio (pid=17) are spec-writable too but
-		// out of MVP scope.
+		// MVP only accepts writes to pid=8 (value). event_delay (pid=4)
+		// and event_priority (pid=17) are also writable per spec §5.4
+		// (RW access in property-fields matrix) but out of MVP scope.
 		return codec.Property{}, codec.ErrInvalidPID, fmt.Errorf("only pid=8 is writable in MVP")
 	}
 

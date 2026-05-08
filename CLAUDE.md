@@ -494,8 +494,8 @@ See `feedback_amwa_strict_all_versions` in memory.
   from outside its own tree except via `cmd/dhs/` blank imports.
 - Never hardcode protocol names in generic code — use the registry.
 - Never use fixed byte offsets for ACP2 properties — use pid/plen headers.
-- Never call ACP2 pid=4 "event_delay" — it is "announce_delay".
-- Never call ACP2 type=2 "event" — it is "announce".
+- Spec name for ACP2 pid=4 is "event_delay" (acp2_protocol.docx §5.4 row 4) — match the docx exactly.
+- Spec name for ACP2 type=2 is "announce" (acp2_protocol.docx §3.2 type-field row).
 - Never use ACP2 idx=0 to mean "first preset slot" — it is ACTIVE INDEX.
 - Never write property values to disk as trusted state.
 - Never add Redis, PostgreSQL, or any external data store.

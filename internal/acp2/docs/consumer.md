@@ -381,7 +381,7 @@ acp set 10.41.40.195 --protocol acp2 --slot 0 --id 15246 --value "10.41.40.195"
 - Transport: AN2 TCP, ACP2 type=2, mtid=0
 - Requires `AN2 EnableProtocolEvents([2])` on connect (automatic)
 - Announcements carry: slot, obj-id, pid, new value
-- Terminology: "announce" (not "event"), "announce_delay" (not "event_delay")
+- Terminology: spec calls type=2 "announce" (§3.2 type-field row) and pid=4 "event_delay" (§5.4 row 4) — match the docx exactly.
 
 ### Watch with disk cache
 

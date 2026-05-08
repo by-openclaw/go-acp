@@ -202,7 +202,7 @@ const (
 	PIDObjectType      uint8 = 1
 	PIDLabel           uint8 = 2
 	PIDAccess          uint8 = 3
-	PIDAnnounceDelay   uint8 = 4
+	PIDEventDelay      uint8 = 4
 	PIDNumberType      uint8 = 5
 	PIDStringMaxLength uint8 = 6
 	PIDPresetDepth     uint8 = 7

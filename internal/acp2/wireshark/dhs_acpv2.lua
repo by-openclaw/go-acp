@@ -124,7 +124,7 @@ local acp2_pid_valstr = {
     [1]  = "object_type",
     [2]  = "label",
     [3]  = "access",
-    [4]  = "announce_delay",
+    [4]  = "event_delay",
     [5]  = "number_type",
     [6]  = "string_max_length",
     [7]  = "preset_depth",
@@ -388,7 +388,7 @@ local function parse_property(tvbuf, pktinfo, parent_tree, offset)
         tree:add(prop_f.access, tvbuf:range(offset + 1, 1))
 
     elseif pid_val == 4 then
-        -- announce_delay: u32 in value area
+        -- event_delay: u32 in value area
         if val_len >= 4 then
             tree:add(prop_f.delay, tvbuf:range(val_offset, 4))
         end
