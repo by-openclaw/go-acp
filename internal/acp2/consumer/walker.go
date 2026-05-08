@@ -231,6 +231,29 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 		}
 	}
 
+	// Stash the ACP2 object type and number type in Meta so a watch
+	// session resuming from disk cache can decode announces without
+	// waiting for a full re-walk. (#323)
+	if objType != codec.ObjTypeNode {
+		setMeta(&obj, "acp2.objType", uint8(objType))
+		setMeta(&obj, "acp2.numType", uint8(numType))
+	}
+	if optionsMap != nil {
+		// Persist as map[string]string (JSON-friendly stringly idx → label)
+		// so the snapshot round-trips through encoding/json.
+		stringly := make(map[string]string, len(optionsMap))
+		for idx, lbl := range optionsMap {
+			stringly[fmt.Sprintf("%d", idx)] = lbl
+		}
+		setMeta(&obj, "acp2.optionsMap", stringly)
+	}
+
+	// Suppress the original block-end so the rest of parseObjectProperties
+	// (value decode, label resolution, path building) continues. The
+	// substituted block above runs after the per-pid switch closes.
+	{
+	}
+
 	// Second pass: decode value now that options map is available.
 	if valueProp != nil {
 		w.decodeValue(valueProp, objType, numType, &obj, optionsMap)
@@ -406,4 +429,16 @@ func numberTypeToKind(nt codec.NumberType) protocol.ValueKind {
 	default:
 		return protocol.KindRaw
 	}
+}
+
+// setMeta writes a key/value into obj.Meta, lazily allocating the map.
+// Used by the walker to stash protocol-specific decoded values that
+// don't fit the fixed Object fields (e.g. acp2.objType / acp2.numType
+// / acp2.optionsMap — read by the cache reload path so a watch session
+// can decode announces without waiting for a re-walk).
+func setMeta(obj *protocol.Object, key string, value any) {
+	if obj.Meta == nil {
+		obj.Meta = make(map[string]any)
+	}
+	obj.Meta[key] = value
 }
