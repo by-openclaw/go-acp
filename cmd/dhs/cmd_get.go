@@ -16,6 +16,7 @@ func runGet(ctx context.Context, args []string) error {
 	group := fs.String("group", "", "object group (optional when --label is unique across groups)")
 	label := fs.String("label", "", "object label (preferred over --id, requires prior walk context)")
 	id := fs.Int("id", -1, "object id within group (alternative to --label)")
+	objectAlias := fs.Int("object", -1, "alias for --id (deprecated; ACP2 callers historically wrote --object)")
 	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
 	idx := fs.Int("idx", 0, "ACP2 preset idx (0 = ACTIVE INDEX; default)")
 	pid := fs.Int("pid", 0, "ACP2 property id to read (0 = default pid=8 value; set to read object_type/label/access/etc.)")
@@ -30,6 +31,14 @@ func runGet(ctx context.Context, args []string) error {
 	}
 	if *slot < 0 {
 		return fmt.Errorf("--slot is required")
+	}
+	// --object is a deprecated alias for --id. Fold it in unless both
+	// were set with conflicting values.
+	if *objectAlias >= 0 {
+		if *id >= 0 && *id != *objectAlias {
+			return fmt.Errorf("--id and --object both set with different values (%d vs %d)", *id, *objectAlias)
+		}
+		*id = *objectAlias
 	}
 	if *pathFlag == "" && *label == "" && *id < 0 {
 		return fmt.Errorf("either --path, --label, or --id is required")

@@ -13,6 +13,25 @@ import (
 	"time"
 )
 
+// canonicalDirection normalises the --direction flag value. Accepts
+// the canonical spellings (consumer / provider / both) plus "io" as
+// a friendlier synonym for "both" for bidirectional products like
+// ACP2 channels. Returns the canonical form on success or a wrapped
+// error on unknown values.
+//
+// Pure helper — extracted from runExtract to keep the alias logic
+// unit-testable without the full dial path.
+func canonicalDirection(d string) (string, error) {
+	if d == "io" {
+		return "both", nil
+	}
+	switch d {
+	case "consumer", "provider", "both":
+		return d, nil
+	}
+	return "", fmt.Errorf("--direction must be one of: consumer, provider, both, io (got %q)", d)
+}
+
 // runExtract drives `acp extract` (issue #47) — walks a device and
 // writes the product-fixture triple (meta + wire + tree) into the
 // output directory using the schema locked in #43.
@@ -25,7 +44,7 @@ func runExtract(ctx context.Context, args []string) error {
 	product := fs.String("product", "",
 		"product identifier as the vendor writes it (e.g. DDB08, CDV08v06). Required.")
 	direction := fs.String("direction", "",
-		"how the product speaks this protocol: consumer (we read it), provider (we expose it), or both. Required.")
+		"how the product speaks this protocol: consumer (we read it), provider (we expose it), both, or io (alias for both). Required.")
 	ver := fs.String("version", "",
 		"product / firmware version as reported by the device (e.g. 2.3). Required.")
 	versionKind := fs.String("version-kind", "firmware",
@@ -47,11 +66,11 @@ func runExtract(ctx context.Context, args []string) error {
 	if *manufacturer == "" || *product == "" || *direction == "" || *ver == "" || *outDir == "" {
 		return fmt.Errorf("--manufacturer, --product, --direction, --version, and --out are all required")
 	}
-	switch *direction {
-	case "consumer", "provider", "both":
-	default:
-		return fmt.Errorf("--direction must be one of: consumer, provider, both (got %q)", *direction)
+	canonical, err := canonicalDirection(*direction)
+	if err != nil {
+		return err
 	}
+	*direction = canonical
 
 	if cf.protocol == "emberplus" && *slot < 0 {
 		*slot = 0

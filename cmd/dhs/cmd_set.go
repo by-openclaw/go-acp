@@ -17,6 +17,7 @@ func runSet(ctx context.Context, args []string) error {
 	group := fs.String("group", "", "object group name")
 	label := fs.String("label", "", "object label")
 	id := fs.Int("id", -1, "object id within group")
+	objectAlias := fs.Int("object", -1, "alias for --id (deprecated; ACP2 callers historically wrote --object)")
 	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
 	valueStr := fs.String("value", "", "typed value (e.g. -3.0, \"On\", \"192.168.1.5\", \"CH1\"); empty string is valid for string objects")
 	valueHex := fs.String("raw", "", "raw wire bytes as hex — escape hatch bypassing typed encoding")
@@ -45,6 +46,15 @@ func runSet(ctx context.Context, args []string) error {
 	}
 	if *slot < 0 {
 		return fmt.Errorf("--slot is required")
+	}
+	// --object is a deprecated alias for --id. If the user supplied
+	// --object and not --id, fold it in. If both are set with different
+	// values, reject — the caller's intent is ambiguous.
+	if *objectAlias >= 0 {
+		if *id >= 0 && *id != *objectAlias {
+			return fmt.Errorf("--id and --object both set with different values (%d vs %d)", *id, *objectAlias)
+		}
+		*id = *objectAlias
 	}
 	if !valueSet && !rawSet {
 		return fmt.Errorf("either --value or --raw is required")
