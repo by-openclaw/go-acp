@@ -172,6 +172,46 @@ func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	}
 }
 
+// TestBuildProperties_Preset_NoPid5 verifies pid=5 (number_type) is
+// NOT emitted on Preset replies per spec §"Property fields" matrix —
+// pid 5 column is blank for Preset (only Number marks Y on row 5).
+// Wire vtype information for pid 8/9/10/11 still rides in each
+// property header's data byte; an additional pid=5 record is wrong.
+func TestBuildProperties_Preset_NoPid5(t *testing.T) {
+	p := &canonical.Parameter{
+		Header: canonical.Header{Number: 9, Identifier: "PresetSlot",
+			Access: canonical.AccessReadWrite},
+		Type: canonical.ParamInteger, Value: int64(0),
+	}
+	e := &entry{
+		objID: 9, label: p.Identifier, access: 0x03,
+		objType: codec.ObjTypePreset, numType: codec.NumTypeU8,
+		presetDepth: 2, param: p,
+	}
+	got := buildAndDecode(t, e)
+	for _, pr := range got {
+		if pr.PID == codec.PIDNumberType {
+			t.Errorf("Preset reply must NOT carry pid=5 (number_type); spec §Property fields matrix")
+		}
+	}
+	// Sanity: pid 7 preset_depth and pid 8 value still emitted.
+	hasPresetDepth, hasValue := false, false
+	for _, pr := range got {
+		if pr.PID == codec.PIDPresetDepth {
+			hasPresetDepth = true
+		}
+		if pr.PID == codec.PIDValue {
+			hasValue = true
+		}
+	}
+	if !hasPresetDepth {
+		t.Error("Preset reply missing required pid=7 (preset_depth)")
+	}
+	if !hasValue {
+		t.Error("Preset reply missing required pid=8 (value)")
+	}
+}
+
 func TestBuildProperties_IPv4(t *testing.T) {
 	ipf := "ipv4"
 	p := &canonical.Parameter{

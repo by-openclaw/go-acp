@@ -86,11 +86,15 @@ func buildProperties(e *entry) ([]codec.Property, error) {
 		props = append(props, val)
 		props = append(props, propOptions(enumOptions(e.param)))
 	case codec.ObjTypePreset:
-		// Preset child per spec §5: pid 7 preset_depth lists the N valid
-		// idx values; pids 8/9/10/11 each appear N times in the reply,
-		// once per idx. Number-style numeric fields (pid 5, 12, 13) are
-		// emitted once. For N=1 the shape degenerates to "Number + pid 7".
-		props = append(props, propInline(codec.PIDNumberType, uint8(e.numType)))
+		// Preset child per spec §"Property fields" matrix: pid 5
+		// (number_type) row is BLANK for Preset — the spec table
+		// marks pid 5 required (Y) only on the Number column. Wire
+		// vtype information for pid 8/9/10/11 still lives in each
+		// property header's data byte (set by encodeNumericProp).
+		// pid 7 preset_depth lists the N valid idx values; pids
+		// 8/9/10/11 each appear N times in the reply, once per idx.
+		// pid 12/13 stay optional (op¹). For N=1 the shape degenerates
+		// to "Number-without-pid-5 + pid 7".
 		props = append(props, propPresetDepth(e.presetDepth))
 		for i := uint32(0); i < e.presetDepth; i++ {
 			val, err := encodeValueProp(codec.PIDValue, e)
