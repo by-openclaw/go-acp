@@ -141,9 +141,14 @@ func TestBuildProperties_Enum(t *testing.T) {
 // uses the EnumMap.Value as the wire idx, not positional 0..N-1.
 // Real Axon firmware assigns sparse idx (e.g. 7="Off", 8="On"); pid=8
 // (value) and pid=9 (default) reference those wire idx values, so the
-// option records MUST carry them or Cerebrum cannot resolve the active
-// label. Spec §5.4 row 15 + observed real-Neuron wire trace
-// (raw.an2.jsonl 2026-05-06): `00000007 "Off"... 00000008 "On"...`.
+// option records MUST carry them. Records are variable-length per
+// real-device convention (deviation from spec §5.4 row 15 fixed
+// 72-byte stride); see compliance event
+// `OptionsVariableLengthPerDeviceConvention`. Wire shape verified
+// against real-Neuron raw.an2.jsonl 2026-05-06:
+//
+//	`00000007 4f666600`        idx=7 "Off"  (8 bytes)
+//	`00000008 4f6e0000`        idx=8 "On"   (8 bytes — name "On"\0 + 1 pad)
 func TestBuildProperties_Enum_NonPositionalIdx(t *testing.T) {
 	p := &canonical.Parameter{
 		Header: canonical.Header{
@@ -171,10 +176,10 @@ func TestBuildProperties_Enum_NonPositionalIdx(t *testing.T) {
 	if optsProp.PID != codec.PIDOptions {
 		t.Fatal("missing pid=15 options")
 	}
-	// Strict spec §5.4: plen = 4 + 72*N. After DecodeProperties strips
-	// the 4-byte header, body is 72*N. For N=2 expect 144.
-	if got, want := len(optsProp.Data), 2*codec.ACP2OptionSize; got != want {
-		t.Errorf("options body len=%d want %d", got, want)
+	// Variable-length per option: each "Off"/"On" record is
+	// 4 (idx) + 3/2 (name) + 1 (NUL) + pad-to-4 = 8 bytes.
+	if got, want := len(optsProp.Data), 16; got != want {
+		t.Errorf("options body len=%d want %d (variable-length)", got, want)
 	}
 	m := codec.PropertyOptionsMap(&optsProp)
 	if m[7] != "Off" {

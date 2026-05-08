@@ -476,24 +476,35 @@ local function parse_property(tvbuf, pktinfo, parent_tree, offset)
         tree:append_text(" (" .. count .. " children)")
 
     elseif pid_val == 15 then
-        -- options: spec §5.4 row 15 = fixed 72-byte stride per option.
-        -- Layout: u32 idx + 68-byte NUL-padded UTF-8 name. Total
-        -- plen = 4 + 72*N where data byte = N (num options).
+        -- options: variable-length per option, matching every shipping
+        -- ACP2 controller (Cerebrum, VSM, real EVS Neuron firmware).
+        -- Layout per record: u32 idx + NUL-terminated name + 0-3 byte
+        -- pad to next 4-byte boundary. data byte = N (num options).
+        --
+        -- Spec deviation: acp2_protocol.docx §5.4 row 15 specifies
+        -- fixed 72-byte stride; no production device implements that.
         tree:append_text(" (" .. data_val .. " options)")
-        local OPT_SIZE = 72
         local pos = val_offset
         local opt_num = 0
-        while opt_num < data_val and (pos + OPT_SIZE) <= (val_offset + val_len) do
+        while pos < (val_offset + val_len) and opt_num < data_val do
+            if (pos + 4) > (val_offset + val_len) then break end
             tree:add(prop_f.opt_idx, tvbuf:range(pos, 4))
-            -- name slot = 68 bytes NUL-padded; strip trailing zeros for display
-            local name_end = pos + 4
-            while name_end < (pos + OPT_SIZE) and tvbuf:range(name_end, 1):uint() ~= 0 do
-                name_end = name_end + 1
+            pos = pos + 4
+            local str_start = pos
+            while pos < (val_offset + val_len) and tvbuf:range(pos, 1):uint() ~= 0 do
+                pos = pos + 1
             end
-            if name_end > (pos + 4) then
-                tree:add(prop_f.opt_str, tvbuf:range(pos + 4, name_end - (pos + 4)))
+            if pos > str_start then
+                tree:add(prop_f.opt_str, tvbuf:range(str_start, pos - str_start))
             end
-            pos = pos + OPT_SIZE
+            -- consume NUL terminator
+            if pos < (val_offset + val_len) then
+                pos = pos + 1
+            end
+            -- skip pad to 4-byte boundary, relative to start of record
+            local rec_used = pos - (str_start - 4)
+            local opt_pad = (4 - (rec_used % 4)) % 4
+            pos = pos + opt_pad
             opt_num = opt_num + 1
         end
 

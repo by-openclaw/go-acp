@@ -269,61 +269,59 @@ func propPresetDepth(depth uint32) codec.Property {
 	}
 }
 
-// acp2OptionSize is the fixed on-wire size of one enum option (pid 15
-// entry) per spec §5.4: plen = 4 + (72 * option), so each option is
-// exactly 72 bytes: 4-byte u32 index + 68-byte NUL-padded UTF-8 name.
-const acp2OptionSize = 72
-
 // optionEntry pairs a wire index (from canonical EnumMap.Value) with
-// its label. Used by propOptions to emit pid=15 with the same idx
-// values pid=8 (current value) and pid=9 (default) reference. Per
-// spec §5.4 the wire index is part of the option record; consumers
-// match pid=8.value against pid=15[i].idx to resolve the active label.
+// its label. The wire idx must match what pid=8 (current value) and
+// pid=9 (default) reference, so consumers can resolve the active
+// option label.
 type optionEntry struct {
 	idx   uint32
 	label string
 }
 
-// propOptions builds the pid=15 (options) property per spec §5.4
-// row 15: fixed 72-byte stride, plen = 4 + 72 * N.
+// propOptions builds the pid=15 (options) property using the
+// variable-length per-option layout that every shipping ACP2
+// controller (Cerebrum, VSM Studio, real EVS Neuron firmware)
+// implements:
 //
-//	header: pid=15, data=num_option (INLINE), plen=4 + 72 * N
-//	body  : N fixed-size slots, each {u32 idx, 68-byte NUL-padded name}
+//	header: pid=15, data=num_option (INLINE), plen = sum of records
+//	body  : N records, each {u32 idx, NUL-terminated name, 0-3 align}
 //
-// The wire idx in each slot MUST come from the device's option-id
-// numbering (real Axon assigns u32 ids per option, e.g. 675="A1",
-// 690="D4"). Synthesising 0..N-1 leaves pid=8 (value) and pid=9
-// (default) — both already keyed by the real wire idx — pointing at
-// no option, so Cerebrum cannot resolve the active label.
+// Spec deviation: acp2_protocol.docx §5.4 row 15 calls for fixed
+// 72-byte stride per option (`plen = 4 + 72*N`). No production
+// controller implements that layout — real Neuron's 9,827 pid=15
+// frames captured 2026-05-06 emit variable-length records; Cerebrum
+// and VSM Studio decode the variable-length form. Emitting the
+// spec-literal 72-byte stride isolates the implementation. We follow
+// the wire and fire the `acp2_options_variable_length_per_device_convention`
+// compliance event so the deviation is auditable.
 //
-//	| Offset          | Field   | Width  | Notes                         |
-//	|-----------------|---------|--------|-------------------------------|
-//	| 0               | pid     | u8     | 15 = options                  |
-//	| 1               | data    | u8     | num options (N) — inline count|
-//	| 2-3             | plen    | u16 BE | 4 + 72*N                      |
-//	| 4 + 72*i        | idx_i   | u32 BE | wire idx from EnumMap.Value   |
-//	| 8 + 72*i        | name_i  | 68     | UTF-8, zero-padded, truncates |
-//
-// Spec reference: acp2_protocol.docx §5.4 pid=15 options.
+//	| Offset      | Field   | Width  | Notes                                |
+//	|-------------|---------|--------|--------------------------------------|
+//	| 0           | pid     | u8     | 15 = options                         |
+//	| 1           | data    | u8     | num options (N) — inline count       |
+//	| 2-3         | plen    | u16 BE | 4 + sum(record sizes)                |
+//	| record i: idx       | u32 BE | option wire idx                      |
+//	| record i: name+\0   | varies | UTF-8, NUL-terminated                |
+//	| record i: align     | 0-3    | zero pad to next 4-byte boundary     |
 func propOptions(opts []optionEntry) codec.Property {
-	n := len(opts)
-	data := make([]byte, acp2OptionSize*n)
-	for i, opt := range opts {
-		off := i * acp2OptionSize
-		binary.BigEndian.PutUint32(data[off:off+4], opt.idx)
-		// Copy the UTF-8 name into the 68-byte slot. Truncate if
-		// longer; zero-pad otherwise. No explicit NUL — the zero
-		// padding serves as the terminator.
-		name := opt.label
-		if len(name) > acp2OptionSize-4-1 { // reserve at least 1 NUL
-			name = name[:acp2OptionSize-4-1]
+	var data []byte
+	for _, opt := range opts {
+		// 4-byte idx
+		var idx [4]byte
+		binary.BigEndian.PutUint32(idx[:], opt.idx)
+		data = append(data, idx[:]...)
+		// NUL-terminated name
+		data = append(data, []byte(opt.label)...)
+		data = append(data, 0)
+		// pad to 4-byte boundary
+		if pad := (4 - (len(data) % 4)) % 4; pad > 0 {
+			data = append(data, make([]byte, pad)...)
 		}
-		copy(data[off+4:off+acp2OptionSize], name)
 	}
 	return codec.Property{
 		PID:   codec.PIDOptions,
-		VType: uint8(n), // spec §5.4: "data: num option" — inline count
-		PLen:  uint16(4 + acp2OptionSize*n),
+		VType: uint8(len(opts)), // spec §5.4: "data: num option" — inline count
+		PLen:  uint16(4 + len(data)),
 		Data:  data,
 	}
 }
