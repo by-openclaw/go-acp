@@ -137,6 +137,58 @@ func TestBuildProperties_Enum(t *testing.T) {
 	}
 }
 
+// TestBuildProperties_Enum_NonPositionalIdx verifies pid=15 (options)
+// uses the EnumMap.Value as the wire idx, not positional 0..N-1.
+// Real Axon firmware assigns sparse idx (e.g. 7="Off", 8="On"); pid=8
+// (value) and pid=9 (default) reference those wire idx values, so the
+// option records MUST carry them or Cerebrum cannot resolve the active
+// label. Spec §5.4 row 15 + observed real-Neuron wire trace
+// (raw.an2.jsonl 2026-05-06): `00000007 "Off"... 00000008 "On"...`.
+func TestBuildProperties_Enum_NonPositionalIdx(t *testing.T) {
+	p := &canonical.Parameter{
+		Header: canonical.Header{
+			Number: 6, Identifier: "Mute", Access: canonical.AccessReadWrite,
+		},
+		Type:  canonical.ParamEnum,
+		Value: int64(8), Default: int64(7),
+		EnumMap: []canonical.EnumEntry{
+			{Key: "Off", Value: 7},
+			{Key: "On", Value: 8},
+		},
+	}
+	e := &entry{
+		objID: 6, label: p.Identifier, access: 0x03,
+		objType: codec.ObjTypeEnum, numType: codec.NumTypeU32,
+		param: p,
+	}
+	got := buildAndDecode(t, e)
+	var optsProp codec.Property
+	for _, pr := range got {
+		if pr.PID == codec.PIDOptions {
+			optsProp = pr
+		}
+	}
+	if optsProp.PID != codec.PIDOptions {
+		t.Fatal("missing pid=15 options")
+	}
+	// Strict spec §5.4: plen = 4 + 72*N. After DecodeProperties strips
+	// the 4-byte header, body is 72*N. For N=2 expect 144.
+	if got, want := len(optsProp.Data), 2*codec.ACP2OptionSize; got != want {
+		t.Errorf("options body len=%d want %d", got, want)
+	}
+	m := codec.PropertyOptionsMap(&optsProp)
+	if m[7] != "Off" {
+		t.Errorf("idx=7 -> %q want Off", m[7])
+	}
+	if m[8] != "On" {
+		t.Errorf("idx=8 -> %q want On", m[8])
+	}
+	// Sanity: positional encoding would have produced idx=0,1.
+	if _, ok := m[0]; ok {
+		t.Errorf("positional idx=0 leaked into wire — encoder regressed to positional")
+	}
+}
+
 func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	mf := "maxLen=16"
 	p := &canonical.Parameter{

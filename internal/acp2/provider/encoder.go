@@ -274,33 +274,47 @@ func propPresetDepth(depth uint32) codec.Property {
 // exactly 72 bytes: 4-byte u32 index + 68-byte NUL-padded UTF-8 name.
 const acp2OptionSize = 72
 
-// propOptions builds the pid=15 (options) property per spec §5.4:
+// optionEntry pairs a wire index (from canonical EnumMap.Value) with
+// its label. Used by propOptions to emit pid=15 with the same idx
+// values pid=8 (current value) and pid=9 (default) reference. Per
+// spec §5.4 the wire index is part of the option record; consumers
+// match pid=8.value against pid=15[i].idx to resolve the active label.
+type optionEntry struct {
+	idx   uint32
+	label string
+}
+
+// propOptions builds the pid=15 (options) property per spec §5.4
+// row 15: fixed 72-byte stride, plen = 4 + 72 * N.
 //
 //	header: pid=15, data=num_option (INLINE), plen=4 + 72 * N
-//	body  : N fixed-size slots, each {u32 index, 68-byte NUL-padded name}
+//	body  : N fixed-size slots, each {u32 idx, 68-byte NUL-padded name}
 //
-// Matches real Axon firmware; Lawo VSM's driver parses with this layout.
-// Index 0..N-1 matches EnumMap ordering.
+// The wire idx in each slot MUST come from the device's option-id
+// numbering (real Axon assigns u32 ids per option, e.g. 675="A1",
+// 690="D4"). Synthesising 0..N-1 leaves pid=8 (value) and pid=9
+// (default) — both already keyed by the real wire idx — pointing at
+// no option, so Cerebrum cannot resolve the active label.
 //
 //	| Offset          | Field   | Width  | Notes                         |
 //	|-----------------|---------|--------|-------------------------------|
 //	| 0               | pid     | u8     | 15 = options                  |
 //	| 1               | data    | u8     | num options (N) — inline count|
 //	| 2-3             | plen    | u16 BE | 4 + 72*N                      |
-//	| 4 + 72*i        | idx_i   | u32 BE | option index (0..N-1)         |
+//	| 4 + 72*i        | idx_i   | u32 BE | wire idx from EnumMap.Value   |
 //	| 8 + 72*i        | name_i  | 68     | UTF-8, zero-padded, truncates |
 //
-// Spec reference: acp2_protocol.pdf §5.4 pid=15 options
-func propOptions(opts []string) codec.Property {
+// Spec reference: acp2_protocol.docx §5.4 pid=15 options.
+func propOptions(opts []optionEntry) codec.Property {
 	n := len(opts)
 	data := make([]byte, acp2OptionSize*n)
 	for i, opt := range opts {
 		off := i * acp2OptionSize
-		binary.BigEndian.PutUint32(data[off:off+4], uint32(i))
+		binary.BigEndian.PutUint32(data[off:off+4], opt.idx)
 		// Copy the UTF-8 name into the 68-byte slot. Truncate if
 		// longer; zero-pad otherwise. No explicit NUL — the zero
 		// padding serves as the terminator.
-		name := opt
+		name := opt.label
 		if len(name) > acp2OptionSize-4-1 { // reserve at least 1 NUL
 			name = name[:acp2OptionSize-4-1]
 		}
@@ -467,20 +481,34 @@ func u32Data(v uint32) []byte {
 // enumOptions pulls the enum option labels (ordered by ordinal) from a
 // canonical Parameter. Prefers EnumMap; falls back to parsing the
 // newline- or comma-separated Enumeration string.
-func enumOptions(p *canonical.Parameter) []string {
+// enumOptions returns the option records (wire-idx + label) for an
+// Enum's pid=15. Pulls each EnumMap entry's Value as the wire idx
+// and Key as the label so pid=15[i].idx matches what pid=8 (value)
+// and pid=9 (default) reference. Falls back to positional 0..N-1
+// indices ONLY when the canonical fixture lacks an EnumMap (legacy
+// Enumeration string); a compliance event would be the right call
+// there but is left for the canonical-loader to fire.
+func enumOptions(p *canonical.Parameter) []optionEntry {
 	if len(p.EnumMap) > 0 {
-		out := make([]string, len(p.EnumMap))
+		out := make([]optionEntry, len(p.EnumMap))
 		for i, e := range p.EnumMap {
-			out[i] = e.Key
+			out[i] = optionEntry{idx: uint32(e.Value), label: e.Key}
 		}
 		return out
 	}
 	if p.Enumeration != nil && *p.Enumeration != "" {
 		raw := *p.Enumeration
+		var labels []string
 		if strings.Contains(raw, "\n") {
-			return strings.Split(raw, "\n")
+			labels = strings.Split(raw, "\n")
+		} else {
+			labels = strings.Split(raw, ",")
 		}
-		return strings.Split(raw, ",")
+		out := make([]optionEntry, len(labels))
+		for i, l := range labels {
+			out[i] = optionEntry{idx: uint32(i), label: l}
+		}
+		return out
 	}
 	return nil
 }
