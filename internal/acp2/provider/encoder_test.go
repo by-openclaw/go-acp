@@ -30,21 +30,22 @@ func buildAndDecode(t *testing.T, e *entry) []codec.Property {
 
 func TestBuildProperties_Node(t *testing.T) {
 	n := &canonical.Node{
-		Header: canonical.Header{
-			Number: 1, Identifier: "ROOT_NODE_V2", Access: canonical.AccessRead,
-		},
+		Header: canonical.Header{Number: 1, Identifier: "ROOT_NODE_V2"},
 	}
 	e := &entry{
 		objID: 1, label: n.Identifier,
-		access:   0x01,
+		access:   0,
 		objType:  codec.ObjTypeNode,
 		children: []uint32{2, 3, 4},
 		node:     n,
 	}
 	got := buildAndDecode(t, e)
 	want := map[uint8]bool{codec.PIDObjectType: true, codec.PIDLabel: true,
-		codec.PIDAccess: true, codec.PIDChildren: true}
+		codec.PIDChildren: true}
 	for _, p := range got {
+		if p.PID == codec.PIDAccess {
+			t.Errorf("Node reply must omit pid=3 access (real Neuron wire); got plen=%d data=0x%02x", p.PLen, p.VType)
+		}
 		delete(want, p.PID)
 	}
 	if len(want) > 0 {
