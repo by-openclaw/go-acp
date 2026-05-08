@@ -11,9 +11,14 @@ import (
 // AN2 v1.0 matches what real Axon firmware emits today. ACP2 v1 is the
 // only ACP2 major in the wild; consumers use it to gate feature flags.
 const (
-	an2VersionMajor uint8 = 1
-	an2VersionMinor uint8 = 0
-	acp2Version     uint8 = 1
+	// Version constants matched against real Axon Neuron firmware
+	// (10.41.40.4) GetVersion replies on 2026-05-09:
+	//   AN2 GetVersion reply payload:  00 00 01  -> major=0 minor=1
+	//   ACP2 GetVersion reply byte 3:  02         -> v2
+	// Spec §1.4 explicitly lists v1 as "Made v1; unsupported."
+	an2VersionMajor uint8 = 0
+	an2VersionMinor uint8 = 1
+	acp2Version     uint8 = 2
 )
 
 // Slot status codes emitted by GetSlotInfo. Values mirror the consumer's

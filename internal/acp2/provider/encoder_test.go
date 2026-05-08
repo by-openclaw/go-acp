@@ -28,6 +28,12 @@ func buildAndDecode(t *testing.T, e *entry) []codec.Property {
 	return decoded
 }
 
+// TestBuildProperties_Node pins spec §5.1: a Node reply carries
+// EXACTLY {pid 1 obj_type, pid 2 label, pid 14 children}. No pid 3
+// access, no pid 4 event_delay — both are blank on the Node row of
+// §5.1. Verified against real Neuron obj 15364 MANAGEMENT PORT
+// (10.41.40.4 capture 2026-05-09): wire is dlen=108, 3 properties
+// only.
 func TestBuildProperties_Node(t *testing.T) {
 	n := &canonical.Node{
 		Header: canonical.Header{
@@ -42,10 +48,18 @@ func TestBuildProperties_Node(t *testing.T) {
 		node:     n,
 	}
 	got := buildAndDecode(t, e)
-	want := map[uint8]bool{codec.PIDObjectType: true, codec.PIDLabel: true,
-		codec.PIDAccess: true, codec.PIDChildren: true}
+	want := map[uint8]bool{
+		codec.PIDObjectType: true, codec.PIDLabel: true, codec.PIDChildren: true,
+	}
+	notWant := map[uint8]bool{
+		codec.PIDAccess:        true, // pid 3 — Node row blank
+		codec.PIDAnnounceDelay: true, // pid 4 — Node row blank
+	}
 	for _, p := range got {
 		delete(want, p.PID)
+		if notWant[p.PID] {
+			t.Errorf("Node reply must not carry pid %d (spec §5.1 Node row blank)", p.PID)
+		}
 	}
 	if len(want) > 0 {
 		t.Errorf("missing pids: %v", want)

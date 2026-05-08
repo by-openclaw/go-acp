@@ -304,13 +304,15 @@ func TestPropertyChildren(t *testing.T) {
 }
 
 func TestPropertyOptions(t *testing.T) {
-	// Spec §5.4 pid 15: fixed 72 bytes per option = u32 BE index + 68-byte
-	// NUL-padded UTF-8 name. Build two options: idx=7 "Off", idx=8 "On".
-	data := make([]byte, 2*ACP2OptionSize)
-	binary.BigEndian.PutUint32(data[0:4], 7)
-	copy(data[4:], "Off")
-	binary.BigEndian.PutUint32(data[ACP2OptionSize:ACP2OptionSize+4], 8)
-	copy(data[ACP2OptionSize+4:], "On")
+	// Variable-length per real-Neuron wire (spec §5.4 row 15 calls for
+	// fixed 72-byte stride but no production controller emits that —
+	// see compliance event acp2_options_variable_length_per_device_convention).
+	// Each record: u32 BE idx + NUL-terminated UTF-8 name + 0-3 byte align.
+	// Two options: idx=7 "Off" (4+3+1 = 8 bytes), idx=8 "On" (4+2+1+1 = 8 bytes).
+	data := []byte{
+		0x00, 0x00, 0x00, 0x07, 'O', 'f', 'f', 0x00,
+		0x00, 0x00, 0x00, 0x08, 'O', 'n', 0x00, 0x00,
+	}
 
 	p := &Property{PID: PIDOptions, Data: data}
 	opts := PropertyOptions(p)

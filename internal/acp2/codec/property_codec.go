@@ -173,50 +173,73 @@ func PropertyChildren(p *Property) ([]uint32, error) {
 	return ids, nil
 }
 
-// ACP2OptionSize is the fixed on-wire size of one enum option per spec
-// §5.4 pid 15: 4-byte u32 index + 68-byte NUL-padded UTF-8 name = 72 bytes.
+// ACP2OptionSize is the spec-literal stride per option per
+// acp2_protocol.docx §5.4 row 15: 4-byte u32 idx + 68-byte NUL-padded
+// UTF-8 name = 72 bytes. No production controller emits this layout —
+// real Axon firmware uses variable-length records (verified against
+// 9,827 pid 15 frames captured 2026-05-06 + obj 17671/21127 captured
+// 2026-05-09). Constant retained for fixture/golden inspection only.
 const ACP2OptionSize = 72
 
-// PropertyOptions extracts enum option labels (ordered by wire position)
-// from a pid=15 property. Fixed 72-byte stride per spec §5.4.
+// PropertyOptions extracts enum option labels (ordered by wire
+// position) from a pid=15 property using the variable-length per-
+// option layout that every shipping ACP2 controller implements:
+//
+//	record: u32 BE idx + NUL-terminated UTF-8 name + 0-3 byte align.
+//
+// Spec deviation tolerated; see compliance event
+// `acp2_options_variable_length_per_device_convention`.
 func PropertyOptions(p *Property) []string {
-	if len(p.Data) < ACP2OptionSize {
+	if len(p.Data) < 4 {
 		return nil
 	}
-	n := len(p.Data) / ACP2OptionSize
-	labels := make([]string, 0, n)
-	for i := 0; i < n; i++ {
-		off := i * ACP2OptionSize
-		labels = append(labels, trimZero(p.Data[off+4:off+ACP2OptionSize]))
-	}
-	return labels
-}
-
-// PropertyOptionsMap extracts enum options as a map of index → label.
-// Fixed 72-byte stride per spec §5.4 pid 15.
-func PropertyOptionsMap(p *Property) map[uint32]string {
-	if len(p.Data) < ACP2OptionSize {
-		return nil
-	}
-	n := len(p.Data) / ACP2OptionSize
-	m := make(map[uint32]string, n)
-	for i := 0; i < n; i++ {
-		off := i * ACP2OptionSize
-		idx := binary.BigEndian.Uint32(p.Data[off : off+4])
-		m[idx] = trimZero(p.Data[off+4 : off+ACP2OptionSize])
-	}
-	return m
-}
-
-// trimZero returns the UTF-8 prefix of b up to the first NUL byte (or
-// the full slice if none). Used for fixed-width NUL-padded name slots.
-func trimZero(b []byte) string {
-	for i, c := range b {
-		if c == 0 {
-			return string(b[:i])
+	out := make([]string, 0, 4)
+	pos := 0
+	for pos+4 <= len(p.Data) {
+		strStart := pos + 4
+		end := strStart
+		for end < len(p.Data) && p.Data[end] != 0 {
+			end++
+		}
+		out = append(out, string(p.Data[strStart:end]))
+		pos = end
+		if pos < len(p.Data) && p.Data[pos] == 0 {
+			pos++
+		}
+		recUsed := pos - (strStart - 4)
+		if pad := (4 - (recUsed % 4)) % 4; pad > 0 {
+			pos += pad
 		}
 	}
-	return string(b)
+	return out
+}
+
+// PropertyOptionsMap extracts enum options as a map of wire idx →
+// label. Variable-length per option; see PropertyOptions.
+func PropertyOptionsMap(p *Property) map[uint32]string {
+	if len(p.Data) < 4 {
+		return nil
+	}
+	out := map[uint32]string{}
+	pos := 0
+	for pos+4 <= len(p.Data) {
+		idx := binary.BigEndian.Uint32(p.Data[pos : pos+4])
+		strStart := pos + 4
+		end := strStart
+		for end < len(p.Data) && p.Data[end] != 0 {
+			end++
+		}
+		out[idx] = string(p.Data[strStart:end])
+		pos = end
+		if pos < len(p.Data) && p.Data[pos] == 0 {
+			pos++
+		}
+		recUsed := pos - (strStart - 4)
+		if pad := (4 - (recUsed % 4)) % 4; pad > 0 {
+			pos += pad
+		}
+	}
+	return out
 }
 
 // PropertyEventMessages extracts the two event message strings from pid=19.
