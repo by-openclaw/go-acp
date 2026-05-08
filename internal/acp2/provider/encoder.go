@@ -11,28 +11,40 @@ import (
 )
 
 // buildProperties assembles the ACP2 property list a get_object reply
-// must carry for one entry. Per spec §"Property fields" the order is
-// by ascending pid. Required pids per object type (§"Property fields"
-// matrix):
+// must carry for one entry, in ascending pid order. The codec's
+// EncodeProperties takes care of the per-property alignment.
 //
-//	pid=1  object_type (all)
-//	pid=2  label        (all)
-//	pid=3  access       (Parameters only — not Node)
-//	pid=4  event_delay  (Parameters only — not Node)
-//	pid=5  number_type  (Number only)
-//	pid=6  string_max_length (String)
-//	pid=7  preset_depth (Preset)
-//	pid=8  value        (Parameters)
-//	pid=9  default_value (Number, Enum, Preset)
-//	pid=10 min_value    (Number, Enum, Preset)
-//	pid=11 max_value    (Number, Enum, Preset)
-//	pid=12 step_size    (Number; optional Preset)
-//	pid=13 unit         (Number; optional Preset)
-//	pid=14 children     (Node only)
-//	pid=15 options      (Enum only)
+// Authoritative spec reference: ACP2 §5.1 Property fields per object
+// type (acp2_protocol.docx). The shaded cells in the spec docx encode
+// applicability as: ✓ = required, op¹ = optional, — = does not apply.
+// The full matrix below is verbatim from the docx and is the source
+// of truth for what every per-type case must emit.
 //
-// We emit in ascending pid order. The codec's EncodeProperties takes
-// care of the per-property alignment.
+//	| pid | name              | Acc  | Dyn | Node | Pres | Enum | Num  | IPv4 | Str  |
+//	|-----|-------------------|------|-----|------|------|------|------|------|------|
+//	|  1  | object type       | R    |  -  |  ✓   |  ✓   |  ✓   |  ✓   |  ✓   |  ✓   |
+//	|  2  | label             | R    |  -  |  ✓   |  ✓   |  ✓   |  ✓   |  ✓   |  ✓   |
+//	|  3  | access            | R    | yes |  —   |  ✓   |  ✓   |  ✓   |  ✓   |  ✓   |
+//	|  4  | event delay       | RW   | yes |  —   |  ✓   |  ✓   |  ✓   |  ✓   |  ✓   |
+//	|  5  | number type       | R    |  -  |  —   |  —   |  —   |  ✓   |  —   |  —   |
+//	|  6  | string max length | R    |  -  |  —   |  —   |  —   |  —   |  —   |  ✓   |
+//	|  7  | preset depth      | R    |  -  |  —   |  —   | op¹  | op¹  | op¹  | op¹  |
+//	|  8  | value[depth]      | R/RW | yes |  —   |  ✓   |  ✓   |  ✓   |  ✓   |  ✓   |
+//	|  9  | default value     | R    |  -  |  —   |  ✓   |  ✓   |  ✓   |  ✓   |  ✓   |
+//	| 10  | min value         | R    | yes |  —   |  —   |  —   |  ✓   |  —   |  —   |
+//	| 11  | max value         | R    | yes |  —   |  —   |  —   |  ✓   |  —   |  —   |
+//	| 12  | step size         | R    |  -  |  —   |  —   |  —   | op¹  |  —   |  —   |
+//	| 13  | unit              | R    |  -  |  —   |  —   |  —   | op¹  |  —   |  —   |
+//	| 14  | children          | R    |  -  |  ✓   |  —   |  —   |  —   |  —   |  —   |
+//	| 15  | options           | R    |  -  |  —   |  ✓   |  ✓   |  —   |  —   |  —   |
+//	| 16  | event tag         | R    |  -  |  —   | op¹  | op¹  | op¹  | op¹  | op¹  |
+//	| 17  | event priority    | RW   | yes |  —   | op¹  | op¹  | op¹  | op¹  | op¹  |
+//	| 18  | event state       | R    | yes |  —   | op¹  | op¹  | op¹  | op¹  | op¹  |
+//	| 19  | event message     | R    |  -  |  —   | op¹  | op¹  | op¹  | op¹  | op¹  |
+//	| 20  | preset parent     | R    |  -  |  —   |  —   | op¹  | op¹  | op¹  | op¹  |
+//
+// Decoded by reading the §5.1 cell shading directly out of the docx
+// XML (any deviation from this table = bug in this function).
 func buildProperties(e *entry) ([]codec.Property, error) {
 	props := make([]codec.Property, 0, 10)
 
