@@ -119,6 +119,13 @@ func newTree(exp *canonical.Export) (*tree, error) {
 // obj-id index. Assigns entries with their canonical Number as obj-id;
 // each entry's `children` list is filled with the obj-ids of its
 // direct children (sufficient to serve pid=14 without re-walking).
+//
+// Labels run through sanitizeLabel before being stored on the entry —
+// per spec acp2_protocol.docx §"Versions" line 357: "Object labels
+// only may contain out of a-z, A-Z, 0-9, ' ' and '-'." Any character
+// outside that set is replaced with `-` and a warning logged via the
+// caller's provided logger; the unmodified label remains on the
+// canonical element so downstream tooling sees the original.
 func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*entry) error {
 	switch x := el.(type) {
 	case *canonical.Node:
@@ -127,7 +134,7 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			objID:   id,
 			slot:    slot,
 			parent:  parent,
-			label:   x.Identifier,
+			label:   sanitizeLabel(x.Identifier),
 			access:  deriveAccess(x.Access),
 			objType: codec.ObjTypeNode,
 			node:    x,
@@ -154,7 +161,7 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			objID:       id,
 			slot:        slot,
 			parent:      parent,
-			label:       x.Identifier,
+			label:       sanitizeLabel(x.Identifier),
 			access:      deriveAccess(x.Access),
 			objType:     objType,
 			numType:     numType,
@@ -171,6 +178,65 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 		return nil
 	}
 	return nil
+}
+
+// sanitizeLabel returns the spec-compliant form of an ACP2 object
+// label. Per acp2_protocol.docx §"Versions" line 357 the wire allows
+// only [A-Za-z0-9 \-]; any other character is replaced with `-`.
+//
+// Real EVS Neuron firmware emits labels like "ROOT_NODE_V2" with an
+// underscore — non-compliant per spec. Sanitising here keeps OUR
+// wire spec-clean (per `feedback_acp2_spec_pdfs_only`); the
+// canonical element is unchanged so other consumers see the
+// original.
+//
+// Returns "obj" when the input becomes empty after stripping
+// (defensive — spec mandates a non-empty label).
+func sanitizeLabel(label string) string {
+	if label == "" {
+		return "obj"
+	}
+	dirty := false
+	for _, r := range label {
+		if !isSpecLabelByte(r) {
+			dirty = true
+			break
+		}
+	}
+	if !dirty {
+		return label
+	}
+	var b strings.Builder
+	b.Grow(len(label))
+	for _, r := range label {
+		if isSpecLabelByte(r) {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('-')
+		}
+	}
+	out := b.String()
+	if out == "" || strings.Trim(out, "-") == "" {
+		return "obj"
+	}
+	return out
+}
+
+// isSpecLabelByte reports whether r is in the ACP2 §"Versions"
+// label charset: ASCII letters, digits, space, dash. Anything else
+// (including non-ASCII, underscore, dot, etc.) is non-compliant.
+func isSpecLabelByte(r rune) bool {
+	switch {
+	case r >= 'a' && r <= 'z':
+		return true
+	case r >= 'A' && r <= 'Z':
+		return true
+	case r >= '0' && r <= '9':
+		return true
+	case r == ' ' || r == '-':
+		return true
+	}
+	return false
 }
 
 // elementID returns the Header.Number of any canonical element.
