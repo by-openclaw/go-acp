@@ -11,31 +11,44 @@ import (
 )
 
 // buildProperties assembles the ACP2 property list a get_object reply
-// must carry for one entry. Per spec §"Property IDs" the ordering is
-// not strictly required but consumers generally expect:
+// must carry for one entry. Per spec §"Property fields" the order is
+// by ascending pid. Required pids per object type (§"Property fields"
+// matrix):
 //
 //	pid=1  object_type (all)
 //	pid=2  label        (all)
-//	pid=3  access       (all)
-//	pid=5  number_type  (Number, Enum)
+//	pid=3  access       (Parameters only — not Node)
+//	pid=4  event_delay  (Parameters only — not Node)
+//	pid=5  number_type  (Number only)
 //	pid=6  string_max_length (String)
-//	pid=8  value        (Number, Enum, IPv4, String)
-//	pid=9  default_value (Number)
-//	pid=10 min_value    (Number)
-//	pid=11 max_value    (Number)
-//	pid=12 step_size    (Number)
-//	pid=13 unit         (Number)
-//	pid=14 children     (Node)
-//	pid=15 options      (Enum)
+//	pid=7  preset_depth (Preset)
+//	pid=8  value        (Parameters)
+//	pid=9  default_value (Number, Enum, Preset)
+//	pid=10 min_value    (Number, Enum, Preset)
+//	pid=11 max_value    (Number, Enum, Preset)
+//	pid=12 step_size    (Number; optional Preset)
+//	pid=13 unit         (Number; optional Preset)
+//	pid=14 children     (Node only)
+//	pid=15 options      (Enum only)
 //
-// We emit in this order. The codec's EncodeProperties takes care of
-// the per-property alignment.
+// We emit in ascending pid order. The codec's EncodeProperties takes
+// care of the per-property alignment.
 func buildProperties(e *entry) ([]codec.Property, error) {
-	props := make([]codec.Property, 0, 8)
+	props := make([]codec.Property, 0, 10)
 
 	props = append(props, propInline(codec.PIDObjectType, uint8(e.objType)))
 	props = append(props, propStringData0(codec.PIDLabel, e.label))
 	props = append(props, propInline(codec.PIDAccess, e.access))
+	// pid 4 event_delay per spec §5.4 row 4 — required (Y) on every
+	// Parameter row of the property-fields matrix (Preset/Enum/Number/
+	// IPv4/String) and absent on the Node row. Wire shape:
+	//   data=0, plen=8, body=u32 BE rate (announce delay in milliseconds).
+	// Default 0 ms ("no delay"); a future canonical-schema field can
+	// override this per object. Spec name is "event delay" — the
+	// PIDAnnounceDelay constant is renamed to PIDEventDelay in #317.
+	if e.objType != codec.ObjTypeNode {
+		props = append(props, propEventDelay(0))
+	}
 
 	switch e.objType {
 	case codec.ObjTypeNode:
@@ -190,6 +203,32 @@ func propInline(pid uint8, val uint8) codec.Property {
 		VType: val, // the "data" byte carries the value itself
 		PLen:  4,   // header only; no body
 		Data:  nil,
+	}
+}
+
+// propEventDelay builds the pid=4 (event_delay) property per spec
+// §5.4 row 4. Carries the per-object announce-rate (in milliseconds)
+// that the device applies before emitting an announce when the value
+// changes. Required on every Parameter type (Preset/Enum/Number/IPv4/
+// String); absent on Node.
+//
+//	| Offset | Field   | Width  | Notes                                  |
+//	|--------|---------|--------|----------------------------------------|
+//	| 0      | pid     | u8     | 4 = event_delay                        |
+//	| 1      | data    | u8     | 0 per spec §5.4                        |
+//	| 2-3    | plen    | u16 BE | 8 (header 4 + body 4)                  |
+//	| 4-7    | rate    | u32 BE | announce delay in milliseconds         |
+//
+// Spec reference: acp2_protocol.docx §5.4 "Property header per field"
+// row "event delay".
+func propEventDelay(rateMs uint32) codec.Property {
+	body := make([]byte, 4)
+	binary.BigEndian.PutUint32(body, rateMs)
+	return codec.Property{
+		PID:   codec.PIDAnnounceDelay,
+		VType: 0,
+		PLen:  8,
+		Data:  body,
 	}
 }
 

@@ -85,6 +85,7 @@ func TestBuildProperties_NumberS32(t *testing.T) {
 		seen[got[i].PID] = got[i]
 	}
 	for _, pid := range []uint8{codec.PIDObjectType, codec.PIDLabel, codec.PIDAccess,
+		codec.PIDAnnounceDelay,
 		codec.PIDNumberType, codec.PIDValue, codec.PIDDefaultValue,
 		codec.PIDMinValue, codec.PIDMaxValue, codec.PIDStepSize, codec.PIDUnit} {
 		if _, ok := seen[pid]; !ok {
@@ -170,6 +171,111 @@ func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	if s := codec.PropertyString(&val); s != "Input-A" {
 		t.Errorf("string value=%q want Input-A", s)
 	}
+}
+
+// TestBuildProperties_EventDelay verifies pid=4 (event_delay) per spec
+// §5.4 row 4. Required on every Parameter type, absent on Node.
+//
+// Wire: pid=4, data=0, plen=8, body=u32 BE rate (ms).
+func TestBuildProperties_EventDelay(t *testing.T) {
+	t.Run("Number_has_pid4", func(t *testing.T) {
+		p := &canonical.Parameter{
+			Header: canonical.Header{Number: 5, Identifier: "Level",
+				Access: canonical.AccessReadWrite},
+			Type: canonical.ParamInteger, Value: int64(0),
+		}
+		e := &entry{
+			objID: 5, label: p.Identifier, access: 0x03,
+			objType: codec.ObjTypeNumber, numType: codec.NumTypeS32,
+			param: p,
+		}
+		got := buildAndDecode(t, e)
+		assertEventDelayPresent(t, got, "Number")
+	})
+	t.Run("Enum_has_pid4", func(t *testing.T) {
+		p := &canonical.Parameter{
+			Header: canonical.Header{Number: 6, Identifier: "Mute",
+				Access: canonical.AccessReadWrite},
+			Type:    canonical.ParamEnum, Value: int64(0),
+			EnumMap: []canonical.EnumEntry{{Key: "Off", Value: 0}, {Key: "On", Value: 1}},
+		}
+		e := &entry{
+			objID: 6, label: p.Identifier, access: 0x03,
+			objType: codec.ObjTypeEnum, numType: codec.NumTypeU32,
+			param: p,
+		}
+		got := buildAndDecode(t, e)
+		assertEventDelayPresent(t, got, "Enum")
+	})
+	t.Run("String_has_pid4", func(t *testing.T) {
+		p := &canonical.Parameter{
+			Header: canonical.Header{Number: 7, Identifier: "Label",
+				Access: canonical.AccessReadWrite},
+			Type: canonical.ParamString, Value: "x",
+		}
+		e := &entry{
+			objID: 7, label: p.Identifier, access: 0x03,
+			objType: codec.ObjTypeString, numType: codec.NumTypeString,
+			param: p,
+		}
+		got := buildAndDecode(t, e)
+		assertEventDelayPresent(t, got, "String")
+	})
+	t.Run("IPv4_has_pid4", func(t *testing.T) {
+		ipf := "ipv4"
+		p := &canonical.Parameter{
+			Header: canonical.Header{Number: 8, Identifier: "GW",
+				Access: canonical.AccessReadWrite},
+			Type: canonical.ParamString, Value: "0.0.0.0", Format: &ipf,
+		}
+		e := &entry{
+			objID: 8, label: p.Identifier, access: 0x03,
+			objType: codec.ObjTypeIPv4, numType: codec.NumTypeIPv4,
+			param: p,
+		}
+		got := buildAndDecode(t, e)
+		assertEventDelayPresent(t, got, "IPv4")
+	})
+	t.Run("Node_has_no_pid4", func(t *testing.T) {
+		n := &canonical.Node{Header: canonical.Header{Number: 1, Identifier: "ROOT",
+			Access: canonical.AccessRead}}
+		e := &entry{
+			objID: 1, label: n.Identifier, access: 0x01,
+			objType: codec.ObjTypeNode, children: []uint32{2}, node: n,
+		}
+		got := buildAndDecode(t, e)
+		for _, p := range got {
+			if p.PID == codec.PIDAnnounceDelay {
+				t.Errorf("Node reply must not carry pid=4 (got plen=%d)", p.PLen)
+			}
+		}
+	})
+}
+
+// assertEventDelayPresent verifies the spec wire shape of pid=4:
+// data=0, plen=8, body=u32 BE rate.
+func assertEventDelayPresent(t *testing.T, props []codec.Property, kind string) {
+	t.Helper()
+	for _, p := range props {
+		if p.PID != codec.PIDAnnounceDelay {
+			continue
+		}
+		if p.VType != 0 {
+			t.Errorf("%s pid=4 data byte=%d want 0 (spec §5.4)", kind, p.VType)
+		}
+		if p.PLen != 8 {
+			t.Errorf("%s pid=4 plen=%d want 8 (spec §5.4)", kind, p.PLen)
+		}
+		if len(p.Data) != 4 {
+			t.Fatalf("%s pid=4 body len=%d want 4", kind, len(p.Data))
+		}
+		rate := binary.BigEndian.Uint32(p.Data[0:4])
+		if rate != 0 {
+			t.Errorf("%s pid=4 default rate=%d want 0", kind, rate)
+		}
+		return
+	}
+	t.Errorf("%s reply missing required pid=4 (event_delay)", kind)
 }
 
 func TestBuildProperties_IPv4(t *testing.T) {
