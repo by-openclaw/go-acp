@@ -91,7 +91,7 @@ func buildProperties(e *entry) ([]codec.Property, error) {
 		// once per idx. Number-style numeric fields (pid 5, 12, 13) are
 		// emitted once. For N=1 the shape degenerates to "Number + pid 7".
 		props = append(props, propInline(codec.PIDNumberType, uint8(e.numType)))
-		props = append(props, propPresetDepth(e.presetDepth))
+		props = append(props, propPresetDepth(e.presetDepth, e.presetIdxList))
 		for i := uint32(0); i < e.presetDepth; i++ {
 			val, err := encodeValueProp(codec.PIDValue, e)
 			if err != nil {
@@ -242,24 +242,39 @@ func propChildren(ids []uint32) codec.Property {
 	}
 }
 
-// propPresetDepth builds the pid=7 (preset_depth) property per spec §5
-// "Preset depth". Body is a u32[] big-endian list of valid preset idx
-// values — consumers then know how many times pids 8/9/10/11 repeat in
-// the same get_object reply (once per idx listed here).
+// propPresetDepth builds the pid=7 (preset_depth) property per spec
+// §"Preset depth". Body is a u32[] big-endian list of valid preset
+// idx values — consumers then know how many times pids 8/9/10/11
+// repeat in the same get_object reply (once per idx listed here).
 //
 //	| Offset    | Field   | Width    | Notes                              |
 //	|-----------|---------|----------|------------------------------------|
 //	| 0         | pid     | u8       | 7 = preset_depth                   |
 //	| 1         | data    | u8       | 0                                  |
 //	| 2-3       | plen    | u16 BE   | 4 + 4*depth                        |
-//	| 4 + 4*i   | idx_i   | u32 BE   | valid preset idx value, 0..depth-1 |
+//	| 4 + 4*i   | idx_i   | u32 BE   | valid preset idx value             |
 //
-// Spec reference: acp2_protocol.pdf §5 Preset depth,
-// internal/acp2/CLAUDE.md "Preset depth".
-func propPresetDepth(depth uint32) codec.Property {
+// Spec idx values are arbitrary u32 — the docx example
+// (acp2_protocol.docx §"Preset depth", line 2613-2632) uses
+// non-contiguous {100, 200}. When idxList is supplied (from
+// canonical Format hint `idx=A,B,C`) we emit those bytes verbatim.
+// When idxList is empty/short we fall back to contiguous
+// 0..depth-1 — historical behaviour for fixtures lacking the hint.
+//
+// Spec reference: acp2_protocol.docx §"Preset depth".
+func propPresetDepth(depth uint32, idxList []uint32) codec.Property {
+	// Use the canonical-supplied idx list when its length matches
+	// presetDepth; otherwise fall back to 0..depth-1.
+	useIdx := uint32(len(idxList)) == depth
 	data := make([]byte, 4*depth)
 	for i := uint32(0); i < depth; i++ {
-		binary.BigEndian.PutUint32(data[i*4:], i)
+		var v uint32
+		if useIdx {
+			v = idxList[i]
+		} else {
+			v = i
+		}
+		binary.BigEndian.PutUint32(data[i*4:], v)
 	}
 	return codec.Property{
 		PID:   codec.PIDPresetDepth,
