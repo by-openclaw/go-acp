@@ -374,19 +374,31 @@ func (s *session) replyACP2(slot uint8, msg *codec.ACP2Message) {
 	}
 }
 
-// errorACP2 builds an ACP2 error reply per spec §"Error Codes". The
-// func field of an error message holds the stat byte (not a function
-// ID); codec.go picks this back up in ToACP2Error.
+// errorACP2 builds an ACP2 error reply per spec §"Error". The error
+// message is exactly the 4-byte ACP2 header — NO body.
+//
+//	| Offset | Field | Width | Notes                                 |
+//	|--------|-------|-------|---------------------------------------|
+//	| 0      | type  | u8    | 3 = error                             |
+//	| 1      | mtid  | u8    | matches the request mtid              |
+//	| 2      | stat  | u8    | error status (§3.1: 0..5)             |
+//	| 3      | pid   | u8    | 0                                     |
+//
+// The func slot carries the stat byte for error messages; the codec
+// picks this back up in ToACP2Error. ObjID is preserved on the
+// in-memory message struct purely for caller-side diagnostics — it
+// is NOT serialised onto the wire.
+//
+// Spec reference: acp2_protocol.docx §"Error" (line 1207-1250) — the
+// error table lists only type/mtid/stat/pid; no body row.
 func errorACP2(req *codec.ACP2Message, stat codec.ACP2ErrStatus) *codec.ACP2Message {
-	body := make([]byte, 4)
-	binaryBigEndianU32(body, req.ObjID)
 	return &codec.ACP2Message{
 		Type:  codec.ACP2TypeError,
 		MTID:  req.MTID,
 		Func:  codec.ACP2Func(stat),
 		PID:   0,
 		ObjID: req.ObjID,
-		Body:  body,
+		Body:  nil,
 	}
 }
 

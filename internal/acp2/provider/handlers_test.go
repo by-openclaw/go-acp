@@ -217,6 +217,67 @@ func TestAN2Handshake_EnableProtocolEvents(t *testing.T) {
 	}
 }
 
+// TestACP2Error_NoBody verifies the error reply is exactly the 4-byte
+// ACP2 header per spec §"Error" (line 1207-1250 of acp2_protocol.docx).
+// The error table lists only type/mtid/stat/pid; no body row.
+//
+// Request:  ACP2 get_object for obj-id 999 (not in tree).
+// Expected reply (AN2 frame payload, total = 4 bytes):
+//
+//	| byte 0 | byte 1 | byte 2     | byte 3 |
+//	| type=3 | mtid=N | stat=1     | pid=0  |
+func TestACP2Error_NoBody(t *testing.T) {
+	sess, peer := newTestSession(t)
+	defer func() { _ = sess.conn.Close() }()
+	defer func() { _ = peer.Close() }()
+
+	// Build an ACP2 GetObject request for an obj-id that's not in the
+	// tree (slot 1 was initialised empty by newTestSession).
+	getObj := &codec.ACP2Message{
+		Type:  codec.ACP2TypeRequest,
+		MTID:  42,
+		Func:  codec.ACP2FuncGetObject,
+		PID:   0,
+		ObjID: 999,
+		Idx:   0,
+	}
+	body, err := codec.EncodeACP2Message(getObj)
+	if err != nil {
+		t.Fatalf("encode acp2 request: %v", err)
+	}
+	req := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoACP2,
+		Slot:    1,
+		MTID:    0, // AN2 mtid for data frames
+		Type:    codec.AN2TypeData,
+		Payload: body,
+	}
+	rep := roundtrip(t, sess, peer, req)
+
+	if rep.Proto != codec.AN2ProtoACP2 {
+		t.Fatalf("reply proto=%v want ACP2", rep.Proto)
+	}
+	if rep.Type != codec.AN2TypeData {
+		t.Fatalf("reply AN2 type=%v want data(4)", rep.Type)
+	}
+	if len(rep.Payload) != 4 {
+		t.Fatalf("error reply payload len=%d want 4 (spec §Error: header only, no body); got %x",
+			len(rep.Payload), rep.Payload)
+	}
+	if rep.Payload[0] != byte(codec.ACP2TypeError) {
+		t.Errorf("byte 0 (type)=%d want %d (error)", rep.Payload[0], codec.ACP2TypeError)
+	}
+	if rep.Payload[1] != 42 {
+		t.Errorf("byte 1 (mtid)=%d want 42 (matches request)", rep.Payload[1])
+	}
+	if rep.Payload[2] != byte(codec.ErrInvalidObjID) {
+		t.Errorf("byte 2 (stat)=%d want %d (invalid_obj_id)", rep.Payload[2], codec.ErrInvalidObjID)
+	}
+	if rep.Payload[3] != 0 {
+		t.Errorf("byte 3 (pid)=%d want 0", rep.Payload[3])
+	}
+}
+
 func bytesEq(a, b []byte) bool {
 	if len(a) != len(b) {
 		return false
