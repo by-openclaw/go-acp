@@ -10,6 +10,13 @@ import (
 	"dhs/internal/acp2/codec"
 )
 
+// stringMaxLengthDefault is the spec-stated upper bound for ACP2
+// string objects (§"Requirements" line 173: "A string type should
+// support strings up to 256 bytes, configurable in menu"). Used as
+// the pid=6 (string_max_length) value when the canonical fixture
+// omits an explicit hint.
+const stringMaxLengthDefault = 256
+
 // buildProperties assembles the ACP2 property list a get_object reply
 // must carry for one entry. Per spec §"Property IDs" the ordering is
 // not strictly required but consumers generally expect:
@@ -135,9 +142,16 @@ func buildProperties(e *entry) ([]codec.Property, error) {
 		}
 		props = append(props, val)
 	case codec.ObjTypeString:
-		if ml := maxLenHint(e.param); ml > 0 {
-			props = append(props, propU16Pad(codec.PIDStringMaxLength, uint16(ml)))
+		// pid 6 string_max_length is required (Y) on String per spec
+		// §"Property fields" matrix. Spec §"Requirements" line 173:
+		// "A string type should support strings up to 256 bytes,
+		// configurable in menu." When canonical lacks an explicit
+		// maxLen hint, fall back to 256 — the spec-stated maximum.
+		ml := maxLenHint(e.param)
+		if ml <= 0 {
+			ml = stringMaxLengthDefault
 		}
+		props = append(props, propU16Pad(codec.PIDStringMaxLength, uint16(ml)))
 		val, err := encodeValueProp(codec.PIDValue, e)
 		if err != nil {
 			return nil, err

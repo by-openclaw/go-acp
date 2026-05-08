@@ -172,6 +172,46 @@ func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	}
 }
 
+// TestBuildProperties_String_NoCanonicalMaxLen verifies pid=6
+// (string_max_length) is always emitted on String replies per spec
+// §"Property fields" matrix (Y on String row). When canonical lacks
+// an explicit maxLen hint, encoder falls back to the spec-stated
+// 256-byte default (§"Requirements" line 173).
+func TestBuildProperties_String_NoCanonicalMaxLen(t *testing.T) {
+	p := &canonical.Parameter{
+		Header: canonical.Header{Number: 7, Identifier: "Label",
+			Access: canonical.AccessReadWrite},
+		Type: canonical.ParamString, Value: "x",
+	}
+	e := &entry{
+		objID: 7, label: p.Identifier, access: 0x03,
+		objType: codec.ObjTypeString, numType: codec.NumTypeString, param: p,
+	}
+	got := buildAndDecode(t, e)
+	var maxLen codec.Property
+	found := false
+	for _, pr := range got {
+		if pr.PID == codec.PIDStringMaxLength {
+			maxLen = pr
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("String reply missing required pid=6 (string_max_length) when canonical hint absent")
+	}
+	if maxLen.PLen != 6 {
+		t.Errorf("pid=6 plen=%d want 6 (spec §5.4 row 6)", maxLen.PLen)
+	}
+	if len(maxLen.Data) < 2 {
+		t.Fatalf("pid=6 body len=%d want >=2", len(maxLen.Data))
+	}
+	got16 := binary.BigEndian.Uint16(maxLen.Data[0:2])
+	if got16 != 256 {
+		t.Errorf("pid=6 default value=%d want 256 (spec §Requirements line 173)", got16)
+	}
+}
+
 func TestBuildProperties_IPv4(t *testing.T) {
 	ipf := "ipv4"
 	p := &canonical.Parameter{
