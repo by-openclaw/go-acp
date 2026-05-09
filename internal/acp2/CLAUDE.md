@@ -129,7 +129,7 @@ Alignment: after each property, skip `(4 - (plen % 4)) % 4` bytes.
 |   1 | object_type       | R        |  -  |                           |
 |   2 | label             | R        |  -  | 0-terminated UTF-8        |
 |   3 | access            | R        |  Y  | 1=r, 2=w, 3=rw            |
-|   4 | announce_delay    | RW       |  Y  | u32 ms (NOT "event_delay")|
+|   4 | event_delay       | RW       |  Y  | u32 ms                    |
 |   5 | number_type       | R        |  -  |                           |
 |   6 | string_max_length | R        |  -  | u16                       |
 |   7 | preset_depth      | R        |  -  | optional; valid idx list  |
@@ -206,8 +206,8 @@ slot 0 = `[2,3,4]`, slot 1 = `[2,3]`. Our ACP2-only producer emits
 - ACP2 mtid pool: 1-255; 0 reserved for announces.
 - mtid NEVER reused while a request is in-flight.
 - EnableProtocolEvents MUST be called after every (re)connect.
-- pid=4 is "announce_delay" — NEVER call it "event_delay".
-- type=2 is "announce" — NEVER call it "event".
+- pid=4 is "event_delay" per spec §5.4 row 4.
+- type=2 is "announce" per spec §3.2 type-field row.
 - ACP2 strings are UTF-8; ACP1 strings are ASCII.
 - All multi-byte values are big-endian.
 
@@ -216,5 +216,5 @@ slot 0 = `[2,3,4]`, slot 1 = `[2,3]`. Our ACP2-only producer emits
 - Do NOT use fixed byte offsets for property data — use pid/plen headers.
 - Do NOT skip EnableProtocolEvents before expecting announces.
 - Do NOT reuse a live mtid.
-- Do NOT call pid=4 "event_delay".
+- Spec name for pid=4 is "event_delay" — match the docx exactly.
 - Do NOT use idx=0 to mean "first preset".

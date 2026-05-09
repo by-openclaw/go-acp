@@ -34,9 +34,9 @@ func propertyPadding(plen uint16) int {
 //	| 4..    | value   | plen-4| raw bytes; absent when plen == 4          |
 //	| plen.. | padding | 0-3   | (4 - (plen % 4)) % 4 zero bytes           |
 //
-// pid=4 is announce_delay — never "event_delay".
+// pid=4 is event_delay per spec §5.4 row 4.
 //
-// Spec reference: acp2_protocol.pdf §Property Header, §Property IDs
+// Spec reference: acp2_protocol.docx §Property Header, §Property IDs
 func DecodeProperties(data []byte) ([]Property, error) {
 	var props []Property
 	offset := 0
