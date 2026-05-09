@@ -532,6 +532,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 				if tobj.ID == int(msg.ObjID) {
 					treeIdx = ti
 					ev.Label = tobj.Label
+					ev.Unit = tobj.Unit
 					break
 				}
 			}
