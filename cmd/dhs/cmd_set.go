@@ -10,6 +10,17 @@ import (
 	"dhs/internal/protocol"
 )
 
+// orFirst returns the first non-empty argument, or "" if all are empty.
+// Used to format human-friendly error messages without nested ternaries.
+func orFirst(s ...string) string {
+	for _, v := range s {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 func runSet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("set", flag.ExitOnError)
 	cf := addCommonFlags(fs)
@@ -21,6 +32,7 @@ func runSet(ctx context.Context, args []string) error {
 	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
 	valueStr := fs.String("value", "", "typed value (e.g. -3.0, \"On\", \"192.168.1.5\", \"CH1\"); empty string is valid for string objects")
 	valueHex := fs.String("raw", "", "raw wire bytes as hex — escape hatch bypassing typed encoding")
+	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of walking the slot to resolve --path/--label")
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>)")
@@ -85,16 +97,37 @@ func runSet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	// Path or label addressing: walk to populate tree. Uses raw ctx
-	// (signal-only) so big trees don't fail their own resolution; only
-	// the SetValue below is bounded by --timeout.
-	if *pathFlag != "" || *label != "" {
+	// Resolve --path / --label via the on-disk cache first. Falling
+	// through to plug.Walk costs minutes on a 49 000-object Neuron
+	// tree; populated cache resolves in microseconds. Only walk on
+	// genuine cache miss (and only when the user hasn't asked us to
+	// fail fast via --no-walk).
+	resolvedFromCache := false
+	if *id < 0 {
+		if *pathFlag != "" {
+			if cachedID := resolvePathFromCache(host, cf.protocol, *slot, *pathFlag); cachedID >= 0 {
+				*id = cachedID
+				resolvedFromCache = true
+			}
+		}
+		if !resolvedFromCache && *label != "" {
+			if cachedID := resolveLabelFromCache(host, cf.protocol, *slot, *group, *label); cachedID >= 0 {
+				*id = cachedID
+				resolvedFromCache = true
+			}
+		}
+	}
+
+	if !resolvedFromCache && (*pathFlag != "" || *label != "") {
+		if *noWalk {
+			return fmt.Errorf("--no-walk: %q not found in cache for slot %d (run 'walk --slot %d' first or drop --no-walk)",
+				orFirst(*pathFlag, *label), *slot, *slot)
+		}
+		// Cache miss: walk the slot to populate before SetValue. Uses
+		// raw ctx (signal-only) so big trees don't fail their own
+		// resolution; only the SetValue below is bounded by --timeout.
 		if _, err := plug.Walk(ctx, *slot); err != nil {
 			return fmt.Errorf("walk for resolution: %w", err)
-		}
-	} else if *label != "" && *id < 0 {
-		if cachedID := resolveLabelFromCache(host, cf.protocol, *slot, *group, *label); cachedID >= 0 {
-			*id = cachedID
 		}
 	}
 
