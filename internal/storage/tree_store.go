@@ -11,6 +11,7 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -155,10 +156,25 @@ func (s *TreeStore) identityPath(identity string) string {
 // reused across IP changes / re-cabling — only a Card swap or
 // firmware upgrade invalidates it.
 //
-// The snapshot's Slots may carry multiple slot dumps; the consumer
-// hot-loads each at watch start. Object values are NOT stripped here
-// (caller decides) — DM cache often wants labels + types but values
-// are consulted from live get/watch anyway.
+// Format: flat JSON via stdlib json.Encoder, NOT export.WriteJSON.
+// The exporter's hierarchical writer is lossy on three fields the DM
+// cache absolutely needs to round-trip across separate dhs invocations
+// (one walk per slot, multi-process):
+//
+//   - Object.Meta — walker stashes acp2.objType / numType / optionsMap
+//     here; the hierarchical reader's leaf struct has no Meta field, so
+//     load → save → load drops type info silently and announces decode
+//     as raw(N) with the right Unit but wrong Kind.
+//   - Object.Path — buildJSONTree groups objects by Path; root-level
+//     objects (no Path) become orphaned _meta entries that flatten
+//     back to nothing.
+//   - Object.Value — the hierarchical writer omits values for some
+//     kinds, the reader re-parses CSV strings, and round-trip fidelity
+//     is best-effort.
+//
+// Direct json.Marshal preserves the exact protocol.Object struct on
+// disk, so successive walks of slot 0 + slot 1 + slot N accumulate
+// into the same file with no field loss.
 func (s *TreeStore) SaveByIdentity(identity string, snap *export.Snapshot) error {
 	if identity == "" {
 		return fmt.Errorf("storage: SaveByIdentity: empty identity")
@@ -176,10 +192,12 @@ func (s *TreeStore) SaveByIdentity(identity string, snap *export.Snapshot) error
 	if err != nil {
 		return fmt.Errorf("storage: create %s: %w", tmp, err)
 	}
-	if err := export.WriteJSON(f, snap); err != nil {
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(snap); err != nil {
 		_ = f.Close()
 		_ = os.Remove(tmp)
-		return fmt.Errorf("storage: write: %w", err)
+		return fmt.Errorf("storage: encode: %w", err)
 	}
 	if err := f.Close(); err != nil {
 		_ = os.Remove(tmp)
@@ -195,6 +213,13 @@ func (s *TreeStore) SaveByIdentity(identity string, snap *export.Snapshot) error
 // LoadByIdentity reads the identity-keyed cache. Returns (nil, nil)
 // on cache miss (file not present); err non-nil only on read /
 // decode failures.
+//
+// Decoder: stdlib json.Decoder direct into *export.Snapshot. Pairs
+// with SaveByIdentity's flat-format writer above. We deliberately do
+// NOT route through export.ReadJSON — its flat-vs-hierarchical
+// auto-detect requires len(Slots[0].Objects) > 0 to accept the flat
+// path, and a freshly-initialised snapshot with an empty slot 0 dump
+// would fall through to the lossy hierarchical reader.
 func (s *TreeStore) LoadByIdentity(identity string) (*export.Snapshot, error) {
 	if identity == "" {
 		return nil, fmt.Errorf("storage: LoadByIdentity: empty identity")
@@ -208,11 +233,11 @@ func (s *TreeStore) LoadByIdentity(identity string) (*export.Snapshot, error) {
 		return nil, fmt.Errorf("storage: open %s: %w", path, err)
 	}
 	defer func() { _ = f.Close() }()
-	snap, err := export.ReadJSON(f)
-	if err != nil {
+	var snap export.Snapshot
+	if err := json.NewDecoder(f).Decode(&snap); err != nil {
 		return nil, fmt.Errorf("storage: decode %s: %w", path, err)
 	}
-	return snap, nil
+	return &snap, nil
 }
 
 // FindCardName extracts the Card Name from a list of objects.
