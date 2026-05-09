@@ -27,6 +27,15 @@ func newSession(srv *server, conn net.Conn) *session {
 
 // run reads AN2 frames until the connection closes. Every frame is
 // dispatched inline through handleFrame; fatal errors close the conn.
+//
+// Per spec acp2_protocol.docx line 313 ("Should handle single request
+// at a time") this loop is the single-request-at-a-time gate for one
+// session: ReadAN2Frame blocks, dispatch processes synchronously
+// (replyACP2 returns before we loop), then the next frame is read.
+// No per-request goroutines are spawned. Pipelined requests on the
+// same TCP connection queue in the kernel socket buffer and execute
+// in arrival order. See provider/session_serial_test.go for the
+// pinning test.
 func (s *session) run() {
 	defer func() { _ = s.conn.Close() }()
 
