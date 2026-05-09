@@ -27,7 +27,7 @@ func runExport(ctx context.Context, args []string) error {
 	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp export <host> [--format F] [--out FILE]")
+		return fmt.Errorf("usage: dhs consumer <proto> export <host> [--format json|yaml|csv] [--out FILE] [--slot N] [--path SEG.SEG]")
 	}
 	_ = fs.Parse(rest)
 

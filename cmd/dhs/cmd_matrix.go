@@ -20,7 +20,7 @@ func runMatrix(ctx context.Context, args []string) error {
 	op := fs.String("op", "absolute", "operation: absolute, connect, disconnect")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp matrix <host> --path <matrix.path> --target N --sources N[,N,...] [--op absolute|connect|disconnect]")
+		return fmt.Errorf("usage: dhs consumer <proto> matrix <host> --path <matrix.path> --target N --sources N[,N,...] [--op absolute|connect|disconnect]")
 	}
 	_ = fs.Parse(rest)
 	if *matrixPath == "" {

@@ -25,7 +25,7 @@ func runWalk(ctx context.Context, args []string) error {
 	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp walk <host> (--slot N | --all)")
+		return fmt.Errorf("usage: dhs consumer <proto> walk <host> (--slot N | --all) [--path SEG.SEG] [--filter STR]")
 	}
 	_ = fs.Parse(rest)
 	// Ember+ has no slot concept (spec: single flat tree per provider);

@@ -180,75 +180,20 @@ See [project_scale_requirements] in memory.
 
 ## Performance + metrics (every protocol)
 
-Every protocol's transport / session layer MUST expose live metrics on
-its connector:
+Every transport / session layer exposes live metrics on its connector:
+frames/bytes (rx, tx), latency p50/p95/p99 (µs), errors (NAK, decode,
+reconnect), memory, CPU%, uptime. Use `atomic.Uint64` for counters,
+log-linear histogram for latency, no mutex on the hot path. The
+neutral `ConnectorMetrics` struct lives in `internal/protocol/` and
+`internal/provider/`; each plugin exposes `Metrics()` on its session.
 
-- **Frames**: rx/sec, tx/sec, rx total, tx total
-- **Bytes**: rx/sec, tx/sec, rx total, tx total
-- **Latency**: rx→tx handler turnaround p50/p95/p99 (µs)
-- **Errors**: NAK count, frame-decode errors, reconnect count
-- **Memory**: bytes attributable to connector buffers + tree
-- **CPU %**: share of process CPU in this connector's goroutines
-- **Uptime**: last-frame timestamp per direction
+Producer surface: `dhs producer <proto> serve --metrics-addr :9100`
+serves `/metrics` (Prometheus + OpenMetrics) and `/snapshot.json`. CLI
+view: `dhs metrics show`. Full Grafana / Prometheus / Loki stack under
+`docs/deployment/grafana/`.
 
-Neutral `ConnectorMetrics` struct defined in `internal/protocol/` (for
-consumer) and `internal/provider/` (for provider); each plugin exposes
-`Metrics() ConnectorMetrics` on its session. Use `atomic.Uint64` for
-counters (no mutex on the hot path); HDR/log-linear histogram for
-latency. Do not pull in Prometheus client-libs until dhs-srv wires a
-scrape endpoint.
-
-Surfaces:
-
-1. Printed on session close in debug mode.
-2. Emitted as a `protocol.Event` tick every ~10 s in watch mode.
-3. Reachable via HTTP from dhs-srv when that lands.
-
-See [feedback_transport_metrics] and [project_connector_metrics_v2]
-in memory.
-
-### Metrics surface on the producer (landed 2026-04-22)
-
-`internal/metrics/` package provides:
-- `Connector` — per-session counters: rx/tx frames + bytes, per-cmd
-  `[256]atomic.Uint64` hit counts (rx and tx split), latency histogram
-  (7 log-linear µs buckets), errors (decode, NAK, timeout, reconnect),
-  Task-Manager fields (CPU%, treeBytes, poolBytes, inflightBytes,
-  diskBytes).
-- `Process` — runtime.MemStats + NumGoroutine + GC snapshot with a
-  periodic sampler.
-- `PromRegistry` — wires `prometheus/client_golang` GoCollector +
-  ProcessCollector + custom `dhs_connector_*` / `dhs_process_*`
-  collectors.
-- `WriteCSV` / `WriteMarkdown` — snapshot renderers for the CLI
-  export subcommand.
-
-Producer wiring:
-```
-dhs producer <proto> serve --tree ... --port N \
-    --metrics-addr :9100 \
-    --log-format json
-```
-- `/metrics` serves Prom text exposition + OpenMetrics.
-- `/snapshot.json` serves Snapshot + ProcessSnapshot JSON.
-- `--log-format json` emits `slog.NewJSONHandler` output for
-  Loki/Promtail.
-
-Consumer CLI:
-```
-dhs metrics show                  # live Task-Manager view (MD)
-dhs metrics export --format csv   # dump snapshot to CSV
-dhs metrics export --format md --file report.md
-```
-
-Every protocol plugin satisfies the optional `metricsExposer`
-interface (`Metrics() *metrics.Connector`) to participate in
-`--metrics-addr`. Probel is wired today; ACP1 / ACP2 / Ember+
-roll in D8 of the v2 chain.
-
-Full Grafana + Prometheus + Loki stack under
-`docs/deployment/grafana/`: docker-compose, alert rules YAML,
-pre-provisioned dashboard JSON.
+See [`project_connector_metrics_v2`](.) and
+[`feedback_transport_metrics`](.) in memory for the full contract.
 
 ---
 
@@ -368,36 +313,15 @@ DHSError (base)
 
 ## Storage
 
-No database. No Redis. Files only.
+Files only. No database. No Redis. Per ADR-0020 buckets:
 
-```
-Linux:    ~/.local/share/dhs/
-macOS:    ~/Library/Application Support/dhs/
-Windows:  %APPDATA%\dhs\
-Override: --data-dir flag or config.yaml
-```
+- **User config**: per-OS data dir (`~/.local/share/dhs/` etc.) — overridable via `--data-dir`.
+- **Cache** (gitignored): `.cache/` next to the binary. Per-protocol cache shape lives in [`internal/<proto>/docs/runbook.md`](internal/) (e.g. ACP2 = identity-keyed `dm/<id>.json`, ACP1 = IP-keyed `devices/<ip>/slot_<n>.json`).
+- **Captures** (gitignored, no LFS): `captures/<proto>/<scenario>/`.
 
-- `devices.yaml` → written only on add/remove
-- `slot_{n}.yaml` → written only after a successful walk
-- log entries → never written; in-memory circular buffer (1000 entries)
-
-### Value freshness (cache invariants)
-
-Property values ARE written to disk as a **stale cache** for fast startup.
-Values on disk are NEVER trusted — they load as `stale` and must be
-confirmed by a live source (announcement / get / walk) before being treated
-as current.
-
-States: `stale` → `live` → `updated`.
-
-Startup priority: load stale → subscribe to what the view needs →
-background walk fills the rest. If a walk result and an announcement race
-for the same object, the announcement wins.
-
-> **Performance at scale:** 100-1000 devices × 44k objects/slot needs a
-> smart scheduling algorithm (staggered walks, per-device rate limits,
-> subscription-first). Not implemented yet — revisit when the future
-> `dhs-srv` handles multiple devices concurrently.
+Value freshness: values load as **stale**, confirmed by a live source
+(announce / get / walk) before being treated as current. Announces win
+over walk if they race for the same object.
 
 ---
 
@@ -423,14 +347,10 @@ for the same object, the announcement wins.
 
 ### Testing
 
-- Unit tests: table-driven with expected byte sequences pulled from the
-  authoritative spec, not from working code.
-- Integration tests: `//go:build integration`, skip without env var:
-  - ACP1: `ACP1_TEST_HOST`
-  - ACP2: `ACP2_TEST_HOST`
-  - Ember+: `EMBERPLUS_TEST_HOST`
-- CI runs unit tests only — never integration against real or emulated
-  devices.
+Unit tests: table-driven, expected bytes from the spec (not working code).
+Integration tests: `//go:build integration`, gated on per-protocol env vars
+(`ACP1_TEST_HOST`, `ACP2_TEST_HOST`, `EMBERPLUS_TEST_HOST`). CI runs
+unit only — never integration.
 
 ### Naming
 

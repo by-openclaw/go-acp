@@ -25,7 +25,7 @@ func runStream(ctx context.Context, args []string) error {
 	streamID := fs.Int64("id", -1, "streamIdentifier filter (-1 = any)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp stream <host> [--id N]")
+		return fmt.Errorf("usage: dhs consumer <proto> stream <host> [--id N]")
 	}
 	_ = fs.Parse(rest)
 

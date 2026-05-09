@@ -11,7 +11,7 @@ func runInfo(ctx context.Context, args []string) error {
 	cf := addCommonFlags(fs)
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp info <host>")
+		return fmt.Errorf("usage: dhs consumer <proto> info <host> [--port N] [--timeout DUR]")
 	}
 	_ = fs.Parse(rest)
 

@@ -41,7 +41,7 @@ func runProfile(ctx context.Context, args []string) error {
 	cf := addCommonFlags(fs)
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp profile <host> [--port 9000] [--timeout DUR]")
+		return fmt.Errorf("usage: dhs consumer <proto> profile <host> [--port N] [--timeout DUR]")
 	}
 	_ = fs.Parse(rest)
 

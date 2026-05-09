@@ -21,7 +21,7 @@ func runGet(ctx context.Context, args []string) error {
 	pid := fs.Int("pid", 0, "ACP2 property id to read (0 = default pid=8 value; set to read object_type/label/access/etc.)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp get <host> --slot N (--path P | --label L | --id I)")
+		return fmt.Errorf("usage: dhs consumer <proto> get <host> --slot N (--path P | --label L | --id I) [--capture out.jsonl]")
 	}
 	_ = fs.Parse(rest)
 	// Ember+ has no slot concept; default to 0 so users don't have to pass it.

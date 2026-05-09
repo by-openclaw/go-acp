@@ -2,6 +2,7 @@
 
 | Role | Doc | Status |
 |---|---|---|
+| Operator runbook | [runbook.md](runbook.md) | ✓ shipping |
 | Consumer | [consumer.md](consumer.md) | ✓ shipping |
 | Provider | [provider.md](provider.md) | TODO |
 
