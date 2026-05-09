@@ -326,6 +326,42 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 	return tree.Objects, nil
 }
 
+// IdentityProbe walks slot 0 (sub-second on any Axon device) and
+// derives a stable device identity = "<CardName>@<HardwareVersion>"
+// by looking up obj labels in the ROOT_NODE_V2.BOARD subtree.
+// Returns "" with err when either label is missing or the slot 0
+// walk fails — caller should fall back to a fresh full walk.
+//
+// Why labels and not obj-ids: ACP2 obj-ids vary per product, but
+// the labels "Card Name" and "Hardware Version" are constant across
+// the Axon catalogue (verified against real Neuron 10.41.40.4 +
+// tree-fresh.json).
+func (p *Plugin) IdentityProbe(ctx context.Context) (string, error) {
+	objs, err := p.Walk(ctx, 0)
+	if err != nil {
+		return "", fmt.Errorf("acp2: identity probe walk(slot=0): %w", err)
+	}
+	cardName := ""
+	hwVersion := ""
+	for _, o := range objs {
+		switch o.Label {
+		case "Card Name":
+			if o.Value.Kind == protocol.KindString {
+				cardName = o.Value.Str
+			}
+		case "Hardware Version":
+			if o.Value.Kind == protocol.KindString {
+				hwVersion = o.Value.Str
+			}
+		}
+	}
+	if cardName == "" || hwVersion == "" {
+		return "", fmt.Errorf("acp2: identity probe — missing Card Name (%q) or Hardware Version (%q) on slot 0",
+			cardName, hwVersion)
+	}
+	return fmt.Sprintf("%s@%s", cardName, hwVersion), nil
+}
+
 // GetValue reads one object value via ACP2 get_property(pid=8).
 func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
 	p.mu.Lock()
