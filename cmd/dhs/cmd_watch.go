@@ -78,20 +78,20 @@ func runWatch(ctx context.Context, args []string) error {
 	defer cleanup()
 
 	// Load IP-keyed disk cache for instant label/unit resolution while
-	// walk runs. Key by watchCacheKey so ACP1 groups that re-use the
-	// same object-id space (control / status / alarm / identity / file
-	// / frame all addressable as 0..N within one slot) don't collide
+	// walk runs. Key by watchCacheKey so groups that re-use the same
+	// object-id space (control / status / alarm / identity / file /
+	// frame all addressable as 0..N within one slot) don't collide
 	// (refs #236).
 	//
-	// ACP2 deliberately skips this path — its DM cache is identity-
-	// keyed at .cache/dm/<identity>.json (DHS 2016 MasterView model,
-	// #353/#355) and is loaded into the plugin's WalkedTree directly
-	// in the block below. Letting the IP-keyed loader run for ACP2
-	// would emit a misleading "loaded N labels from cache" line backed
-	// by stale per-IP files even when the identity cache is current.
+	// ACP1 + ACP2 both skip this path — their DM caches are identity-
+	// keyed at .cache/dm/<CardName>@<HwVer>.json per DHS 2016
+	// MasterView (#353/#355/#363), loaded into each slot's tree
+	// directly in the block below. Letting the IP-keyed loader run
+	// would emit a misleading "loaded N labels from cache" line
+	// backed by stale per-IP files.
 	labelCache := map[string]string{}
 	unitCache := map[string]string{}
-	if cf.protocol != "acp2" && treeStore != nil && *slot >= 0 {
+	if cf.protocol != "acp2" && cf.protocol != "acp1" && treeStore != nil && *slot >= 0 {
 		if snap, lerr := treeStore.Load(host, *slot); lerr == nil && snap != nil {
 			for _, sd := range snap.Slots {
 				for _, o := range sd.Objects {
@@ -123,11 +123,14 @@ func runWatch(ctx context.Context, args []string) error {
 	// the DM cache is keyed by card identity (CardName@HwVersion),
 	// not by device-frame. Probe each slot we plan to watch, load
 	// that slot's DM file, seed the slot's tree. Two slots holding
-	// the same card share one DM file (loaded once, seeded twice
-	// from the same data) — DHS 2016 MasterView model.
+	// the same card share one DM file (loaded once, seeded into
+	// multiple slot trees) — DHS 2016 MasterView model.
 	//
-	// ACP2-only — other plugins keep the IP-keyed cache today.
-	if cf.protocol == "acp2" && treeStore != nil && !walkScope.empty() {
+	// Protocol-agnostic — any plugin satisfying both IdentityProbe +
+	// SeedTreeFromCachedObjects participates. ACP1 + ACP2 do today
+	// (#363); Ember+ has no per-slot card concept and stays on its
+	// existing path.
+	if treeStore != nil && !walkScope.empty() {
 		if probe, hot := plug.(interface {
 			IdentityProbe(context.Context, int) (string, error)
 			SeedTreeFromCachedObjects(slot int, objs []protocol.Object)
@@ -511,24 +514,21 @@ func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto s
 
 // saveSlotCache routes a walked slot to the right on-disk cache.
 //
-// ACP2 (per DHS 2016 MasterView): one DM file per CARD identity at
+// Per DHS 2016 MasterView (#363): any plugin that satisfies the
+// identityProber contract gets one DM file per CARD identity at
 // `.cache/dm/<CardName>@<HwVer>.json`. Each file contains the schema
 // for ONE card type — single slot dump. Two slots holding the same
 // card share the same DM file (loaded once, reused). Slot index +
 // IP are NOT in the path or key.
 //
-// Other protocols (ACP1, Ember+) keep the legacy IP-keyed layout at
-// `.cache/devices/<ip>/slot_<n>.json` — those plugins have no
-// identity probe contract today.
+// ACP1 + ACP2 satisfy the contract today. Ember+ doesn't (no
+// per-slot card concept) and falls back to the legacy IP-keyed
+// `.cache/devices/<ip>/slot_<n>.json` layout.
 func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object) {
 	if treeStore == nil {
 		return
 	}
-	if proto == "acp2" {
-		if prober == nil {
-			fmt.Fprintf(os.Stderr, "warning: acp2 plugin missing IdentityProbe; slot %d not cached\n", slot)
-			return
-		}
+	if prober != nil {
 		identity, perr := prober.IdentityProbe(ctx, slot)
 		if perr != nil || identity == "" {
 			fmt.Fprintf(os.Stderr, "warning: identity probe failed; slot %d not cached: %v\n", slot, perr)

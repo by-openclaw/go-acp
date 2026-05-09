@@ -68,19 +68,23 @@ func TestSaveSlotCache_ACP2_WritesIdentityKeyedOnly(t *testing.T) {
 	}
 }
 
-// TestSaveSlotCache_ACP2_NilProber_NoFile: missing IdentityProbe →
-// warn, no file.
-func TestSaveSlotCache_ACP2_NilProber_NoFile(t *testing.T) {
+// TestSaveSlotCache_NilProber_FallsBackToIPKeyed: when the plugin
+// does NOT satisfy identityProber (nil), the cache routing falls
+// through to the legacy IP-keyed path regardless of the protocol
+// name. This is how Ember+ keeps working today and how any future
+// protocol joins gracefully — implement IdentityProbe to opt in
+// to per-card MasterView, otherwise IP-keyed by default.
+func TestSaveSlotCache_NilProber_FallsBackToIPKeyed(t *testing.T) {
 	root := withTempStore(t)
 
-	saveSlotCache(context.Background(), nil, "10.100.0.103", "acp2", 1, makeObjs())
+	saveSlotCache(context.Background(), nil, "10.100.0.103", "emberplus", 1, makeObjs())
 
 	if _, err := os.Stat(filepath.Join(root, "dm")); !os.IsNotExist(err) {
 		t.Errorf("dm dir MUST NOT exist when prober is nil, err=%v", err)
 	}
 	ipPath := filepath.Join(root, "devices", "10.100.0.103", "slot_1.json")
-	if _, err := os.Stat(ipPath); !os.IsNotExist(err) {
-		t.Errorf("IP-keyed file MUST NOT exist for acp2 fallback, err=%v", err)
+	if _, err := os.Stat(ipPath); err != nil {
+		t.Errorf("IP-keyed file expected as fallback, got err=%v", err)
 	}
 }
 
