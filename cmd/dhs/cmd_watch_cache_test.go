@@ -10,15 +10,22 @@ import (
 	"dhs/internal/storage"
 )
 
-// fakeProber satisfies identityProber for the ACP2 routing tests.
+// fakeProber satisfies the new per-slot identityProber contract.
+// identityBySlot lets each slot return a different card identity
+// (different cards in different slots), and identity is the default
+// when no per-slot override is set.
 type fakeProber struct {
-	identity string
-	err      error
-	calls    int
+	identity       string
+	identityBySlot map[int]string
+	err            error
+	calls          int
 }
 
-func (f *fakeProber) IdentityProbe(_ context.Context) (string, error) {
+func (f *fakeProber) IdentityProbe(_ context.Context, slot int) (string, error) {
 	f.calls++
+	if id, ok := f.identityBySlot[slot]; ok {
+		return id, f.err
+	}
 	return f.identity, f.err
 }
 
@@ -39,11 +46,9 @@ func makeObjs() []protocol.Object {
 	}
 }
 
-// TestSaveSlotCache_ACP2_WritesIdentityKeyedOnly pins the #355 contract:
-// the ACP2 cache lives in .cache/dm/<identity>.json (DHS 2016 MasterView
-// model). The legacy IP-keyed file at .cache/devices/<ip>/slot_<n>.json
-// must NOT be created for ACP2 — even though TreeStore.Save still
-// supports it for ACP1 / Ember+.
+// TestSaveSlotCache_ACP2_WritesIdentityKeyedOnly: ACP2 cache lives at
+// .cache/dm/<CardName>@<HwVer>.json. No IP-keyed file. Identity probe
+// is called with the watched slot.
 func TestSaveSlotCache_ACP2_WritesIdentityKeyedOnly(t *testing.T) {
 	root := withTempStore(t)
 	prober := &fakeProber{identity: "SHPRM1@0.7"}
@@ -63,16 +68,14 @@ func TestSaveSlotCache_ACP2_WritesIdentityKeyedOnly(t *testing.T) {
 	}
 }
 
-// TestSaveSlotCache_ACP2_NilProber_NoFile guards against silent fall-
-// through if a future plugin variant forgets to implement IdentityProbe.
-// For ACP2 with a nil prober, no file should be created (warn-only).
+// TestSaveSlotCache_ACP2_NilProber_NoFile: missing IdentityProbe →
+// warn, no file.
 func TestSaveSlotCache_ACP2_NilProber_NoFile(t *testing.T) {
 	root := withTempStore(t)
 
 	saveSlotCache(context.Background(), nil, "10.100.0.103", "acp2", 1, makeObjs())
 
-	dmDir := filepath.Join(root, "dm")
-	if _, err := os.Stat(dmDir); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "dm")); !os.IsNotExist(err) {
 		t.Errorf("dm dir MUST NOT exist when prober is nil, err=%v", err)
 	}
 	ipPath := filepath.Join(root, "devices", "10.100.0.103", "slot_1.json")
@@ -81,10 +84,8 @@ func TestSaveSlotCache_ACP2_NilProber_NoFile(t *testing.T) {
 	}
 }
 
-// TestSaveSlotCache_ACP2_EmptyIdentity_NoFile covers the case where the
-// probe runs but returns "" (e.g. device offline / Card Name label
-// missing). We refuse to write under an empty identity — there is no
-// safe filename for it.
+// TestSaveSlotCache_ACP2_EmptyIdentity_NoFile: probe returns "" → no
+// file written (no safe filename).
 func TestSaveSlotCache_ACP2_EmptyIdentity_NoFile(t *testing.T) {
 	root := withTempStore(t)
 	prober := &fakeProber{identity: ""}
@@ -96,8 +97,8 @@ func TestSaveSlotCache_ACP2_EmptyIdentity_NoFile(t *testing.T) {
 	}
 }
 
-// TestSaveSlotCache_NonACP2_WritesIPKeyed verifies the ACP1 / Ember+
-// path is preserved: no identity probe used, IP-keyed file written.
+// TestSaveSlotCache_NonACP2_WritesIPKeyed: ACP1 / Ember+ keep
+// .cache/devices/<ip>/slot_<n>.json (no identity probe used).
 func TestSaveSlotCache_NonACP2_WritesIPKeyed(t *testing.T) {
 	root := withTempStore(t)
 
@@ -112,14 +113,16 @@ func TestSaveSlotCache_NonACP2_WritesIPKeyed(t *testing.T) {
 	}
 }
 
-// TestSaveSlotCache_ACP2_MultiSlotMerge pins the multi-slot merge
-// contract: walking slot 0 then slot 1 of the same device produces a
-// SINGLE identity-keyed file containing both slots, not two separate
-// files. This is how a frame with N populated slots accumulates into
-// one MasterView.
-func TestSaveSlotCache_ACP2_MultiSlotMerge(t *testing.T) {
+// TestSaveSlotCache_ACP2_DifferentCardsTwoFiles pins the per-card DM
+// contract: a frame with two slots holding DIFFERENT cards produces
+// TWO DM files, one per card identity. The legacy multi-slot merge
+// (one file with both slots inside) is gone.
+func TestSaveSlotCache_ACP2_DifferentCardsTwoFiles(t *testing.T) {
 	root := withTempStore(t)
-	prober := &fakeProber{identity: "SHPRM1@0.7"}
+	prober := &fakeProber{identityBySlot: map[int]string{
+		0: "SHPRM1@0.7", // controller card
+		1: "SHPIO@0.7",  // I/O card
+	}}
 	ctx := context.Background()
 
 	slot0 := []protocol.Object{{Slot: 0, ID: 1, Label: "BOARD"}}
@@ -128,23 +131,47 @@ func TestSaveSlotCache_ACP2_MultiSlotMerge(t *testing.T) {
 	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 0, slot0)
 	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1)
 
-	snap, err := treeStore.LoadByIdentity("SHPRM1@0.7")
-	if err != nil || snap == nil {
-		t.Fatalf("LoadByIdentity: snap=%v err=%v", snap, err)
-	}
-	if len(snap.Slots) != 2 {
-		t.Fatalf("merged file should hold 2 slots, got %d", len(snap.Slots))
-	}
-	gotSlots := map[int]bool{}
-	for _, sd := range snap.Slots {
-		gotSlots[sd.Slot] = true
-	}
-	if !gotSlots[0] || !gotSlots[1] {
-		t.Errorf("merged file missing slot(s): %v", gotSlots)
+	for _, id := range []string{"SHPRM1@0.7", "SHPIO@0.7"} {
+		snap, err := treeStore.LoadByIdentity(id)
+		if err != nil || snap == nil {
+			t.Fatalf("LoadByIdentity(%q): snap=%v err=%v", id, snap, err)
+		}
+		if len(snap.Slots) != 1 {
+			t.Errorf("DM file %q must hold ONE slot dump (one card schema); got %d slots",
+				id, len(snap.Slots))
+		}
 	}
 
-	// Sanity: no per-slot files appeared on the IP-keyed path.
+	// Sanity: no IP-keyed leakage.
 	if _, err := os.Stat(filepath.Join(root, "devices")); !os.IsNotExist(err) {
 		t.Errorf("devices/ dir MUST NOT exist for acp2, err=%v", err)
+	}
+}
+
+// TestSaveSlotCache_ACP2_SameCardTwoSlots_OneFile pins the dedup
+// behaviour: two slots holding the SAME card → one DM file. The
+// second save overwrites the first with identical data; loading from
+// either slot picks up the same schema.
+func TestSaveSlotCache_ACP2_SameCardTwoSlots_OneFile(t *testing.T) {
+	root := withTempStore(t)
+	prober := &fakeProber{identity: "SHPIO@0.7"} // every slot returns this card
+	ctx := context.Background()
+
+	slot0Objs := []protocol.Object{{Slot: 0, ID: 70232, Label: "Backup Input"}}
+	slot1Objs := []protocol.Object{{Slot: 1, ID: 70232, Label: "Backup Input"}}
+
+	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 0, slot0Objs)
+	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1Objs)
+
+	files, err := os.ReadDir(filepath.Join(root, "dm"))
+	if err != nil {
+		t.Fatalf("read dm dir: %v", err)
+	}
+	if len(files) != 1 {
+		names := make([]string, 0, len(files))
+		for _, f := range files {
+			names = append(names, f.Name())
+		}
+		t.Errorf("same-card-two-slots must produce 1 DM file, got %d: %v", len(files), names)
 	}
 }

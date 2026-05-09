@@ -326,20 +326,25 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 	return tree.Objects, nil
 }
 
-// IdentityProbe walks slot 0 (sub-second on any Axon device) and
-// derives a stable device identity = "<CardName>@<HardwareVersion>"
-// by looking up obj labels in the ROOT_NODE_V2.BOARD subtree.
-// Returns "" with err when either label is missing or the slot 0
-// walk fails — caller should fall back to a fresh full walk.
+// IdentityProbe walks the given slot (sub-second on any Axon device)
+// and derives a per-card identity = "<CardName>@<HardwareVersion>"
+// by looking up obj labels in the ROOT_NODE_V2.BOARD subtree of THAT
+// slot. Each slot of a frame can host a different card → different
+// identity → different DM file. Returns "" with err when either label
+// is missing or the walk fails.
+//
+// Per DHS 2016 MasterView model: DM is keyed by card type, not by
+// device-frame and not by slot index. Two slots holding the same
+// card share the same DM file.
 //
 // Why labels and not obj-ids: ACP2 obj-ids vary per product, but
 // the labels "Card Name" and "Hardware Version" are constant across
 // the Axon catalogue (verified against real Neuron 10.41.40.4 +
 // tree-fresh.json).
-func (p *Plugin) IdentityProbe(ctx context.Context) (string, error) {
-	objs, err := p.Walk(ctx, 0)
+func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
+	objs, err := p.Walk(ctx, slot)
 	if err != nil {
-		return "", fmt.Errorf("acp2: identity probe walk(slot=0): %w", err)
+		return "", fmt.Errorf("acp2: identity probe walk(slot=%d): %w", slot, err)
 	}
 	cardName := ""
 	hwVersion := ""
@@ -356,8 +361,8 @@ func (p *Plugin) IdentityProbe(ctx context.Context) (string, error) {
 		}
 	}
 	if cardName == "" || hwVersion == "" {
-		return "", fmt.Errorf("acp2: identity probe — missing Card Name (%q) or Hardware Version (%q) on slot 0",
-			cardName, hwVersion)
+		return "", fmt.Errorf("acp2: identity probe — missing Card Name (%q) or Hardware Version (%q) on slot %d",
+			cardName, hwVersion, slot)
 	}
 	return fmt.Sprintf("%s@%s", cardName, hwVersion), nil
 }
