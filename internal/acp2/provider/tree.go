@@ -31,6 +31,14 @@ type entry struct {
 	// the bare "preset" token. Used to emit pid 7 and to size the
 	// per-idx repetition of pids 8/9/10/11 in get_object replies.
 	presetDepth uint32
+
+	// presetIdxList holds the explicit u32 idx values for pid 7
+	// (preset_depth) when the canonical fixture supplies them via
+	// `idx=A,B,C` in Format. Spec example (acp2_protocol.docx
+	// §"Preset depth", line 2613-2632) uses non-contiguous values
+	// like {100, 200}. When this slice is empty, the encoder falls
+	// back to contiguous 0..presetDepth-1 — the historical behaviour.
+	presetIdxList []uint32
 }
 
 // tree is the obj-id indexed snapshot the provider serves. ACP2 obj-ids
@@ -159,7 +167,8 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			objType:     objType,
 			numType:     numType,
 			param:       x,
-			presetDepth: presetDepthHint(x),
+			presetDepth:   presetDepthHint(x),
+			presetIdxList: presetIdxHint(x),
 		}
 		if objType == codec.ObjTypePreset && e.presetDepth == 0 {
 			// Spec §5 requires at least one idx in pid 7 for preset children.
@@ -385,6 +394,42 @@ func presetDepthHint(p *canonical.Parameter) uint32 {
 		}
 	}
 	return 0
+}
+
+// presetIdxHint extracts the "idx=A|B|C" attribute from
+// Parameter.Format, returning the parsed u32 values. Used by the
+// encoder to emit pid 7 (preset_depth) with the spec-allowed
+// non-contiguous idx list (e.g. {100, 200} per acp2_protocol.docx
+// §"Preset depth" line 2613-2632) instead of synthesising contiguous
+// 0..N-1.
+//
+// The pipe `|` separates idx values rather than comma, because comma
+// is the existing top-level separator between Format hints
+// (`depth=2,maxLen=16,idx=100|200`). Returns nil when the hint is
+// absent or unparseable; callers fall back to contiguous indices.
+func presetIdxHint(p *canonical.Parameter) []uint32 {
+	for _, kv := range formatParts(p.Format) {
+		if !strings.HasPrefix(kv, "idx=") {
+			continue
+		}
+		raw := strings.TrimPrefix(kv, "idx=")
+		parts := strings.Split(raw, "|")
+		out := make([]uint32, 0, len(parts))
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			var n uint32
+			if _, err := fmt.Sscanf(p, "%d", &n); err == nil {
+				out = append(out, n)
+			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
+	return nil
 }
 
 // maxLenHint extracts the "maxLen=N" attribute from Parameter.Format,
