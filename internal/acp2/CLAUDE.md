@@ -183,6 +183,23 @@ Body:         obj-id(u32), idx(u32), property header for pid
 Only received after `AN2 EnableProtocolEvents([2])`. AN2 slot events
 (proto=0) are always received regardless.
 
+## AN2 reply byte shapes (§3.3, wire-verified)
+
+Every AN2 reply payload format is fixed by the spec table on its
+section page; copy from these and never paraphrase:
+
+| Func | § | Reply payload bytes | dlen |
+|---|---|---|---:|
+| GetVersion (0) | §3.3.1 | `func(u8) ver(u16BE)` | 3 |
+| GetDeviceInfo (1) | §3.3.2 | `func(u8) info(u8)` (info = total slot count incl slot 0) | 2 |
+| GetSlotInfo (2) | §3.3.3 | `func(u8) stat(u8) num(u8) protos(u8*num)` | 3+num |
+| EnableProtocolEvents (3) | §3.3.4 | `func(u8)` (single byte) | 1 |
+
+Slot proto list (§3.2.1 + §1.2.3) advertises *payload* protos only —
+never proto=0 (AN2-internal signalling layer). Real EVS Neuron emits
+slot 0 = `[2,3,4]`, slot 1 = `[2,3]`. Our ACP2-only producer emits
+`[2]`.
+
 ## Key invariants
 
 - AN2 mtid is always 0 for data frames.
