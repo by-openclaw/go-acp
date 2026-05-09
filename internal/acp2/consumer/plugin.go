@@ -66,6 +66,117 @@ type Plugin struct {
 	profile *compliance.Profile
 }
 
+// SeedTreeFromCachedObjects rebuilds an in-memory WalkedTree from a
+// previously-walked + persisted snapshot and inserts it into the
+// per-slot tree cache. After this returns, the next Subscribe-fed
+// announce can decode types and labels immediately — no need to wait
+// for a fresh Walk to populate the cache.
+//
+// Used by the watch CLI on startup (cmd_watch.go #323): load the disk
+// snapshot, hand it to the plugin, then Subscribe. Without this, the
+// first set of announces render as `raw(N)` until the background walk
+// finishes (sometimes 30+ s on a 50 000-object Neuron tree).
+//
+// The snapshot's objects MUST carry acp2.objType + acp2.numType in
+// Meta (set by walker.go on a normal walk). Objects without those
+// keys are kept in the tree for label resolution but their value
+// decoding falls back to KindRaw — same as today.
+func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
+	p.mu.Lock()
+	if p.trees == nil {
+		p.trees = newWalkedTreeCache(32, 10*time.Minute)
+	}
+	cache := p.trees
+	p.mu.Unlock()
+
+	tree := &WalkedTree{
+		Slot:        slot,
+		Objects:     make([]protocol.Object, 0, len(objs)),
+		ObjTypes:    make([]codec.ACP2ObjType, 0, len(objs)),
+		NumTypes:    make([]codec.NumberType, 0, len(objs)),
+		OptionsMaps: make([]map[uint32]string, 0, len(objs)),
+		Labels:      make(map[string]int, len(objs)),
+	}
+	for i, o := range objs {
+		// Fill ObjType / NumType from Meta. Default to ObjTypeNode /
+		// NumTypeS32 when absent — Nodes don't decode values, and
+		// the Subscribe path falls back to vtype-from-wire when
+		// ObjType is unset.
+		var ot codec.ACP2ObjType
+		var nt codec.NumberType
+		if o.Meta != nil {
+			if v, ok := o.Meta["acp2.objType"]; ok {
+				ot = codec.ACP2ObjType(metaToUint8(v))
+			}
+			if v, ok := o.Meta["acp2.numType"]; ok {
+				nt = codec.NumberType(metaToUint8(v))
+			}
+		}
+		var optMap map[uint32]string
+		if o.Meta != nil {
+			if v, ok := o.Meta["acp2.optionsMap"]; ok {
+				optMap = decodeStringlyOptionsMap(v)
+			}
+		}
+		tree.Objects = append(tree.Objects, o)
+		tree.ObjTypes = append(tree.ObjTypes, ot)
+		tree.NumTypes = append(tree.NumTypes, nt)
+		tree.OptionsMaps = append(tree.OptionsMaps, optMap)
+		if o.Label != "" {
+			tree.Labels[o.Label] = i
+		}
+	}
+	cache.Put(slot, tree)
+}
+
+// metaToUint8 coerces a Meta value into uint8. Tolerates the
+// JSON-decoded float64 that arrives when a snapshot round-trips
+// through encoding/json plus the in-memory uint8 the live walker
+// stashes. Returns 0 on unrecognised types.
+func metaToUint8(v any) uint8 {
+	switch x := v.(type) {
+	case uint8:
+		return x
+	case int:
+		return uint8(x)
+	case int64:
+		return uint8(x)
+	case float64:
+		return uint8(x)
+	}
+	return 0
+}
+
+// decodeStringlyOptionsMap turns a JSON-decoded `map[string]any`
+// (where keys are stringified u32 indices and values are labels)
+// back into the in-memory `map[uint32]string` shape WalkedTree
+// expects. Tolerates the live-walker shape (already correct) too.
+func decodeStringlyOptionsMap(v any) map[uint32]string {
+	switch x := v.(type) {
+	case map[uint32]string:
+		return x
+	case map[string]string:
+		out := make(map[uint32]string, len(x))
+		for k, lbl := range x {
+			var idx uint32
+			_, _ = fmt.Sscanf(k, "%d", &idx)
+			out[idx] = lbl
+		}
+		return out
+	case map[string]any:
+		out := make(map[uint32]string, len(x))
+		for k, lbl := range x {
+			var idx uint32
+			_, _ = fmt.Sscanf(k, "%d", &idx)
+			if s, ok := lbl.(string); ok {
+				out[idx] = s
+			}
+		}
+		return out
+	}
+	return nil
+}
+
 // ComplianceProfile returns the session-scoped compliance profile.
 // Returns nil if Connect hasn't been called yet. Safe to call from
 // any goroutine.

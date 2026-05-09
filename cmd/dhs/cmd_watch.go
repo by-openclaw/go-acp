@@ -78,6 +78,13 @@ func runWatch(ctx context.Context, args []string) error {
 	// Key by watchCacheKey so ACP1 groups that re-use the same object-id
 	// space (control / status / alarm / identity / file / frame all
 	// addressable as 0..N within one slot) don't collide. (refs #236)
+	//
+	// Per #323 the same loaded snapshot is also fed back into the
+	// plugin via the optional TreeSeeder interface (currently
+	// implemented by ACP2). That populates the plugin's per-slot
+	// WalkedTree cache from disk so Subscribe-fed announces can
+	// decode types + labels immediately — no waiting on the
+	// background walk to fill in.
 	labelCache := map[string]string{}
 	unitCache := map[string]string{}
 	if treeStore != nil && *slot >= 0 {
@@ -91,6 +98,15 @@ func runWatch(ctx context.Context, args []string) error {
 					if o.Unit != "" {
 						unitCache[k] = o.Unit
 					}
+				}
+				// Seed the plugin's in-memory tree cache from disk.
+				// Only the plugins that implement TreeSeeder benefit;
+				// others ignore the call (interface assertion is
+				// optional).
+				if seeder, ok := plug.(interface {
+					SeedTreeFromCachedObjects(slot int, objs []protocol.Object)
+				}); ok && sd.Slot == *slot {
+					seeder.SeedTreeFromCachedObjects(sd.Slot, sd.Objects)
 				}
 			}
 			if len(labelCache) > 0 {
