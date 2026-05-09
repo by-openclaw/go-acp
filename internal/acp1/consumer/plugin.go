@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -632,6 +633,13 @@ func findObject(tree *SlotTree, group codec.ObjGroup, id byte) (protocol.Object,
 	gname := group.String()
 	for i, o := range tree.Objects {
 		if o.Group == gname && o.ID == int(id) {
+			// Defensive bound check: a seeder that forgot to populate
+			// ACPTypes parallel to Objects would otherwise panic on
+			// every announce. Treat a missing entry as "type unknown"
+			// and fall back to the wrapper's decodeByGroup branch.
+			if i >= len(tree.ACPTypes) {
+				return o, 0, false
+			}
 			return o, tree.ACPTypes[i], true
 		}
 	}
@@ -705,6 +713,19 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		if obj, acpType, found := findObject(tree, msg.ObjGroup, msg.ObjID); found {
 			ev.Label = obj.Label
 			ev.Unit = obj.Unit
+			ev.Access = obj.Access
+			// Build the path the same way ACP2 does: dot-joined hierarchy
+			// ending in the leaf label. ACP1's walked object stores
+			// Path=[<group>] only (flat model); append the label so the
+			// watch column shows e.g. "control.AUDIO PROC AMP" instead
+			// of just "control".
+			pathParts := append([]string(nil), obj.Path...)
+			if obj.Label != "" {
+				pathParts = append(pathParts, obj.Label)
+			}
+			if len(pathParts) > 0 {
+				ev.Path = strings.Join(pathParts, ".")
+			}
 			if val, derr := DecodeValueBytes(obj, acpType, msg.Value); derr == nil {
 				ev.Value = val
 				// Keep the cached tree in sync with live events so

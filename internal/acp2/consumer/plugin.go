@@ -342,26 +342,26 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 // Card Name is hard-required. Probe fails iff both versions and
 // Card Name are missing or the walk itself fails.
 func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
-	objs, err := p.Walk(ctx, slot)
+	p.mu.Lock()
+	s := p.session
+	p.mu.Unlock()
+	if s == nil {
+		return "", protocol.ErrNotConnected
+	}
+	walker := NewWalker(s, p.logger)
+
+	// Targeted walk of BOARD + IDENTITY only — ~30 getObject calls vs
+	// 49k for a full Walk. Critical: this runs at watch start, before
+	// announces flow. A full Walk here monopolised the AN2/TCP socket
+	// on big cards (CONVERT Hybrid 49 827 objs) and triggered the
+	// keepalive dead-man at ~60 s.
+	labels, err := walker.WalkIdentity(ctx, slot)
 	if err != nil {
 		return "", fmt.Errorf("acp2: identity probe walk(slot=%d): %w", slot, err)
 	}
-	cardName := ""
-	productVer := ""
-	hwVer := ""
-	for _, o := range objs {
-		if o.Value.Kind != protocol.KindString {
-			continue
-		}
-		switch o.Label {
-		case "Card Name":
-			cardName = o.Value.Str
-		case "Product Version":
-			productVer = o.Value.Str
-		case "Hardware Version":
-			hwVer = o.Value.Str
-		}
-	}
+	cardName := labels["Card Name"]
+	productVer := labels["Product Version"]
+	hwVer := labels["Hardware Version"]
 	if cardName == "" {
 		return "", fmt.Errorf("acp2: identity probe — missing Card Name on slot %d", slot)
 	}
@@ -543,6 +543,11 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 					treeIdx = ti
 					ev.Label = tobj.Label
 					ev.Unit = tobj.Unit
+					ev.Group = tobj.Group
+					ev.Access = tobj.Access
+					if len(tobj.Path) > 0 {
+						ev.Path = strings.Join(tobj.Path, ".")
+					}
 					break
 				}
 			}

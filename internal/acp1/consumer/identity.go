@@ -31,12 +31,18 @@ func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
 	p.mu.Unlock()
 
 	tree := &SlotTree{
-		Slot:    slot,
-		Objects: make([]protocol.Object, 0, len(objs)),
-		Labels:  make(map[string]map[string]int, 8),
+		Slot:     slot,
+		Objects:  make([]protocol.Object, 0, len(objs)),
+		ACPTypes: make([]codec.ObjectType, 0, len(objs)),
+		Labels:   make(map[string]map[string]int, 8),
 	}
 	for i, o := range objs {
 		tree.Objects = append(tree.Objects, o)
+		// ACPTypes must stay parallel to Objects so findObject's index
+		// access does not panic. Reuse the same kind→ACPType mapping
+		// the DM-library seeder uses; Meta["acp1_type"] (when persisted
+		// by browser.go) wins over the lossy Kind fallback.
+		tree.ACPTypes = append(tree.ACPTypes, kindToACPType(o.Kind, o.Meta))
 		if o.Group == "" || o.Label == "" {
 			continue
 		}
@@ -76,6 +82,9 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 	ver := id.SwRev
 	if ver == "" {
 		ver = id.HwRev
+	}
+	if ver == "" {
+		return "", fmt.Errorf("acp1: identity probe slot=%d: empty Version (SwRev + HwRev) on Model=%q", slot, id.Model)
 	}
 	return fmt.Sprintf("%s@%s", id.Model, ver), nil
 }

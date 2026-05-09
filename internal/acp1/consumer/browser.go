@@ -209,6 +209,10 @@ func toProtocolObject(d *codec.DecodedObject, slot int, group codec.ObjGroup, id
 		// formatted number always produces one clean space.
 		Unit:   strings.TrimSpace(d.Unit),
 		Access: d.Access,
+		// Persist the precise ACP1 wire type so per-card DM cache
+		// reloads (SeedTreeFromCachedObjects) can rebuild ACPTypes
+		// losslessly — Kind alone collapses Integer + Long to KindInt.
+		Meta: map[string]any{"acp1_type": float64(d.Type)},
 	}
 	switch d.Type {
 	case codec.TypeInteger, codec.TypeLong:

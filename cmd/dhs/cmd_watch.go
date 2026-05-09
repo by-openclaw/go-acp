@@ -130,6 +130,7 @@ func runWatch(ctx context.Context, args []string) error {
 	// SeedTreeFromCachedObjects participates. ACP1 + ACP2 do today
 	// (#363); Ember+ has no per-slot card concept and stays on its
 	// existing path.
+	cachedSlots := map[int]struct{}{}
 	if treeStore != nil && !walkScope.empty() {
 		if probe, hot := plug.(interface {
 			IdentityProbe(context.Context, int) (string, error)
@@ -152,6 +153,7 @@ func runWatch(ctx context.Context, args []string) error {
 				}
 				probe.SeedTreeFromCachedObjects(s, snap.Slots[0].Objects)
 				loaded[identity] = len(snap.Slots[0].Objects)
+				cachedSlots[s] = struct{}{}
 				fmt.Fprintf(os.Stderr, "DM cache hit %q — seeded slot %d with %d objects\n",
 					identity, s, len(snap.Slots[0].Objects))
 			}
@@ -160,10 +162,15 @@ func runWatch(ctx context.Context, args []string) error {
 	}
 
 	// Walk in background to populate label/type cache. Announces start
-	// immediately — labels resolve as the tree fills.
-	if !walkScope.empty() {
+	// immediately — labels resolve as the tree fills. Slots that hit
+	// the DM cache above already have their tree populated; re-walking
+	// them is pure overhead — 49k+ getObject round-trips on a CONVERT
+	// Hybrid card — and starves the announce path on a single AN2/TCP
+	// socket. Drop those from the scope.
+	walkBackground := walkScope.withoutSlots(cachedSlots)
+	if !walkBackground.empty() {
 		go func() {
-			runWalkScope(ctx, plug, host, cf.protocol, walkScope)
+			runWalkScope(ctx, plug, host, cf.protocol, walkBackground)
 		}()
 	}
 
@@ -326,8 +333,8 @@ func runWatch(ctx context.Context, args []string) error {
 			}
 			fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s%s%s\n",
 				ev.Timestamp.Format("15:04:05"),
-				truncate(oid, 18),
-				truncate(ev.Path, 30),
+				oid,
+				ev.Path,
 				truncate(label, 20),
 				accessStr(ev.Access),
 				fr,
@@ -400,6 +407,31 @@ const (
 )
 
 func (s walkScope) empty() bool { return s.mode == walkNone }
+
+// withoutSlots returns a copy of the scope with the listed slots removed.
+// walkList narrows; walkAll degrades to walkList of "every slot" — but
+// since walkAll defers slot enumeration to GetDeviceInfo, callers using
+// it will only see the filter applied if they list slots explicitly.
+// walkNone stays empty.
+func (s walkScope) withoutSlots(skip map[int]struct{}) walkScope {
+	if len(skip) == 0 || s.mode == walkNone {
+		return s
+	}
+	if s.mode != walkList {
+		return s
+	}
+	kept := make([]int, 0, len(s.slots))
+	for _, sl := range s.slots {
+		if _, drop := skip[sl]; drop {
+			continue
+		}
+		kept = append(kept, sl)
+	}
+	if len(kept) == 0 {
+		return walkScope{mode: walkNone}
+	}
+	return walkScope{mode: walkList, slots: kept}
+}
 
 // parseWalkScope folds the --slot, --slots, and --no-walk flags into a
 // single decision. Mutually exclusive combinations raise a clear error.
