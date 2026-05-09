@@ -40,7 +40,7 @@ func runExtract(ctx context.Context, args []string) error {
 
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp extract <host> --protocol P --manufacturer M --product X --direction D --version V --out DIR [--slot N]")
+		return fmt.Errorf("usage: dhs extract <host> --protocol P --manufacturer M --product X --direction D --version V --out DIR [--slot N]")
 	}
 	_ = fs.Parse(rest)
 

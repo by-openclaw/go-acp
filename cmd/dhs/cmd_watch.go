@@ -53,7 +53,7 @@ func runWatch(ctx context.Context, args []string) error {
 		"DM library root for hot-plug enrichment (#254). Empty disables identity probe + seed.")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L]")
+		return fmt.Errorf("usage: dhs consumer <proto> watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L]")
 	}
 	_ = fs.Parse(rest)
 

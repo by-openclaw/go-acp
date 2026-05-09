@@ -18,7 +18,7 @@ func runInvoke(ctx context.Context, args []string) error {
 	argsStr := fs.String("args", "", "comma-separated arguments (e.g. 3,5)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp invoke <host> --path <func.path> [--args val1,val2,...]")
+		return fmt.Errorf("usage: dhs consumer <proto> invoke <host> --path <func.path> [--args val1,val2,...]")
 	}
 	_ = fs.Parse(rest)
 	if *funcPath == "" {

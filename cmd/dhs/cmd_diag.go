@@ -17,7 +17,7 @@ func runDiag(ctx context.Context, args []string) error {
 	slot := fs.Int("slot", 0, "target slot")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp diag <host> [--slot N]")
+		return fmt.Errorf("usage: dhs consumer <proto> diag <host> [--slot N]")
 	}
 	_ = fs.Parse(rest)
 	_ = cf

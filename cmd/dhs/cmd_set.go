@@ -22,7 +22,7 @@ func runSet(ctx context.Context, args []string) error {
 	valueHex := fs.String("raw", "", "raw wire bytes as hex — escape hatch bypassing typed encoding")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp set <host> --slot N (--path P | --label L | --id I) --value <v>")
+		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>)")
 	}
 	_ = fs.Parse(rest)
 	// Detect whether --value / --raw were explicitly passed (even if

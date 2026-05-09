@@ -35,7 +35,7 @@ func runDiff(ctx context.Context, args []string) error {
 	}
 	rest := fs.Args()
 	if len(rest) != 2 {
-		return fmt.Errorf("usage: acp diff <before-tree.json> <after-tree.json> [--format text|changelog] [--version V] [--date D] [--into PATH]")
+		return fmt.Errorf("usage: dhs diff <before-tree.json> <after-tree.json> [--format text|changelog] [--version V] [--date D] [--into PATH]")
 	}
 
 	before, err := loadCanonicalExport(rest[0])

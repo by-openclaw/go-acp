@@ -65,7 +65,7 @@ func runImport(ctx context.Context, args []string) error {
 
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run]")
+		return fmt.Errorf("usage: dhs consumer <proto> import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run]")
 	}
 	_ = fs.Parse(rest)
 	if *file == "" {
