@@ -51,16 +51,20 @@ func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
 }
 
 // IdentityProbe returns the per-card MasterView identity string
-// "<Model>@<HwRev>" for the given slot. Wraps GetIdentity (which
-// itself fetches the (Model, SwRev, HwRev) triple via three fixed-pid
-// getObject calls on group=1) and joins the two fields the DM cache
-// keys on. Same shape as ACP2's IdentityProbe so cmd/dhs/cmd_watch.go
-// treats both protocols identically (#363 — per-card DM, agnostic of
-// IP / slot index).
+// "<Model>@<Version>" for the given slot. Wraps GetIdentity (which
+// fetches the (Model, SwRev, HwRev) triple via three fixed-pid
+// getObject calls on group=1). Same shape as ACP2's IdentityProbe
+// so cmd/dhs/cmd_watch.go treats both protocols identically (#363).
 //
-// Returns "" with err when Model is empty (NAK on Card Label probe);
-// HwRev empty is tolerated and produces "<Model>@" — the file just
-// has an empty hw component.
+// Version selection: prefer SwRev (software / firmware revision —
+// what actually changes the schema), fall back to HwRev when SwRev
+// is empty. Per user observation 2026-05-09: "card name and product
+// version. hardware or software are available". The same product
+// across two firmware revs gets two DM files (different schemas);
+// across two hardware revs at same firmware shares one (assuming
+// the firmware exposes the same schema).
+//
+// Returns "" with err when Model is empty (NAK on Card Label probe).
 func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 	id, err := p.GetIdentity(ctx, slot)
 	if err != nil {
@@ -69,7 +73,11 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 	if id.Model == "" {
 		return "", fmt.Errorf("acp1: identity probe slot=%d: empty Model", slot)
 	}
-	return fmt.Sprintf("%s@%s", id.Model, id.HwRev), nil
+	ver := id.SwRev
+	if ver == "" {
+		ver = id.HwRev
+	}
+	return fmt.Sprintf("%s@%s", id.Model, ver), nil
 }
 
 // GetIdentity probes the ACP1 identity group (group=1) for the (Model,

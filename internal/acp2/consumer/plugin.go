@@ -326,49 +326,50 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 	return tree.Objects, nil
 }
 
-// IdentityProbe walks the given slot (sub-second on any Axon device)
-// and derives a per-card identity = "<CardName>@<HardwareVersion>"
-// by looking up obj labels in the ROOT_NODE_V2.BOARD subtree of THAT
-// slot. Each slot of a frame can host a different card → different
-// identity → different DM file. Returns "" with err when either label
-// is missing or the walk fails.
+// IdentityProbe walks the given slot and derives a per-card identity
+// = "<CardName>@<Version>" from labels in the slot's IDENTITY /
+// BOARD subtree. Each slot can host a different card → different
+// identity → different DM file (DHS 2016 MasterView, #363).
 //
-// Per DHS 2016 MasterView model: DM is keyed by card type, not by
-// device-frame and not by slot index. Two slots holding the same
-// card share the same DM file.
+// Version selection: prefer "Product Version" (firmware / software
+// — what actually changes the schema), fall back to "Hardware
+// Version" when Product is absent. Per user observation 2026-05-09:
+// "card name and product version" — the CONVERT Hybrid card (and
+// most newer Axon fixtures) expose Product Version in IDENTITY
+// alongside Card Name; some legacy cards only carry Hardware Version
+// in BOARD. Either is acceptable as the schema-key second component.
 //
-// Why labels and not obj-ids: ACP2 obj-ids vary per product, but
-// the labels "Card Name" and "Hardware Version" are constant across
-// the Axon catalogue (verified against real Neuron 10.41.40.4 +
-// tree-fresh.json).
+// Card Name is hard-required. Probe fails iff both versions and
+// Card Name are missing or the walk itself fails.
 func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 	objs, err := p.Walk(ctx, slot)
 	if err != nil {
 		return "", fmt.Errorf("acp2: identity probe walk(slot=%d): %w", slot, err)
 	}
 	cardName := ""
-	hwVersion := ""
+	productVer := ""
+	hwVer := ""
 	for _, o := range objs {
+		if o.Value.Kind != protocol.KindString {
+			continue
+		}
 		switch o.Label {
 		case "Card Name":
-			if o.Value.Kind == protocol.KindString {
-				cardName = o.Value.Str
-			}
+			cardName = o.Value.Str
+		case "Product Version":
+			productVer = o.Value.Str
 		case "Hardware Version":
-			if o.Value.Kind == protocol.KindString {
-				hwVersion = o.Value.Str
-			}
+			hwVer = o.Value.Str
 		}
 	}
 	if cardName == "" {
 		return "", fmt.Errorf("acp2: identity probe — missing Card Name on slot %d", slot)
 	}
-	// Hardware Version may be empty on some product fixtures (e.g.
-	// CONVERT Hybrid on producer .103 slot 1 reports empty HW Ver).
-	// Match ACP1's tolerance — Model is hard-required, HwRev is
-	// best-effort metadata. Filename ends with "@" when HW empty;
-	// still distinct from cards with non-empty HW.
-	return fmt.Sprintf("%s@%s", cardName, hwVersion), nil
+	ver := productVer
+	if ver == "" {
+		ver = hwVer
+	}
+	return fmt.Sprintf("%s@%s", cardName, ver), nil
 }
 
 // GetValue reads one object value via ACP2 get_property(pid=8).
