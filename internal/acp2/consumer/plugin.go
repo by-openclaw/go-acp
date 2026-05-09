@@ -73,6 +73,27 @@ type Plugin struct {
 	// ka is the running keep-alive state when a session is up; nil
 	// before Connect and after Disconnect.
 	ka *keepAliveState
+
+	// reconnectCfg captures the operator's --reconnect* choice (#367).
+	// Zero values mean "use plugin defaults"; Disabled=true skips the
+	// loop entirely (current pre-#367 behaviour for fail-fast verbs).
+	reconnectCfg protocol.ReconnectConfig
+
+	// rc is the running reconnect state. Started by Connect on first
+	// success, kept alive across reconnect cycles, stopped by
+	// Disconnect.
+	rc *reconnectState
+
+	// host / port remembered from the first Connect so the reconnect
+	// loop can re-dial after a session loss.
+	host string
+	port int
+
+	// activeSubs records the subscriptions the operator registered
+	// via Subscribe so the reconnect loop can replay them after a
+	// successful re-handshake. Keyed by subKey to dedupe re-subscribe
+	// calls with the same filters.
+	activeSubs map[subKey]activeSubscription
 }
 
 // SeedTreeFromCachedObjects rebuilds an in-memory WalkedTree from a
@@ -247,6 +268,13 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.walker.OnProgress = p.walkProgress
 	p.trees = newWalkedTreeCache(32, 10*time.Minute)
 	p.subHandles = make(map[subKey]int)
+	if p.activeSubs == nil {
+		// Preserve activeSubs across reconnect cycles — the reconnect
+		// loop replays them. First Connect creates the map.
+		p.activeSubs = make(map[subKey]activeSubscription)
+	}
+	p.host = ip
+	p.port = port
 	p.profile = &compliance.Profile{}
 	s.SetProfile(p.profile)
 	// Start the keep-alive prober + watchdog (mirrors ACP1).
@@ -254,6 +282,10 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	// life of the session, not the caller's Connect ctx — we cancel
 	// via p.ka.done from Disconnect.
 	p.startKeepAlive(context.Background())
+	// Start the reconnect watcher (idempotent — only first call
+	// creates the goroutine; subsequent Connects from the reconnect
+	// loop itself find p.rc != nil and return).
+	p.startReconnect()
 	return nil
 }
 
@@ -263,8 +295,15 @@ func (p *Plugin) Disconnect() error {
 	defer p.mu.Unlock()
 
 	if p.session == nil {
+		// Even with no live session, the reconnect goroutine might
+		// be busy backing off — stop it so the caller's Disconnect
+		// is final.
+		p.stopReconnect()
 		return nil
 	}
+	// Stop reconnect first so it doesn't race the close + try to
+	// re-dial after we wanted out.
+	p.stopReconnect()
 	// Stop keep-alive before closing the socket so the prober's
 	// in-flight request doesn't race with conn.Close.
 	p.stopKeepAlive()
@@ -275,6 +314,7 @@ func (p *Plugin) Disconnect() error {
 		p.trees.Clear()
 	}
 	p.subHandles = nil
+	p.activeSubs = nil
 	return err
 }
 
@@ -623,7 +663,12 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 	})
 
 	p.mu.Lock()
-	p.subHandles[reqToSubKey(req)] = id
+	key := reqToSubKey(req)
+	p.subHandles[key] = id
+	if p.activeSubs != nil {
+		// Track for replay across reconnects (#367).
+		p.activeSubs[key] = activeSubscription{req: req, fn: fn}
+	}
 	p.mu.Unlock()
 	return nil
 }
@@ -632,9 +677,13 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
 	p.mu.Lock()
 	s := p.session
-	id, ok := p.subHandles[reqToSubKey(req)]
+	key := reqToSubKey(req)
+	id, ok := p.subHandles[key]
 	if ok {
-		delete(p.subHandles, reqToSubKey(req))
+		delete(p.subHandles, key)
+	}
+	if p.activeSubs != nil {
+		delete(p.activeSubs, key)
 	}
 	p.mu.Unlock()
 

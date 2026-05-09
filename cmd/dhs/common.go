@@ -37,6 +37,9 @@ type commonFlags struct {
 	timeout           time.Duration
 	keepalive         time.Duration
 	keepaliveTimeout  time.Duration
+	reconnect         bool
+	reconnectCap      time.Duration
+	reconnectAttempts int
 	verbose           bool
 	logLevel          string
 	capture           string
@@ -77,6 +80,16 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"keep-alive dead-man threshold (0 = 3× --keepalive; -1 = never "+
 			"declare session dead). Watch verb shows freshness=cache once "+
 			"this elapses without rx; values stay decoded against the cached schema.")
+	fs.BoolVar(&cf.reconnect, "reconnect", true,
+		"on session loss (TCP close / device crash / network drop), retry "+
+			"the connection with exponential backoff. Plugins that don't "+
+			"implement protocol.Reconnecter ignore this flag.")
+	fs.DurationVar(&cf.reconnectCap, "reconnect-cap", 0,
+		"cap on the exponential backoff between reconnect attempts "+
+			"(0 = plugin default 30s)")
+	fs.IntVar(&cf.reconnectAttempts, "reconnect-max-attempts", 0,
+		"maximum reconnect attempts before giving up "+
+			"(0 = unlimited; the watch verb keeps trying)")
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
 	fs.StringVar(&cf.capture, "capture", "",
@@ -214,6 +227,16 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 		ka.SetKeepAlive(protocol.KeepAliveConfig{
 			Interval: cf.keepalive,
 			Timeout:  cf.keepaliveTimeout,
+		})
+	}
+
+	// Reconnect — same plugin-optional pattern as KeepAliver. Plugins
+	// that don't implement Reconnecter silently ignore.
+	if rc, ok := plug.(protocol.Reconnecter); ok {
+		rc.SetReconnect(protocol.ReconnectConfig{
+			Cap:         cf.reconnectCap,
+			MaxAttempts: cf.reconnectAttempts,
+			Disabled:    !cf.reconnect,
 		})
 	}
 
