@@ -360,10 +360,14 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 			}
 		}
 	}
-	if cardName == "" || hwVersion == "" {
-		return "", fmt.Errorf("acp2: identity probe — missing Card Name (%q) or Hardware Version (%q) on slot %d",
-			cardName, hwVersion, slot)
+	if cardName == "" {
+		return "", fmt.Errorf("acp2: identity probe — missing Card Name on slot %d", slot)
 	}
+	// Hardware Version may be empty on some product fixtures (e.g.
+	// CONVERT Hybrid on producer .103 slot 1 reports empty HW Ver).
+	// Match ACP1's tolerance — Model is hard-required, HwRev is
+	// best-effort metadata. Filename ends with "@" when HW empty;
+	// still distinct from cards with non-empty HW.
 	return fmt.Sprintf("%s@%s", cardName, hwVersion), nil
 }
 
