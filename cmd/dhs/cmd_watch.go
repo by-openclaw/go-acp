@@ -7,9 +7,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"dhs/internal/dmlib"
+	"dhs/internal/export"
 	"dhs/internal/protocol"
+	"dhs/internal/storage"
 )
 
 // runWatch subscribes to live announcements and prints each event as it
@@ -95,6 +98,36 @@ func runWatch(ctx context.Context, args []string) error {
 			}
 			if len(labelCache) > 0 {
 				fmt.Fprintf(os.Stderr, "loaded %d labels from cache\n", len(labelCache))
+			}
+		}
+	}
+
+	// Identity-keyed DM cache hot-load (#353): probe device identity
+	// (Card Name + Hardware Version on slot 0, sub-second), look up
+	// the persisted DM by identity, and seed the plugin's in-memory
+	// tree BEFORE Subscribe fires. The announce decoder then resolves
+	// types + enum labels from frame 1 — eliminates the cold-start
+	// "idx N" gap on slot 1 watches where the fresh walk takes 30-60s.
+	//
+	// ACP2-only — other plugins keep the IP-keyed cache today.
+	if cf.protocol == "acp2" && treeStore != nil {
+		if probe, hot := plug.(interface {
+			IdentityProbe(context.Context) (string, error)
+			SeedTreeFromCachedObjects(slot int, objs []protocol.Object)
+		}); hot {
+			identity, perr := probe.IdentityProbe(ctx)
+			if perr == nil && identity != "" {
+				if snap, lerr := treeStore.LoadByIdentity(identity); lerr == nil && snap != nil {
+					seeded := 0
+					for _, sd := range snap.Slots {
+						probe.SeedTreeFromCachedObjects(sd.Slot, sd.Objects)
+						seeded += len(sd.Objects)
+					}
+					if seeded > 0 {
+						fmt.Fprintf(os.Stderr, "DM cache hit %q — seeded %d objects across %d slot(s)\n",
+							identity, seeded, len(snap.Slots))
+					}
+				}
 			}
 		}
 	}
@@ -417,4 +450,56 @@ func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto s
 			fmt.Fprintf(os.Stderr, "warning: cache save slot %d: %v\n", slot, serr)
 		}
 	}
+	// Identity-keyed DM cache (#353): for ACP2 also save under
+	// <CardName>@<HardwareVersion> so the next watch session against
+	// any IP for the same card/firmware can hot-load the DM and skip
+	// the cold-start label gap. ACP1 keeps IP-only caching.
+	if proto == "acp2" && treeStore != nil {
+		if probe, ok := plug.(interface {
+			IdentityProbe(context.Context) (string, error)
+		}); ok {
+			if identity, perr := probe.IdentityProbe(ctx); perr == nil && identity != "" {
+				if serr := saveIdentityCache(treeStore, plug, ctx, identity, host, proto, slot, objs); serr != nil {
+					fmt.Fprintf(os.Stderr, "warning: identity cache save: %v\n", serr)
+				}
+			}
+		}
+	}
+}
+
+// saveIdentityCache loads the existing identity-keyed DM (if any),
+// merges the just-walked slot into it, and saves the result. So
+// successive walks of slot 0 then slot 1 build up a single
+// multi-slot cache file keyed by device identity.
+func saveIdentityCache(store *storage.TreeStore, plug protocol.Protocol, ctx context.Context, identity, host, proto string, slot int, objs []protocol.Object) error {
+	existing, _ := store.LoadByIdentity(identity)
+	now := time.Now().UTC()
+	if existing == nil {
+		existing = &export.Snapshot{
+			Device:    export.DeviceInfo{IP: host, Protocol: proto},
+			Generator: "dhs dm-cache",
+			CreatedAt: now,
+		}
+	}
+	// Replace or append this slot's dump.
+	updated := false
+	for i := range existing.Slots {
+		if existing.Slots[i].Slot == slot {
+			existing.Slots[i] = export.SlotDump{
+				Slot:     slot,
+				WalkedAt: now,
+				Objects:  objs,
+			}
+			updated = true
+			break
+		}
+	}
+	if !updated {
+		existing.Slots = append(existing.Slots, export.SlotDump{
+			Slot:     slot,
+			WalkedAt: now,
+			Objects:  objs,
+		})
+	}
+	return store.SaveByIdentity(identity, existing)
 }

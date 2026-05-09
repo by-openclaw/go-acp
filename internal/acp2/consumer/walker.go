@@ -108,6 +108,25 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 	// Parse properties from the reply.
 	obj, objType, numType, optMap, children := w.parseObjectProperties(msg.Properties, slot, objID, path)
 
+	// Stash type info on the protocol.Object via Meta so the
+	// hierarchical disk snapshot survives a round-trip and can rebuild
+	// the WalkedTree parallel arrays at hot-load time. Keys live in the
+	// "acp2." namespace to avoid colliding with cross-protocol Meta.
+	if obj.Meta == nil {
+		obj.Meta = make(map[string]any, 3)
+	}
+	obj.Meta["acp2.objType"] = uint8(objType)
+	obj.Meta["acp2.numType"] = uint8(numType)
+	if optMap != nil {
+		// Serialise as map[string]string for JSON portability — keys
+		// are u32 wire idx so we stringify on save and parse on load.
+		serialised := make(map[string]string, len(optMap))
+		for k, v := range optMap {
+			serialised[fmt.Sprintf("%d", k)] = v
+		}
+		obj.Meta["acp2.optionsMap"] = serialised
+	}
+
 	// Add to tree (skip pure node containers from the flat list — they
 	// are structural only, not addressable objects with values).
 	// Actually, node objects ARE added so users can see the tree structure.

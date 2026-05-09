@@ -215,6 +215,135 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 	return tree.Objects, nil
 }
 
+// IdentityProbe walks slot 0 (sub-second on any Axon device) and
+// derives a stable device identity = "<CardName>@<HardwareVersion>"
+// by looking up obj labels in the ROOT_NODE_V2.BOARD subtree.
+// Returns "" with err when either label is missing or the slot 0
+// walk fails — caller should fall back to a fresh full walk.
+//
+// Why labels and not obj-ids: ACP2 obj-ids vary per product, but
+// the labels "Card Name" and "Hardware Version" are constant across
+// the Axon catalogue (verified against real Neuron 10.41.40.4 +
+// tree-fresh.json).
+func (p *Plugin) IdentityProbe(ctx context.Context) (string, error) {
+	objs, err := p.Walk(ctx, 0)
+	if err != nil {
+		return "", fmt.Errorf("acp2: identity probe walk(slot=0): %w", err)
+	}
+	cardName := ""
+	hwVersion := ""
+	for _, o := range objs {
+		switch o.Label {
+		case "Card Name":
+			if o.Value.Kind == protocol.KindString {
+				cardName = o.Value.Str
+			}
+		case "Hardware Version":
+			if o.Value.Kind == protocol.KindString {
+				hwVersion = o.Value.Str
+			}
+		}
+	}
+	if cardName == "" || hwVersion == "" {
+		return "", fmt.Errorf("acp2: identity probe — missing Card Name (%q) or Hardware Version (%q) on slot 0",
+			cardName, hwVersion)
+	}
+	return fmt.Sprintf("%s@%s", cardName, hwVersion), nil
+}
+
+// SeedTreeFromCachedObjects rebuilds an in-memory WalkedTree from a
+// disk snapshot's Objects (with type info stashed in obj.Meta by the
+// walker). Populates p.trees[slot] so the announce decoder can resolve
+// types + enum labels from the first frame, before any fresh walk
+// finishes. Idempotent — re-seeding overwrites the cache entry.
+//
+// Object.Meta keys consumed:
+//
+//	"acp2.objType"    uint8 / float64    ACP2 object type
+//	"acp2.numType"    uint8 / float64    NumberType for numerics + enum vtype
+//	"acp2.optionsMap" map[string]string  enum wire idx → label (keys u32 stringified)
+func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
+	tree := &WalkedTree{
+		Slot:        slot,
+		Objects:     make([]protocol.Object, len(objs)),
+		ObjTypes:    make([]codec.ACP2ObjType, len(objs)),
+		NumTypes:    make([]codec.NumberType, len(objs)),
+		OptionsMaps: make([]map[uint32]string, len(objs)),
+		Labels:      make(map[string]int, len(objs)),
+	}
+	for i, o := range objs {
+		tree.Objects[i] = o
+		tree.ObjTypes[i] = codec.ACP2ObjType(metaToUint8(o.Meta, "acp2.objType"))
+		tree.NumTypes[i] = codec.NumberType(metaToUint8(o.Meta, "acp2.numType"))
+		tree.OptionsMaps[i] = decodeStringlyOptionsMap(o.Meta["acp2.optionsMap"])
+		if o.Label != "" {
+			tree.Labels[o.Label] = i
+		}
+	}
+	p.mu.Lock()
+	tc := p.trees
+	p.mu.Unlock()
+	if tc != nil {
+		tc.Put(slot, tree)
+	}
+}
+
+// metaToUint8 reads an integer value from Object.Meta tolerating the
+// JSON round-trip — Meta values come back as float64 after decode of
+// untyped JSON, OR uint8 if assigned directly in-process. Returns 0
+// on missing / unparseable.
+func metaToUint8(meta map[string]any, key string) uint8 {
+	v, ok := meta[key]
+	if !ok || v == nil {
+		return 0
+	}
+	switch x := v.(type) {
+	case uint8:
+		return x
+	case int:
+		return uint8(x)
+	case int64:
+		return uint8(x)
+	case float64:
+		return uint8(x)
+	}
+	return 0
+}
+
+// decodeStringlyOptionsMap reverses the walker's serialisation of
+// OptionsMap (map[u32]string -> map[string]string) so the hot-loaded
+// tree carries the live wire-idx → label table.
+func decodeStringlyOptionsMap(v any) map[uint32]string {
+	if v == nil {
+		return nil
+	}
+	switch m := v.(type) {
+	case map[uint32]string:
+		return m
+	case map[string]string:
+		out := make(map[uint32]string, len(m))
+		for k, val := range m {
+			var idx uint32
+			if _, err := fmt.Sscanf(k, "%d", &idx); err == nil {
+				out[idx] = val
+			}
+		}
+		return out
+	case map[string]any:
+		out := make(map[uint32]string, len(m))
+		for k, val := range m {
+			var idx uint32
+			if _, err := fmt.Sscanf(k, "%d", &idx); err == nil {
+				if s, ok := val.(string); ok {
+					out[idx] = s
+				}
+			}
+		}
+		return out
+	}
+	return nil
+}
+
 // GetValue reads one object value via ACP2 get_property(pid=8).
 func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
 	p.mu.Lock()
