@@ -515,15 +515,18 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 						ev.Value = val
 					}
 				}
-				// Fallback: use vtype from announce property to decode
-				// when tree doesn't contain this object.
+				// Fallback when the tree didn't have this obj (slow walk
+				// finishes after announce arrives, or watch started cold).
+				// The property header's vtype byte (spec §5.2.2) tells us
+				// the wire shape; map it to the corresponding ACP2 ObjType
+				// so Enum / IPv4 / String announces decode typed instead
+				// of falling through to KindRaw.
 				if ev.Value.Kind == protocol.KindUnknown && prop.Data != nil {
 					nt := codec.NumberType(prop.VType)
-					if nt > 0 {
-						val, derr := decodePropertyValue(prop, codec.ObjTypeNumber, nt, nil, msg.ObjID)
-						if derr == nil {
-							ev.Value = val
-						}
+					ot := objTypeFromVType(nt)
+					val, derr := decodePropertyValue(prop, ot, nt, nil, msg.ObjID)
+					if derr == nil {
+						ev.Value = val
 					}
 					if ev.Value.Kind == protocol.KindUnknown {
 						ev.Value = protocol.Value{Kind: protocol.KindRaw, Raw: prop.Data}
@@ -589,6 +592,31 @@ func (p *Plugin) resolveRequest(req protocol.ValueRequest, tree *WalkedTree) (ui
 	// No tree or not found — return with unknown type. The caller may
 	// still work with raw bytes.
 	return objID, 0, 0, nil, nil
+}
+
+// objTypeFromVType maps an ACP2 §5.2.2 number-type byte (the data byte
+// of pid 8/9 value properties) to the matching object type. Used by
+// the announce fallback path when the cached tree doesn't have the
+// announced obj — the vtype byte alone tells us how to decode the
+// value body.
+//
+//	| vtype | ACP2 NumberType | ACP2 ObjType   |
+//	|-------|-----------------|----------------|
+//	| 0..8  | s8..float       | ObjTypeNumber  |
+//	| 9     | preset/enum     | ObjTypeEnum    |
+//	| 10    | ipv4            | ObjTypeIPv4    |
+//	| 11    | string          | ObjTypeString  |
+func objTypeFromVType(nt codec.NumberType) codec.ACP2ObjType {
+	switch nt {
+	case codec.NumTypePreset:
+		return codec.ObjTypeEnum
+	case codec.NumTypeIPv4:
+		return codec.ObjTypeIPv4
+	case codec.NumTypeString:
+		return codec.ObjTypeString
+	default:
+		return codec.ObjTypeNumber
+	}
 }
 
 // decodePropertyValue decodes a value Property into a protocol.Value.
