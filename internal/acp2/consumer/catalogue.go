@@ -79,7 +79,7 @@ func Catalogue() []CatalogueEntry {
 		{Kind: KindPid, ID: 1, Name: "object_type", SpecRef: "ACP2 §5"},
 		{Kind: KindPid, ID: 2, Name: "label", SpecRef: "ACP2 §5", Notes: "0-terminated UTF-8"},
 		{Kind: KindPid, ID: 3, Name: "access", SpecRef: "ACP2 §5", Notes: "1=r, 2=w, 3=rw"},
-		{Kind: KindPid, ID: 4, Name: "announce_delay", SpecRef: "ACP2 §5", Notes: "u32 ms — NOT 'event_delay'"},
+		{Kind: KindPid, ID: 4, Name: "event_delay", SpecRef: "ACP2 §5.4 row 4", Notes: "u32 BE rate (ms)"},
 		{Kind: KindPid, ID: 5, Name: "number_type", SpecRef: "ACP2 §5"},
 		{Kind: KindPid, ID: 6, Name: "string_max_length", SpecRef: "ACP2 §5", Notes: "u16"},
 		{Kind: KindPid, ID: 7, Name: "preset_depth", SpecRef: "ACP2 §5", Notes: "valid idx list"},

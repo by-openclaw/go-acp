@@ -29,10 +29,14 @@ type Session struct {
 	port int
 
 	// AN2-level device info populated during handshake.
-	an2Version  uint8
-	numSlots    int
-	slotStatus  []protocol.SlotStatus
-	acp2Version uint8
+	// AN2 GetVersion (spec §3.3.1) returns major + minor; both
+	// preserved here so the connect log + public AN2Version() can
+	// emit the full "major.minor" — real Neuron reports 1.0.
+	an2VersionMajor uint8
+	an2VersionMinor uint8
+	numSlots        int
+	slotStatus      []protocol.SlotStatus
+	acp2Version     uint8
 
 	// mtid pool: 1-255 available, 0 reserved for announces.
 	mtidMu   sync.Mutex
@@ -145,7 +149,7 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 
 	s.logger.Info("acp2: connected",
 		"host", ip, "port", port,
-		"an2_version", s.an2Version,
+		"an2_version", fmt.Sprintf("%d.%d", s.an2VersionMajor, s.an2VersionMinor),
 		"acp2_version", s.acp2Version,
 		"slots", s.numSlots)
 
@@ -166,13 +170,18 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 		return fmt.Errorf("an2 GetVersion: %w", err)
 	}
 	// Reply: func_echo(u8) + major(u8) + minor(u8). Spec §3.3.1.
-	// Version is at reply[2] (minor), not reply[0].
+	// Real Neuron reports 1.0; older firmware that ships only one
+	// version byte falls back to {0, reply[0]}.
 	if len(reply) >= 3 {
-		s.an2Version = reply[2]
+		s.an2VersionMajor = reply[1]
+		s.an2VersionMinor = reply[2]
 	} else if len(reply) >= 1 {
-		s.an2Version = reply[0]
+		s.an2VersionMajor = 0
+		s.an2VersionMinor = reply[0]
 	}
-	s.logger.Debug("acp2: AN2 version", "version", s.an2Version, "raw", fmt.Sprintf("%x", reply))
+	s.logger.Debug("acp2: AN2 version", "version",
+		fmt.Sprintf("%d.%d", s.an2VersionMajor, s.an2VersionMinor),
+		"raw", fmt.Sprintf("%x", reply))
 
 	// 2. AN2 GetDeviceInfo
 	s.logger.Debug("acp2: AN2 GetDeviceInfo")
@@ -538,6 +547,12 @@ func (s *Session) handleACP2Frame(f *codec.AN2Frame) {
 }
 
 // routeReply sends a message to the waiter registered for the given mtid.
+//
+// When no waiter is registered the reply is dropped and a compliance
+// event (OrphanReplyMtid) fires. This catches both peer bugs (the
+// device emitted a stale mtid) and our own pool regressions (mtid
+// released before reply arrived). Per spec p.4 §"Mtid", replies must
+// correlate to in-flight requests; an orphan reply is a wire violation.
 func (s *Session) routeReply(mtid uint8, msg *codec.ACP2Message) {
 	s.waitMu.Lock()
 	ch, ok := s.waiters[mtid]
@@ -550,16 +565,37 @@ func (s *Session) routeReply(mtid uint8, msg *codec.ACP2Message) {
 		}
 	} else {
 		s.logger.Debug("acp2: no waiter for mtid", "mtid", mtid)
+		s.note(OrphanReplyMtid)
 	}
 }
 
-// allocMTID allocates a free ACP2 mtid (1-255). Blocks if all are in use.
+// allocMTID allocates a free ACP2 mtid (1-255). Blocks when the pool
+// is exhausted until a release signals the cond, or the caller's
+// context cancels — whichever comes first.
+//
+// Spec p.4 §"Mtid": ACP2 mtid space is 1..255 with 0 reserved for
+// announces. The pool MUST never wrap (which would alias an in-flight
+// request) and MUST be cancellable so a stuck pool doesn't leak
+// goroutines on session teardown.
 func (s *Session) allocMTID(ctx context.Context) (uint8, error) {
 	s.mtidMu.Lock()
 	defer s.mtidMu.Unlock()
 
+	// Cancellation watcher: wakes the cond when ctx fires so a
+	// blocked Wait() observes the cancellation. The watcher exits
+	// when the alloc returns (ctx.Done() fires from cancel-on-defer
+	// in the caller, or via a `done` channel we close on success).
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.mtidCond.Broadcast()
+		case <-done:
+		}
+	}()
+
 	for {
-		// Check context first.
 		select {
 		case <-ctx.Done():
 			return 0, ctx.Err()
@@ -572,7 +608,7 @@ func (s *Session) allocMTID(ctx context.Context) (uint8, error) {
 				return uint8(i + 1), nil
 			}
 		}
-		// All mtids in use — wait for a release.
+		// All mtids in use — wait for a release or for ctx to cancel.
 		s.mtidCond.Wait()
 	}
 }
@@ -613,11 +649,12 @@ func (s *Session) NumSlots() int {
 	return s.numSlots
 }
 
-// AN2Version returns the AN2 protocol version.
-func (s *Session) AN2Version() uint8 {
+// AN2Version returns the AN2 protocol version as "major.minor"
+// per spec §3.3.1 GetVersion. Real Neuron firmware reports "1.0".
+func (s *Session) AN2Version() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.an2Version
+	return fmt.Sprintf("%d.%d", s.an2VersionMajor, s.an2VersionMinor)
 }
 
 // ACP2Version returns the ACP2 protocol version.

@@ -66,6 +66,117 @@ type Plugin struct {
 	profile *compliance.Profile
 }
 
+// SeedTreeFromCachedObjects rebuilds an in-memory WalkedTree from a
+// previously-walked + persisted snapshot and inserts it into the
+// per-slot tree cache. After this returns, the next Subscribe-fed
+// announce can decode types and labels immediately — no need to wait
+// for a fresh Walk to populate the cache.
+//
+// Used by the watch CLI on startup (cmd_watch.go #323): load the disk
+// snapshot, hand it to the plugin, then Subscribe. Without this, the
+// first set of announces render as `raw(N)` until the background walk
+// finishes (sometimes 30+ s on a 50 000-object Neuron tree).
+//
+// The snapshot's objects MUST carry acp2.objType + acp2.numType in
+// Meta (set by walker.go on a normal walk). Objects without those
+// keys are kept in the tree for label resolution but their value
+// decoding falls back to KindRaw — same as today.
+func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
+	p.mu.Lock()
+	if p.trees == nil {
+		p.trees = newWalkedTreeCache(32, 10*time.Minute)
+	}
+	cache := p.trees
+	p.mu.Unlock()
+
+	tree := &WalkedTree{
+		Slot:        slot,
+		Objects:     make([]protocol.Object, 0, len(objs)),
+		ObjTypes:    make([]codec.ACP2ObjType, 0, len(objs)),
+		NumTypes:    make([]codec.NumberType, 0, len(objs)),
+		OptionsMaps: make([]map[uint32]string, 0, len(objs)),
+		Labels:      make(map[string]int, len(objs)),
+	}
+	for i, o := range objs {
+		// Fill ObjType / NumType from Meta. Default to ObjTypeNode /
+		// NumTypeS32 when absent — Nodes don't decode values, and
+		// the Subscribe path falls back to vtype-from-wire when
+		// ObjType is unset.
+		var ot codec.ACP2ObjType
+		var nt codec.NumberType
+		if o.Meta != nil {
+			if v, ok := o.Meta["acp2.objType"]; ok {
+				ot = codec.ACP2ObjType(metaToUint8(v))
+			}
+			if v, ok := o.Meta["acp2.numType"]; ok {
+				nt = codec.NumberType(metaToUint8(v))
+			}
+		}
+		var optMap map[uint32]string
+		if o.Meta != nil {
+			if v, ok := o.Meta["acp2.optionsMap"]; ok {
+				optMap = decodeStringlyOptionsMap(v)
+			}
+		}
+		tree.Objects = append(tree.Objects, o)
+		tree.ObjTypes = append(tree.ObjTypes, ot)
+		tree.NumTypes = append(tree.NumTypes, nt)
+		tree.OptionsMaps = append(tree.OptionsMaps, optMap)
+		if o.Label != "" {
+			tree.Labels[o.Label] = i
+		}
+	}
+	cache.Put(slot, tree)
+}
+
+// metaToUint8 coerces a Meta value into uint8. Tolerates the
+// JSON-decoded float64 that arrives when a snapshot round-trips
+// through encoding/json plus the in-memory uint8 the live walker
+// stashes. Returns 0 on unrecognised types.
+func metaToUint8(v any) uint8 {
+	switch x := v.(type) {
+	case uint8:
+		return x
+	case int:
+		return uint8(x)
+	case int64:
+		return uint8(x)
+	case float64:
+		return uint8(x)
+	}
+	return 0
+}
+
+// decodeStringlyOptionsMap turns a JSON-decoded `map[string]any`
+// (where keys are stringified u32 indices and values are labels)
+// back into the in-memory `map[uint32]string` shape WalkedTree
+// expects. Tolerates the live-walker shape (already correct) too.
+func decodeStringlyOptionsMap(v any) map[uint32]string {
+	switch x := v.(type) {
+	case map[uint32]string:
+		return x
+	case map[string]string:
+		out := make(map[uint32]string, len(x))
+		for k, lbl := range x {
+			var idx uint32
+			_, _ = fmt.Sscanf(k, "%d", &idx)
+			out[idx] = lbl
+		}
+		return out
+	case map[string]any:
+		out := make(map[uint32]string, len(x))
+		for k, lbl := range x {
+			var idx uint32
+			_, _ = fmt.Sscanf(k, "%d", &idx)
+			if s, ok := lbl.(string); ok {
+				out[idx] = s
+			}
+		}
+		return out
+	}
+	return nil
+}
+
 // ComplianceProfile returns the session-scoped compliance profile.
 // Returns nil if Connect hasn't been called yet. Safe to call from
 // any goroutine.
@@ -213,6 +324,42 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 
 	p.trees.Put(slot, tree)
 	return tree.Objects, nil
+}
+
+// IdentityProbe walks slot 0 (sub-second on any Axon device) and
+// derives a stable device identity = "<CardName>@<HardwareVersion>"
+// by looking up obj labels in the ROOT_NODE_V2.BOARD subtree.
+// Returns "" with err when either label is missing or the slot 0
+// walk fails — caller should fall back to a fresh full walk.
+//
+// Why labels and not obj-ids: ACP2 obj-ids vary per product, but
+// the labels "Card Name" and "Hardware Version" are constant across
+// the Axon catalogue (verified against real Neuron 10.41.40.4 +
+// tree-fresh.json).
+func (p *Plugin) IdentityProbe(ctx context.Context) (string, error) {
+	objs, err := p.Walk(ctx, 0)
+	if err != nil {
+		return "", fmt.Errorf("acp2: identity probe walk(slot=0): %w", err)
+	}
+	cardName := ""
+	hwVersion := ""
+	for _, o := range objs {
+		switch o.Label {
+		case "Card Name":
+			if o.Value.Kind == protocol.KindString {
+				cardName = o.Value.Str
+			}
+		case "Hardware Version":
+			if o.Value.Kind == protocol.KindString {
+				hwVersion = o.Value.Str
+			}
+		}
+	}
+	if cardName == "" || hwVersion == "" {
+		return "", fmt.Errorf("acp2: identity probe — missing Card Name (%q) or Hardware Version (%q) on slot 0",
+			cardName, hwVersion)
+	}
+	return fmt.Sprintf("%s@%s", cardName, hwVersion), nil
 }
 
 // GetValue reads one object value via ACP2 get_property(pid=8).
@@ -404,15 +551,18 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 						ev.Value = val
 					}
 				}
-				// Fallback: use vtype from announce property to decode
-				// when tree doesn't contain this object.
+				// Fallback when the tree didn't have this obj (slow walk
+				// finishes after announce arrives, or watch started cold).
+				// The property header's vtype byte (spec §5.2.2) tells us
+				// the wire shape; map it to the corresponding ACP2 ObjType
+				// so Enum / IPv4 / String announces decode typed instead
+				// of falling through to KindRaw.
 				if ev.Value.Kind == protocol.KindUnknown && prop.Data != nil {
 					nt := codec.NumberType(prop.VType)
-					if nt > 0 {
-						val, derr := decodePropertyValue(prop, codec.ObjTypeNumber, nt, nil, msg.ObjID)
-						if derr == nil {
-							ev.Value = val
-						}
+					ot := objTypeFromVType(nt)
+					val, derr := decodePropertyValue(prop, ot, nt, nil, msg.ObjID)
+					if derr == nil {
+						ev.Value = val
 					}
 					if ev.Value.Kind == protocol.KindUnknown {
 						ev.Value = protocol.Value{Kind: protocol.KindRaw, Raw: prop.Data}
@@ -478,6 +628,31 @@ func (p *Plugin) resolveRequest(req protocol.ValueRequest, tree *WalkedTree) (ui
 	// No tree or not found — return with unknown type. The caller may
 	// still work with raw bytes.
 	return objID, 0, 0, nil, nil
+}
+
+// objTypeFromVType maps an ACP2 §5.2.2 number-type byte (the data byte
+// of pid 8/9 value properties) to the matching object type. Used by
+// the announce fallback path when the cached tree doesn't have the
+// announced obj — the vtype byte alone tells us how to decode the
+// value body.
+//
+//	| vtype | ACP2 NumberType | ACP2 ObjType   |
+//	|-------|-----------------|----------------|
+//	| 0..8  | s8..float       | ObjTypeNumber  |
+//	| 9     | preset/enum     | ObjTypeEnum    |
+//	| 10    | ipv4            | ObjTypeIPv4    |
+//	| 11    | string          | ObjTypeString  |
+func objTypeFromVType(nt codec.NumberType) codec.ACP2ObjType {
+	switch nt {
+	case codec.NumTypePreset:
+		return codec.ObjTypeEnum
+	case codec.NumTypeIPv4:
+		return codec.ObjTypeIPv4
+	case codec.NumTypeString:
+		return codec.ObjTypeString
+	default:
+		return codec.ObjTypeNumber
+	}
 }
 
 // decodePropertyValue decodes a value Property into a protocol.Value.

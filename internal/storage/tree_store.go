@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"dhs/internal/export"
@@ -130,6 +131,83 @@ func (s *TreeStore) Load(ip string, slot int) (*export.Snapshot, error) {
 	}
 	defer func() { _ = f.Close() }()
 
+	snap, err := export.ReadJSON(f)
+	if err != nil {
+		return nil, fmt.Errorf("storage: decode %s: %w", path, err)
+	}
+	return snap, nil
+}
+
+// identityPath returns the file path for an identity-keyed cache.
+// Identity strings come straight from the consumer (e.g.
+// "SHPRM1@0.7"); we sanitise to keep them filesystem-safe across
+// Windows + POSIX.
+func (s *TreeStore) identityPath(identity string) string {
+	safe := identity
+	for _, ch := range []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|"} {
+		safe = strings.ReplaceAll(safe, ch, "_")
+	}
+	return filepath.Join(s.baseDir, "dm", safe+".json")
+}
+
+// SaveByIdentity writes a multi-slot snapshot keyed by stable device
+// identity (e.g. "SHPRM1@0.7"). Unlike Save, the same cache file is
+// reused across IP changes / re-cabling — only a Card swap or
+// firmware upgrade invalidates it.
+//
+// The snapshot's Slots may carry multiple slot dumps; the consumer
+// hot-loads each at watch start. Object values are NOT stripped here
+// (caller decides) — DM cache often wants labels + types but values
+// are consulted from live get/watch anyway.
+func (s *TreeStore) SaveByIdentity(identity string, snap *export.Snapshot) error {
+	if identity == "" {
+		return fmt.Errorf("storage: SaveByIdentity: empty identity")
+	}
+	if snap == nil {
+		return fmt.Errorf("storage: SaveByIdentity: nil snapshot")
+	}
+	path := s.identityPath(identity)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("storage: mkdir %s: %w", dir, err)
+	}
+	tmp := path + ".tmp"
+	f, err := os.Create(tmp)
+	if err != nil {
+		return fmt.Errorf("storage: create %s: %w", tmp, err)
+	}
+	if err := export.WriteJSON(f, snap); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return fmt.Errorf("storage: write: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("storage: close: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("storage: rename: %w", err)
+	}
+	return nil
+}
+
+// LoadByIdentity reads the identity-keyed cache. Returns (nil, nil)
+// on cache miss (file not present); err non-nil only on read /
+// decode failures.
+func (s *TreeStore) LoadByIdentity(identity string) (*export.Snapshot, error) {
+	if identity == "" {
+		return nil, fmt.Errorf("storage: LoadByIdentity: empty identity")
+	}
+	path := s.identityPath(identity)
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("storage: open %s: %w", path, err)
+	}
+	defer func() { _ = f.Close() }()
 	snap, err := export.ReadJSON(f)
 	if err != nil {
 		return nil, fmt.Errorf("storage: decode %s: %w", path, err)

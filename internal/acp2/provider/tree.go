@@ -31,6 +31,14 @@ type entry struct {
 	// the bare "preset" token. Used to emit pid 7 and to size the
 	// per-idx repetition of pids 8/9/10/11 in get_object replies.
 	presetDepth uint32
+
+	// presetIdxList holds the explicit u32 idx values for pid 7
+	// (preset_depth) when the canonical fixture supplies them via
+	// `idx=A,B,C` in Format. Spec example (acp2_protocol.docx
+	// §"Preset depth", line 2613-2632) uses non-contiguous values
+	// like {100, 200}. When this slice is empty, the encoder falls
+	// back to contiguous 0..presetDepth-1 — the historical behaviour.
+	presetIdxList []uint32
 }
 
 // tree is the obj-id indexed snapshot the provider serves. ACP2 obj-ids
@@ -119,15 +127,32 @@ func newTree(exp *canonical.Export) (*tree, error) {
 // obj-id index. Assigns entries with their canonical Number as obj-id;
 // each entry's `children` list is filled with the obj-ids of its
 // direct children (sufficient to serve pid=14 without re-walking).
+//
+// Per spec acp2_protocol.docx §"Requirements" line 320-332: "Disabled
+// parts of the menu are not visible to clients (not shown as children,
+// options, etc)." Entries whose canonical Format carries a `disabled`
+// token are skipped: never indexed, never appear in any pid=14
+// children list, never reachable via get_object.
+//
+// Labels run through sanitizeLabel before being stored on the entry —
+// per spec acp2_protocol.docx §"Versions" line 357: "Object labels
+// only may contain out of a-z, A-Z, 0-9, ' ' and '-'." Any character
+// outside that set is replaced with `-`; the unmodified label remains
+// on the canonical element so downstream tooling sees the original.
 func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*entry) error {
 	switch x := el.(type) {
 	case *canonical.Node:
+		// Nodes use Format only on Parameters, not on the Node header,
+		// so disabled-via-Format applies to leaves; Node-level
+		// disabled is out of canonical schema today and would need a
+		// separate field. Honour the same rule when a future schema
+		// extension adds it.
 		id := uint32(x.Number)
 		e := &entry{
 			objID:   id,
 			slot:    slot,
 			parent:  parent,
-			label:   x.Identifier,
+			label:   sanitizeLabel(x.Identifier),
 			access:  deriveAccess(x.Access),
 			objType: codec.ObjTypeNode,
 			node:    x,
@@ -138,6 +163,12 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			if err != nil {
 				return err
 			}
+			// Skip disabled children: drop from pid=14 list AND
+			// skip recursive flatten so the obj-id is never
+			// indexed.
+			if isDisabledElement(c) {
+				continue
+			}
 			e.children = append(e.children, childID)
 			if err := flatten(slot, id, c, index); err != nil {
 				return err
@@ -145,6 +176,11 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 		}
 		return nil
 	case *canonical.Parameter:
+		// Belt-and-braces: even if the parent forgets to filter,
+		// a disabled leaf still doesn't land in the index.
+		if isDisabledParameter(x) {
+			return nil
+		}
 		id := uint32(x.Number)
 		objType, numType, err := deriveACP2Type(x)
 		if err != nil {
@@ -154,12 +190,13 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			objID:       id,
 			slot:        slot,
 			parent:      parent,
-			label:       x.Identifier,
+			label:       sanitizeLabel(x.Identifier),
 			access:      deriveAccess(x.Access),
 			objType:     objType,
 			numType:     numType,
 			param:       x,
-			presetDepth: presetDepthHint(x),
+			presetDepth:   presetDepthHint(x),
+			presetIdxList: presetIdxHint(x),
 		}
 		if objType == codec.ObjTypePreset && e.presetDepth == 0 {
 			// Spec §5 requires at least one idx in pid 7 for preset children.
@@ -171,6 +208,88 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 		return nil
 	}
 	return nil
+}
+
+// isDisabledElement returns true when the element should be hidden
+// from clients per spec §"Requirements" disabled-menu rule. Today
+// only Parameter entries can carry the `disabled` Format hint;
+// Nodes always pass through.
+func isDisabledElement(el canonical.Element) bool {
+	if p, ok := el.(*canonical.Parameter); ok {
+		return isDisabledParameter(p)
+	}
+	return false
+}
+
+// isDisabledParameter checks for the `disabled` bare token in
+// Parameter.Format. Same convention as the type discriminator
+// (`preset`, `ipv4`) — a flag without a value.
+func isDisabledParameter(p *canonical.Parameter) bool {
+	for _, kv := range formatParts(p.Format) {
+		if kv == "disabled" {
+			return true
+		}
+	}
+	return false
+}
+
+// sanitizeLabel returns the spec-compliant form of an ACP2 object
+// label. Per acp2_protocol.docx §"Versions" line 357 the wire allows
+// only [A-Za-z0-9 \-]; any other character is replaced with `-`.
+//
+// Real EVS Neuron firmware emits labels like "ROOT_NODE_V2" with an
+// underscore — non-compliant per spec. Sanitising here keeps OUR
+// wire spec-clean (per `feedback_acp2_spec_pdfs_only`); the
+// canonical element is unchanged so other consumers see the
+// original.
+//
+// Returns "obj" when the input becomes empty after stripping
+// (defensive — spec mandates a non-empty label).
+func sanitizeLabel(label string) string {
+	if label == "" {
+		return "obj"
+	}
+	dirty := false
+	for _, r := range label {
+		if !isSpecLabelByte(r) {
+			dirty = true
+			break
+		}
+	}
+	if !dirty {
+		return label
+	}
+	var b strings.Builder
+	b.Grow(len(label))
+	for _, r := range label {
+		if isSpecLabelByte(r) {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('-')
+		}
+	}
+	out := b.String()
+	if out == "" || strings.Trim(out, "-") == "" {
+		return "obj"
+	}
+	return out
+}
+
+// isSpecLabelByte reports whether r is in the ACP2 §"Versions"
+// label charset: ASCII letters, digits, space, dash. Anything else
+// (including non-ASCII, underscore, dot, etc.) is non-compliant.
+func isSpecLabelByte(r rune) bool {
+	switch {
+	case r >= 'a' && r <= 'z':
+		return true
+	case r >= 'A' && r <= 'Z':
+		return true
+	case r >= '0' && r <= '9':
+		return true
+	case r == ' ' || r == '-':
+		return true
+	}
+	return false
 }
 
 // elementID returns the Header.Number of any canonical element.
@@ -385,6 +504,42 @@ func presetDepthHint(p *canonical.Parameter) uint32 {
 		}
 	}
 	return 0
+}
+
+// presetIdxHint extracts the "idx=A|B|C" attribute from
+// Parameter.Format, returning the parsed u32 values. Used by the
+// encoder to emit pid 7 (preset_depth) with the spec-allowed
+// non-contiguous idx list (e.g. {100, 200} per acp2_protocol.docx
+// §"Preset depth" line 2613-2632) instead of synthesising contiguous
+// 0..N-1.
+//
+// The pipe `|` separates idx values rather than comma, because comma
+// is the existing top-level separator between Format hints
+// (`depth=2,maxLen=16,idx=100|200`). Returns nil when the hint is
+// absent or unparseable; callers fall back to contiguous indices.
+func presetIdxHint(p *canonical.Parameter) []uint32 {
+	for _, kv := range formatParts(p.Format) {
+		if !strings.HasPrefix(kv, "idx=") {
+			continue
+		}
+		raw := strings.TrimPrefix(kv, "idx=")
+		parts := strings.Split(raw, "|")
+		out := make([]uint32, 0, len(parts))
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			var n uint32
+			if _, err := fmt.Sscanf(p, "%d", &n); err == nil {
+				out = append(out, n)
+			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
+	return nil
 }
 
 // maxLenHint extracts the "maxLen=N" attribute from Parameter.Format,

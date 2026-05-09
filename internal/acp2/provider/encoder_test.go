@@ -8,7 +8,7 @@ import (
 	"dhs/internal/acp2/codec"
 )
 
-// helper — round-trips a tree through buildProperties + EncodeProperties
+// helper â€” round-trips a tree through buildProperties + EncodeProperties
 // + DecodeProperties so we assert wire-level correctness rather than
 // just struct equality.
 func buildAndDecode(t *testing.T, e *entry) []codec.Property {
@@ -28,6 +28,12 @@ func buildAndDecode(t *testing.T, e *entry) []codec.Property {
 	return decoded
 }
 
+// TestBuildProperties_Node pins spec Â§5.1: a Node reply carries
+// EXACTLY {pid 1 obj_type, pid 2 label, pid 14 children}. No pid 3
+// access, no pid 4 event_delay â€” both are blank on the Node row of
+// Â§5.1. Verified against real Neuron obj 15364 MANAGEMENT PORT
+// (10.41.40.4 capture 2026-05-09): wire is dlen=108, 3 properties
+// only.
 func TestBuildProperties_Node(t *testing.T) {
 	n := &canonical.Node{
 		Header: canonical.Header{
@@ -42,10 +48,18 @@ func TestBuildProperties_Node(t *testing.T) {
 		node:     n,
 	}
 	got := buildAndDecode(t, e)
-	want := map[uint8]bool{codec.PIDObjectType: true, codec.PIDLabel: true,
-		codec.PIDAccess: true, codec.PIDChildren: true}
+	want := map[uint8]bool{
+		codec.PIDObjectType: true, codec.PIDLabel: true, codec.PIDChildren: true,
+	}
+	notWant := map[uint8]bool{
+		codec.PIDAccess:        true, // pid 3 â€” Node row blank
+		codec.PIDEventDelay: true, // pid 4 â€” Node row blank
+	}
 	for _, p := range got {
 		delete(want, p.PID)
+		if notWant[p.PID] {
+			t.Errorf("Node reply must not carry pid %d (spec Â§5.1 Node row blank)", p.PID)
+		}
 	}
 	if len(want) > 0 {
 		t.Errorf("missing pids: %v", want)
@@ -162,7 +176,7 @@ func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	if maxLen.PID != codec.PIDStringMaxLength {
 		t.Fatal("missing pid=6 string_max_length")
 	}
-	// pid 6 per spec §5.4: plen=6, body = u16 len + u16 pad.
+	// pid 6 per spec Â§5.4: plen=6, body = u16 len + u16 pad.
 	// After DecodeProperties, body is the 2-byte u16; pad is stripped.
 	if len(maxLen.Data) < 2 || binary.BigEndian.Uint16(maxLen.Data[0:2]) != 16 {
 		t.Errorf("maxLen data=%x want u16=16", maxLen.Data)

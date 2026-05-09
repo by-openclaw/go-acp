@@ -93,16 +93,15 @@ func TestDecodeACP2Message_Reply(t *testing.T) {
 }
 
 func TestDecodeACP2Message_Error(t *testing.T) {
-	// Simulate an error reply: type=3, mtid=2, stat=1 (invalid obj-id), pid=0
-	// Body: obj-id = 99
-	body := make([]byte, 4)
-	binary.BigEndian.PutUint32(body, 99)
-	data := append([]byte{
-		byte(ACP2TypeError), // type
-		2,                    // mtid
-		byte(ErrInvalidObjID), // stat
-		0,                    // pid
-	}, body...)
+	// Per spec §"Error" (line 1207-1250): error message is exactly the
+	// 4-byte ACP2 header. No body. Decoder must NOT synthesise ObjID
+	// from any trailing bytes.
+	data := []byte{
+		byte(ACP2TypeError),    // type
+		2,                       // mtid
+		byte(ErrInvalidObjID),   // stat (in func slot)
+		0,                       // pid
+	}
 
 	msg, err := DecodeACP2Message(data)
 	if err != nil {
@@ -114,13 +113,41 @@ func TestDecodeACP2Message_Error(t *testing.T) {
 	if ACP2ErrStatus(msg.Func) != ErrInvalidObjID {
 		t.Errorf("stat: got %d, want %d", msg.Func, ErrInvalidObjID)
 	}
-	if msg.ObjID != 99 {
-		t.Errorf("obj-id: got %d, want 99", msg.ObjID)
+	if msg.ObjID != 0 {
+		t.Errorf("obj-id=%d want 0 (spec: error has no body)", msg.ObjID)
 	}
 
 	acp2Err := msg.ToACP2Error()
 	if acp2Err == nil {
 		t.Fatal("expected non-nil error")
+	}
+}
+
+// TestDecodeACP2Message_Error_TolerantOfTrailingBytes verifies that a
+// non-compliant peer that emits an error with a body (e.g. trailing
+// obj-id) does not crash the decoder, and that ObjID remains 0
+// (never synthesised from those bytes — they may be garbage).
+func TestDecodeACP2Message_Error_TolerantOfTrailingBytes(t *testing.T) {
+	body := make([]byte, 4)
+	binary.BigEndian.PutUint32(body, 99) // bogus trailing obj-id
+	data := append([]byte{
+		byte(ACP2TypeError),
+		3,
+		byte(ErrInvalidObjID),
+		0,
+	}, body...)
+
+	msg, err := DecodeACP2Message(data)
+	if err != nil {
+		t.Fatalf("Decode: %v (decoder must tolerate trailing bytes)", err)
+	}
+	if msg.ObjID != 0 {
+		t.Errorf("obj-id=%d want 0 (decoder MUST NOT synthesise obj-id "+
+			"from trailing bytes per spec §Error)", msg.ObjID)
+	}
+	if len(msg.Body) != 4 {
+		t.Errorf("Body len=%d want 4 (trailing bytes preserved for "+
+			"caller-side compliance inspection)", len(msg.Body))
 	}
 }
 
@@ -147,13 +174,23 @@ func TestEncodeDecodeACP2Message_GetProperty(t *testing.T) {
 		t.Fatalf("Encode: %v", err)
 	}
 
-	// Should be header(4) + obj-id(4) + idx(4) + prop-header(4) = 16
-	if len(data) != 16 {
-		t.Fatalf("expected 16 bytes, got %d", len(data))
+	// Per spec §"Get property" Request (acp2_protocol.docx line 990-1020):
+	// body = obj-id (u32 BE) + idx (u32 BE). The pid is carried in ACP2
+	// header byte 3; there is NO trailing property header. Total = 12 bytes.
+	if len(data) != 12 {
+		t.Fatalf("expected 12 bytes (4 hdr + 4 obj-id + 4 idx) per spec; got %d", len(data))
 	}
 
-	// Verify the property header in the request.
-	if data[12] != PIDValue {
-		t.Errorf("prop pid: got %d, want %d", data[12], PIDValue)
+	// Verify pid in header byte 3.
+	if data[3] != PIDValue {
+		t.Errorf("ACP2 header byte 3 (pid): got %d, want %d", data[3], PIDValue)
+	}
+	// Verify obj-id at bytes 4-7.
+	if got := binary.BigEndian.Uint32(data[4:8]); got != 100 {
+		t.Errorf("obj-id: got %d, want 100", got)
+	}
+	// Verify idx at bytes 8-11.
+	if got := binary.BigEndian.Uint32(data[8:12]); got != 0 {
+		t.Errorf("idx: got %d, want 0", got)
 	}
 }

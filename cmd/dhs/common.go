@@ -245,6 +245,52 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 	return plug, cleanup, nil
 }
 
+// resolvePathFromCache tries to find an object ID from the disk cache
+// for path-based addressing. Path is a dot-separated label sequence
+// (e.g. "IDENTITY.User Label 1"); the lookup matches on the **suffix**
+// of the cached object's Path so partial parents work too. Returns
+// the ID if found, -1 otherwise.
+//
+// Avoids a full slot walk when the path is already in the cache —
+// previously the set / get verbs always issued plug.Walk(ctx, slot)
+// up-front, blocking for minutes on a 49 000-object Neuron tree.
+func resolvePathFromCache(host, proto string, slot int, path string) int {
+	if treeStore == nil || path == "" {
+		return -1
+	}
+	snap, err := treeStore.Load(host, slot)
+	if err != nil || snap == nil {
+		return -1
+	}
+	if snap.Device.Protocol != "" && snap.Device.Protocol != proto {
+		return -1
+	}
+	wanted := strings.Split(path, ".")
+	for _, sd := range snap.Slots {
+		for _, o := range sd.Objects {
+			if matchPathSuffix(o.Path, wanted) {
+				return o.ID
+			}
+		}
+	}
+	return -1
+}
+
+// matchPathSuffix reports whether wanted is a suffix of objPath
+// (element-wise, case-sensitive). Empty wanted matches nothing.
+func matchPathSuffix(objPath, wanted []string) bool {
+	if len(wanted) == 0 || len(objPath) < len(wanted) {
+		return false
+	}
+	off := len(objPath) - len(wanted)
+	for i := range wanted {
+		if objPath[off+i] != wanted[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // resolveLabelFromCache tries to find an object ID from the disk cache
 // for label-based addressing. Returns the ID if found, -1 otherwise.
 // This avoids a full walk when the label is in the disk cache.

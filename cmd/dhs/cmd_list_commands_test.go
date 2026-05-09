@@ -83,7 +83,7 @@ func TestLookupCatalogueACPKindAddressing(t *testing.T) {
 		{"acp1", "method:0", "getValue"},
 		{"acp1", "method:5", "getObject"},
 		{"acp1", "objgroup:2", "control"},
-		{"acp2", "pid:4", "announce_delay"},
+		{"acp2", "pid:4", "event_delay"},
 		{"acp2", "acp2-func:1", "get_object"},
 		{"acp2", "obj-type:0", "node"},
 	}

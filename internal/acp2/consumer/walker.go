@@ -108,6 +108,25 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 	// Parse properties from the reply.
 	obj, objType, numType, optMap, children := w.parseObjectProperties(msg.Properties, slot, objID, path)
 
+	// Stash type info on the protocol.Object via Meta so the
+	// hierarchical disk snapshot survives a round-trip and can rebuild
+	// the WalkedTree parallel arrays at hot-load time. Keys live in the
+	// "acp2." namespace to avoid colliding with cross-protocol Meta.
+	if obj.Meta == nil {
+		obj.Meta = make(map[string]any, 3)
+	}
+	obj.Meta["acp2.objType"] = uint8(objType)
+	obj.Meta["acp2.numType"] = uint8(numType)
+	if optMap != nil {
+		// Serialise as map[string]string for JSON portability — keys
+		// are u32 wire idx so we stringify on save and parse on load.
+		serialised := make(map[string]string, len(optMap))
+		for k, v := range optMap {
+			serialised[fmt.Sprintf("%d", k)] = v
+		}
+		obj.Meta["acp2.optionsMap"] = serialised
+	}
+
 	// Add to tree (skip pure node containers from the flat list — they
 	// are structural only, not addressable objects with values).
 	// Actually, node objects ARE added so users can see the tree structure.
@@ -228,6 +247,37 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 
 		case codec.PIDEventMessages:
 			obj.AlarmOnMsg, obj.AlarmOffMsg = codec.PropertyEventMessages(p)
+
+		case codec.PIDEventDelay:
+			// pid 4 event_delay per spec §5.4 row 4: data=0, plen=8,
+			// body=u32 BE rate (announce delay in milliseconds).
+			if len(p.Data) >= 4 {
+				setMeta(&obj, "acp2.announceDelay", uint64(beU32(p.Data[0:4])))
+			}
+
+		case codec.PIDPresetDepth:
+			// pid 7 preset_depth per spec §5.4 row 7: data=0,
+			// plen=4+4*depth, body=u32 BE list of valid idx values.
+			if len(p.Data) >= 4 && len(p.Data)%4 == 0 {
+				n := len(p.Data) / 4
+				idxList := make([]uint32, n)
+				for i := 0; i < n; i++ {
+					idxList[i] = beU32(p.Data[i*4 : i*4+4])
+				}
+				setMeta(&obj, "acp2.presetIdxList", idxList)
+			}
+
+		case codec.PIDEventState:
+			// pid 18 event_state per spec §5.4 row 18: inline state byte
+			// in the property header's data slot, plen=4.
+			setMeta(&obj, "acp2.eventState", p.VType)
+
+		case codec.PIDPresetParent:
+			// pid 20 preset_parent per spec §5.4 row 20: data=0, plen=8,
+			// body=u32 BE parent obj-id.
+			if len(p.Data) >= 4 {
+				setMeta(&obj, "acp2.presetParent", uint64(beU32(p.Data[0:4])))
+			}
 		}
 	}
 
@@ -406,4 +456,19 @@ func numberTypeToKind(nt codec.NumberType) protocol.ValueKind {
 	default:
 		return protocol.KindRaw
 	}
+}
+
+// setMeta writes a key/value into obj.Meta, lazily allocating the map.
+// Used by the walker to stash protocol-specific decoded values that
+// don't fit the fixed Object fields.
+func setMeta(obj *protocol.Object, key string, value any) {
+	if obj.Meta == nil {
+		obj.Meta = make(map[string]any)
+	}
+	obj.Meta[key] = value
+}
+
+// beU32 reads a big-endian uint32 from a byte slice.
+func beU32(b []byte) uint32 {
+	return binary.BigEndian.Uint32(b)
 }

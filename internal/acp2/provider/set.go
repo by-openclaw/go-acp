@@ -4,7 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+
 	"dhs/internal/acp2/codec"
+	"dhs/internal/export/canonical"
 )
 
 // applySet mutates e per an incoming set_property request and returns
@@ -35,9 +37,9 @@ func (s *server) applySet(e *entry, in *codec.Property) (codec.Property, codec.A
 		return codec.Property{}, codec.ErrNoAccess, fmt.Errorf("no write access")
 	}
 	if in.PID != codec.PIDValue {
-		// MVP only accepts writes to pid=8 (value). announce_delay
-		// (pid=4) and event_prio (pid=17) are spec-writable too but
-		// out of MVP scope.
+		// MVP only accepts writes to pid=8 (value). event_delay (pid=4)
+		// and event_priority (pid=17) are also writable per spec §5.4
+		// (RW access in property-fields matrix) but out of MVP scope.
 		return codec.Property{}, codec.ErrInvalidPID, fmt.Errorf("only pid=8 is writable in MVP")
 	}
 
@@ -124,8 +126,8 @@ func (s *server) applySetNumber(e *entry, in *codec.Property) (codec.Property, c
 	return codec.Property{}, codec.ErrInvalidValue, fmt.Errorf("number_type %d not writable", nt)
 }
 
-// applySetEnum validates the incoming index against the entry's options
-// and persists it as int64 in canonical.Parameter.Value.
+// applySetEnum validates the incoming wire idx against the entry's
+// EnumMap and persists it as int64 in canonical.Parameter.Value.
 //
 // Incoming / reply body:
 //
@@ -134,20 +136,57 @@ func (s *server) applySetNumber(e *entry, in *codec.Property) (codec.Property, c
 //	| 0      | pid   | u8     | 8 = value                                 |
 //	| 1      | vtype | u8     | reply uses NumTypeU32 (6)                 |
 //	| 2-3    | plen  | u16 BE | 8                                         |
-//	| 4-7    | idx   | u32 BE | option index; >= len(options) -> Invalid  |
+//	| 4-7    | idx   | u32 BE | option wire id; not in EnumMap -> Invalid |
 //
-// Spec reference: acp2_protocol.pdf §5.2.2 enum value
+// Real Neuron enums use sparse u32 wire ids (e.g. 641 "Main",
+// 786 "Automatic"); the option's wire idx is stored in EnumMap.Value.
+// The gate validates against the set of wire ids, NOT positional
+// 0..N-1 (which would reject every valid Set when EnumMap is sparse).
+//
+// When the canonical lacks an EnumMap (legacy comma/newline
+// Enumeration string), accept the positional 0..N-1 range as a
+// fallback so legacy fixtures keep round-tripping.
+//
+// Spec reference: acp2_protocol.pdf §4.3.4 set property + §5.2.2 enum value
 func (s *server) applySetEnum(e *entry, in *codec.Property) (codec.Property, codec.ACP2ErrStatus, error) {
 	if len(in.Data) < 4 {
 		return codec.Property{}, codec.ErrInvalidValue, fmt.Errorf("enum needs u32")
 	}
 	idx := binary.BigEndian.Uint32(in.Data[0:4])
-	opts := enumOptions(e.param)
-	if int(idx) >= len(opts) {
-		return codec.Property{}, codec.ErrInvalidValue, fmt.Errorf("enum index %d >= %d", idx, len(opts))
+	if !enumIdxValid(e.param, idx) {
+		return codec.Property{}, codec.ErrInvalidValue,
+			fmt.Errorf("enum idx %d not in EnumMap", idx)
 	}
 	e.param.Value = int64(idx)
 	return numericProp(codec.PIDValue, codec.NumTypeU32, u32Data(idx)), 0, nil
+}
+
+// enumIdxValid returns true when idx matches one of the wire ids
+// declared on the canonical's EnumMap, or — if the canonical has no
+// EnumMap — falls back to positional bounds against the legacy
+// Enumeration string.
+func enumIdxValid(p *canonical.Parameter, idx uint32) bool {
+	if len(p.EnumMap) > 0 {
+		for _, e := range p.EnumMap {
+			if uint32(e.Value) == idx {
+				return true
+			}
+		}
+		return false
+	}
+	// Legacy fallback: no EnumMap, count newline/comma-separated labels
+	// in the Enumeration string and accept idx in [0, N).
+	if p.Enumeration != nil && *p.Enumeration != "" {
+		raw := *p.Enumeration
+		n := 1
+		for _, c := range raw {
+			if c == '\n' || c == ',' {
+				n++
+			}
+		}
+		return int(idx) < n
+	}
+	return false
 }
 
 // applySetIPv4 decodes four packed octets and stores them as a dotted-quad
