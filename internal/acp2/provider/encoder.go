@@ -35,7 +35,13 @@ func buildProperties(e *entry) ([]codec.Property, error) {
 
 	props = append(props, propInline(codec.PIDObjectType, uint8(e.objType)))
 	props = append(props, propStringData0(codec.PIDLabel, e.label))
-	props = append(props, propInline(codec.PIDAccess, e.access))
+	// pid=3 access carries 1=r, 2=w, 3=rw per spec §5.4 — Parameters only.
+	// Nodes have no access; real Neuron omits pid=3 on Nodes. Emitting
+	// pid=3 with data=0 makes Cerebrum treat the subtree as inaccessible
+	// and skip the children list (verified 2026-05-08 INPUT.SDI walk).
+	if e.access != 0 {
+		props = append(props, propInline(codec.PIDAccess, e.access))
+	}
 
 	switch e.objType {
 	case codec.ObjTypeNode:
