@@ -228,6 +228,39 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 
 		case codec.PIDEventMessages:
 			obj.AlarmOnMsg, obj.AlarmOffMsg = codec.PropertyEventMessages(p)
+
+		case codec.PIDAnnounceDelay:
+			// pid 4 event_delay per spec §5.4 row 4: data=0, plen=8,
+			// body=u32 BE rate (announce delay in milliseconds).
+			if v, err := codec.PropertyU32(p); err == nil {
+				setMeta(&obj, "acp2.announceDelay", uint64(v))
+			}
+
+		case codec.PIDPresetDepth:
+			// pid 7 preset_depth per spec §5.4 row 7: data=0,
+			// plen=4+4*depth, body=u32 BE idx values list. Decode
+			// every idx for round-trip; consumers needing the list
+			// use Meta["acp2.presetIdxList"].
+			if len(p.Data)%4 == 0 && len(p.Data) > 0 {
+				idx := make([]uint32, 0, len(p.Data)/4)
+				for off := 0; off+4 <= len(p.Data); off += 4 {
+					idx = append(idx, beU32(p.Data[off:off+4]))
+				}
+				setMeta(&obj, "acp2.presetIdxList", idx)
+			}
+
+		case codec.PIDEventState:
+			// pid 18 event_state per spec §5.4 row 18: inline
+			// state byte in the property header's data slot,
+			// plen=4 (no body).
+			setMeta(&obj, "acp2.eventState", p.VType)
+
+		case codec.PIDPresetParent:
+			// pid 20 preset_parent per spec §5.4 row 20: data=0,
+			// plen=8, body=u32 BE parent obj-id.
+			if v, err := codec.PropertyU32(p); err == nil {
+				setMeta(&obj, "acp2.presetParent", uint64(v))
+			}
 		}
 	}
 
@@ -412,6 +445,23 @@ func (w *Walker) decodeConstraint(p *codec.Property, objType codec.ACP2ObjType, 
 }
 
 // numberTypeToKind maps an ACP2 NumberType to a protocol.ValueKind.
+// setMeta writes a key/value into obj.Meta, lazily allocating the map.
+// Used by the walker to stash protocol-specific decoded values that
+// don't fit the fixed Object fields (e.g. acp2.announceDelay,
+// acp2.presetIdxList — see protocol.Object docstring).
+func setMeta(obj *protocol.Object, key string, value any) {
+	if obj.Meta == nil {
+		obj.Meta = make(map[string]any)
+	}
+	obj.Meta[key] = value
+}
+
+// beU32 reads a big-endian uint32 from a byte slice. Local to this
+// package to avoid importing encoding/binary at every call site.
+func beU32(b []byte) uint32 {
+	return binary.BigEndian.Uint32(b)
+}
+
 func numberTypeToKind(nt codec.NumberType) protocol.ValueKind {
 	switch nt {
 	case codec.NumTypeS8, codec.NumTypeS16, codec.NumTypeS32, codec.NumTypeS64:
