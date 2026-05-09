@@ -521,6 +521,14 @@ type Event struct {
 	// value column so live description edits are visible.
 	Description string
 
+	// Unit is the engineering unit string for the element's value
+	// (e.g. "dBFS", "dB", "%", "Hz", "ms"). Plugins populate it from
+	// the in-memory tree at announce-decode time so the watcher can
+	// render `value unit` without a tree lookup. Empty for protocols
+	// that have no unit semantic on the wire (Probel SW-P-08/02, OSC,
+	// TSL UMD) or for objects that simply don't carry one.
+	Unit string
+
 	// Access encodes the read/write permission bits in effect at the
 	// time of the event. Bitmask: read=1, write=2, setDef=4 (matches
 	// Object.Access). Surfaced so live access changes are visible in

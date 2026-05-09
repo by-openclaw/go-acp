@@ -1871,6 +1871,7 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 			Path:        strings.Join(entry.obj.Path, "."),
 			Label:       entry.obj.Label,
 			Description: desc,
+			Unit:        entry.obj.Unit,
 			Access:      entry.obj.Access,
 			Group:       entry.obj.Group,
 			Value:       entry.obj.Value,

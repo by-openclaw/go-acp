@@ -700,9 +700,11 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		}
 
 		// Try to look up the object by (group, id) in the cached tree
-		// so the callback gets a typed value and a resolved label.
+		// so the callback gets a typed value, a resolved label, and
+		// the engineering unit (#359).
 		if obj, acpType, found := findObject(tree, msg.ObjGroup, msg.ObjID); found {
 			ev.Label = obj.Label
+			ev.Unit = obj.Unit
 			if val, derr := DecodeValueBytes(obj, acpType, msg.Value); derr == nil {
 				ev.Value = val
 				// Keep the cached tree in sync with live events so

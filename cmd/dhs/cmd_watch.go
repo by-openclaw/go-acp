@@ -288,9 +288,17 @@ func runWatch(ctx context.Context, args []string) error {
 				continue
 			}
 
-			// Parameter event — value column.
+			// Parameter event — value column. Prefer the live unit
+			// carried on ev.Unit (#359 — populated by the plugin at
+			// announce-decode time from the in-memory tree). Fall back
+			// to the disk-cache unit when the live tree didn't have the
+			// object yet (cold start before walk finishes).
 			valStr := formatValueInline(ev.Value)
-			if unit, ok := unitCache[watchCacheKey(ev.Group, ev.ID)]; ok && unit != "" {
+			unit := ev.Unit
+			if unit == "" {
+				unit = unitCache[watchCacheKey(ev.Group, ev.ID)]
+			}
+			if unit != "" {
 				valStr += " " + unit
 			}
 			// Live description + access + freshness + changes tag.
