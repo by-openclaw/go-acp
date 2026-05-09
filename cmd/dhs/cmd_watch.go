@@ -78,20 +78,20 @@ func runWatch(ctx context.Context, args []string) error {
 	defer cleanup()
 
 	// Load IP-keyed disk cache for instant label/unit resolution while
-	// walk runs. Key by watchCacheKey so ACP1 groups that re-use the
-	// same object-id space (control / status / alarm / identity / file
-	// / frame all addressable as 0..N within one slot) don't collide
+	// walk runs. Key by watchCacheKey so groups that re-use the same
+	// object-id space (control / status / alarm / identity / file /
+	// frame all addressable as 0..N within one slot) don't collide
 	// (refs #236).
 	//
-	// ACP2 deliberately skips this path — its DM cache is identity-
-	// keyed at .cache/dm/<identity>.json (DHS 2016 MasterView model,
-	// #353/#355) and is loaded into the plugin's WalkedTree directly
-	// in the block below. Letting the IP-keyed loader run for ACP2
-	// would emit a misleading "loaded N labels from cache" line backed
-	// by stale per-IP files even when the identity cache is current.
+	// ACP1 + ACP2 both skip this path — their DM caches are identity-
+	// keyed at .cache/dm/<CardName>@<HwVer>.json per DHS 2016
+	// MasterView (#353/#355/#363), loaded into each slot's tree
+	// directly in the block below. Letting the IP-keyed loader run
+	// would emit a misleading "loaded N labels from cache" line
+	// backed by stale per-IP files.
 	labelCache := map[string]string{}
 	unitCache := map[string]string{}
-	if cf.protocol != "acp2" && treeStore != nil && *slot >= 0 {
+	if cf.protocol != "acp2" && cf.protocol != "acp1" && treeStore != nil && *slot >= 0 {
 		if snap, lerr := treeStore.Load(host, *slot); lerr == nil && snap != nil {
 			for _, sd := range snap.Slots {
 				for _, o := range sd.Objects {
@@ -119,41 +119,58 @@ func runWatch(ctx context.Context, args []string) error {
 		}
 	}
 
-	// Identity-keyed DM cache hot-load (#353): probe device identity
-	// (Card Name + Hardware Version on slot 0, sub-second), look up
-	// the persisted DM by identity, and seed the plugin's in-memory
-	// tree BEFORE Subscribe fires. The announce decoder then resolves
-	// types + enum labels from frame 1 — eliminates the cold-start
-	// "idx N" gap on slot 1 watches where the fresh walk takes 30-60s.
+	// Per-card DM hot-load: each slot can host a different card, and
+	// the DM cache is keyed by card identity (CardName@HwVersion),
+	// not by device-frame. Probe each slot we plan to watch, load
+	// that slot's DM file, seed the slot's tree. Two slots holding
+	// the same card share one DM file (loaded once, seeded into
+	// multiple slot trees) — DHS 2016 MasterView model.
 	//
-	// ACP2-only — other plugins keep the IP-keyed cache today.
-	if cf.protocol == "acp2" && treeStore != nil {
+	// Protocol-agnostic — any plugin satisfying both IdentityProbe +
+	// SeedTreeFromCachedObjects participates. ACP1 + ACP2 do today
+	// (#363); Ember+ has no per-slot card concept and stays on its
+	// existing path.
+	cachedSlots := map[int]struct{}{}
+	if treeStore != nil && !walkScope.empty() {
 		if probe, hot := plug.(interface {
-			IdentityProbe(context.Context) (string, error)
+			IdentityProbe(context.Context, int) (string, error)
 			SeedTreeFromCachedObjects(slot int, objs []protocol.Object)
 		}); hot {
-			identity, perr := probe.IdentityProbe(ctx)
-			if perr == nil && identity != "" {
-				if snap, lerr := treeStore.LoadByIdentity(identity); lerr == nil && snap != nil {
-					seeded := 0
-					for _, sd := range snap.Slots {
-						probe.SeedTreeFromCachedObjects(sd.Slot, sd.Objects)
-						seeded += len(sd.Objects)
-					}
-					if seeded > 0 {
-						fmt.Fprintf(os.Stderr, "DM cache hit %q — seeded %d objects across %d slot(s)\n",
-							identity, seeded, len(snap.Slots))
-					}
+			loaded := map[string]int{} // identity -> objects (for log line)
+			seenSlots := map[int]struct{}{}
+			for _, s := range hotLoadSlots(ctx, plug, walkScope) {
+				if _, dup := seenSlots[s]; dup {
+					continue
 				}
+				seenSlots[s] = struct{}{}
+				identity, perr := probe.IdentityProbe(ctx, s)
+				if perr != nil || identity == "" {
+					continue
+				}
+				snap, lerr := treeStore.LoadByIdentity(identity)
+				if lerr != nil || snap == nil || len(snap.Slots) == 0 {
+					continue
+				}
+				probe.SeedTreeFromCachedObjects(s, snap.Slots[0].Objects)
+				loaded[identity] = len(snap.Slots[0].Objects)
+				cachedSlots[s] = struct{}{}
+				fmt.Fprintf(os.Stderr, "DM cache hit %q — seeded slot %d with %d objects\n",
+					identity, s, len(snap.Slots[0].Objects))
 			}
+			_ = loaded
 		}
 	}
 
 	// Walk in background to populate label/type cache. Announces start
-	// immediately — labels resolve as the tree fills.
-	if !walkScope.empty() {
+	// immediately — labels resolve as the tree fills. Slots that hit
+	// the DM cache above already have their tree populated; re-walking
+	// them is pure overhead — 49k+ getObject round-trips on a CONVERT
+	// Hybrid card — and starves the announce path on a single AN2/TCP
+	// socket. Drop those from the scope.
+	walkBackground := walkScope.withoutSlots(cachedSlots)
+	if !walkBackground.empty() {
 		go func() {
-			runWalkScope(ctx, plug, host, cf.protocol, walkScope)
+			runWalkScope(ctx, plug, host, cf.protocol, walkBackground)
 		}()
 	}
 
@@ -316,8 +333,8 @@ func runWatch(ctx context.Context, args []string) error {
 			}
 			fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s%s%s\n",
 				ev.Timestamp.Format("15:04:05"),
-				truncate(oid, 18),
-				truncate(ev.Path, 30),
+				oid,
+				ev.Path,
 				truncate(label, 20),
 				accessStr(ev.Access),
 				fr,
@@ -391,6 +408,31 @@ const (
 
 func (s walkScope) empty() bool { return s.mode == walkNone }
 
+// withoutSlots returns a copy of the scope with the listed slots removed.
+// walkList narrows; walkAll degrades to walkList of "every slot" — but
+// since walkAll defers slot enumeration to GetDeviceInfo, callers using
+// it will only see the filter applied if they list slots explicitly.
+// walkNone stays empty.
+func (s walkScope) withoutSlots(skip map[int]struct{}) walkScope {
+	if len(skip) == 0 || s.mode == walkNone {
+		return s
+	}
+	if s.mode != walkList {
+		return s
+	}
+	kept := make([]int, 0, len(s.slots))
+	for _, sl := range s.slots {
+		if _, drop := skip[sl]; drop {
+			continue
+		}
+		kept = append(kept, sl)
+	}
+	if len(kept) == 0 {
+		return walkScope{mode: walkNone}
+	}
+	return walkScope{mode: walkList, slots: kept}
+}
+
 // parseWalkScope folds the --slot, --slots, and --no-walk flags into a
 // single decision. Mutually exclusive combinations raise a clear error.
 func parseWalkScope(slot int, slotsArg string, noWalk bool) (walkScope, error) {
@@ -427,6 +469,35 @@ func parseWalkScope(slot int, slotsArg string, noWalk bool) (walkScope, error) {
 	return walkScope{mode: walkNone}, nil
 }
 
+// hotLoadSlots returns the slot list to hot-load DM for, derived from
+// the walk scope. walkList → the listed slots; walkAll → every present
+// slot per GetSlotInfo; walkNone → empty (no hot-load needed since no
+// subscription scope is set). Errors are best-effort: failure to read
+// device info just returns whatever's already known.
+func hotLoadSlots(ctx context.Context, plug protocol.Protocol, scope walkScope) []int {
+	switch scope.mode {
+	case walkList:
+		out := make([]int, len(scope.slots))
+		copy(out, scope.slots)
+		return out
+	case walkAll:
+		info, err := plug.GetDeviceInfo(ctx)
+		if err != nil {
+			return nil
+		}
+		out := make([]int, 0, info.NumSlots)
+		for s := 0; s < info.NumSlots; s++ {
+			si, serr := plug.GetSlotInfo(ctx, s)
+			if serr != nil || si.Status != protocol.SlotPresent {
+				continue
+			}
+			out = append(out, s)
+		}
+		return out
+	}
+	return nil
+}
+
 // runWalkScope executes the walk decision against the live plugin.
 // Errors print to stderr and do not abort other slots in the batch.
 func runWalkScope(ctx context.Context, plug protocol.Protocol, host, proto string, scope walkScope) {
@@ -454,11 +525,13 @@ func runWalkScope(ctx context.Context, plug protocol.Protocol, host, proto strin
 }
 
 // identityProber is the optional contract a Protocol plugin satisfies
-// to participate in identity-keyed MasterView caching. ACP2 implements
-// it via Plugin.IdentityProbe (Card Name + Hardware Version on slot 0).
-// ACP1 / Ember+ do not — they fall back to IP-keyed storage.
+// to participate in per-card MasterView caching. The probe walks ONE
+// slot's identity scope (Card Name + Hardware Version objects in
+// ROOT_NODE_V2.BOARD) and returns "<CardName>@<HwVer>". ACP2
+// implements it; ACP1 / Ember+ have no identity contract today and
+// fall back to IP-keyed storage.
 type identityProber interface {
-	IdentityProbe(ctx context.Context) (string, error)
+	IdentityProbe(ctx context.Context, slot int) (string, error)
 }
 
 func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto string, slot int) {
@@ -473,25 +546,22 @@ func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto s
 
 // saveSlotCache routes a walked slot to the right on-disk cache.
 //
-// ACP2 has a stable device identity probe (Card Name + Hardware Version
-// on slot 0), so its cache is keyed by identity and lives in one
-// multi-slot file at .cache/dm/<identity>.json — DHS 2016 MasterView
-// model. Walking any slot of the frame accumulates into the same file.
-// IP-keyed cache is NOT written for ACP2 (#353, #355).
+// Per DHS 2016 MasterView (#363): any plugin that satisfies the
+// identityProber contract gets one DM file per CARD identity at
+// `.cache/dm/<CardName>@<HwVer>.json`. Each file contains the schema
+// for ONE card type — single slot dump. Two slots holding the same
+// card share the same DM file (loaded once, reused). Slot index +
+// IP are NOT in the path or key.
 //
-// Other protocols (ACP1, Ember+) keep the legacy IP-keyed layout at
-// .cache/devices/<ip>/slot_<n>.json — those plugins have no identity
-// probe contract today.
+// ACP1 + ACP2 satisfy the contract today. Ember+ doesn't (no
+// per-slot card concept) and falls back to the legacy IP-keyed
+// `.cache/devices/<ip>/slot_<n>.json` layout.
 func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object) {
 	if treeStore == nil {
 		return
 	}
-	if proto == "acp2" {
-		if prober == nil {
-			fmt.Fprintf(os.Stderr, "warning: acp2 plugin missing IdentityProbe; slot %d not cached\n", slot)
-			return
-		}
-		identity, perr := prober.IdentityProbe(ctx)
+	if prober != nil {
+		identity, perr := prober.IdentityProbe(ctx, slot)
 		if perr != nil || identity == "" {
 			fmt.Fprintf(os.Stderr, "warning: identity probe failed; slot %d not cached: %v\n", slot, perr)
 			return
@@ -506,39 +576,22 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 	}
 }
 
-// saveIdentityCache loads the existing identity-keyed DM (if any),
-// merges the just-walked slot into it, and saves the result. So
-// successive walks of slot 0 then slot 1 build up a single
-// multi-slot cache file keyed by device identity.
+// saveIdentityCache writes a single-slot DM file keyed by card
+// identity. The DM is the schema of ONE card type — multi-slot
+// merging is gone (different slots can hold different cards →
+// different files; same card in multiple slots → same file written
+// once). Slot/frame composition is a runtime concern, not in the DM.
 func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, slot int, objs []protocol.Object) error {
-	existing, _ := store.LoadByIdentity(identity)
 	now := time.Now().UTC()
-	if existing == nil {
-		existing = &export.Snapshot{
-			Device:    export.DeviceInfo{IP: host, Protocol: proto},
-			Generator: "dhs dm-cache",
-			CreatedAt: now,
-		}
-	}
-	// Replace or append this slot's dump.
-	updated := false
-	for i := range existing.Slots {
-		if existing.Slots[i].Slot == slot {
-			existing.Slots[i] = export.SlotDump{
-				Slot:     slot,
-				WalkedAt: now,
-				Objects:  objs,
-			}
-			updated = true
-			break
-		}
-	}
-	if !updated {
-		existing.Slots = append(existing.Slots, export.SlotDump{
+	snap := &export.Snapshot{
+		Device:    export.DeviceInfo{IP: host, Protocol: proto},
+		Generator: "dhs dm-cache",
+		CreatedAt: now,
+		Slots: []export.SlotDump{{
 			Slot:     slot,
 			WalkedAt: now,
 			Objects:  objs,
-		})
+		}},
 	}
-	return store.SaveByIdentity(identity, existing)
+	return store.SaveByIdentity(identity, snap)
 }

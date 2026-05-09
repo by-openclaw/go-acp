@@ -9,6 +9,86 @@ import (
 	"dhs/internal/protocol"
 )
 
+// SeedTreeFromCachedObjects rebuilds an in-memory SlotTree from a
+// previously-walked + persisted snapshot and inserts it into the
+// per-slot tree cache. Mirrors the ACP2 contract so cmd/dhs/cmd_watch.go
+// can hot-load DM for both protocols via the same (probe + load + seed)
+// pattern.
+//
+// Used by the watch CLI on startup (#363): probe per-slot identity,
+// LoadByIdentity the matching DM, hand the objects to this method,
+// then Subscribe. Without this the cold-start window between Subscribe
+// firing and the background walk completing produces label-less rows.
+//
+// Re-seeding the same slot is safe — the cache Put replaces the prior
+// entry. Existing labels map is rebuilt from o.Group + o.Label.
+func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
+	p.mu.Lock()
+	if p.trees == nil {
+		p.trees = newSlotTreeCache(defaultCacheConfig().MaxSize, defaultCacheConfig().TTL)
+	}
+	cache := p.trees
+	p.mu.Unlock()
+
+	tree := &SlotTree{
+		Slot:     slot,
+		Objects:  make([]protocol.Object, 0, len(objs)),
+		ACPTypes: make([]codec.ObjectType, 0, len(objs)),
+		Labels:   make(map[string]map[string]int, 8),
+	}
+	for i, o := range objs {
+		tree.Objects = append(tree.Objects, o)
+		// ACPTypes must stay parallel to Objects so findObject's index
+		// access does not panic. Reuse the same kind→ACPType mapping
+		// the DM-library seeder uses; Meta["acp1_type"] (when persisted
+		// by browser.go) wins over the lossy Kind fallback.
+		tree.ACPTypes = append(tree.ACPTypes, kindToACPType(o.Kind, o.Meta))
+		if o.Group == "" || o.Label == "" {
+			continue
+		}
+		g, ok := tree.Labels[o.Group]
+		if !ok {
+			g = make(map[string]int, len(objs)/4+1)
+			tree.Labels[o.Group] = g
+		}
+		g[o.Label] = i
+	}
+	cache.Put(slot, tree)
+}
+
+// IdentityProbe returns the per-card MasterView identity string
+// "<Model>@<Version>" for the given slot. Wraps GetIdentity (which
+// fetches the (Model, SwRev, HwRev) triple via three fixed-pid
+// getObject calls on group=1). Same shape as ACP2's IdentityProbe
+// so cmd/dhs/cmd_watch.go treats both protocols identically (#363).
+//
+// Version selection: prefer SwRev (software / firmware revision —
+// what actually changes the schema), fall back to HwRev when SwRev
+// is empty. Per user observation 2026-05-09: "card name and product
+// version. hardware or software are available". The same product
+// across two firmware revs gets two DM files (different schemas);
+// across two hardware revs at same firmware shares one (assuming
+// the firmware exposes the same schema).
+//
+// Returns "" with err when Model is empty (NAK on Card Label probe).
+func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
+	id, err := p.GetIdentity(ctx, slot)
+	if err != nil {
+		return "", fmt.Errorf("acp1: identity probe slot=%d: %w", slot, err)
+	}
+	if id.Model == "" {
+		return "", fmt.Errorf("acp1: identity probe slot=%d: empty Model", slot)
+	}
+	ver := id.SwRev
+	if ver == "" {
+		ver = id.HwRev
+	}
+	if ver == "" {
+		return "", fmt.Errorf("acp1: identity probe slot=%d: empty Version (SwRev + HwRev) on Model=%q", slot, id.Model)
+	}
+	return fmt.Sprintf("%s@%s", id.Model, ver), nil
+}
+
 // GetIdentity probes the ACP1 identity group (group=1) for the (Model,
 // SwRev, HwRev) triple. Per spec p.20 the identity group has 8 fixed
 // IDs; we read three:

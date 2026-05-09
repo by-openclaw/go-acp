@@ -84,6 +84,85 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*WalkedTree, error) {
 	return tree, nil
 }
 
+// WalkIdentity is a targeted walk that descends only into the ROOT →
+// BOARD and ROOT → IDENTITY subtrees and returns the string-valued
+// labels found there. ~30 getObject calls instead of the 49k a full
+// Walk would do on a CONVERT Hybrid card.
+//
+// Used by IdentityProbe at watch start to read Card Name + Product
+// Version (or Hardware Version) without monopolising the AN2/TCP
+// socket and starving keepalive / announces.
+//
+// Returns a map of label → string value. Missing labels are absent
+// from the map (zero-value string would be ambiguous).
+func (w *Walker) WalkIdentity(ctx context.Context, slot int) (map[string]string, error) {
+	out := map[string]string{}
+
+	// get_object on root — try obj-id 1 first (real devices), fall back to 0.
+	rootID := uint32(1)
+	rootObj, _, _, _, rootChildren, rerr := w.getOne(ctx, slot, rootID, nil)
+	if rerr != nil {
+		rootID = 0
+		rootObj, _, _, _, rootChildren, rerr = w.getOne(ctx, slot, rootID, nil)
+		if rerr != nil {
+			return nil, fmt.Errorf("acp2 identity walk slot %d: get root: %w", slot, rerr)
+		}
+	}
+	_ = rootObj
+
+	for _, childID := range rootChildren {
+		if cerr := ctx.Err(); cerr != nil {
+			return nil, cerr
+		}
+		childObj, _, _, _, leafIDs, cerr := w.getOne(ctx, slot, childID, nil)
+		if cerr != nil {
+			continue
+		}
+		// Only descend into BOARD + IDENTITY. Skip everything else
+		// (Audio, Video, etc) — those are the 49k-object subtrees.
+		if childObj.Label != "BOARD" && childObj.Label != "IDENTITY" {
+			continue
+		}
+		for _, leafID := range leafIDs {
+			if cerr := ctx.Err(); cerr != nil {
+				return nil, cerr
+			}
+			leafObj, _, _, _, _, lerr := w.getOne(ctx, slot, leafID, nil)
+			if lerr != nil {
+				continue
+			}
+			if leafObj.Label == "" || leafObj.Value.Kind != protocol.KindString {
+				continue
+			}
+			out[leafObj.Label] = leafObj.Value.Str
+		}
+	}
+	return out, nil
+}
+
+// getOne is the underlying single-object fetch + parse used by
+// walkObject and WalkIdentity. Splitting it lets the targeted walk
+// reuse the byte-decoder without inheriting walkObject's
+// recurse-into-everything behaviour.
+func (w *Walker) getOne(ctx context.Context, slot int, objID uint32, path []string) (protocol.Object, codec.ACP2ObjType, codec.NumberType, map[uint32]string, []uint32, error) {
+	select {
+	case <-ctx.Done():
+		return protocol.Object{}, 0, 0, nil, nil, ctx.Err()
+	default:
+	}
+	msg, err := w.session.DoACP2(ctx, uint8(slot), &codec.ACP2Message{
+		Type:  codec.ACP2TypeRequest,
+		Func:  codec.ACP2FuncGetObject,
+		ObjID: objID,
+		Idx:   0,
+	})
+	if err != nil {
+		return protocol.Object{}, 0, 0, nil, nil, fmt.Errorf("get_object(%d): %w", objID, err)
+	}
+	obj, objType, numType, optMap, children := w.parseObjectProperties(msg.Properties, slot, objID, path)
+	return obj, objType, numType, optMap, children, nil
+}
+
 // walkObject fetches one object via get_object and recursively walks its children.
 // path tracks the label path from root to current node for protocol.Object.Path.
 func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []string, tree *WalkedTree) error {
@@ -144,11 +223,19 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 
 	// Recurse into children.
 	for _, childID := range children {
+		// Bail early on cancellation — without this, every pending child
+		// hits the ctx.Done() check inside walkObject, returns
+		// context.Canceled, and we log a WARN per child. On a 50k-object
+		// slot that floods the terminal with thousands of identical
+		// "child error: context canceled" lines on every Ctrl-C.
+		if cerr := ctx.Err(); cerr != nil {
+			return cerr
+		}
 		childPath := make([]string, len(obj.Path))
 		copy(childPath, obj.Path)
 		if err := w.walkObject(ctx, slot, childID, childPath, tree); err != nil {
-			// Log and continue on child errors — partial walk is better
-			// than no walk.
+			// Real child failures still log — partial walk is better
+			// than no walk. Cancellation is filtered above.
 			w.logger.Warn("acp2: walker: child error",
 				"parent_id", objID, "child_id", childID, "err", err)
 		}

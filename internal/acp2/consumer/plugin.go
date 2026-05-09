@@ -326,40 +326,50 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 	return tree.Objects, nil
 }
 
-// IdentityProbe walks slot 0 (sub-second on any Axon device) and
-// derives a stable device identity = "<CardName>@<HardwareVersion>"
-// by looking up obj labels in the ROOT_NODE_V2.BOARD subtree.
-// Returns "" with err when either label is missing or the slot 0
-// walk fails — caller should fall back to a fresh full walk.
+// IdentityProbe walks the given slot and derives a per-card identity
+// = "<CardName>@<Version>" from labels in the slot's IDENTITY /
+// BOARD subtree. Each slot can host a different card → different
+// identity → different DM file (DHS 2016 MasterView, #363).
 //
-// Why labels and not obj-ids: ACP2 obj-ids vary per product, but
-// the labels "Card Name" and "Hardware Version" are constant across
-// the Axon catalogue (verified against real Neuron 10.41.40.4 +
-// tree-fresh.json).
-func (p *Plugin) IdentityProbe(ctx context.Context) (string, error) {
-	objs, err := p.Walk(ctx, 0)
+// Version selection: prefer "Product Version" (firmware / software
+// — what actually changes the schema), fall back to "Hardware
+// Version" when Product is absent. Per user observation 2026-05-09:
+// "card name and product version" — the CONVERT Hybrid card (and
+// most newer Axon fixtures) expose Product Version in IDENTITY
+// alongside Card Name; some legacy cards only carry Hardware Version
+// in BOARD. Either is acceptable as the schema-key second component.
+//
+// Card Name is hard-required. Probe fails iff both versions and
+// Card Name are missing or the walk itself fails.
+func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
+	p.mu.Lock()
+	s := p.session
+	p.mu.Unlock()
+	if s == nil {
+		return "", protocol.ErrNotConnected
+	}
+	walker := NewWalker(s, p.logger)
+
+	// Targeted walk of BOARD + IDENTITY only — ~30 getObject calls vs
+	// 49k for a full Walk. Critical: this runs at watch start, before
+	// announces flow. A full Walk here monopolised the AN2/TCP socket
+	// on big cards (CONVERT Hybrid 49 827 objs) and triggered the
+	// keepalive dead-man at ~60 s.
+	labels, err := walker.WalkIdentity(ctx, slot)
 	if err != nil {
-		return "", fmt.Errorf("acp2: identity probe walk(slot=0): %w", err)
+		return "", fmt.Errorf("acp2: identity probe walk(slot=%d): %w", slot, err)
 	}
-	cardName := ""
-	hwVersion := ""
-	for _, o := range objs {
-		switch o.Label {
-		case "Card Name":
-			if o.Value.Kind == protocol.KindString {
-				cardName = o.Value.Str
-			}
-		case "Hardware Version":
-			if o.Value.Kind == protocol.KindString {
-				hwVersion = o.Value.Str
-			}
-		}
+	cardName := labels["Card Name"]
+	productVer := labels["Product Version"]
+	hwVer := labels["Hardware Version"]
+	if cardName == "" {
+		return "", fmt.Errorf("acp2: identity probe — missing Card Name on slot %d", slot)
 	}
-	if cardName == "" || hwVersion == "" {
-		return "", fmt.Errorf("acp2: identity probe — missing Card Name (%q) or Hardware Version (%q) on slot 0",
-			cardName, hwVersion)
+	ver := productVer
+	if ver == "" {
+		ver = hwVer
 	}
-	return fmt.Sprintf("%s@%s", cardName, hwVersion), nil
+	return fmt.Sprintf("%s@%s", cardName, ver), nil
 }
 
 // GetValue reads one object value via ACP2 get_property(pid=8).
@@ -533,6 +543,11 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 					treeIdx = ti
 					ev.Label = tobj.Label
 					ev.Unit = tobj.Unit
+					ev.Group = tobj.Group
+					ev.Access = tobj.Access
+					if len(tobj.Path) > 0 {
+						ev.Path = strings.Join(tobj.Path, ".")
+					}
 					break
 				}
 			}
