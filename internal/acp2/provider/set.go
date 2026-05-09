@@ -158,7 +158,13 @@ func (s *server) applySetEnum(e *entry, in *codec.Property) (codec.Property, cod
 			fmt.Errorf("enum idx %d not in EnumMap", idx)
 	}
 	e.param.Value = int64(idx)
-	return numericProp(codec.PIDValue, codec.NumTypeU32, u32Data(idx)), 0, nil
+	// Enum reply / announce uses vtype = NumTypePreset (9) per spec
+	// §5.2.2 "Property value type". Real Neuron emits 09 09 00 08
+	// + u32 BE on every Enum value reply (verified obj 17671/21127).
+	// Returning NumTypeU32 (6) here would make the announce body
+	// look like a Number to consumers — they'd then decode the body
+	// via Number/Uint and lose the enum-label resolution path.
+	return numericProp(codec.PIDValue, codec.NumTypePreset, u32Data(idx)), 0, nil
 }
 
 // enumIdxValid returns true when idx matches one of the wire ids

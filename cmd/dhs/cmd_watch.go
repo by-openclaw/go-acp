@@ -107,8 +107,19 @@ func runWatch(ctx context.Context, args []string) error {
 		}()
 	}
 
+	// Slot filter for the announce subscription. When the user invoked
+	// --slots N (a single slot) we propagate it to req.Slot so the
+	// subscription drops announces from any other slot. With --slot N
+	// the flag already sets *slot directly. Multi-slot --slots 1,3,7
+	// leaves the filter at -1 (no filter) — ValueRequest.Slot is a
+	// single int, so multi-slot filtering would need a Subscribe API
+	// extension; until then the user sees all slots.
+	slotFilter := *slot
+	if slotFilter < 0 && walkScope.mode == walkList && len(walkScope.slots) == 1 {
+		slotFilter = walkScope.slots[0]
+	}
 	req := protocol.ValueRequest{
-		Slot:  *slot,
+		Slot:  slotFilter,
 		Group: *group,
 		Label: *label,
 		ID:    *id,
