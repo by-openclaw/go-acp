@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -298,8 +299,19 @@ func readHierarchicalJSON(raw json.RawMessage) (*Snapshot, error) {
 // flattenJSONTree recursively walks a nested JSON map and produces flat
 // protocol.Object entries. Each leaf has "id", "kind", "value" etc.
 // Each branch is a container node with sub-keys.
+//
+// Sort the map keys before iteration so the resulting slice order is
+// deterministic. Without this, callers that compare against expected
+// positional output (e.g. validate_out_tree_test.go) flake roughly
+// 50% of CI runs because Go map iteration is randomised.
 func flattenJSONTree(tree map[string]json.RawMessage, slot int, path []string, out *[]protocol.Object) {
-	for name, raw := range tree {
+	names := make([]string, 0, len(tree))
+	for name := range tree {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		raw := tree[name]
 		curPath := append(append([]string{}, path...), name)
 
 		// Try to parse as leaf (has "id" and "kind" fields).
