@@ -68,7 +68,7 @@ Closes #
 
 **Live-LXC command + observed output** (paste verbatim):
 
-```
+```text
 dhs consumer <proto> <verb> <ip> [...]
 # expected:
 # ...
