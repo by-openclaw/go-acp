@@ -91,12 +91,12 @@ func TestACP2MessageHeader(t *testing.T) {
 	}
 }
 
-// TestACP2ErrorDecode verifies error reply decoding.
+// TestACP2ErrorDecode verifies error reply decoding per spec §"Error":
+// the message is exactly the 4-byte ACP2 header, no body. ObjID is
+// NOT populated from any trailing bytes — clients correlate via mtid.
 func TestACP2ErrorDecode(t *testing.T) {
-	// Build: type=3, mtid=2, stat=4 (no access), pid=0, body: obj-id=50
-	body := make([]byte, 4)
-	binary.BigEndian.PutUint32(body, 50)
-	data := append([]byte{3, 2, 4, 0}, body...)
+	// Spec-compliant 4-byte error: type=3, mtid=2, stat=4, pid=0.
+	data := []byte{3, 2, 4, 0}
 
 	msg, err := codec.DecodeACP2Message(data)
 	if err != nil {
@@ -105,8 +105,8 @@ func TestACP2ErrorDecode(t *testing.T) {
 	if msg.Type != codec.ACP2TypeError {
 		t.Errorf("type: got %d, want 3", msg.Type)
 	}
-	if msg.ObjID != 50 {
-		t.Errorf("obj-id: got %d, want 50", msg.ObjID)
+	if msg.ObjID != 0 {
+		t.Errorf("obj-id=%d want 0 (spec: error has no body)", msg.ObjID)
 	}
 
 	acp2Err := msg.ToACP2Error()
