@@ -127,9 +127,20 @@ func newTree(exp *canonical.Export) (*tree, error) {
 // obj-id index. Assigns entries with their canonical Number as obj-id;
 // each entry's `children` list is filled with the obj-ids of its
 // direct children (sufficient to serve pid=14 without re-walking).
+//
+// Per spec acp2_protocol.docx §"Requirements" line 320-332: "Disabled
+// parts of the menu are not visible to clients (not shown as children,
+// options, etc)." Entries whose canonical Format carries a `disabled`
+// token are skipped: never indexed, never appear in any pid=14
+// children list, never reachable via get_object.
 func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*entry) error {
 	switch x := el.(type) {
 	case *canonical.Node:
+		// Nodes use Format only on Parameters, not on the Node header,
+		// so disabled-via-Format applies to leaves; Node-level
+		// disabled is out of canonical schema today and would need a
+		// separate field. Honour the same rule when a future schema
+		// extension adds it.
 		id := uint32(x.Number)
 		e := &entry{
 			objID:   id,
@@ -146,6 +157,12 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			if err != nil {
 				return err
 			}
+			// Skip disabled children: drop from pid=14 list AND
+			// skip recursive flatten so the obj-id is never
+			// indexed.
+			if isDisabledElement(c) {
+				continue
+			}
 			e.children = append(e.children, childID)
 			if err := flatten(slot, id, c, index); err != nil {
 				return err
@@ -153,6 +170,11 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 		}
 		return nil
 	case *canonical.Parameter:
+		// Belt-and-braces: even if the parent forgets to filter,
+		// a disabled leaf still doesn't land in the index.
+		if isDisabledParameter(x) {
+			return nil
+		}
 		id := uint32(x.Number)
 		objType, numType, err := deriveACP2Type(x)
 		if err != nil {
@@ -180,6 +202,29 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 		return nil
 	}
 	return nil
+}
+
+// isDisabledElement returns true when the element should be hidden
+// from clients per spec §"Requirements" disabled-menu rule. Today
+// only Parameter entries can carry the `disabled` Format hint;
+// Nodes always pass through.
+func isDisabledElement(el canonical.Element) bool {
+	if p, ok := el.(*canonical.Parameter); ok {
+		return isDisabledParameter(p)
+	}
+	return false
+}
+
+// isDisabledParameter checks for the `disabled` bare token in
+// Parameter.Format. Same convention as the type discriminator
+// (`preset`, `ipv4`) — a flag without a value.
+func isDisabledParameter(p *canonical.Parameter) bool {
+	for _, kv := range formatParts(p.Format) {
+		if kv == "disabled" {
+			return true
+		}
+	}
+	return false
 }
 
 // elementID returns the Header.Number of any canonical element.
