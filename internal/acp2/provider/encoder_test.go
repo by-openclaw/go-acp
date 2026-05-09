@@ -138,6 +138,63 @@ func TestBuildProperties_Enum(t *testing.T) {
 	}
 }
 
+// TestBuildProperties_Enum_NonPositionalIdx verifies pid=15 (options)
+// uses the EnumMap.Value as the wire idx, not positional 0..N-1.
+// Real Axon firmware assigns sparse idx (e.g. 7="Off", 8="On"); pid=8
+// (value) and pid=9 (default) reference those wire idx values, so the
+// option records MUST carry them. Records are variable-length per
+// real-device convention (deviation from spec §5.4 row 15 fixed
+// 72-byte stride); see compliance event
+// `OptionsVariableLengthPerDeviceConvention`. Wire shape verified
+// against real-Neuron raw.an2.jsonl 2026-05-06:
+//
+//	`00000007 4f666600`        idx=7 "Off"  (8 bytes)
+//	`00000008 4f6e0000`        idx=8 "On"   (8 bytes — name "On"\0 + 1 pad)
+func TestBuildProperties_Enum_NonPositionalIdx(t *testing.T) {
+	p := &canonical.Parameter{
+		Header: canonical.Header{
+			Number: 6, Identifier: "Mute", Access: canonical.AccessReadWrite,
+		},
+		Type:  canonical.ParamEnum,
+		Value: int64(8), Default: int64(7),
+		EnumMap: []canonical.EnumEntry{
+			{Key: "Off", Value: 7},
+			{Key: "On", Value: 8},
+		},
+	}
+	e := &entry{
+		objID: 6, label: p.Identifier, access: 0x03,
+		objType: codec.ObjTypeEnum, numType: codec.NumTypeU32,
+		param: p,
+	}
+	got := buildAndDecode(t, e)
+	var optsProp codec.Property
+	for _, pr := range got {
+		if pr.PID == codec.PIDOptions {
+			optsProp = pr
+		}
+	}
+	if optsProp.PID != codec.PIDOptions {
+		t.Fatal("missing pid=15 options")
+	}
+	// Variable-length per option: each "Off"/"On" record is
+	// 4 (idx) + 3/2 (name) + 1 (NUL) + pad-to-4 = 8 bytes.
+	if got, want := len(optsProp.Data), 16; got != want {
+		t.Errorf("options body len=%d want %d (variable-length)", got, want)
+	}
+	m := codec.PropertyOptionsMap(&optsProp)
+	if m[7] != "Off" {
+		t.Errorf("idx=7 -> %q want Off", m[7])
+	}
+	if m[8] != "On" {
+		t.Errorf("idx=8 -> %q want On", m[8])
+	}
+	// Sanity: positional encoding would have produced idx=0,1.
+	if _, ok := m[0]; ok {
+		t.Errorf("positional idx=0 leaked into wire — encoder regressed to positional")
+	}
+}
+
 func TestBuildProperties_String_WithMaxLen(t *testing.T) {
 	mf := "maxLen=16"
 	p := &canonical.Parameter{
