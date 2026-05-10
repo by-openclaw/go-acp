@@ -45,6 +45,14 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.9.0](https://github.com/by-openclaw/go-acp/compare/v0.8.0...v0.9.0) (2026-05-10)
+
+
+### Features
+
+* **acp2,cli:** auto-reconnect on session loss + surface IsOnline (closes [#367](https://github.com/by-openclaw/go-acp/issues/367)) ([#371](https://github.com/by-openclaw/go-acp/issues/371)) ([1cdba73](https://github.com/by-openclaw/go-acp/commit/1cdba734ae9265fe589be331d01ff900c7b112d1))
+* **acp2:** service-layer keep-alive + populate SlotInfo.IsOnline (closes [#365](https://github.com/by-openclaw/go-acp/issues/365)) ([#366](https://github.com/by-openclaw/go-acp/issues/366)) ([55f7f81](https://github.com/by-openclaw/go-acp/commit/55f7f8183a19bf01a82f66fcf846d95218b7cbe2))
+
 ## [0.8.0](https://github.com/by-openclaw/go-acp/compare/v0.7.0...v0.8.0) (2026-05-09)
 
 
