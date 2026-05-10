@@ -12,12 +12,28 @@ Closes #
 
 - [ ] acp1
 - [ ] acp2
+- [ ] emberplus
+- [ ] probel-sw08p / probel-sw02p
+- [ ] osc / tsl / cerebrum-nb / amwa
 - [ ] transport
 - [ ] export
 - [ ] cli
 - [ ] api
 - [ ] core
 - [ ] ci / chore
+
+**Cross-protocol changes** (`cmd/dhs/*`, `internal/protocol/*`, or more than one `internal/<proto>/`): justify why the change can't be plugin-internal.
+
+## Wire evidence (protocol changes only)
+
+<!-- Per feedback_real_peer_closes_self_test: own-encoder ↔ own-decoder is NOT compliance.
+     Paste tshark / dissector output or a reference-controller capture. -->
+
+## Reference controller
+
+- [ ] Cerebrum still happy after this change
+- [ ] VSM Studio still happy after this change
+- [ ] N/A (no protocol behaviour change)
 
 ## Type
 
@@ -43,10 +59,20 @@ Closes #
 
 ## Device tested
 
+- [ ] ACP1 producer 10.100.0.102
+- [ ] ACP2 producer 10.100.0.103
 - [ ] ACP1 emulator 10.6.239.113
 - [ ] ACP2 real device 10.41.40.195
 - [ ] Other (specify)
 - [ ] No device needed (pure codec / doc change)
+
+**Live-LXC command + observed output** (paste verbatim):
+
+```text
+dhs consumer <proto> <verb> <ip> [...]
+# expected:
+# ...
+```
 
 ## Checklist
 
