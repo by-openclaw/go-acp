@@ -23,9 +23,14 @@ func runWalk(ctx context.Context, args []string) error {
 	all := fs.Bool("all", false, "walk every present slot on the device")
 	filter := fs.String("filter", "", "case-insensitive filter on output lines (like findstr /i or grep -i)")
 	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
+	tree := fs.Bool("tree", false, "render as ASCII tree instead of flat list")
+	treeDepth := fs.Int("depth", 0, "max depth from focus node (0 = unlimited; use with --tree)")
+	treeFromOID := fs.String("from-oid", "", "focus tree on object by OID (numeric ID or dotted; use with --tree)")
+	treeFromPath := fs.String("from-path", "", "focus tree on object by dotted path (use with --tree)")
+	treeASCII := fs.Bool("ascii", false, "use plain ASCII tree characters instead of Unicode box-drawing")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> walk <host> (--slot N | --all) [--path SEG.SEG] [--filter STR]")
+		return fmt.Errorf("usage: dhs consumer <proto> walk <host> (--slot N | --all) [--path SEG.SEG] [--filter STR] [--tree [--depth N] [--from-oid OID | --from-path SEG.SEG] [--ascii]]")
 	}
 	_ = fs.Parse(rest)
 	// Ember+ has no slot concept (spec: single flat tree per provider);
@@ -52,9 +57,11 @@ func runWalk(ctx context.Context, args []string) error {
 	// Stream objects as they're discovered during walk — don't wait for
 	// the full tree before printing. Essential for large slots (4190+ objects).
 	// ACP1 doesn't support streaming, so we fall back to printSlotTree after.
+	// --tree needs the complete walked list to build the parent/child graph,
+	// so streaming is disabled in tree mode.
 	streaming := false
 	filterLower := strings.ToLower(*filter)
-	if p, ok := plug.(interface{ SetWalkProgress(acp2.WalkProgressFunc) }); ok {
+	if p, ok := plug.(interface{ SetWalkProgress(acp2.WalkProgressFunc) }); ok && !*tree {
 		streaming = true
 		p.SetWalkProgress(func(count int, obj *protocol.Object) {
 			if obj.Kind == protocol.KindRaw && obj.Label == "" {
@@ -119,7 +126,18 @@ func runWalk(ctx context.Context, args []string) error {
 			prober, _ := plug.(identityProber)
 			saveSlotCache(ctx, prober, host, cf.protocol, s, objs)
 			objs = filterByPath(objs, pathSegs)
-			if !streaming {
+			if *tree {
+				fmt.Printf("\nslot %d — %d objects\n\n", s, len(objs))
+				if err := renderTree(os.Stdout, objs, treeRenderOpts{
+					FromOID:  *treeFromOID,
+					FromPath: *treeFromPath,
+					Depth:    *treeDepth,
+					ASCII:    *treeASCII,
+					Filter:   *filter,
+				}); err != nil {
+					fmt.Fprintf(os.Stderr, "slot %d: %v\n", s, err)
+				}
+			} else if !streaming {
 				printSlotTree(s, objs, *filter)
 			} else {
 				fmt.Printf("\nslot %d — %d objects\n", s, len(objs))
@@ -140,7 +158,18 @@ func runWalk(ctx context.Context, args []string) error {
 	prober, _ := plug.(identityProber)
 	saveSlotCache(ctx, prober, host, cf.protocol, *slot, objs)
 	objs = filterByPath(objs, pathSegs)
-	if !streaming {
+	if *tree {
+		fmt.Printf("\nslot %d — %d objects\n\n", *slot, len(objs))
+		if err := renderTree(os.Stdout, objs, treeRenderOpts{
+			FromOID:  *treeFromOID,
+			FromPath: *treeFromPath,
+			Depth:    *treeDepth,
+			ASCII:    *treeASCII,
+			Filter:   *filter,
+		}); err != nil {
+			return err
+		}
+	} else if !streaming {
 		printSlotTree(*slot, objs, *filter)
 	} else {
 		fmt.Printf("\nslot %d — %d objects\n", *slot, len(objs))
