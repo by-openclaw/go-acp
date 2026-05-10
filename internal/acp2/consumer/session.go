@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"dhs/internal/protocol"
@@ -68,6 +69,21 @@ type Session struct {
 	// after Connect; nil-safe to leave unset (unit tests that only
 	// exercise codec primitives).
 	profile *compliance.Profile
+
+	// lastRxNS tracks the wall-clock UnixNano of the most recent frame
+	// received on this session — read lock-free by SessionHealth /
+	// SessionLive (#365). Updated by readLoop on every frame regardless
+	// of type, so announces, replies, and keep-alive responses all
+	// refresh liveness.
+	lastRxNS atomic.Int64
+
+	// slotLastSeen records the wall-clock time we last had wire evidence
+	// of a particular slot's status (handshake AN2 GetSlotInfo or a
+	// keep-alive probe of that slot). Used to populate
+	// protocol.SlotInfo.LiveAt without inventing a per-slot timestamp
+	// elsewhere. Lock around mu (already taken when slotStatus is
+	// touched).
+	slotLastSeen []time.Time
 }
 
 // AnnounceFunc is the callback signature for ACP2 announce subscriptions.
@@ -205,6 +221,7 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 	// We query slots 0..N to cover the controller + all cards.
 	totalSlots := s.numSlots + 1 // include slot 0 (controller)
 	s.slotStatus = make([]protocol.SlotStatus, totalSlots)
+	s.slotLastSeen = make([]time.Time, totalSlots)
 	for slot := 0; slot < totalSlots; slot++ {
 		s.logger.Debug("acp2: AN2 GetSlotInfo", "slot", slot)
 		// AN2 spec §3.3.3: dlen=1 (just funcID). Slot is in the AN2 header,
@@ -218,6 +235,7 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 		// Spec §3.3.3 p. 9. Status is at reply[1], not reply[0].
 		if len(reply) >= 2 {
 			s.slotStatus[slot] = protocol.SlotStatus(reply[1])
+			s.slotLastSeen[slot] = time.Now()
 			s.logger.Debug("acp2: slot info", "slot", slot, "status", reply[1],
 				"raw", fmt.Sprintf("%x", reply))
 		}
@@ -426,6 +444,10 @@ func (s *Session) readLoop() {
 			s.closeErr = err
 			return
 		}
+
+		// Touch lastRx on every frame so SessionLive / dead-man see
+		// announces, replies, AND keep-alive probe answers (#365).
+		s.lastRxNS.Store(time.Now().UnixNano())
 
 		// Record raw frame for capture (includes announces — tests need them).
 		if s.recorder != nil {
@@ -712,14 +734,60 @@ func isClosedErr(err error) bool {
 }
 
 // SlotInfoFromAN2 returns the SlotInfo as known from the AN2 handshake.
+// Populates Status (raw byte), State (semantic enum), and LiveAt
+// (timestamp of the last GetSlotInfo reply that touched this slot).
+// IsOnline is left for the Plugin to derive — it depends on
+// SessionLive() which the Session itself doesn't expose.
 func (s *Session) SlotInfoFromAN2(slot int) protocol.SlotInfo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	si := protocol.SlotInfo{Slot: slot}
 	if slot >= 0 && slot < len(s.slotStatus) {
 		si.Status = s.slotStatus[slot]
+		si.State = si.Status.State()
+	}
+	if slot >= 0 && slot < len(s.slotLastSeen) {
+		si.LiveAt = s.slotLastSeen[slot]
 	}
 	return si
+}
+
+// LastRx is the wall-clock time of the last frame received on this
+// session. Lock-free atomic load; zero when nothing has been received
+// yet.
+func (s *Session) LastRx() time.Time {
+	ns := s.lastRxNS.Load()
+	if ns == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, ns)
+}
+
+// MarkSlotProbed updates the per-slot lastSeen timestamp and (when
+// status is non-nil) the slot's wire-level status byte. Called by the
+// keep-alive prober after a successful AN2 GetSlotInfo. Allocates the
+// slot tables on first call if the handshake didn't run yet
+// (defensive — handshake should always run before keep-alive starts).
+func (s *Session) MarkSlotProbed(slot int, status *protocol.SlotStatus) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if slot < 0 {
+		return
+	}
+	if slot >= len(s.slotStatus) {
+		extended := make([]protocol.SlotStatus, slot+1)
+		copy(extended, s.slotStatus)
+		s.slotStatus = extended
+	}
+	if slot >= len(s.slotLastSeen) {
+		extended := make([]time.Time, slot+1)
+		copy(extended, s.slotLastSeen)
+		s.slotLastSeen = extended
+	}
+	if status != nil {
+		s.slotStatus[slot] = *status
+	}
+	s.slotLastSeen[slot] = time.Now()
 }
 
 // Host returns the connected host IP.

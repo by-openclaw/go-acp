@@ -64,6 +64,15 @@ type Plugin struct {
 	// session. See compliance_events.go for the catalog. Nil until
 	// Connect fires; callers read via ComplianceProfile().
 	profile *compliance.Profile
+
+	// kaCfg captures the operator's --keepalive / --keepalive-timeout
+	// choice (set via SetKeepAlive). Zero values mean "use plugin
+	// defaults"; sentinel constants disable the prober / watchdog.
+	kaCfg protocol.KeepAliveConfig
+
+	// ka is the running keep-alive state when a session is up; nil
+	// before Connect and after Disconnect.
+	ka *keepAliveState
 }
 
 // SeedTreeFromCachedObjects rebuilds an in-memory WalkedTree from a
@@ -240,6 +249,11 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.subHandles = make(map[subKey]int)
 	p.profile = &compliance.Profile{}
 	s.SetProfile(p.profile)
+	// Start the keep-alive prober + watchdog (mirrors ACP1).
+	// context.Background() is intentional: the keepalive lives for the
+	// life of the session, not the caller's Connect ctx — we cancel
+	// via p.ka.done from Disconnect.
+	p.startKeepAlive(context.Background())
 	return nil
 }
 
@@ -251,6 +265,9 @@ func (p *Plugin) Disconnect() error {
 	if p.session == nil {
 		return nil
 	}
+	// Stop keep-alive before closing the socket so the prober's
+	// in-flight request doesn't race with conn.Close.
+	p.stopKeepAlive()
 	err := p.session.Disconnect()
 	p.session = nil
 	p.walker = nil
@@ -278,7 +295,20 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error)
 	}, nil
 }
 
-// GetSlotInfo returns the slot status as known from the AN2 handshake.
+// GetSlotInfo returns the slot status as known from the AN2 handshake
+// + keep-alive probes. Status is the wire-level byte; State is the
+// semantic enum; LiveAt is the timestamp of the most recent probe or
+// handshake reply that touched this slot; IsOnline is the derived
+// "really online" boolean (#365):
+//
+//	IsOnline = (State == SlotStatePresent) AND SessionLive()
+//
+// When the operator pulls a card, the next 5 s keep-alive probe sees
+// the wire `stat` change → State updates → IsOnline flips false. When
+// the AN2/TCP session goes silent past the dead-man window, SessionLive
+// flips false → IsOnline flips false for every slot regardless of
+// last-known State. This matches Cerebrum + VSM Studio behaviour
+// (amber, read-only) on disconnect and slot-pull events.
 func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, error) {
 	p.mu.Lock()
 	s := p.session
@@ -287,7 +317,8 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, 
 		return protocol.SlotInfo{}, protocol.ErrNotConnected
 	}
 
-	si := s.SlotInfoFromAN2(slot)
+	si := s.SlotInfoFromAN2(slot) // populates Status, State, LiveAt
+	si.IsOnline = si.State == protocol.SlotStatePresent && p.SessionLive()
 
 	// If the slot has been walked, add identity from the tree.
 	tree, _ := p.trees.Get(slot)
