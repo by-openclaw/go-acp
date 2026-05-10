@@ -48,11 +48,24 @@ type Plugin struct {
 	session *Session
 	walker  *Walker
 
-	// trees caches the walked object tree per slot (LRU + TTL).
+	// host + port preserve the last successful Connect target so the
+	// reconnect goroutine knows where to re-dial after session loss.
+	host string
+	port int
+
+	// trees caches walked / DM-seeded object trees per slot (LRU,
+	// no TTL — see Connect for the reasoning).
 	trees *walkedTreeCache
 
-	// Announce subscription tracking.
-	subHandles map[subKey]int // subKey → session announce subscription ID
+	// activeSubs survives reconnects: each entry holds the operator's
+	// (req, fn) plus the current session's subscription handle. On
+	// reconnect, sessionID is refreshed by re-registering the closure
+	// on the new session.
+	activeSubs map[subKey]*activeSubscription
+
+	// rc owns the warm-restart watcher goroutine. nil before Connect
+	// and after Disconnect; non-nil between.
+	rc *reconnectState
 
 	// Optional traffic capture.
 	recorder *transport.Recorder
@@ -93,7 +106,7 @@ type Plugin struct {
 func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
 	p.mu.Lock()
 	if p.trees == nil {
-		p.trees = newWalkedTreeCache(32, 10*time.Minute)
+		p.trees = newWalkedTreeCache(32, 0)
 	}
 	cache := p.trees
 	p.mu.Unlock()
@@ -206,6 +219,16 @@ func reqToSubKey(req protocol.ValueRequest) subKey {
 	return subKey{req.Slot, req.Label, req.ID}
 }
 
+// activeSubscription holds one operator-issued Subscribe across the
+// lifetime of the Plugin. Survives session loss: req + fn are stable;
+// sessionID is refreshed each reconnect by registering the closure on
+// the new session.
+type activeSubscription struct {
+	req       protocol.ValueRequest
+	fn        protocol.EventFunc
+	sessionID int
+}
+
 // SetRecorder attaches a traffic recorder. Call before Connect.
 func (p *Plugin) SetRecorder(rec *transport.Recorder) {
 	p.mu.Lock()
@@ -245,8 +268,20 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.session = s
 	p.walker = NewWalker(s, p.logger)
 	p.walker.OnProgress = p.walkProgress
-	p.trees = newWalkedTreeCache(32, 10*time.Minute)
-	p.subHandles = make(map[subKey]int)
+	p.host = ip
+	p.port = port
+	if p.trees == nil {
+		// TTL=0 → never expire. ACP2 schema is immutable for the
+		// session; the cache is the only label/type source after a
+		// DM-cache seed, and reconnect cycles can run minutes — long
+		// enough to age out a 10-min TTL and silently degrade
+		// post-reconnect announces to bare IDs (no path / label /
+		// access). LRU bound (32) still caps memory.
+		p.trees = newWalkedTreeCache(32, 0)
+	}
+	if p.activeSubs == nil {
+		p.activeSubs = make(map[subKey]*activeSubscription)
+	}
 	p.profile = &compliance.Profile{}
 	s.SetProfile(p.profile)
 	// Start the keep-alive prober + watchdog (mirrors ACP1).
@@ -254,6 +289,10 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	// life of the session, not the caller's Connect ctx — we cancel
 	// via p.ka.done from Disconnect.
 	p.startKeepAlive(context.Background())
+	// Start the warm-restart watcher. Idempotent — no-op on reconnect
+	// path (the goroutine is already running and will simply observe
+	// the new session via p.session on its next loop iteration).
+	p.startReconnectLoop()
 	return nil
 }
 
@@ -265,8 +304,9 @@ func (p *Plugin) Disconnect() error {
 	if p.session == nil {
 		return nil
 	}
-	// Stop keep-alive before closing the socket so the prober's
-	// in-flight request doesn't race with conn.Close.
+	// Stop the warm-restart watcher first so it doesn't try to redial
+	// during teardown. Then keep-alive, then the socket itself.
+	p.stopReconnectLoop()
 	p.stopKeepAlive()
 	err := p.session.Disconnect()
 	p.session = nil
@@ -274,7 +314,7 @@ func (p *Plugin) Disconnect() error {
 	if p.trees != nil {
 		p.trees.Clear()
 	}
-	p.subHandles = nil
+	p.activeSubs = nil
 	return err
 }
 
@@ -536,20 +576,57 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	return protocol.Value{Kind: protocol.KindRaw, Raw: msg.Body}, nil
 }
 
-// Subscribe registers a callback for ACP2 announces matching req.
+// Subscribe registers a callback for ACP2 announces matching req. The
+// (req, fn) pair is stored in p.activeSubs so it survives session loss
+// — on reconnect, the same closure is re-registered on the new session
+// (see reconnectOnce).
 func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
 	p.mu.Lock()
 	s := p.session
-	p.mu.Unlock()
 	if s == nil {
+		p.mu.Unlock()
 		return protocol.ErrNotConnected
 	}
+	if p.activeSubs == nil {
+		p.activeSubs = make(map[subKey]*activeSubscription)
+	}
+	sub := &activeSubscription{req: req, fn: fn}
+	sub.sessionID = s.SubscribeAnnounces(p.buildAnnounceClosure(req, fn))
+	p.activeSubs[reqToSubKey(req)] = sub
+	p.mu.Unlock()
+	return nil
+}
 
+// Unsubscribe removes a previously registered Subscribe.
+func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
+	p.mu.Lock()
+	s := p.session
+	key := reqToSubKey(req)
+	sub, ok := p.activeSubs[key]
+	if ok {
+		delete(p.activeSubs, key)
+	}
+	p.mu.Unlock()
+
+	if ok && s != nil {
+		s.UnsubscribeAnnounces(sub.sessionID)
+	}
+	return nil
+}
+
+// buildAnnounceClosure produces the AnnounceFunc that filters incoming
+// announces by req and invokes fn with a decoded protocol.Event.
+// Extracted so reconnectOnce can re-register the same shape against a
+// fresh session without re-running Subscribe (which would also re-emit
+// the activeSubs bookkeeping). The closure captures p, req, fn — none
+// of which change on reconnect, so the same logic applies before and
+// after.
+func (p *Plugin) buildAnnounceClosure(req protocol.ValueRequest, fn protocol.EventFunc) AnnounceFunc {
 	slot := req.Slot
 	wantID := req.ID
 	wantLabel := req.Label
 
-	id := s.SubscribeAnnounces(func(annSlot uint8, msg *codec.ACP2Message) {
+	return func(annSlot uint8, msg *codec.ACP2Message) {
 		if slot >= 0 && int(annSlot) != slot {
 			return
 		}
@@ -620,28 +697,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		}
 
 		fn(ev)
-	})
-
-	p.mu.Lock()
-	p.subHandles[reqToSubKey(req)] = id
-	p.mu.Unlock()
-	return nil
-}
-
-// Unsubscribe removes a previously registered Subscribe.
-func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
-	p.mu.Lock()
-	s := p.session
-	id, ok := p.subHandles[reqToSubKey(req)]
-	if ok {
-		delete(p.subHandles, reqToSubKey(req))
 	}
-	p.mu.Unlock()
-
-	if ok && s != nil {
-		s.UnsubscribeAnnounces(id)
-	}
-	return nil
 }
 
 // ---- Internal helpers ----

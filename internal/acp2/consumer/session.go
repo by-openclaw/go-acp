@@ -397,7 +397,7 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 	if err != nil {
 		return err
 	}
-	s.logger.Debug("acp2: sendFrame",
+	s.logger.Debug("acp2: tx",
 		"proto", f.Proto, "slot", f.Slot, "mtid", f.MTID, "type", f.Type,
 		"frame_hex", fmt.Sprintf("%x", data))
 
@@ -437,9 +437,9 @@ func (s *Session) readLoop() {
 		frame, err := codec.ReadAN2Frame(conn)
 		if err != nil {
 			if err == io.EOF || isClosedErr(err) {
-				s.logger.Debug("acp2: reader: connection closed")
+				s.logger.Debug("acp2: rx: connection closed")
 			} else {
-				s.logger.Debug("acp2: reader: connection closed", "err", err)
+				s.logger.Debug("acp2: rx: connection closed", "err", err)
 			}
 			s.closeErr = err
 			return
@@ -462,7 +462,7 @@ func (s *Session) readLoop() {
 			len(frame.Payload) >= 1 &&
 			frame.Payload[0] == byte(codec.ACP2TypeAnnounce)
 		if !isAnnounce {
-			s.logger.Debug("acp2: reader: frame",
+			s.logger.Debug("acp2: rx",
 				"proto", frame.Proto, "slot", frame.Slot,
 				"mtid", frame.MTID, "type", frame.Type,
 				"dlen", len(frame.Payload),
@@ -475,7 +475,7 @@ func (s *Session) readLoop() {
 		case codec.AN2ProtoACP2:
 			s.handleACP2Frame(frame)
 		default:
-			s.logger.Debug("acp2: reader: ignoring frame with proto", "proto", frame.Proto)
+			s.logger.Debug("acp2: rx: ignoring frame with proto", "proto", frame.Proto)
 		}
 	}
 }
@@ -536,15 +536,10 @@ func (s *Session) handleACP2Frame(f *codec.AN2Frame) {
 	}
 
 	if msg.Type == codec.ACP2TypeAnnounce {
-		// Announce debug: include first 20 bytes hex for diagnosis.
-		hexDump := fmt.Sprintf("%x", f.Payload)
-		if len(hexDump) > 40 {
-			hexDump = hexDump[:40] + "..."
-		}
-		s.logger.Debug("acp2: announce",
-			"slot", f.Slot, "obj_id", msg.ObjID, "pid", msg.PID,
-			"props", len(msg.Properties), "dlen", len(f.Payload), "hex", hexDump)
-		// Fan out to all subscribers.
+		// Announces fan out silently — per `feedback_logging` they're
+		// the high-volume hot path and the watch verb already prints
+		// every dispatched event with full decoding. Logging here
+		// would double-print and truncate the wire bytes besides.
 		s.annMu.Lock()
 		subs := make([]AnnounceFunc, 0, len(s.annSubs))
 		for _, fn := range s.annSubs {
