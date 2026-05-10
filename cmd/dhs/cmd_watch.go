@@ -71,7 +71,7 @@ func runWatch(ctx context.Context, args []string) error {
 	}
 	enricher := newHotPlugEnricher(resolver, *autoWalkOnPlug, os.Stdout)
 
-	plug, cleanup, err := connect(ctx, host, cf)
+	plug, cleanup, err := connectWithRetry(ctx, host, cf)
 	if err != nil {
 		return err
 	}

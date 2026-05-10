@@ -39,7 +39,7 @@ func runInfo(ctx context.Context, args []string) error {
 			fmt.Printf("  slot %2d   <error: %v>\n", slot, err)
 			continue
 		}
-		fmt.Printf("  slot %2d   %s\n", slot, si.Status)
+		fmt.Printf("  slot %2d   status=%-10s online=%t\n", slot, si.Status, si.IsOnline)
 	}
 	return nil
 }

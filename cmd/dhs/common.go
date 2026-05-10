@@ -245,6 +245,49 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 	return plug, cleanup, nil
 }
 
+// connectWithRetry wraps connect() with the same exponential backoff
+// the per-plugin warm-restart watcher uses (1s → 2s → 4s → 8s → 16s →
+// 30s cap). Used by long-running verbs like `watch` so the operator can
+// launch them before the producer is up — they wait, log progress, and
+// transparently proceed once the server appears. Bails on ctx cancel
+// (Ctrl-C); never bails on transport error alone.
+//
+// One-shot verbs (info, walk, get, set, health) keep the fail-fast
+// connect() so a typo'd IP doesn't hang forever.
+func connectWithRetry(ctx context.Context, host string, cf *commonFlags) (protocol.Protocol, func(), error) {
+	const (
+		initial = 1 * time.Second
+		cap_    = 30 * time.Second
+	)
+	delay := initial
+	attempt := 0
+	for {
+		attempt++
+		plug, cleanup, err := connect(ctx, host, cf)
+		if err == nil {
+			if attempt > 1 {
+				fmt.Fprintf(os.Stderr, "connect: succeeded on attempt %d\n", attempt)
+			}
+			return plug, cleanup, nil
+		}
+		if ctx.Err() != nil {
+			return nil, nil, ctx.Err()
+		}
+		fmt.Fprintf(os.Stderr, "connect: attempt %d failed: %v (retry in %s)\n",
+			attempt, err, delay)
+
+		select {
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		case <-time.After(delay):
+		}
+		delay *= 2
+		if delay > cap_ {
+			delay = cap_
+		}
+	}
+}
+
 // resolvePathFromCache tries to find an object ID from the disk cache
 // for path-based addressing. Path is a dot-separated label sequence
 // (e.g. "IDENTITY.User Label 1"); the lookup matches on the **suffix**
