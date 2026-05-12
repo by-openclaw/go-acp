@@ -91,11 +91,17 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 	for _, dump := range s.Slots {
 		// Make sure the plugin has a fresh tree for this slot so
 		// SetValue can resolve labels and encode values.
-		if _, err := plug.Walk(ctx, dump.Slot); err != nil {
-			rep.Failures = append(rep.Failures,
-				fmt.Sprintf("slot %d walk failed: %v", dump.Slot, err))
-			rep.Failed += len(dump.Objects)
-			continue
+		//
+		// In dry-run we never call SetValue, so the walk is dead weight —
+		// for ACP2 slot 1 it would be thousands of get_object round-trips
+		// just to print "would write". Skip it entirely on dry-run.
+		if !dryRun {
+			if _, err := plug.Walk(ctx, dump.Slot); err != nil {
+				rep.Failures = append(rep.Failures,
+					fmt.Sprintf("slot %d walk failed: %v", dump.Slot, err))
+				rep.Failed += len(dump.Objects)
+				continue
+			}
 		}
 
 		for _, obj := range dump.Objects {
