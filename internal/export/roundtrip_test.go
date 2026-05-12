@@ -116,6 +116,72 @@ func TestCSV_RoundTrip(t *testing.T) {
 	}
 }
 
+// Writer emits "." as the path separator (matches Ember+ OID and the
+// importer's req.Path resolver — see feedback_path_separator).
+func TestCSV_Writer_UsesDotSeparator(t *testing.T) {
+	snap := &export.Snapshot{
+		Device: export.DeviceInfo{Protocol: "acp2"},
+		Slots: []export.SlotDump{{
+			Slot: 1,
+			Objects: []protocol.Object{{
+				Slot: 1, ID: 67604,
+				Path:  []string{"ROOT-NODE-V2", "OUTPUT", "IP", "VIDEO", "STREAM 1", "LEG 1", "Destination IP"},
+				Label: "Destination IP", Kind: protocol.KindString, Access: 3,
+				Value: protocol.Value{Kind: protocol.KindString, Str: "239.129.1.20"},
+			}},
+		}},
+	}
+	var buf bytes.Buffer
+	if err := export.WriteCSV(&buf, snap); err != nil {
+		t.Fatalf("WriteCSV: %v", err)
+	}
+	out := buf.String()
+	if !bytes.Contains(buf.Bytes(), []byte("ROOT-NODE-V2.OUTPUT.IP.VIDEO.STREAM 1.LEG 1.Destination IP")) {
+		t.Errorf("expected dot-separated path in CSV, got: %s", out)
+	}
+	if bytes.Contains(buf.Bytes(), []byte("ROOT-NODE-V2/OUTPUT")) {
+		t.Errorf("CSV still emits slash-separated path: %s", out)
+	}
+}
+
+// Reader accepts the new "." separator (primary).
+func TestCSV_Reader_AcceptsDotSeparator(t *testing.T) {
+	csv := "ip,protocol,slot,oid,path,id,label,kind,access,value,value_name,unit,min,max,step,default,enum_items,max_len,alarm_priority,alarm_tag,alarm_on,alarm_off,slot_status\n" +
+		"10.100.0.103,acp2,1,,ROOT-NODE-V2.OUTPUT.IP.VIDEO.STREAM 1.LEG 1.Destination IP,67604,Destination IP,string,RW-,239.129.1.20,,,,,,,256,,,,,\n"
+	got, err := export.ReadCSV(bytes.NewReader([]byte(csv)))
+	if err != nil {
+		t.Fatalf("ReadCSV: %v", err)
+	}
+	if len(got.Slots) != 1 || len(got.Slots[0].Objects) != 1 {
+		t.Fatalf("got %d slots / %d objects, want 1/1", len(got.Slots), len(got.Slots[0].Objects))
+	}
+	o := got.Slots[0].Objects[0]
+	if len(o.Path) != 7 {
+		t.Fatalf("dot-split path: got %d segments, want 7 (%v)", len(o.Path), o.Path)
+	}
+	if o.Path[4] != "STREAM 1" {
+		t.Errorf("segment[4] preserves space: got %q, want %q", o.Path[4], "STREAM 1")
+	}
+}
+
+// Reader still accepts the legacy "/" separator so CSVs exported before
+// #419 keep importing cleanly.
+func TestCSV_Reader_BackwardCompat_SlashSeparator(t *testing.T) {
+	csv := "ip,protocol,slot,oid,path,id,label,kind,access,value,value_name,unit,min,max,step,default,enum_items,max_len,alarm_priority,alarm_tag,alarm_on,alarm_off,slot_status\n" +
+		"10.100.0.103,acp2,1,,ROOT-NODE-V2/OUTPUT/IP/VIDEO/STREAM 1/LEG 1/Destination IP,67604,Destination IP,string,RW-,239.129.1.20,,,,,,,256,,,,,\n"
+	got, err := export.ReadCSV(bytes.NewReader([]byte(csv)))
+	if err != nil {
+		t.Fatalf("ReadCSV: %v", err)
+	}
+	o := got.Slots[0].Objects[0]
+	if len(o.Path) != 7 {
+		t.Fatalf("slash-split path: got %d segments, want 7 (%v)", len(o.Path), o.Path)
+	}
+	if o.Path[6] != "Destination IP" {
+		t.Errorf("segment[6]: got %q, want %q", o.Path[6], "Destination IP")
+	}
+}
+
 func TestAllFormats_SameObjectCount(t *testing.T) {
 	snap := sampleSnapshot()
 

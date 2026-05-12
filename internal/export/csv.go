@@ -118,13 +118,15 @@ func buildCSVRow(dev DeviceInfo, slot SlotDump, o protocol.Object) []string {
 	return row
 }
 
-// joinPath renders the object's Path slice as a slash-separated string.
-// For ACP1 (single-level) this is usually just "control" / "status" /
-// "identity" / "alarm" / "frame". Falls back to the legacy Group field
-// when Path is empty, so this works during the transition before ACP2.
+// joinPath renders the object's Path slice as a dot-separated string —
+// same convention as Ember+ OID, the importer's req.Path resolver, and
+// watch event paths (see feedback_path_separator). For ACP1 (single-
+// level) this is usually just "control" / "status" / "identity" /
+// "alarm" / "frame". Falls back to the legacy Group field when Path is
+// empty.
 func joinPath(o protocol.Object) string {
 	if len(o.Path) > 0 {
-		return strings.Join(o.Path, "/")
+		return strings.Join(o.Path, ".")
 	}
 	return o.Group
 }
