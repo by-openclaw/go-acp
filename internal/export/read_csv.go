@@ -62,12 +62,18 @@ func ReadCSV(r io.Reader) (*Snapshot, error) {
 		if pathStr == "" {
 			pathStr = col(row, idx, "group")
 		}
-		// Split slash-separated path back into segments for ACP2
-		// hierarchical import (e.g. "ROOT_NODE_V2/PSU/1/Present").
+		// Split path back into segments for ACP2 hierarchical import
+		// (e.g. "ROOT_NODE_V2.PSU.1.Present"). Primary separator is "."
+		// (matches Ember+ OID + memory rule feedback_path_separator);
+		// "/" is accepted as a fallback so CSVs from earlier exports
+		// (pre-#419) still import.
 		var pathSegs []string
-		if strings.Contains(pathStr, "/") {
+		switch {
+		case strings.Contains(pathStr, "."):
+			pathSegs = strings.Split(pathStr, ".")
+		case strings.Contains(pathStr, "/"):
 			pathSegs = strings.Split(pathStr, "/")
-		} else if pathStr != "" {
+		case pathStr != "":
 			pathSegs = []string{pathStr}
 		}
 		// ACP1 resolver still matches by (Group, ID) / (Group, Label).
