@@ -2,6 +2,7 @@ package export
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -88,6 +89,13 @@ func LoadSnapshot(path string) (*Snapshot, error) {
 func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool) (*ImportReport, error) {
 	rep := &ImportReport{DryRun: dryRun}
 
+	// Optional offline pre-flight check. Plugins that can validate a
+	// (req, val) pair without a wire send implement ValueValidator;
+	// see internal/protocol/value_validator.go. ACP2 does — uses a
+	// single get_object to catch phantom obj-ids before SetValue, and
+	// rejects enum values outside the options list.
+	validator, _ := plug.(protocol.ValueValidator)
+
 	// Walk is only needed when the protocol's SetValue requires a
 	// pre-populated label/type map. ACP1 does (SetValue errors out
 	// without a tree — see internal/acp1/consumer/plugin.go:597).
@@ -172,6 +180,21 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 					req.Path = obj.OID
 				} else if len(obj.Path) > 0 {
 					req.Path = strings.Join(obj.Path, ".")
+				}
+			}
+			// Pre-flight Validate when the plugin supports it. Catches
+			// phantom obj-id / enum-out-of-options / type-mismatch
+			// before any SetValue is attempted — applies to both
+			// dry-run and real apply.
+			if validator != nil {
+				if vErr := validator.ValidateValue(ctx, req, obj.Value); vErr != nil {
+					reason := "validation_failed"
+					if errors.Is(vErr, protocol.ErrObjectNotFound) {
+						reason = "not_found"
+					}
+					rep.Skipped++
+					rep.Skips = append(rep.Skips, skipFrom(dump.Slot, obj, reason))
+					continue
 				}
 			}
 			if dryRun {
