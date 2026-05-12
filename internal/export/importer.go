@@ -88,14 +88,17 @@ func LoadSnapshot(path string) (*Snapshot, error) {
 func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool) (*ImportReport, error) {
 	rep := &ImportReport{DryRun: dryRun}
 
+	// Walk is only needed when the protocol's SetValue requires a
+	// pre-populated label/type map. ACP1 does (SetValue errors out
+	// without a tree — see internal/acp1/consumer/plugin.go:597).
+	// ACP2 + EmberPlus have per-object meta-fetch fallbacks, so the
+	// walk is dead weight when the CSV already carries obj-id (acp2)
+	// or OID/path (emberplus). Dry-run never reaches SetValue at all,
+	// so the walk is dead weight there for every protocol.
+	walkNeeded := !dryRun && s.Device.Protocol == "acp1"
+
 	for _, dump := range s.Slots {
-		// Make sure the plugin has a fresh tree for this slot so
-		// SetValue can resolve labels and encode values.
-		//
-		// In dry-run we never call SetValue, so the walk is dead weight —
-		// for ACP2 slot 1 it would be thousands of get_object round-trips
-		// just to print "would write". Skip it entirely on dry-run.
-		if !dryRun {
+		if walkNeeded {
 			if _, err := plug.Walk(ctx, dump.Slot); err != nil {
 				rep.Failures = append(rep.Failures,
 					fmt.Sprintf("slot %d walk failed: %v", dump.Slot, err))
