@@ -221,24 +221,48 @@ func parseNum(s string, kind protocol.ValueKind) any {
 
 // parseCSVValue builds a protocol.Value from the CSV value + value_name
 // columns.
+//
+// On a type-incompatible value (e.g. "not_a_number" in an int column),
+// the returned Value carries Kind=KindUnknown so the downstream
+// importer's Validate / unknown_kind skip path catches it. This is the
+// signal that the CSV cell didn't parse — without it the silent
+// zero-default would let the importer write garbage.
 func parseCSVValue(kind protocol.ValueKind, val, name string, items []string) protocol.Value {
 	v := protocol.Value{Kind: kind}
 	switch kind {
 	case protocol.KindInt:
-		v.Int, _ = strconv.ParseInt(val, 10, 64)
+		n, err := strconv.ParseInt(val, 10, 64)
+		if err != nil && val != "" {
+			return protocol.Value{Kind: protocol.KindUnknown}
+		}
+		v.Int = n
 	case protocol.KindUint:
-		v.Uint, _ = strconv.ParseUint(val, 10, 64)
+		n, err := strconv.ParseUint(val, 10, 64)
+		if err != nil && val != "" {
+			return protocol.Value{Kind: protocol.KindUnknown}
+		}
+		v.Uint = n
 	case protocol.KindFloat:
-		v.Float, _ = strconv.ParseFloat(val, 64)
+		f, err := strconv.ParseFloat(val, 64)
+		if err != nil && val != "" {
+			return protocol.Value{Kind: protocol.KindUnknown}
+		}
+		v.Float = f
 	case protocol.KindEnum:
-		idx, _ := strconv.Atoi(val)
+		idx, err := strconv.Atoi(val)
+		if err != nil && val != "" {
+			return protocol.Value{Kind: protocol.KindUnknown}
+		}
 		v.Enum = uint8(idx)
 		v.Str = name
 	case protocol.KindString:
 		v.Str = val
 	case protocol.KindIPAddr:
 		var a, b, c, d uint8
-		_, _ = fmt.Sscanf(val, "%d.%d.%d.%d", &a, &b, &c, &d)
+		n, err := fmt.Sscanf(val, "%d.%d.%d.%d", &a, &b, &c, &d)
+		if (err != nil || n != 4) && val != "" {
+			return protocol.Value{Kind: protocol.KindUnknown}
+		}
 		v.IPAddr = [4]byte{a, b, c, d}
 	}
 	return v

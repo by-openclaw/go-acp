@@ -2,6 +2,7 @@ package export
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"dhs/internal/protocol"
@@ -9,9 +10,13 @@ import (
 
 // countingPlugin satisfies protocol.Protocol and counts Walk + SetValue
 // calls so tests can assert which device-touching paths Apply took.
+// validateErr (if set) is returned by ValidateValue — used by tests
+// that exercise the ValueValidator skip path.
 type countingPlugin struct {
-	walkCalls int
-	setCalls  int
+	walkCalls     int
+	setCalls      int
+	validateCalls int
+	validateErr   error // nil = always valid
 }
 
 func (p *countingPlugin) Connect(context.Context, string, int) error { return nil }
@@ -35,6 +40,42 @@ func (p *countingPlugin) SetValue(context.Context, protocol.ValueRequest, protoc
 }
 func (p *countingPlugin) Subscribe(protocol.ValueRequest, protocol.EventFunc) error { return nil }
 func (p *countingPlugin) Unsubscribe(protocol.ValueRequest) error                   { return nil }
+
+// ValidateValue makes countingPlugin satisfy protocol.ValueValidator.
+func (p *countingPlugin) ValidateValue(context.Context, protocol.ValueRequest, protocol.Value) error {
+	p.validateCalls++
+	return p.validateErr
+}
+
+// nonValidatorPlugin is a Protocol with no ValidateValue method —
+// used to assert the importer's graceful fallback when a plugin
+// doesn't implement ValueValidator.
+type nonValidatorPlugin struct {
+	walkCalls int
+	setCalls  int
+}
+
+func (p *nonValidatorPlugin) Connect(context.Context, string, int) error { return nil }
+func (p *nonValidatorPlugin) Disconnect() error                          { return nil }
+func (p *nonValidatorPlugin) GetDeviceInfo(context.Context) (protocol.DeviceInfo, error) {
+	return protocol.DeviceInfo{}, nil
+}
+func (p *nonValidatorPlugin) GetSlotInfo(context.Context, int) (protocol.SlotInfo, error) {
+	return protocol.SlotInfo{}, nil
+}
+func (p *nonValidatorPlugin) Walk(context.Context, int) ([]protocol.Object, error) {
+	p.walkCalls++
+	return nil, nil
+}
+func (p *nonValidatorPlugin) GetValue(context.Context, protocol.ValueRequest) (protocol.Value, error) {
+	return protocol.Value{}, nil
+}
+func (p *nonValidatorPlugin) SetValue(context.Context, protocol.ValueRequest, protocol.Value) (protocol.Value, error) {
+	p.setCalls++
+	return protocol.Value{}, nil
+}
+func (p *nonValidatorPlugin) Subscribe(protocol.ValueRequest, protocol.EventFunc) error { return nil }
+func (p *nonValidatorPlugin) Unsubscribe(protocol.ValueRequest) error                   { return nil }
 
 func snapshotForTest(proto string) *Snapshot {
 	return &Snapshot{
@@ -123,5 +164,75 @@ func TestApply_ACP1_ApplyWalks(t *testing.T) {
 	}
 	if p.setCalls != 2 {
 		t.Errorf("acp1 apply must call SetValue per writable row; got %d, want 2", p.setCalls)
+	}
+}
+
+// When a plugin returns ErrObjectNotFound from ValidateValue, the
+// importer must skip the row with reason "not_found" and never call
+// SetValue.
+func TestApply_ValidateNotFound_SkipsRow(t *testing.T) {
+	p := &countingPlugin{validateErr: protocol.ErrObjectNotFound}
+	rep, err := Apply(context.Background(), p, snapshotForTest("acp2"), false)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if p.setCalls != 0 {
+		t.Errorf("not_found rows must not reach SetValue; got %d set call(s)", p.setCalls)
+	}
+	// 2 writable + 1 read_only; both writables become not_found, the
+	// read-only stays read_only.
+	if rep.Skipped != 3 {
+		t.Errorf("rep.Skipped=%d, want 3", rep.Skipped)
+	}
+	notFoundCount := 0
+	for _, s := range rep.Skips {
+		if s.Reason == "not_found" {
+			notFoundCount++
+		}
+	}
+	if notFoundCount != 2 {
+		t.Errorf("not_found skip count=%d, want 2", notFoundCount)
+	}
+}
+
+// When a plugin returns ErrValidationFailed from ValidateValue, the
+// importer must skip the row with reason "validation_failed".
+func TestApply_ValidateFailed_SkipsRow(t *testing.T) {
+	wrapped := errors.New("enum not in options")
+	p := &countingPlugin{
+		// wrap so errors.Is works the same way the importer expects.
+		validateErr: errors.Join(protocol.ErrValidationFailed, wrapped),
+	}
+	rep, err := Apply(context.Background(), p, snapshotForTest("acp2"), true)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if p.setCalls != 0 {
+		t.Errorf("validation_failed rows must not reach SetValue; got %d", p.setCalls)
+	}
+	failedCount := 0
+	for _, s := range rep.Skips {
+		if s.Reason == "validation_failed" {
+			failedCount++
+		}
+	}
+	if failedCount != 2 {
+		t.Errorf("validation_failed skip count=%d, want 2", failedCount)
+	}
+}
+
+// Plugins that don't implement ValueValidator should fall through
+// the importer untouched — SetValue still runs for writable rows.
+func TestApply_NoValidator_GracefulFallback(t *testing.T) {
+	p := &nonValidatorPlugin{}
+	rep, err := Apply(context.Background(), p, snapshotForTest("acp2"), false)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if rep.Applied != 2 {
+		t.Errorf("no-validator path must still apply writable rows; got %d", rep.Applied)
+	}
+	if p.setCalls != 2 {
+		t.Errorf("SetValue should fire per writable row; got %d", p.setCalls)
 	}
 }
