@@ -36,9 +36,9 @@ func (p *countingPlugin) SetValue(context.Context, protocol.ValueRequest, protoc
 func (p *countingPlugin) Subscribe(protocol.ValueRequest, protocol.EventFunc) error { return nil }
 func (p *countingPlugin) Unsubscribe(protocol.ValueRequest) error                   { return nil }
 
-func snapshotForTest() *Snapshot {
+func snapshotForTest(proto string) *Snapshot {
 	return &Snapshot{
-		Device: DeviceInfo{Protocol: "acp2"},
+		Device: DeviceInfo{Protocol: proto},
 		Slots: []SlotDump{
 			{
 				Slot: 1,
@@ -58,7 +58,7 @@ func snapshotForTest() *Snapshot {
 
 func TestApply_DryRunSkipsWalk(t *testing.T) {
 	p := &countingPlugin{}
-	rep, err := Apply(context.Background(), p, snapshotForTest(), true)
+	rep, err := Apply(context.Background(), p, snapshotForTest("acp2"), true)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -79,16 +79,49 @@ func TestApply_DryRunSkipsWalk(t *testing.T) {
 	}
 }
 
-func TestApply_NonDryRunStillWalks(t *testing.T) {
+// ACP2 apply skips the walk — the CSV's obj-id is enough; SetValue's
+// fetchObjectMeta fallback supplies type metadata per row.
+func TestApply_ACP2_ApplySkipsWalk(t *testing.T) {
 	p := &countingPlugin{}
-	_, err := Apply(context.Background(), p, snapshotForTest(), false)
+	_, err := Apply(context.Background(), p, snapshotForTest("acp2"), false)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if p.walkCalls != 0 {
+		t.Errorf("acp2 apply must not call Walk; got %d", p.walkCalls)
+	}
+	if p.setCalls != 2 {
+		t.Errorf("acp2 apply must call SetValue per writable row; got %d, want 2", p.setCalls)
+	}
+}
+
+// EmberPlus apply also skips the walk — path/OID resolution is per-row.
+func TestApply_EmberPlus_ApplySkipsWalk(t *testing.T) {
+	p := &countingPlugin{}
+	_, err := Apply(context.Background(), p, snapshotForTest("emberplus"), false)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if p.walkCalls != 0 {
+		t.Errorf("emberplus apply must not call Walk; got %d", p.walkCalls)
+	}
+	if p.setCalls != 2 {
+		t.Errorf("emberplus apply must call SetValue per writable row; got %d, want 2", p.setCalls)
+	}
+}
+
+// ACP1 apply still walks — its SetValue requires the walked tree for
+// typed encoding (no per-object meta fallback).
+func TestApply_ACP1_ApplyWalks(t *testing.T) {
+	p := &countingPlugin{}
+	_, err := Apply(context.Background(), p, snapshotForTest("acp1"), false)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
 	if p.walkCalls != 1 {
-		t.Errorf("apply must call Walk once per slot; got %d", p.walkCalls)
+		t.Errorf("acp1 apply must call Walk once per slot; got %d", p.walkCalls)
 	}
 	if p.setCalls != 2 {
-		t.Errorf("apply must call SetValue for each writable row; got %d, want 2", p.setCalls)
+		t.Errorf("acp1 apply must call SetValue per writable row; got %d, want 2", p.setCalls)
 	}
 }
