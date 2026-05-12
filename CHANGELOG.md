@@ -45,6 +45,21 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.10.0](https://github.com/by-openclaw/go-acp/compare/v0.9.0...v0.10.0) (2026-05-12)
+
+
+### Features
+
+* **cli:** ascii-tree rendering for walk verb ([#409](https://github.com/by-openclaw/go-acp/issues/409)) ([#411](https://github.com/by-openclaw/go-acp/issues/411)) ([e8af673](https://github.com/by-openclaw/go-acp/commit/e8af6732b1a7f1764a725c90ac53539b182169b8))
+
+
+### Bug Fixes
+
+* **cli/import:** add ValueValidator + catch id/enum/type mismatches before send (refs [#417](https://github.com/by-openclaw/go-acp/issues/417)) ([#418](https://github.com/by-openclaw/go-acp/issues/418)) ([48d37d5](https://github.com/by-openclaw/go-acp/commit/48d37d53aedb54c26f2777f6c7196cd22cbe982d))
+* **cli/import:** dry-run skips full-slot walk (closes [#413](https://github.com/by-openclaw/go-acp/issues/413)) ([#414](https://github.com/by-openclaw/go-acp/issues/414)) ([35d2277](https://github.com/by-openclaw/go-acp/commit/35d22775c3ce79a3b377b3b35c8a1fab8e066cec))
+* **cli/import:** skip walk on apply for ACP2/EmberPlus (refs [#415](https://github.com/by-openclaw/go-acp/issues/415)) ([#416](https://github.com/by-openclaw/go-acp/issues/416)) ([32041cd](https://github.com/by-openclaw/go-acp/commit/32041cd470a6f43421f97f4ba2bf89214eee7b32))
+* **export/csv:** unify path separator to '.' (refs [#419](https://github.com/by-openclaw/go-acp/issues/419)) ([#420](https://github.com/by-openclaw/go-acp/issues/420)) ([99ef16d](https://github.com/by-openclaw/go-acp/commit/99ef16dba92604249592338c49e459a7cadad1b0))
+
 ## [0.9.0](https://github.com/by-openclaw/go-acp/compare/v0.8.0...v0.9.0) (2026-05-10)
 
 
