@@ -584,17 +584,28 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	// Encode value bytes. If the caller supplied raw bytes directly (via
 	// val.Raw with no typed fields), bypass the codec and send as-is —
 	// this preserves the old "raw hex" escape hatch for advanced users.
+	//
+	// Otherwise the codec needs the object's ACPType to pick the right
+	// wire encoder. Try the cached tree first; on miss, do a single
+	// getObject via fetchObjectMeta (refs #421) so import doesn't have
+	// to walk the whole slot to set one value.
 	var wireBytes []byte
 	obj, acpType, found := findObject(tree, group, id)
 	if len(val.Raw) > 0 && val.Str == "" && val.Int == 0 && val.Float == 0 && val.Uint == 0 {
 		wireBytes = val.Raw
-	} else if found {
+	} else {
+		if !found {
+			obj, acpType, err = p.fetchObjectMeta(ctx, req.Slot, group, id)
+			if err != nil {
+				return protocol.Value{}, fmt.Errorf("acp1 set: fetch meta slot=%d group=%s id=%d: %w",
+					req.Slot, group, id, err)
+			}
+			found = true
+		}
 		wireBytes, err = EncodeValueBytes(obj, acpType, val)
 		if err != nil {
 			return protocol.Value{}, err
 		}
-	} else {
-		return protocol.Value{}, fmt.Errorf("acp1 set: no walked tree for slot %d, use raw bytes", req.Slot)
 	}
 
 	m := &codec.Message{
