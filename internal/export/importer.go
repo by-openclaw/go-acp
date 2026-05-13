@@ -96,14 +96,11 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 	// rejects enum values outside the options list.
 	validator, _ := plug.(protocol.ValueValidator)
 
-	// Walk is only needed when the protocol's SetValue requires a
-	// pre-populated label/type map. ACP1 does (SetValue errors out
-	// without a tree — see internal/acp1/consumer/plugin.go:597).
-	// ACP2 + EmberPlus have per-object meta-fetch fallbacks, so the
-	// walk is dead weight when the CSV already carries obj-id (acp2)
-	// or OID/path (emberplus). Dry-run never reaches SetValue at all,
-	// so the walk is dead weight there for every protocol.
-	walkNeeded := !dryRun && s.Device.Protocol == "acp1"
+	// No protocol needs a pre-walk on import any more. ACP2 + EmberPlus
+	// have per-object meta fetch since v0.10.0; ACP1 gained the same
+	// pattern in #421. SetValue resolves type metadata per row via a
+	// single getObject on cache miss — cost is ~ms vs walking the slot.
+	walkNeeded := false
 
 	for _, dump := range s.Slots {
 		if walkNeeded {

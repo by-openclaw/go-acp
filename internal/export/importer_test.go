@@ -151,16 +151,17 @@ func TestApply_EmberPlus_ApplySkipsWalk(t *testing.T) {
 	}
 }
 
-// ACP1 apply still walks — its SetValue requires the walked tree for
-// typed encoding (no per-object meta fallback).
-func TestApply_ACP1_ApplyWalks(t *testing.T) {
+// ACP1 apply also skips the walk now (per #423). Plugin.SetValue
+// falls back to fetchObjectMeta on cache miss (#421), so the importer
+// no longer needs to pre-walk to populate type metadata.
+func TestApply_ACP1_ApplySkipsWalk(t *testing.T) {
 	p := &countingPlugin{}
 	_, err := Apply(context.Background(), p, snapshotForTest("acp1"), false)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
-	if p.walkCalls != 1 {
-		t.Errorf("acp1 apply must call Walk once per slot; got %d", p.walkCalls)
+	if p.walkCalls != 0 {
+		t.Errorf("acp1 apply must not call Walk; got %d", p.walkCalls)
 	}
 	if p.setCalls != 2 {
 		t.Errorf("acp1 apply must call SetValue per writable row; got %d, want 2", p.setCalls)
