@@ -1,6 +1,9 @@
 package storage
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -59,12 +62,12 @@ func TestSaveLoadByIdentity_PreservesMetaAndContent(t *testing.T) {
 		}},
 	}
 
-	if err := saver.SaveByIdentity("SHPRM1@0.7", snap); err != nil {
+	if err := saver.SaveByIdentity("acp2", "SHPRM1@0.7", snap); err != nil {
 		t.Fatalf("SaveByIdentity: %v", err)
 	}
 
 	loader := NewTreeStore(dir)
-	got, err := loader.LoadByIdentity("SHPRM1@0.7")
+	got, err := loader.LoadByIdentity("acp2", "SHPRM1@0.7")
 	if err != nil || got == nil {
 		t.Fatalf("LoadByIdentity: snap=%v err=%v", got, err)
 	}
@@ -113,7 +116,7 @@ func TestSaveLoadByIdentity_MultiInvocationMerge(t *testing.T) {
 
 	{
 		store := NewTreeStore(dir)
-		existing, _ := store.LoadByIdentity(identity)
+		existing, _ := store.LoadByIdentity("acp2", identity)
 		if existing != nil {
 			t.Fatalf("invocation 1 expected miss, got %v", existing)
 		}
@@ -132,14 +135,14 @@ func TestSaveLoadByIdentity_MultiInvocationMerge(t *testing.T) {
 				}},
 			}},
 		}
-		if err := store.SaveByIdentity(identity, snap); err != nil {
+		if err := store.SaveByIdentity("acp2", identity, snap); err != nil {
 			t.Fatalf("invocation 1 save: %v", err)
 		}
 	}
 
 	{
 		store := NewTreeStore(dir)
-		existing, err := store.LoadByIdentity(identity)
+		existing, err := store.LoadByIdentity("acp2", identity)
 		if err != nil || existing == nil {
 			t.Fatalf("invocation 2 expected hit, got snap=%v err=%v", existing, err)
 		}
@@ -160,13 +163,13 @@ func TestSaveLoadByIdentity_MultiInvocationMerge(t *testing.T) {
 				Meta: map[string]any{"acp2.objType": uint8(2)},
 			}},
 		})
-		if err := store.SaveByIdentity(identity, existing); err != nil {
+		if err := store.SaveByIdentity("acp2", identity, existing); err != nil {
 			t.Fatalf("invocation 2 save: %v", err)
 		}
 	}
 
 	store := NewTreeStore(dir)
-	final, err := store.LoadByIdentity(identity)
+	final, err := store.LoadByIdentity("acp2", identity)
 	if err != nil || final == nil {
 		t.Fatalf("final load: %v", err)
 	}
@@ -191,5 +194,72 @@ func TestSaveLoadByIdentity_MultiInvocationMerge(t *testing.T) {
 	}
 	if gotUnits[1] != "dBFS" {
 		t.Errorf("slot 1 Unit lost on merge: got %q want %q", gotUnits[1], "dBFS")
+	}
+}
+
+// TestIdentityPath_PerProtocolSubfolder pins the #424 layout: identity
+// caches now live under .cache/dm/<proto>/<identity>.json so ACP1 +
+// ACP2 + Ember+ can't collide on identical Model strings.
+func TestIdentityPath_PerProtocolSubfolder(t *testing.T) {
+	dir := t.TempDir()
+	store := NewTreeStore(dir)
+	snap := &export.Snapshot{
+		Device:    export.DeviceInfo{IP: "10.6.239.113", Protocol: "acp1"},
+		CreatedAt: time.Now().UTC(),
+		Slots: []export.SlotDump{{
+			Slot:     0,
+			WalkedAt: time.Now().UTC(),
+			Objects:  []protocol.Object{{Slot: 0, ID: 0, Label: "Card name"}},
+		}},
+	}
+	if err := store.SaveByIdentity("acp1", "RRS18@1601", snap); err != nil {
+		t.Fatalf("SaveByIdentity: %v", err)
+	}
+	wantPath := filepath.Join(dir, "dm", "acp1", "RRS18@1601.json")
+	if _, err := os.Stat(wantPath); err != nil {
+		t.Fatalf("expected file at new layout %s: %v", wantPath, err)
+	}
+	legacyPath := filepath.Join(dir, "dm", "RRS18@1601.json")
+	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+		t.Errorf("legacy path MUST NOT be written: %s err=%v", legacyPath, err)
+	}
+}
+
+// TestLoadByIdentity_FallbackToLegacyPath verifies that caches written
+// by older dhs versions (.cache/dm/<identity>.json without proto
+// subfolder) still import. Required during the transition window.
+func TestLoadByIdentity_FallbackToLegacyPath(t *testing.T) {
+	dir := t.TempDir()
+	// Hand-write a legacy-layout cache file.
+	legacyDir := filepath.Join(dir, "dm")
+	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	legacyFile := filepath.Join(legacyDir, "CONVERT Hybrid@6.7.4.json")
+	snap := &export.Snapshot{
+		Device:    export.DeviceInfo{IP: "10.41.40.195", Protocol: "acp2"},
+		CreatedAt: time.Now().UTC(),
+		Slots: []export.SlotDump{{
+			Slot:     1,
+			WalkedAt: time.Now().UTC(),
+			Objects:  []protocol.Object{{Slot: 1, ID: 67604, Label: "Destination IP"}},
+		}},
+	}
+	f, _ := os.Create(legacyFile)
+	if err := json.NewEncoder(f).Encode(snap); err != nil {
+		t.Fatalf("write legacy: %v", err)
+	}
+	_ = f.Close()
+
+	store := NewTreeStore(dir)
+	got, err := store.LoadByIdentity("acp2", "CONVERT Hybrid@6.7.4")
+	if err != nil {
+		t.Fatalf("LoadByIdentity: %v", err)
+	}
+	if got == nil {
+		t.Fatalf("legacy fallback missed file: %s", legacyFile)
+	}
+	if len(got.Slots) != 1 || got.Slots[0].Objects[0].Label != "Destination IP" {
+		t.Errorf("legacy fallback decoded wrong content: %+v", got.Slots)
 	}
 }
