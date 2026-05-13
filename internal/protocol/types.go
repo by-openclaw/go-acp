@@ -269,7 +269,7 @@ func parseKind(name string) ValueKind {
 // For ACP1 the (Group, ID) pair comes straight from the wire; for ACP2 the
 // ObjectID is the u32 obj-id and Group is always empty.
 type Object struct {
-	Slot  int    `json:"slot"`
+	Slot  int    `json:"slot,omitempty"`
 	Group string `json:"group,omitempty"` // ACP1 group name; empty for ACP2
 	// Path is the logical hierarchical location of the object. Single
 	// element for ACP1 (the group name); multi-element for ACP2 where
