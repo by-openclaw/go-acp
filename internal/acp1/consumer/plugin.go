@@ -527,10 +527,16 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 
 	obj, acpType, found := findObject(tree, group, id)
 	if !found {
-		// Walker never traverses root/frame/file groups, so lookups
-		// there always miss. Fall back to a group-based decode for the
-		// well-known types we understand even without walker context.
-		return decodeByGroup(group, reply.Value)
+		// No cached tree → try a single getObject to discover the type
+		// (refs #421). Mirrors SetValue's cold-cache path so get/set
+		// stay symmetric. Falls back to decodeByGroup if the meta
+		// fetch itself fails (covers root/frame/file groups the
+		// walker never traverses).
+		mObj, mType, mErr := p.fetchObjectMeta(ctx, req.Slot, group, id)
+		if mErr != nil {
+			return decodeByGroup(group, reply.Value)
+		}
+		obj, acpType = mObj, mType
 	}
 	return DecodeValueBytes(obj, acpType, reply.Value)
 }
@@ -828,9 +834,22 @@ func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
 // exists in a different group, the error message suggests where it was
 // found — a common source of confusion for users who forget which group
 // a label belongs to.
+//
+// Importer-friendly cold-cache fall-through (#421): when Label is set
+// AND tree is nil AND a valid (Group, ID) is also provided, use the
+// explicit pair instead of erroring. CSV import rows carry id + label
+// for round-trip fidelity; label resolution needs a walked tree but
+// id doesn't, so this lets walk-free import work for ACP1.
 func resolve(req protocol.ValueRequest, tree *SlotTree) (codec.ObjGroup, byte, error) {
 	if req.Label != "" {
 		if tree == nil {
+			// Cold-cache fall-through: prefer the explicit (Group, ID)
+			// when supplied (CSV importer carries both for round-trip).
+			if req.Group != "" && req.ID >= 0 && req.ID <= 255 {
+				if g, ok := codec.ParseGroup(req.Group); ok {
+					return g, byte(req.ID), nil
+				}
+			}
 			return 0, 0, fmt.Errorf("%w: no walked tree for slot %d",
 				protocol.ErrUnknownLabel, req.Slot)
 		}
