@@ -142,13 +142,27 @@ func (s *TreeStore) Load(ip string, slot int) (*export.Snapshot, error) {
 // identityPath returns the file path for an identity-keyed cache.
 // Identity strings come straight from the consumer (e.g.
 // "SHPRM1@0.7"); we sanitise to keep them filesystem-safe across
-// Windows + POSIX.
-func (s *TreeStore) identityPath(identity string) string {
-	safe := identity
+// Windows + POSIX. Per #424, files now live under a per-protocol
+// subfolder so ACP1 / ACP2 / Ember+ caches don't collide on
+// identical Model strings.
+func (s *TreeStore) identityPath(proto, identity string) string {
+	return filepath.Join(s.baseDir, "dm", sanitizeSeg(proto), sanitizeSeg(identity)+".json")
+}
+
+// legacyIdentityPath returns the pre-#424 file path (no <proto>/
+// subfolder). Kept so LoadByIdentity can fall back to caches written
+// by older versions of dhs.
+func (s *TreeStore) legacyIdentityPath(identity string) string {
+	return filepath.Join(s.baseDir, "dm", sanitizeSeg(identity)+".json")
+}
+
+// sanitizeSeg strips characters that are illegal in filenames on
+// Windows + POSIX so identity strings + proto names go to disk safely.
+func sanitizeSeg(s string) string {
 	for _, ch := range []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|"} {
-		safe = strings.ReplaceAll(safe, ch, "_")
+		s = strings.ReplaceAll(s, ch, "_")
 	}
-	return filepath.Join(s.baseDir, "dm", safe+".json")
+	return s
 }
 
 // SaveByIdentity writes a multi-slot snapshot keyed by stable device
@@ -175,14 +189,17 @@ func (s *TreeStore) identityPath(identity string) string {
 // Direct json.Marshal preserves the exact protocol.Object struct on
 // disk, so successive walks of slot 0 + slot 1 + slot N accumulate
 // into the same file with no field loss.
-func (s *TreeStore) SaveByIdentity(identity string, snap *export.Snapshot) error {
+func (s *TreeStore) SaveByIdentity(proto, identity string, snap *export.Snapshot) error {
+	if proto == "" {
+		return fmt.Errorf("storage: SaveByIdentity: empty proto")
+	}
 	if identity == "" {
 		return fmt.Errorf("storage: SaveByIdentity: empty identity")
 	}
 	if snap == nil {
 		return fmt.Errorf("storage: SaveByIdentity: nil snapshot")
 	}
-	path := s.identityPath(identity)
+	path := s.identityPath(proto, identity)
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("storage: mkdir %s: %w", dir, err)
@@ -220,17 +237,30 @@ func (s *TreeStore) SaveByIdentity(identity string, snap *export.Snapshot) error
 // auto-detect requires len(Slots[0].Objects) > 0 to accept the flat
 // path, and a freshly-initialised snapshot with an empty slot 0 dump
 // would fall through to the lossy hierarchical reader.
-func (s *TreeStore) LoadByIdentity(identity string) (*export.Snapshot, error) {
+func (s *TreeStore) LoadByIdentity(proto, identity string) (*export.Snapshot, error) {
+	if proto == "" {
+		return nil, fmt.Errorf("storage: LoadByIdentity: empty proto")
+	}
 	if identity == "" {
 		return nil, fmt.Errorf("storage: LoadByIdentity: empty identity")
 	}
-	path := s.identityPath(identity)
+	// Primary: new per-proto path .cache/dm/<proto>/<identity>.json.
+	path := s.identityPath(proto, identity)
 	f, err := os.Open(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("storage: open %s: %w", path, err)
 		}
-		return nil, fmt.Errorf("storage: open %s: %w", path, err)
+		// Backward compat fallback: pre-#424 path with no proto folder.
+		legacy := s.legacyIdentityPath(identity)
+		f, err = os.Open(legacy)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("storage: open %s: %w", legacy, err)
+		}
+		path = legacy
 	}
 	defer func() { _ = f.Close() }()
 	var snap export.Snapshot

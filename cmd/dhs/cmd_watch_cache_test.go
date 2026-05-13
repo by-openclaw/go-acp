@@ -55,7 +55,7 @@ func TestSaveSlotCache_ACP2_WritesIdentityKeyedOnly(t *testing.T) {
 
 	saveSlotCache(context.Background(), prober, "10.100.0.103", "acp2", 1, makeObjs())
 
-	dmPath := filepath.Join(root, "dm", "SHPRM1@0.7.json")
+	dmPath := filepath.Join(root, "dm", "acp2", "SHPRM1@0.7.json")
 	if _, err := os.Stat(dmPath); err != nil {
 		t.Fatalf("identity-keyed file missing: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestSaveSlotCache_ACP2_DifferentCardsTwoFiles(t *testing.T) {
 	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1)
 
 	for _, id := range []string{"SHPRM1@0.7", "SHPIO@0.7"} {
-		snap, err := treeStore.LoadByIdentity(id)
+		snap, err := treeStore.LoadByIdentity("acp2", id)
 		if err != nil || snap == nil {
 			t.Fatalf("LoadByIdentity(%q): snap=%v err=%v", id, snap, err)
 		}
@@ -167,9 +167,9 @@ func TestSaveSlotCache_ACP2_SameCardTwoSlots_OneFile(t *testing.T) {
 	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 0, slot0Objs)
 	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1Objs)
 
-	files, err := os.ReadDir(filepath.Join(root, "dm"))
+	files, err := os.ReadDir(filepath.Join(root, "dm", "acp2"))
 	if err != nil {
-		t.Fatalf("read dm dir: %v", err)
+		t.Fatalf("read dm/acp2 dir: %v", err)
 	}
 	if len(files) != 1 {
 		names := make([]string, 0, len(files))

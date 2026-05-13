@@ -147,7 +147,7 @@ func runWatch(ctx context.Context, args []string) error {
 				if perr != nil || identity == "" {
 					continue
 				}
-				snap, lerr := treeStore.LoadByIdentity(identity)
+				snap, lerr := treeStore.LoadByIdentity(cf.protocol, identity)
 				if lerr != nil || snap == nil || len(snap.Slots) == 0 {
 					continue
 				}
@@ -593,5 +593,5 @@ func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, s
 			Objects:  objs,
 		}},
 	}
-	return store.SaveByIdentity(identity, snap)
+	return store.SaveByIdentity(proto, identity, snap)
 }
