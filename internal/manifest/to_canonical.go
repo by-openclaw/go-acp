@@ -13,11 +13,18 @@ import (
 
 // dmFile mirrors internal/storage.DM (kept duplicated to avoid an
 // import cycle between manifest and storage).
+//
+// Two shapes are supported on disk:
+//   - flat / legacy : Objects populated (ACP1, ACP2)
+//   - canonical     : Root populated (Ember+ — per ADR-0022 chunk
+//                     e0d585a); Templates may also be present
 type dmFile struct {
-	Model    string `json:"model"`
-	SwRev    string `json:"sw_rev"`
-	Protocol string `json:"protocol"`
-	Objects  []dmObject `json:"objects"`
+	Model     string                     `json:"model"`
+	SwRev     string                     `json:"sw_rev"`
+	Protocol  string                     `json:"protocol"`
+	Root      json.RawMessage            `json:"root,omitempty"`
+	Templates []*canonical.TemplateEntry `json:"templates,omitempty"`
+	Objects   []dmObject                 `json:"objects,omitempty"`
 }
 
 // dmObject mirrors protocol.Object — only the fields we use.
@@ -80,6 +87,8 @@ func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
 		},
 	}
 
+	var collectedTemplates []*canonical.TemplateEntry
+
 	for _, fr := range m.Frames {
 		for _, sl := range fr.Slots {
 			dmPath := DMPath(cacheDir, m.Device.Protocol, sl.DM)
@@ -87,9 +96,26 @@ func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
 			if err != nil {
 				return nil, fmt.Errorf("manifest frame=%q slot dm=%q: %w", fr.Name, sl.DM, err)
 			}
+			// Canonical-shape DM (Ember+, refs #438 chunk e0d585a):
+			// the slot DM IS a canonical sub-tree; graft Root directly
+			// as a child of our synthetic device root. No need for
+			// buildSlotNode's flat-object translation.
+			if len(dm.Root) > 0 {
+				slotEl, derr := canonical.UnmarshalElement(dm.Root)
+				if derr != nil {
+					return nil, fmt.Errorf("manifest frame=%q slot dm=%q: parse canonical root: %w", fr.Name, sl.DM, derr)
+				}
+				root.Children = append(root.Children, slotEl)
+				if len(dm.Templates) > 0 {
+					collectedTemplates = append(collectedTemplates, dm.Templates...)
+				}
+				continue
+			}
+			// Flat / legacy shape (ACP1, ACP2): assemble a synthetic
+			// slot Node from the flat Objects slice.
 			slotNum, slotOK := slotIndex(sl.Addr)
 			if !slotOK {
-				slotNum = len(root.Children) // fallback: positional
+				slotNum = len(root.Children)
 			}
 			slotNode, err := buildSlotNode(slotNum, sl, dm, m.Device.Name)
 			if err != nil {
@@ -99,7 +125,7 @@ func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
 		}
 	}
 
-	return &canonical.Export{Root: root}, nil
+	return &canonical.Export{Root: root, Templates: collectedTemplates}, nil
 }
 
 // slotIndex pulls a numeric slot index out of an addr map. Supports
