@@ -35,8 +35,9 @@ type dmObject struct {
 	Min    any            `json:"min,omitempty"`
 	Max    any            `json:"max,omitempty"`
 	Step   any            `json:"step,omitempty"`
-	Def    any            `json:"default,omitempty"`
-	MaxLen int            `json:"max_len,omitempty"`
+	Def       any      `json:"default,omitempty"`
+	EnumItems []string `json:"enum_items,omitempty"`
+	MaxLen    int      `json:"max_len,omitempty"`
 	Value  json.RawMessage `json:"value,omitempty"`
 }
 
@@ -162,12 +163,25 @@ func buildSlotNode(slotNum int, sl Slot, dm *dmFile, devName string) (*canonical
 	}
 
 	for _, o := range objs {
-		joinedPath := strings.Join(o.Path, ".")
-		parentJoined := strings.Join(o.Path[:max0(len(o.Path)-1)], ".")
+		// path[] is the parent chain only when its last segment !=
+		// o.Label (ACP1 walker convention: leaves carry group as
+		// path, label is the leaf's own name). When path[-1] ==
+		// o.Label, path includes self (ACP2 walker convention).
+		parentSegs := o.Path
+		if len(parentSegs) > 0 && parentSegs[len(parentSegs)-1] == o.Label {
+			parentSegs = parentSegs[:len(parentSegs)-1]
+		}
+		parentJoined := strings.Join(parentSegs, ".")
 		parent, ok := nodeAtPath[parentJoined]
 		if !ok {
-			// Materialise missing ancestors as bare nodes.
-			parent = ensureAncestors(slotNode, devName, slotIdent, slotNum, o.Path[:len(o.Path)-1], nodeAtPath)
+			parent = ensureAncestors(slotNode, devName, slotIdent, slotNum, parentSegs, nodeAtPath)
+		}
+
+		selfJoined := parentJoined
+		if selfJoined == "" {
+			selfJoined = o.Label
+		} else {
+			selfJoined = selfJoined + "." + o.Label
 		}
 
 		oid := o.OID
@@ -180,37 +194,48 @@ func buildSlotNode(slotNum int, sl Slot, dm *dmFile, devName string) (*canonical
 				Header: canonical.Header{
 					Number:     o.ID,
 					Identifier: o.Label,
-					Path:       slotNode.Path + "." + joinedPath,
+					Path:       slotNode.Path + "." + selfJoined,
 					OID:        oid,
 					IsOnline:   true,
 					Access:     accessString(o.Access),
 				},
 			}
 			parent.Children = append(parent.Children, child)
-			nodeAtPath[joinedPath] = child
+			nodeAtPath[selfJoined] = child
 			continue
 		}
 
 		// Leaf parameter.
-		typeStr := paramType(o.Kind)
+		typeStr, formatHint := paramTypeAndFormat(o)
 		param := &canonical.Parameter{
 			Header: canonical.Header{
 				Number:     o.ID,
 				Identifier: o.Label,
-				Path:       slotNode.Path + "." + joinedPath,
+				Path:       slotNode.Path + "." + selfJoined,
 				OID:        oid,
 				IsOnline:   true,
 				Access:     accessString(o.Access),
 			},
 			Type:    typeStr,
-			Default: sanitiseScalar(typeStr, o.Def),
-			Minimum: sanitiseScalar(typeStr, o.Min),
-			Maximum: sanitiseScalar(typeStr, o.Max),
-			Step:    sanitiseScalar(typeStr, o.Step),
+			Default: sanitiseScalar(typeStr, formatHint, o.Def),
+			Minimum: sanitiseScalar(typeStr, formatHint, o.Min),
+			Maximum: sanitiseScalar(typeStr, formatHint, o.Max),
+			Step:    sanitiseScalar(typeStr, formatHint, o.Step),
 		}
 		if o.Unit != "" {
 			u := o.Unit
 			param.Unit = &u
+		}
+		if formatHint != "" {
+			f := formatHint
+			param.Format = &f
+		}
+		if typeStr == "enum" && len(o.EnumItems) > 0 {
+			entries := make([]canonical.EnumEntry, len(o.EnumItems))
+			for i, name := range o.EnumItems {
+				entries[i] = canonical.EnumEntry{Key: name, Value: int64(i)}
+			}
+			param.EnumMap = entries
 		}
 		// Unwrap the protocol.Value envelope into a scalar the
 		// provider's tree builder accepts. The DM stores values as
@@ -268,24 +293,82 @@ func isContainerKind(k string) bool {
 	return false
 }
 
-// paramType maps the DM kind enum onto the canonical-tree type
-// string. The provider's tree builder accepts these literal values.
-func paramType(k string) string {
-	switch k {
-	case "integer", "number", "int":
-		return "integer"
-	case "real", "float":
-		return "real"
-	case "enum", "enumerated":
-		return "enum"
-	case "ipv4", "ip":
-		return "string"
-	case "string":
-		return "string"
-	case "bool", "boolean":
-		return "boolean"
+// paramTypeAndFormat maps the DM object onto a canonical-tree
+// (type, format-hint) pair. The format hint disambiguates the ACP1
+// wire type (int16 vs int32 vs uint8 vs ipv4 vs file etc.) so the
+// provider's encoder can pick the right concrete codec.ObjectType.
+//
+// Priority:
+//
+//  1. meta.acp1_type — authoritative for ACP1 walks (carries the
+//     wire type byte: 1=int16, 2=ipv4, 3=float, 4=enum, 5=string,
+//     6=frame, 7=alarm, 8=file, 9=int32, 10=uint8).
+//  2. o.Kind  — falls back to the ValueKind enum (cross-protocol).
+func paramTypeAndFormat(o dmObject) (string, string) {
+	if v, ok := o.Meta["acp1_type"]; ok {
+		switch toUint8(v) {
+		case 1:
+			return "integer", "int16"
+		case 2:
+			return "string", "ipv4"
+		case 3:
+			return "real", ""
+		case 4:
+			return "enum", ""
+		case 5:
+			return "string", ""
+		case 6:
+			return "octets", "frame"
+		case 7:
+			return "boolean", "alarm"
+		case 8:
+			return "string", "file"
+		case 9:
+			return "integer", "int32"
+		case 10:
+			return "integer", "uint8"
+		}
 	}
-	return "string"
+	switch o.Kind {
+	case "integer", "number", "int":
+		return "integer", ""
+	case "uint":
+		return "integer", "uint8"
+	case "real", "float":
+		return "real", ""
+	case "enum", "enumerated":
+		return "enum", ""
+	case "ipv4", "ipaddr", "ip":
+		return "string", "ipv4"
+	case "string":
+		return "string", ""
+	case "bool", "boolean":
+		return "boolean", ""
+	case "alarm":
+		return "boolean", "alarm"
+	case "frame":
+		return "octets", "frame"
+	}
+	return "string", ""
+}
+
+// toUint8 best-effort numeric coerce for map[string]any values
+// unmarshalled from JSON. Returns 0 on miss.
+func toUint8(v any) uint8 {
+	switch x := v.(type) {
+	case float64:
+		return uint8(x)
+	case int:
+		return uint8(x)
+	case int64:
+		return uint8(x)
+	case uint8:
+		return x
+	case json.Number:
+		n, _ := x.Int64()
+		return uint8(n)
+	}
+	return 0
 }
 
 func accessString(a uint8) string {
@@ -300,12 +383,7 @@ func accessString(a uint8) string {
 	return "read"
 }
 
-func max0(x int) int {
-	if x < 0 {
-		return 0
-	}
-	return x
-}
+// (paramType deprecated — use paramTypeAndFormat)
 
 // sanitiseScalar drops a Min/Max/Step/Default value if it can't be
 // represented in the parameter's declared type. The DM cache stores
@@ -313,13 +391,38 @@ func max0(x int) int {
 // the provider's buildProperties wants the index. Mismatches surface
 // as ERROR log spam on every consumer walk — better to drop than to
 // fight the type system.
-func sanitiseScalar(typeStr string, v any) any {
+func sanitiseScalar(typeStr, formatHint string, v any) any {
 	if v == nil {
 		return nil
 	}
+	// IPv4 / file / frame parameters: bounds carry no useful wire
+	// meaning (they encode the address-space, not a value range).
+	// Drop them so the encoder doesn't try to format a uint32 as a
+	// dotted-quad.
+	switch formatHint {
+	case "ipv4", "file", "frame":
+		return nil
+	}
 	switch typeStr {
-	case "integer", "real", "boolean", "enum":
-		switch v.(type) {
+	case "integer", "boolean", "enum":
+		switch x := v.(type) {
+		case float64:
+			return int64(x)
+		case int:
+			return int64(x)
+		case uint64:
+			return int64(x)
+		case string:
+			return nil
+		}
+	case "real":
+		switch x := v.(type) {
+		case int:
+			return float64(x)
+		case int64:
+			return float64(x)
+		case uint64:
+			return float64(x)
 		case string:
 			return nil
 		}
@@ -364,7 +467,9 @@ func unwrapValue(raw []byte) (any, bool) {
 		}
 	case "uint":
 		if env.Uint != nil {
-			return *env.Uint, true
+			// Provider encoder accepts int64 for integer-type
+			// params. Coerce; uint8/uint16/uint32 always fit.
+			return int64(*env.Uint), true
 		}
 	case "float":
 		if env.Float != nil {
