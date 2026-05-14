@@ -189,6 +189,27 @@ func buildSlotNode(slotNum int, sl Slot, dm *dmFile, devName string) (*canonical
 			oid = slotNode.OID + "." + strconv.Itoa(o.ID)
 		}
 
+		// Ember+-specific elements live in Meta["element"]. Dispatch
+		// before the generic container/leaf branch so matrices and
+		// functions emit the correct canonical.* type (refs #438
+		// chunk 6, ADR-0022).
+		switch elementKind(o.Meta) {
+		case "matrix":
+			m := buildCanonicalMatrix(o, oid, slotNode.Path+"."+selfJoined)
+			parent.Children = append(parent.Children, m)
+			continue
+		case "function":
+			f := buildCanonicalFunction(o, oid, slotNode.Path+"."+selfJoined)
+			parent.Children = append(parent.Children, f)
+			continue
+		case "template":
+			// Templates aren't placed in the tree — provider keeps
+			// them in a side registry, looked up by reference. The
+			// Ember+ producer's tree-builder doesn't consume them via
+			// canonical.Export today; skip silently.
+			continue
+		}
+
 		if isContainerKind(o.Kind) {
 			child := &canonical.Node{
 				Header: canonical.Header{
