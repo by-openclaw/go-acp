@@ -35,11 +35,18 @@ import (
 // child still pins the topmost containing root-child as the slot
 // boundary (matches the way ACP1/ACP2 frames identify card slots).
 //
-// Returns the list of slot identifiers persisted (for the manifest
-// writer / logger). On any per-slot save error the partial list is
-// returned alongside the error so the caller can decide whether to
-// keep going.
-func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *storage.TreeStore, providerIdentity string) ([]string, error) {
+// SlotRef pairs the on-disk identity of a slot DM with the OID of
+// the node it represents. Returned by SplitAndPersistDM so callers
+// can stitch a manifest binding {OID → DM filename}.
+type SlotRef struct {
+	Identity string // e.g. "oneToN@1.6.2"
+	OID      string // e.g. "1.1"
+}
+
+// Returns the list of slot refs persisted (for manifest writer /
+// logger). On any per-slot save error the partial list is returned
+// alongside the error so the caller can decide whether to keep going.
+func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *storage.TreeStore, providerIdentity string) ([]SlotRef, error) {
 	tree, err := p.ExportCanonical(ctx)
 	if err != nil {
 		return nil, err
@@ -59,10 +66,10 @@ func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *storage.TreeStore
 		}); err != nil {
 			return nil, err
 		}
-		return []string{providerIdentity}, nil
+		return []SlotRef{{Identity: providerIdentity, OID: rootOID(tree.Root)}}, nil
 	}
 
-	var persisted []string
+	var persisted []SlotRef
 	for _, child := range rootNode.Children {
 		nodeChild, ok := child.(*canonical.Node)
 		if !ok {
@@ -86,9 +93,25 @@ func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *storage.TreeStore
 		}); err != nil {
 			return persisted, fmt.Errorf("emberplus: slot DM %q: %w", slotIdentity, err)
 		}
-		persisted = append(persisted, slotIdentity)
+		persisted = append(persisted, SlotRef{
+			Identity: slotIdentity,
+			OID:      nodeChild.OID,
+		})
 	}
 	return persisted, nil
+}
+
+// rootOID returns the OID of a canonical element. Used for the
+// degenerate "matrix at root" path in SplitAndPersistDM. Returns ""
+// when the element lacks an OID (defensive).
+func rootOID(el canonical.Element) string {
+	if el == nil {
+		return ""
+	}
+	if h := el.Common(); h != nil {
+		return h.OID
+	}
+	return ""
 }
 
 // subtreeIsSlotWorthy returns true when the given Node subtree

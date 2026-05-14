@@ -9,7 +9,9 @@ import (
 	"strings"
 
 	"dhs/internal/dmlib"
+	emberplus "dhs/internal/emberplus/consumer"
 	"dhs/internal/export/canonical"
+	"dhs/internal/manifest"
 	"dhs/internal/protocol"
 	"dhs/internal/storage"
 )
@@ -623,7 +625,7 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 // Parameters host/objs are unused — kept on the signature to match
 // the saveSlotCache contract so caller plumbing is uniform.
 func saveAndSplitForEmberplus(ctx context.Context, plug protocol.Protocol, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) {
-	_, _, _, _ = host, proto, objs, tree
+	_, _, _ = proto, objs, tree
 	if prober == nil {
 		fmt.Fprintf(os.Stderr, "warning: emberplus DM split needs identity probe; skipping cache for slot %d\n", slot)
 		return
@@ -633,7 +635,11 @@ func saveAndSplitForEmberplus(ctx context.Context, plug protocol.Protocol, probe
 		fmt.Fprintf(os.Stderr, "warning: identity probe failed; emberplus slot %d not cached: %v\n", slot, perr)
 		return
 	}
-	splitDMByMatrix(ctx, plug, identity)
+	port := 0
+	if info, ierr := plug.GetDeviceInfo(ctx); ierr == nil {
+		port = info.Port
+	}
+	splitDMByMatrix(ctx, plug, host, port, identity)
 }
 
 // saveIdentityCache writes a per-card DM file (#430). DM is
@@ -662,13 +668,15 @@ func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, s
 // internal/emberplus/consumer/dm_split.go. Called from
 // walkSlotAndCache after the full provider DM lands; emits one
 // additional DM per slot-worthy root child so each matrix / function
-// subtree gets its own file under .cache/dm/emberplus/. Quiet on
-// success; warns on per-slot save errors.
+// subtree gets its own file under .cache/dm/emberplus/. Also writes
+// a manifest at .cache/manifest/<device-slug>.json so a future
+// consumer can resolve host:port → slot DMs without re-walking.
+// Quiet on success; warns on per-slot save errors.
 type dmSplitter interface {
-	SplitAndPersistDM(ctx context.Context, store *storage.TreeStore, providerIdentity string) ([]string, error)
+	SplitAndPersistDM(ctx context.Context, store *storage.TreeStore, providerIdentity string) ([]emberplus.SlotRef, error)
 }
 
-func splitDMByMatrix(ctx context.Context, plug protocol.Protocol, identity string) {
+func splitDMByMatrix(ctx context.Context, plug protocol.Protocol, host string, port int, identity string) {
 	if treeStore == nil {
 		return
 	}
@@ -680,8 +688,51 @@ func splitDMByMatrix(ctx context.Context, plug protocol.Protocol, identity strin
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warning: per-slot DM split: %v\n", err)
 	}
-	if len(persisted) > 0 {
-		fmt.Fprintf(os.Stderr, "DM split: %d slot DM(s) written — %s\n",
-			len(persisted), strings.Join(persisted, ", "))
+	if len(persisted) == 0 {
+		return
 	}
+	names := make([]string, len(persisted))
+	for i, r := range persisted {
+		names[i] = r.Identity
+	}
+	fmt.Fprintf(os.Stderr, "DM split: %d slot DM(s) written — %s\n",
+		len(persisted), strings.Join(names, ", "))
+
+	deviceName, _ := splitIdentityForManifest(identity)
+	mf := &manifest.Manifest{
+		Device: manifest.Device{
+			Name:     deviceName,
+			Protocol: "emberplus",
+			Endpoints: []manifest.Endpoint{
+				{IP: host, Port: port, Transport: "tcp"},
+			},
+		},
+		Frames: []manifest.Frame{{
+			Name:  "router",
+			Slots: make([]manifest.Slot, 0, len(persisted)),
+		}},
+	}
+	for _, r := range persisted {
+		mf.Frames[0].Slots = append(mf.Frames[0].Slots, manifest.Slot{
+			Addr: map[string]any{"oid": r.OID},
+			DM:   r.Identity + ".json",
+		})
+	}
+	path, werr := manifest.Write(".cache", mf)
+	if werr != nil {
+		fmt.Fprintf(os.Stderr, "warning: manifest write: %v\n", werr)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "manifest written: %s\n", path)
+}
+
+// splitIdentityForManifest separates "<Model>@<SwRev>" on the last
+// '@'. Returns (model, swRev) — model is used as the device name in
+// the auto-written manifest.
+func splitIdentityForManifest(identity string) (string, string) {
+	i := strings.LastIndex(identity, "@")
+	if i < 0 {
+		return identity, ""
+	}
+	return identity[:i], identity[i+1:]
 }
