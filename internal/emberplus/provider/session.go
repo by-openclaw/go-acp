@@ -77,6 +77,14 @@ func (s *session) run(ctx context.Context) {
 
 // writePump drains s.out onto the wire. Closes the conn on ctx-cancel or
 // channel close so the read side unblocks too.
+// maxS101Payload caps each S101 frame's BER payload. Spec p.10
+// recommends ≤1024; most shipping consumers (libember-cpp,
+// EmberViewer, Lawo VSM) handle up to 1290, but staying at 1024
+// keeps us inside every implementation's safe window. Payloads
+// larger than this are split across FlagFirst / middle / FlagLast
+// frames (consumer reassembles per session.go).
+const maxS101Payload = 1024
+
 func (s *session) writePump(ctx context.Context) {
 	for {
 		select {
@@ -88,21 +96,62 @@ func (s *session) writePump(ctx context.Context) {
 			if !ok {
 				return
 			}
-			frame := &s101.Frame{
-				Slot:    s101.SlotDefault,
-				MsgType: s101.MsgEmBER,
-				Command: s101.CmdEmBER,
-				Version: s101.VersionS101,
-				Flags:   s101.FlagSingle,
-				DTD:     s101.DTDGlow,
-				Payload: payload,
-			}
-			if err := s.writer.WriteFrame(frame); err != nil {
+			if err := s.writeEmBERChunks(payload); err != nil {
 				s.logger.Debug("write frame", slog.String("err", err.Error()))
 				return
 			}
 		}
 	}
+}
+
+// writeEmBERChunks splits payload into one or more S101 frames per
+// spec p.10 (FlagSingle for ≤maxS101Payload, FlagFirst / middle /
+// FlagLast for larger). Fixes "frame too large" rejection observed
+// against the 1000×1000 dynamic-matrix walk reply.
+func (s *session) writeEmBERChunks(payload []byte) error {
+	if len(payload) <= maxS101Payload {
+		return s.writer.WriteFrame(&s101.Frame{
+			Slot:    s101.SlotDefault,
+			MsgType: s101.MsgEmBER,
+			Command: s101.CmdEmBER,
+			Version: s101.VersionS101,
+			Flags:   s101.FlagSingle,
+			DTD:     s101.DTDGlow,
+			Payload: payload,
+		})
+	}
+	// Multi-packet. First chunk: FlagFirst. Middle: flags=0.
+	// Last chunk: FlagLast.
+	first := true
+	for offset := 0; offset < len(payload); offset += maxS101Payload {
+		end := offset + maxS101Payload
+		if end > len(payload) {
+			end = len(payload)
+		}
+		last := end == len(payload)
+		var flags byte
+		switch {
+		case first:
+			flags = s101.FlagFirst
+		case last:
+			flags = s101.FlagLast
+		default:
+			flags = 0
+		}
+		first = false
+		if err := s.writer.WriteFrame(&s101.Frame{
+			Slot:    s101.SlotDefault,
+			MsgType: s101.MsgEmBER,
+			Command: s101.CmdEmBER,
+			Version: s101.VersionS101,
+			Flags:   flags,
+			DTD:     s101.DTDGlow,
+			Payload: payload[offset:end],
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // send enqueues a BER-encoded Glow payload for transmission. Non-blocking
