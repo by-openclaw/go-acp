@@ -181,6 +181,81 @@ func TestSeed_UnknownElementKeepsLabelIndex(t *testing.T) {
 	}
 }
 
+// TestSeed_MatrixFullSchema rehydrates every MatrixContents field the
+// walker writes — type / mode / counts / parametersLocation /
+// gainParameterNumber / labels (basePath+description) / targets /
+// sources / last-known connections. Pins the contract with provider-side
+// canonical.Matrix schema so the cache file ships enough to render
+// crosspoint UI without re-walking.
+func TestSeed_MatrixFullSchema(t *testing.T) {
+	p := newSeedTestPlugin()
+	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+		OID:   "1.2.3",
+		Label: "matrix",
+		Path:  []string{"router", "nToN", "matrix"},
+		Meta: map[string]any{
+			"element":                  "matrix",
+			"type":                     "nToN",
+			"mode":                     "linear",
+			"targetCount":              float64(4),
+			"sourceCount":              float64(4),
+			"maximumTotalConnects":     float64(16),
+			"maximumConnectsPerTarget": float64(4),
+			"parametersLocation":       "1.2.2",
+			"gainParameterNumber":      float64(1),
+			"labels": []any{
+				map[string]any{"basePath": "1.2.1", "description": "Primary"},
+			},
+			"targets": []any{float64(3), float64(6), float64(9), float64(12)},
+			"sources": []any{float64(3), float64(6), float64(9), float64(12)},
+			"connections": map[string]any{
+				"3": map[string]any{
+					"target":      float64(3),
+					"sources":     []any{float64(3), float64(6)},
+					"operation":   "absolute",
+					"disposition": "tally",
+				},
+			},
+		},
+	}})
+	m := p.numIndex["1.2.3"].glowMatrix
+	if m == nil {
+		t.Fatal("glowMatrix nil after seed")
+	}
+	if m.MatrixType != glow.MatrixTypeNToN {
+		t.Errorf("MatrixType = %d, want nToN", m.MatrixType)
+	}
+	if m.TargetCount != 4 || m.SourceCount != 4 {
+		t.Errorf("counts = %d/%d, want 4/4", m.TargetCount, m.SourceCount)
+	}
+	if m.MaxTotalConnects != 16 || m.MaxConnectsPerTarget != 4 {
+		t.Errorf("caps = %d/%d, want 16/4", m.MaxTotalConnects, m.MaxConnectsPerTarget)
+	}
+	if got, ok := m.ParametersLocation.([]int32); !ok || numericKey(got) != "1.2.2" {
+		t.Errorf("ParametersLocation = %v, want []int32{1,2,2}", m.ParametersLocation)
+	}
+	if m.GainParameterNumber != 1 {
+		t.Errorf("GainParameterNumber = %d, want 1", m.GainParameterNumber)
+	}
+	if len(m.Labels) != 1 || m.Labels[0].Description != "Primary" || numericKey(m.Labels[0].BasePath) != "1.2.1" {
+		t.Errorf("Labels = %+v", m.Labels)
+	}
+	if got := numericKey(m.Targets); got != "3.6.9.12" {
+		t.Errorf("Targets numericKey = %q, want 3.6.9.12", got)
+	}
+	if got := numericKey(m.Sources); got != "3.6.9.12" {
+		t.Errorf("Sources numericKey = %q, want 3.6.9.12", got)
+	}
+	if len(m.Connections) != 1 {
+		t.Errorf("Connections len = %d, want 1", len(m.Connections))
+	} else {
+		c := m.Connections[0]
+		if c.Target != 3 || numericKey(c.Sources) != "3.6" {
+			t.Errorf("Connection = %+v, want target=3 sources=[3 6]", c)
+		}
+	}
+}
+
 // TestSeed_FreshnessStale pins disk-loaded entries as Stale until live
 // confirmation flips them — ADR-0022 freshness contract.
 func TestSeed_FreshnessStale(t *testing.T) {

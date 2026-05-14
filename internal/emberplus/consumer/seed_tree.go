@@ -148,11 +148,7 @@ func (p *Plugin) seedOneEntry(o protocol.Object, now time.Time) *treeEntry {
 		}
 		entry.glowParam = param
 	case "matrix":
-		m := &glow.Matrix{
-			Path:        numericPath,
-			Identifier:  identifier,
-			Description: metaString(o.Meta, "description"),
-		}
+		m := buildMatrixFromMeta(numericPath, identifier, o.Meta)
 		entry.glowMatrix = m
 		entry.matrixState = matrix.NewStateFromGlow(m)
 	case "function":
@@ -251,4 +247,208 @@ func paramTypeFromName(name string) int64 {
 		return glow.ParamTypeOctets
 	}
 	return glow.ParamTypeNull
+}
+
+// buildMatrixFromMeta rehydrates a glow.Matrix from cached Meta. Reads
+// every MatrixContents field the walker's matrixMeta() writes — type,
+// mode, targetCount, sourceCount, maximumTotalConnects /
+// maximumConnectsPerTarget (nToN only), parametersLocation,
+// gainParameterNumber, labels (basePath + description), targets,
+// sources, and last-known connections (FreshnessStale until a live
+// announce / matrix GetDirectory refreshes).
+//
+// Spec reference: Ember+ §MatrixContents p.88 + §Label p.89.
+func buildMatrixFromMeta(numericPath []int32, identifier string, meta map[string]any) *glow.Matrix {
+	m := &glow.Matrix{
+		Path:        numericPath,
+		Identifier:  identifier,
+		Description: metaString(meta, "description"),
+	}
+	if t := metaString(meta, "type"); t != "" {
+		m.MatrixType = matrixTypeFromName(t)
+	}
+	if a := metaString(meta, "mode"); a != "" {
+		m.AddressingMode = matrixAddrFromName(a)
+	}
+	if v, ok := meta["targetCount"]; ok {
+		if n, ok := metaInt64(v); ok {
+			m.TargetCount = int32(n)
+		}
+	}
+	if v, ok := meta["sourceCount"]; ok {
+		if n, ok := metaInt64(v); ok {
+			m.SourceCount = int32(n)
+		}
+	}
+	if v, ok := meta["maximumTotalConnects"]; ok {
+		if n, ok := metaInt64(v); ok {
+			m.MaxTotalConnects = int32(n)
+		}
+	}
+	if v, ok := meta["maximumConnectsPerTarget"]; ok {
+		if n, ok := metaInt64(v); ok {
+			m.MaxConnectsPerTarget = int32(n)
+		}
+	}
+	if v, ok := meta["parametersLocation"]; ok {
+		switch x := v.(type) {
+		case string:
+			if parts := parseNumericOID(x); len(parts) > 0 {
+				m.ParametersLocation = parts
+			}
+		case float64:
+			m.ParametersLocation = int32(x)
+		case int32:
+			m.ParametersLocation = x
+		case int64:
+			m.ParametersLocation = int32(x)
+		}
+	}
+	if v, ok := meta["gainParameterNumber"]; ok {
+		if n, ok := metaInt64(v); ok {
+			m.GainParameterNumber = int32(n)
+		}
+	}
+	if v, ok := meta["schemaIdentifiers"].(string); ok {
+		m.SchemaIdentifiers = v
+	}
+	if v, ok := meta["labels"]; ok {
+		m.Labels = decodeLabels(v)
+	}
+	if v, ok := meta["targets"]; ok {
+		m.Targets = decodeInt32Slice(v)
+	}
+	if v, ok := meta["sources"]; ok {
+		m.Sources = decodeInt32Slice(v)
+	}
+	if v, ok := meta["connections"]; ok {
+		m.Connections = decodeConnections(v)
+	}
+	return m
+}
+
+// matrixTypeFromName is the reverse of matrixTypeName (plugin.go).
+// Defaults to MatrixTypeOneToN per the same convention.
+func matrixTypeFromName(s string) int64 {
+	switch s {
+	case "oneToOne":
+		return glow.MatrixTypeOneToOne
+	case "nToN":
+		return glow.MatrixTypeNToN
+	}
+	return glow.MatrixTypeOneToN
+}
+
+// matrixAddrFromName is the reverse of matrixAddrName (plugin.go).
+// Defaults to linear per spec convention.
+func matrixAddrFromName(s string) int64 {
+	if s == "nonLinear" {
+		return glow.MatrixAddrNonLinear
+	}
+	return glow.MatrixAddrLinear
+}
+
+// connOpFromName is the reverse of connOpName (plugin.go). Defaults
+// to absolute per spec convention.
+func connOpFromName(s string) int64 {
+	switch s {
+	case "connect":
+		return glow.ConnOpConnect
+	case "disconnect":
+		return glow.ConnOpDisconnect
+	}
+	return glow.ConnOpAbsolute
+}
+
+// connDispFromName is the reverse of connDispName (plugin.go). Defaults
+// to tally per spec convention.
+func connDispFromName(s string) int64 {
+	switch s {
+	case "modified":
+		return glow.ConnDispModified
+	case "pending":
+		return glow.ConnDispPending
+	case "locked":
+		return glow.ConnDispLocked
+	}
+	return glow.ConnDispTally
+}
+
+// decodeLabels reads the JSON-shaped labels array back into
+// []glow.Label. Each label carries a basePath (RelOID as dot-string) and
+// a description.
+func decodeLabels(v any) []glow.Label {
+	arr, ok := v.([]any)
+	if !ok {
+		// Live walker shape (in-memory): []map[string]any
+		if direct, ok := v.([]map[string]any); ok {
+			out := make([]glow.Label, 0, len(direct))
+			for _, l := range direct {
+				out = append(out, glow.Label{
+					BasePath:    parseNumericOID(metaString(l, "basePath")),
+					Description: metaString(l, "description"),
+				})
+			}
+			return out
+		}
+		return nil
+	}
+	out := make([]glow.Label, 0, len(arr))
+	for _, it := range arr {
+		l, ok := it.(map[string]any)
+		if !ok {
+			continue
+		}
+		out = append(out, glow.Label{
+			BasePath:    parseNumericOID(metaString(l, "basePath")),
+			Description: metaString(l, "description"),
+		})
+	}
+	return out
+}
+
+// decodeInt32Slice handles both the live walker shape ([]int32) and
+// the JSON round-trip shape ([]any of float64). Used for Targets and
+// Sources arrays.
+func decodeInt32Slice(v any) []int32 {
+	switch x := v.(type) {
+	case []int32:
+		return x
+	case []any:
+		out := make([]int32, 0, len(x))
+		for _, it := range x {
+			if n, ok := metaInt64(it); ok {
+				out = append(out, int32(n))
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// decodeConnections rebuilds the live connection-tally map into a
+// []glow.Connection. Connections from cache are last-known state and
+// arrive as FreshnessStale entries on the entry; a live matrix
+// GetDirectory or announce refreshes them.
+func decodeConnections(v any) []glow.Connection {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	out := make([]glow.Connection, 0, len(m))
+	for _, raw := range m {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		conn := glow.Connection{}
+		if t, ok := metaInt64(entry["target"]); ok {
+			conn.Target = int32(t)
+		}
+		conn.Sources = decodeInt32Slice(entry["sources"])
+		conn.Operation = connOpFromName(metaString(entry, "operation"))
+		conn.Disposition = connDispFromName(metaString(entry, "disposition"))
+		out = append(out, conn)
+	}
+	return out
 }
