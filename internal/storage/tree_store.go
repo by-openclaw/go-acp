@@ -13,6 +13,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -165,40 +166,71 @@ func sanitizeSeg(s string) string {
 	return s
 }
 
-// SaveByIdentity writes a multi-slot snapshot keyed by stable device
-// identity (e.g. "SHPRM1@0.7"). Unlike Save, the same cache file is
-// reused across IP changes / re-cabling — only a Card swap or
-// firmware upgrade invalidates it.
+// DM is the on-disk format for an identity-keyed cache file.
 //
-// Format: flat JSON via stdlib json.Encoder, NOT export.WriteJSON.
-// The exporter's hierarchical writer is lossy on three fields the DM
-// cache absolutely needs to round-trip across separate dhs invocations
-// (one walk per slot, multi-process):
+// Per DHS 2016 MasterView contract (refs #430): the DM is a per-card
+// schema — slot-agnostic, host-agnostic, instance-agnostic. The file
+// describes ONE card type. Two slots holding the same card load the
+// same DM file; two cards = two DM files. IP, port, slot number, host
+// info NEVER live in a DM.
 //
-//   - Object.Meta — walker stashes acp2.objType / numType / optionsMap
-//     here; the hierarchical reader's leaf struct has no Meta field, so
-//     load → save → load drops type info silently and announces decode
-//     as raw(N) with the right Unit but wrong Kind.
-//   - Object.Path — buildJSONTree groups objects by Path; root-level
-//     objects (no Path) become orphaned _meta entries that flatten
-//     back to nothing.
-//   - Object.Value — the hierarchical writer omits values for some
-//     kinds, the reader re-parses CSV strings, and round-trip fidelity
-//     is best-effort.
+// Identity = "<Model>@<SwRev>" (split on the last '@'). For ACP1 the
+// Identity Object Group's CardName + Software rev provide both;
+// ACP2 maps Card Name + Product Version equivalently.
+type DM struct {
+	Model    string            `json:"model"`
+	SwRev    string            `json:"sw_rev"`
+	Protocol string            `json:"protocol"`
+	Objects  []protocol.Object `json:"objects"`
+}
+
+// splitIdentity breaks "<Model>@<SwRev>" on the LAST '@' so a model
+// name containing '@' survives. Returns (model, swRev) with swRev = ""
+// when there's no '@' in the input.
+func splitIdentity(identity string) (string, string) {
+	i := strings.LastIndex(identity, "@")
+	if i < 0 {
+		return identity, ""
+	}
+	return identity[:i], identity[i+1:]
+}
+
+// SaveByIdentity writes the per-card DM to .cache/dm/<proto>/<identity>.json.
 //
-// Direct json.Marshal preserves the exact protocol.Object struct on
-// disk, so successive walks of slot 0 + slot 1 + slot N accumulate
-// into the same file with no field loss.
-func (s *TreeStore) SaveByIdentity(proto, identity string, snap *export.Snapshot) error {
+// On-disk shape is the slot-agnostic DM struct above: {model, sw_rev,
+// protocol, objects}. No `device` envelope, no `slots` wrapper, no
+// IP/port/num_slots — those are runtime state, not card schema. Per
+// DHS 2016, the DM is the schema of ONE card type and survives IP /
+// slot / re-cabling changes.
+//
+// Each Object's Slot field is zeroed before serialization: the DM
+// doesn't claim "this object lives in slot N" — slot is a frame
+// composition concern, defined by the frame manifest at producer
+// startup.
+//
+// Atomic write: tmp file + rename.
+func (s *TreeStore) SaveByIdentity(proto, identity string, objs []protocol.Object) error {
 	if proto == "" {
 		return fmt.Errorf("storage: SaveByIdentity: empty proto")
 	}
 	if identity == "" {
 		return fmt.Errorf("storage: SaveByIdentity: empty identity")
 	}
-	if snap == nil {
-		return fmt.Errorf("storage: SaveByIdentity: nil snapshot")
+	model, swRev := splitIdentity(identity)
+
+	// Zero Slot on each object — the DM is slot-agnostic.
+	clean := make([]protocol.Object, len(objs))
+	for i, o := range objs {
+		clean[i] = o
+		clean[i].Slot = 0
 	}
+	dm := DM{
+		Model:    model,
+		SwRev:    swRev,
+		Protocol: proto,
+		Objects:  clean,
+	}
+
 	path := s.identityPath(proto, identity)
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -211,7 +243,7 @@ func (s *TreeStore) SaveByIdentity(proto, identity string, snap *export.Snapshot
 	}
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(snap); err != nil {
+	if err := enc.Encode(dm); err != nil {
 		_ = f.Close()
 		_ = os.Remove(tmp)
 		return fmt.Errorf("storage: encode: %w", err)
@@ -228,15 +260,21 @@ func (s *TreeStore) SaveByIdentity(proto, identity string, snap *export.Snapshot
 }
 
 // LoadByIdentity reads the identity-keyed cache. Returns (nil, nil)
-// on cache miss (file not present); err non-nil only on read /
-// decode failures.
+// on cache miss; err non-nil only on read / decode failures.
 //
-// Decoder: stdlib json.Decoder direct into *export.Snapshot. Pairs
-// with SaveByIdentity's flat-format writer above. We deliberately do
-// NOT route through export.ReadJSON — its flat-vs-hierarchical
-// auto-detect requires len(Slots[0].Objects) > 0 to accept the flat
-// path, and a freshly-initialised snapshot with an empty slot 0 dump
-// would fall through to the lossy hierarchical reader.
+// Auto-detects on-disk shape:
+//   - New DM shape (#430): top-level keys {model, sw_rev, protocol,
+//     objects}. Slot-agnostic. Synthesised into a Snapshot at load
+//     time so existing callers keep working.
+//   - Legacy Snapshot shape (pre-#430): top-level keys {device, slots,
+//     ...}. Accepted for one release cycle, then dropped.
+//
+// Path resolution order:
+//   1. .cache/dm/<proto>/<identity>.json (new per-proto path, #425)
+//   2. .cache/dm/<identity>.json         (legacy flat path)
+//
+// Both paths can carry either DM or legacy Snapshot content — the
+// shape detection is content-based, not path-based.
 func (s *TreeStore) LoadByIdentity(proto, identity string) (*export.Snapshot, error) {
 	if proto == "" {
 		return nil, fmt.Errorf("storage: LoadByIdentity: empty proto")
@@ -244,14 +282,12 @@ func (s *TreeStore) LoadByIdentity(proto, identity string) (*export.Snapshot, er
 	if identity == "" {
 		return nil, fmt.Errorf("storage: LoadByIdentity: empty identity")
 	}
-	// Primary: new per-proto path .cache/dm/<proto>/<identity>.json.
 	path := s.identityPath(proto, identity)
 	f, err := os.Open(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("storage: open %s: %w", path, err)
 		}
-		// Backward compat fallback: pre-#424 path with no proto folder.
 		legacy := s.legacyIdentityPath(identity)
 		f, err = os.Open(legacy)
 		if err != nil {
@@ -263,9 +299,37 @@ func (s *TreeStore) LoadByIdentity(proto, identity string) (*export.Snapshot, er
 		path = legacy
 	}
 	defer func() { _ = f.Close() }()
-	var snap export.Snapshot
-	if err := json.NewDecoder(f).Decode(&snap); err != nil {
+
+	// Read once; decide format from a peek key.
+	raw, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("storage: read %s: %w", path, err)
+	}
+	// Cheap shape detection: probe one key from the top-level object.
+	var probe map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &probe); err != nil {
 		return nil, fmt.Errorf("storage: decode %s: %w", path, err)
+	}
+	if _, hasModel := probe["model"]; hasModel {
+		// New DM shape — synthesise a Snapshot wrapping the Objects.
+		var dm DM
+		if err := json.Unmarshal(raw, &dm); err != nil {
+			return nil, fmt.Errorf("storage: decode dm %s: %w", path, err)
+		}
+		snap := &export.Snapshot{
+			Device: export.DeviceInfo{Protocol: dm.Protocol},
+			Slots: []export.SlotDump{{
+				Slot:     0,
+				WalkedAt: time.Now().UTC(),
+				Objects:  dm.Objects,
+			}},
+		}
+		return snap, nil
+	}
+	// Legacy Snapshot shape — decode directly.
+	var snap export.Snapshot
+	if err := json.Unmarshal(raw, &snap); err != nil {
+		return nil, fmt.Errorf("storage: decode legacy %s: %w", path, err)
 	}
 	return &snap, nil
 }

@@ -7,10 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"dhs/internal/dmlib"
-	"dhs/internal/export"
 	"dhs/internal/protocol"
 	"dhs/internal/storage"
 )
@@ -576,22 +574,15 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 	}
 }
 
-// saveIdentityCache writes a single-slot DM file keyed by card
-// identity. The DM is the schema of ONE card type — multi-slot
-// merging is gone (different slots can hold different cards →
-// different files; same card in multiple slots → same file written
-// once). Slot/frame composition is a runtime concern, not in the DM.
+// saveIdentityCache writes a per-card DM file (#430). DM is
+// slot-agnostic, host-agnostic — the schema of ONE card type. Two
+// slots holding the same card share the same DM file. Slot, IP, host
+// info are runtime state and never persisted into the DM.
+//
+// host + slot params kept for symmetry with the IP-keyed Save path
+// and for future logging; they are NOT written to disk.
 func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, slot int, objs []protocol.Object) error {
-	now := time.Now().UTC()
-	snap := &export.Snapshot{
-		Device:    export.DeviceInfo{IP: host, Protocol: proto},
-		Generator: "dhs dm-cache",
-		CreatedAt: now,
-		Slots: []export.SlotDump{{
-			Slot:     slot,
-			WalkedAt: now,
-			Objects:  objs,
-		}},
-	}
-	return store.SaveByIdentity(proto, identity, snap)
+	_ = host
+	_ = slot
+	return store.SaveByIdentity(proto, identity, objs)
 }

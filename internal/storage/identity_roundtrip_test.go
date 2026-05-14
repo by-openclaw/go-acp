@@ -5,37 +5,28 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"dhs/internal/export"
 	"dhs/internal/protocol"
 )
 
-// TestSaveLoadByIdentity_PreservesMetaAndContent pins the regression
-// surfaced live on 2026-05-09: SaveByIdentity used to route through
+// TestSaveLoadByIdentity_PreservesMetaAndContent pins the per-card DM
+// contract (#430): writer round-trips Object fields (Path, Unit, Meta
+// with nested maps) without dropping anything. Original 2026-05-09
+// regression was that SaveByIdentity used to route through
 // export.WriteJSON (hierarchical), and the matching reader's leaf
-// decode struct in flattenJSONTree had no Meta field. So the disk
-// round-trip silently dropped Object.Meta — the exact map the ACP2
-// SeedTreeFromCachedObjects path needs (acp2.objType / numType /
-// optionsMap) to rebuild ObjTypes/NumTypes parallel arrays. Symptom:
-// watcher decoded enum labels and units but rendered numeric values
-// as `raw(N)` because seed couldn't recover the type info.
-//
-// Fix: SaveByIdentity uses stdlib json.Encoder direct on *Snapshot;
-// LoadByIdentity uses stdlib json.Decoder direct into *Snapshot. The
-// snapshot is byte-faithful across separate dhs invocations.
-//
-// The test uses a NEW TreeStore for the load step so we exercise the
-// real cross-process path (open file, decode flat) — same shape the
-// user hits when running `walk --slot 0` then `walk --slot 1` in two
-// shell invocations.
+// decode struct in flattenJSONTree had no Meta field — load → save →
+// load silently dropped Object.Meta. Direct json.Encoder on the DM
+// struct (#430) preserves it.
 func TestSaveLoadByIdentity_PreservesMetaAndContent(t *testing.T) {
 	dir := t.TempDir()
 	saver := NewTreeStore(dir)
 
 	objs := []protocol.Object{
 		{
-			Slot:  1,
+			// Slot is set on purpose — writer must ZERO it (DM is
+			// slot-agnostic). Round-trip should come back with Slot=0.
+			Slot:  7,
 			ID:    70232,
 			Label: "Backup Input",
 			Path:  []string{"BOARD", "Stream"},
@@ -51,18 +42,8 @@ func TestSaveLoadByIdentity_PreservesMetaAndContent(t *testing.T) {
 			},
 		},
 	}
-	snap := &export.Snapshot{
-		Device:    export.DeviceInfo{IP: "10.41.40.4", Protocol: "acp2"},
-		Generator: "test",
-		CreatedAt: time.Now().UTC(),
-		Slots: []export.SlotDump{{
-			Slot:     1,
-			WalkedAt: time.Now().UTC(),
-			Objects:  objs,
-		}},
-	}
 
-	if err := saver.SaveByIdentity("acp2", "SHPRM1@0.7", snap); err != nil {
+	if err := saver.SaveByIdentity("acp2", "SHPRM1@0.7", objs); err != nil {
 		t.Fatalf("SaveByIdentity: %v", err)
 	}
 
@@ -73,16 +54,12 @@ func TestSaveLoadByIdentity_PreservesMetaAndContent(t *testing.T) {
 	}
 
 	if len(got.Slots) != 1 || len(got.Slots[0].Objects) != 1 {
-		t.Fatalf("snap shape: slots=%d objs=%d, want 1/1",
-			len(got.Slots),
-			func() int {
-				if len(got.Slots) == 0 {
-					return -1
-				}
-				return len(got.Slots[0].Objects)
-			}())
+		t.Fatalf("snap shape: slots=%d, want 1", len(got.Slots))
 	}
 	rt := got.Slots[0].Objects[0]
+	if rt.Slot != 0 {
+		t.Errorf("DM is slot-agnostic — writer must zero Slot, got Slot=%d", rt.Slot)
+	}
 	if rt.ID != 70232 || rt.Label != "Backup Input" || rt.Kind != protocol.KindEnum {
 		t.Errorf("base fields lost: id=%d label=%q kind=%v", rt.ID, rt.Label, rt.Kind)
 	}
@@ -105,114 +82,65 @@ func TestSaveLoadByIdentity_PreservesMetaAndContent(t *testing.T) {
 	}
 }
 
-// TestSaveLoadByIdentity_MultiInvocationMerge reproduces the exact
-// user flow: walk slot 0 then walk slot 1 in two separate dhs
-// invocations. Each invocation re-creates the TreeStore. After both,
-// the file must contain BOTH slots with their original object content
-// — not slot 1 alone (the bug) and not slot 0 alone.
-func TestSaveLoadByIdentity_MultiInvocationMerge(t *testing.T) {
+// TestSaveByIdentity_EmitsCleanDMShape asserts the on-disk JSON has
+// NONE of the pre-#430 envelope garbage: no `device`, no `slots`, no
+// `created_at`, no `generator`, no host instance fields. Only the
+// per-card DM contract: model, sw_rev, protocol, objects.
+func TestSaveByIdentity_EmitsCleanDMShape(t *testing.T) {
 	dir := t.TempDir()
-	identity := "SHPRM1@0.7"
-
-	{
-		store := NewTreeStore(dir)
-		existing, _ := store.LoadByIdentity("acp2", identity)
-		if existing != nil {
-			t.Fatalf("invocation 1 expected miss, got %v", existing)
-		}
-		snap := &export.Snapshot{
-			Device:    export.DeviceInfo{IP: "10.41.40.4", Protocol: "acp2"},
-			Generator: "test",
-			CreatedAt: time.Now().UTC(),
-			Slots: []export.SlotDump{{
-				Slot:     0,
-				WalkedAt: time.Now().UTC(),
-				Objects: []protocol.Object{{
-					Slot: 0, ID: 1, Label: "BOARD",
-					Path: []string{"BOARD"},
-					Kind: protocol.KindString,
-					Meta: map[string]any{"acp2.objType": uint8(0)},
-				}},
-			}},
-		}
-		if err := store.SaveByIdentity("acp2", identity, snap); err != nil {
-			t.Fatalf("invocation 1 save: %v", err)
-		}
-	}
-
-	{
-		store := NewTreeStore(dir)
-		existing, err := store.LoadByIdentity("acp2", identity)
-		if err != nil || existing == nil {
-			t.Fatalf("invocation 2 expected hit, got snap=%v err=%v", existing, err)
-		}
-		if len(existing.Slots) != 1 || existing.Slots[0].Slot != 0 {
-			t.Fatalf("invocation 2 sees wrong slots: %+v", existing.Slots)
-		}
-		if len(existing.Slots[0].Objects) != 1 || existing.Slots[0].Objects[0].Label != "BOARD" {
-			t.Fatalf("invocation 2 lost slot 0 content: %+v", existing.Slots[0].Objects)
-		}
-		existing.Slots = append(existing.Slots, export.SlotDump{
-			Slot:     1,
-			WalkedAt: time.Now().UTC(),
-			Objects: []protocol.Object{{
-				Slot: 1, ID: 70232, Label: "Backup Input",
-				Path: []string{"BOARD", "Stream"},
-				Kind: protocol.KindEnum,
-				Unit: "dBFS",
-				Meta: map[string]any{"acp2.objType": uint8(2)},
-			}},
-		})
-		if err := store.SaveByIdentity("acp2", identity, existing); err != nil {
-			t.Fatalf("invocation 2 save: %v", err)
-		}
-	}
-
 	store := NewTreeStore(dir)
-	final, err := store.LoadByIdentity("acp2", identity)
-	if err != nil || final == nil {
-		t.Fatalf("final load: %v", err)
+
+	objs := []protocol.Object{{
+		Slot: 0, ID: 0, Group: "identity", Label: "Card name",
+		Kind: protocol.KindString,
+	}}
+	if err := store.SaveByIdentity("acp1", "RRS18@1601", objs); err != nil {
+		t.Fatalf("SaveByIdentity: %v", err)
 	}
-	if len(final.Slots) != 2 {
-		t.Fatalf("final file should hold 2 slots, got %d (slot 1 overwrote slot 0?)", len(final.Slots))
+
+	raw, err := os.ReadFile(filepath.Join(dir, "dm", "acp1", "RRS18@1601.json"))
+	if err != nil {
+		t.Fatalf("read written file: %v", err)
 	}
-	gotSlots := map[int]string{}
-	gotUnits := map[int]string{}
-	for _, sd := range final.Slots {
-		if len(sd.Objects) == 0 {
-			t.Errorf("slot %d has zero objects after merge", sd.Slot)
-			continue
+	var probe map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &probe); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	wantKeys := map[string]bool{"model": true, "sw_rev": true, "protocol": true, "objects": true}
+	for k := range probe {
+		if !wantKeys[k] {
+			t.Errorf("DM has forbidden top-level key %q — only {model, sw_rev, protocol, objects} allowed (#430). Raw: %s", k, raw)
 		}
-		gotSlots[sd.Slot] = sd.Objects[0].Label
-		gotUnits[sd.Slot] = sd.Objects[0].Unit
 	}
-	if gotSlots[0] != "BOARD" {
-		t.Errorf("slot 0 lost original content: got %q want %q", gotSlots[0], "BOARD")
+	for want := range wantKeys {
+		if _, ok := probe[want]; !ok {
+			t.Errorf("DM missing required top-level key %q", want)
+		}
 	}
-	if gotSlots[1] != "Backup Input" {
-		t.Errorf("slot 1 missing: got %q want %q", gotSlots[1], "Backup Input")
+
+	var dm DM
+	if err := json.Unmarshal(raw, &dm); err != nil {
+		t.Fatalf("DM decode: %v", err)
 	}
-	if gotUnits[1] != "dBFS" {
-		t.Errorf("slot 1 Unit lost on merge: got %q want %q", gotUnits[1], "dBFS")
+	if dm.Model != "RRS18" {
+		t.Errorf("model: got %q, want %q", dm.Model, "RRS18")
+	}
+	if dm.SwRev != "1601" {
+		t.Errorf("sw_rev: got %q, want %q", dm.SwRev, "1601")
+	}
+	if dm.Protocol != "acp1" {
+		t.Errorf("protocol: got %q, want %q", dm.Protocol, "acp1")
 	}
 }
 
-// TestIdentityPath_PerProtocolSubfolder pins the #424 layout: identity
-// caches now live under .cache/dm/<proto>/<identity>.json so ACP1 +
-// ACP2 + Ember+ can't collide on identical Model strings.
+// TestIdentityPath_PerProtocolSubfolder pins the #424 path layout
+// (per-proto subfolder) still works under the #430 DM-shape change.
 func TestIdentityPath_PerProtocolSubfolder(t *testing.T) {
 	dir := t.TempDir()
 	store := NewTreeStore(dir)
-	snap := &export.Snapshot{
-		Device:    export.DeviceInfo{IP: "10.6.239.113", Protocol: "acp1"},
-		CreatedAt: time.Now().UTC(),
-		Slots: []export.SlotDump{{
-			Slot:     0,
-			WalkedAt: time.Now().UTC(),
-			Objects:  []protocol.Object{{Slot: 0, ID: 0, Label: "Card name"}},
-		}},
-	}
-	if err := store.SaveByIdentity("acp1", "RRS18@1601", snap); err != nil {
+	objs := []protocol.Object{{Slot: 0, ID: 0, Label: "Card name"}}
+	if err := store.SaveByIdentity("acp1", "RRS18@1601", objs); err != nil {
 		t.Fatalf("SaveByIdentity: %v", err)
 	}
 	wantPath := filepath.Join(dir, "dm", "acp1", "RRS18@1601.json")
@@ -225,24 +153,21 @@ func TestIdentityPath_PerProtocolSubfolder(t *testing.T) {
 	}
 }
 
-// TestLoadByIdentity_FallbackToLegacyPath verifies that caches written
-// by older dhs versions (.cache/dm/<identity>.json without proto
-// subfolder) still import. Required during the transition window.
+// TestLoadByIdentity_FallbackToLegacyPath verifies pre-#424 path layout
+// (flat .cache/dm/<id>.json) still imports.
 func TestLoadByIdentity_FallbackToLegacyPath(t *testing.T) {
 	dir := t.TempDir()
-	// Hand-write a legacy-layout cache file.
 	legacyDir := filepath.Join(dir, "dm")
 	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 	legacyFile := filepath.Join(legacyDir, "CONVERT Hybrid@6.7.4.json")
+	// Hand-write a legacy Snapshot-shaped file (pre-#430).
 	snap := &export.Snapshot{
-		Device:    export.DeviceInfo{IP: "10.41.40.195", Protocol: "acp2"},
-		CreatedAt: time.Now().UTC(),
+		Device: export.DeviceInfo{IP: "10.41.40.195", Protocol: "acp2"},
 		Slots: []export.SlotDump{{
-			Slot:     1,
-			WalkedAt: time.Now().UTC(),
-			Objects:  []protocol.Object{{Slot: 1, ID: 67604, Label: "Destination IP"}},
+			Slot:    1,
+			Objects: []protocol.Object{{Slot: 1, ID: 67604, Label: "Destination IP"}},
 		}},
 	}
 	f, _ := os.Create(legacyFile)
@@ -261,5 +186,39 @@ func TestLoadByIdentity_FallbackToLegacyPath(t *testing.T) {
 	}
 	if len(got.Slots) != 1 || got.Slots[0].Objects[0].Label != "Destination IP" {
 		t.Errorf("legacy fallback decoded wrong content: %+v", got.Slots)
+	}
+}
+
+// TestLoadByIdentity_NewDMShape verifies the reader synthesises a
+// Snapshot from a #430-shaped file.
+func TestLoadByIdentity_NewDMShape(t *testing.T) {
+	dir := t.TempDir()
+	store := NewTreeStore(dir)
+	objs := []protocol.Object{
+		{Slot: 0, ID: 0, Label: "Card name", Kind: protocol.KindString},
+		{Slot: 0, ID: 1, Label: "User label", Kind: protocol.KindString},
+	}
+	if err := store.SaveByIdentity("acp2", "SHPRM1@0.7", objs); err != nil {
+		t.Fatalf("SaveByIdentity: %v", err)
+	}
+	got, err := store.LoadByIdentity("acp2", "SHPRM1@0.7")
+	if err != nil || got == nil {
+		t.Fatalf("LoadByIdentity: got=%v err=%v", got, err)
+	}
+	if got.Device.Protocol != "acp2" {
+		t.Errorf("synthesised Snapshot protocol: got %q, want %q", got.Device.Protocol, "acp2")
+	}
+	if got.Device.IP != "" {
+		t.Errorf("synthesised Snapshot must have empty IP (slot-agnostic), got %q", got.Device.IP)
+	}
+	if len(got.Slots) != 1 || len(got.Slots[0].Objects) != 2 {
+		t.Fatalf("synthesised shape: slots=%d objs=%d, want 1/2",
+			len(got.Slots),
+			func() int {
+				if len(got.Slots) == 0 {
+					return -1
+				}
+				return len(got.Slots[0].Objects)
+			}())
 	}
 }

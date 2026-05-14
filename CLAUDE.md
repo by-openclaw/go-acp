@@ -26,6 +26,9 @@ Foundational ADRs every agent reads first:
 | [0014](docs/adr/0014-issue-tracking-discipline.md) | issue → branch → tests → PR → CI green → `@yboujraf` approval → merge |
 | [0015](docs/adr/0015-single-source-of-truth.md) | no duplicated rules across docs |
 | [0016](docs/adr/0016-multi-os-support.md) | multi-OS support per connector |
+| [0022](docs/adr/0022-card-data-model.md) | card data model — Device/Frame/Slot/Card/DM + manifest |
+| [0023](docs/adr/0023-matrix-entity.md) | matrix entity — matrix_id/level_id/size/behavior |
+| [0024](docs/adr/0024-federation-mirror-and-virtual-frame.md) | federation: mirror frame vs virtual frame |
 
 ---
 
@@ -316,7 +319,7 @@ DHSError (base)
 Files only. No database. No Redis. Per ADR-0020 buckets:
 
 - **User config**: per-OS data dir (`~/.local/share/dhs/` etc.) — overridable via `--data-dir`.
-- **Cache** (gitignored): `.cache/` next to the binary. Per-protocol cache shape lives in [`internal/<proto>/docs/runbook.md`](internal/) (e.g. ACP2 = identity-keyed `dm/<id>.json`, ACP1 = IP-keyed `devices/<ip>/slot_<n>.json`).
+- **Cache** (gitignored): `.cache/` next to the binary. Layout per [ADR-0022](docs/adr/0022-card-data-model.md): `.cache/dm/<proto>/<Model@SwRev>.json` (versioned, never overwritten) + `.cache/manifest/<device-name>.yaml`.
 - **Captures** (gitignored, no LFS): `captures/<proto>/<scenario>/`.
 
 Value freshness: values load as **stale**, confirmed by a live source
