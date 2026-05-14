@@ -95,43 +95,36 @@ func Encode(f *Frame) []byte {
 		// Keep-alive: slot + msgType + command + version (4 bytes).
 		raw = []byte{f.Slot, f.MsgType, f.Command, VersionS101}
 	} else {
-		// EmBER frame.
+		// EmBER frame — always 9-byte header including the app-bytes
+		// (DTD type + length + DTD minor/major version) on EVERY
+		// chunk regardless of FlagSingle / FlagFirst / Middle / FlagLast.
 		//
-		// Per S101 spec p.94 the app-bytes (DTD type + length + DTD
-		// minor/major version) belong ONLY to the first packet of a
-		// message — Single-packet or First-of-multi. Middle and Last
-		// frames skip those four bytes and ship only
-		// slot+msgType+cmd+ver+flags + payload (5-byte header).
-		//
-		// libember-cpp (used by EmberViewer, TinyEmber, Lawo VSM)
-		// crashes on a non-first frame that carries DTD bytes — the
-		// receiver re-reads them as part of the BER payload, decodes
-		// 0x01 0x02 0x1F 0x02 as a malformed tag and aborts. This
-		// branch produces the spec-conformant header sequence.
-		hasAppBytes := f.Flags&FlagFirst != 0 // FlagSingle = FlagFirst|FlagLast, FlagFirst alone, both have it
-		if hasAppBytes {
-			raw = make([]byte, 0, 9+len(f.Payload))
-			raw = append(raw,
-				f.Slot,          // 0: slot
-				MsgEmBER,        // 1: message type
-				CmdEmBER,        // 2: command
-				VersionS101,     // 3: version
-				f.Flags,         // 4: flags
-				DTDGlow,         // 5: DTD type
-				AppBytesLen,     // 6: app bytes length (2)
-				DTDMinorVersion, // 7: DTD minor version (31)
-				DTDMajorVersion, // 8: DTD major version (2)
-			)
-		} else {
-			raw = make([]byte, 0, 5+len(f.Payload))
-			raw = append(raw,
-				f.Slot,      // 0: slot
-				MsgEmBER,    // 1: message type
-				CmdEmBER,    // 2: command
-				VersionS101, // 3: version
-				f.Flags,     // 4: flags
-			)
-		}
+		// Spec p.94 wording is ambiguous about whether app-bytes are
+		// per-message (First only) or per-packet (every chunk), but the
+		// shipping Ember+ ecosystem — libember-cpp (powers EmberPlusView,
+		// TinyEmber+, Lawo VSM), our own Wireshark dissector
+		// dhs_emberplus.lua, and every captured TinyEmber+ multi-packet
+		// frame — assumes the 9-byte header is always present and reads
+		// offset 5 as DTD on every packet. A previous attempt at spec-
+		// strict reading (commit 34e47d2) emitted 5-byte headers on
+		// Middle/Last, which made libember-cpp interpret the first BER
+		// continuation byte as DTD and surface
+		// "Glow Root is of unexpected type" + "Unexpected schema:
+		// dtd=161" against our provider. The de-facto contract is what
+		// the ecosystem honours, so we always emit the full 9-byte
+		// header.
+		raw = make([]byte, 0, 9+len(f.Payload))
+		raw = append(raw,
+			f.Slot,          // 0: slot
+			MsgEmBER,        // 1: message type
+			CmdEmBER,        // 2: command
+			VersionS101,     // 3: version
+			f.Flags,         // 4: flags
+			DTDGlow,         // 5: DTD type
+			AppBytesLen,     // 6: app bytes length (2)
+			DTDMinorVersion, // 7: DTD minor version (31)
+			DTDMajorVersion, // 8: DTD major version (2)
+		)
 		raw = append(raw, f.Payload...)
 	}
 
@@ -218,23 +211,25 @@ func Decode(data []byte) (*Frame, error) {
 		return f, nil
 	}
 
-	// EmBER frame: need flags at minimum (5-byte header). App-bytes
-	// (DTD type + len + version) are only present on Single / First
-	// frames per S101 spec p.94 — Middle / Last carry just the
-	// 5-byte header. Symmetric with Encode().
+	// EmBER frame — 9-byte header on every chunk: slot + msgType + cmd
+	// + version + flags + DTD + AppBytesLen + DTD minor + DTD major.
+	// Symmetric with Encode(): app-bytes are always present per the
+	// shipping Ember+ ecosystem convention (libember-cpp / TinyEmber+ /
+	// EmberPlusView / our Wireshark dissector all assume this), so
+	// Middle/Last chunks also carry the full header. We still tolerate
+	// a 5-byte header on the read path (some providers may follow the
+	// strict reading of spec p.94) — if we don't see the DTD byte at
+	// offset 5 we fall back to treating offset 5 as start-of-payload.
 	if len(content) < 5 {
 		return nil, ErrTruncated
 	}
 	f.Flags = content[4]
-	hasAppBytes := f.Flags&FlagFirst != 0 // Single (0xC0) or First (0x80)
-	if hasAppBytes {
-		if len(content) < 9 {
-			return nil, ErrTruncated
-		}
+	hasFullHeader := len(content) >= 9 && content[5] == DTDGlow
+	if hasFullHeader {
 		f.DTD = content[5]
-		// content[6] = AppBytesLen (skip)
-		// content[7] = DTD minor version (skip)
-		// content[8] = DTD major version (skip)
+		// content[6] = AppBytesLen (assumed 2)
+		// content[7] = DTD minor version
+		// content[8] = DTD major version
 		if len(content) > 9 {
 			f.Payload = content[9:]
 		}
