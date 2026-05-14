@@ -551,7 +551,16 @@ func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto s
 		return
 	}
 	prober, _ := plug.(identityProber)
-	saveSlotCache(ctx, prober, host, proto, slot, objs, canonicalTreeFromPlug(ctx, plug))
+	tree := canonicalTreeFromPlug(ctx, plug)
+	// Plugins with both canonicalize + dmSplitter (Ember+) get both
+	// the full provider DM AND per-slot DMs so each matrix / function
+	// / chassis subtree lives in its own file under
+	// .cache/dm/<proto>/<slotIdentity>.json (refs #438, ADR-0022/3).
+	if _, splittable := plug.(dmSplitter); splittable && tree != nil {
+		saveAndSplitForEmberplus(ctx, plug, prober, host, proto, slot, objs, tree)
+		return
+	}
+	saveSlotCache(ctx, prober, host, proto, slot, objs, tree)
 }
 
 // canonicalTreeFromPlug invokes the plugin's ExportCanonical when
@@ -605,6 +614,22 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 	}
 }
 
+// saveAndSplitForEmberplus performs the saveSlotCache + per-slot DM
+// split. Called from walkSlotAndCache when the plugin supports both
+// canonicalize AND the dmSplitter contract (emberplus today). Other
+// protocols stay on the legacy single-DM path.
+func saveAndSplitForEmberplus(ctx context.Context, plug protocol.Protocol, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) {
+	saveSlotCache(ctx, prober, host, proto, slot, objs, tree)
+	if prober == nil {
+		return
+	}
+	identity, perr := prober.IdentityProbe(ctx, slot)
+	if perr != nil || identity == "" {
+		return
+	}
+	splitDMByMatrix(ctx, plug, identity)
+}
+
 // saveIdentityCache writes a per-card DM file (#430). DM is
 // slot-agnostic, host-agnostic — the schema of ONE card type. Two
 // slots holding the same card share the same DM file. Slot, IP, host
@@ -625,4 +650,32 @@ func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, s
 		Root:      tree.Root,
 		Templates: tree.Templates,
 	})
+}
+
+// splitDMByMatrix is the canonical-tree split documented in
+// internal/emberplus/consumer/dm_split.go. Called from
+// walkSlotAndCache after the full provider DM lands; emits one
+// additional DM per slot-worthy root child so each matrix / function
+// subtree gets its own file under .cache/dm/emberplus/. Quiet on
+// success; warns on per-slot save errors.
+type dmSplitter interface {
+	SplitAndPersistDM(ctx context.Context, store *storage.TreeStore, providerIdentity string) ([]string, error)
+}
+
+func splitDMByMatrix(ctx context.Context, plug protocol.Protocol, identity string) {
+	if treeStore == nil {
+		return
+	}
+	ds, ok := plug.(dmSplitter)
+	if !ok {
+		return
+	}
+	persisted, err := ds.SplitAndPersistDM(ctx, treeStore, identity)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: per-slot DM split: %v\n", err)
+	}
+	if len(persisted) > 0 {
+		fmt.Fprintf(os.Stderr, "DM split: %d slot DM(s) written — %s\n",
+			len(persisted), strings.Join(persisted, ", "))
+	}
 }
