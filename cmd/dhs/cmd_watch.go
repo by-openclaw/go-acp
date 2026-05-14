@@ -695,14 +695,19 @@ func defaultTransportFor(proto string) string {
 // Parameters host/objs are unused — kept on the signature to match
 // the saveSlotCache contract so caller plumbing is uniform.
 func saveAndSplitForEmberplus(ctx context.Context, plug protocol.Protocol, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) {
-	_, _, _ = proto, objs, tree
+	// Write the full-provider DM first — keeps the consumer's
+	// existing `--dm "<Device>@<SwRev>"` fast path working (matrix /
+	// get / set / stream hot-load against one file). Then the
+	// per-slot split adds the per-matrix / per-function files
+	// alongside so federation tooling can compose by slot. Disk
+	// redundancy ~few MB; trade-off explicitly approved.
+	saveSlotCache(ctx, prober, host, proto, slot, objs, tree)
+
 	if prober == nil {
-		fmt.Fprintf(os.Stderr, "warning: emberplus DM split needs identity probe; skipping cache for slot %d\n", slot)
 		return
 	}
 	identity, perr := prober.IdentityProbe(ctx, slot)
 	if perr != nil || identity == "" {
-		fmt.Fprintf(os.Stderr, "warning: identity probe failed; emberplus slot %d not cached: %v\n", slot, perr)
 		return
 	}
 	port := 0
@@ -727,10 +732,15 @@ func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, s
 	if tree == nil {
 		return store.SaveByIdentity(proto, identity, objs)
 	}
+	// Write BOTH shapes: canonical Root for federation / provider
+	// serve, flat Objects for the consumer's --dm hot-load (which
+	// uses SeedTreeFromCachedObjects → numIndex by OID). One file,
+	// two views, no per-verb walk.
 	return store.WriteDM(proto, identity, storage.DM{
 		Protocol:  proto,
 		Root:      tree.Root,
 		Templates: tree.Templates,
+		Objects:   objs,
 	})
 }
 

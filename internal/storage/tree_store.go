@@ -284,10 +284,13 @@ func (s *TreeStore) WriteDM(proto, identity string, dm DM) error {
 			dm.SwRev = r
 		}
 	}
-	if dm.Root != nil && len(dm.Objects) > 0 {
-		// Either-or — canonical Root supersedes Objects entirely.
-		dm.Objects = nil
-	}
+	// Keep BOTH Root and Objects populated when both are passed:
+	// Root is the canonical hierarchical shape (for federation /
+	// provider-side serve), Objects is the flat list (for the
+	// consumer's existing SeedTreeFromCachedObjects hot-load).
+	// Disk redundancy ~few MB; trade-off is worth it because the
+	// consumer's per-verb hot-load needs the flat list to seed
+	// numIndex without re-walking the canonical tree on every call.
 	if dm.Objects != nil {
 		clean := make([]protocol.Object, len(dm.Objects))
 		for i, o := range dm.Objects {

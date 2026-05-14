@@ -75,11 +75,22 @@ func loadDM(path string) (*dmFile, error) {
 // and drop the rest. Plugin-internal metadata (Meta) is captured in
 // the node Description as JSON so it remains visible for debug.
 func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
+	// Synthetic root identifier defaults to device name, but is
+	// overridden by the slot DMs' shared path prefix when present.
+	// This preserves the original provider's root identifier (e.g.
+	// "router" for TinyEmberPlusRouter) so wire paths in the served
+	// tree match the cached DM paths — required for the consumer's
+	// --dm hot-load (paths in DM "router.nToN.matrix" must match
+	// the served tree paths).
+	rootIdent := m.Device.Name
+	if prefix := deriveSharedRootIdentifier(m, cacheDir); prefix != "" {
+		rootIdent = prefix
+	}
 	root := &canonical.Node{
 		Header: canonical.Header{
 			Number:     1,
-			Identifier: m.Device.Name,
-			Path:       m.Device.Name,
+			Identifier: rootIdent,
+			Path:       rootIdent,
 			OID:        "1",
 			IsOnline:   true,
 			Access:     "read",
@@ -126,6 +137,49 @@ func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
 	}
 
 	return &canonical.Export{Root: root, Templates: collectedTemplates}, nil
+}
+
+// deriveSharedRootIdentifier inspects every slot DM referenced by the
+// manifest. When all slot DMs carry a canonical Root whose Path starts
+// with the same first segment (e.g. "router" for TinyEmberPlusRouter's
+// nToN whose path="router.nToN"), that segment becomes the synthetic
+// device-root identifier — preserving the original provider's wire
+// paths through manifest+DM round-trip.
+//
+// Returns "" when no canonical Root exists in any slot, or when slots
+// disagree on the prefix (falls back to caller's device-name default).
+func deriveSharedRootIdentifier(m *Manifest, cacheDir string) string {
+	var shared string
+	for _, fr := range m.Frames {
+		for _, sl := range fr.Slots {
+			dmPath := DMPath(cacheDir, m.Device.Protocol, sl.DM)
+			data, err := os.ReadFile(dmPath)
+			if err != nil {
+				continue
+			}
+			var probe struct {
+				Root struct {
+					Path string `json:"path"`
+				} `json:"root"`
+			}
+			if err := json.Unmarshal(data, &probe); err != nil {
+				continue
+			}
+			if probe.Root.Path == "" {
+				continue
+			}
+			first := probe.Root.Path
+			if i := strings.IndexByte(first, '.'); i > 0 {
+				first = first[:i]
+			}
+			if shared == "" {
+				shared = first
+			} else if shared != first {
+				return ""
+			}
+		}
+	}
+	return shared
 }
 
 // slotIndex pulls a numeric slot index out of an addr map. Supports
