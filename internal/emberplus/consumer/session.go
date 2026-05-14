@@ -55,6 +55,31 @@ type Session struct {
 	// into JSONL when the caller passed --capture. Plugin sets it
 	// before Connect via SetRecorder.
 	recorder *transport.Recorder
+
+	// useLegacyGlow is set by the walker when the provider emits
+	// non-qualified Glow elements (DTD <2.10). Subscribe / Unsubscribe
+	// / SetValue must then emit the nested Node/Parameter chain form
+	// instead of the QualifiedParameter wrapper — legacy providers
+	// index their tree by the nested form and reject QualifiedParameter
+	// paths with "parameter not found". Both forms are spec; we pick
+	// to match the provider.
+	glowFormMu     sync.RWMutex
+	useLegacyGlow  bool
+}
+
+// SetUseLegacyGlow pins the session to emit non-qualified Glow on
+// outbound commands. Called by the walker the first time a Node /
+// Parameter without explicit path is decoded.
+func (s *Session) SetUseLegacyGlow(v bool) {
+	s.glowFormMu.Lock()
+	s.useLegacyGlow = v
+	s.glowFormMu.Unlock()
+}
+
+func (s *Session) isLegacyGlow() bool {
+	s.glowFormMu.RLock()
+	defer s.glowFormMu.RUnlock()
+	return s.useLegacyGlow
 }
 
 // SetRecorder attaches a traffic recorder. Call before Connect.
@@ -326,13 +351,23 @@ func (s *Session) SendMatrixGetDirectory(matrixPath []int32) error {
 
 // SendSubscribe sends a Subscribe command for a parameter path.
 func (s *Session) SendSubscribe(path []int32) error {
-	payload := glow.EncodeSubscribe(path)
+	var payload []byte
+	if s.isLegacyGlow() {
+		payload = glow.EncodeSubscribeLegacy(path)
+	} else {
+		payload = glow.EncodeSubscribe(path)
+	}
 	return s.sendEmBER(payload)
 }
 
 // SendUnsubscribe sends an Unsubscribe command.
 func (s *Session) SendUnsubscribe(path []int32) error {
-	payload := glow.EncodeUnsubscribe(path)
+	var payload []byte
+	if s.isLegacyGlow() {
+		payload = glow.EncodeUnsubscribeLegacy(path)
+	} else {
+		payload = glow.EncodeUnsubscribe(path)
+	}
 	return s.sendEmBER(payload)
 }
 

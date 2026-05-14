@@ -92,8 +92,9 @@ func mergeAnnouncedParameter(existing, incoming *glow.Parameter) *glow.Parameter
 	if incoming.Type != 0 {
 		merged.Type = incoming.Type
 	}
-	if incoming.StreamIdentifier != 0 {
+	if incoming.HasStreamIdentifier {
 		merged.StreamIdentifier = incoming.StreamIdentifier
+		merged.HasStreamIdentifier = true
 	}
 	if len(incoming.EnumMap) > 0 {
 		merged.EnumMap = incoming.EnumMap

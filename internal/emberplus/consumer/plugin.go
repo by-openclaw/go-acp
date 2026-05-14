@@ -817,21 +817,32 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 	}
 
 	key, entry := p.findEntry(req)
-	if entry == nil || entry.glowParam == nil || len(entry.glowParam.Path) == 0 {
+	if entry == nil || entry.glowParam == nil {
+		return WrapProto("parameter not found for subscribe", nil)
+	}
+	// Non-qualified Glow Parameters (DTD <2.10) carry only [0] Number;
+	// the absolute path is composed by the walker into entry.numericPath.
+	// Fall back to that when glowParam.Path is empty so the SendSubscribe
+	// encoder still has a target — strict spec: both forms are valid.
+	subscribePath := entry.glowParam.Path
+	if len(subscribePath) == 0 {
+		subscribePath = entry.numericPath
+	}
+	if len(subscribePath) == 0 {
 		return WrapProto("parameter not found for subscribe", nil)
 	}
 
 	p.subsMu.Lock()
 	p.subs[key] = fn
-	if entry.glowParam.StreamIdentifier != 0 {
-		p.streamSubs[key] = entry.glowParam.Path
+	if entry.glowParam.HasStreamIdentifier {
+		p.streamSubs[key] = subscribePath
 	}
 	p.subsMu.Unlock()
 
-	if entry.glowParam.StreamIdentifier != 0 {
+	if entry.glowParam.HasStreamIdentifier {
 		p.logger.Debug("emberplus: explicit stream subscribe",
 			"path", key, "stream_identifier", entry.glowParam.StreamIdentifier)
-		return s.SendSubscribe(entry.glowParam.Path)
+		return s.SendSubscribe(subscribePath)
 	}
 	p.logger.Debug("emberplus: implicit subscribe via GetDirectory", "path", key)
 	return nil
@@ -1057,6 +1068,17 @@ func (p *Plugin) resolveNumPath(explicit []int32, parent []int32, number int32) 
 		return cloneInt32Slice(explicit)
 	}
 	p.profile.Note(NonQualifiedElement)
+	// Provider speaks legacy non-qualified Glow (DTD <2.10). Pin the
+	// session so subscribe / unsubscribe / setvalue use the nested
+	// Node/Parameter chain wire form the provider's path index
+	// recognises. Both forms are spec — strict-spec compliance
+	// requires emitting whichever the provider speaks. See Ember+
+	// Documentation.pdf §Glow Compatibility.
+	p.mu.Lock()
+	if p.session != nil {
+		p.session.SetUseLegacyGlow(true)
+	}
+	p.mu.Unlock()
 	out := make([]int32, 0, len(parent)+1)
 	out = append(out, parent...)
 	out = append(out, number)
@@ -1413,7 +1435,7 @@ func parameterMeta(p *glow.Parameter) map[string]any {
 		}
 		m["enumMap"] = entries
 	}
-	if p.StreamIdentifier != 0 {
+	if p.HasStreamIdentifier {
 		m["streamIdentifier"] = p.StreamIdentifier
 	}
 	if p.StreamDescriptor != nil {
@@ -1777,7 +1799,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	// attach it to the outgoing Event without re-walking state.
 	entry.pendingChanges = diffParameters(priorParam, param)
 	p.storeEntry(entry, stringPath)
-	if param.StreamIdentifier != 0 {
+	if param.HasStreamIdentifier {
 		key := numericKey(entry.numericPath)
 		p.subsMu.Lock()
 		existing := p.streamIndex[param.StreamIdentifier]
