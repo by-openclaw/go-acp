@@ -458,7 +458,35 @@ func (p *Plugin) snapshot() []protocol.Object {
 		out = append(out, entry.obj)
 	}
 	p.treeMu.RUnlock()
+	out = appendTemplateObjects(out, p)
 	return enrichMatrixLabels(out)
+}
+
+// appendTemplateObjects serializes templates (which live in
+// p.templates separate from the tree) as synthetic protocol.Objects
+// with Meta["element"] = "template", so the DM cache round-trip
+// preserves them. SeedTreeFromCachedObjects registers them back in
+// p.templates via seedTemplate (no entry in numIndex — templates are
+// looked up by ResolveTemplate, not iterated).
+func appendTemplateObjects(out []protocol.Object, p *Plugin) []protocol.Object {
+	p.templatesMu.RLock()
+	defer p.templatesMu.RUnlock()
+	for key, t := range p.templates {
+		if t == nil {
+			continue
+		}
+		out = append(out, protocol.Object{
+			OID:   key,
+			Label: t.Description,
+			Meta: map[string]any{
+				"element":     "template",
+				"qualified":   t.Qualified,
+				"number":      int64(t.Number),
+				"description": t.Description,
+			},
+		})
+	}
+	return out
 }
 
 // findEntry resolves a ValueRequest to a treeEntry. Resolution order:

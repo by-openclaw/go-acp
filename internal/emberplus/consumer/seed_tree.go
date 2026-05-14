@@ -76,6 +76,11 @@ func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
 
 	now := time.Now()
 	for _, o := range objs {
+		// Template objects are routed to p.templates, not numIndex/pathIndex.
+		if element := metaString(o.Meta, "element"); element == "template" {
+			p.seedTemplate(o)
+			continue
+		}
 		entry := p.seedOneEntry(o, now)
 		if entry == nil {
 			continue
@@ -152,11 +157,12 @@ func (p *Plugin) seedOneEntry(o protocol.Object, now time.Time) *treeEntry {
 		entry.glowMatrix = m
 		entry.matrixState = matrix.NewStateFromGlow(m)
 	case "function":
-		entry.glowFunc = &glow.Function{
-			Path:        numericPath,
-			Identifier:  identifier,
-			Description: metaString(o.Meta, "description"),
-		}
+		entry.glowFunc = buildFunctionFromMeta(numericPath, identifier, o.Meta)
+	case "template":
+		// Template entries don't go into the tree indexes — they live
+		// in p.templates and are looked up by ResolveTemplate. We seed
+		// them via seedTemplateFromMeta below (different code path).
+		return nil
 	default:
 		// Pre-#438 cache files may carry objects without an element
 		// key. Keep them in the index for label resolution only —
@@ -419,6 +425,88 @@ func decodeInt32Slice(v any) []int32 {
 		for _, it := range x {
 			if n, ok := metaInt64(it); ok {
 				out = append(out, int32(n))
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// seedTemplate registers a cached template (Meta["element"]="template")
+// back into p.templates so ResolveTemplate finds it without a fresh
+// wire walk. Templates carry: qualified bool, number int64,
+// description string. The TemplateElement union (Parameter / Node /
+// Matrix / Function definition) is not deep-encoded today — the
+// consumer's formula evaluation is parked per
+// internal/emberplus/CLAUDE.md "Quirks / landmines", so a stub
+// Template{Path, Qualified, Description} is enough for current
+// callers of ResolveTemplate.
+func (p *Plugin) seedTemplate(o protocol.Object) {
+	if o.OID == "" {
+		return
+	}
+	qualified, _ := o.Meta["qualified"].(bool)
+	num, _ := metaInt64(o.Meta["number"])
+	tmpl := &glow.Template{
+		Qualified:   qualified,
+		Number:      int32(num),
+		Description: metaString(o.Meta, "description"),
+	}
+	if qualified {
+		tmpl.Path = parseNumericOID(o.OID)
+	}
+	p.templatesMu.Lock()
+	if p.templates == nil {
+		p.templates = make(map[string]*glow.Template)
+	}
+	p.templates[o.OID] = tmpl
+	p.templatesMu.Unlock()
+}
+
+// buildFunctionFromMeta rehydrates a glow.Function from cached Meta —
+// arguments + result tuples (per spec p.91) plus templateReference.
+func buildFunctionFromMeta(numericPath []int32, identifier string, meta map[string]any) *glow.Function {
+	f := &glow.Function{
+		Path:        numericPath,
+		Identifier:  identifier,
+		Description: metaString(meta, "description"),
+	}
+	if v, ok := meta["arguments"]; ok {
+		f.Arguments = decodeTupleItems(v)
+	}
+	if v, ok := meta["result"]; ok {
+		f.Result = decodeTupleItems(v)
+	}
+	if v, ok := meta["templateReference"]; ok {
+		if s, ok := v.(string); ok {
+			f.TemplateReference = parseNumericOID(s)
+		}
+	}
+	return f
+}
+
+// decodeTupleItems handles both the live walker shape
+// ([]map[string]any from tupleItemsToJSON) and the JSON round-trip
+// shape ([]any of map[string]any).
+func decodeTupleItems(v any) []glow.TupleItem {
+	rebuild := func(item map[string]any) glow.TupleItem {
+		return glow.TupleItem{
+			Name: metaString(item, "name"),
+			Type: paramTypeFromName(metaString(item, "type")),
+		}
+	}
+	switch x := v.(type) {
+	case []map[string]any:
+		out := make([]glow.TupleItem, 0, len(x))
+		for _, item := range x {
+			out = append(out, rebuild(item))
+		}
+		return out
+	case []any:
+		out := make([]glow.TupleItem, 0, len(x))
+		for _, raw := range x {
+			if item, ok := raw.(map[string]any); ok {
+				out = append(out, rebuild(item))
 			}
 		}
 		return out

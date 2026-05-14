@@ -256,6 +256,68 @@ func TestSeed_MatrixFullSchema(t *testing.T) {
 	}
 }
 
+// TestSeed_FunctionTuples rehydrates Function.Arguments + Result from
+// cached Meta. Pinned per spec p.91 (Function/TupleDescription).
+func TestSeed_FunctionTuples(t *testing.T) {
+	p := newSeedTestPlugin()
+	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+		OID:   "1.4.1",
+		Label: "add",
+		Path:  []string{"router", "functions", "add"},
+		Meta: map[string]any{
+			"element": "function",
+			"arguments": []map[string]any{
+				{"type": "integer", "name": "a"},
+				{"type": "integer", "name": "b"},
+			},
+			"result": []map[string]any{
+				{"type": "integer", "name": "sum"},
+			},
+			"templateReference": "0.5",
+		},
+	}})
+	f := p.numIndex["1.4.1"].glowFunc
+	if f == nil {
+		t.Fatal("glowFunc nil")
+	}
+	if len(f.Arguments) != 2 || f.Arguments[0].Name != "a" || f.Arguments[1].Type != glow.ParamTypeInteger {
+		t.Errorf("Arguments = %+v", f.Arguments)
+	}
+	if len(f.Result) != 1 || f.Result[0].Name != "sum" {
+		t.Errorf("Result = %+v", f.Result)
+	}
+	if numericKey(f.TemplateReference) != "0.5" {
+		t.Errorf("TemplateReference = %v", f.TemplateReference)
+	}
+}
+
+// TestSeed_TemplateRoundTrip pins that cached Template objects (the
+// synthetic Meta["element"]="template" shape appendTemplateObjects
+// writes) flow back into p.templates and become ResolveTemplate-able.
+func TestSeed_TemplateRoundTrip(t *testing.T) {
+	p := newSeedTestPlugin()
+	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+		OID:   "0.5.2",
+		Label: "Gain template",
+		Meta: map[string]any{
+			"element":     "template",
+			"qualified":   true,
+			"number":      float64(2),
+			"description": "Gain template",
+		},
+	}})
+	if p.numIndex["0.5.2"] != nil {
+		t.Error("template should not land in numIndex")
+	}
+	got := p.ResolveTemplate([]int32{0, 5, 2})
+	if got == nil {
+		t.Fatal("ResolveTemplate returned nil")
+	}
+	if !got.Qualified || got.Description != "Gain template" {
+		t.Errorf("template = %+v", got)
+	}
+}
+
 // TestSeed_FreshnessStale pins disk-loaded entries as Stale until live
 // confirmation flips them — ADR-0022 freshness contract.
 func TestSeed_FreshnessStale(t *testing.T) {
