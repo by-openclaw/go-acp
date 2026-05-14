@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"dhs/internal/export"
+	"dhs/internal/export/canonical"
 	"dhs/internal/protocol"
 )
 
@@ -181,7 +182,18 @@ type DM struct {
 	Model    string            `json:"model"`
 	SwRev    string            `json:"sw_rev"`
 	Protocol string            `json:"protocol"`
-	Objects  []protocol.Object `json:"objects"`
+	// Objects is the legacy flat protocol.Object slice — ACP1/ACP2 use
+	// this exclusively today. Ember+ writes it alongside Tree for
+	// backward compatibility with code paths that haven't been
+	// canonical-migrated yet.
+	Objects []protocol.Object `json:"objects,omitempty"`
+	// Tree is the canonical hierarchical shape (refs #438, ADR-0022) —
+	// same JSON layout `dhs export --format json` outputs and
+	// `dhs producer --tree X.json` reads. Preferred for protocols
+	// whose plugin satisfies the Canonicalizer contract (emberplus
+	// today; acp1/acp2 follow-up). When non-nil, readers should prefer
+	// Tree over Objects.
+	Tree *canonical.Export `json:"tree,omitempty"`
 }
 
 // splitIdentity breaks "<Model>@<SwRev>" on the LAST '@' so a model
@@ -208,6 +220,71 @@ func splitIdentity(identity string) (string, string) {
 // composition concern, defined by the frame manifest at producer
 // startup.
 //
+// WriteDM persists a fully-assembled DM struct (Objects + optional
+// canonical Tree per ADR-0022). Preferred over SaveByIdentity when
+// the caller has access to a canonical.Export (Ember+ Canonicalize
+// path). Atomic write same as SaveByIdentity.
+func (s *TreeStore) WriteDM(proto, identity string, dm DM) error {
+	if proto == "" {
+		return fmt.Errorf("storage: WriteDM: empty proto")
+	}
+	if identity == "" {
+		return fmt.Errorf("storage: WriteDM: empty identity")
+	}
+	if dm.Protocol == "" {
+		dm.Protocol = proto
+	}
+	if dm.Model == "" || dm.SwRev == "" {
+		m, r := splitIdentity(identity)
+		if dm.Model == "" {
+			dm.Model = m
+		}
+		if dm.SwRev == "" {
+			dm.SwRev = r
+		}
+	}
+	if dm.Objects != nil {
+		clean := make([]protocol.Object, len(dm.Objects))
+		for i, o := range dm.Objects {
+			clean[i] = o
+			clean[i].Slot = 0
+		}
+		dm.Objects = clean
+	}
+	return s.writeDMToPath(proto, identity, dm)
+}
+
+// writeDMToPath is the shared atomic write used by SaveByIdentity and
+// WriteDM. Kept private to centralise the tmp-rename semantics.
+func (s *TreeStore) writeDMToPath(proto, identity string, dm DM) error {
+	path := s.identityPath(proto, identity)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("storage: mkdir %s: %w", dir, err)
+	}
+	tmp := path + ".tmp"
+	f, err := os.Create(tmp)
+	if err != nil {
+		return fmt.Errorf("storage: create %s: %w", tmp, err)
+	}
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(dm); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return fmt.Errorf("storage: encode: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("storage: close: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("storage: rename: %w", err)
+	}
+	return nil
+}
+
 // Atomic write: tmp file + rename.
 func (s *TreeStore) SaveByIdentity(proto, identity string, objs []protocol.Object) error {
 	if proto == "" {
