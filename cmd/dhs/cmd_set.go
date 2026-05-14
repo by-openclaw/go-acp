@@ -33,6 +33,7 @@ func runSet(ctx context.Context, args []string) error {
 	valueStr := fs.String("value", "", "typed value (e.g. -3.0, \"On\", \"192.168.1.5\", \"CH1\"); empty string is valid for string objects")
 	valueHex := fs.String("raw", "", "raw wire bytes as hex — escape hatch bypassing typed encoding")
 	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of walking the slot to resolve --path/--label")
+	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the walk is skipped — refs #438, ADR-0022.`)
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>)")
@@ -97,13 +98,26 @@ func runSet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
+	// Ember+ DM hot-load (refs #438): seed the in-RAM tree from
+	// .cache/dm/emberplus/<identity>.json so SetValue's ensureWalked
+	// sees a populated tree and skips the per-call wire walk. No-op
+	// for non-Ember+ protocols.
+	dmSeeded, err := hotLoadEmberplusDM(plug, *dmIdentity, *slot, false)
+	if err != nil {
+		return err
+	}
+
 	// Resolve --path / --label via the on-disk cache first. Falling
 	// through to plug.Walk costs minutes on a 49 000-object Neuron
 	// tree; populated cache resolves in microseconds. Only walk on
 	// genuine cache miss (and only when the user hasn't asked us to
 	// fail fast via --no-walk).
-	resolvedFromCache := false
-	if *id < 0 {
+	//
+	// Ember+ DM hot-load path (dmSeeded=true) skips this whole block:
+	// the plugin's in-RAM tree is already populated, plug.findEntry
+	// resolves --path / --label directly against it inside SetValue.
+	resolvedFromCache := dmSeeded
+	if !dmSeeded && *id < 0 {
 		if *pathFlag != "" {
 			if cachedID := resolvePathFromCache(host, cf.protocol, *slot, *pathFlag); cachedID >= 0 {
 				*id = cachedID

@@ -20,6 +20,7 @@ func runGet(ctx context.Context, args []string) error {
 	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
 	idx := fs.Int("idx", 0, "ACP2 preset idx (0 = ACTIVE INDEX; default)")
 	pid := fs.Int("pid", 0, "ACP2 property id to read (0 = default pid=8 value; set to read object_type/label/access/etc.)")
+	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the per-call walk is skipped — refs #438, ADR-0022.`)
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> get <host> --slot N (--path P | --label L | --id I) [--capture out.jsonl]")
@@ -53,9 +54,19 @@ func runGet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
+	// Ember+ DM hot-load (refs #438): seed the in-RAM tree from
+	// .cache/dm/emberplus/<identity>.json so GetValue's ensureWalked
+	// sees a populated tree and skips the per-call wire walk. No-op
+	// for non-Ember+ protocols or when --dm is unset.
+	dmSeeded, err := hotLoadEmberplusDM(plug, *dmIdentity, *slot, false)
+	if err != nil {
+		return err
+	}
+
 	// Path-based addressing: walk first, then lookup by path key.
-	// Label-based: resolve from cache or walk.
-	if *pathFlag != "" || *label != "" {
+	// Label-based: resolve from cache or walk. Skip entirely when the
+	// DM has already seeded the tree (Ember+ hot-load path).
+	if !dmSeeded && (*pathFlag != "" || *label != "") {
 		// Resolution walk uses the raw signal-only ctx, not opCtx.
 		// A tree walk takes as long as it takes (44k objects on ACP2
 		// slot 1 needs minutes); --timeout only bounds the single

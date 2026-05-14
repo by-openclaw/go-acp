@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -68,7 +67,7 @@ func runMatrix(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	// Cast to Ember+ plugin to access MatrixConnect + DM-cache helpers.
+	// Cast to Ember+ plugin to access MatrixConnect.
 	ep, ok := plug.(*emberplus.Plugin)
 	if !ok {
 		return fmt.Errorf("matrix command is only supported for Ember+ protocol")
@@ -76,34 +75,12 @@ func runMatrix(ctx context.Context, args []string) error {
 
 	// Hot-load path: when --dm <identity> is set, seed the tree from
 	// .cache/dm/emberplus/<identity>.json and skip the wire walk (refs
-	// #438, ADR-0022 card data model). Saves seconds per call against
-	// large providers (TinyEmberPlusRouter dynamic.matrix ~1000×1000).
-	seeded := false
-	if *dmIdentity != "" {
-		if treeStore == nil {
-			return fmt.Errorf("--dm: tree store not initialised")
-		}
-		snap, lerr := treeStore.LoadByIdentity("emberplus", *dmIdentity)
-		if lerr != nil {
-			return fmt.Errorf("--dm %q: load: %w", *dmIdentity, lerr)
-		}
-		if snap == nil || len(snap.Slots) == 0 {
-			if *noWalk {
-				return fmt.Errorf("--no-walk: no DM cached for identity %q (run 'watch' once to populate .cache/dm/emberplus/, or drop --no-walk)", *dmIdentity)
-			}
-			// Cache miss + walk allowed — fall through to wire walk below.
-		} else {
-			ep.SeedTreeFromCachedObjects(*slot, snap.Slots[0].Objects)
-			seeded = true
-			fmt.Fprintf(os.Stderr, "DM hot-load %q — seeded %d objects (no walk)\n", *dmIdentity, len(snap.Slots[0].Objects))
-		}
+	// #438, ADR-0022).
+	seeded, err := hotLoadEmberplusDM(plug, *dmIdentity, *slot, *noWalk)
+	if err != nil {
+		return err
 	}
-
-	// Wire walk only on genuine cache miss (or when --dm not set).
 	if !seeded {
-		if *noWalk {
-			return fmt.Errorf("--no-walk: pass --dm <identity> for cache-driven mode, otherwise drop --no-walk to allow walk")
-		}
 		if _, err := plug.Walk(ctx, *slot); err != nil {
 			return fmt.Errorf("walk: %w", err)
 		}

@@ -23,6 +23,7 @@ func runStream(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("stream", flag.ExitOnError)
 	cf := addCommonFlags(fs)
 	streamID := fs.Int64("id", -1, "streamIdentifier filter (-1 = any)")
+	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the per-call walk is skipped — refs #438, ADR-0022.`)
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> stream <host> [--id N]")
@@ -35,8 +36,17 @@ func runStream(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	if _, err := plug.Walk(ctx, 0); err != nil {
-		return fmt.Errorf("walk: %w", err)
+	// Ember+ DM hot-load (refs #438): seed the in-RAM tree from
+	// .cache/dm/emberplus/<identity>.json so StreamParameterPaths
+	// finds the streamed parameters without a fresh wire walk.
+	dmSeeded, err := hotLoadEmberplusDM(plug, *dmIdentity, 0, false)
+	if err != nil {
+		return err
+	}
+	if !dmSeeded {
+		if _, err := plug.Walk(ctx, 0); err != nil {
+			return fmt.Errorf("walk: %w", err)
+		}
 	}
 
 	ep, ok := plug.(*emberplus.Plugin)
