@@ -614,17 +614,23 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 	}
 }
 
-// saveAndSplitForEmberplus performs the saveSlotCache + per-slot DM
-// split. Called from walkSlotAndCache when the plugin supports both
-// canonicalize AND the dmSplitter contract (emberplus today). Other
-// protocols stay on the legacy single-DM path.
+// saveAndSplitForEmberplus runs the per-slot DM split for plugins
+// that satisfy the dmSplitter contract (emberplus today). The full-
+// provider DM is intentionally NOT written here — each slot DM is
+// the unit of cache, identity, and reuse per ADR-0022/0023. Other
+// protocols stay on the legacy single-DM path via saveSlotCache.
+//
+// Parameters host/objs are unused — kept on the signature to match
+// the saveSlotCache contract so caller plumbing is uniform.
 func saveAndSplitForEmberplus(ctx context.Context, plug protocol.Protocol, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) {
-	saveSlotCache(ctx, prober, host, proto, slot, objs, tree)
+	_, _, _, _ = host, proto, objs, tree
 	if prober == nil {
+		fmt.Fprintf(os.Stderr, "warning: emberplus DM split needs identity probe; skipping cache for slot %d\n", slot)
 		return
 	}
 	identity, perr := prober.IdentityProbe(ctx, slot)
 	if perr != nil || identity == "" {
+		fmt.Fprintf(os.Stderr, "warning: identity probe failed; emberplus slot %d not cached: %v\n", slot, perr)
 		return
 	}
 	splitDMByMatrix(ctx, plug, identity)
