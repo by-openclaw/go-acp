@@ -32,29 +32,31 @@ type StreamDescriptor struct {
 
 // Parameter is a leaf value. See docs/protocols/elements/parameter.md.
 //
-// JSON field order (locked by the doc): common header, then
-//   type, value, default, minimum, maximum, step, unit, format,
-//   factor, formula, enumeration, enumMap, streamIdentifier,
-//   streamDescriptor, templateReference, schemaIdentifiers.
+// JSON field order: common header, then type, then value (always
+// emitted so consumers can distinguish "value is null" from
+// "parameter has no current sample"). Every other field uses
+// omitempty so simple-type parameters (labels, identity strings) stay
+// concise — only spec p.85 fields the provider actually set appear
+// on disk.
 type Parameter struct {
 	Header
 
 	Type              string            `json:"type"`
 	Value             any               `json:"value"`
-	Default           any               `json:"default"`
-	Minimum           any               `json:"minimum"`
-	Maximum           any               `json:"maximum"`
-	Step              any               `json:"step"`
-	Unit              *string           `json:"unit"`
-	Format            *string           `json:"format"`
-	Factor            *int64            `json:"factor"`
-	Formula           *string           `json:"formula"`
-	Enumeration       *string           `json:"enumeration"`
-	EnumMap           []EnumEntry       `json:"enumMap"`
-	StreamIdentifier  *int64            `json:"streamIdentifier"`
-	StreamDescriptor  *StreamDescriptor `json:"streamDescriptor"`
-	TemplateReference *string           `json:"templateReference"`
-	SchemaIdentifiers *string           `json:"schemaIdentifiers"`
+	Default           any               `json:"default,omitempty"`
+	Minimum           any               `json:"minimum,omitempty"`
+	Maximum           any               `json:"maximum,omitempty"`
+	Step              any               `json:"step,omitempty"`
+	Unit              *string           `json:"unit,omitempty"`
+	Format            *string           `json:"format,omitempty"`
+	Factor            *int64            `json:"factor,omitempty"`
+	Formula           *string           `json:"formula,omitempty"`
+	Enumeration       *string           `json:"enumeration,omitempty"`
+	EnumMap           []EnumEntry       `json:"enumMap,omitempty"`
+	StreamIdentifier  *int64            `json:"streamIdentifier,omitempty"`
+	StreamDescriptor  *StreamDescriptor `json:"streamDescriptor,omitempty"`
+	TemplateReference *string           `json:"templateReference,omitempty"`
+	SchemaIdentifiers *string           `json:"schemaIdentifiers,omitempty"`
 }
 
 // Kind implements Element.

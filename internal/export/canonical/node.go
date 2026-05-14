@@ -9,8 +9,8 @@ import "encoding/json"
 //   children, templateReference, schemaIdentifiers
 type Node struct {
 	Header
-	TemplateReference *string `json:"templateReference"`
-	SchemaIdentifiers *string `json:"schemaIdentifiers"`
+	TemplateReference *string `json:"templateReference,omitempty"`
+	SchemaIdentifiers *string `json:"schemaIdentifiers,omitempty"`
 }
 
 // Kind implements Element.

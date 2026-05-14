@@ -41,10 +41,10 @@ type Header struct {
 	Identifier  string    `json:"identifier"`
 	Path        string    `json:"path"`
 	OID         string    `json:"oid"`
-	Description *string   `json:"description"`
+	Description *string   `json:"description,omitempty"`
 	IsOnline    bool      `json:"isOnline"`
 	Access      string    `json:"access"`
-	Children    []Element `json:"children"`
+	Children    []Element `json:"children,omitempty"`
 }
 
 // Common returns itself so types embedding Header satisfy the Element
