@@ -179,21 +179,55 @@ func sanitizeSeg(s string) string {
 // Identity Object Group's CardName + Software rev provide both;
 // ACP2 maps Card Name + Product Version equivalently.
 type DM struct {
-	Model    string            `json:"model"`
-	SwRev    string            `json:"sw_rev"`
-	Protocol string            `json:"protocol"`
+	Model    string `json:"model"`
+	SwRev    string `json:"sw_rev"`
+	Protocol string `json:"protocol"`
+	// Root is the canonical-tree root element — the same JSON layout
+	// `dhs export --format json` outputs and `dhs producer --tree
+	// X.json` reads. Preferred for any protocol whose plugin satisfies
+	// ExportCanonical (Ember+ today; acp1/acp2 follow-up). When
+	// non-nil, readers consume Root and ignore Objects.
+	Root canonical.Element `json:"root,omitempty"`
+	// Templates carries the canonical-tree TemplateEntry list when
+	// the source provider exposes Glow templates (Ember+ §p.54-58).
+	Templates []*canonical.TemplateEntry `json:"templates,omitempty"`
 	// Objects is the legacy flat protocol.Object slice — ACP1/ACP2 use
-	// this exclusively today. Ember+ writes it alongside Tree for
-	// backward compatibility with code paths that haven't been
-	// canonical-migrated yet.
+	// this exclusively today. Ember+ no longer writes it: the
+	// canonical Root supersedes (refs #438). Kept on the struct so
+	// legacy ACP1/ACP2 callers keep working until they migrate.
 	Objects []protocol.Object `json:"objects,omitempty"`
-	// Tree is the canonical hierarchical shape (refs #438, ADR-0022) —
-	// same JSON layout `dhs export --format json` outputs and
-	// `dhs producer --tree X.json` reads. Preferred for protocols
-	// whose plugin satisfies the Canonicalizer contract (emberplus
-	// today; acp1/acp2 follow-up). When non-nil, readers should prefer
-	// Tree over Objects.
-	Tree *canonical.Export `json:"tree,omitempty"`
+}
+
+// UnmarshalJSON dispatches DM.Root through canonical.UnmarshalElement
+// (Element is an interface — concrete type can't be inferred from the
+// JSON alone, needs the same structural peek the canonical package
+// already uses for nested children).
+func (d *DM) UnmarshalJSON(data []byte) error {
+	type alias struct {
+		Model     string                     `json:"model"`
+		SwRev     string                     `json:"sw_rev"`
+		Protocol  string                     `json:"protocol"`
+		Root      json.RawMessage            `json:"root"`
+		Templates []*canonical.TemplateEntry `json:"templates"`
+		Objects   []protocol.Object          `json:"objects"`
+	}
+	var raw alias
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	d.Model = raw.Model
+	d.SwRev = raw.SwRev
+	d.Protocol = raw.Protocol
+	d.Templates = raw.Templates
+	d.Objects = raw.Objects
+	if len(raw.Root) > 0 && string(raw.Root) != "null" {
+		el, err := canonical.UnmarshalElement(raw.Root)
+		if err != nil {
+			return fmt.Errorf("dm root: %w", err)
+		}
+		d.Root = el
+	}
+	return nil
 }
 
 // splitIdentity breaks "<Model>@<SwRev>" on the LAST '@' so a model
@@ -220,10 +254,17 @@ func splitIdentity(identity string) (string, string) {
 // composition concern, defined by the frame manifest at producer
 // startup.
 //
-// WriteDM persists a fully-assembled DM struct (Objects + optional
-// canonical Tree per ADR-0022). Preferred over SaveByIdentity when
-// the caller has access to a canonical.Export (Ember+ Canonicalize
-// path). Atomic write same as SaveByIdentity.
+// WriteDM persists a fully-assembled DM struct.
+//
+// Caller contract:
+//   - For Ember+ (or any protocol with ExportCanonical): pass Root +
+//     Templates from canonical.Export. Objects MUST be nil. The DM
+//     file then carries ONLY the canonical hierarchical tree —
+//     identity fields at top level, no flat Objects redundancy.
+//   - For ACP1 / ACP2 (legacy path): pass Objects. Root nil. The DM
+//     file carries the flat protocol.Object slice.
+//
+// Atomic write same as SaveByIdentity.
 func (s *TreeStore) WriteDM(proto, identity string, dm DM) error {
 	if proto == "" {
 		return fmt.Errorf("storage: WriteDM: empty proto")
@@ -242,6 +283,10 @@ func (s *TreeStore) WriteDM(proto, identity string, dm DM) error {
 		if dm.SwRev == "" {
 			dm.SwRev = r
 		}
+	}
+	if dm.Root != nil && len(dm.Objects) > 0 {
+		// Either-or — canonical Root supersedes Objects entirely.
+		dm.Objects = nil
 	}
 	if dm.Objects != nil {
 		clean := make([]protocol.Object, len(dm.Objects))

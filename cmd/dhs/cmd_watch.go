@@ -621,8 +621,8 @@ func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, s
 		return store.SaveByIdentity(proto, identity, objs)
 	}
 	return store.WriteDM(proto, identity, storage.DM{
-		Protocol: proto,
-		Objects:  objs,
-		Tree:     tree,
+		Protocol:  proto,
+		Root:      tree.Root,
+		Templates: tree.Templates,
 	})
 }
