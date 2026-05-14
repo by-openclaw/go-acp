@@ -130,12 +130,13 @@ func (s *session) close() {
 func (s *session) handleFrame(f *s101.Frame) error {
 	switch f.Command {
 	case s101.CmdKeepAliveReq:
-		return s.writer.WriteFrame(&s101.Frame{
-			Slot:    s101.SlotDefault,
-			MsgType: s101.MsgKeepAlive,
-			Command: s101.CmdKeepAliveResp,
-			Version: s101.VersionS101,
-		})
+		// Use the canonical KeepAlive-response builder rather than
+		// hand-rolling the frame; the hand-rolled version above had
+		// MsgType=MsgKeepAlive(0x01) which EmberPlusView decoded as
+		// "Unexpected message: msg=1" and rejected.
+		// NewKeepAliveResponse sets MsgType=MsgEmBER(0x0E) like every
+		// shipping S101 stack expects (libember, EmberViewer, Lawo).
+		return s.writer.WriteFrame(s101.NewKeepAliveResponse())
 	case s101.CmdKeepAliveResp:
 		return nil
 	case s101.CmdEmBER:
