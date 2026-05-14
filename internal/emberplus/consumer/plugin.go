@@ -444,15 +444,21 @@ done:
 	return p.snapshot(), nil
 }
 
-// snapshot returns every live Object under RLock.
+// snapshot returns every live Object under RLock, enriched for cache
+// serialisation (refs #438). The walker writes per-element Meta during
+// processElement (matrixMeta / parameterMeta / etc.), but matrix
+// targetLabels / sourceLabels can only be resolved post-walk once all
+// label parameters under each basePath have been decoded.
+// enrichMatrixLabels does that inline join so the DM file is
+// self-contained — provider-side canonical.Matrix shape.
 func (p *Plugin) snapshot() []protocol.Object {
 	p.treeMu.RLock()
-	defer p.treeMu.RUnlock()
 	out := make([]protocol.Object, 0, len(p.numIndex))
 	for _, entry := range p.numIndex {
 		out = append(out, entry.obj)
 	}
-	return out
+	p.treeMu.RUnlock()
+	return enrichMatrixLabels(out)
 }
 
 // findEntry resolves a ValueRequest to a treeEntry. Resolution order:
