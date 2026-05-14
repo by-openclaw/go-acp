@@ -90,6 +90,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	}
 
 	var tree *canonical.Export
+	var manifestSlots []uint8
 	if *manifestPath != "" {
 		mf, err := manifest.Load(*manifestPath)
 		if err != nil {
@@ -101,6 +102,20 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		tree, err = manifest.BuildExport(mf, *cacheDir)
 		if err != nil {
 			return fmt.Errorf("build tree from manifest: %w", err)
+		}
+		for _, fr := range mf.Frames {
+			for _, sl := range fr.Slots {
+				if v, ok := sl.Addr["slot"]; ok {
+					switch x := v.(type) {
+					case float64:
+						manifestSlots = append(manifestSlots, uint8(x))
+					case int:
+						manifestSlots = append(manifestSlots, uint8(x))
+					case int64:
+						manifestSlots = append(manifestSlots, uint8(x))
+					}
+				}
+			}
 		}
 		logger.Info("producer manifest loaded",
 			slog.String("path", *manifestPath),
@@ -123,6 +138,15 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	addr := fmt.Sprintf("%s:%d", *host, listenPort)
 
 	srv := factory.New(logger, tree)
+	if protoName == "acp1" && len(manifestSlots) > 0 {
+		if a1, ok := srv.(*acp1provider.Server); ok {
+			if err := a1.MarkSlotsPresent(manifestSlots); err != nil {
+				return fmt.Errorf("acp1 manifest slot-status init: %w", err)
+			}
+			logger.Info("acp1 manifest slots marked present",
+				slog.Int("count", len(manifestSlots)))
+		}
+	}
 
 	srvCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
