@@ -45,6 +45,20 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.11.0](https://github.com/by-openclaw/go-acp/compare/v0.10.0...v0.11.0) (2026-05-14)
+
+
+### Features
+
+* **acp1:** per-object meta fetch + ValueValidator (refs [#421](https://github.com/by-openclaw/go-acp/issues/421) [#422](https://github.com/by-openclaw/go-acp/issues/422)) ([#426](https://github.com/by-openclaw/go-acp/issues/426)) ([baf9d19](https://github.com/by-openclaw/go-acp/commit/baf9d19a6d8fa18b35be4942df5ff121def29015))
+* manifest reader + producer DM consumer (acp1 + acp2) (refs [#432](https://github.com/by-openclaw/go-acp/issues/432) [#433](https://github.com/by-openclaw/go-acp/issues/433)) ([#434](https://github.com/by-openclaw/go-acp/issues/434)) ([a4af138](https://github.com/by-openclaw/go-acp/commit/a4af13881c5f12b2c44eeecb2ea8873f0fdceec5))
+
+
+### Bug Fixes
+
+* **cli/import:** drop ACP1 walk gate (refs [#423](https://github.com/by-openclaw/go-acp/issues/423)) ([#427](https://github.com/by-openclaw/go-acp/issues/427)) ([0eb2557](https://github.com/by-openclaw/go-acp/commit/0eb25571121f0faa36073f265a0523b70c00d6fa))
+* **storage:** emit slot-agnostic DM (refs [#430](https://github.com/by-openclaw/go-acp/issues/430)) ([#431](https://github.com/by-openclaw/go-acp/issues/431)) ([e20c369](https://github.com/by-openclaw/go-acp/commit/e20c36923524e2a8ab110914c8c82af67634ffce))
+
 ## [0.10.0](https://github.com/by-openclaw/go-acp/compare/v0.9.0...v0.10.0) (2026-05-12)
 
 
