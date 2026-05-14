@@ -8,9 +8,16 @@ import (
 )
 
 // Write serialises a Manifest to .cache/manifest/<device-slug>.json
-// atomically (tmp file + rename). Device slug is the lower-cased
-// device.Name with whitespace and unsafe chars stripped — predictable
-// path operators can find without guessing.
+// atomically (tmp file + rename). Protocol-agnostic — same writer
+// serves emberplus, acp1, acp2, probel, future TSL / OSC.
+//
+// Merge behaviour: if a manifest already exists for this device slug,
+// endpoints from the existing file are unioned with m.Device.Endpoints
+// (dedup by ip+port+transport). This is the redundant-controller path
+// — running `dhs watch` against the device's primary IP, then again
+// against the backup IP, accumulates both endpoints in one manifest.
+// Frames and slots are replaced wholesale by the new write (the
+// schema authority is the most recent walk).
 //
 // Returns the full path written (for logging).
 func Write(cacheDir string, m *Manifest) (string, error) {
@@ -23,6 +30,12 @@ func Write(cacheDir string, m *Manifest) (string, error) {
 		return "", fmt.Errorf("manifest: mkdir %s: %w", dir, err)
 	}
 	path := filepath.Join(dir, slug+".json")
+
+	// Endpoint merge: load existing if present, union with new.
+	if prior, perr := Load(path); perr == nil && prior != nil {
+		m.Device.Endpoints = mergeEndpoints(prior.Device.Endpoints, m.Device.Endpoints)
+	}
+
 	tmp := path + ".tmp"
 	f, err := os.Create(tmp)
 	if err != nil {
@@ -44,6 +57,36 @@ func Write(cacheDir string, m *Manifest) (string, error) {
 		return "", fmt.Errorf("manifest: rename: %w", err)
 	}
 	return path, nil
+}
+
+// mergeEndpoints unions prior + incoming, dedup by (ip, port,
+// transport). Order: existing entries first (preserves the order
+// the operator originally registered), new entries appended after.
+// Used to accumulate redundant-controller endpoints across multiple
+// walks of the same device.
+func mergeEndpoints(prior, incoming []Endpoint) []Endpoint {
+	seen := make(map[string]bool, len(prior)+len(incoming))
+	key := func(e Endpoint) string {
+		return e.IP + "|" + fmt.Sprintf("%d", e.Port) + "|" + e.Transport
+	}
+	out := make([]Endpoint, 0, len(prior)+len(incoming))
+	for _, e := range prior {
+		k := key(e)
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, e)
+	}
+	for _, e := range incoming {
+		k := key(e)
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, e)
+	}
+	return out
 }
 
 // slugifyDeviceName converts "Tiny Ember+ Router" → "tiny-ember-router".
