@@ -21,6 +21,7 @@ import (
 
 	"dhs/internal/dmlib"
 	"dhs/internal/export/canonical"
+	"dhs/internal/manifest"
 	"dhs/internal/metrics"
 	"dhs/internal/provider"
 
@@ -41,7 +42,9 @@ type metricsExposer interface {
 func runProducer(ctx context.Context, protoName string, args []string) error {
 	fs := flag.NewFlagSet("producer "+protoName+" serve", flag.ContinueOnError)
 	var (
-		treePath      = fs.String("tree", "", "path to canonical tree.json (required)")
+		treePath      = fs.String("tree", "", "path to canonical tree.json (one of --tree | --manifest required)")
+		manifestPath  = fs.String("manifest", "", "path to manifest JSON (.cache/manifest/<device>.json) — assembles the tree from referenced DMs under .cache/dm/<proto>/ per ADR-0022. Mutually exclusive with --tree.")
+		cacheDir      = fs.String("cache-dir", ".cache", "root of the cache tree (`.cache/dm/<proto>/<Model@SwRev>.json` lookup base; only used with --manifest)")
 		port          = fs.Int("port", 0, "TCP listen port (0 = plugin default)")
 		host          = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
 		bind          = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
@@ -67,8 +70,11 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *treePath == "" {
-		return fmt.Errorf("--tree is required")
+	if *treePath == "" && *manifestPath == "" {
+		return fmt.Errorf("one of --tree | --manifest is required")
+	}
+	if *treePath != "" && *manifestPath != "" {
+		return fmt.Errorf("--tree and --manifest are mutually exclusive")
 	}
 	// --bind is the canonical name in the design discussion (#263);
 	// --host stays for backwards-compat. When both are set, --bind wins.
@@ -83,9 +89,46 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		return fmt.Errorf("unknown provider %q. available: %v", protoName, provider.List())
 	}
 
-	tree, err := loadTree(*treePath)
-	if err != nil {
-		return fmt.Errorf("load tree: %w", err)
+	var tree *canonical.Export
+	var manifestSlots []uint8
+	if *manifestPath != "" {
+		mf, err := manifest.Load(*manifestPath)
+		if err != nil {
+			return fmt.Errorf("load manifest: %w", err)
+		}
+		if mf.Device.Protocol != protoName {
+			return fmt.Errorf("manifest protocol %q != requested %q", mf.Device.Protocol, protoName)
+		}
+		tree, err = manifest.BuildExport(mf, *cacheDir)
+		if err != nil {
+			return fmt.Errorf("build tree from manifest: %w", err)
+		}
+		for _, fr := range mf.Frames {
+			for _, sl := range fr.Slots {
+				if v, ok := sl.Addr["slot"]; ok {
+					switch x := v.(type) {
+					case float64:
+						manifestSlots = append(manifestSlots, uint8(x))
+					case int:
+						manifestSlots = append(manifestSlots, uint8(x))
+					case int64:
+						manifestSlots = append(manifestSlots, uint8(x))
+					}
+				}
+			}
+		}
+		logger.Info("producer manifest loaded",
+			slog.String("path", *manifestPath),
+			slog.String("device", mf.Device.Name),
+			slog.Int("endpoints", len(mf.Device.Endpoints)),
+			slog.Int("frames", len(mf.Frames)),
+		)
+	} else {
+		var err error
+		tree, err = loadTree(*treePath)
+		if err != nil {
+			return fmt.Errorf("load tree: %w", err)
+		}
 	}
 
 	listenPort := *port
@@ -95,6 +138,15 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	addr := fmt.Sprintf("%s:%d", *host, listenPort)
 
 	srv := factory.New(logger, tree)
+	if protoName == "acp1" && len(manifestSlots) > 0 {
+		if a1, ok := srv.(*acp1provider.Server); ok {
+			if err := a1.MarkSlotsPresent(manifestSlots); err != nil {
+				return fmt.Errorf("acp1 manifest slot-status init: %w", err)
+			}
+			logger.Info("acp1 manifest slots marked present",
+				slog.Int("count", len(manifestSlots)))
+		}
+	}
 
 	srvCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
