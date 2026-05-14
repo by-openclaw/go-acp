@@ -28,6 +28,7 @@ Foundational ADRs every agent reads first:
 | [0016](docs/adr/0016-multi-os-support.md) | multi-OS support per connector |
 | [0022](docs/adr/0022-card-data-model.md) | card data model — Device/Frame/Slot/Card/DM + manifest |
 | [0023](docs/adr/0023-matrix-entity.md) | matrix entity — matrix_id/level_id/size/behavior |
+| [0024](docs/adr/0024-federation-mirror-and-virtual-frame.md) | federation: mirror frame vs virtual frame |
 
 ---
 

@@ -128,6 +128,30 @@ Slot, everything is DM.
 | Static IP | `ipam.IPAddress` `status=active` assigned to Interface |
 | Card-internal NIC, port, parameter | NOT in NetBox — lives inside the DM tree |
 
+### Every connector uses the manifest — no legacy single-tree input
+
+Every producer (ACP1, ACP2, Ember+, Probel, OSC, TSL, NMOS, future)
+boots from `.cache/manifest/<device>.json` + `.cache/dm/<proto>/<Model@SwRev>.json`
+references. The legacy `--tree singlefile.json` path is parity debt and
+is being retired. Consumers and admin tooling resolve cards through the
+same manifest → DM lookup. No protocol may invent its own producer-input
+shape.
+
+### Default value sources
+
+A parameter's default value can come from two places. Both coexist; the
+UI override wins at runtime when both are present.
+
+| Source | Lives in | Scope |
+| --- | --- | --- |
+| Vendor default | the DM file (`.cache/dm/<proto>/<Model@SwRev>.json`, per-object `default` field walked off the card) | every instance of this Model@SwRev — baked into the catalogued schema |
+| UI override (per-DM) | side-car under `.cache/manifest/defaults/<Model@SwRev>.json` | every instance of this Model@SwRev — operator/SI overrides the vendor default for a card type |
+| UI override (per-instance) | manifest slot entry under `defaults: { obj-id-or-path: value }` | this physical card in this slot only |
+
+Resolution order at runtime: per-instance override → per-DM override →
+vendor default (DM file). `setDefValue` returns whatever this resolution
+produces.
+
 ### Where the Frame view is used
 
 - Monitoring + RCA: when an object disappears, the path
@@ -174,3 +198,4 @@ protocol) feeding the federation layer.
 ## Revisions
 
 - 2026-05-14 — initial — yboujraf
+- 2026-05-14 — every connector boots from manifest+DM; legacy `--tree singlefile.json` is retired parity debt. Default value resolves per-instance override → per-DM override → vendor DM default — yboujraf
