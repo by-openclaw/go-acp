@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -18,9 +19,11 @@ func runMatrix(ctx context.Context, args []string) error {
 	target := fs.Int("target", -1, "target number")
 	sourcesStr := fs.String("sources", "", "comma-separated source numbers (e.g. 1 or 1,2,3)")
 	op := fs.String("op", "absolute", "operation: absolute, connect, disconnect")
+	dmIdentity := fs.String("dm", "", `identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the per-call walk is skipped — refs #438, ADR-0022.`)
+	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of falling back to a wire walk")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> matrix <host> --path <matrix.path> --target N --sources N[,N,...] [--op absolute|connect|disconnect]")
+		return fmt.Errorf("usage: dhs consumer <proto> matrix <host> --path <matrix.path> --target N --sources N[,N,...] [--op absolute|connect|disconnect] [--dm <identity> | --no-walk]")
 	}
 	_ = fs.Parse(rest)
 	if *matrixPath == "" {
@@ -65,15 +68,45 @@ func runMatrix(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	// Walk to populate tree (raw ctx — no per-op deadline).
-	if _, err := plug.Walk(ctx, *slot); err != nil {
-		return fmt.Errorf("walk: %w", err)
-	}
-
-	// Cast to Ember+ plugin to access MatrixConnect.
+	// Cast to Ember+ plugin to access MatrixConnect + DM-cache helpers.
 	ep, ok := plug.(*emberplus.Plugin)
 	if !ok {
 		return fmt.Errorf("matrix command is only supported for Ember+ protocol")
+	}
+
+	// Hot-load path: when --dm <identity> is set, seed the tree from
+	// .cache/dm/emberplus/<identity>.json and skip the wire walk (refs
+	// #438, ADR-0022 card data model). Saves seconds per call against
+	// large providers (TinyEmberPlusRouter dynamic.matrix ~1000×1000).
+	seeded := false
+	if *dmIdentity != "" {
+		if treeStore == nil {
+			return fmt.Errorf("--dm: tree store not initialised")
+		}
+		snap, lerr := treeStore.LoadByIdentity("emberplus", *dmIdentity)
+		if lerr != nil {
+			return fmt.Errorf("--dm %q: load: %w", *dmIdentity, lerr)
+		}
+		if snap == nil || len(snap.Slots) == 0 {
+			if *noWalk {
+				return fmt.Errorf("--no-walk: no DM cached for identity %q (run 'watch' once to populate .cache/dm/emberplus/, or drop --no-walk)", *dmIdentity)
+			}
+			// Cache miss + walk allowed — fall through to wire walk below.
+		} else {
+			ep.SeedTreeFromCachedObjects(*slot, snap.Slots[0].Objects)
+			seeded = true
+			fmt.Fprintf(os.Stderr, "DM hot-load %q — seeded %d objects (no walk)\n", *dmIdentity, len(snap.Slots[0].Objects))
+		}
+	}
+
+	// Wire walk only on genuine cache miss (or when --dm not set).
+	if !seeded {
+		if *noWalk {
+			return fmt.Errorf("--no-walk: pass --dm <identity> for cache-driven mode, otherwise drop --no-walk to allow walk")
+		}
+		if _, err := plug.Walk(ctx, *slot); err != nil {
+			return fmt.Errorf("walk: %w", err)
+		}
 	}
 
 	if err := ep.MatrixConnect(opCtx, *matrixPath, int32(*target), sources, operation); err != nil {
