@@ -95,19 +95,43 @@ func Encode(f *Frame) []byte {
 		// Keep-alive: slot + msgType + command + version (4 bytes).
 		raw = []byte{f.Slot, f.MsgType, f.Command, VersionS101}
 	} else {
-		// EmBER: 9-byte header + BER payload.
-		raw = make([]byte, 0, 9+len(f.Payload))
-		raw = append(raw,
-			f.Slot,          // 0: slot
-			MsgEmBER,        // 1: message type
-			CmdEmBER,        // 2: command
-			VersionS101,     // 3: version
-			f.Flags,         // 4: flags
-			DTDGlow,         // 5: DTD type
-			AppBytesLen,     // 6: app bytes length (2)
-			DTDMinorVersion, // 7: DTD minor version (31)
-			DTDMajorVersion, // 8: DTD major version (2)
-		)
+		// EmBER frame.
+		//
+		// Per S101 spec p.94 the app-bytes (DTD type + length + DTD
+		// minor/major version) belong ONLY to the first packet of a
+		// message — Single-packet or First-of-multi. Middle and Last
+		// frames skip those four bytes and ship only
+		// slot+msgType+cmd+ver+flags + payload (5-byte header).
+		//
+		// libember-cpp (used by EmberViewer, TinyEmber, Lawo VSM)
+		// crashes on a non-first frame that carries DTD bytes — the
+		// receiver re-reads them as part of the BER payload, decodes
+		// 0x01 0x02 0x1F 0x02 as a malformed tag and aborts. This
+		// branch produces the spec-conformant header sequence.
+		hasAppBytes := f.Flags&FlagFirst != 0 // FlagSingle = FlagFirst|FlagLast, FlagFirst alone, both have it
+		if hasAppBytes {
+			raw = make([]byte, 0, 9+len(f.Payload))
+			raw = append(raw,
+				f.Slot,          // 0: slot
+				MsgEmBER,        // 1: message type
+				CmdEmBER,        // 2: command
+				VersionS101,     // 3: version
+				f.Flags,         // 4: flags
+				DTDGlow,         // 5: DTD type
+				AppBytesLen,     // 6: app bytes length (2)
+				DTDMinorVersion, // 7: DTD minor version (31)
+				DTDMajorVersion, // 8: DTD major version (2)
+			)
+		} else {
+			raw = make([]byte, 0, 5+len(f.Payload))
+			raw = append(raw,
+				f.Slot,      // 0: slot
+				MsgEmBER,    // 1: message type
+				CmdEmBER,    // 2: command
+				VersionS101, // 3: version
+				f.Flags,     // 4: flags
+			)
+		}
 		raw = append(raw, f.Payload...)
 	}
 
@@ -194,17 +218,30 @@ func Decode(data []byte) (*Frame, error) {
 		return f, nil
 	}
 
-	// EmBER frame: need flags + DTD + app bytes (at least 9 bytes header).
-	if len(content) < 9 {
+	// EmBER frame: need flags at minimum (5-byte header). App-bytes
+	// (DTD type + len + version) are only present on Single / First
+	// frames per S101 spec p.94 — Middle / Last carry just the
+	// 5-byte header. Symmetric with Encode().
+	if len(content) < 5 {
 		return nil, ErrTruncated
 	}
 	f.Flags = content[4]
-	f.DTD = content[5]
-	// content[6] = AppBytesLen (skip)
-	// content[7] = DTD minor version (skip)
-	// content[8] = DTD major version (skip)
-	if len(content) > 9 {
-		f.Payload = content[9:]
+	hasAppBytes := f.Flags&FlagFirst != 0 // Single (0xC0) or First (0x80)
+	if hasAppBytes {
+		if len(content) < 9 {
+			return nil, ErrTruncated
+		}
+		f.DTD = content[5]
+		// content[6] = AppBytesLen (skip)
+		// content[7] = DTD minor version (skip)
+		// content[8] = DTD major version (skip)
+		if len(content) > 9 {
+			f.Payload = content[9:]
+		}
+	} else {
+		if len(content) > 5 {
+			f.Payload = content[5:]
+		}
 	}
 	return f, nil
 }
