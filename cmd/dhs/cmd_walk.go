@@ -104,6 +104,7 @@ func runWalk(ctx context.Context, args []string) error {
 		}
 		fmt.Printf("device %s:%d — %d slots\n", info.IP, info.Port, info.NumSlots)
 		walked := 0
+		var bindings []slotBinding
 		for s := 0; s < info.NumSlots; s++ {
 			si, serr := plug.GetSlotInfo(opCtx, s)
 			if serr != nil {
@@ -124,7 +125,9 @@ func runWalk(ctx context.Context, args []string) error {
 			// .cache/dm/<identity>.json; ACP1/Ember+ -> IP-keyed
 			// .cache/devices/<ip>/slot_<n>.json. See saveSlotCache.
 			prober, _ := plug.(identityProber)
-			saveSlotCache(ctx, prober, host, cf.protocol, s, objs, canonicalTreeFromPlug(ctx, plug))
+			if identity := saveSlotCache(ctx, prober, host, cf.protocol, s, objs, canonicalTreeFromPlug(ctx, plug)); identity != "" {
+				bindings = append(bindings, slotBinding{Slot: s, Identity: identity})
+			}
 			objs = filterByPath(objs, pathSegs)
 			if *tree {
 				fmt.Printf("\nslot %d — %d objects\n\n", s, len(objs))
@@ -142,6 +145,12 @@ func runWalk(ctx context.Context, args []string) error {
 			} else {
 				fmt.Printf("\nslot %d — %d objects\n", s, len(objs))
 			}
+		}
+		// After every slot is cached, emit a manifest binding for
+		// acp1/acp2 (emberplus writes its own manifest from
+		// splitDMByMatrix earlier). Refs #438 + ADR-0024.
+		if cf.protocol != "emberplus" && len(bindings) > 0 {
+			writeSlotManifest("", cf.protocol, host, cf.port, bindings)
 		}
 		fmt.Printf("\nwalked %d present slot(s)\n", walked)
 		return nil

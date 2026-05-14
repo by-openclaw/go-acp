@@ -596,24 +596,94 @@ func canonicalTreeFromPlug(ctx context.Context, plug protocol.Protocol) *canonic
 // ACP1 + ACP2 satisfy the contract today. Ember+ doesn't (no
 // per-slot card concept) and falls back to the legacy IP-keyed
 // `.cache/devices/<ip>/slot_<n>.json` layout.
-func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) {
+func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) string {
 	if treeStore == nil {
-		return
+		return ""
 	}
 	if prober != nil {
 		identity, perr := prober.IdentityProbe(ctx, slot)
 		if perr != nil || identity == "" {
 			fmt.Fprintf(os.Stderr, "warning: identity probe failed; slot %d not cached: %v\n", slot, perr)
-			return
+			return ""
 		}
 		if serr := saveIdentityCache(treeStore, identity, host, proto, slot, objs, tree); serr != nil {
 			fmt.Fprintf(os.Stderr, "warning: identity cache save: %v\n", serr)
+			return ""
 		}
-		return
+		return identity
 	}
 	if serr := treeStore.Save(host, proto, slot, objs); serr != nil {
 		fmt.Fprintf(os.Stderr, "warning: cache save slot %d: %v\n", slot, serr)
 	}
+	return ""
+}
+
+// writeSlotManifest emits a generic manifest binding {protocol-specific
+// slot addr → cached DM filename}. Same writer for every protocol:
+//
+//   - acp1 / acp2 : addr = {"slot": N}
+//   - emberplus    : addr = {"oid": "1.2"}   (per-slot split path)
+//   - probel       : addr = {"matrix": M, "level": L}
+//
+// Called by callers that walk multiple slots in one session (cmd_walk
+// --all, hot-plug watch). slotBindings is keyed by slot number for
+// acp* / probel; emberplus uses splitDMByMatrix directly because its
+// "slots" are derived from a single Walk's canonical tree.
+//
+// deviceName is the human-readable label that becomes the manifest
+// slug (.cache/manifest/<slug>.json); when empty, derives from the
+// first identity's Model part.
+type slotBinding struct {
+	Slot     int
+	Identity string
+}
+
+func writeSlotManifest(deviceName, proto, host string, port int, bindings []slotBinding) {
+	if len(bindings) == 0 {
+		return
+	}
+	if deviceName == "" {
+		// Fall back to the Model of the first cached identity. Strip
+		// "@SwRev" suffix so the manifest slug is the card / device
+		// name rather than a versioned key.
+		m, _ := splitIdentityForManifest(bindings[0].Identity)
+		deviceName = m
+	}
+	mf := &manifest.Manifest{
+		Device: manifest.Device{
+			Name:     deviceName,
+			Protocol: proto,
+			Endpoints: []manifest.Endpoint{
+				{IP: host, Port: port, Transport: defaultTransportFor(proto)},
+			},
+		},
+		Frames: []manifest.Frame{{
+			Name:  "frame",
+			Slots: make([]manifest.Slot, 0, len(bindings)),
+		}},
+	}
+	for _, b := range bindings {
+		mf.Frames[0].Slots = append(mf.Frames[0].Slots, manifest.Slot{
+			Addr: map[string]any{"slot": b.Slot},
+			DM:   b.Identity + ".json",
+		})
+	}
+	path, err := manifest.Write(".cache", mf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: manifest write: %v\n", err)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "manifest written: %s (%d slot(s))\n", path, len(bindings))
+}
+
+// defaultTransportFor returns the canonical transport per protocol.
+// ACP1 is UDP-by-default; AN2 (ACP2) + Ember+ are TCP.
+func defaultTransportFor(proto string) string {
+	switch proto {
+	case "acp1":
+		return "udp"
+	}
+	return "tcp"
 }
 
 // saveAndSplitForEmberplus runs the per-slot DM split for plugins
