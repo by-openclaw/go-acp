@@ -10,21 +10,25 @@ import (
 // canonical.Export ready for either provider startup (--tree X.json,
 // --manifest X.json) or DM-cache persistence (refs #438, ADR-0022).
 //
-// Default opts:
-//   - Labels: "inline" — embeds targetLabels / sourceLabels in each
-//     Matrix so the file is self-contained for crosspoint rendering
-//     without a second round trip through parameters.connections.t-N.s-M.
-//   - Gain: "inline" — embeds connectionParams gain values per
-//     crosspoint when parametersLocation + gainParameterNumber are set
-//     (chunk 8 enrichment).
-//   - Templates: "pointer" — keeps the in-tree TemplateReference
-//     unresolved so templates stay deduplicated in the cache.
+// Default opts ("both" for labels and gain) emit the DM file in the
+// shape useful to BOTH a consumer and a provider:
+//
+//   - Labels: "both"  — matrix carries inline targetLabels /
+//     sourceLabels (rendering convenience) AND keeps the underlying
+//     Glow Label-Parameter subtree (so a consumer can re-walk or
+//     subscribe to individual labels by OID).
+//   - Gain: "both"    — matrix carries inline targetParams /
+//     sourceParams / connectionParams (per-target / per-source /
+//     per-crosspoint resolved values) AND keeps the underlying Glow
+//     Parameter nodes (gain / mode / other per-signal extras).
+//   - Templates: "pointer" — keeps templateReference unresolved so
+//     templates stay deduplicated in the cache.
 //
 // Wraps Canonicalize. Safe to call concurrently with reads on the tree.
 func (p *Plugin) ExportCanonical(ctx context.Context) (*canonical.Export, error) {
 	return p.Canonicalize(ctx, CanonicalOptions{
-		Labels:    "inline",
-		Gain:      "inline",
+		Labels:    "both",
+		Gain:      "both",
 		Templates: "pointer",
 	})
 }
