@@ -124,7 +124,7 @@ func runWalk(ctx context.Context, args []string) error {
 			// .cache/dm/<identity>.json; ACP1/Ember+ -> IP-keyed
 			// .cache/devices/<ip>/slot_<n>.json. See saveSlotCache.
 			prober, _ := plug.(identityProber)
-			saveSlotCache(ctx, prober, host, cf.protocol, s, objs)
+			saveSlotCache(ctx, prober, host, cf.protocol, s, objs, canonicalTreeFromPlug(ctx, plug))
 			objs = filterByPath(objs, pathSegs)
 			if *tree {
 				fmt.Printf("\nslot %d — %d objects\n\n", s, len(objs))
@@ -156,7 +156,7 @@ func runWalk(ctx context.Context, args []string) error {
 	// .cache/dm/<identity>.json; ACP1/Ember+ -> IP-keyed
 	// .cache/devices/<ip>/slot_<n>.json. See saveSlotCache.
 	prober, _ := plug.(identityProber)
-	saveSlotCache(ctx, prober, host, cf.protocol, *slot, objs)
+	saveSlotCache(ctx, prober, host, cf.protocol, *slot, objs, canonicalTreeFromPlug(ctx, plug))
 	objs = filterByPath(objs, pathSegs)
 	if *tree {
 		fmt.Printf("\nslot %d — %d objects\n\n", *slot, len(objs))

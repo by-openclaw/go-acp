@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"dhs/internal/dmlib"
+	"dhs/internal/export/canonical"
 	"dhs/internal/protocol"
 	"dhs/internal/storage"
 )
@@ -532,6 +533,17 @@ type identityProber interface {
 	IdentityProbe(ctx context.Context, slot int) (string, error)
 }
 
+// canonicalExporter is the optional contract a Plugin satisfies to
+// produce a hierarchical canonical.Export from its in-RAM tree. When
+// present, saveSlotCache persists the canonical Tree alongside the
+// flat Objects so the DM file is the exact shape `dhs export
+// --format json` outputs and `dhs producer --tree X.json` reads
+// (refs #438, ADR-0022). Ember+ satisfies it via
+// internal/emberplus/consumer/export_canonical.go.
+type canonicalExporter interface {
+	ExportCanonical(ctx context.Context) (*canonical.Export, error)
+}
+
 func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto string, slot int) {
 	objs, werr := plug.Walk(ctx, slot)
 	if werr != nil {
@@ -539,7 +551,26 @@ func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto s
 		return
 	}
 	prober, _ := plug.(identityProber)
-	saveSlotCache(ctx, prober, host, proto, slot, objs)
+	saveSlotCache(ctx, prober, host, proto, slot, objs, canonicalTreeFromPlug(ctx, plug))
+}
+
+// canonicalTreeFromPlug invokes the plugin's ExportCanonical when
+// available, surfacing a *canonical.Export the caller passes to
+// saveSlotCache so the DM file is written in canonical Tree shape
+// (refs #438, ADR-0022). Returns nil when the plugin doesn't satisfy
+// the canonicalExporter contract or when canonicalize fails — the
+// caller falls back to flat-Objects-only DM in that case.
+func canonicalTreeFromPlug(ctx context.Context, plug protocol.Protocol) *canonical.Export {
+	ce, ok := plug.(canonicalExporter)
+	if !ok {
+		return nil
+	}
+	exp, err := ce.ExportCanonical(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: canonicalize for cache: %v\n", err)
+		return nil
+	}
+	return exp
 }
 
 // saveSlotCache routes a walked slot to the right on-disk cache.
@@ -554,7 +585,7 @@ func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto s
 // ACP1 + ACP2 satisfy the contract today. Ember+ doesn't (no
 // per-slot card concept) and falls back to the legacy IP-keyed
 // `.cache/devices/<ip>/slot_<n>.json` layout.
-func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object) {
+func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) {
 	if treeStore == nil {
 		return
 	}
@@ -564,7 +595,7 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 			fmt.Fprintf(os.Stderr, "warning: identity probe failed; slot %d not cached: %v\n", slot, perr)
 			return
 		}
-		if serr := saveIdentityCache(treeStore, identity, host, proto, slot, objs); serr != nil {
+		if serr := saveIdentityCache(treeStore, identity, host, proto, slot, objs, tree); serr != nil {
 			fmt.Fprintf(os.Stderr, "warning: identity cache save: %v\n", serr)
 		}
 		return
@@ -579,10 +610,19 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 // slots holding the same card share the same DM file. Slot, IP, host
 // info are runtime state and never persisted into the DM.
 //
-// host + slot params kept for symmetry with the IP-keyed Save path
-// and for future logging; they are NOT written to disk.
-func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, slot int, objs []protocol.Object) error {
+// When tree is non-nil (Ember+ today; ACP1/ACP2 follow-up) the file
+// also carries the canonical.Export shape per ADR-0022. host + slot
+// params kept for symmetry with the IP-keyed Save path and future
+// logging; they are NOT written to disk.
+func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) error {
 	_ = host
 	_ = slot
-	return store.SaveByIdentity(proto, identity, objs)
+	if tree == nil {
+		return store.SaveByIdentity(proto, identity, objs)
+	}
+	return store.WriteDM(proto, identity, storage.DM{
+		Protocol: proto,
+		Objects:  objs,
+		Tree:     tree,
+	})
 }
