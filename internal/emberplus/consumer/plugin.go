@@ -688,22 +688,30 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 
 		// Strict providers require explicit Command 30 per
 		// Parameter (spec p.30–31) — GetDirectory alone won't
-		// start announces. To send Subscribe(30) we need to know
-		// every Parameter OID, so ensure the tree is walked first.
+		// start announces. Walk + subscribe happen in the
+		// background so Subscribe() returns immediately to the
+		// caller (same pattern as ACP1/ACP2 watch: caller enters
+		// the event loop and sees announces stream in as the walk
+		// discovers each Parameter via subscribeOnDiscovery).
 		// ensureWalked is a no-op when numIndex is already
 		// populated (cached DM seeded via SeedTreeFromCachedObjects
 		// or a prior Walk in the same session).
-		if err := p.ensureWalked(context.Background(), "wildcard subscribe"); err != nil {
-			p.logger.Debug("emberplus: wildcard subscribe — initial walk failed",
-				"err", err)
-			// Continue anyway: subscribe whatever IS in numIndex
-			// (partial walk), and subscribeOnDiscovery will catch
-			// any further Parameters that arrive later.
-		}
-		// Subscribe every already-walked Parameter now; new ones
-		// discovered later during walk/announce get subscribed from
-		// processParameter via subscribeOnDiscovery.
-		p.subscribeAllParameters()
+		go func() {
+			if err := p.ensureWalked(context.Background(), "wildcard subscribe"); err != nil {
+				p.logger.Debug("emberplus: wildcard subscribe — initial walk failed",
+					"err", err)
+				// Continue anyway: subscribe whatever IS in
+				// numIndex (partial walk), and
+				// subscribeOnDiscovery catches any further
+				// Parameters that arrive later.
+			}
+			// Final batch — covers Parameters that landed before
+			// the wildcard was registered (DM-seeded entries).
+			// subscribeOnDiscovery already handled anything
+			// discovered during the walk above; the idempotency
+			// check in subscribeAllParameters skips duplicates.
+			p.subscribeAllParameters()
+		}()
 		return nil
 	}
 
