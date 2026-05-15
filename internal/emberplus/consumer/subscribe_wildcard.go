@@ -1,28 +1,28 @@
 package emberplus
 
-// autoSubscribeStreams enumerates every already-walked Parameter and
+// subscribeAllParameters enumerates every already-walked Parameter and
 // sends Command 30 (Subscribe, spec p.30–31) for each, recording it in
 // streamSubs so unsubscribeAll / Disconnect release the provider-side
 // subscription on teardown.
 //
-// Why subscribe non-stream Parameters too: spec p.31 says Subscribe is
+// Why every Parameter (stream and plain): spec p.31 says Subscribe is
 // the consumer's signal to receive value-change announcements from
-// that path. Loose providers (TinyEmber+, our own provider) broadcast
-// to every connected session regardless and treat Subscribe as a
-// no-op; strict providers (Lawo audio processors, Riedel, etc.) gate
-// announcement emission entirely on Subscribe and emit nothing
-// otherwise. To make `dhs consumer emberplus watch` work against BOTH
-// kinds of provider we send Subscribe per Parameter after the walk
-// completes — TinyEmber+ ignores it, Lawo starts emitting.
+// that path. Loose providers (TinyEmberPlus, our own provider)
+// broadcast to every connected session regardless and treat Subscribe
+// as a no-op; strict providers gate announcement emission entirely on
+// Subscribe and emit nothing otherwise. To make `dhs consumer
+// emberplus watch` work against both kinds of provider we send
+// Subscribe per Parameter after the walk completes — loose providers
+// ignore it, strict providers start emitting.
 //
 // Called from Subscribe() when the caller registers the wildcard "*"
 // callback. Newly discovered Parameters (arriving during a subsequent
 // walk or announce) are handled from processParameter via
-// maybeWildcardStreamSubscribe — this function only covers what is
-// already in the tree at the moment wildcard subscribe happens.
+// subscribeOnDiscovery — this function only covers what is already in
+// the tree at the moment wildcard subscribe happens.
 //
 // Idempotent: a path already in streamSubs is skipped.
-func (p *Plugin) autoSubscribeStreams() {
+func (p *Plugin) subscribeAllParameters() {
 	s := p.currentSession()
 	if s == nil {
 		return
@@ -62,31 +62,31 @@ func (p *Plugin) autoSubscribeStreams() {
 		p.subsMu.Unlock()
 
 		if err := s.SendSubscribe(t.path); err != nil {
-			p.logger.Debug("emberplus: wildcard auto-subscribe failed",
+			p.logger.Debug("emberplus: wildcard subscribe (batch) failed",
 				"path", key, "err", err)
 			continue
 		}
-		p.logger.Debug("emberplus: wildcard auto-subscribe",
+		p.logger.Debug("emberplus: wildcard subscribe (batch)",
 			"path", key, "stream_identifier", t.streamID)
 	}
 }
 
-// maybeWildcardStreamSubscribe auto-subscribes a Parameter the plugin
-// just stored if wildcard watch is active and this path has not been
-// subscribed yet. Covers BOTH stream parameters and plain parameters —
-// strict providers (Lawo audio, Riedel) only emit value-change
+// subscribeOnDiscovery subscribes to a Parameter the plugin just
+// stored, if wildcard watch is active and this path has not been
+// subscribed yet. Covers BOTH stream Parameters and plain Parameters
+// per spec p.30–31: strict providers only emit value-change
 // announcements after an explicit Subscribe(30) regardless of stream
-// identifier, while loose providers (TinyEmber+, our own provider)
-// broadcast unconditionally and ignore the duplicate subscribe. Called
-// from processParameter after the entry is stored.
-func (p *Plugin) maybeWildcardStreamSubscribe(entry *treeEntry) {
+// identifier; loose providers broadcast unconditionally and ignore
+// the duplicate subscribe. Called from processParameter after the
+// entry is stored.
+func (p *Plugin) subscribeOnDiscovery(entry *treeEntry) {
 	if entry == nil || entry.glowParam == nil {
 		return
 	}
-	// Use entry.numericPath (canonical numeric RelOID, resolved
-	// from parent context for non-qualified providers). glowParam.Path
-	// is empty on non-qualified wire frames — smh / DHD providers
-	// send nearly everything non-qualified.
+	// Use entry.numericPath (canonical numeric RelOID, resolved from
+	// parent context for non-qualified providers). glowParam.Path is
+	// empty on non-qualified wire frames — smh / DHD providers send
+	// nearly everything non-qualified.
 	if len(entry.numericPath) == 0 {
 		return
 	}

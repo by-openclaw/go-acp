@@ -246,14 +246,14 @@ func (p *Plugin) onSessionStateChange(connected bool, reason string) {
 	if !connected {
 		p.markTreeStale()
 
-		// Clear stream-subscription tracking. The old session is
-		// dead, so Command 31 (Unsubscribe) is pointless and in
-		// any case impossible. The fresh session created by
-		// reconnect needs to re-issue Command 30 for every
-		// stream-backed parameter, which autoSubscribeStreams
-		// will do — but ONLY if streamSubs is empty, since its
-		// idempotency check skips entries it already thinks are
-		// subscribed. Without this clear, no streams resume.
+		// Clear subscription tracking. The old session is dead, so
+		// Command 31 (Unsubscribe) is pointless and in any case
+		// impossible. The fresh session created by reconnect needs
+		// to re-issue Command 30 for every Parameter, which
+		// subscribeAllParameters will do — but ONLY if streamSubs
+		// is empty, since its idempotency check skips entries it
+		// already thinks are subscribed. Without this clear, no
+		// announces resume.
 		//
 		// streamIndex (streamId → paths) stays intact because
 		// the mapping is still correct on the wire for paths
@@ -686,12 +686,12 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		p.subs["*"] = fn
 		p.subsMu.Unlock()
 
-		// Stream-backed Parameters require an explicit Command 30
-		// (spec p.30–31) — GetDirectory alone won't start the flow.
-		// Enumerate already-walked stream parameters now; new ones
-		// discovered later during walk/announce get auto-subscribed
-		// from processParameter via maybeWildcardStreamSubscribe.
-		p.autoSubscribeStreams()
+		// Strict providers require explicit Command 30 per
+		// Parameter (spec p.30–31) — GetDirectory alone won't start
+		// announces. Subscribe every already-walked Parameter now;
+		// new ones discovered later during walk/announce get
+		// subscribed from processParameter via subscribeOnDiscovery.
+		p.subscribeAllParameters()
 		return nil
 	}
 
@@ -1678,10 +1678,10 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 		p.subsMu.Unlock()
 
 		// If wildcard watch is active, send Command 30 for this
-		// stream on first discovery. Without this, stream-backed
-		// Parameters stay silent under `acp watch` (the provider
-		// requires explicit subscription, spec p.30–31).
-		p.maybeWildcardStreamSubscribe(entry)
+		// Parameter on first discovery. Without this, strict
+		// providers stay silent under `dhs consumer emberplus
+		// watch` (spec p.30–31).
+		p.subscribeOnDiscovery(entry)
 	}
 	p.notifySubscribers(entry)
 	// Resolve any SetValue waiting on this OID. Done last so the
