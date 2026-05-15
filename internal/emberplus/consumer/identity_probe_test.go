@@ -294,6 +294,75 @@ func TestIdentityProbe_EmptyValues(t *testing.T) {
 	}
 }
 
+// TestIdentityProbe_NoIdentityWrapper_EMTWO — vendor that omits the
+// "identity" wrapper entirely and puts identity fields directly on a
+// "Device" Node, with spaces in identifier names. Probe must fall
+// through to Layer 3 (children-matching) and normalise identifier
+// names ("Hardware Name" → "hardwarename") to find the match.
+func TestIdentityProbe_NoIdentityWrapper_EMTWO(t *testing.T) {
+	p := newProbeTestPlugin()
+	device := addIdentityNode(p, []int32{1}, []string{"Device"}, "")
+	device.glowNode.Identifier = "Device"
+	addChildParam(p, device, 1, "Hardware Name", "EMTWO")
+	addChildParam(p, device, 2, "Software Version", "4.8.0.1745420015")
+	addChildParam(p, device, 3, "Serial Number", "12507150001")
+	addChildParam(p, device, 4, "Device Name", "bm-r-rfus3-010")
+	addChildParam(p, device, 5, "PTP Status", "locked")
+	addChildParam(p, device, 6, "BESS Version", "Version 1.1a")
+
+	got, err := p.IdentityProbe(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("IdentityProbe: %v", err)
+	}
+	if want := "EMTWO@4.8.0.1745420015"; got != want {
+		t.Errorf("identity = %q, want %q", got, want)
+	}
+}
+
+// TestIdentityProbe_Layer2_BeatsLayer3 — when a strict "identity"
+// Node is present alongside a Layer-3-matching candidate, the strict
+// match must win.
+func TestIdentityProbe_Layer2_BeatsLayer3(t *testing.T) {
+	p := newProbeTestPlugin()
+	device := addIdentityNode(p, []int32{1}, []string{"Device"}, "")
+	device.glowNode.Identifier = "Device"
+	addChildParam(p, device, 1, "Hardware Name", "WrongProduct")
+	addChildParam(p, device, 2, "Software Version", "wrong.version")
+	id := addIdentityNode(p, []int32{2}, []string{"identity"}, "")
+	addChildParam(p, id, 1, "product", "RightProduct")
+	addChildParam(p, id, 2, "version", "1.0.0")
+
+	got, err := p.IdentityProbe(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("IdentityProbe: %v", err)
+	}
+	if want := "RightProduct@1.0.0"; got != want {
+		t.Errorf("identity = %q, want %q", got, want)
+	}
+}
+
+// TestNormalizeIdentifier covers the identifier normalisation used
+// by the Layer-3 children matcher.
+func TestNormalizeIdentifier(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"product", "product"},
+		{"Product", "product"},
+		{"Hardware Name", "hardwarename"},
+		{"hardware_name", "hardwarename"},
+		{"Hardware-Name", "hardwarename"},
+		{"Software Version", "softwareversion"},
+		{"  Trimmed Spaces  ", "trimmedspaces"},
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := normalizeIdentifier(c.in); got != c.want {
+			t.Errorf("normalizeIdentifier(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
 // TestHasIdentitySchema exercises the newline-separated
 // schemaIdentifiers parser per spec p.87 NodeContents [4].
 func TestHasIdentitySchema(t *testing.T) {
