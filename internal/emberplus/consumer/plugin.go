@@ -1980,7 +1980,16 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 	fn := p.subs[numKey]
 	wildcard := p.subs["*"]
 	p.subsMu.RUnlock()
+	// When falling back to the wildcard (no per-OID subscriber for
+	// this Parameter), respect the wildcard filter — value-change
+	// announces AND StreamEntry dispatch both end up here, so this
+	// is the single chokepoint that gates --no-streams /
+	// --streams-only / --path at the callback layer even when the
+	// provider broadcasts beyond our Subscribe(30) intent.
 	if fn == nil {
+		if wildcard == nil || !p.wildcardMatches(entry) {
+			return
+		}
 		fn = wildcard
 	}
 	if fn != nil {
