@@ -1690,8 +1690,12 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	if len(stringPath) > 1 {
 		obj.Group = stringPath[0]
 	}
-	if param.Format != "" {
-		obj.Unit = param.Format
+	// Format is printf-style with optional unit after a '°' marker
+	// (spec p.85 Contents [6]). Store just the unit suffix on
+	// obj.Unit so watch output renders "value <unit>" cleanly; the
+	// raw format string would clutter the display.
+	if u := extractFormatUnit(param.Format); u != "" {
+		obj.Unit = u
 	}
 
 	switch param.Access {
@@ -1999,6 +2003,11 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 		}
 		changes := entry.pendingChanges
 		entry.pendingChanges = nil
+		// Apply Parameter factor (spec p.85 Contents [8]) and unit
+		// suffix (spec p.85 Contents [6]) so watch / dhs-srv get
+		// engineering values, not raw wire integers. ACP1/ACP2 ship
+		// engineering values directly; Ember+ owes the same.
+		val, unit := displayValueAndUnit(entry)
 		fn(protocol.Event{
 			Slot:        0,
 			ID:          entry.obj.ID,
@@ -2006,10 +2015,10 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 			Path:        strings.Join(entry.obj.Path, "."),
 			Label:       entry.obj.Label,
 			Description: desc,
-			Unit:        entry.obj.Unit,
+			Unit:        unit,
 			Access:      entry.obj.Access,
 			Group:       entry.obj.Group,
-			Value:       entry.obj.Value,
+			Value:       val,
 			Freshness:   freshnessLabel(entry.freshness),
 			Changes:     changes,
 			Timestamp:   time.Now(),
