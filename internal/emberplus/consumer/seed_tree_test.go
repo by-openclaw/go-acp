@@ -116,10 +116,19 @@ func TestSeed_Matrix(t *testing.T) {
 
 // TestSeed_RoundTripIdentity proves chunk 2 + chunk 3 compose: seed the
 // identity subtree from cache, then IdentityProbe returns the expected
-// identity string without any wire I/O.
+// identity string without any wire I/O. The parent "identity" Node must
+// be seeded too — IdentityProbe locates the identity location via the
+// Node (DTD 2.30+ schemaIdentifiers OR identifier == "identity"), then
+// reads children.
 func TestSeed_RoundTripIdentity(t *testing.T) {
 	p := newSeedTestPlugin()
 	p.SeedTreeFromCachedObjects(0, []protocol.Object{
+		{
+			OID:   "1.0",
+			Label: "identity",
+			Path:  []string{"router", "identity"},
+			Meta:  map[string]any{"element": "node"},
+		},
 		{
 			OID:   "1.0.1",
 			Label: "product",
