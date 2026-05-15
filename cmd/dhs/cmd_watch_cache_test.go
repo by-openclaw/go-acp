@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -88,16 +89,39 @@ func TestSaveSlotCache_NilProber_FallsBackToIPKeyed(t *testing.T) {
 	}
 }
 
-// TestSaveSlotCache_ACP2_EmptyIdentity_NoFile: probe returns "" → no
-// file written (no safe filename).
-func TestSaveSlotCache_ACP2_EmptyIdentity_NoFile(t *testing.T) {
+// TestSaveSlotCache_EmptyIdentity_WritesFallback: probe returns "" →
+// DM still lands under "unknown@<host>.json" so downstream tooling
+// keeps working and the device is not silently dropped. The user
+// renames once real identity is determined.
+func TestSaveSlotCache_EmptyIdentity_WritesFallback(t *testing.T) {
 	root := withTempStore(t)
 	prober := &fakeProber{identity: ""}
 
-	saveSlotCache(context.Background(), prober, "10.100.0.103", "acp2", 1, makeObjs(), nil)
+	got := saveSlotCache(context.Background(), prober, "10.100.0.103", "acp2", 1, makeObjs(), nil)
 
-	if _, err := os.Stat(filepath.Join(root, "dm")); !os.IsNotExist(err) {
-		t.Errorf("dm dir MUST NOT be created on empty identity, err=%v", err)
+	if want := "unknown@10.100.0.103"; got != want {
+		t.Errorf("identity = %q, want %q", got, want)
+	}
+	dmPath := filepath.Join(root, "dm", "acp2", "unknown@10.100.0.103.json")
+	if _, err := os.Stat(dmPath); err != nil {
+		t.Errorf("fallback DM missing at %s: %v", dmPath, err)
+	}
+}
+
+// TestSaveSlotCache_ProberError_WritesFallback: probe returns an error
+// → same fallback rule applies. The DM lands; a warning is logged.
+func TestSaveSlotCache_ProberError_WritesFallback(t *testing.T) {
+	root := withTempStore(t)
+	prober := &fakeProber{err: errors.New("synthetic probe error")}
+
+	got := saveSlotCache(context.Background(), prober, "192.168.1.50", "emberplus", 0, makeObjs(), nil)
+
+	if want := "unknown@192.168.1.50"; got != want {
+		t.Errorf("identity = %q, want %q", got, want)
+	}
+	dmPath := filepath.Join(root, "dm", "emberplus", "unknown@192.168.1.50.json")
+	if _, err := os.Stat(dmPath); err != nil {
+		t.Errorf("fallback DM missing at %s: %v", dmPath, err)
 	}
 }
 

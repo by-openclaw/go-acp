@@ -593,9 +593,16 @@ func canonicalTreeFromPlug(ctx context.Context, plug protocol.Protocol) *canonic
 // card share the same DM file (loaded once, reused). Slot index +
 // IP are NOT in the path or key.
 //
-// ACP1 + ACP2 satisfy the contract today. Ember+ doesn't (no
-// per-slot card concept) and falls back to the legacy IP-keyed
-// `.cache/devices/<ip>/slot_<n>.json` layout.
+// When the plugin satisfies identityProber but the probe cannot
+// determine an identity from the wire, the DM still lands at
+// `.cache/dm/<proto>/<fallbackIdentity>.json` using a host-anchored
+// pseudo-identity ("unknown@<host>") — preserves the xxx@xxx.json
+// naming convention so downstream tooling keeps working, and gives
+// the user a file to rename once the real identity is determined.
+// A warning is logged so the gap is visible.
+//
+// Plugins that do NOT satisfy identityProber fall back to the
+// legacy IP-keyed `.cache/devices/<ip>/slot_<n>.json` layout.
 func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) string {
 	if treeStore == nil {
 		return ""
@@ -603,8 +610,10 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 	if prober != nil {
 		identity, perr := prober.IdentityProbe(ctx, slot)
 		if perr != nil || identity == "" {
-			fmt.Fprintf(os.Stderr, "warning: identity probe failed; slot %d not cached: %v\n", slot, perr)
-			return ""
+			identity = fallbackIdentity(host)
+			fmt.Fprintf(os.Stderr,
+				"warning: identity probe failed for slot %d (%v); writing fallback DM as %s.json — rename when identity is determined\n",
+				slot, perr, identity)
 		}
 		if serr := saveIdentityCache(treeStore, identity, host, proto, slot, objs, tree); serr != nil {
 			fmt.Fprintf(os.Stderr, "warning: identity cache save: %v\n", serr)
@@ -616,6 +625,21 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 		fmt.Fprintf(os.Stderr, "warning: cache save slot %d: %v\n", slot, serr)
 	}
 	return ""
+}
+
+// fallbackIdentity synthesises a pseudo-identity when the protocol's
+// IdentityProbe cannot determine one from the wire. host anchors the
+// fallback so two un-probed devices on different hosts do not collide
+// on the same DM file. The "unknown" prefix marks the file for manual
+// rename once real identity is determined; the "@" separator keeps
+// the file matching the xxx@xxx.json naming convention so downstream
+// tooling (CLI listing, manifest loaders) keeps working.
+//
+// Limitation: two un-probed devices on the SAME host but different
+// ports collide under one DM file. The walk warning surfaces this so
+// the user knows to investigate.
+func fallbackIdentity(host string) string {
+	return "unknown@" + host
 }
 
 // writeSlotManifest emits a generic manifest binding {protocol-specific
