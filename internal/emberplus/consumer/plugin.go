@@ -133,6 +133,78 @@ type Plugin struct {
 	// unsolicited disconnect and exits when a fresh session is
 	// established or the user calls Disconnect.
 	reconnect reconnectCtrl
+
+	// wildcardFilter controls which Parameters the wildcard "*"
+	// Subscribe registers Command 30 for. Set BEFORE Subscribe via
+	// SetWildcardSubscribeFilter (no-op for non-wildcard subs).
+	// Empty defaults = subscribe everything.
+	wildcardFilterMu    sync.RWMutex
+	wildcardPathFilter  []string // dotted prefixes: OID ("1.2.3") or label-path ("mixers.primary")
+	wildcardSkipStreams bool     // true → drop streamIdentifier != 0
+	wildcardStreamsOnly bool     // true → keep streamIdentifier != 0 only
+}
+
+// SetWildcardSubscribeFilter narrows the set of Parameters the
+// wildcard "*" Subscribe will register Command 30 for. Must be called
+// BEFORE Subscribe() with the wildcard request. All filters compose:
+//
+//   - paths empty AND noStreams=false AND streamsOnly=false → subscribe every Parameter
+//   - paths non-empty                                       → subscribe only Parameters whose
+//     numericKey ("1.2.3") OR label-path ("mixers.primary")
+//     matches one of the prefixes (exact or strict prefix
+//     followed by ".")
+//   - noStreams=true                                        → drop Parameters with streamIdentifier != 0
+//   - streamsOnly=true                                      → drop Parameters with streamIdentifier == 0
+//
+// noStreams and streamsOnly are mutually exclusive — caller MUST set
+// at most one true. Plugin does not enforce; result is "nothing
+// subscribed" if both set (intersection is empty).
+//
+// Filter takes effect on the NEXT Subscribe() wildcard call; existing
+// subscriptions are not retroactively cancelled.
+func (p *Plugin) SetWildcardSubscribeFilter(paths []string, noStreams, streamsOnly bool) {
+	p.wildcardFilterMu.Lock()
+	p.wildcardPathFilter = append([]string(nil), paths...)
+	p.wildcardSkipStreams = noStreams
+	p.wildcardStreamsOnly = streamsOnly
+	p.wildcardFilterMu.Unlock()
+}
+
+// wildcardMatches returns true when a discovered Parameter passes the
+// active filter (or there is no filter). Called from
+// subscribeAllParameters (post-walk batch) and subscribeOnDiscovery
+// (per-Parameter during walk).
+func (p *Plugin) wildcardMatches(entry *treeEntry) bool {
+	if entry == nil || entry.glowParam == nil {
+		return false
+	}
+	p.wildcardFilterMu.RLock()
+	paths := p.wildcardPathFilter
+	skipStreams := p.wildcardSkipStreams
+	streamsOnly := p.wildcardStreamsOnly
+	p.wildcardFilterMu.RUnlock()
+
+	isStream := entry.glowParam.StreamIdentifier != 0
+	if skipStreams && isStream {
+		return false
+	}
+	if streamsOnly && !isStream {
+		return false
+	}
+	if len(paths) == 0 {
+		return true
+	}
+	labelPath := strings.Join(entry.obj.Path, ".")
+	numPath := numericKey(entry.numericPath)
+	for _, prefix := range paths {
+		if labelPath == prefix || strings.HasPrefix(labelPath, prefix+".") {
+			return true
+		}
+		if numPath == prefix || strings.HasPrefix(numPath, prefix+".") {
+			return true
+		}
+	}
+	return false
 }
 
 // ComplianceProfile returns the live compliance profile for this

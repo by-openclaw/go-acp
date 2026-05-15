@@ -55,11 +55,24 @@ func runWatch(ctx context.Context, args []string) error {
 	id := fs.Int("id", -1, "object id filter (-1 = any)")
 	dmLibrary := fs.String("dm-library", "",
 		"DM library root for hot-plug enrichment (#254). Empty disables identity probe + seed.")
+	pathFilter := fs.String("path", "",
+		"comma-separated OID or label-path prefixes to narrow wildcard subscribe "+
+			`(Ember+ only; e.g. "1.2.3,mixers.primary.channels")`)
+	noStreams := fs.Bool("no-streams", false,
+		"skip Subscribe(30) for Parameters with streamIdentifier != 0 "+
+			"(Ember+ — drops metering flood)")
+	streamsOnly := fs.Bool("streams-only", false,
+		"Subscribe(30) only for Parameters with streamIdentifier != 0 "+
+			"(Ember+ — metering view only)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L]")
+		return fmt.Errorf("usage: dhs consumer <proto> watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L] [--path P1,P2] [--no-streams | --streams-only]")
 	}
 	_ = fs.Parse(rest)
+
+	if *noStreams && *streamsOnly {
+		return fmt.Errorf("--no-streams and --streams-only are mutually exclusive")
+	}
 
 	walkScope, scopeErr := parseWalkScope(*slot, *slotsArg, *noWalk)
 	if scopeErr != nil {
@@ -181,6 +194,12 @@ func runWatch(ctx context.Context, args []string) error {
 		Label: *label,
 		ID:    *id,
 	}
+
+	// Apply Ember+ wildcard-subscribe filters (--path / --no-streams /
+	// --streams-only) BEFORE Subscribe registers the wildcard. Optional
+	// capability — plugins that don't satisfy the interface (ACP1/ACP2,
+	// Probel, …) silently ignore the flags. No protocol-name compare.
+	applyWildcardFilter(plug, *pathFilter, *noStreams, *streamsOnly)
 
 	// Subscribe. The plugin pushes decoded Event values into our channel
 	// via the callback; we print them from the main goroutine so output
@@ -375,6 +394,38 @@ func frameStatusDelta(prev, cur []protocol.SlotStatus) []string {
 		}
 	}
 	return out
+}
+
+// wildcardSubscribeFilterer is the optional capability a plugin
+// implements to narrow which Parameters its wildcard "*" Subscribe
+// will register Command 30 for. Empty paths slice + both bools false
+// = subscribe everything (current default). Defined as a private
+// interface in cmd/dhs/ so generic CLI does not import any per-
+// protocol package and ACP1/ACP2/Probel silently ignore the new
+// flags (they don't satisfy the interface).
+type wildcardSubscribeFilterer interface {
+	SetWildcardSubscribeFilter(paths []string, noStreams, streamsOnly bool)
+}
+
+// applyWildcardFilter parses the --path comma-list and forwards the
+// filter to the plugin if it supports it. No-op when the plugin
+// doesn't satisfy the optional capability or when no filter flags
+// were set.
+func applyWildcardFilter(plug protocol.Protocol, pathFilter string, noStreams, streamsOnly bool) {
+	if pathFilter == "" && !noStreams && !streamsOnly {
+		return
+	}
+	wf, ok := plug.(wildcardSubscribeFilterer)
+	if !ok {
+		return
+	}
+	var paths []string
+	for _, p := range strings.Split(pathFilter, ",") {
+		if t := strings.TrimSpace(p); t != "" {
+			paths = append(paths, t)
+		}
+	}
+	wf.SetWildcardSubscribeFilter(paths, noStreams, streamsOnly)
 }
 
 // watchCacheKey builds a stable per-(group, id) cache key for label and

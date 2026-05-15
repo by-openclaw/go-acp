@@ -44,6 +44,11 @@ func (p *Plugin) subscribeAllParameters() {
 		if len(e.numericPath) == 0 {
 			continue
 		}
+		// Respect wildcard filter (--path / --no-streams /
+		// --streams-only). Empty filter = subscribe everything.
+		if !p.wildcardMatches(e) {
+			continue
+		}
 		targets = append(targets, paramTarget{
 			path:     cloneInt32Slice(e.numericPath),
 			streamID: e.glowParam.StreamIdentifier,
@@ -88,6 +93,10 @@ func (p *Plugin) subscribeOnDiscovery(entry *treeEntry) {
 	// empty on non-qualified wire frames — smh / DHD providers send
 	// nearly everything non-qualified.
 	if len(entry.numericPath) == 0 {
+		return
+	}
+	// Respect wildcard filter (--path / --no-streams / --streams-only).
+	if !p.wildcardMatches(entry) {
 		return
 	}
 
