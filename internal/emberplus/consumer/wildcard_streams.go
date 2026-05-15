@@ -1,30 +1,40 @@
 package emberplus
 
-// autoSubscribeStreams enumerates every already-walked stream-backed
-// Parameter and sends Command 30 (Subscribe, spec p.30–31) for each,
-// recording it in streamSubs so unsubscribeAll / Disconnect release
-// the provider-side subscription on teardown.
+// autoSubscribeStreams enumerates every already-walked Parameter and
+// sends Command 30 (Subscribe, spec p.30–31) for each, recording it in
+// streamSubs so unsubscribeAll / Disconnect release the provider-side
+// subscription on teardown.
+//
+// Why subscribe non-stream Parameters too: spec p.31 says Subscribe is
+// the consumer's signal to receive value-change announcements from
+// that path. Loose providers (TinyEmber+, our own provider) broadcast
+// to every connected session regardless and treat Subscribe as a
+// no-op; strict providers (Lawo audio processors, Riedel, etc.) gate
+// announcement emission entirely on Subscribe and emit nothing
+// otherwise. To make `dhs consumer emberplus watch` work against BOTH
+// kinds of provider we send Subscribe per Parameter after the walk
+// completes — TinyEmber+ ignores it, Lawo starts emitting.
 //
 // Called from Subscribe() when the caller registers the wildcard "*"
-// callback. Newly discovered stream Parameters (arriving during a
-// subsequent walk or announce) are handled from processParameter via
+// callback. Newly discovered Parameters (arriving during a subsequent
+// walk or announce) are handled from processParameter via
 // maybeWildcardStreamSubscribe — this function only covers what is
 // already in the tree at the moment wildcard subscribe happens.
 //
-// Idempotent: a stream already in streamSubs is skipped.
+// Idempotent: a path already in streamSubs is skipped.
 func (p *Plugin) autoSubscribeStreams() {
 	s := p.currentSession()
 	if s == nil {
 		return
 	}
 	p.treeMu.RLock()
-	type streamTarget struct {
-		path []int32
-		id   int64
+	type paramTarget struct {
+		path     []int32
+		streamID int64
 	}
-	targets := make([]streamTarget, 0)
+	targets := make([]paramTarget, 0)
 	for _, e := range p.numIndex {
-		if e.glowParam == nil || e.glowParam.StreamIdentifier == 0 {
+		if e.glowParam == nil {
 			continue
 		}
 		// Use the entry's resolved numericPath, NOT glowParam.Path.
@@ -34,9 +44,9 @@ func (p *Plugin) autoSubscribeStreams() {
 		if len(e.numericPath) == 0 {
 			continue
 		}
-		targets = append(targets, streamTarget{
-			path: cloneInt32Slice(e.numericPath),
-			id:   e.glowParam.StreamIdentifier,
+		targets = append(targets, paramTarget{
+			path:     cloneInt32Slice(e.numericPath),
+			streamID: e.glowParam.StreamIdentifier,
 		})
 	}
 	p.treeMu.RUnlock()
@@ -52,25 +62,25 @@ func (p *Plugin) autoSubscribeStreams() {
 		p.subsMu.Unlock()
 
 		if err := s.SendSubscribe(t.path); err != nil {
-			p.logger.Debug("emberplus: wildcard stream auto-subscribe failed",
+			p.logger.Debug("emberplus: wildcard auto-subscribe failed",
 				"path", key, "err", err)
 			continue
 		}
-		p.logger.Debug("emberplus: wildcard stream auto-subscribe",
-			"path", key, "stream_identifier", t.id)
+		p.logger.Debug("emberplus: wildcard auto-subscribe",
+			"path", key, "stream_identifier", t.streamID)
 	}
 }
 
-// maybeWildcardStreamSubscribe auto-subscribes a stream-backed
-// Parameter the plugin just stored if wildcard watch is active and
-// this stream has not been subscribed yet. Called from
-// processParameter after the entry is stored — that is when we first
-// learn the parameter has a non-zero StreamIdentifier.
+// maybeWildcardStreamSubscribe auto-subscribes a Parameter the plugin
+// just stored if wildcard watch is active and this path has not been
+// subscribed yet. Covers BOTH stream parameters and plain parameters —
+// strict providers (Lawo audio, Riedel) only emit value-change
+// announcements after an explicit Subscribe(30) regardless of stream
+// identifier, while loose providers (TinyEmber+, our own provider)
+// broadcast unconditionally and ignore the duplicate subscribe. Called
+// from processParameter after the entry is stored.
 func (p *Plugin) maybeWildcardStreamSubscribe(entry *treeEntry) {
 	if entry == nil || entry.glowParam == nil {
-		return
-	}
-	if entry.glowParam.StreamIdentifier == 0 {
 		return
 	}
 	// Use entry.numericPath (canonical numeric RelOID, resolved
@@ -102,10 +112,10 @@ func (p *Plugin) maybeWildcardStreamSubscribe(entry *treeEntry) {
 	p.subsMu.Unlock()
 
 	if err := s.SendSubscribe(pathCopy); err != nil {
-		p.logger.Debug("emberplus: wildcard stream subscribe (discovery) failed",
+		p.logger.Debug("emberplus: wildcard subscribe (discovery) failed",
 			"path", key, "err", err)
 		return
 	}
-	p.logger.Debug("emberplus: wildcard stream subscribe (discovery)",
+	p.logger.Debug("emberplus: wildcard subscribe (discovery)",
 		"path", key, "stream_identifier", entry.glowParam.StreamIdentifier)
 }
