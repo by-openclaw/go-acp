@@ -19,7 +19,7 @@ import (
 func runWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("walk", flag.ExitOnError)
 	cf := addCommonFlags(fs)
-	slot := fs.Int("slot", -1, "slot number (omit or pass -1 with --all to walk every present slot)")
+	slot := fs.Int("slot", 0, "slot number (default 0; combine with --all to walk every present slot)")
 	all := fs.Bool("all", false, "walk every present slot on the device")
 	filter := fs.String("filter", "", "case-insensitive filter on output lines (like findstr /i or grep -i)")
 	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
@@ -30,17 +30,9 @@ func runWalk(ctx context.Context, args []string) error {
 	treeASCII := fs.Bool("ascii", false, "use plain ASCII tree characters instead of Unicode box-drawing")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> walk <host> (--slot N | --all) [--path SEG.SEG] [--filter STR] [--tree [--depth N] [--from-oid OID | --from-path SEG.SEG] [--ascii]]")
+		return fmt.Errorf("usage: dhs consumer <proto> walk <host> [--slot N] [--all] [--path SEG.SEG] [--filter STR] [--tree [--depth N] [--from-oid OID | --from-path SEG.SEG] [--ascii]]")
 	}
 	_ = fs.Parse(rest)
-	// Ember+ has no slot concept (spec: single flat tree per provider);
-	// default --slot 0 so the user doesn't have to remember this quirk.
-	if cf.protocol == "emberplus" && *slot < 0 && !*all {
-		*slot = 0
-	}
-	if !*all && *slot < 0 {
-		return fmt.Errorf("--slot N or --all is required")
-	}
 
 	// Parse --path into segments for prefix matching.
 	var pathSegs []string

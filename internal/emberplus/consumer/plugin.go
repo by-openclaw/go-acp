@@ -687,10 +687,22 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		p.subsMu.Unlock()
 
 		// Strict providers require explicit Command 30 per
-		// Parameter (spec p.30–31) — GetDirectory alone won't start
-		// announces. Subscribe every already-walked Parameter now;
-		// new ones discovered later during walk/announce get
-		// subscribed from processParameter via subscribeOnDiscovery.
+		// Parameter (spec p.30–31) — GetDirectory alone won't
+		// start announces. To send Subscribe(30) we need to know
+		// every Parameter OID, so ensure the tree is walked first.
+		// ensureWalked is a no-op when numIndex is already
+		// populated (cached DM seeded via SeedTreeFromCachedObjects
+		// or a prior Walk in the same session).
+		if err := p.ensureWalked(context.Background(), "wildcard subscribe"); err != nil {
+			p.logger.Debug("emberplus: wildcard subscribe — initial walk failed",
+				"err", err)
+			// Continue anyway: subscribe whatever IS in numIndex
+			// (partial walk), and subscribeOnDiscovery will catch
+			// any further Parameters that arrive later.
+		}
+		// Subscribe every already-walked Parameter now; new ones
+		// discovered later during walk/announce get subscribed from
+		// processParameter via subscribeOnDiscovery.
 		p.subscribeAllParameters()
 		return nil
 	}

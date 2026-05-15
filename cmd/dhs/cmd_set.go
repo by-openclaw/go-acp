@@ -24,7 +24,7 @@ func orFirst(s ...string) string {
 func runSet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("set", flag.ExitOnError)
 	cf := addCommonFlags(fs)
-	slot := fs.Int("slot", -1, "slot number (required)")
+	slot := fs.Int("slot", 0, "slot number (default 0)")
 	group := fs.String("group", "", "object group name")
 	label := fs.String("label", "", "object label")
 	id := fs.Int("id", -1, "object id within group")
@@ -53,13 +53,6 @@ func runSet(ctx context.Context, args []string) error {
 			rawSet = true
 		}
 	})
-	// Ember+ has no slot concept; default to 0.
-	if cf.protocol == "emberplus" && *slot < 0 {
-		*slot = 0
-	}
-	if *slot < 0 {
-		return fmt.Errorf("--slot is required")
-	}
 	// --object is a deprecated alias for --id. If the user supplied
 	// --object and not --id, fold it in. If both are set with different
 	// values, reject — the caller's intent is ambiguous.

@@ -12,7 +12,7 @@ import (
 func runGet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("get", flag.ExitOnError)
 	cf := addCommonFlags(fs)
-	slot := fs.Int("slot", -1, "slot number (required)")
+	slot := fs.Int("slot", 0, "slot number (default 0)")
 	group := fs.String("group", "", "object group (optional when --label is unique across groups)")
 	label := fs.String("label", "", "object label (preferred over --id, requires prior walk context)")
 	id := fs.Int("id", -1, "object id within group (alternative to --label)")
@@ -26,13 +26,6 @@ func runGet(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: dhs consumer <proto> get <host> --slot N (--path P | --label L | --id I) [--capture out.jsonl]")
 	}
 	_ = fs.Parse(rest)
-	// Ember+ has no slot concept; default to 0 so users don't have to pass it.
-	if cf.protocol == "emberplus" && *slot < 0 {
-		*slot = 0
-	}
-	if *slot < 0 {
-		return fmt.Errorf("--slot is required")
-	}
 	// --object is a deprecated alias for --id. Fold it in unless both
 	// were set with conflicting values.
 	if *objectAlias >= 0 {
