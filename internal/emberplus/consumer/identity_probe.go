@@ -10,33 +10,37 @@ import (
 
 // IdentityProbe returns "<Product>@<Version>" for the connected provider.
 //
-// Ember+ does NOT mandate a fixed identity location in the spec. This probe
-// uses a layered detection strategy, in order:
+// Ember+ does NOT mandate a fixed identity location in the spec. This
+// probe uses a layered detection strategy, in order:
 //
 //  1. DTD 2.30+ schemaIdentifiers (spec p.87 NodeContents [4]):
-//     find any Node whose schemaIdentifiers list contains an entry ending
-//     in ".identity". Modern providers (Lawo "de.l-s-b.emberplus.identity",
-//     Riedel, DHD) follow this mechanism.
+//     find any Node whose schemaIdentifiers list contains an entry
+//     ending in ".identity". Modern providers (Lawo, Riedel) follow
+//     this mechanism.
 //
-//  2. Identifier convention (used by DTD < 2.30 providers where
-//     schemaIdentifiers does not exist): find any Node whose own
-//     identifier is "identity". This is the libember-cpp / TinyEmberPlus
-//     sample convention.
+//  2. Identifier convention (used by DTD < 2.30 providers and any
+//     provider not emitting schemaIdentifiers): find any Node whose
+//     own identifier matches "identity" case-insensitively. This
+//     covers TinyEmberPlus / libember-cpp samples ("identity") as
+//     well as vendors that use a capitalised form like "Identity"
+//     (e.g. DHD audio).
 //
-// Inside the located Node, two well-known Parameter identifiers are tried
-// in order; first non-empty value wins:
+// Inside the located Node, child Parameter identifiers are matched
+// case-insensitively against these candidate lists; the first
+// candidate with a non-empty string value wins:
 //
 //   - product: {product, name, model}
-//   - version: {version, softwareVersion, release}
+//   - version: {version, softwareversion, release, firmwareversion,
+//     firmware}
 //
 // Identity format matches ACP1 (CardName@HwVer) and ACP2 (Model@SwRev):
-// "<Product>@<Version>", e.g. "Power Core@1.21".
+// "<Product>@<Version>", e.g. "52-7520@10.1.7.1".
 //
-// Slot is always 0 for Ember+ — the plugin flattens the Glow tree into one
-// logical slot. Any other slot is a usage error.
+// Slot is always 0 for Ember+ — the plugin flattens the Glow tree
+// into one logical slot. Any other slot is a usage error.
 //
-// Pre-condition: a successful Walk must have populated the in-RAM indexes.
-// IdentityProbe does no wire I/O.
+// Pre-condition: a successful Walk must have populated the in-RAM
+// indexes. IdentityProbe does no wire I/O.
 func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 	if slot != 0 {
 		return "", fmt.Errorf("emberplus: only slot 0")
@@ -51,15 +55,16 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 		return "", fmt.Errorf("emberplus: identity probe — no identity node found (DTD 2.30+ schemaIdentifiers nor 'identity' identifier; walk before probe)")
 	}
 
-	parentPath := strings.Join(node.obj.Path, ".")
-	product := p.lookupChildString(parentPath, "product", "name", "model")
-	version := p.lookupChildString(parentPath, "version", "softwareVersion", "release")
+	children := p.directChildrenByIdentifier(node)
+	product := pickIdentityValue(children, "product", "name", "model")
+	version := pickIdentityValue(children, "version", "softwareversion", "release", "firmwareversion", "firmware")
 
+	parentPath := strings.Join(node.obj.Path, ".")
 	if product == "" {
 		return "", fmt.Errorf("emberplus: identity probe — product Parameter not found under %s (tried: product, name, model)", parentPath)
 	}
 	if version == "" {
-		return "", fmt.Errorf("emberplus: identity probe — version Parameter not found under %s (tried: version, softwareVersion, release)", parentPath)
+		return "", fmt.Errorf("emberplus: identity probe — version Parameter not found under %s (tried: version, softwareversion, release, firmwareversion, firmware)", parentPath)
 	}
 
 	return fmt.Sprintf("%s@%s", product, version), nil
@@ -78,11 +83,15 @@ func (p *Plugin) findIdentityNode() *treeEntry {
 			return e
 		}
 	}
-	// Layer 2: identifier convention. labelIndex maps bare identifier →
-	// entries. DTD < 2.30 providers (TinyEmberPlus, libember-cpp sample)
-	// do not emit schemaIdentifiers and rely on this convention.
-	for _, e := range p.labelIndex["identity"] {
-		if e.glowNode != nil {
+	// Layer 2: identifier "identity" (case-insensitive). Different
+	// vendors choose different casing — TinyEmberPlus uses "identity",
+	// DHD uses "Identity", Lawo's modern format uses schemaIdentifiers
+	// (caught by Layer 1).
+	for _, e := range p.numIndex {
+		if e.glowNode == nil {
+			continue
+		}
+		if strings.EqualFold(e.glowNode.Identifier, "identity") {
 			return e
 		}
 	}
@@ -90,8 +99,8 @@ func (p *Plugin) findIdentityNode() *treeEntry {
 }
 
 // hasIdentitySchema returns true when the newline-separated
-// schemaIdentifiers list (spec p.87 NodeContents [4]) contains any entry
-// ending in ".identity".
+// schemaIdentifiers list (spec p.87 NodeContents [4]) contains any
+// entry ending in ".identity".
 func hasIdentitySchema(schemas string) bool {
 	if schemas == "" {
 		return false
@@ -104,13 +113,63 @@ func hasIdentitySchema(schemas string) bool {
 	return false
 }
 
-// lookupChildString resolves the first non-empty string value among
-// candidate child identifiers under parentPath. Returns "" when none
-// resolves.
-func (p *Plugin) lookupChildString(parentPath string, candidates ...string) string {
+// directChildrenByIdentifier returns the direct child entries of
+// parent, keyed by lowercased identifier so subsequent lookups are
+// case-insensitive. Direct child = entries whose numericPath has the
+// parent's numericPath as a strict prefix and is exactly one segment
+// longer.
+func (p *Plugin) directChildrenByIdentifier(parent *treeEntry) map[string]*treeEntry {
+	parentLen := len(parent.numericPath)
+	children := make(map[string]*treeEntry)
+	for _, e := range p.numIndex {
+		if len(e.numericPath) != parentLen+1 {
+			continue
+		}
+		match := true
+		for i := 0; i < parentLen; i++ {
+			if e.numericPath[i] != parent.numericPath[i] {
+				match = false
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		if id := entryIdentifier(e); id != "" {
+			children[strings.ToLower(id)] = e
+		}
+	}
+	return children
+}
+
+// entryIdentifier returns the bare identifier of a tree entry,
+// preferring the Glow struct's Identifier field over the protocol
+// Object's Label fallback.
+func entryIdentifier(e *treeEntry) string {
+	if e.glowParam != nil {
+		return e.glowParam.Identifier
+	}
+	if e.glowNode != nil {
+		return e.glowNode.Identifier
+	}
+	if e.glowMatrix != nil {
+		return e.glowMatrix.Identifier
+	}
+	if e.glowFunc != nil {
+		return e.glowFunc.Identifier
+	}
+	if len(e.obj.Path) > 0 {
+		return e.obj.Path[len(e.obj.Path)-1]
+	}
+	return e.obj.Label
+}
+
+// pickIdentityValue resolves the first non-empty string value among
+// candidate child identifiers (case-insensitive). Returns "" when
+// none resolves.
+func pickIdentityValue(children map[string]*treeEntry, candidates ...string) string {
 	for _, name := range candidates {
-		key := parentPath + "." + name
-		if entry, ok := p.pathIndex[key]; ok {
+		if entry, ok := children[strings.ToLower(name)]; ok {
 			if v := identityStringValue(entry); v != "" {
 				return v
 			}
@@ -119,10 +178,10 @@ func (p *Plugin) lookupChildString(parentPath string, candidates ...string) stri
 	return ""
 }
 
-// identityStringValue extracts the textual value of an identity-subtree
-// entry. Product/version are KindString on every real provider observed;
-// a numeric version (rare) is rendered via fmt.Sprintf as a fallback so
-// the cache key stays stable.
+// identityStringValue extracts the textual value of an
+// identity-subtree entry. Product/version are KindString on every
+// real provider observed; a numeric version (rare) is rendered via
+// fmt.Sprintf as a fallback so the cache key stays stable.
 func identityStringValue(entry *treeEntry) string {
 	if entry == nil {
 		return ""

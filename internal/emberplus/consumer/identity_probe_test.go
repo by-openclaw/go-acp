@@ -19,39 +19,46 @@ func newProbeTestPlugin() *Plugin {
 	}
 }
 
-// putIdentityNode registers an identity Node into numIndex + labelIndex.
-// schemaIdentifiers is empty for DTD < 2.30 providers (identifier-only
-// convention) and non-empty for DTD 2.30+ (schema-based).
-func putIdentityNode(p *Plugin, parts []string, schemaIdentifiers string) *treeEntry {
+// addIdentityNode registers a Node entry whose numericPath, label path,
+// glowNode.Identifier and (optional) schemaIdentifiers reflect what a
+// real walk would produce.
+func addIdentityNode(p *Plugin, oid []int32, path []string, schemaIdentifiers string) *treeEntry {
 	n := &glow.Node{
-		Identifier:        parts[len(parts)-1],
+		Identifier:        path[len(path)-1],
 		SchemaIdentifiers: schemaIdentifiers,
 	}
 	e := &treeEntry{
 		obj: protocol.Object{
-			Path:  append([]string(nil), parts...),
+			Path:  append([]string(nil), path...),
 			Label: n.Identifier,
 		},
-		glowNode: n,
+		glowNode:    n,
+		numericPath: append([]int32(nil), oid...),
 	}
-	p.numIndex[strings.Join(parts, ".")] = e
+	p.numIndex[numericKey(oid)] = e
+	p.pathIndex[strings.Join(path, ".")] = e
 	p.labelIndex[n.Identifier] = append(p.labelIndex[n.Identifier], e)
 	return e
 }
 
-// putChildParam adds a child Parameter under parentPath with a string value.
-func putChildParam(p *Plugin, parentPath, identifier, value string) {
-	parts := append(strings.Split(parentPath, "."), identifier)
-	key := strings.Join(parts, ".")
+// addChildParam registers a child Parameter under parent at sub-index
+// childNum, with the given identifier and string value.
+func addChildParam(p *Plugin, parent *treeEntry, childNum int32, identifier, value string) *treeEntry {
+	oid := append(append([]int32(nil), parent.numericPath...), childNum)
+	path := append(append([]string(nil), parent.obj.Path...), identifier)
 	e := &treeEntry{
 		obj: protocol.Object{
-			Path:  parts,
+			Path:  path,
 			Label: identifier,
 			Value: protocol.Value{Kind: protocol.KindString, Str: value},
 		},
-		glowParam: &glow.Parameter{Identifier: identifier, Value: value},
+		glowParam:   &glow.Parameter{Identifier: identifier, Value: value},
+		numericPath: oid,
 	}
-	p.pathIndex[key] = e
+	p.numIndex[numericKey(oid)] = e
+	p.pathIndex[strings.Join(path, ".")] = e
+	p.labelIndex[identifier] = append(p.labelIndex[identifier], e)
+	return e
 }
 
 // TestIdentityProbe_SchemaIdentifiers — DTD 2.30+ providers where the
@@ -59,87 +66,158 @@ func putChildParam(p *Plugin, parentPath, identifier, value string) {
 // (e.g. Lawo "de.l-s-b.emberplus.identity"). Spec p.87 NodeContents [4].
 func TestIdentityProbe_SchemaIdentifiers(t *testing.T) {
 	p := newProbeTestPlugin()
-	putIdentityNode(p, []string{"id"}, "de.l-s-b.emberplus.identity")
-	putChildParam(p, "id", "product", "Power Core")
-	putChildParam(p, "id", "version", "1.21")
+	id := addIdentityNode(p, []int32{1}, []string{"id"}, "de.l-s-b.emberplus.identity")
+	addChildParam(p, id, 1, "product", "Power Core")
+	addChildParam(p, id, 2, "version", "1.21")
 
-	id, err := p.IdentityProbe(context.Background(), 0)
+	got, err := p.IdentityProbe(context.Background(), 0)
 	if err != nil {
 		t.Fatalf("IdentityProbe: %v", err)
 	}
-	if got, want := id, "Power Core@1.21"; got != want {
+	if want := "Power Core@1.21"; got != want {
 		t.Errorf("identity = %q, want %q", got, want)
 	}
 }
 
-// TestIdentityProbe_IdentifierConvention — DTD < 2.30 providers that use
-// the libember-cpp / TinyEmberPlus sample convention: a Node named
-// "identity" with product/version children.
-func TestIdentityProbe_IdentifierConvention(t *testing.T) {
+// TestIdentityProbe_LowercaseIdentifier — TinyEmberPlus / libember-cpp
+// sample convention: Node named "identity" (lowercase) with
+// product/version children.
+func TestIdentityProbe_LowercaseIdentifier(t *testing.T) {
 	p := newProbeTestPlugin()
-	putIdentityNode(p, []string{"router", "identity"}, "")
-	putChildParam(p, "router.identity", "product", "Tiny Ember+ Router")
-	putChildParam(p, "router.identity", "version", "1.6.2")
+	router := addIdentityNode(p, []int32{1}, []string{"router"}, "")
+	router.glowNode.Identifier = "router" // overwrite; this isn't the identity node
+	id := addIdentityNode(p, []int32{1, 1}, []string{"router", "identity"}, "")
+	addChildParam(p, id, 1, "product", "Tiny Ember+ Router")
+	addChildParam(p, id, 2, "version", "1.6.2")
 
-	id, err := p.IdentityProbe(context.Background(), 0)
+	got, err := p.IdentityProbe(context.Background(), 0)
 	if err != nil {
 		t.Fatalf("IdentityProbe: %v", err)
 	}
-	if got, want := id, "Tiny Ember+ Router@1.6.2"; got != want {
+	if want := "Tiny Ember+ Router@1.6.2"; got != want {
 		t.Errorf("identity = %q, want %q", got, want)
 	}
 }
 
-// TestIdentityProbe_SchemaPreferredOverIdentifier — when both detection
-// layers match, schemaIdentifiers (strict-spec DTD 2.30+) wins.
+// TestIdentityProbe_CapitalisedIdentifier_DHD — DHD audio devices use
+// a capitalised "Identity" node (case differs from libember sample).
+// Children also capitalised: "Product", "Firmwareversion". Probe must
+// match case-insensitively and recognise "Firmwareversion" as a
+// version candidate.
+func TestIdentityProbe_CapitalisedIdentifier_DHD(t *testing.T) {
+	p := newProbeTestPlugin()
+	device := addIdentityNode(p, []int32{1}, []string{"Device"}, "")
+	device.glowNode.Identifier = "Device"
+	id := addIdentityNode(p, []int32{1, 1}, []string{"Device", "Identity"}, "")
+	addChildParam(p, id, 1, "Company", "DHD audio GmbH")
+	addChildParam(p, id, 2, "Series", "Series52")
+	addChildParam(p, id, 3, "Product", "52-7520")
+	addChildParam(p, id, 4, "Firmwareversion", "10.1.7.1")
+
+	got, err := p.IdentityProbe(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("IdentityProbe: %v", err)
+	}
+	if want := "52-7520@10.1.7.1"; got != want {
+		t.Errorf("identity = %q, want %q", got, want)
+	}
+}
+
+// TestIdentityProbe_NestedIdentity_PowerCore — Lawo PowerCore nests
+// "identity" under a "PowerCore" Node at depth 2. Verifies the probe
+// finds identity at any depth, not only at root.
+func TestIdentityProbe_NestedIdentity_PowerCore(t *testing.T) {
+	p := newProbeTestPlugin()
+	powerCore := addIdentityNode(p, []int32{1}, []string{"PowerCore"}, "")
+	powerCore.glowNode.Identifier = "PowerCore"
+	id := addIdentityNode(p, []int32{1, 30}, []string{"PowerCore", "identity"}, "")
+	addChildParam(p, id, 1, "product", "PowerCore Rev3 (710/13)")
+	addChildParam(p, id, 2, "company", "Lawo AG / DSA-Volgmann")
+	addChildParam(p, id, 3, "serial", "00-59-E3-88-31-27-FB-0B")
+	addChildParam(p, id, 4, "version", "8.2.93")
+	addChildParam(p, id, 5, "role", "br-r-pclaw-001")
+
+	got, err := p.IdentityProbe(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("IdentityProbe: %v", err)
+	}
+	if want := "PowerCore Rev3 (710/13)@8.2.93"; got != want {
+		t.Errorf("identity = %q, want %q", got, want)
+	}
+}
+
+// TestIdentityProbe_RealLawo_mc2 — Lawo mc² 56 mk3 layout observed
+// from a live capture: identity Node at the root, lowercase
+// identifiers, "version" is the canonical version field.
+func TestIdentityProbe_RealLawo_mc2(t *testing.T) {
+	p := newProbeTestPlugin()
+	id := addIdentityNode(p, []int32{1}, []string{"identity"}, "")
+	addChildParam(p, id, 1, "product", "mc2_56_mk3")
+	addChildParam(p, id, 2, "company", "Lawo AG")
+	addChildParam(p, id, 3, "role", "MXALAW-241-primary")
+	addChildParam(p, id, 4, "version", "12-2-0-0 build 45")
+	addChildParam(p, id, 5, "productVersion", "12.2.0.3")
+
+	got, err := p.IdentityProbe(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("IdentityProbe: %v", err)
+	}
+	if want := "mc2_56_mk3@12-2-0-0 build 45"; got != want {
+		t.Errorf("identity = %q, want %q", got, want)
+	}
+}
+
+// TestIdentityProbe_SchemaPreferredOverIdentifier — when both
+// detection layers match, schemaIdentifiers (strict-spec DTD 2.30+)
+// wins.
 func TestIdentityProbe_SchemaPreferredOverIdentifier(t *testing.T) {
 	p := newProbeTestPlugin()
-	putIdentityNode(p, []string{"router", "identity"}, "")
-	putChildParam(p, "router.identity", "product", "LegacyProduct")
-	putChildParam(p, "router.identity", "version", "0.0.1")
-	putIdentityNode(p, []string{"id"}, "de.l-s-b.emberplus.identity")
-	putChildParam(p, "id", "product", "ModernProduct")
-	putChildParam(p, "id", "version", "1.21")
+	legacy := addIdentityNode(p, []int32{1}, []string{"identity"}, "")
+	addChildParam(p, legacy, 1, "product", "LegacyProduct")
+	addChildParam(p, legacy, 2, "version", "0.0.1")
+	modern := addIdentityNode(p, []int32{2}, []string{"id"}, "de.l-s-b.emberplus.identity")
+	addChildParam(p, modern, 1, "product", "ModernProduct")
+	addChildParam(p, modern, 2, "version", "1.21")
 
-	id, err := p.IdentityProbe(context.Background(), 0)
+	got, err := p.IdentityProbe(context.Background(), 0)
 	if err != nil {
 		t.Fatalf("IdentityProbe: %v", err)
 	}
-	if got, want := id, "ModernProduct@1.21"; got != want {
+	if want := "ModernProduct@1.21"; got != want {
 		t.Errorf("identity = %q, want %q", got, want)
 	}
 }
 
-// TestIdentityProbe_ProductFallbackName — provider whose identity uses
-// "name" instead of "product".
-func TestIdentityProbe_ProductFallbackName(t *testing.T) {
+// TestIdentityProbe_ProductFallback_Name — provider whose identity
+// uses "name" rather than "product".
+func TestIdentityProbe_ProductFallback_Name(t *testing.T) {
 	p := newProbeTestPlugin()
-	putIdentityNode(p, []string{"identity"}, "")
-	putChildParam(p, "identity", "name", "DeviceA")
-	putChildParam(p, "identity", "version", "2.0")
+	id := addIdentityNode(p, []int32{1}, []string{"identity"}, "")
+	addChildParam(p, id, 1, "name", "DeviceA")
+	addChildParam(p, id, 2, "version", "2.0")
 
-	id, err := p.IdentityProbe(context.Background(), 0)
+	got, err := p.IdentityProbe(context.Background(), 0)
 	if err != nil {
 		t.Fatalf("IdentityProbe: %v", err)
 	}
-	if got, want := id, "DeviceA@2.0"; got != want {
+	if want := "DeviceA@2.0"; got != want {
 		t.Errorf("identity = %q, want %q", got, want)
 	}
 }
 
-// TestIdentityProbe_VersionFallbackSoftwareVersion — provider whose
-// identity uses "softwareVersion" instead of "version".
-func TestIdentityProbe_VersionFallbackSoftwareVersion(t *testing.T) {
+// TestIdentityProbe_VersionFallback_SoftwareVersion — provider whose
+// identity uses "softwareVersion" rather than "version".
+func TestIdentityProbe_VersionFallback_SoftwareVersion(t *testing.T) {
 	p := newProbeTestPlugin()
-	putIdentityNode(p, []string{"identity"}, "")
-	putChildParam(p, "identity", "product", "DeviceB")
-	putChildParam(p, "identity", "softwareVersion", "3.4.5")
+	id := addIdentityNode(p, []int32{1}, []string{"identity"}, "")
+	addChildParam(p, id, 1, "product", "DeviceB")
+	addChildParam(p, id, 2, "softwareVersion", "3.4.5")
 
-	id, err := p.IdentityProbe(context.Background(), 0)
+	got, err := p.IdentityProbe(context.Background(), 0)
 	if err != nil {
 		t.Fatalf("IdentityProbe: %v", err)
 	}
-	if got, want := id, "DeviceB@3.4.5"; got != want {
+	if want := "DeviceB@3.4.5"; got != want {
 		t.Errorf("identity = %q, want %q", got, want)
 	}
 }
@@ -148,9 +226,9 @@ func TestIdentityProbe_VersionFallbackSoftwareVersion(t *testing.T) {
 // Ember+ flattens the Glow tree into one logical slot.
 func TestIdentityProbe_RejectsNonZeroSlot(t *testing.T) {
 	p := newProbeTestPlugin()
-	putIdentityNode(p, []string{"identity"}, "")
-	putChildParam(p, "identity", "product", "x")
-	putChildParam(p, "identity", "version", "1")
+	id := addIdentityNode(p, []int32{1}, []string{"identity"}, "")
+	addChildParam(p, id, 1, "product", "x")
+	addChildParam(p, id, 2, "version", "1")
 
 	_, err := p.IdentityProbe(context.Background(), 1)
 	if err == nil {
@@ -158,9 +236,13 @@ func TestIdentityProbe_RejectsNonZeroSlot(t *testing.T) {
 	}
 }
 
-// TestIdentityProbe_NotWalkedYet covers the pre-condition: indexes empty.
-func TestIdentityProbe_NotWalkedYet(t *testing.T) {
+// TestIdentityProbe_NoIdentityNode — the indexes are populated but no
+// Node satisfies either detection layer.
+func TestIdentityProbe_NoIdentityNode(t *testing.T) {
 	p := newProbeTestPlugin()
+	root := addIdentityNode(p, []int32{1}, []string{"router"}, "")
+	root.glowNode.Identifier = "router"
+	addChildParam(p, root, 1, "product", "x")
 
 	_, err := p.IdentityProbe(context.Background(), 0)
 	if err == nil {
@@ -171,8 +253,8 @@ func TestIdentityProbe_NotWalkedYet(t *testing.T) {
 // TestIdentityProbe_MissingProduct — never fabricate identity.
 func TestIdentityProbe_MissingProduct(t *testing.T) {
 	p := newProbeTestPlugin()
-	putIdentityNode(p, []string{"identity"}, "")
-	putChildParam(p, "identity", "version", "1.6.2")
+	id := addIdentityNode(p, []int32{1}, []string{"identity"}, "")
+	addChildParam(p, id, 1, "version", "1.6.2")
 
 	_, err := p.IdentityProbe(context.Background(), 0)
 	if err == nil {
@@ -186,8 +268,8 @@ func TestIdentityProbe_MissingProduct(t *testing.T) {
 // TestIdentityProbe_MissingVersion — never fabricate identity.
 func TestIdentityProbe_MissingVersion(t *testing.T) {
 	p := newProbeTestPlugin()
-	putIdentityNode(p, []string{"identity"}, "")
-	putChildParam(p, "identity", "product", "Tiny Ember+ Router")
+	id := addIdentityNode(p, []int32{1}, []string{"identity"}, "")
+	addChildParam(p, id, 1, "product", "Tiny Ember+ Router")
 
 	_, err := p.IdentityProbe(context.Background(), 0)
 	if err == nil {
@@ -198,13 +280,13 @@ func TestIdentityProbe_MissingVersion(t *testing.T) {
 	}
 }
 
-// TestIdentityProbe_EmptyValues rejects empty strings — empty identity
-// would collide every such provider into the same cache slot.
+// TestIdentityProbe_EmptyValues rejects empty strings — empty
+// identity would collide every such provider into the same cache slot.
 func TestIdentityProbe_EmptyValues(t *testing.T) {
 	p := newProbeTestPlugin()
-	putIdentityNode(p, []string{"identity"}, "")
-	putChildParam(p, "identity", "product", "")
-	putChildParam(p, "identity", "version", "")
+	id := addIdentityNode(p, []int32{1}, []string{"identity"}, "")
+	addChildParam(p, id, 1, "product", "")
+	addChildParam(p, id, 2, "version", "")
 
 	_, err := p.IdentityProbe(context.Background(), 0)
 	if err == nil {
@@ -212,8 +294,8 @@ func TestIdentityProbe_EmptyValues(t *testing.T) {
 	}
 }
 
-// TestHasIdentitySchema exercises the newline-separated schemaIdentifiers
-// parser per spec p.87 NodeContents [4].
+// TestHasIdentitySchema exercises the newline-separated
+// schemaIdentifiers parser per spec p.87 NodeContents [4].
 func TestHasIdentitySchema(t *testing.T) {
 	cases := []struct {
 		name string
