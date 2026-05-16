@@ -8,7 +8,7 @@
 //
 // On load, the store validates against the live device Card Name.
 // If the card was swapped, the cache is discarded.
-package storage
+package datastore
 
 import (
 	"encoding/json"

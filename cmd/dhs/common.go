@@ -12,17 +12,17 @@ import (
 	"dhs/internal/logging"
 	"dhs/internal/consumer"
 	"dhs/internal/acp1/consumer"
-	"dhs/internal/storage"
+	"dhs/internal/datastore"
 	"dhs/internal/transport"
 )
 
 // treeStore is the global file-backed tree store, initialized once.
 // Per ADR-0020 Bucket 4: rooted at <project>/.cache/devices/{ip}/slot_{n}.json
 // (gitignored, regeneratable; separate from manual captures under captures/).
-var treeStore *storage.TreeStore
+var treeStore *datastore.TreeStore
 
 func init() {
-	store, err := storage.NewTreeStoreInProjectCache()
+	store, err := datastore.NewTreeStoreInProjectCache()
 	if err == nil {
 		treeStore = store
 	}

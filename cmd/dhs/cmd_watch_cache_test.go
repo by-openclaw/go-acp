@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"dhs/internal/consumer"
-	"dhs/internal/storage"
+	"dhs/internal/datastore"
 )
 
 // fakeProber satisfies the new per-slot identityProber contract.
@@ -36,7 +36,7 @@ func withTempStore(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	prev := treeStore
-	treeStore = storage.NewTreeStore(root)
+	treeStore = datastore.NewTreeStore(root)
 	t.Cleanup(func() { treeStore = prev })
 	return root
 }

@@ -14,7 +14,7 @@ import (
 	"dhs/internal/export/canonical"
 	"dhs/internal/manifest"
 	"dhs/internal/consumer"
-	"dhs/internal/storage"
+	"dhs/internal/datastore"
 )
 
 // runWatch subscribes to live announcements and prints each event as it
@@ -620,7 +620,7 @@ func runWalkScope(ctx context.Context, plug consumer.Protocol, host, proto strin
 // slot's identity scope (Card Name + Hardware Version objects in
 // ROOT_NODE_V2.BOARD) and returns "<CardName>@<HwVer>". ACP2
 // implements it; ACP1 / Ember+ have no identity contract today and
-// fall back to IP-keyed storage.
+// fall back to IP-keyed datastore.
 type identityProber interface {
 	IdentityProbe(ctx context.Context, slot int) (string, error)
 }
@@ -840,7 +840,7 @@ func saveAndSplitForEmberplus(ctx context.Context, plug consumer.Protocol, probe
 // also carries the canonical.Export shape per ADR-0022. host + slot
 // params kept for symmetry with the IP-keyed Save path and future
 // logging; they are NOT written to disk.
-func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, slot int, objs []consumer.Object, tree *canonical.Export) error {
+func saveIdentityCache(store *datastore.TreeStore, identity, host, proto string, slot int, objs []consumer.Object, tree *canonical.Export) error {
 	_ = host
 	_ = slot
 	if tree == nil {
@@ -850,7 +850,7 @@ func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, s
 	// serve, flat Objects for the consumer's --dm hot-load (which
 	// uses SeedTreeFromCachedObjects → numIndex by OID). One file,
 	// two views, no per-verb walk.
-	return store.WriteDM(proto, identity, storage.DM{
+	return store.WriteDM(proto, identity, datastore.DM{
 		Protocol:  proto,
 		Root:      tree.Root,
 		Templates: tree.Templates,
@@ -867,7 +867,7 @@ func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, s
 // consumer can resolve host:port → slot DMs without re-walking.
 // Quiet on success; warns on per-slot save errors.
 type dmSplitter interface {
-	SplitAndPersistDM(ctx context.Context, store *storage.TreeStore, providerIdentity string) ([]emberplus.SlotRef, error)
+	SplitAndPersistDM(ctx context.Context, store *datastore.TreeStore, providerIdentity string) ([]emberplus.SlotRef, error)
 }
 
 func splitDMByMatrix(ctx context.Context, plug consumer.Protocol, host string, port int, identity string) {

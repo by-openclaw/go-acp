@@ -11,7 +11,7 @@ import (
 	"dhs/internal/export/canonical"
 )
 
-// dmFile mirrors internal/storage.DM (kept duplicated to avoid an
+// dmFile mirrors internal/datastore.DM (kept duplicated to avoid an
 // import cycle between manifest and storage).
 //
 // Two shapes are supported on disk:

@@ -5,7 +5,7 @@ new file lands in exactly one layer; layer N may import layer < N
 only. Cross-protocol imports are forbidden outside neutral
 infrastructure (`internal/consumer/`, `internal/provider/`,
 `internal/registry/`, `internal/consumer/compliance/`,
-`internal/storage/`, `internal/metrics/`, `internal/transport/`).
+`internal/datastore/`, `internal/metrics/`, `internal/transport/`).
 
 This file is normative. The `depguard` golangci-lint rule + a
 `go list -deps` test in CI enforce it; reviewers reject any PR that
@@ -43,7 +43,7 @@ introduces a back-arrow.
 │            dhs/internal/provider           (interface only)                 │
 │            dhs/internal/registry           (interface only — NEW slot)      │
 │            dhs/internal/consumer/compliance                                │
-│            dhs/internal/storage            (portable data dir)              │
+│            dhs/internal/datastore            (portable data dir)              │
 │            dhs/internal/metrics            (connector + Prom)               │
 │  Forbidden: any other internal/<proto>/*                                    │
 │             cmd/*                                                          │
@@ -366,7 +366,7 @@ without breaking the layering:
 
 | Package | Purpose | Layers allowed |
 |---|---|---|
-| `dhs/internal/storage` | Portable data dir + atomic file writes | 2, 3 |
+| `dhs/internal/datastore` | Portable data dir + atomic file writes | 2, 3 |
 | `dhs/internal/metrics` | Connector counters + Prom registry | 2, 3 |
 | `dhs/internal/transport` | HTTP/WS capture (`--capture` flag) | 2 only |
 | `dhs/internal/consumer/compliance` | Compliance.Profile + event types | 2, 3 |
