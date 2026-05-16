@@ -55,7 +55,7 @@ func runExtract(ctx context.Context, args []string) error {
 		"free-text notes for the engineer who captured (optional)")
 	outDir := fs.String("out", "",
 		"output directory (e.g. tests/fixtures/products/axon/DDB08/acp2/v2.3/). Required.")
-	slot := fs.Int("slot", -1, "slot to walk (Ember+ defaults to 0 if omitted)")
+	slot := fs.Int("slot", 0, "slot to walk (default 0)")
 
 	host, rest, err := popHost(args)
 	if err != nil {
@@ -71,13 +71,6 @@ func runExtract(ctx context.Context, args []string) error {
 		return err
 	}
 	*direction = canonical
-
-	if cf.protocol == "emberplus" && *slot < 0 {
-		*slot = 0
-	}
-	if *slot < 0 {
-		return fmt.Errorf("--slot N is required (except Ember+)")
-	}
 
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
 		return fmt.Errorf("create --out dir: %w", err)

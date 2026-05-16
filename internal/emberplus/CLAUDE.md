@@ -58,17 +58,19 @@ TCP
 ## GlowDTD tag numbers (APPLICATION class)
 
 ```
-1=Parameter  2=Command  3=Node   4=ElementCollection
-5=StreamEntry 6=QualifiedParameter  7=QualifiedNode
-8=RootElementCollection  9=StreamCollection
-10=ElementCollection (legacy)
-11=Invocation 12=InvocationResult
-13=Template   14=QualifiedTemplate
-15=Function   16=QualifiedFunction
-17=Matrix     18=QualifiedMatrix
-19=TargetCollection 20=SourceCollection
-21=ConnectionCollection 22=Connection
+0=Root         1=Parameter         2=Command            3=Node
+4=ElementCollection                5=StreamEntry        6=StreamCollection
+7=StringIntegerPair                8=StringIntegerCollection
+9=QualifiedParameter              10=QualifiedNode     11=RootElementCollection
+12=StreamDescription              13=Matrix            14=Target
+15=Source            16=Connection                     17=QualifiedMatrix
+18=Label             19=Function                       20=QualifiedFunction
+21=TupleItemDescription           22=Invocation        23=InvocationResult
+24=Template          25=QualifiedTemplate
 ```
+
+Spec p.84/p.91 numbering; `codec/glow/tags.go` is the authoritative
+reference.
 
 ## Paths
 

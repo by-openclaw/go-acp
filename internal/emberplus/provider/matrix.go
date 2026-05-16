@@ -46,6 +46,33 @@ func (s *server) encodeQualifiedMatrix(e *entry, m *canonical.Matrix) (ber.TLV, 
 	return ber.AppConstructed(glow.TagQualifiedMatrix, fields...), nil
 }
 
+// encodeNonQualMatrix emits a non-qualified Matrix [APPLICATION 13] for
+// use inside a TemplateElement (spec p.84 CHOICE). CTX[0] carries the
+// integer number instead of a path; targets/sources/connections still
+// follow the contents SET when present.
+//
+//	Matrix ::= [APPLICATION 13] SEQUENCE { number [0] Integer32, contents [1] MatrixContents, children [2], targets [3], sources [4], connections [5] }
+func encodeNonQualMatrix(number int32, m *canonical.Matrix) (ber.TLV, error) {
+	contents, err := encodeMatrixContents(m)
+	if err != nil {
+		return ber.TLV{}, err
+	}
+	fields := []ber.TLV{
+		ber.ContextConstructed(glow.MatrixNumber, ber.Integer(int64(number))),
+		ber.ContextConstructed(glow.MatrixContents, contents),
+	}
+	if len(m.Targets) > 0 {
+		fields = append(fields, ber.ContextConstructed(glow.MatrixTargets, encodeTargets(m.Targets)))
+	}
+	if len(m.Sources) > 0 {
+		fields = append(fields, ber.ContextConstructed(glow.MatrixSources, encodeSources(m.Sources)))
+	}
+	if len(m.Connections) > 0 {
+		fields = append(fields, ber.ContextConstructed(glow.MatrixConnections, encodeConnections(m.Connections)))
+	}
+	return ber.AppConstructed(glow.TagMatrix, fields...), nil
+}
+
 // encodeMatrixContents builds the [UNIVERSAL SET] inside [CTX 1] contents.
 // Field order is ascending CTX tag; optional fields absent when the
 // canonical value is zero / nil / default (type=oneToN, mode=linear).
@@ -63,6 +90,8 @@ func (s *server) encodeQualifiedMatrix(e *entry, m *canonical.Matrix) (ber.TLV, 
 //	|   [8]       | parametersLocation       | RELATIVE-OID | optional      |
 //	|   [9]       | gainParameterNumber      | INTEGER      | optional      |
 //	|   [10]      | labels                   | SEQUENCE OF  | Label APP[18] |
+//	|   [11]      | schemaIdentifiers        | EmberString  | DTD 2.30+     |
+//	|   [12]      | templateReference        | RELATIVE-OID | DTD 2.30+     |
 //
 // Spec reference: Ember+ Documentation.pdf §MatrixContents p. 88.
 func encodeMatrixContents(m *canonical.Matrix) (ber.TLV, error) {
@@ -116,6 +145,20 @@ func encodeMatrixContents(m *canonical.Matrix) (ber.TLV, error) {
 		}
 		kids = append(kids,
 			ber.ContextConstructed(glow.MatContentLabels, ber.Sequence(items...))) // [10]
+	}
+	if m.SchemaIdentifiers != nil && *m.SchemaIdentifiers != "" {
+		kids = append(kids,
+			ber.ContextConstructed(glow.MatContentSchemaIdentifiers, ber.UTF8(*m.SchemaIdentifiers))) // [11]
+	}
+	if m.TemplateReference != nil && *m.TemplateReference != "" {
+		parts, err := parseOID(*m.TemplateReference)
+		if err != nil {
+			return ber.TLV{}, fmt.Errorf("templateReference %q: %w", *m.TemplateReference, err)
+		}
+		if len(parts) > 0 {
+			kids = append(kids,
+				ber.ContextConstructed(glow.MatContentTemplateReference, ber.RelOID(encodeRelativeOID(parts)))) // [12]
+		}
 	}
 	return ber.Set(kids...), nil
 }

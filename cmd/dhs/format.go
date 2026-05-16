@@ -220,6 +220,16 @@ func accessStr(a uint8) string {
 // back to compact %g formatting with no unit suffix.
 func formatValue(v protocol.Value, obj *protocol.Object) string {
 	switch v.Kind {
+	case protocol.KindBool:
+		// Previously fell through to the default "value = ?  (kind 1)"
+		// branch — broke `get` / `set` confirm output on every bool
+		// Parameter (mute, vBoolean, Ember+ Parameter.type=boolean).
+		// formatValueInline already had the bool case; this one was
+		// just missing.
+		if v.Bool {
+			return "value = true"
+		}
+		return "value = false"
 	case protocol.KindInt:
 		return "value = " + appendUnit(fmt.Sprintf("%d", v.Int), obj)
 	case protocol.KindUint:

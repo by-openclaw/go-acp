@@ -193,7 +193,7 @@ func (p *Plugin) refreshAfterReconnect(ctx context.Context) {
 		p.logger.Debug("emberplus: reconnect walk failed", "err", err)
 		return
 	}
-	// autoSubscribeStreams walks the refreshed tree. streamSubs
+	// subscribeAllParameters walks the refreshed tree. streamSubs
 	// was cleared in onSessionStateChange(false); no stale skips.
-	p.autoSubscribeStreams()
+	p.subscribeAllParameters()
 }

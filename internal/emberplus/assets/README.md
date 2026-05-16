@@ -21,7 +21,7 @@ DHD, Riedel, Solid State Logic, Evertz SDVN).
 ```
 S101 frame: BoF | escaped(header + BER payload + CRC_LE) | EoF
 Header (4 bytes): slot(1) msgType(1=0x0E) command(1) version(1=0x01)
-For EmBER data command (0x00): +5 bytes = flags(1) dtd(1=Glow) appLen(1=2) appMinor(1=0x1F) appMajor(1=0x02)
+For EmBER data command (0x00): +5 bytes = flags(1) dtd(1=Glow) appLen(1=2) appMinor(1=0x3C) appMajor(1=0x02)
 BER payload: Glow APPLICATION-tagged tree (Root / RootElementCollection / ...)
 ```
 

@@ -200,6 +200,19 @@ func decodeQualifiedNode(tlv ber.TLV) (*Element, error) {
 	return &Element{Node: n}, nil
 }
 
+// appendUniqueInt32 appends v to s only when v is not already present.
+// Used by the unknown-CTX trackers on Node/Parameter/Matrix/Function so
+// each unmapped tag is recorded once per element regardless of how
+// many times it appears in the SET (degenerate but legal per BER).
+func appendUniqueInt32(s []int32, v int32) []int32 {
+	for _, x := range s {
+		if x == v {
+			return s
+		}
+	}
+	return append(s, v)
+}
+
 // decodeNodeContents fills Node contents fields per spec p.87.
 // Expects the CONTEXT[1] wrapper; unwraps the inner SET envelope.
 func decodeNodeContents(n *Node, tlv ber.TLV) {
@@ -220,6 +233,10 @@ func decodeNodeContents(n *Node, tlv ber.TLV) {
 			n.SchemaIdentifiers = decodeStringValue(child)
 		case NodeContentTemplateReference:
 			n.TemplateReference = decodeRelativeOID(child)
+		default:
+			// Forward-compatible per spec p.93: record unknown CTX
+			// for the consumer's audit layer; do not error.
+			n.UnknownContents = appendUniqueInt32(n.UnknownContents, int32(child.Tag.Number))
 		}
 	}
 }
@@ -352,6 +369,8 @@ func decodeParamContents(p *Parameter, tlv ber.TLV) {
 			p.SchemaIdentifiers = decodeStringValue(child)
 		case ParamContentTemplateReference:
 			p.TemplateReference = decodeRelativeOID(child)
+		default:
+			p.UnknownContents = appendUniqueInt32(p.UnknownContents, int32(child.Tag.Number))
 		}
 	}
 }
@@ -484,6 +503,8 @@ func decodeMatrixContents(m *Matrix, tlv ber.TLV) {
 			m.SchemaIdentifiers = decodeStringValue(child)
 		case MatContentTemplateReference:
 			m.TemplateReference = decodeRelativeOID(child)
+		default:
+			m.UnknownContents = appendUniqueInt32(m.UnknownContents, int32(child.Tag.Number))
 		}
 	}
 }
@@ -704,6 +725,8 @@ func decodeFuncContents(f *Function, tlv ber.TLV) {
 			f.Result = decodeTupleDescription(child)
 		case FuncContentTemplateReference:
 			f.TemplateReference = decodeRelativeOID(child)
+		default:
+			f.UnknownContents = appendUniqueInt32(f.UnknownContents, int32(child.Tag.Number))
 		}
 	}
 }

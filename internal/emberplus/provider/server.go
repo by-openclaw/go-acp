@@ -15,11 +15,12 @@ import (
 // server is the provider runtime. One listener, many sessions, a shared
 // tree, and a per-OID subscription table.
 type server struct {
-	logger *slog.Logger
-	tree   *tree
-	funcs  *functionRegistry
-	salvos *salvoStore
-	locks  *lockStore
+	logger    *slog.Logger
+	tree      *tree
+	templates []*canonical.TemplateEntry
+	funcs     *functionRegistry
+	salvos    *salvoStore
+	locks     *lockStore
 
 	mu       sync.Mutex
 	listener net.Listener
@@ -48,6 +49,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		s.logger.Error("tree build failed", slog.String("err", err.Error()))
 	} else {
 		s.tree = t
+		s.templates = exp.Templates
 		s.setupBuiltinFunctions()
 	}
 	return s
@@ -75,7 +77,15 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 
 	// Unsolicited stream fan-out — runs if the tree has any Parameters
 	// with a streamIdentifier, exits on ctx cancel or Stop().
-	go s.runStreamer(ctx, 100*time.Millisecond)
+	go s.runStreamer(ctx, 500*time.Millisecond)
+
+	// Idle-session sweeper — disconnect peers that haven't sent any
+	// frame (keepalive included) for idleSessionTTL. Backstop for
+	// clients that crash mid-session and don't unsubscribe: without
+	// this, their subs accumulate in the server.subs table forever.
+	// Spec p.10 keepalive is short; healthy peers always re-stamp
+	// lastActive well within the TTL.
+	go s.runIdleSweeper(ctx, idleSweepInterval, idleSessionTTL)
 
 	// Close listener on ctx cancel to unblock Accept.
 	go func() {
@@ -197,12 +207,77 @@ func (s *server) unsubscribe(sess *session, oid string) {
 // send-queue high-water-mark silently drop the frame — see
 // session.send. Stream-parameter fan-out stays subscription-gated in
 // streamer.go.
+// Idle-sweeper tunables — aligned with the Cerebrum-NB convention:
+// if a peer stops sending any frame (keepalive included) for 30 s,
+// drop the session. S101 keepalive cadence is typically 5-15 s, so a
+// healthy peer re-stamps lastActive at least twice within the window;
+// a peer that misses 2-3 keepalives is genuinely dead and its subs
+// would otherwise sit in server.subs forever (cf. [[project-keepalive-contract]]).
+// Sweep every 10 s so the worst-case detection latency is TTL + interval ≈ 40 s.
+const (
+	idleSweepInterval = 10 * time.Second
+	idleSessionTTL    = 30 * time.Second
+)
+
+// runIdleSweeper closes sessions whose lastActive timestamp is older
+// than ttl. Backstop for clients that crash without unsubscribing — the
+// subs they registered would otherwise sit in server.subs forever,
+// growing memory + (more importantly) keeping the streamer / parameter
+// broadcaster doing per-tick work for a dead consumer.
+func (s *server) runIdleSweeper(ctx context.Context, interval, ttl time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.stopped:
+			return
+		case <-ticker.C:
+			s.sweepIdleSessions(ttl)
+		}
+	}
+}
+
+// sweepIdleSessions collects sessions whose lastActive is older than
+// `now - ttl`, then closes them outside the server lock so close() can
+// re-acquire it via dropSession without deadlocking.
+func (s *server) sweepIdleSessions(ttl time.Duration) {
+	cutoff := time.Now().Add(-ttl).UnixNano()
+	s.mu.Lock()
+	var idle []*session
+	for sess := range s.sessions {
+		if sess.lastActive.Load() < cutoff {
+			idle = append(idle, sess)
+		}
+	}
+	s.mu.Unlock()
+	for _, sess := range idle {
+		s.logger.Info("idle session swept",
+			slog.String("peer", sess.id),
+			slog.Duration("ttl", ttl),
+		)
+		sess.close()
+	}
+}
+
 func (s *server) broadcastParam(oid string, p *canonical.Parameter) {
-	e, ok := s.tree.lookupOID(oid)
+	// Encode the announcement while holding the tree read lock so a
+	// concurrent SetValue cannot tear p.Value mid-read. canonical.Parameter.Value
+	// is `any` (two-word interface header) — without the read lock, the
+	// encoder can observe a partially-updated header and either panic on
+	// type-assert or emit corrupted bytes. The lock window is tiny
+	// (encode is pure-compute, no I/O), so write-side contention is
+	// negligible — far cheaper than the alternative deep-copy of every
+	// Parameter on every announce.
+	s.tree.mu.RLock()
+	e, ok := s.tree.byOID[oid]
 	if !ok {
+		s.tree.mu.RUnlock()
 		return
 	}
 	payload := s.encodeParamAnnouncement(e, p)
+	s.tree.mu.RUnlock()
 
 	s.mu.Lock()
 	targets := make([]*session, 0, len(s.sessions))

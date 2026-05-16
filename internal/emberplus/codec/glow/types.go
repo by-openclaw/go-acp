@@ -22,6 +22,13 @@ type Node struct {
 	SchemaIdentifiers string    // Contents [4] — newline-separated list
 	TemplateReference []int32   // Contents [5] — RelOID path to Template
 	Children          []Element // [2] ElementCollection
+
+	// UnknownContents captures CTX tag numbers the decoder encountered
+	// in the NodeContents SET that it does not yet map. Per spec p.93
+	// decoders MUST accept unknown CTX silently — this list lets the
+	// consumer surface those tags for audit / vendor outreach without
+	// changing decode semantics.
+	UnknownContents []int32
 }
 
 // Parameter mirrors Parameter APPLICATION[1] (p.85) and QualifiedParameter APPLICATION[9] (p.85).
@@ -52,6 +59,9 @@ type Parameter struct {
 	SchemaIdentifiers string            // Contents [17]
 	TemplateReference []int32           // Contents [18] RelOID
 	Children          []Element
+
+	// UnknownContents — see Node.UnknownContents.
+	UnknownContents []int32
 }
 
 // StreamDescription mirrors StreamDescription APPLICATION[12] (p.86).
@@ -83,6 +93,9 @@ type Matrix struct {
 	Sources              []int32   // [4] SourceCollection
 	Connections          []Connection // [5] ConnectionCollection
 	Children             []Element
+
+	// UnknownContents — see Node.UnknownContents.
+	UnknownContents []int32
 }
 
 // Label mirrors Label APPLICATION[18] (p.89).
@@ -112,6 +125,9 @@ type Function struct {
 	Result            []TupleItem // Contents [3] TupleDescription — result tuple shape
 	TemplateReference []int32     // Contents [4]
 	Children          []Element
+
+	// UnknownContents — see Node.UnknownContents.
+	UnknownContents []int32
 }
 
 // TupleItem mirrors TupleItemDescription APPLICATION[21] (p.91).

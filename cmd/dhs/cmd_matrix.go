@@ -18,9 +18,11 @@ func runMatrix(ctx context.Context, args []string) error {
 	target := fs.Int("target", -1, "target number")
 	sourcesStr := fs.String("sources", "", "comma-separated source numbers (e.g. 1 or 1,2,3)")
 	op := fs.String("op", "absolute", "operation: absolute, connect, disconnect")
+	dmIdentity := fs.String("dm", "", `identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the per-call walk is skipped — refs #438, ADR-0022.`)
+	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of falling back to a wire walk")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> matrix <host> --path <matrix.path> --target N --sources N[,N,...] [--op absolute|connect|disconnect]")
+		return fmt.Errorf("usage: dhs consumer <proto> matrix <host> --path <matrix.path> --target N --sources N[,N,...] [--op absolute|connect|disconnect] [--dm <identity> | --no-walk]")
 	}
 	_ = fs.Parse(rest)
 	if *matrixPath == "" {
@@ -62,19 +64,22 @@ func runMatrix(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	opCtx, cancel := withTimeout(ctx, cf.timeout)
-	defer cancel()
-
-	// Walk to populate tree (raw ctx — no per-op deadline).
-	if _, err := plug.Walk(ctx, *slot); err != nil {
-		return fmt.Errorf("walk: %w", err)
-	}
-
 	// Cast to Ember+ plugin to access MatrixConnect.
 	ep, ok := plug.(*emberplus.Plugin)
 	if !ok {
 		return fmt.Errorf("matrix command is only supported for Ember+ protocol")
 	}
+
+	// DM auto-cache: cache hit → no walk; cache miss → walk + auto-extract
+	// so the next call hits the cache (refs #438, ADR-0022).
+	if err := ensureEmberplusTree(ctx, plug, host, cf.port, *dmIdentity, *slot, *noWalk); err != nil {
+		return err
+	}
+
+	// Per-op timer started AFTER walk/DM-load so MatrixConnect sees
+	// a fresh --timeout budget — same pattern as cmd_invoke / cmd_set.
+	opCtx, cancel := withTimeout(ctx, cf.timeout)
+	defer cancel()
 
 	if err := ep.MatrixConnect(opCtx, *matrixPath, int32(*target), sources, operation); err != nil {
 		return err

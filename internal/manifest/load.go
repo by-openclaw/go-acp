@@ -79,5 +79,10 @@ func (m *Manifest) validate() error {
 //	cacheDir=".cache" + proto="acp2" + dm="SHPRM1@5.3.5"
 //	→ .cache/dm/acp2/SHPRM1@5.3.5.json
 func DMPath(cacheDir, proto, dm string) string {
-	return filepath.Join(cacheDir, "dm", proto, dm+".json")
+	// dm may already carry the .json suffix (auto-written manifests
+	// since chunk 72ed361). Avoid doubling the extension.
+	if !strings.HasSuffix(dm, ".json") {
+		dm = dm + ".json"
+	}
+	return filepath.Join(cacheDir, "dm", proto, dm)
 }

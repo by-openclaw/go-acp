@@ -133,6 +133,94 @@ type Plugin struct {
 	// unsolicited disconnect and exits when a fresh session is
 	// established or the user calls Disconnect.
 	reconnect reconnectCtrl
+
+	// wildcardFilter controls which Parameters the wildcard "*"
+	// Subscribe registers Command 30 for. Set BEFORE Subscribe via
+	// SetWildcardSubscribeFilter (no-op for non-wildcard subs).
+	// Empty defaults = subscribe everything.
+	wildcardFilterMu    sync.RWMutex
+	wildcardPathFilter  []string // dotted prefixes: OID ("1.2.3") or label-path ("mixers.primary")
+	wildcardSkipStreams bool     // true → drop streamIdentifier != 0
+	wildcardStreamsOnly bool     // true → keep streamIdentifier != 0 only
+
+	// unknownCTX accumulates CTX tags the decoder skipped in
+	// NodeContents / ParameterContents / MatrixContents /
+	// FunctionContents SETs (spec p.93 — decoders MUST tolerate
+	// unknown CTX silently). The audit Markdown report is rendered
+	// from this collection at end of walk / session for sharing
+	// with the device vendor.
+	unknownCTX *unknownCTXAudit
+}
+
+// SetWildcardSubscribeFilter narrows the set of Parameters the
+// wildcard "*" Subscribe will register Command 30 for. Must be called
+// BEFORE Subscribe() with the wildcard request. All filters compose:
+//
+//   - paths empty AND noStreams=false AND streamsOnly=false → subscribe every Parameter
+//   - paths non-empty                                       → subscribe only Parameters whose
+//     numericKey ("1.2.3") OR label-path ("mixers.primary")
+//     matches one of the prefixes (exact or strict prefix
+//     followed by ".")
+//   - noStreams=true                                        → drop Parameters with streamIdentifier != 0
+//   - streamsOnly=true                                      → drop Parameters with streamIdentifier == 0
+//
+// noStreams and streamsOnly are mutually exclusive — caller MUST set
+// at most one true. Plugin does not enforce; result is "nothing
+// subscribed" if both set (intersection is empty).
+//
+// Filter takes effect on the NEXT Subscribe() wildcard call; existing
+// subscriptions are not retroactively cancelled.
+func (p *Plugin) SetWildcardSubscribeFilter(paths []string, noStreams, streamsOnly bool) {
+	p.wildcardFilterMu.Lock()
+	p.wildcardPathFilter = append([]string(nil), paths...)
+	p.wildcardSkipStreams = noStreams
+	p.wildcardStreamsOnly = streamsOnly
+	p.wildcardFilterMu.Unlock()
+}
+
+// wildcardMatches returns true when a tree entry passes the active
+// filter (or there is no filter). Used by both the Parameter
+// notification path (notifySubscribers / subscribeAllParameters /
+// subscribeOnDiscovery) and the Matrix notification path
+// (notifyMatrixSubscribers). Non-Parameter entries (Matrix, Node,
+// Function) have no streamIdentifier and are treated as non-stream
+// for the --streams-only / --no-streams flags.
+func (p *Plugin) wildcardMatches(entry *treeEntry) bool {
+	if entry == nil {
+		return false
+	}
+	p.wildcardFilterMu.RLock()
+	paths := p.wildcardPathFilter
+	skipStreams := p.wildcardSkipStreams
+	streamsOnly := p.wildcardStreamsOnly
+	p.wildcardFilterMu.RUnlock()
+
+	isStream := false
+	if entry.glowParam != nil {
+		isStream = entry.glowParam.StreamIdentifier != 0
+	}
+	if skipStreams && isStream {
+		return false
+	}
+	if streamsOnly && !isStream {
+		// --streams-only drops non-stream entries — Matrix events,
+		// plain Parameters, Node events all classify as non-stream.
+		return false
+	}
+	if len(paths) == 0 {
+		return true
+	}
+	labelPath := strings.Join(entry.obj.Path, ".")
+	numPath := numericKey(entry.numericPath)
+	for _, prefix := range paths {
+		if labelPath == prefix || strings.HasPrefix(labelPath, prefix+".") {
+			return true
+		}
+		if numPath == prefix || strings.HasPrefix(numPath, prefix+".") {
+			return true
+		}
+	}
+	return false
 }
 
 // ComplianceProfile returns the live compliance profile for this
@@ -186,6 +274,14 @@ type treeEntry struct {
 	// prior and current glowParam. Copied onto the outgoing Event
 	// by notifySubscribers, then cleared (diff is per-event).
 	pendingChanges []protocol.FieldChange
+
+	// lastEmittedRendered is the stringified value rendered at the
+	// last successful notifySubscribers fire. Used to suppress the
+	// dual-fire case where a Parameter announce AND a StreamEntry
+	// both deliver the same final value (Lawo metering emits both
+	// per step). When pendingChanges is empty AND the new render
+	// matches this string, the second emission is dropped.
+	lastEmittedRendered string
 }
 
 // Connect opens the TCP session, installs the element handler, and prepares
@@ -209,6 +305,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.profile = &compliance.Profile{}
 	p.connIP = ip
 	p.connPort = port
+	p.unknownCTX = newUnknownCTXAudit()
 	p.mu.Unlock()
 
 	s.SetOnElement(p.handleElements)
@@ -246,14 +343,14 @@ func (p *Plugin) onSessionStateChange(connected bool, reason string) {
 	if !connected {
 		p.markTreeStale()
 
-		// Clear stream-subscription tracking. The old session is
-		// dead, so Command 31 (Unsubscribe) is pointless and in
-		// any case impossible. The fresh session created by
-		// reconnect needs to re-issue Command 30 for every
-		// stream-backed parameter, which autoSubscribeStreams
-		// will do — but ONLY if streamSubs is empty, since its
-		// idempotency check skips entries it already thinks are
-		// subscribed. Without this clear, no streams resume.
+		// Clear subscription tracking. The old session is dead, so
+		// Command 31 (Unsubscribe) is pointless and in any case
+		// impossible. The fresh session created by reconnect needs
+		// to re-issue Command 30 for every Parameter, which
+		// subscribeAllParameters will do — but ONLY if streamSubs
+		// is empty, since its idempotency check skips entries it
+		// already thinks are subscribed. Without this clear, no
+		// announces resume.
 		//
 		// streamIndex (streamId → paths) stays intact because
 		// the mapping is still correct on the wire for paths
@@ -444,13 +541,47 @@ done:
 	return p.snapshot(), nil
 }
 
-// snapshot returns every live Object under RLock.
+// snapshot returns every live Object under RLock, enriched for cache
+// serialisation (refs #438). The walker writes per-element Meta during
+// processElement (matrixMeta / parameterMeta / etc.), but matrix
+// targetLabels / sourceLabels can only be resolved post-walk once all
+// label parameters under each basePath have been decoded.
+// enrichMatrixLabels does that inline join so the DM file is
+// self-contained — provider-side canonical.Matrix shape.
 func (p *Plugin) snapshot() []protocol.Object {
 	p.treeMu.RLock()
-	defer p.treeMu.RUnlock()
 	out := make([]protocol.Object, 0, len(p.numIndex))
 	for _, entry := range p.numIndex {
 		out = append(out, entry.obj)
+	}
+	p.treeMu.RUnlock()
+	out = appendTemplateObjects(out, p)
+	return enrichMatrixLabels(out)
+}
+
+// appendTemplateObjects serializes templates (which live in
+// p.templates separate from the tree) as synthetic protocol.Objects
+// with Meta["element"] = "template", so the DM cache round-trip
+// preserves them. SeedTreeFromCachedObjects registers them back in
+// p.templates via seedTemplate (no entry in numIndex — templates are
+// looked up by ResolveTemplate, not iterated).
+func appendTemplateObjects(out []protocol.Object, p *Plugin) []protocol.Object {
+	p.templatesMu.RLock()
+	defer p.templatesMu.RUnlock()
+	for key, t := range p.templates {
+		if t == nil {
+			continue
+		}
+		out = append(out, protocol.Object{
+			OID:   key,
+			Label: t.Description,
+			Meta: map[string]any{
+				"element":     "template",
+				"qualified":   t.Qualified,
+				"number":      int64(t.Number),
+				"description": t.Description,
+			},
+		})
 	}
 	return out
 }
@@ -652,12 +783,32 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 		p.subs["*"] = fn
 		p.subsMu.Unlock()
 
-		// Stream-backed Parameters require an explicit Command 30
-		// (spec p.30–31) — GetDirectory alone won't start the flow.
-		// Enumerate already-walked stream parameters now; new ones
-		// discovered later during walk/announce get auto-subscribed
-		// from processParameter via maybeWildcardStreamSubscribe.
-		p.autoSubscribeStreams()
+		// Strict providers require explicit Command 30 per
+		// Parameter (spec p.30–31) — GetDirectory alone won't
+		// start announces. Walk + subscribe happen in the
+		// background so Subscribe() returns immediately to the
+		// caller (same pattern as ACP1/ACP2 watch: caller enters
+		// the event loop and sees announces stream in as the walk
+		// discovers each Parameter via subscribeOnDiscovery).
+		// ensureWalked is a no-op when numIndex is already
+		// populated (cached DM seeded via SeedTreeFromCachedObjects
+		// or a prior Walk in the same session).
+		go func() {
+			if err := p.ensureWalked(context.Background(), "wildcard subscribe"); err != nil {
+				p.logger.Debug("emberplus: wildcard subscribe — initial walk failed",
+					"err", err)
+				// Continue anyway: subscribe whatever IS in
+				// numIndex (partial walk), and
+				// subscribeOnDiscovery catches any further
+				// Parameters that arrive later.
+			}
+			// Final batch — covers Parameters that landed before
+			// the wildcard was registered (DM-seeded entries).
+			// subscribeOnDiscovery already handled anything
+			// discovered during the walk above; the idempotency
+			// check in subscribeAllParameters skips duplicates.
+			p.subscribeAllParameters()
+		}()
 		return nil
 	}
 
@@ -1143,6 +1294,9 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, n.Identifier)
 	}
+	if p.unknownCTX != nil && len(n.UnknownContents) > 0 {
+		p.unknownCTX.record("node", numPath, n.UnknownContents)
+	}
 	stringPath := p.pathForElement(numPath, n.Identifier, n.Number, parentPath)
 
 	// "Have we seen this Node before?" — determines whether an empty
@@ -1512,6 +1666,9 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, param.Identifier)
 	}
+	if p.unknownCTX != nil && len(param.UnknownContents) > 0 {
+		p.unknownCTX.record("parameter", numPath, param.UnknownContents)
+	}
 
 	// Announce-vs-walk merge (Ember+ spec p.85): announces typically
 	// carry ONLY the changed field(s) inside ParameterContents — the
@@ -1564,8 +1721,12 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	if len(stringPath) > 1 {
 		obj.Group = stringPath[0]
 	}
-	if param.Format != "" {
-		obj.Unit = param.Format
+	// Format is printf-style with optional unit after a '°' marker
+	// (spec p.85 Contents [6]). Store just the unit suffix on
+	// obj.Unit so watch output renders "value <unit>" cleanly; the
+	// raw format string would clutter the display.
+	if u := extractFormatUnit(param.Format); u != "" {
+		obj.Unit = u
 	}
 
 	switch param.Access {
@@ -1644,10 +1805,10 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 		p.subsMu.Unlock()
 
 		// If wildcard watch is active, send Command 30 for this
-		// stream on first discovery. Without this, stream-backed
-		// Parameters stay silent under `acp watch` (the provider
-		// requires explicit subscription, spec p.30–31).
-		p.maybeWildcardStreamSubscribe(entry)
+		// Parameter on first discovery. Without this, strict
+		// providers stay silent under `dhs consumer emberplus
+		// watch` (spec p.30–31).
+		p.subscribeOnDiscovery(entry)
 	}
 	p.notifySubscribers(entry)
 	// Resolve any SetValue waiting on this OID. Done last so the
@@ -1666,6 +1827,9 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	numPath := p.resolveNumPath(m.Path, parentNumPath, m.Number)
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, m.Identifier)
+	}
+	if p.unknownCTX != nil && len(m.UnknownContents) > 0 {
+		p.unknownCTX.record("matrix", numPath, m.UnknownContents)
 	}
 	stringPath := p.pathForElement(numPath, m.Identifier, m.Number, parentPath)
 	numKey := numericKey(numPath)
@@ -1753,7 +1917,17 @@ func (p *Plugin) notifyMatrixSubscribers(entry *treeEntry, c glow.Connection) {
 	fn := p.subs[numKey]
 	wildcard := p.subs["*"]
 	p.subsMu.RUnlock()
+	// Same wildcard-filter gate as notifySubscribers: when only the
+	// wildcard would fire (no per-matrix subscriber), respect the
+	// --path / --no-streams / --streams-only filter. Per spec p.88
+	// matrix change events are implicitly subscribed via GetDirectory
+	// on the matrix, so the provider keeps emitting; the filter is
+	// the consumer's mechanism to scope what the wildcard watcher
+	// sees.
 	if fn == nil {
+		if wildcard == nil || !p.wildcardMatches(entry) {
+			return
+		}
 		fn = wildcard
 	}
 	if fn == nil {
@@ -1796,6 +1970,9 @@ func (p *Plugin) processFunction(f *glow.Function, parentPath []string, parentNu
 	numPath := p.resolveNumPath(f.Path, parentNumPath, f.Number)
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, f.Identifier)
+	}
+	if p.unknownCTX != nil && len(f.UnknownContents) > 0 {
+		p.unknownCTX.record("function", numPath, f.UnknownContents)
 	}
 	stringPath := p.pathForElement(numPath, f.Identifier, f.Number, parentPath)
 
@@ -1854,16 +2031,42 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 	fn := p.subs[numKey]
 	wildcard := p.subs["*"]
 	p.subsMu.RUnlock()
+	// When falling back to the wildcard (no per-OID subscriber for
+	// this Parameter), respect the wildcard filter — value-change
+	// announces AND StreamEntry dispatch both end up here, so this
+	// is the single chokepoint that gates --no-streams /
+	// --streams-only / --path at the callback layer even when the
+	// provider broadcasts beyond our Subscribe(30) intent.
 	if fn == nil {
+		if wildcard == nil || !p.wildcardMatches(entry) {
+			return
+		}
 		fn = wildcard
 	}
 	if fn != nil {
+		// Apply Parameter factor (spec p.85 Contents [8]) and unit
+		// suffix (spec p.85 Contents [6]) so watch / dhs-srv get
+		// engineering values, not raw wire integers. ACP1/ACP2 ship
+		// engineering values directly; Ember+ owes the same.
+		val, unit := displayValueAndUnit(entry)
+
+		// Dual-fire suppression: Lawo metering (and any stream-
+		// tagged Parameter) emits both a Parameter announce AND a
+		// StreamEntry per value step; both converge here with the
+		// same final value. Skip the redundant fire when no diff
+		// is pending AND the rendered value matches the last fire.
+		rendered := formatAny(entry.glowParam.Value)
+		if len(entry.pendingChanges) == 0 && rendered == entry.lastEmittedRendered {
+			return
+		}
+
 		desc := ""
 		if entry.glowParam != nil {
 			desc = entry.glowParam.Description
 		}
 		changes := entry.pendingChanges
 		entry.pendingChanges = nil
+		entry.lastEmittedRendered = rendered
 		fn(protocol.Event{
 			Slot:        0,
 			ID:          entry.obj.ID,
@@ -1871,10 +2074,10 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 			Path:        strings.Join(entry.obj.Path, "."),
 			Label:       entry.obj.Label,
 			Description: desc,
-			Unit:        entry.obj.Unit,
+			Unit:        unit,
 			Access:      entry.obj.Access,
 			Group:       entry.obj.Group,
-			Value:       entry.obj.Value,
+			Value:       val,
 			Freshness:   freshnessLabel(entry.freshness),
 			Changes:     changes,
 			Timestamp:   time.Now(),

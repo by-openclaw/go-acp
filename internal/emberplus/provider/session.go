@@ -9,6 +9,8 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/emberplus/codec/glow"
@@ -32,10 +34,18 @@ type session struct {
 	// subs is the set of OIDs this consumer subscribed to. Protected by
 	// server.mu (subscription table fan-out is server-wide).
 	subs map[string]struct{}
+
+	// lastActive is the UnixNano of the most recent frame we *read*
+	// from this peer (any frame — keepalive counts as activity, see
+	// session.run). Updated lock-free via atomic; sampled by the
+	// server's idle-sweeper. Default value 0 means "never active"; we
+	// stamp it in newSession so the first sweep doesn't kill a session
+	// that just connected.
+	lastActive atomic.Int64
 }
 
 func newSession(srv *server, conn net.Conn) *session {
-	return &session{
+	s := &session{
 		id:     conn.RemoteAddr().String(),
 		conn:   conn,
 		reader: s101.NewReader(conn),
@@ -46,6 +56,8 @@ func newSession(srv *server, conn net.Conn) *session {
 		closed: make(chan struct{}),
 		subs:   map[string]struct{}{},
 	}
+	s.lastActive.Store(time.Now().UnixNano())
+	return s
 }
 
 // run is the session lifecycle: start write pump, read frames until EOF
@@ -68,6 +80,10 @@ func (s *session) run(ctx context.Context) {
 			}
 			return
 		}
+		// Activity stamp for the idle-sweeper. Any successful frame
+		// read (including keepalive) keeps the session alive — only
+		// truly silent peers get swept.
+		s.lastActive.Store(time.Now().UnixNano())
 		if err := s.handleFrame(frame); err != nil {
 			s.logger.Debug("handle frame", slog.String("err", err.Error()))
 			// non-fatal — keep reading.
@@ -77,6 +93,14 @@ func (s *session) run(ctx context.Context) {
 
 // writePump drains s.out onto the wire. Closes the conn on ctx-cancel or
 // channel close so the read side unblocks too.
+// maxS101Payload caps each S101 frame's BER payload. Spec p.10
+// recommends ≤1024; most shipping consumers (libember-cpp,
+// EmberViewer, Lawo VSM) handle up to 1290, but staying at 1024
+// keeps us inside every implementation's safe window. Payloads
+// larger than this are split across FlagFirst / middle / FlagLast
+// frames (consumer reassembles per session.go).
+const maxS101Payload = 1024
+
 func (s *session) writePump(ctx context.Context) {
 	for {
 		select {
@@ -88,21 +112,62 @@ func (s *session) writePump(ctx context.Context) {
 			if !ok {
 				return
 			}
-			frame := &s101.Frame{
-				Slot:    s101.SlotDefault,
-				MsgType: s101.MsgEmBER,
-				Command: s101.CmdEmBER,
-				Version: s101.VersionS101,
-				Flags:   s101.FlagSingle,
-				DTD:     s101.DTDGlow,
-				Payload: payload,
-			}
-			if err := s.writer.WriteFrame(frame); err != nil {
+			if err := s.writeEmBERChunks(payload); err != nil {
 				s.logger.Debug("write frame", slog.String("err", err.Error()))
 				return
 			}
 		}
 	}
+}
+
+// writeEmBERChunks splits payload into one or more S101 frames per
+// spec p.10 (FlagSingle for ≤maxS101Payload, FlagFirst / middle /
+// FlagLast for larger). Fixes "frame too large" rejection observed
+// against the 1000×1000 dynamic-matrix walk reply.
+func (s *session) writeEmBERChunks(payload []byte) error {
+	if len(payload) <= maxS101Payload {
+		return s.writer.WriteFrame(&s101.Frame{
+			Slot:    s101.SlotDefault,
+			MsgType: s101.MsgEmBER,
+			Command: s101.CmdEmBER,
+			Version: s101.VersionS101,
+			Flags:   s101.FlagSingle,
+			DTD:     s101.DTDGlow,
+			Payload: payload,
+		})
+	}
+	// Multi-packet. First chunk: FlagFirst. Middle: flags=0.
+	// Last chunk: FlagLast.
+	first := true
+	for offset := 0; offset < len(payload); offset += maxS101Payload {
+		end := offset + maxS101Payload
+		if end > len(payload) {
+			end = len(payload)
+		}
+		last := end == len(payload)
+		var flags byte
+		switch {
+		case first:
+			flags = s101.FlagFirst
+		case last:
+			flags = s101.FlagLast
+		default:
+			flags = 0
+		}
+		first = false
+		if err := s.writer.WriteFrame(&s101.Frame{
+			Slot:    s101.SlotDefault,
+			MsgType: s101.MsgEmBER,
+			Command: s101.CmdEmBER,
+			Version: s101.VersionS101,
+			Flags:   flags,
+			DTD:     s101.DTDGlow,
+			Payload: payload[offset:end],
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // send enqueues a BER-encoded Glow payload for transmission. Non-blocking
@@ -130,12 +195,13 @@ func (s *session) close() {
 func (s *session) handleFrame(f *s101.Frame) error {
 	switch f.Command {
 	case s101.CmdKeepAliveReq:
-		return s.writer.WriteFrame(&s101.Frame{
-			Slot:    s101.SlotDefault,
-			MsgType: s101.MsgKeepAlive,
-			Command: s101.CmdKeepAliveResp,
-			Version: s101.VersionS101,
-		})
+		// Use the canonical KeepAlive-response builder rather than
+		// hand-rolling the frame; the hand-rolled version above had
+		// MsgType=MsgKeepAlive(0x01) which EmberPlusView decoded as
+		// "Unexpected message: msg=1" and rejected.
+		// NewKeepAliveResponse sets MsgType=MsgEmBER(0x0E) like every
+		// shipping S101 stack expects (libember, EmberViewer, Lawo).
+		return s.writer.WriteFrame(s101.NewKeepAliveResponse())
 	case s101.CmdKeepAliveResp:
 		return nil
 	case s101.CmdEmBER:
@@ -215,6 +281,28 @@ func (s *session) handleEmber(payload []byte) error {
 		}
 		return nil
 	}
+	// Fall-through: payload decoded but matched none of {command,
+	// matrix-connection, set-value}. Surface the element kinds so we can
+	// SEE what unknown client gestures (Cerebrum's "Change..." button
+	// being a current suspect) put on the wire. Without this trace,
+	// unrecognised frames vanish silently and look identical to "client
+	// sent nothing at all".
+	kinds := make([]string, 0, len(els))
+	for _, e := range els {
+		switch {
+		case e.Parameter != nil:
+			kinds = append(kinds, fmt.Sprintf("param(num=%d,path=%v,hasVal=%v)", e.Parameter.Number, e.Parameter.Path, e.Parameter.Value != nil))
+		case e.Node != nil:
+			kinds = append(kinds, fmt.Sprintf("node(num=%d,path=%v,kids=%d)", e.Node.Number, e.Node.Path, len(e.Node.Children)))
+		case e.Matrix != nil:
+			kinds = append(kinds, fmt.Sprintf("matrix(num=%d,conns=%d)", e.Matrix.Number, len(e.Matrix.Connections)))
+		case e.Function != nil:
+			kinds = append(kinds, fmt.Sprintf("function(num=%d)", e.Function.Number))
+		default:
+			kinds = append(kinds, "unknown")
+		}
+	}
+	s.logger.Debug("inbound frame unhandled", slog.Any("kinds", kinds), slog.Int("payload_bytes", len(payload)))
 	return nil
 }
 

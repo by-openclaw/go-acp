@@ -19,7 +19,7 @@ import (
 func runWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("walk", flag.ExitOnError)
 	cf := addCommonFlags(fs)
-	slot := fs.Int("slot", -1, "slot number (omit or pass -1 with --all to walk every present slot)")
+	slot := fs.Int("slot", 0, "slot number (default 0; combine with --all to walk every present slot)")
 	all := fs.Bool("all", false, "walk every present slot on the device")
 	filter := fs.String("filter", "", "case-insensitive filter on output lines (like findstr /i or grep -i)")
 	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
@@ -30,17 +30,9 @@ func runWalk(ctx context.Context, args []string) error {
 	treeASCII := fs.Bool("ascii", false, "use plain ASCII tree characters instead of Unicode box-drawing")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> walk <host> (--slot N | --all) [--path SEG.SEG] [--filter STR] [--tree [--depth N] [--from-oid OID | --from-path SEG.SEG] [--ascii]]")
+		return fmt.Errorf("usage: dhs consumer <proto> walk <host> [--slot N] [--all] [--path SEG.SEG] [--filter STR] [--tree [--depth N] [--from-oid OID | --from-path SEG.SEG] [--ascii]]")
 	}
 	_ = fs.Parse(rest)
-	// Ember+ has no slot concept (spec: single flat tree per provider);
-	// default --slot 0 so the user doesn't have to remember this quirk.
-	if cf.protocol == "emberplus" && *slot < 0 && !*all {
-		*slot = 0
-	}
-	if !*all && *slot < 0 {
-		return fmt.Errorf("--slot N or --all is required")
-	}
 
 	// Parse --path into segments for prefix matching.
 	var pathSegs []string
@@ -104,6 +96,7 @@ func runWalk(ctx context.Context, args []string) error {
 		}
 		fmt.Printf("device %s:%d — %d slots\n", info.IP, info.Port, info.NumSlots)
 		walked := 0
+		var bindings []slotBinding
 		for s := 0; s < info.NumSlots; s++ {
 			si, serr := plug.GetSlotInfo(opCtx, s)
 			if serr != nil {
@@ -124,7 +117,10 @@ func runWalk(ctx context.Context, args []string) error {
 			// .cache/dm/<identity>.json; ACP1/Ember+ -> IP-keyed
 			// .cache/devices/<ip>/slot_<n>.json. See saveSlotCache.
 			prober, _ := plug.(identityProber)
-			saveSlotCache(ctx, prober, host, cf.protocol, s, objs)
+			if identity := saveSlotCache(ctx, prober, host, cf.protocol, s, objs, canonicalTreeFromPlug(ctx, plug)); identity != "" {
+				bindings = append(bindings, slotBinding{Slot: s, Identity: identity})
+				writeUnknownCTXAuditIfAny(plug, cf.protocol, identity)
+			}
 			objs = filterByPath(objs, pathSegs)
 			if *tree {
 				fmt.Printf("\nslot %d — %d objects\n\n", s, len(objs))
@@ -143,6 +139,12 @@ func runWalk(ctx context.Context, args []string) error {
 				fmt.Printf("\nslot %d — %d objects\n", s, len(objs))
 			}
 		}
+		// After every slot is cached, emit a manifest binding for
+		// acp1/acp2 (emberplus writes its own manifest from
+		// splitDMByMatrix earlier). Refs #438 + ADR-0024.
+		if cf.protocol != "emberplus" && len(bindings) > 0 {
+			writeSlotManifest("", cf.protocol, host, cf.port, bindings)
+		}
 		fmt.Printf("\nwalked %d present slot(s)\n", walked)
 		return nil
 	}
@@ -156,7 +158,11 @@ func runWalk(ctx context.Context, args []string) error {
 	// .cache/dm/<identity>.json; ACP1/Ember+ -> IP-keyed
 	// .cache/devices/<ip>/slot_<n>.json. See saveSlotCache.
 	prober, _ := plug.(identityProber)
-	saveSlotCache(ctx, prober, host, cf.protocol, *slot, objs)
+	identity := saveSlotCache(ctx, prober, host, cf.protocol, *slot, objs, canonicalTreeFromPlug(ctx, plug))
+	// Optional audit: when the plugin tracked unknown CTX tags during
+	// the walk (Ember+ only today), drop a Markdown report alongside
+	// the DM so the operator can share it with the device vendor.
+	writeUnknownCTXAuditIfAny(plug, cf.protocol, identity)
 	objs = filterByPath(objs, pathSegs)
 	if *tree {
 		fmt.Printf("\nslot %d — %d objects\n\n", *slot, len(objs))

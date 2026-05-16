@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -53,7 +54,7 @@ func TestSaveSlotCache_ACP2_WritesIdentityKeyedOnly(t *testing.T) {
 	root := withTempStore(t)
 	prober := &fakeProber{identity: "SHPRM1@0.7"}
 
-	saveSlotCache(context.Background(), prober, "10.100.0.103", "acp2", 1, makeObjs())
+	saveSlotCache(context.Background(), prober, "10.100.0.103", "acp2", 1, makeObjs(), nil)
 
 	dmPath := filepath.Join(root, "dm", "acp2", "SHPRM1@0.7.json")
 	if _, err := os.Stat(dmPath); err != nil {
@@ -77,7 +78,7 @@ func TestSaveSlotCache_ACP2_WritesIdentityKeyedOnly(t *testing.T) {
 func TestSaveSlotCache_NilProber_FallsBackToIPKeyed(t *testing.T) {
 	root := withTempStore(t)
 
-	saveSlotCache(context.Background(), nil, "10.100.0.103", "emberplus", 1, makeObjs())
+	saveSlotCache(context.Background(), nil, "10.100.0.103", "emberplus", 1, makeObjs(), nil)
 
 	if _, err := os.Stat(filepath.Join(root, "dm")); !os.IsNotExist(err) {
 		t.Errorf("dm dir MUST NOT exist when prober is nil, err=%v", err)
@@ -88,16 +89,39 @@ func TestSaveSlotCache_NilProber_FallsBackToIPKeyed(t *testing.T) {
 	}
 }
 
-// TestSaveSlotCache_ACP2_EmptyIdentity_NoFile: probe returns "" → no
-// file written (no safe filename).
-func TestSaveSlotCache_ACP2_EmptyIdentity_NoFile(t *testing.T) {
+// TestSaveSlotCache_EmptyIdentity_WritesFallback: probe returns "" →
+// DM still lands under "unknown@<host>.json" so downstream tooling
+// keeps working and the device is not silently dropped. The user
+// renames once real identity is determined.
+func TestSaveSlotCache_EmptyIdentity_WritesFallback(t *testing.T) {
 	root := withTempStore(t)
 	prober := &fakeProber{identity: ""}
 
-	saveSlotCache(context.Background(), prober, "10.100.0.103", "acp2", 1, makeObjs())
+	got := saveSlotCache(context.Background(), prober, "10.100.0.103", "acp2", 1, makeObjs(), nil)
 
-	if _, err := os.Stat(filepath.Join(root, "dm")); !os.IsNotExist(err) {
-		t.Errorf("dm dir MUST NOT be created on empty identity, err=%v", err)
+	if want := "unknown@10.100.0.103"; got != want {
+		t.Errorf("identity = %q, want %q", got, want)
+	}
+	dmPath := filepath.Join(root, "dm", "acp2", "unknown@10.100.0.103.json")
+	if _, err := os.Stat(dmPath); err != nil {
+		t.Errorf("fallback DM missing at %s: %v", dmPath, err)
+	}
+}
+
+// TestSaveSlotCache_ProberError_WritesFallback: probe returns an error
+// → same fallback rule applies. The DM lands; a warning is logged.
+func TestSaveSlotCache_ProberError_WritesFallback(t *testing.T) {
+	root := withTempStore(t)
+	prober := &fakeProber{err: errors.New("synthetic probe error")}
+
+	got := saveSlotCache(context.Background(), prober, "192.168.1.50", "emberplus", 0, makeObjs(), nil)
+
+	if want := "unknown@192.168.1.50"; got != want {
+		t.Errorf("identity = %q, want %q", got, want)
+	}
+	dmPath := filepath.Join(root, "dm", "emberplus", "unknown@192.168.1.50.json")
+	if _, err := os.Stat(dmPath); err != nil {
+		t.Errorf("fallback DM missing at %s: %v", dmPath, err)
 	}
 }
 
@@ -106,7 +130,7 @@ func TestSaveSlotCache_ACP2_EmptyIdentity_NoFile(t *testing.T) {
 func TestSaveSlotCache_NonACP2_WritesIPKeyed(t *testing.T) {
 	root := withTempStore(t)
 
-	saveSlotCache(context.Background(), nil, "10.6.239.113", "acp1", 0, makeObjs())
+	saveSlotCache(context.Background(), nil, "10.6.239.113", "acp1", 0, makeObjs(), nil)
 
 	ipPath := filepath.Join(root, "devices", "10.6.239.113", "slot_0.json")
 	if _, err := os.Stat(ipPath); err != nil {
@@ -132,8 +156,8 @@ func TestSaveSlotCache_ACP2_DifferentCardsTwoFiles(t *testing.T) {
 	slot0 := []protocol.Object{{Slot: 0, ID: 1, Label: "BOARD"}}
 	slot1 := []protocol.Object{{Slot: 1, ID: 70232, Label: "Backup Input"}}
 
-	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 0, slot0)
-	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1)
+	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 0, slot0, nil)
+	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1, nil)
 
 	for _, id := range []string{"SHPRM1@0.7", "SHPIO@0.7"} {
 		snap, err := treeStore.LoadByIdentity("acp2", id)
@@ -164,8 +188,8 @@ func TestSaveSlotCache_ACP2_SameCardTwoSlots_OneFile(t *testing.T) {
 	slot0Objs := []protocol.Object{{Slot: 0, ID: 70232, Label: "Backup Input"}}
 	slot1Objs := []protocol.Object{{Slot: 1, ID: 70232, Label: "Backup Input"}}
 
-	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 0, slot0Objs)
-	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1Objs)
+	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 0, slot0Objs, nil)
+	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1Objs, nil)
 
 	files, err := os.ReadDir(filepath.Join(root, "dm", "acp2"))
 	if err != nil {

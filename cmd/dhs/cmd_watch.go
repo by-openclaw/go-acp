@@ -5,10 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"dhs/internal/dmlib"
+	emberplus "dhs/internal/emberplus/consumer"
+	"dhs/internal/export/canonical"
+	"dhs/internal/manifest"
 	"dhs/internal/protocol"
 	"dhs/internal/storage"
 )
@@ -52,11 +56,24 @@ func runWatch(ctx context.Context, args []string) error {
 	id := fs.Int("id", -1, "object id filter (-1 = any)")
 	dmLibrary := fs.String("dm-library", "",
 		"DM library root for hot-plug enrichment (#254). Empty disables identity probe + seed.")
+	pathFilter := fs.String("path", "",
+		"comma-separated OID or label-path prefixes to narrow wildcard subscribe "+
+			`(Ember+ only; e.g. "1.2.3,mixers.primary.channels")`)
+	noStreams := fs.Bool("no-streams", false,
+		"skip Subscribe(30) for Parameters with streamIdentifier != 0 "+
+			"(Ember+ — drops metering flood)")
+	streamsOnly := fs.Bool("streams-only", false,
+		"Subscribe(30) only for Parameters with streamIdentifier != 0 "+
+			"(Ember+ — metering view only)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L]")
+		return fmt.Errorf("usage: dhs consumer <proto> watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L] [--path P1,P2] [--no-streams | --streams-only]")
 	}
 	_ = fs.Parse(rest)
+
+	if *noStreams && *streamsOnly {
+		return fmt.Errorf("--no-streams and --streams-only are mutually exclusive")
+	}
 
 	walkScope, scopeErr := parseWalkScope(*slot, *slotsArg, *noWalk)
 	if scopeErr != nil {
@@ -178,6 +195,12 @@ func runWatch(ctx context.Context, args []string) error {
 		Label: *label,
 		ID:    *id,
 	}
+
+	// Apply Ember+ wildcard-subscribe filters (--path / --no-streams /
+	// --streams-only) BEFORE Subscribe registers the wildcard. Optional
+	// capability — plugins that don't satisfy the interface (ACP1/ACP2,
+	// Probel, …) silently ignore the flags. No protocol-name compare.
+	applyWildcardFilter(plug, *pathFilter, *noStreams, *streamsOnly)
 
 	// Subscribe. The plugin pushes decoded Event values into our channel
 	// via the callback; we print them from the main goroutine so output
@@ -374,6 +397,76 @@ func frameStatusDelta(prev, cur []protocol.SlotStatus) []string {
 	return out
 }
 
+// wildcardSubscribeFilterer is the optional capability a plugin
+// implements to narrow which Parameters its wildcard "*" Subscribe
+// will register Command 30 for. Empty paths slice + both bools false
+// = subscribe everything (current default). Defined as a private
+// interface in cmd/dhs/ so generic CLI does not import any per-
+// protocol package and ACP1/ACP2/Probel silently ignore the new
+// flags (they don't satisfy the interface).
+type wildcardSubscribeFilterer interface {
+	SetWildcardSubscribeFilter(paths []string, noStreams, streamsOnly bool)
+}
+
+// unknownCTXAuditor is the optional capability a plugin implements to
+// emit a Markdown audit of unrecognised context-tagged fields seen
+// during a session (Ember+ today — spec p.93 forward-compat slot).
+// Private to cmd/dhs/. Plugins without the contract are no-op.
+type unknownCTXAuditor interface {
+	WriteUnknownCTXAuditTo(path string) error
+}
+
+// writeUnknownCTXAuditIfAny renders the unknown-CTX audit to
+// .cache/audit/<proto>/<identity>-unknown-ctx.md when the plugin
+// tracked any unknowns AND identity is non-empty. No-op when the
+// plugin doesn't satisfy unknownCTXAuditor or nothing was recorded.
+// Quiet on the "nothing to write" case; warns on filesystem errors.
+func writeUnknownCTXAuditIfAny(plug protocol.Protocol, proto, identity string) {
+	if identity == "" {
+		return
+	}
+	auditor, ok := plug.(unknownCTXAuditor)
+	if !ok {
+		return
+	}
+	if treeStore == nil {
+		return
+	}
+	base := treeStore.BaseDir()
+	if base == "" {
+		return
+	}
+	path := filepath.Join(base, "audit", proto, identity+"-unknown-ctx.md")
+	if err := auditor.WriteUnknownCTXAuditTo(path); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: unknown-CTX audit write: %v\n", err)
+		return
+	}
+	if _, err := os.Stat(path); err == nil {
+		fmt.Fprintf(os.Stderr, "unknown-CTX audit: %s\n", path)
+	}
+}
+
+// applyWildcardFilter parses the --path comma-list and forwards the
+// filter to the plugin if it supports it. No-op when the plugin
+// doesn't satisfy the optional capability or when no filter flags
+// were set.
+func applyWildcardFilter(plug protocol.Protocol, pathFilter string, noStreams, streamsOnly bool) {
+	if pathFilter == "" && !noStreams && !streamsOnly {
+		return
+	}
+	wf, ok := plug.(wildcardSubscribeFilterer)
+	if !ok {
+		return
+	}
+	var paths []string
+	for _, p := range strings.Split(pathFilter, ",") {
+		if t := strings.TrimSpace(p); t != "" {
+			paths = append(paths, t)
+		}
+	}
+	wf.SetWildcardSubscribeFilter(paths, noStreams, streamsOnly)
+}
+
 // watchCacheKey builds a stable per-(group, id) cache key for label and
 // unit lookups in the watch verb. ACP1 groups (control / status / alarm
 // / identity / file / frame) re-use the same small object-id space within
@@ -532,6 +625,17 @@ type identityProber interface {
 	IdentityProbe(ctx context.Context, slot int) (string, error)
 }
 
+// canonicalExporter is the optional contract a Plugin satisfies to
+// produce a hierarchical canonical.Export from its in-RAM tree. When
+// present, saveSlotCache persists the canonical Tree alongside the
+// flat Objects so the DM file is the exact shape `dhs export
+// --format json` outputs and `dhs producer --tree X.json` reads
+// (refs #438, ADR-0022). Ember+ satisfies it via
+// internal/emberplus/consumer/export_canonical.go.
+type canonicalExporter interface {
+	ExportCanonical(ctx context.Context) (*canonical.Export, error)
+}
+
 func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto string, slot int) {
 	objs, werr := plug.Walk(ctx, slot)
 	if werr != nil {
@@ -539,7 +643,35 @@ func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto s
 		return
 	}
 	prober, _ := plug.(identityProber)
-	saveSlotCache(ctx, prober, host, proto, slot, objs)
+	tree := canonicalTreeFromPlug(ctx, plug)
+	// Plugins with both canonicalize + dmSplitter (Ember+) get both
+	// the full provider DM AND per-slot DMs so each matrix / function
+	// / chassis subtree lives in its own file under
+	// .cache/dm/<proto>/<slotIdentity>.json (refs #438, ADR-0022/3).
+	if _, splittable := plug.(dmSplitter); splittable && tree != nil {
+		saveAndSplitForEmberplus(ctx, plug, prober, host, proto, slot, objs, tree)
+		return
+	}
+	saveSlotCache(ctx, prober, host, proto, slot, objs, tree)
+}
+
+// canonicalTreeFromPlug invokes the plugin's ExportCanonical when
+// available, surfacing a *canonical.Export the caller passes to
+// saveSlotCache so the DM file is written in canonical Tree shape
+// (refs #438, ADR-0022). Returns nil when the plugin doesn't satisfy
+// the canonicalExporter contract or when canonicalize fails — the
+// caller falls back to flat-Objects-only DM in that case.
+func canonicalTreeFromPlug(ctx context.Context, plug protocol.Protocol) *canonical.Export {
+	ce, ok := plug.(canonicalExporter)
+	if !ok {
+		return nil
+	}
+	exp, err := ce.ExportCanonical(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: canonicalize for cache: %v\n", err)
+		return nil
+	}
+	return exp
 }
 
 // saveSlotCache routes a walked slot to the right on-disk cache.
@@ -551,27 +683,152 @@ func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto s
 // card share the same DM file (loaded once, reused). Slot index +
 // IP are NOT in the path or key.
 //
-// ACP1 + ACP2 satisfy the contract today. Ember+ doesn't (no
-// per-slot card concept) and falls back to the legacy IP-keyed
-// `.cache/devices/<ip>/slot_<n>.json` layout.
-func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object) {
+// When the plugin satisfies identityProber but the probe cannot
+// determine an identity from the wire, the DM still lands at
+// `.cache/dm/<proto>/<fallbackIdentity>.json` using a host-anchored
+// pseudo-identity ("unknown@<host>") — preserves the xxx@xxx.json
+// naming convention so downstream tooling keeps working, and gives
+// the user a file to rename once the real identity is determined.
+// A warning is logged so the gap is visible.
+//
+// Plugins that do NOT satisfy identityProber fall back to the
+// legacy IP-keyed `.cache/devices/<ip>/slot_<n>.json` layout.
+func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) string {
 	if treeStore == nil {
-		return
+		return ""
 	}
 	if prober != nil {
 		identity, perr := prober.IdentityProbe(ctx, slot)
 		if perr != nil || identity == "" {
-			fmt.Fprintf(os.Stderr, "warning: identity probe failed; slot %d not cached: %v\n", slot, perr)
-			return
+			identity = fallbackIdentity(host)
+			fmt.Fprintf(os.Stderr,
+				"warning: identity probe failed for slot %d (%v); writing fallback DM as %s.json — rename when identity is determined\n",
+				slot, perr, identity)
 		}
-		if serr := saveIdentityCache(treeStore, identity, host, proto, slot, objs); serr != nil {
+		if serr := saveIdentityCache(treeStore, identity, host, proto, slot, objs, tree); serr != nil {
 			fmt.Fprintf(os.Stderr, "warning: identity cache save: %v\n", serr)
+			return ""
 		}
-		return
+		return identity
 	}
 	if serr := treeStore.Save(host, proto, slot, objs); serr != nil {
 		fmt.Fprintf(os.Stderr, "warning: cache save slot %d: %v\n", slot, serr)
 	}
+	return ""
+}
+
+// fallbackIdentity synthesises a pseudo-identity when the protocol's
+// IdentityProbe cannot determine one from the wire. host anchors the
+// fallback so two un-probed devices on different hosts do not collide
+// on the same DM file. The "unknown" prefix marks the file for manual
+// rename once real identity is determined; the "@" separator keeps
+// the file matching the xxx@xxx.json naming convention so downstream
+// tooling (CLI listing, manifest loaders) keeps working.
+//
+// Limitation: two un-probed devices on the SAME host but different
+// ports collide under one DM file. The walk warning surfaces this so
+// the user knows to investigate.
+func fallbackIdentity(host string) string {
+	return "unknown@" + host
+}
+
+// writeSlotManifest emits a generic manifest binding {protocol-specific
+// slot addr → cached DM filename}. Same writer for every protocol:
+//
+//   - acp1 / acp2 : addr = {"slot": N}
+//   - emberplus    : addr = {"oid": "1.2"}   (per-slot split path)
+//   - probel       : addr = {"matrix": M, "level": L}
+//
+// Called by callers that walk multiple slots in one session (cmd_walk
+// --all, hot-plug watch). slotBindings is keyed by slot number for
+// acp* / probel; emberplus uses splitDMByMatrix directly because its
+// "slots" are derived from a single Walk's canonical tree.
+//
+// deviceName is the human-readable label that becomes the manifest
+// slug (.cache/manifest/<slug>.json); when empty, derives from the
+// first identity's Model part.
+type slotBinding struct {
+	Slot     int
+	Identity string
+}
+
+func writeSlotManifest(deviceName, proto, host string, port int, bindings []slotBinding) {
+	if len(bindings) == 0 {
+		return
+	}
+	if deviceName == "" {
+		// Fall back to the Model of the first cached identity. Strip
+		// "@SwRev" suffix so the manifest slug is the card / device
+		// name rather than a versioned key.
+		m, _ := splitIdentityForManifest(bindings[0].Identity)
+		deviceName = m
+	}
+	mf := &manifest.Manifest{
+		Device: manifest.Device{
+			Name:     deviceName,
+			Protocol: proto,
+			Endpoints: []manifest.Endpoint{
+				{IP: host, Port: port, Transport: defaultTransportFor(proto)},
+			},
+		},
+		Frames: []manifest.Frame{{
+			Name:  "frame",
+			Slots: make([]manifest.Slot, 0, len(bindings)),
+		}},
+	}
+	for _, b := range bindings {
+		mf.Frames[0].Slots = append(mf.Frames[0].Slots, manifest.Slot{
+			Addr: map[string]any{"slot": b.Slot},
+			DM:   b.Identity + ".json",
+		})
+	}
+	path, err := manifest.Write(".cache", mf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: manifest write: %v\n", err)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "manifest written: %s (%d slot(s))\n", path, len(bindings))
+}
+
+// defaultTransportFor returns the canonical transport per protocol.
+// ACP1 is UDP-by-default; AN2 (ACP2) + Ember+ are TCP.
+func defaultTransportFor(proto string) string {
+	switch proto {
+	case "acp1":
+		return "udp"
+	}
+	return "tcp"
+}
+
+// saveAndSplitForEmberplus runs the per-slot DM split for plugins
+// that satisfy the dmSplitter contract (emberplus today). The full-
+// provider DM is intentionally NOT written here — each slot DM is
+// the unit of cache, identity, and reuse per ADR-0022/0023. Other
+// protocols stay on the legacy single-DM path via saveSlotCache.
+//
+// Parameters host/objs are unused — kept on the signature to match
+// the saveSlotCache contract so caller plumbing is uniform.
+func saveAndSplitForEmberplus(ctx context.Context, plug protocol.Protocol, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) {
+	// Write the full-provider DM first — keeps the consumer's
+	// existing `--dm "<Device>@<SwRev>"` fast path working (matrix /
+	// get / set / stream hot-load against one file). Then the
+	// per-slot split adds the per-matrix / per-function files
+	// alongside so federation tooling can compose by slot. Disk
+	// redundancy ~few MB; trade-off explicitly approved.
+	saveSlotCache(ctx, prober, host, proto, slot, objs, tree)
+
+	if prober == nil {
+		return
+	}
+	identity, perr := prober.IdentityProbe(ctx, slot)
+	if perr != nil || identity == "" {
+		return
+	}
+	port := 0
+	if info, ierr := plug.GetDeviceInfo(ctx); ierr == nil {
+		port = info.Port
+	}
+	splitDMByMatrix(ctx, plug, host, port, identity)
 }
 
 // saveIdentityCache writes a per-card DM file (#430). DM is
@@ -579,10 +836,97 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 // slots holding the same card share the same DM file. Slot, IP, host
 // info are runtime state and never persisted into the DM.
 //
-// host + slot params kept for symmetry with the IP-keyed Save path
-// and for future logging; they are NOT written to disk.
-func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, slot int, objs []protocol.Object) error {
+// When tree is non-nil (Ember+ today; ACP1/ACP2 follow-up) the file
+// also carries the canonical.Export shape per ADR-0022. host + slot
+// params kept for symmetry with the IP-keyed Save path and future
+// logging; they are NOT written to disk.
+func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) error {
 	_ = host
 	_ = slot
-	return store.SaveByIdentity(proto, identity, objs)
+	if tree == nil {
+		return store.SaveByIdentity(proto, identity, objs)
+	}
+	// Write BOTH shapes: canonical Root for federation / provider
+	// serve, flat Objects for the consumer's --dm hot-load (which
+	// uses SeedTreeFromCachedObjects → numIndex by OID). One file,
+	// two views, no per-verb walk.
+	return store.WriteDM(proto, identity, storage.DM{
+		Protocol:  proto,
+		Root:      tree.Root,
+		Templates: tree.Templates,
+		Objects:   objs,
+	})
+}
+
+// splitDMByMatrix is the canonical-tree split documented in
+// internal/emberplus/consumer/dm_split.go. Called from
+// walkSlotAndCache after the full provider DM lands; emits one
+// additional DM per slot-worthy root child so each matrix / function
+// subtree gets its own file under .cache/dm/emberplus/. Also writes
+// a manifest at .cache/manifest/<device-slug>.json so a future
+// consumer can resolve host:port → slot DMs without re-walking.
+// Quiet on success; warns on per-slot save errors.
+type dmSplitter interface {
+	SplitAndPersistDM(ctx context.Context, store *storage.TreeStore, providerIdentity string) ([]emberplus.SlotRef, error)
+}
+
+func splitDMByMatrix(ctx context.Context, plug protocol.Protocol, host string, port int, identity string) {
+	if treeStore == nil {
+		return
+	}
+	ds, ok := plug.(dmSplitter)
+	if !ok {
+		return
+	}
+	persisted, err := ds.SplitAndPersistDM(ctx, treeStore, identity)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: per-slot DM split: %v\n", err)
+	}
+	if len(persisted) == 0 {
+		return
+	}
+	names := make([]string, len(persisted))
+	for i, r := range persisted {
+		names[i] = r.Identity
+	}
+	fmt.Fprintf(os.Stderr, "DM split: %d slot DM(s) written — %s\n",
+		len(persisted), strings.Join(names, ", "))
+
+	deviceName, _ := splitIdentityForManifest(identity)
+	mf := &manifest.Manifest{
+		Device: manifest.Device{
+			Name:     deviceName,
+			Protocol: "emberplus",
+			Endpoints: []manifest.Endpoint{
+				{IP: host, Port: port, Transport: "tcp"},
+			},
+		},
+		Frames: []manifest.Frame{{
+			Name:  "router",
+			Slots: make([]manifest.Slot, 0, len(persisted)),
+		}},
+	}
+	for _, r := range persisted {
+		mf.Frames[0].Slots = append(mf.Frames[0].Slots, manifest.Slot{
+			Addr: map[string]any{"oid": r.OID},
+			DM:   r.Identity + ".json",
+		})
+	}
+	path, werr := manifest.Write(".cache", mf)
+	if werr != nil {
+		fmt.Fprintf(os.Stderr, "warning: manifest write: %v\n", werr)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "manifest written: %s\n", path)
+}
+
+// splitIdentityForManifest separates "<Model>@<SwRev>" on the last
+// '@'. Returns (model, swRev) — model is used as the device name in
+// the auto-written manifest.
+func splitIdentityForManifest(identity string) (string, string) {
+	i := strings.LastIndex(identity, "@")
+	if i < 0 {
+		return identity, ""
+	}
+	return identity[:i], identity[i+1:]
 }

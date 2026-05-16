@@ -12,7 +12,7 @@ import (
 func runGet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("get", flag.ExitOnError)
 	cf := addCommonFlags(fs)
-	slot := fs.Int("slot", -1, "slot number (required)")
+	slot := fs.Int("slot", 0, "slot number (default 0)")
 	group := fs.String("group", "", "object group (optional when --label is unique across groups)")
 	label := fs.String("label", "", "object label (preferred over --id, requires prior walk context)")
 	id := fs.Int("id", -1, "object id within group (alternative to --label)")
@@ -20,18 +20,12 @@ func runGet(ctx context.Context, args []string) error {
 	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
 	idx := fs.Int("idx", 0, "ACP2 preset idx (0 = ACTIVE INDEX; default)")
 	pid := fs.Int("pid", 0, "ACP2 property id to read (0 = default pid=8 value; set to read object_type/label/access/etc.)")
+	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the per-call walk is skipped — refs #438, ADR-0022.`)
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> get <host> --slot N (--path P | --label L | --id I) [--capture out.jsonl]")
 	}
 	_ = fs.Parse(rest)
-	// Ember+ has no slot concept; default to 0 so users don't have to pass it.
-	if cf.protocol == "emberplus" && *slot < 0 {
-		*slot = 0
-	}
-	if *slot < 0 {
-		return fmt.Errorf("--slot is required")
-	}
 	// --object is a deprecated alias for --id. Fold it in unless both
 	// were set with conflicting values.
 	if *objectAlias >= 0 {
@@ -50,16 +44,16 @@ func runGet(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	opCtx, cancel := withTimeout(ctx, cf.timeout)
-	defer cancel()
-
-	// Path-based addressing: walk first, then lookup by path key.
-	// Label-based: resolve from cache or walk.
-	if *pathFlag != "" || *label != "" {
-		// Resolution walk uses the raw signal-only ctx, not opCtx.
-		// A tree walk takes as long as it takes (44k objects on ACP2
-		// slot 1 needs minutes); --timeout only bounds the single
-		// GetValue below.
+	// Ember+ DM auto-cache (refs #438, ADR-0022): hot-load from cache
+	// when --dm hits; otherwise walk + auto-extract by identity so the
+	// next call is fast. Only kicks in for path/label resolution; pure
+	// --id calls skip this entirely.
+	if cf.protocol == "emberplus" && (*pathFlag != "" || *label != "") {
+		if err := ensureEmberplusTree(ctx, plug, host, cf.port, *dmIdentity, *slot, false); err != nil {
+			return err
+		}
+	} else if cf.protocol != "emberplus" && (*pathFlag != "" || *label != "") {
+		// Non-Ember+ protocols keep the legacy walk-for-resolution path.
 		if _, err := plug.Walk(ctx, *slot); err != nil {
 			return fmt.Errorf("walk for resolution: %w", err)
 		}
@@ -69,6 +63,11 @@ func runGet(ctx context.Context, args []string) error {
 			*id = cachedID
 		}
 	}
+
+	// Per-op timer started AFTER walk/DM-load so the GetValue wait
+	// sees a fresh --timeout budget — matches cmd_invoke / cmd_set.
+	opCtx, cancel := withTimeout(ctx, cf.timeout)
+	defer cancel()
 
 	req := protocol.ValueRequest{
 		Slot:  *slot,

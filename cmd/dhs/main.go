@@ -131,6 +131,21 @@ var commands = []command{
 	{"diag", "run ACP2 diagnostic probes against a device", helpDiag, runDiag},
 	{"validate", "decode a captured frames.jsonl through the codec offline (per ADR-0021)", helpValidate, runValidate},
 	{"health", "print 3-layer session health (reachable / connected / live)", helpHealth, runHealth},
+	{"bench", "Ember+ — fire N matrix crosspoint ops over one TCP session and time it", helpBench, runEmberplusBench},
+}
+
+func helpBench() {
+	fmt.Println(`dhs consumer emberplus bench <host> --port N --path <matrix.path> --dm <identity> [--n 100] [--op connect|absolute|disconnect] [--targets N] [--sources N]
+
+Holds ONE TCP session open and fires N MatrixConnect frames against the
+named matrix, wrapping target/source by [--targets, --sources]. Prints
+wall-clock + ops/sec + average per-op. No per-op timing.
+
+Example — 1000 connects on the integration demo's nToN matrix:
+  dhs consumer emberplus bench 127.0.0.1 --port 9100 \
+    --dm dhs-emberplus-integration@1.0.0 \
+    --path dhs-emberplus-integration.nToN.matrix \
+    --n 1000 --op connect`)
 }
 
 func main() {

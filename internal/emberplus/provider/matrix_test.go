@@ -125,6 +125,105 @@ func TestRoundTrip_Matrix_NToN(t *testing.T) {
 	}
 }
 
+// TestMatrixLocked_RejectsConnect proves the full spec p.89 lock
+// enforcement path end-to-end:
+//
+//  1. A canonical seed with disposition="locked" on target 2 must
+//     populate the runtime lockStore at boot (so the rejection can
+//     fire without an external setLock invocation).
+//
+//  2. An incoming Connect on the locked target must NOT mutate the
+//     matrix state — m.Connections[target=2].Sources stays unchanged.
+//
+//  3. The provider's response to the locked Connect must echo back
+//     the current sources with disposition=locked, signalling the
+//     consumer that the request was seen and rejected.
+func TestMatrixLocked_RejectsConnect(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixNToN,
+		Mode: canonical.ModeLinear,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0}, Operation: canonical.ConnOpAbsolute, Disposition: canonical.ConnDispTally},
+			{Target: 1, Sources: []int64{1}, Operation: canonical.ConnOpAbsolute, Disposition: canonical.ConnDispTally},
+			{Target: 2, Sources: []int64{2}, Operation: canonical.ConnOpAbsolute, Disposition: canonical.ConnDispLocked, Locked: true},
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	if srv.locks == nil {
+		t.Fatal("lockStore not initialised on server")
+	}
+	if !srv.locks.isLocked("1.1", 2) {
+		t.Fatal("target 2 should be locked from canonical seed but lockStore reports unlocked — boot-time pre-seed missing")
+	}
+
+	// Consumer tries to reroute the locked target to a new source.
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 2, Sources: []int64{99}, Operation: canonical.ConnOpAbsolute},
+	})
+	if err != nil {
+		t.Fatalf("applyMatrixConnections: %v", err)
+	}
+
+	// Echo must carry disposition=locked + original sources unchanged.
+	if len(post) != 1 {
+		t.Fatalf("want 1 echo connection, got %d: %+v", len(post), post)
+	}
+	if post[0].Target != 2 {
+		t.Errorf("echo target = %d, want 2", post[0].Target)
+	}
+	if post[0].Disposition != canonical.ConnDispLocked {
+		t.Errorf("echo disposition = %q, want %q (spec p.89 reject)", post[0].Disposition, canonical.ConnDispLocked)
+	}
+	if len(post[0].Sources) != 1 || post[0].Sources[0] != 2 {
+		t.Errorf("echo sources = %v, want [2] (state unchanged on locked target)", post[0].Sources)
+	}
+
+	// Mutation check: the underlying tree must still show target 2 → source 2.
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		if c.Target == 2 {
+			if len(c.Sources) != 1 || c.Sources[0] != 2 {
+				t.Errorf("tree mutated: target 2 sources = %v, want [2] (lock should have blocked the change)", c.Sources)
+			}
+			return
+		}
+	}
+	t.Fatal("target 2 connection vanished from tree after locked Connect")
+}
+
+// TestEncodeMatrix_DTD230Fields asserts the Matrix encoder emits the
+// two MatrixContents fields introduced by DTD 2.30 (spec p.88):
+//
+//	[11] schemaIdentifiers — newline-separated string
+//	[12] templateReference — RELATIVE-OID
+func TestEncodeMatrix_DTD230Fields(t *testing.T) {
+	schema := "com.lawo.signalMatrix/1"
+	tmpl := "9.3"
+	m := &canonical.Matrix{
+		Type:              canonical.MatrixOneToN,
+		Mode:              canonical.ModeLinear,
+		SchemaIdentifiers: &schema,
+		TemplateReference: &tmpl,
+	}
+	srv := buildMatrixTree(t, m)
+
+	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	els, err := glow.DecodeRoot(reply)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	got := els[0].Matrix
+	if got.SchemaIdentifiers != schema {
+		t.Errorf("schemaIdentifiers = %q, want %q", got.SchemaIdentifiers, schema)
+	}
+	if len(got.TemplateReference) != 2 || got.TemplateReference[0] != 9 || got.TemplateReference[1] != 3 {
+		t.Errorf("templateReference = %v, want [9 3]", got.TemplateReference)
+	}
+}
+
 // TestApplyConnection_Absolute replaces a target's sources.
 func TestApplyConnection_Absolute(t *testing.T) {
 	m := &canonical.Matrix{
@@ -258,6 +357,228 @@ func TestApplyConnection_OneToOne_ConnectOp_ReplacesAndSteals(t *testing.T) {
 	}
 	if got := byT[0]; len(got) != 0 {
 		t.Errorf("t-0 post=%v want [] (s-0 stolen by t-1)", got)
+	}
+}
+
+// TestApplyConnection_OneToN_Disconnect_ClearsTarget asserts that
+// Disconnect on a oneToN matrix actually CLEARS the target's source
+// per spec p.89. Earlier (PR #98) Disconnect was coerced to Absolute,
+// which kept the target routed instead of clearing it — that was the
+// regression. Empty sources[] after the subtract is valid; the spec
+// permits an unrouted target.
+func TestApplyConnection_OneToN_Disconnect_ClearsTarget(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixOneToN,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{5}}, // t-0 currently ← s-5
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 0, Sources: []int64{5}, Operation: canonical.ConnOpDisconnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post) != 1 {
+		t.Fatalf("want 1 echo connection, got %d", len(post))
+	}
+	if len(post[0].Sources) != 0 {
+		t.Errorf("post sources = %v, want [] (Disconnect cleared the target — PR #98 regression check)", post[0].Sources)
+	}
+	// Tree state must match.
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		if c.Target == 0 && len(c.Sources) != 0 {
+			t.Errorf("tree target 0 sources = %v, want [] (Disconnect must clear in tree, not echo only)", c.Sources)
+		}
+	}
+}
+
+// TestApplyConnection_OneToOne_Disconnect_LeavesEmpty: same Disconnect
+// semantics on oneToOne. After Disconnect{tgt=0, sources=[3]} the target
+// has no source and the bijection allows that empty state per spec.
+func TestApplyConnection_OneToOne_Disconnect_LeavesEmpty(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixOneToOne,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{3}},
+			{Target: 1, Sources: []int64{4}},
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 0, Sources: []int64{3}, Operation: canonical.ConnOpDisconnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post) != 1 || post[0].Target != 0 || len(post[0].Sources) != 0 {
+		t.Errorf("post = %+v, want [{target=0 sources=[]}]", post)
+	}
+	// t-1 must remain untouched.
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		if c.Target == 1 && (len(c.Sources) != 1 || c.Sources[0] != 4) {
+			t.Errorf("t-1 unintentionally changed: %v, want [4]", c.Sources)
+		}
+	}
+}
+
+// TestApplyConnection_NToN_MaxPerTarget_Rejects asserts spec p.88
+// maximumConnectsPerTarget enforcement. A Connect that would put the
+// target over the per-target cap is rejected — the echo carries the
+// unchanged current sources with disposition=tally and the tree state
+// stays put.
+func TestApplyConnection_NToN_MaxPerTarget_Rejects(t *testing.T) {
+	maxPT := int64(2)
+	m := &canonical.Matrix{
+		Type:                     canonical.MatrixNToN,
+		MaximumConnectsPerTarget: &maxPT,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0, 1}}, // already at the cap
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 0, Sources: []int64{2}, Operation: canonical.ConnOpConnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post) != 1 {
+		t.Fatalf("want 1 echo, got %d", len(post))
+	}
+	if len(post[0].Sources) != 2 || post[0].Sources[0] != 0 || post[0].Sources[1] != 1 {
+		t.Errorf("echo sources = %v, want [0 1] (cap enforced, state unchanged)", post[0].Sources)
+	}
+	// Tree must be unchanged.
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	if len(updated.Connections[0].Sources) != 2 {
+		t.Errorf("tree mutated to %v despite cap rejection", updated.Connections[0].Sources)
+	}
+}
+
+// TestApplyConnection_NToN_MaxTotal_Rejects asserts spec p.88
+// maximumTotalConnects enforcement across the whole matrix.
+func TestApplyConnection_NToN_MaxTotal_Rejects(t *testing.T) {
+	maxTotal := int64(3)
+	m := &canonical.Matrix{
+		Type:                 canonical.MatrixNToN,
+		MaximumTotalConnects: &maxTotal,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0}},
+			{Target: 1, Sources: []int64{1, 2}}, // grand total now 3 — at the cap
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	// Adding even one more crosspoint would push total to 4 → reject.
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 2, Sources: []int64{0}, Operation: canonical.ConnOpConnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post[0].Sources) != 0 {
+		t.Errorf("target 2 echo = %v, want [] (total cap enforced)", post[0].Sources)
+	}
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		if c.Target == 2 && len(c.Sources) != 0 {
+			t.Errorf("tree mutated: target 2 has %v despite total-cap rejection", c.Sources)
+		}
+	}
+}
+
+// TestStoreSalvo_FilterByTargets exercises the per-target salvo
+// snapshot — spec p.91 Tuple says each function arg is one Value, so
+// the target list rides in as a CSV string. Empty CSV = snapshot all.
+func TestStoreSalvo_FilterByTargets(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixNToN,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0, 1}},
+			{Target: 1, Sources: []int64{1}},
+			{Target: 2, Sources: []int64{2, 3}},
+			{Target: 5, Sources: []int64{5}},
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	store := srv.makeBuiltinStoreSalvo()
+	recall := srv.makeBuiltinRecallSalvo()
+	list := srv.makeBuiltinListSalvos()
+
+	// Snapshot only targets 0 and 5 into salvo 7.
+	if _, err := store([]any{"1.1", int64(7), "0,5"}); err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	// Listed salvos for this matrix should now contain 7.
+	res, err := list([]any{"1.1"})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(res) == 0 || res[0].(string) == "" {
+		t.Fatalf("listSalvos returned empty — salvo 7 not stored")
+	}
+
+	// Trash the live state on the filtered targets, leave others alone.
+	srv.tree.byOID["1.1"].el.(*canonical.Matrix).Connections[0].Sources = []int64{}
+	srv.tree.byOID["1.1"].el.(*canonical.Matrix).Connections[3].Sources = []int64{}
+	// Recall the salvo — only targets 0 + 5 must restore; targets 1 + 2
+	// stay as they are (because they were NOT in the salvo).
+	res, err = recall([]any{"1.1", int64(7)})
+	if err != nil {
+		t.Fatalf("recall: %v", err)
+	}
+	if n, _ := asInt64(res[0]); n != 2 {
+		t.Errorf("recall rows = %d, want 2 (only the snapshotted targets)", n)
+	}
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		switch c.Target {
+		case 0:
+			if len(c.Sources) != 2 || c.Sources[0] != 0 || c.Sources[1] != 1 {
+				t.Errorf("target 0 sources = %v, want [0 1] (restored)", c.Sources)
+			}
+		case 5:
+			if len(c.Sources) != 1 || c.Sources[0] != 5 {
+				t.Errorf("target 5 sources = %v, want [5] (restored)", c.Sources)
+			}
+		}
+	}
+}
+
+// TestStoreSalvo_EmptyTargets_SnapshotsAll asserts the back-compat
+// path — empty 3rd arg (or no 3rd arg) snapshots every current
+// connection. Matches the original PR #72 / 326a21e semantics.
+func TestStoreSalvo_EmptyTargets_SnapshotsAll(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixNToN,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0}},
+			{Target: 1, Sources: []int64{1}},
+			{Target: 2, Sources: []int64{2}},
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	store := srv.makeBuiltinStoreSalvo()
+	recall := srv.makeBuiltinRecallSalvo()
+
+	// 2-arg call (no targets) and explicit-empty 3-arg call must both work.
+	if res, err := store([]any{"1.1", int64(1)}); err != nil || !res[0].(bool) {
+		t.Fatalf("2-arg store: res=%v err=%v", res, err)
+	}
+	if res, err := store([]any{"1.1", int64(2), ""}); err != nil || !res[0].(bool) {
+		t.Fatalf("explicit-empty store: res=%v err=%v", res, err)
+	}
+	for _, salvoID := range []int64{1, 2} {
+		res, err := recall([]any{"1.1", salvoID})
+		if err != nil {
+			t.Fatalf("recall %d: %v", salvoID, err)
+		}
+		if n, _ := asInt64(res[0]); n != 3 {
+			t.Errorf("salvo %d recall rows = %d, want 3 (all targets snapshotted)", salvoID, n)
+		}
 	}
 }
 

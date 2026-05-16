@@ -13,11 +13,18 @@ import (
 
 // dmFile mirrors internal/storage.DM (kept duplicated to avoid an
 // import cycle between manifest and storage).
+//
+// Two shapes are supported on disk:
+//   - flat / legacy : Objects populated (ACP1, ACP2)
+//   - canonical     : Root populated (Ember+ — per ADR-0022 chunk
+//                     e0d585a); Templates may also be present
 type dmFile struct {
-	Model    string `json:"model"`
-	SwRev    string `json:"sw_rev"`
-	Protocol string `json:"protocol"`
-	Objects  []dmObject `json:"objects"`
+	Model     string                     `json:"model"`
+	SwRev     string                     `json:"sw_rev"`
+	Protocol  string                     `json:"protocol"`
+	Root      json.RawMessage            `json:"root,omitempty"`
+	Templates []*canonical.TemplateEntry `json:"templates,omitempty"`
+	Objects   []dmObject                 `json:"objects,omitempty"`
 }
 
 // dmObject mirrors protocol.Object — only the fields we use.
@@ -68,17 +75,30 @@ func loadDM(path string) (*dmFile, error) {
 // and drop the rest. Plugin-internal metadata (Meta) is captured in
 // the node Description as JSON so it remains visible for debug.
 func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
+	// Synthetic root identifier defaults to device name, but is
+	// overridden by the slot DMs' shared path prefix when present.
+	// This preserves the original provider's root identifier (e.g.
+	// "router" for TinyEmberPlusRouter) so wire paths in the served
+	// tree match the cached DM paths — required for the consumer's
+	// --dm hot-load (paths in DM "router.nToN.matrix" must match
+	// the served tree paths).
+	rootIdent := m.Device.Name
+	if prefix := deriveSharedRootIdentifier(m, cacheDir); prefix != "" {
+		rootIdent = prefix
+	}
 	root := &canonical.Node{
 		Header: canonical.Header{
 			Number:     1,
-			Identifier: m.Device.Name,
-			Path:       m.Device.Name,
+			Identifier: rootIdent,
+			Path:       rootIdent,
 			OID:        "1",
 			IsOnline:   true,
 			Access:     "read",
 			Children:   nil,
 		},
 	}
+
+	var collectedTemplates []*canonical.TemplateEntry
 
 	for _, fr := range m.Frames {
 		for _, sl := range fr.Slots {
@@ -87,9 +107,26 @@ func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
 			if err != nil {
 				return nil, fmt.Errorf("manifest frame=%q slot dm=%q: %w", fr.Name, sl.DM, err)
 			}
+			// Canonical-shape DM (Ember+, refs #438 chunk e0d585a):
+			// the slot DM IS a canonical sub-tree; graft Root directly
+			// as a child of our synthetic device root. No need for
+			// buildSlotNode's flat-object translation.
+			if len(dm.Root) > 0 {
+				slotEl, derr := canonical.UnmarshalElement(dm.Root)
+				if derr != nil {
+					return nil, fmt.Errorf("manifest frame=%q slot dm=%q: parse canonical root: %w", fr.Name, sl.DM, derr)
+				}
+				root.Children = append(root.Children, slotEl)
+				if len(dm.Templates) > 0 {
+					collectedTemplates = append(collectedTemplates, dm.Templates...)
+				}
+				continue
+			}
+			// Flat / legacy shape (ACP1, ACP2): assemble a synthetic
+			// slot Node from the flat Objects slice.
 			slotNum, slotOK := slotIndex(sl.Addr)
 			if !slotOK {
-				slotNum = len(root.Children) // fallback: positional
+				slotNum = len(root.Children)
 			}
 			slotNode, err := buildSlotNode(slotNum, sl, dm, m.Device.Name)
 			if err != nil {
@@ -99,7 +136,50 @@ func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
 		}
 	}
 
-	return &canonical.Export{Root: root}, nil
+	return &canonical.Export{Root: root, Templates: collectedTemplates}, nil
+}
+
+// deriveSharedRootIdentifier inspects every slot DM referenced by the
+// manifest. When all slot DMs carry a canonical Root whose Path starts
+// with the same first segment (e.g. "router" for TinyEmberPlusRouter's
+// nToN whose path="router.nToN"), that segment becomes the synthetic
+// device-root identifier — preserving the original provider's wire
+// paths through manifest+DM round-trip.
+//
+// Returns "" when no canonical Root exists in any slot, or when slots
+// disagree on the prefix (falls back to caller's device-name default).
+func deriveSharedRootIdentifier(m *Manifest, cacheDir string) string {
+	var shared string
+	for _, fr := range m.Frames {
+		for _, sl := range fr.Slots {
+			dmPath := DMPath(cacheDir, m.Device.Protocol, sl.DM)
+			data, err := os.ReadFile(dmPath)
+			if err != nil {
+				continue
+			}
+			var probe struct {
+				Root struct {
+					Path string `json:"path"`
+				} `json:"root"`
+			}
+			if err := json.Unmarshal(data, &probe); err != nil {
+				continue
+			}
+			if probe.Root.Path == "" {
+				continue
+			}
+			first := probe.Root.Path
+			if i := strings.IndexByte(first, '.'); i > 0 {
+				first = first[:i]
+			}
+			if shared == "" {
+				shared = first
+			} else if shared != first {
+				return ""
+			}
+		}
+	}
+	return shared
 }
 
 // slotIndex pulls a numeric slot index out of an addr map. Supports
@@ -187,6 +267,27 @@ func buildSlotNode(slotNum int, sl Slot, dm *dmFile, devName string) (*canonical
 		oid := o.OID
 		if oid == "" {
 			oid = slotNode.OID + "." + strconv.Itoa(o.ID)
+		}
+
+		// Ember+-specific elements live in Meta["element"]. Dispatch
+		// before the generic container/leaf branch so matrices and
+		// functions emit the correct canonical.* type (refs #438
+		// chunk 6, ADR-0022).
+		switch elementKind(o.Meta) {
+		case "matrix":
+			m := buildCanonicalMatrix(o, oid, slotNode.Path+"."+selfJoined)
+			parent.Children = append(parent.Children, m)
+			continue
+		case "function":
+			f := buildCanonicalFunction(o, oid, slotNode.Path+"."+selfJoined)
+			parent.Children = append(parent.Children, f)
+			continue
+		case "template":
+			// Templates aren't placed in the tree — provider keeps
+			// them in a side registry, looked up by reference. The
+			// Ember+ producer's tree-builder doesn't consume them via
+			// canonical.Export today; skip silently.
+			continue
 		}
 
 		if isContainerKind(o.Kind) {

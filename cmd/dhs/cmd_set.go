@@ -24,7 +24,7 @@ func orFirst(s ...string) string {
 func runSet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("set", flag.ExitOnError)
 	cf := addCommonFlags(fs)
-	slot := fs.Int("slot", -1, "slot number (required)")
+	slot := fs.Int("slot", 0, "slot number (default 0)")
 	group := fs.String("group", "", "object group name")
 	label := fs.String("label", "", "object label")
 	id := fs.Int("id", -1, "object id within group")
@@ -33,6 +33,7 @@ func runSet(ctx context.Context, args []string) error {
 	valueStr := fs.String("value", "", "typed value (e.g. -3.0, \"On\", \"192.168.1.5\", \"CH1\"); empty string is valid for string objects")
 	valueHex := fs.String("raw", "", "raw wire bytes as hex — escape hatch bypassing typed encoding")
 	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of walking the slot to resolve --path/--label")
+	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the walk is skipped — refs #438, ADR-0022.`)
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>)")
@@ -52,13 +53,6 @@ func runSet(ctx context.Context, args []string) error {
 			rawSet = true
 		}
 	})
-	// Ember+ has no slot concept; default to 0.
-	if cf.protocol == "emberplus" && *slot < 0 {
-		*slot = 0
-	}
-	if *slot < 0 {
-		return fmt.Errorf("--slot is required")
-	}
 	// --object is a deprecated alias for --id. If the user supplied
 	// --object and not --id, fold it in. If both are set with different
 	// values, reject — the caller's intent is ambiguous.
@@ -94,16 +88,21 @@ func runSet(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	opCtx, cancel := withTimeout(ctx, cf.timeout)
-	defer cancel()
-
-	// Resolve --path / --label via the on-disk cache first. Falling
-	// through to plug.Walk costs minutes on a 49 000-object Neuron
-	// tree; populated cache resolves in microseconds. Only walk on
-	// genuine cache miss (and only when the user hasn't asked us to
-	// fail fast via --no-walk).
+	// Ember+: DM auto-cache (refs #438, ADR-0022) — cache hit hot-loads;
+	// cache miss walks + auto-extracts under identity so the next call
+	// is fast. Non-Ember+: IP-keyed on-disk cache resolution, falling
+	// through to a Walk on miss.
+	//
+	// NOTE: opCtx timer is started AFTER the walk so the walk doesn't
+	// burn through --timeout before SetValue even sends its frame —
+	// same pattern as cmd_invoke.go.
 	resolvedFromCache := false
-	if *id < 0 {
+	if cf.protocol == "emberplus" {
+		if err := ensureEmberplusTree(ctx, plug, host, cf.port, *dmIdentity, *slot, *noWalk); err != nil {
+			return err
+		}
+		resolvedFromCache = true
+	} else if *id < 0 {
 		if *pathFlag != "" {
 			if cachedID := resolvePathFromCache(host, cf.protocol, *slot, *pathFlag); cachedID >= 0 {
 				*id = cachedID
@@ -118,18 +117,23 @@ func runSet(ctx context.Context, args []string) error {
 		}
 	}
 
-	if !resolvedFromCache && (*pathFlag != "" || *label != "") {
+	if cf.protocol != "emberplus" && !resolvedFromCache && (*pathFlag != "" || *label != "") {
 		if *noWalk {
 			return fmt.Errorf("--no-walk: %q not found in cache for slot %d (run 'walk --slot %d' first or drop --no-walk)",
 				orFirst(*pathFlag, *label), *slot, *slot)
 		}
-		// Cache miss: walk the slot to populate before SetValue. Uses
-		// raw ctx (signal-only) so big trees don't fail their own
-		// resolution; only the SetValue below is bounded by --timeout.
+		// Cache miss on non-Ember+ — walk the slot to populate.
 		if _, err := plug.Walk(ctx, *slot); err != nil {
 			return fmt.Errorf("walk for resolution: %w", err)
 		}
 	}
+
+	// Start the per-op timer NOW — after any walk / DM-load has
+	// finished — so the SetValue wait-for-confirm sees a fresh
+	// --timeout budget instead of the leftovers from an exhausted
+	// walk.
+	opCtx, cancel := withTimeout(ctx, cf.timeout)
+	defer cancel()
 
 	req := protocol.ValueRequest{
 		Slot:  *slot,
