@@ -239,23 +239,31 @@ $dynChildren += $dynMatrix
 Save-DM "dynamic-strict" "1.0.0" (NodeOf 4 $dynRoot $dynRoot $dynOid $dynChildren)
 
 # ---------------- 6. functions-strict (5 control fns) ----------------
-function FunctionOf($num, $ident, $path, $oid, $args, $result) {
+function FunctionOf($num, $ident, $path, $oid, $fnArgs, $fnResult) {
     [ordered]@{
         number = $num; identifier = $ident; path = $path; oid = $oid
         isOnline = $true; access = "read"
-        arguments = $args; result = $result
+        arguments = $fnArgs; result = $fnResult
     }
 }
 function Arg($name, $type) { [ordered]@{ name = $name; type = $type } }
 
 $fnRoot = "functions"
 $fnOid  = "1.5"
+$argsSetLock     = ,(Arg "matrixPath" "string") + ,(Arg "target" "integer") + ,(Arg "locked" "boolean")
+$argsListLocks   = ,(Arg "matrixPath" "string")
+$argsStoreSalvo  = ,(Arg "matrixPath" "string") + ,(Arg "salvoID" "integer")
+$argsRecallSalvo = ,(Arg "matrixPath" "string") + ,(Arg "salvoID" "integer")
+$argsListSalvos  = ,(Arg "matrixPath" "string")
+$retOk           = ,(Arg "ok" "boolean")
+$retCount        = ,(Arg "count" "integer")
+
 $fnChildren = @(
-    FunctionOf 1 "setLock"     "$fnRoot.setLock"     "$fnOid.1" @(Arg "matrixPath" "string"; Arg "target" "integer"; Arg "locked" "boolean") @(Arg "ok" "boolean")
-    FunctionOf 2 "listLocks"   "$fnRoot.listLocks"   "$fnOid.2" @(Arg "matrixPath" "string")                                                @(Arg "count" "integer")
-    FunctionOf 3 "storeSalvo"  "$fnRoot.storeSalvo"  "$fnOid.3" @(Arg "matrixPath" "string"; Arg "salvoID" "integer")                       @(Arg "ok" "boolean")
-    FunctionOf 4 "recallSalvo" "$fnRoot.recallSalvo" "$fnOid.4" @(Arg "matrixPath" "string"; Arg "salvoID" "integer")                       @(Arg "count" "integer")
-    FunctionOf 5 "listSalvos"  "$fnRoot.listSalvos"  "$fnOid.5" @(Arg "matrixPath" "string")                                                @(Arg "count" "integer")
+    (FunctionOf 1 "setLock"     "$fnRoot.setLock"     "$fnOid.1" $argsSetLock     $retOk)
+    (FunctionOf 2 "listLocks"   "$fnRoot.listLocks"   "$fnOid.2" $argsListLocks   $retCount)
+    (FunctionOf 3 "storeSalvo"  "$fnRoot.storeSalvo"  "$fnOid.3" $argsStoreSalvo  $retOk)
+    (FunctionOf 4 "recallSalvo" "$fnRoot.recallSalvo" "$fnOid.4" $argsRecallSalvo $retCount)
+    (FunctionOf 5 "listSalvos"  "$fnRoot.listSalvos"  "$fnOid.5" $argsListSalvos  $retCount)
 )
 Save-DM "functions-strict" "1.0.0" (NodeOf 5 $fnRoot $fnRoot $fnOid $fnChildren)
 

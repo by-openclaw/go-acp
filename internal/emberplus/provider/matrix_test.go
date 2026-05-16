@@ -425,6 +425,71 @@ func TestApplyConnection_OneToOne_Disconnect_LeavesEmpty(t *testing.T) {
 	}
 }
 
+// TestApplyConnection_NToN_MaxPerTarget_Rejects asserts spec p.88
+// maximumConnectsPerTarget enforcement. A Connect that would put the
+// target over the per-target cap is rejected — the echo carries the
+// unchanged current sources with disposition=tally and the tree state
+// stays put.
+func TestApplyConnection_NToN_MaxPerTarget_Rejects(t *testing.T) {
+	maxPT := int64(2)
+	m := &canonical.Matrix{
+		Type:                     canonical.MatrixNToN,
+		MaximumConnectsPerTarget: &maxPT,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0, 1}}, // already at the cap
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 0, Sources: []int64{2}, Operation: canonical.ConnOpConnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post) != 1 {
+		t.Fatalf("want 1 echo, got %d", len(post))
+	}
+	if len(post[0].Sources) != 2 || post[0].Sources[0] != 0 || post[0].Sources[1] != 1 {
+		t.Errorf("echo sources = %v, want [0 1] (cap enforced, state unchanged)", post[0].Sources)
+	}
+	// Tree must be unchanged.
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	if len(updated.Connections[0].Sources) != 2 {
+		t.Errorf("tree mutated to %v despite cap rejection", updated.Connections[0].Sources)
+	}
+}
+
+// TestApplyConnection_NToN_MaxTotal_Rejects asserts spec p.88
+// maximumTotalConnects enforcement across the whole matrix.
+func TestApplyConnection_NToN_MaxTotal_Rejects(t *testing.T) {
+	maxTotal := int64(3)
+	m := &canonical.Matrix{
+		Type:                 canonical.MatrixNToN,
+		MaximumTotalConnects: &maxTotal,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0}},
+			{Target: 1, Sources: []int64{1, 2}}, // grand total now 3 — at the cap
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	// Adding even one more crosspoint would push total to 4 → reject.
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 2, Sources: []int64{0}, Operation: canonical.ConnOpConnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post[0].Sources) != 0 {
+		t.Errorf("target 2 echo = %v, want [] (total cap enforced)", post[0].Sources)
+	}
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		if c.Target == 2 && len(c.Sources) != 0 {
+			t.Errorf("tree mutated: target 2 has %v despite total-cap rejection", c.Sources)
+		}
+	}
+}
+
 // TestApplyConnection_NToN_ConnectOp_Unions confirms nToN is NOT
 // coerced — Connect on nToN still unions (many-to-many is the point).
 func TestApplyConnection_NToN_ConnectOp_Unions(t *testing.T) {

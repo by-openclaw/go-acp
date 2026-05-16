@@ -144,6 +144,20 @@ func (s *server) applyMatrixConnections(matrixOID string, incoming []canonical.M
 			}
 		}
 
+		// Spec p.88: enforce maximumConnectsPerTarget and
+		// maximumTotalConnects when declared. Compute the would-be
+		// post-state first; if it would exceed either cap, reject the
+		// request and echo the unchanged current sources back. Only
+		// applies on operations that ADD sources (Connect + Absolute);
+		// Disconnect can never grow a target so it bypasses the check.
+		if (in.Operation == canonical.ConnOpConnect || in.Operation == canonical.ConnOpAbsolute) &&
+			matrixHasCaps(m) {
+			if rejected, post := rejectIfExceedsCap(m, in); rejected {
+				emit(post)
+				continue
+			}
+		}
+
 		applied := applyOneConnection(m, in)
 		emit(applied)
 
@@ -172,6 +186,74 @@ func (s *server) applyMatrixConnections(matrixOID string, incoming []canonical.M
 		}
 	}
 	return out, nil
+}
+
+// matrixHasCaps reports whether either MatrixContents [6]
+// maximumTotalConnects or [7] maximumConnectsPerTarget is declared,
+// per spec p.88.
+func matrixHasCaps(m *canonical.Matrix) bool {
+	return m.MaximumTotalConnects != nil || m.MaximumConnectsPerTarget != nil
+}
+
+// rejectIfExceedsCap computes the would-be post-state of in against m
+// and, if it exceeds either of the declared caps (spec p.88), returns
+// (true, echo) where echo carries the unchanged current sources with
+// disposition=tally — the consumer-visible "your request was seen but
+// rejected" reply. Returns (false, _) when the request is within caps.
+func rejectIfExceedsCap(m *canonical.Matrix, in canonical.MatrixConnection) (bool, canonical.MatrixConnection) {
+	idx := findConnectionIndex(m.Connections, in.Target)
+	var wouldBe []int64
+	switch in.Operation {
+	case canonical.ConnOpConnect:
+		if idx >= 0 {
+			wouldBe = mergeSources(m.Connections[idx].Sources, in.Sources)
+		} else {
+			wouldBe = append([]int64{}, in.Sources...)
+		}
+	default: // absolute (and Disconnect already filtered out by caller)
+		wouldBe = append([]int64{}, in.Sources...)
+	}
+
+	if m.MaximumConnectsPerTarget != nil && int64(len(wouldBe)) > *m.MaximumConnectsPerTarget {
+		return true, currentTally(m, in.Target)
+	}
+	if m.MaximumTotalConnects != nil {
+		total := int64(0)
+		foundTarget := false
+		for _, c := range m.Connections {
+			if c.Target == in.Target {
+				total += int64(len(wouldBe))
+				foundTarget = true
+			} else {
+				total += int64(len(c.Sources))
+			}
+		}
+		if !foundTarget {
+			// New target not yet in m.Connections — its post-state
+			// sources still count toward the matrix-wide total.
+			total += int64(len(wouldBe))
+		}
+		if total > *m.MaximumTotalConnects {
+			return true, currentTally(m, in.Target)
+		}
+	}
+	return false, canonical.MatrixConnection{}
+}
+
+// currentTally echoes the existing sources of the target with
+// disposition=tally — the spec p.89 shape for "no change, current
+// state".
+func currentTally(m *canonical.Matrix, target int64) canonical.MatrixConnection {
+	var current []int64
+	if idx := findConnectionIndex(m.Connections, target); idx >= 0 {
+		current = append([]int64{}, m.Connections[idx].Sources...)
+	}
+	return canonical.MatrixConnection{
+		Target:      target,
+		Sources:     current,
+		Operation:   canonical.ConnOpAbsolute,
+		Disposition: canonical.ConnDispTally,
+	}
 }
 
 // applyOneConnection mutates m.Connections for a single inbound change and
