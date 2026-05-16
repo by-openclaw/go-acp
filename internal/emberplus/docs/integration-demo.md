@@ -102,9 +102,15 @@ routing to it and watch the rejection.
     --args "1.1.3,3,false"
 
 # Snapshot the oneToN matrix's current routing into salvo ID 5.
+# 3rd arg is a CSV of target numbers to include — empty = all targets.
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path "dhs-emberplus-integration.functions.storeSalvo" `
-    --args "1.1.3,5"
+    --args "1.1.3,5,"
+
+# Or snapshot only targets 0, 2, 5 from the oneToN matrix.
+.\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
+    --path "dhs-emberplus-integration.functions.storeSalvo" `
+    --args "1.1.3,5,0,2,5"
 
 # Recall salvo 5 — restores the snapshotted routing. Returns rows restored.
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `

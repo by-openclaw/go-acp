@@ -313,24 +313,77 @@ func (s *server) makeBuiltinRecallSalvo() FunctionImpl {
 	}
 }
 
-// makeBuiltinStoreSalvo binds a store callback. Args mirror recallSalvo.
-// Snapshots the matrix's current connections under salvoID. Returns true
-// on success; false if the ref does not resolve to a Matrix element.
+// filterConnectionsByTargets returns the subset of `conns` whose
+// Target matches one of the comma-separated integers in `csv`. Empty
+// `csv` returns the input unchanged (snapshot-all back-compat).
+// Invalid integers in the CSV are skipped silently. Per spec p.91
+// Tuple — each function arg carries one Value, so a target list rides
+// in as a delimited string.
+func filterConnectionsByTargets(conns []canonical.MatrixConnection, csv string) []canonical.MatrixConnection {
+	csv = strings.TrimSpace(csv)
+	if csv == "" {
+		return conns
+	}
+	want := map[int64]struct{}{}
+	for _, tok := range strings.Split(csv, ",") {
+		tok = strings.TrimSpace(tok)
+		if tok == "" {
+			continue
+		}
+		if n, err := strconv.ParseInt(tok, 10, 64); err == nil {
+			want[n] = struct{}{}
+		}
+	}
+	if len(want) == 0 {
+		return nil
+	}
+	out := make([]canonical.MatrixConnection, 0, len(want))
+	for _, c := range conns {
+		if _, ok := want[c.Target]; ok {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// makeBuiltinStoreSalvo binds a store callback. Args:
+//   - args[0] string matrixPath — OID or dotted identifier path
+//   - args[1] int64  salvoID
+//   - args[2] string targets    — CSV of target numbers (e.g. "0,2,5")
+//                                  to snapshot. Empty/missing = snapshot
+//                                  every current connection. Strict per
+//                                  spec p.91 Tuple semantics — each arg
+//                                  is one Value, lists encode as
+//                                  delimited strings.
+//
+// Returns true if at least one connection was stored. False when the
+// matrix resolves but no listed target has any current sources, or the
+// ref does not resolve to a Matrix.
 func (s *server) makeBuiltinStoreSalvo() FunctionImpl {
 	return func(args []any) ([]any, error) {
 		if len(args) < 2 {
-			return nil, fmt.Errorf("storeSalvo: need (matrixPath, salvoID)")
+			return nil, fmt.Errorf("storeSalvo: need (matrixPath, salvoID[, targets])")
 		}
 		matrixRef, okP := args[0].(string)
 		salvoID, okS := asInt64(args[1])
 		if !okP || !okS {
 			return nil, fmt.Errorf("storeSalvo: bad arg types (%T, %T)", args[0], args[1])
 		}
+		targetFilter := ""
+		if len(args) >= 3 {
+			if s, ok := args[2].(string); ok {
+				targetFilter = s
+			}
+		}
 		oid, m, ok := s.resolveMatrix(matrixRef)
 		if !ok {
 			return []any{false}, nil
 		}
-		s.salvos.store(oid, salvoID, m.Connections)
+		filtered := filterConnectionsByTargets(m.Connections, targetFilter)
+		if len(filtered) == 0 {
+			return []any{false}, nil
+		}
+		s.salvos.store(oid, salvoID, filtered)
 		return []any{true}, nil
 	}
 }

@@ -490,6 +490,98 @@ func TestApplyConnection_NToN_MaxTotal_Rejects(t *testing.T) {
 	}
 }
 
+// TestStoreSalvo_FilterByTargets exercises the per-target salvo
+// snapshot — spec p.91 Tuple says each function arg is one Value, so
+// the target list rides in as a CSV string. Empty CSV = snapshot all.
+func TestStoreSalvo_FilterByTargets(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixNToN,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0, 1}},
+			{Target: 1, Sources: []int64{1}},
+			{Target: 2, Sources: []int64{2, 3}},
+			{Target: 5, Sources: []int64{5}},
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	store := srv.makeBuiltinStoreSalvo()
+	recall := srv.makeBuiltinRecallSalvo()
+	list := srv.makeBuiltinListSalvos()
+
+	// Snapshot only targets 0 and 5 into salvo 7.
+	if _, err := store([]any{"1.1", int64(7), "0,5"}); err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	// Listed salvos for this matrix should now contain 7.
+	res, err := list([]any{"1.1"})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(res) == 0 || res[0].(string) == "" {
+		t.Fatalf("listSalvos returned empty — salvo 7 not stored")
+	}
+
+	// Trash the live state on the filtered targets, leave others alone.
+	srv.tree.byOID["1.1"].el.(*canonical.Matrix).Connections[0].Sources = []int64{}
+	srv.tree.byOID["1.1"].el.(*canonical.Matrix).Connections[3].Sources = []int64{}
+	// Recall the salvo — only targets 0 + 5 must restore; targets 1 + 2
+	// stay as they are (because they were NOT in the salvo).
+	res, err = recall([]any{"1.1", int64(7)})
+	if err != nil {
+		t.Fatalf("recall: %v", err)
+	}
+	if n, _ := asInt64(res[0]); n != 2 {
+		t.Errorf("recall rows = %d, want 2 (only the snapshotted targets)", n)
+	}
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		switch c.Target {
+		case 0:
+			if len(c.Sources) != 2 || c.Sources[0] != 0 || c.Sources[1] != 1 {
+				t.Errorf("target 0 sources = %v, want [0 1] (restored)", c.Sources)
+			}
+		case 5:
+			if len(c.Sources) != 1 || c.Sources[0] != 5 {
+				t.Errorf("target 5 sources = %v, want [5] (restored)", c.Sources)
+			}
+		}
+	}
+}
+
+// TestStoreSalvo_EmptyTargets_SnapshotsAll asserts the back-compat
+// path — empty 3rd arg (or no 3rd arg) snapshots every current
+// connection. Matches the original PR #72 / 326a21e semantics.
+func TestStoreSalvo_EmptyTargets_SnapshotsAll(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixNToN,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0}},
+			{Target: 1, Sources: []int64{1}},
+			{Target: 2, Sources: []int64{2}},
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	store := srv.makeBuiltinStoreSalvo()
+	recall := srv.makeBuiltinRecallSalvo()
+
+	// 2-arg call (no targets) and explicit-empty 3-arg call must both work.
+	if res, err := store([]any{"1.1", int64(1)}); err != nil || !res[0].(bool) {
+		t.Fatalf("2-arg store: res=%v err=%v", res, err)
+	}
+	if res, err := store([]any{"1.1", int64(2), ""}); err != nil || !res[0].(bool) {
+		t.Fatalf("explicit-empty store: res=%v err=%v", res, err)
+	}
+	for _, salvoID := range []int64{1, 2} {
+		res, err := recall([]any{"1.1", salvoID})
+		if err != nil {
+			t.Fatalf("recall %d: %v", salvoID, err)
+		}
+		if n, _ := asInt64(res[0]); n != 3 {
+			t.Errorf("salvo %d recall rows = %d, want 3 (all targets snapshotted)", salvoID, n)
+		}
+	}
+}
+
 // TestApplyConnection_NToN_ConnectOp_Unions confirms nToN is NOT
 // coerced — Connect on nToN still unions (many-to-many is the point).
 func TestApplyConnection_NToN_ConnectOp_Unions(t *testing.T) {
