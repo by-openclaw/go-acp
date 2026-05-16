@@ -123,21 +123,23 @@ func (s *server) applyMatrixConnections(matrixOID string, incoming []canonical.M
 			continue
 		}
 
-		// oneToN + oneToOne enforce target-side cardinality of 1 BOTH on
-		// the incoming list and against any pre-existing connection.
-		// EmberViewer (and most Ember+ clients) send Operation=Connect
-		// on user clicks; Connect performs a union via applyOneConnection,
-		// which for these matrix types would leave the target holding
-		// (oldSrc + newSrc) = 2 sources — violating the invariant.
-		// Disconnect would leave the target unrouted, also a violation.
-		// Coerce both to Absolute so the target's single source is
-		// replaced, matching spec p.33 and what the user expects from
-		// a mouse click ("route src X to tgt Y").
+		// oneToN + oneToOne enforce target-side cardinality of 1. Connect
+		// performs a union via applyOneConnection, which on these matrix
+		// types would leave the target holding (oldSrc + newSrc) = 2
+		// sources — violating the invariant. Coerce Connect to Absolute
+		// so the single source is replaced, matching spec p.89 plus the
+		// click-to-route UX every Ember+ client implements.
+		//
+		// Disconnect is NOT coerced — spec p.89 ConnectionOperation says
+		// Disconnect removes the listed sources, and an empty sources[]
+		// after the subtract is valid (target unrouted). Earlier coercion
+		// of Disconnect → Absolute (PR #98) broke this — it kept the
+		// target routed instead of clearing it.
 		if m.Type == canonical.MatrixOneToN || m.Type == canonical.MatrixOneToOne {
 			if len(in.Sources) > 1 {
 				in.Sources = in.Sources[:1]
 			}
-			if in.Operation == canonical.ConnOpConnect || in.Operation == canonical.ConnOpDisconnect {
+			if in.Operation == canonical.ConnOpConnect {
 				in.Operation = canonical.ConnOpAbsolute
 			}
 		}

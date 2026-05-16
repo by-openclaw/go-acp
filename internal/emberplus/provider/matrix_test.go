@@ -360,6 +360,71 @@ func TestApplyConnection_OneToOne_ConnectOp_ReplacesAndSteals(t *testing.T) {
 	}
 }
 
+// TestApplyConnection_OneToN_Disconnect_ClearsTarget asserts that
+// Disconnect on a oneToN matrix actually CLEARS the target's source
+// per spec p.89. Earlier (PR #98) Disconnect was coerced to Absolute,
+// which kept the target routed instead of clearing it — that was the
+// regression. Empty sources[] after the subtract is valid; the spec
+// permits an unrouted target.
+func TestApplyConnection_OneToN_Disconnect_ClearsTarget(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixOneToN,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{5}}, // t-0 currently ← s-5
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 0, Sources: []int64{5}, Operation: canonical.ConnOpDisconnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post) != 1 {
+		t.Fatalf("want 1 echo connection, got %d", len(post))
+	}
+	if len(post[0].Sources) != 0 {
+		t.Errorf("post sources = %v, want [] (Disconnect cleared the target — PR #98 regression check)", post[0].Sources)
+	}
+	// Tree state must match.
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		if c.Target == 0 && len(c.Sources) != 0 {
+			t.Errorf("tree target 0 sources = %v, want [] (Disconnect must clear in tree, not echo only)", c.Sources)
+		}
+	}
+}
+
+// TestApplyConnection_OneToOne_Disconnect_LeavesEmpty: same Disconnect
+// semantics on oneToOne. After Disconnect{tgt=0, sources=[3]} the target
+// has no source and the bijection allows that empty state per spec.
+func TestApplyConnection_OneToOne_Disconnect_LeavesEmpty(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixOneToOne,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{3}},
+			{Target: 1, Sources: []int64{4}},
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 0, Sources: []int64{3}, Operation: canonical.ConnOpDisconnect},
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if len(post) != 1 || post[0].Target != 0 || len(post[0].Sources) != 0 {
+		t.Errorf("post = %+v, want [{target=0 sources=[]}]", post)
+	}
+	// t-1 must remain untouched.
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		if c.Target == 1 && (len(c.Sources) != 1 || c.Sources[0] != 4) {
+			t.Errorf("t-1 unintentionally changed: %v, want [4]", c.Sources)
+		}
+	}
+}
+
 // TestApplyConnection_NToN_ConnectOp_Unions confirms nToN is NOT
 // coerced — Connect on nToN still unions (many-to-many is the point).
 func TestApplyConnection_NToN_ConnectOp_Unions(t *testing.T) {
