@@ -170,12 +170,15 @@ func (p *Plugin) SetWildcardSubscribeFilter(paths []string, noStreams, streamsOn
 	p.wildcardFilterMu.Unlock()
 }
 
-// wildcardMatches returns true when a discovered Parameter passes the
-// active filter (or there is no filter). Called from
-// subscribeAllParameters (post-walk batch) and subscribeOnDiscovery
-// (per-Parameter during walk).
+// wildcardMatches returns true when a tree entry passes the active
+// filter (or there is no filter). Used by both the Parameter
+// notification path (notifySubscribers / subscribeAllParameters /
+// subscribeOnDiscovery) and the Matrix notification path
+// (notifyMatrixSubscribers). Non-Parameter entries (Matrix, Node,
+// Function) have no streamIdentifier and are treated as non-stream
+// for the --streams-only / --no-streams flags.
 func (p *Plugin) wildcardMatches(entry *treeEntry) bool {
-	if entry == nil || entry.glowParam == nil {
+	if entry == nil {
 		return false
 	}
 	p.wildcardFilterMu.RLock()
@@ -184,11 +187,16 @@ func (p *Plugin) wildcardMatches(entry *treeEntry) bool {
 	streamsOnly := p.wildcardStreamsOnly
 	p.wildcardFilterMu.RUnlock()
 
-	isStream := entry.glowParam.StreamIdentifier != 0
+	isStream := false
+	if entry.glowParam != nil {
+		isStream = entry.glowParam.StreamIdentifier != 0
+	}
 	if skipStreams && isStream {
 		return false
 	}
 	if streamsOnly && !isStream {
+		// --streams-only drops non-stream entries — Matrix events,
+		// plain Parameters, Node events all classify as non-stream.
 		return false
 	}
 	if len(paths) == 0 {
@@ -1883,7 +1891,17 @@ func (p *Plugin) notifyMatrixSubscribers(entry *treeEntry, c glow.Connection) {
 	fn := p.subs[numKey]
 	wildcard := p.subs["*"]
 	p.subsMu.RUnlock()
+	// Same wildcard-filter gate as notifySubscribers: when only the
+	// wildcard would fire (no per-matrix subscriber), respect the
+	// --path / --no-streams / --streams-only filter. Per spec p.88
+	// matrix change events are implicitly subscribed via GetDirectory
+	// on the matrix, so the provider keeps emitting; the filter is
+	// the consumer's mechanism to scope what the wildcard watcher
+	// sees.
 	if fn == nil {
+		if wildcard == nil || !p.wildcardMatches(entry) {
+			return
+		}
 		fn = wildcard
 	}
 	if fn == nil {
