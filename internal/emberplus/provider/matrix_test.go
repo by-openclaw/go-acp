@@ -125,6 +125,72 @@ func TestRoundTrip_Matrix_NToN(t *testing.T) {
 	}
 }
 
+// TestMatrixLocked_RejectsConnect proves the full spec p.89 lock
+// enforcement path end-to-end:
+//
+//  1. A canonical seed with disposition="locked" on target 2 must
+//     populate the runtime lockStore at boot (so the rejection can
+//     fire without an external setLock invocation).
+//
+//  2. An incoming Connect on the locked target must NOT mutate the
+//     matrix state — m.Connections[target=2].Sources stays unchanged.
+//
+//  3. The provider's response to the locked Connect must echo back
+//     the current sources with disposition=locked, signalling the
+//     consumer that the request was seen and rejected.
+func TestMatrixLocked_RejectsConnect(t *testing.T) {
+	m := &canonical.Matrix{
+		Type: canonical.MatrixNToN,
+		Mode: canonical.ModeLinear,
+		Connections: []canonical.MatrixConnection{
+			{Target: 0, Sources: []int64{0}, Operation: canonical.ConnOpAbsolute, Disposition: canonical.ConnDispTally},
+			{Target: 1, Sources: []int64{1}, Operation: canonical.ConnOpAbsolute, Disposition: canonical.ConnDispTally},
+			{Target: 2, Sources: []int64{2}, Operation: canonical.ConnOpAbsolute, Disposition: canonical.ConnDispLocked, Locked: true},
+		},
+	}
+	srv := buildMatrixTree(t, m)
+	if srv.locks == nil {
+		t.Fatal("lockStore not initialised on server")
+	}
+	if !srv.locks.isLocked("1.1", 2) {
+		t.Fatal("target 2 should be locked from canonical seed but lockStore reports unlocked — boot-time pre-seed missing")
+	}
+
+	// Consumer tries to reroute the locked target to a new source.
+	post, err := srv.applyMatrixConnections("1.1", []canonical.MatrixConnection{
+		{Target: 2, Sources: []int64{99}, Operation: canonical.ConnOpAbsolute},
+	})
+	if err != nil {
+		t.Fatalf("applyMatrixConnections: %v", err)
+	}
+
+	// Echo must carry disposition=locked + original sources unchanged.
+	if len(post) != 1 {
+		t.Fatalf("want 1 echo connection, got %d: %+v", len(post), post)
+	}
+	if post[0].Target != 2 {
+		t.Errorf("echo target = %d, want 2", post[0].Target)
+	}
+	if post[0].Disposition != canonical.ConnDispLocked {
+		t.Errorf("echo disposition = %q, want %q (spec p.89 reject)", post[0].Disposition, canonical.ConnDispLocked)
+	}
+	if len(post[0].Sources) != 1 || post[0].Sources[0] != 2 {
+		t.Errorf("echo sources = %v, want [2] (state unchanged on locked target)", post[0].Sources)
+	}
+
+	// Mutation check: the underlying tree must still show target 2 → source 2.
+	updated := srv.tree.byOID["1.1"].el.(*canonical.Matrix)
+	for _, c := range updated.Connections {
+		if c.Target == 2 {
+			if len(c.Sources) != 1 || c.Sources[0] != 2 {
+				t.Errorf("tree mutated: target 2 sources = %v, want [2] (lock should have blocked the change)", c.Sources)
+			}
+			return
+		}
+	}
+	t.Fatal("target 2 connection vanished from tree after locked Connect")
+}
+
 // TestEncodeMatrix_DTD230Fields asserts the Matrix encoder emits the
 // two MatrixContents fields introduced by DTD 2.30 (spec p.88):
 //

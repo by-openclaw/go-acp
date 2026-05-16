@@ -139,6 +139,25 @@ func (s *server) setupBuiltinFunctions() {
 	s.salvos = newSalvoStore()
 	s.locks = newLockStore()
 
+	// Pre-seed the lock store from canonical state. A connection with
+	// disposition="locked" or locked=true in the seed represents an
+	// already-locked target; without this, the runtime lockStore is
+	// empty at boot and applyMatrixConnections (spec p.89 enforcement
+	// path) would let any incoming Connect rewrite the supposedly
+	// locked target. Walk every matrix in the tree once at startup.
+	for _, ent := range s.tree.byOID {
+		mtx, ok := ent.el.(*canonical.Matrix)
+		if !ok {
+			continue
+		}
+		moid := mtx.OID
+		for _, c := range mtx.Connections {
+			if c.Locked || c.Disposition == canonical.ConnDispLocked {
+				s.locks.set(moid, c.Target, true)
+			}
+		}
+	}
+
 	s.walkFunctions(s.tree.root, func(e *entry, f *canonical.Function) {
 		oid := e.el.Common().OID
 		switch f.Identifier {
