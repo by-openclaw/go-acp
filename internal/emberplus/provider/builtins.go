@@ -169,6 +169,8 @@ func (s *server) setupBuiltinFunctions() {
 			s.funcs.register(oid, s.makeBuiltinStoreSalvo())
 		case "listSalvos", "list":
 			s.funcs.register(oid, s.makeBuiltinListSalvos())
+		case "getSalvo":
+			s.funcs.register(oid, s.makeBuiltinGetSalvo())
 		case "setLock", "lock":
 			s.funcs.register(oid, s.makeBuiltinSetLock())
 		case "listLocks", "locks":
@@ -314,22 +316,24 @@ func (s *server) makeBuiltinRecallSalvo() FunctionImpl {
 }
 
 // filterConnectionsByTargets returns the subset of `conns` whose
-// Target matches one of the comma-separated integers in `csv`. Empty
-// `csv` returns the input unchanged (snapshot-all back-compat).
-// Invalid integers in the CSV are skipped silently. Per spec p.91
-// Tuple — each function arg carries one Value, so a target list rides
-// in as a delimited string.
-func filterConnectionsByTargets(conns []canonical.MatrixConnection, csv string) []canonical.MatrixConnection {
-	csv = strings.TrimSpace(csv)
-	if csv == "" {
+// Target matches one of the integers in `list`. Empty `list` returns
+// the input unchanged (snapshot-all back-compat). Invalid integers in
+// the list are skipped silently. Per spec p.91 Tuple — each function
+// arg carries one Value, so a target list rides in as a delimited
+// string. Any non-digit (and non-leading-minus) byte is a separator —
+// `0,2` / `0;2` / `0|2` / `0 2` all parse the same. This dodges the
+// PowerShell quoting trap where `--args "X,Y,`"0,2`""` collapses to
+// empty third arg because PS strips the inner double-quotes before
+// the process sees them.
+func filterConnectionsByTargets(conns []canonical.MatrixConnection, list string) []canonical.MatrixConnection {
+	list = strings.TrimSpace(list)
+	if list == "" {
 		return conns
 	}
 	want := map[int64]struct{}{}
-	for _, tok := range strings.Split(csv, ",") {
-		tok = strings.TrimSpace(tok)
-		if tok == "" {
-			continue
-		}
+	for _, tok := range strings.FieldsFunc(list, func(r rune) bool {
+		return r != '-' && (r < '0' || r > '9')
+	}) {
 		if n, err := strconv.ParseInt(tok, 10, 64); err == nil {
 			want[n] = struct{}{}
 		}
@@ -414,5 +418,53 @@ func (s *server) makeBuiltinListSalvos() FunctionImpl {
 			parts[i] = strconv.FormatInt(id, 10)
 		}
 		return []any{strings.Join(parts, ",")}, nil
+	}
+}
+
+// makeBuiltinGetSalvo returns the crosspoint dump of one stored salvo as
+// a string. Args:
+//   - args[0] string matrixPath — OID or dotted identifier path
+//   - args[1] int64  salvoID
+//
+// Output format: semicolon-separated "<tgt>=<csvSrcs>" clusters, ascending
+// by target. An empty source list means "target unrouted" (spec p.89).
+//
+// Example: salvo with target 0 → [1,2], target 5 → [3], target 7 → []
+// returns "0=1,2;5=3;7=".
+//
+// Empty string for an unknown matrix or salvo ID — same cheap-probe
+// convention as listSalvos.
+func (s *server) makeBuiltinGetSalvo() FunctionImpl {
+	return func(args []any) ([]any, error) {
+		if len(args) < 2 {
+			return nil, fmt.Errorf("getSalvo: need (matrixPath, salvoID)")
+		}
+		matrixRef, ok := args[0].(string)
+		if !ok {
+			return nil, fmt.Errorf("getSalvo: bad matrixPath type (%T)", args[0])
+		}
+		salvoID, ok := args[1].(int64)
+		if !ok {
+			return nil, fmt.Errorf("getSalvo: bad salvoID type (%T)", args[1])
+		}
+		oid, _, ok := s.resolveMatrix(matrixRef)
+		if !ok {
+			return []any{""}, nil
+		}
+		conns, ok := s.salvos.recall(oid, salvoID)
+		if !ok {
+			return []any{""}, nil
+		}
+		sorted := append([]canonical.MatrixConnection(nil), conns...)
+		sort.Slice(sorted, func(i, j int) bool { return sorted[i].Target < sorted[j].Target })
+		parts := make([]string, 0, len(sorted))
+		for _, c := range sorted {
+			srcs := make([]string, len(c.Sources))
+			for i, s := range c.Sources {
+				srcs[i] = strconv.FormatInt(s, 10)
+			}
+			parts = append(parts, strconv.FormatInt(c.Target, 10)+"="+strings.Join(srcs, ","))
+		}
+		return []any{strings.Join(parts, ";")}, nil
 	}
 }
