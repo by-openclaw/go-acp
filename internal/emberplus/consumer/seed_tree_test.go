@@ -91,6 +91,37 @@ func TestSeed_StreamIndex(t *testing.T) {
 	}
 }
 
+// TestSeed_StreamIndexZero pins #436: a parameter cached with
+// streamIdentifier=0 must round-trip as a stream parameter (present
+// with value 0), not be silently treated as absent. The canonicalize
+// layer (plugin.go) only writes Meta["streamIdentifier"] when
+// HasStreamIdentifier is true, so presence of the Meta key IS the
+// presence bit on the seed side.
+func TestSeed_StreamIndexZero(t *testing.T) {
+	p := newSeedTestPlugin()
+	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+		OID:   "1.4.1.3",
+		Label: "value",
+		Path:  []string{"router", "streams", "stream0", "value"},
+		Meta: map[string]any{
+			"element":          "parameter",
+			"type":             "integer",
+			"streamIdentifier": float64(0),
+		},
+	}})
+	entry := p.numIndex["1.4.1.3"]
+	if entry == nil || entry.glowParam == nil {
+		t.Fatal("glowParam missing for seeded parameter")
+	}
+	if !entry.glowParam.HasStreamIdentifier {
+		t.Error("HasStreamIdentifier = false, want true (id=0 present in cache)")
+	}
+	paths := p.streamIndex[0]
+	if len(paths) != 1 || paths[0] != "1.4.1.3" {
+		t.Errorf("streamIndex[0] = %v, want [1.4.1.3] (id=0 must index)", paths)
+	}
+}
+
 // TestSeed_Matrix rebuilds a Matrix with enough to satisfy the matrix
 // verb's gate (`entry.glowMatrix != nil`) and SendMatrixConnect's path
 // arg.

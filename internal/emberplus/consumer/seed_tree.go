@@ -99,7 +99,7 @@ func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
 		if o.Label != "" {
 			p.labelIndex[o.Label] = append(p.labelIndex[o.Label], entry)
 		}
-		if entry.glowParam != nil && entry.glowParam.StreamIdentifier != 0 {
+		if entry.glowParam != nil && entry.glowParam.HasStreamIdentifier {
 			p.subsMu.Lock()
 			id := entry.glowParam.StreamIdentifier
 			p.streamIndex[id] = append(p.streamIndex[id], numKey)
@@ -142,13 +142,15 @@ func (p *Plugin) seedOneEntry(o protocol.Object, now time.Time) *treeEntry {
 		if t := metaString(o.Meta, "type"); t != "" {
 			param.Type = paramTypeFromName(t)
 		}
-		// Stream identifier. NOTE: until #436 (PR #437) merges and adds
-		// HasStreamIdentifier, id=0 is indistinguishable from "absent".
-		// After that PR merges, this branch rebases and a follow-up
-		// preserves the presence bit through the cache round-trip.
+		// Stream identifier. The canonicalize layer (plugin.go ~1438)
+		// only writes Meta["streamIdentifier"] when HasStreamIdentifier
+		// is true, so presence of the Meta key IS the presence bit.
+		// Restore both fields so id=0 round-trips through the cache
+		// (matches the on-wire fix from #436 / PR #437).
 		if v, ok := o.Meta["streamIdentifier"]; ok {
 			if id, ok := metaInt64(v); ok {
 				param.StreamIdentifier = id
+				param.HasStreamIdentifier = true
 			}
 		}
 		entry.glowParam = param
