@@ -48,7 +48,7 @@ five deliverables below.
 
 ## Decision
 
-A connector is **DONE** only when **all five** deliverables below exist
+A connector is **DONE** only when **all six** deliverables below exist
 together. Missing any one of them means the connector is incomplete;
 work continues on that connector before the next connector starts and
 before any per-connector PR is approved for merge. No "ship now, finish
@@ -61,6 +61,7 @@ later" framing.
 | 3 | **Integration test** driving the actual `dhs consumer/producer <proto> <verb>` CLI binary | `internal/<proto>/integration/` (Go, `-tags integration`) and/or `scripts/<proto>/verify-*.ps1` for live-rig parity | Per-test classification: `PASS` / `FAIL-real` (a real bug) / `FAIL-expected` (an error-handling reject path correctly rejected) / `TIMEOUT` (consumer sent CLI against a dead producer). Output must say *why* on every non-pass so the operator acts without reading source. |
 | 4 | **DM + manifest generator** | Go function under `internal/<proto>/integration/` that writes a local `.cache/dm/<proto>/...` + `.cache/manifest/...` next to the test files (NOT the codeowner's repo-root `.cache/`) | Tests invoke the generator in `setUp`. Tests **MUST NOT** `t.Skip` when the cache is empty — they must generate. The generator's Go source is the durable artefact. |
 | 5 | **Wireshark dissector** `internal/<proto>/wireshark/dhs_<proto>.lua` | Covers every transport, every wire version, every command / type-tag the connector implements. Per-frame Info column carries the discriminating arguments (matrix/level/dst/src for SW-P-08; slot/type/pid/stat for ACP2; address+typetag+argcount for OSC; etc.). | See `internal/<proto>/wireshark/` + `feedback_wireshark_fully_implemented`. |
+| 6 | **Replay fixture set** under `internal/<proto>/testdata/` | Layout: `testdata/protocol_types/<typename>/` (one folder per spec type / command / message kind, each containing the raw wire capture + canonical tree + per-type doc), `testdata/fixtures/` (multi-frame golden scenarios), `testdata/exports/` (canonical exports for round-trip checks). Reference shape: `internal/acp1/testdata/` (`.pcapng` raw + `.tree` canonical + per-type `.md`). | Lets every connector replay raw / pcap at any time, in CI, without needing live device access. Promotion rules from local `captures/<proto>/<ip>/<scenario>/` to committed `testdata/` live in `captures/README.md` (size cap, edge-case justification, byte-stability). |
 
 Documentation deliverables travel alongside but are not gated by the
 ADR — they are required at PR time per ADR-0015 (single source of
@@ -74,7 +75,7 @@ truth):
 1. **Before starting work on any connector**, audit the connector against the five-deliverable checklist. Flag missing pieces explicitly.
 2. **Each PR must cite which deliverable it advances** for which connector, plus the state of the other four (`done` / `partial` / `missing`).
 3. **One PR advances one deliverable for one connector**. No PR can combine "connector A integration test" with "connector B fix" — that's the bundle pattern ADR-0013 already forbids, restated here for the avoidance of doubt.
-4. **No connector PR is approved for merge until all five exist** for that connector. The integration test in (3) is the truth source: green there = real green; failing there = the wire is broken, fix the wire, never the test.
+4. **No connector PR is approved for merge until all six exist** for that connector. The integration test in (3) is the truth source: green there = real green; failing there = the wire is broken, fix the wire, never the test.
 5. **CI gates** must run the integration tests (Go `-tags integration` plus the PowerShell verify scripts where applicable). If CI does not run them, CI is not vouching for the connector.
 6. **Cross-protocol regressions are blockers** — any PR that touches shared layers (transport, manifest, storage, `cmd/dhs/*`) re-verifies every connector's integration test before merge per `feedback_no_cross_protocol_regression`.
 
@@ -107,3 +108,10 @@ truth):
 ## Revisions
 
 - 2026-05-16 — initial proposal (issue #447).
+- 2026-05-17 — added deliverable #6 (replay fixture set under
+  `internal/<proto>/testdata/`). Every connector must commit a replay
+  surface (raw `.pcapng` + canonical `.tree` + per-type `.md`) so CI and
+  any developer can re-decode the wire at any time without needing the
+  device. Reference shape: `internal/acp1/testdata/`. Promotion rules
+  from `captures/` to `testdata/` already documented in
+  `captures/README.md`.
