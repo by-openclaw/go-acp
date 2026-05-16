@@ -724,7 +724,9 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	if val.Kind == protocol.KindUnknown {
 		val.Kind = entry.obj.Kind
 	}
-	coerceStringToTyped(&val)
+	if err := coerceStringToTyped(&val); err != nil {
+		return protocol.Value{}, err
+	}
 
 	glowVal := valueToGlow(val)
 
@@ -2292,36 +2294,68 @@ func appendEnumMap(existing []string, em map[int64]string) []string {
 // coerceStringToTyped parses val.Str into the typed field that matches
 // val.Kind. Called when the CLI passes --value as a string but the
 // parameter type is numeric/boolean/enum.
-func coerceStringToTyped(val *protocol.Value) {
+//
+// On parse failure the function returns a *protocol.ValidationError so
+// the CLI exits with status 2 (usage error) and the typed field is NOT
+// silently coerced to the Go zero value. Refs #445 — the previous
+// behaviour silently rewrote "-25.5" → 0 for an integer Parameter,
+// which violates the strict-spec posture in internal/emberplus/CLAUDE.md.
+//
+// KindBool stays permissive ("true"/"1"/"yes" → true; anything else →
+// false) to preserve existing CLI semantics — booleans have no natural
+// invalid form and operators routinely pass "off"/"no"/"0" expecting
+// the obvious mapping.
+func coerceStringToTyped(val *protocol.Value) error {
 	if val.Str == "" || val.Kind == protocol.KindString {
-		return
+		return nil
 	}
 	switch val.Kind {
 	case protocol.KindInt:
-		if n, err := strconv.ParseInt(val.Str, 10, 64); err == nil {
-			val.Int = n
-			val.Str = ""
+		n, err := strconv.ParseInt(val.Str, 10, 64)
+		if err != nil {
+			return &protocol.ValidationError{
+				Field:  "value",
+				Reason: fmt.Sprintf("invalid integer %q", val.Str),
+			}
 		}
+		val.Int = n
+		val.Str = ""
 	case protocol.KindUint:
-		if n, err := strconv.ParseUint(val.Str, 10, 64); err == nil {
-			val.Uint = n
-			val.Str = ""
+		n, err := strconv.ParseUint(val.Str, 10, 64)
+		if err != nil {
+			return &protocol.ValidationError{
+				Field:  "value",
+				Reason: fmt.Sprintf("invalid unsigned integer %q", val.Str),
+			}
 		}
+		val.Uint = n
+		val.Str = ""
 	case protocol.KindFloat:
-		if f, err := strconv.ParseFloat(val.Str, 64); err == nil {
-			val.Float = f
-			val.Str = ""
+		f, err := strconv.ParseFloat(val.Str, 64)
+		if err != nil {
+			return &protocol.ValidationError{
+				Field:  "value",
+				Reason: fmt.Sprintf("invalid real %q", val.Str),
+			}
 		}
+		val.Float = f
+		val.Str = ""
 	case protocol.KindBool:
 		val.Bool = val.Str == "true" || val.Str == "1" || val.Str == "yes"
 		val.Str = ""
 	case protocol.KindEnum:
-		if n, err := strconv.ParseUint(val.Str, 10, 8); err == nil {
-			val.Enum = uint8(n)
-			val.Uint = n
-			val.Str = ""
+		n, err := strconv.ParseUint(val.Str, 10, 8)
+		if err != nil {
+			return &protocol.ValidationError{
+				Field:  "value",
+				Reason: fmt.Sprintf("invalid enum index %q", val.Str),
+			}
 		}
+		val.Enum = uint8(n)
+		val.Uint = n
+		val.Str = ""
 	}
+	return nil
 }
 
 // valueToGlow renders a typed protocol.Value into a Glow-encoder input.
