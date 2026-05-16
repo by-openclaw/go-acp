@@ -132,13 +132,19 @@ function BuildMatrixSubtree($rootIdent, $rootOid, $matrixType, $tgtCount, $srcCo
     }
     $tgtsArr = @(); for ($i=0; $i -lt $tgtCount; $i++) { $tgtsArr += [ordered]@{ number = $i } }
     $srcsArr = @(); for ($i=0; $i -lt $srcCount; $i++) { $srcsArr += [ordered]@{ number = $i } }
+    # oneToN / oneToOne: cardinality invariant means maxConnectsPerTarget=1.
+    # Declared explicitly so consumers see the wire field per spec p.88 [7].
+    $maxPerTgt = $null
+    if ($matrixType -eq "oneToN" -or $matrixType -eq "oneToOne") {
+        $maxPerTgt = 1
+    }
     $matrix = [ordered]@{
         number = 3; identifier = "matrix"; path = "$rootIdent.matrix"; oid = "$base.3"
         isOnline = $true; access = "readWrite"
         type = $matrixType; mode = "linear"
         targetCount = $tgtCount; sourceCount = $srcCount
         maximumTotalConnects = $null
-        maximumConnectsPerTarget = $null
+        maximumConnectsPerTarget = $maxPerTgt
         parametersLocation = $null
         gainParameterNumber = $null
         labels = @(
@@ -286,8 +292,8 @@ $dynMatrix = [ordered]@{
     isOnline = $true; access = "readWrite"
     type = "nToN"; mode = "nonLinear"
     targetCount = $dynTgtCount; sourceCount = $dynSrcCount
-    maximumTotalConnects = $null
-    maximumConnectsPerTarget = $null
+    maximumTotalConnects = 50
+    maximumConnectsPerTarget = 4
     parametersLocation = $null
     gainParameterNumber = $null
     labels = @(
