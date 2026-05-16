@@ -92,8 +92,8 @@ concerns here.
 
 | Folder | State |
 |---|---|
-| `internal/snell-rollcall/` | pre-scaffold: gitignored vendor SDK dump (Snell RollCall, 1656 files of `.tpl` / `.mib` / `.zip` / `.exe` / `.doc`). Per ADR-0001 the contents move under `internal/snell-rollcall/assets/` when the connector itself is scaffolded (`consumer/` / `provider/` / `codec/` / `wireshark/` / `CLAUDE.md`). |
-| `internal/cerebrum-nb/provider/` | absent — provider intentionally deferred per `internal/cerebrum-nb/CLAUDE.md`; consumer + codec + wireshark already shipped. |
+| `internal/snell-rollcall/` | **future protocol**, gated on every current connector first satisfying the ADR-0025 six-deliverable bar. Today the directory only holds a gitignored local vendor SDK dump (1656 files of `.tpl` / `.mib` / `.zip` / `.exe` / `.doc`); no Go code, no registry entry. When work begins, per ADR-0001 the vendor materials move to `internal/snell-rollcall/assets/` alongside the scaffolded `consumer/` / `provider/` / `codec/` / `wireshark/` / `CLAUDE.md`. |
+| `internal/cerebrum-nb/provider/` | **consumer-only by design at this stage** — only the consumer + codec + wireshark layers are shipped. The provider side is not absent by oversight; it is intentionally not in scope at the current stage per `internal/cerebrum-nb/CLAUDE.md`. |
 
 ---
 
