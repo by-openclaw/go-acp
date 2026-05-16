@@ -14,6 +14,21 @@ import (
 //	0 identifier, 1 description, 2 arguments (TupleDescription), 3 result,
 //	4 templateReference.
 func (s *server) encodeQualifiedFunction(e *entry, f *canonical.Function) ber.TLV {
+	return ber.AppConstructed(glow.TagQualifiedFunction,
+		ber.ContextConstructed(glow.QFuncPath, ber.RelOID(encodeRelativeOID(e.oidParts))),
+		ber.ContextConstructed(glow.QFuncContents, encodeFunctionContents(f)),
+	)
+}
+
+// encodeFunctionContents builds the FunctionContents SET in ascending
+// CTX-tag order. Shared by encodeQualifiedFunction (APP[20]) and
+// encodeNonQualFunction (APP[19]) used inside TemplateElement.
+//
+// Spec p.91 FunctionContents fields:
+//
+//	0 identifier, 1 description, 2 arguments (TupleDescription),
+//	3 result, 4 templateReference.
+func encodeFunctionContents(f *canonical.Function) ber.TLV {
 	var kids []ber.TLV
 	kids = append(kids,
 		ber.ContextConstructed(glow.FuncContentIdentifier, ber.UTF8(f.Identifier))) // [0]
@@ -29,10 +44,17 @@ func (s *server) encodeQualifiedFunction(e *entry, f *canonical.Function) ber.TL
 		kids = append(kids,
 			ber.ContextConstructed(glow.FuncContentResult, encodeTupleDescription(f.Result))) // [3]
 	}
-	contents := ber.Set(kids...)
-	return ber.AppConstructed(glow.TagQualifiedFunction,
-		ber.ContextConstructed(glow.QFuncPath, ber.RelOID(encodeRelativeOID(e.oidParts))),
-		ber.ContextConstructed(glow.QFuncContents, contents),
+	return ber.Set(kids...)
+}
+
+// encodeNonQualFunction emits a non-qualified Function [APPLICATION 19]
+// for use inside a TemplateElement (spec p.84 CHOICE).
+//
+//	Function ::= [APPLICATION 19] SEQUENCE { number [0] Integer32, contents [1] FunctionContents, children [2] ElementCollection }
+func encodeNonQualFunction(number int32, f *canonical.Function) ber.TLV {
+	return ber.AppConstructed(glow.TagFunction,
+		ber.ContextConstructed(glow.FuncNumber, ber.Integer(int64(number))),
+		ber.ContextConstructed(glow.FuncContents, encodeFunctionContents(f)),
 	)
 }
 

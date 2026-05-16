@@ -46,6 +46,33 @@ func (s *server) encodeQualifiedMatrix(e *entry, m *canonical.Matrix) (ber.TLV, 
 	return ber.AppConstructed(glow.TagQualifiedMatrix, fields...), nil
 }
 
+// encodeNonQualMatrix emits a non-qualified Matrix [APPLICATION 13] for
+// use inside a TemplateElement (spec p.84 CHOICE). CTX[0] carries the
+// integer number instead of a path; targets/sources/connections still
+// follow the contents SET when present.
+//
+//	Matrix ::= [APPLICATION 13] SEQUENCE { number [0] Integer32, contents [1] MatrixContents, children [2], targets [3], sources [4], connections [5] }
+func encodeNonQualMatrix(number int32, m *canonical.Matrix) (ber.TLV, error) {
+	contents, err := encodeMatrixContents(m)
+	if err != nil {
+		return ber.TLV{}, err
+	}
+	fields := []ber.TLV{
+		ber.ContextConstructed(glow.MatrixNumber, ber.Integer(int64(number))),
+		ber.ContextConstructed(glow.MatrixContents, contents),
+	}
+	if len(m.Targets) > 0 {
+		fields = append(fields, ber.ContextConstructed(glow.MatrixTargets, encodeTargets(m.Targets)))
+	}
+	if len(m.Sources) > 0 {
+		fields = append(fields, ber.ContextConstructed(glow.MatrixSources, encodeSources(m.Sources)))
+	}
+	if len(m.Connections) > 0 {
+		fields = append(fields, ber.ContextConstructed(glow.MatrixConnections, encodeConnections(m.Connections)))
+	}
+	return ber.AppConstructed(glow.TagMatrix, fields...), nil
+}
+
 // encodeMatrixContents builds the [UNIVERSAL SET] inside [CTX 1] contents.
 // Field order is ascending CTX tag; optional fields absent when the
 // canonical value is zero / nil / default (type=oneToN, mode=linear).

@@ -41,7 +41,13 @@ const (
 	// DTD fields.
 	DTDGlow         byte = 0x01 // Glow DTD identifier
 	AppBytesLen     byte = 0x02 // Length of app bytes (DTD minor + major)
-	DTDMinorVersion byte = 0x1F // 31
+	// Provider advertises Glow DTD 2.60 — every element kind in
+	// `Ember+ Documentation.pdf` v2.50 is fully implemented, including
+	// Templates / QualifiedTemplates (spec p.84) and the DTD 2.30+
+	// schemaIdentifiers + templateReference contents fields. Shipping
+	// Lawo controllers (mc² / PowerCore) emit 0x3C 0x02 themselves so
+	// matching that label keeps wire-trace diffing trivial.
+	DTDMinorVersion byte = 0x3C // 60
 	DTDMajorVersion byte = 0x02 // 2
 )
 
@@ -76,7 +82,7 @@ type Frame struct {
 //	|   5    | flags           |   1   | 0xC0 Single / 0x80 First / 0x40 Last    |
 //	|   6    | DTD             |   1   | 0x01 Glow                               |
 //	|   7    | appBytesLen     |   1   | 0x02 (length of following DTD version)  |
-//	|   8    | DTD minor ver   |   1   | 0x1F (=31)                              |
+//	|   8    | DTD minor ver   |   1   | 0x3C (=60)                              |
 //	|   9    | DTD major ver   |   1   | 0x02 (=2)                               |
 //	|  10..  | BER payload     |   N   | Glow TLV tree                           |
 //	|  N+10  | CRC-CCITT16     |   2   | little-endian, over unescaped content   |
@@ -122,7 +128,7 @@ func Encode(f *Frame) []byte {
 			f.Flags,         // 4: flags
 			DTDGlow,         // 5: DTD type
 			AppBytesLen,     // 6: app bytes length (2)
-			DTDMinorVersion, // 7: DTD minor version (31)
+			DTDMinorVersion, // 7: DTD minor version (60)
 			DTDMajorVersion, // 8: DTD major version (2)
 		)
 		raw = append(raw, f.Payload...)
@@ -161,7 +167,7 @@ func Encode(f *Frame) []byte {
 //	|   4    | flags         |   1   | only on EmBER frames                |
 //	|   5    | DTD           |   1   | 0x01 Glow                           |
 //	|   6    | appBytesLen   |   1   | 0x02                                |
-//	|   7    | DTD minor ver |   1   | 31                                  |
+//	|   7    | DTD minor ver |   1   | 60                                  |
 //	|   8    | DTD major ver |   1   | 2                                   |
 //	|   9..  | payload       |   N   | BER Glow TLVs                       |
 //

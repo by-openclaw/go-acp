@@ -15,11 +15,12 @@ import (
 // server is the provider runtime. One listener, many sessions, a shared
 // tree, and a per-OID subscription table.
 type server struct {
-	logger *slog.Logger
-	tree   *tree
-	funcs  *functionRegistry
-	salvos *salvoStore
-	locks  *lockStore
+	logger    *slog.Logger
+	tree      *tree
+	templates []*canonical.TemplateEntry
+	funcs     *functionRegistry
+	salvos    *salvoStore
+	locks     *lockStore
 
 	mu       sync.Mutex
 	listener net.Listener
@@ -48,6 +49,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		s.logger.Error("tree build failed", slog.String("err", err.Error()))
 	} else {
 		s.tree = t
+		s.templates = exp.Templates
 		s.setupBuiltinFunctions()
 	}
 	return s

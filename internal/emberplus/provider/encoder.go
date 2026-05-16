@@ -55,6 +55,20 @@ func (s *server) encodeGetDirReply(e *entry, bareRoot bool) ([]byte, error) {
 			}
 			items = append(items, ber.ContextConstructed(0, tlv))
 		}
+		// Templates sit at the root of the served tree alongside the
+		// canonical root Node (spec p.84). When GetDirectory targets the
+		// root, every QualifiedTemplate joins the RootElementCollection so
+		// schemaIdentifiers / templateReference pointers earlier in the
+		// reply have a real target to resolve against.
+		if e == s.tree.rootEntry() && len(s.templates) > 0 {
+			for _, te := range s.templates {
+				tlv, err := encodeQualifiedTemplate(te)
+				if err != nil {
+					return nil, err
+				}
+				items = append(items, ber.ContextConstructed(0, tlv))
+			}
+		}
 	}
 
 	root := ber.AppConstructed(glow.TagRoot,
@@ -158,6 +172,16 @@ func (s *server) encodeQualifiedElement(e *entry) (ber.TLV, error) {
 //
 // Spec reference: Ember+ Documentation.pdf §QualifiedNode + NodeContents p. 87.
 func (s *server) encodeQualifiedNode(e *entry, n *canonical.Node) ber.TLV {
+	return ber.AppConstructed(glow.TagQualifiedNode,
+		ber.ContextConstructed(glow.QNodePath, ber.RelOID(encodeRelativeOID(e.oidParts))),
+		ber.ContextConstructed(glow.QNodeContents, encodeNodeContents(n)),
+	)
+}
+
+// encodeNodeContents builds the NodeContents SET in ascending CTX-tag
+// order. Shared by encodeQualifiedNode (APP[10]) and encodeNonQualNode
+// (APP[3]) used inside TemplateElement.
+func encodeNodeContents(n *canonical.Node) ber.TLV {
 	var kids []ber.TLV
 	kids = append(kids,
 		ber.ContextConstructed(glow.NodeContentIdentifier, ber.UTF8(n.Identifier))) // [0]
@@ -180,9 +204,18 @@ func (s *server) encodeQualifiedNode(e *entry, n *canonical.Node) ber.TLV {
 				ber.ContextConstructed(glow.NodeContentTemplateReference, ber.RelOID(encodeRelativeOID(parts)))) // [5]
 		}
 	}
-	return ber.AppConstructed(glow.TagQualifiedNode,
-		ber.ContextConstructed(glow.QNodePath, ber.RelOID(encodeRelativeOID(e.oidParts))),
-		ber.ContextConstructed(glow.QNodeContents, ber.Set(kids...)),
+	return ber.Set(kids...)
+}
+
+// encodeNonQualNode emits a non-qualified Node [APPLICATION 3] for use
+// inside a TemplateElement (spec p.84 CHOICE). Layout matches
+// QualifiedNode except CTX[0] carries the integer number, not a path:
+//
+//	Node ::= [APPLICATION 3] SEQUENCE { number [0] Integer32, contents [1] NodeContents, children [2] ElementCollection }
+func encodeNonQualNode(number int32, n *canonical.Node) ber.TLV {
+	return ber.AppConstructed(glow.TagNode,
+		ber.ContextConstructed(glow.NodeNumber, ber.Integer(int64(number))),
+		ber.ContextConstructed(glow.NodeContents, encodeNodeContents(n)),
 	)
 }
 
@@ -215,6 +248,16 @@ func (s *server) encodeQualifiedNode(e *entry, n *canonical.Node) ber.TLV {
 //
 // Spec reference: Ember+ Documentation.pdf §ParameterContents p. 85.
 func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.TLV {
+	return ber.AppConstructed(glow.TagQualifiedParameter,
+		ber.ContextConstructed(glow.QParamPath, ber.RelOID(encodeRelativeOID(e.oidParts))),
+		ber.ContextConstructed(glow.QParamContents, encodeParameterContents(p)),
+	)
+}
+
+// encodeParameterContents builds the ParameterContents SET in ascending
+// CTX-tag order. Shared by encodeQualifiedParameter (APP[9]) and
+// encodeNonQualParameter (APP[1]) used inside TemplateElement.
+func encodeParameterContents(p *canonical.Parameter) ber.TLV {
 	// ParameterContents SET — fields in ASCENDING context tag order
 	// (DER requirement + EmberViewer enforces it). Spec p.85:
 	//   0 identifier, 1 description, 2 value, 3 minimum, 4 maximum,
@@ -309,9 +352,17 @@ func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.
 				ber.ContextConstructed(glow.ParamContentTemplateReference, ber.RelOID(encodeRelativeOID(parts)))) // [18]
 		}
 	}
-	return ber.AppConstructed(glow.TagQualifiedParameter,
-		ber.ContextConstructed(glow.QParamPath, ber.RelOID(encodeRelativeOID(e.oidParts))),
-		ber.ContextConstructed(glow.QParamContents, ber.Set(kids...)),
+	return ber.Set(kids...)
+}
+
+// encodeNonQualParameter emits a non-qualified Parameter [APPLICATION 1]
+// for use inside a TemplateElement (spec p.84 CHOICE).
+//
+//	Parameter ::= [APPLICATION 1] SEQUENCE { number [0] Integer32, contents [1] ParameterContents, children [2] ElementCollection }
+func encodeNonQualParameter(number int32, p *canonical.Parameter) ber.TLV {
+	return ber.AppConstructed(glow.TagParameter,
+		ber.ContextConstructed(glow.ParamNumber, ber.Integer(int64(number))),
+		ber.ContextConstructed(glow.ParamContents, encodeParameterContents(p)),
 	)
 }
 

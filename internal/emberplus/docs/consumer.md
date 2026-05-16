@@ -138,7 +138,7 @@ For each TX/RX line below the full wire bytes include:
 fe                BOF
 00 0e 00 01       slot + msgType(0x0E=EmBER) + cmd(0x00=EmBER) + version(0x01)
 c0                flags (0xC0 = single packet: FlagFirst|FlagLast)
-01 02 1f 02       DTD(0x01=Glow), appBytesLen(2), minor(0x1F=31), major(0x02)
+01 02 3c 02       DTD(0x01=Glow), appBytesLen(2), minor(0x3C=60), major(0x02)
 …                 BER payload (APP[0] Root envelope)
 xx xx             CRC-16 (little-endian)
 ff                EOF
@@ -185,7 +185,7 @@ slot 0 — 4494 objects
 Wire trace — root GetDirectory TX (32 bytes):
 
 ```
-fe 00 0e 00 01 c0 01 02 1f 02
+fe 00 0e 00 01 c0 01 02 3c 02
 60 10                          APP[0] Root, len 16
   6b 0e                        APP[11] RootElementCollection, len 14
     a0 0c                      CTX[0] wrapping one RootElement, len 12
@@ -199,7 +199,7 @@ ff
 First RX — the root Node reply (40 bytes):
 
 ```
-fe 00 0e 00 01 c0 01 02 1f 02
+fe 00 0e 00 01 c0 01 02 3c 02
 60 19 6b 17 a0 15                  APP[0]{APP[11]{CTX[0]}}
   6a 13                             APP[10] QualifiedNode, len 19
     a0 03 0d 01 01                  CTX[0] path = RelOID "1"
@@ -251,7 +251,7 @@ confirmed value = "DEMO-T-1"
 Wire trace — SetValue TX for a string (46 bytes):
 
 ```
-fe 00 0e 00 01 c0 01 02 1f 02
+fe 00 0e 00 01 c0 01 02 3c 02
 60 1f 6b 1d a0 1b                         APP[0]{APP[11]{CTX[0]}}
   69 19                                    APP[9] QualifiedParameter, len 25
     a0 07 0d 05 01 01 01 01 01              CTX[0] path = "1.1.1.1.1.1"  (some providers split further)
@@ -322,7 +322,7 @@ matrix connect: target 1 ← sources [5] (op=absolute)
 Wire trace — oneToN connect TX (40 bytes):
 
 ```
-fe 00 0e 00 01 c0 01 02 1f 02
+fe 00 0e 00 01 c0 01 02 3c 02
 60 24 6b 22 a0 20                                  APP[0]{APP[11]{CTX[0]}}
   71 1e                                             APP[17] QualifiedMatrix, len 30
     a0 05 0d 03 01 01 02                            CTX[0] path = "1.1.2"
@@ -355,7 +355,7 @@ result: [8]
 Wire trace — invoke add(3,5) TX (51 bytes):
 
 ```
-fe 00 0e 00 01 c0 01 02 1f 02
+fe 00 0e 00 01 c0 01 02 3c 02
 60 31 6b 2f a0 2d                               APP[0]{APP[11]{CTX[0]}}
   74 2b                                          APP[20] QualifiedFunction, len 43
     a0 05 0d 03 01 04 01                         CTX[0] path = "1.3.1"
@@ -373,7 +373,7 @@ fe 00 0e 00 01 c0 01 02 1f 02
 Wire trace — InvocationResult RX (22 bytes):
 
 ```
-fe 00 0e 00 01 c0 01 02 1f 02
+fe 00 0e 00 01 c0 01 02 3c 02
 60 10                                         APP[0] Root, len 16
   77 0e                                        APP[23] InvocationResult, len 14
     a0 03 02 01 01                              CTX[0] invocationId = 1
