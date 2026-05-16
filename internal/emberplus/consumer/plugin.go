@@ -266,6 +266,14 @@ type treeEntry struct {
 	// prior and current glowParam. Copied onto the outgoing Event
 	// by notifySubscribers, then cleared (diff is per-event).
 	pendingChanges []protocol.FieldChange
+
+	// lastEmittedRendered is the stringified value rendered at the
+	// last successful notifySubscribers fire. Used to suppress the
+	// dual-fire case where a Parameter announce AND a StreamEntry
+	// both deliver the same final value (Lawo metering emits both
+	// per step). When pendingChanges is empty AND the new render
+	// matches this string, the second emission is dropped.
+	lastEmittedRendered string
 }
 
 // Connect opens the TCP session, installs the element handler, and prepares
@@ -2015,17 +2023,29 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 		fn = wildcard
 	}
 	if fn != nil {
+		// Apply Parameter factor (spec p.85 Contents [8]) and unit
+		// suffix (spec p.85 Contents [6]) so watch / dhs-srv get
+		// engineering values, not raw wire integers. ACP1/ACP2 ship
+		// engineering values directly; Ember+ owes the same.
+		val, unit := displayValueAndUnit(entry)
+
+		// Dual-fire suppression: Lawo metering (and any stream-
+		// tagged Parameter) emits both a Parameter announce AND a
+		// StreamEntry per value step; both converge here with the
+		// same final value. Skip the redundant fire when no diff
+		// is pending AND the rendered value matches the last fire.
+		rendered := formatAny(entry.glowParam.Value)
+		if len(entry.pendingChanges) == 0 && rendered == entry.lastEmittedRendered {
+			return
+		}
+
 		desc := ""
 		if entry.glowParam != nil {
 			desc = entry.glowParam.Description
 		}
 		changes := entry.pendingChanges
 		entry.pendingChanges = nil
-		// Apply Parameter factor (spec p.85 Contents [8]) and unit
-		// suffix (spec p.85 Contents [6]) so watch / dhs-srv get
-		// engineering values, not raw wire integers. ACP1/ACP2 ship
-		// engineering values directly; Ember+ owes the same.
-		val, unit := displayValueAndUnit(entry)
+		entry.lastEmittedRendered = rendered
 		fn(protocol.Event{
 			Slot:        0,
 			ID:          entry.obj.ID,
