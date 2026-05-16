@@ -136,27 +136,49 @@ func (s *server) encodeQualifiedElement(e *entry) (ber.TLV, error) {
 	}
 }
 
-// encodeQualifiedNode emits a QualifiedNode APPLICATION[10] with only the
-// fields TinyEmber+ tolerates on per-child walk replies.
+// encodeQualifiedNode emits a QualifiedNode APPLICATION[10] with every
+// NodeContents field the canonical model carries, in ascending CTX-tag
+// order (DER requirement + EmberViewer enforces it).
 //
-//	| Context Tag | Field       | Type         | Notes                  |
-//	|-------------|-------------|--------------|------------------------|
-//	|   [0]       | path        | RELATIVE-OID | absolute OID           |
-//	|   [1]       | contents    | NodeContents | SET of identifier +... |
-//	|     └─[0]   | identifier  | EmberString  |                        |
-//	|     └─[1]   | description | EmberString  | optional               |
+//	| Context Tag | Field             | Type         | Notes                       |
+//	|-------------|-------------------|--------------|-----------------------------|
+//	|   [0]       | path              | RELATIVE-OID | absolute OID                |
+//	|   [1]       | contents          | NodeContents | SET in ascending CTX order: |
+//	|     ├─[0]   | identifier        | EmberString  |                             |
+//	|     ├─[1]   | description       | EmberString  | optional                    |
+//	|     ├─[2]   | isRoot            | BOOLEAN      | skipped — default false     |
+//	|     ├─[3]   | isOnline          | BOOLEAN      | only emitted when false     |
+//	|     ├─[4]   | schemaIdentifiers | EmberString  | DTD 2.30+ — newline-sep     |
+//	|     └─[5]   | templateReference | RELATIVE-OID | DTD 2.30+ — Template OID    |
 //
-// Spec reference: Ember+ Documentation.pdf §QualifiedNode p. 87.
+// isRoot is always omitted: only the conceptual tree root could carry
+// isRoot=true, and modern consumers infer "root" from path=[] / wrapping.
+// isOnline defaults to true per spec p.87 and is therefore omitted when
+// Header.IsOnline is true.
+//
+// Spec reference: Ember+ Documentation.pdf §QualifiedNode + NodeContents p. 87.
 func (s *server) encodeQualifiedNode(e *entry, n *canonical.Node) ber.TLV {
-	// Minimal NodeContents — identifier + optional description. Matches
-	// TinyEmber+'s shape; strict viewers reject isRoot/isOnline padding
-	// on per-child replies.
 	var kids []ber.TLV
 	kids = append(kids,
-		ber.ContextConstructed(glow.NodeContentIdentifier, ber.UTF8(n.Identifier)))
+		ber.ContextConstructed(glow.NodeContentIdentifier, ber.UTF8(n.Identifier))) // [0]
 	if n.Description != nil && *n.Description != "" {
 		kids = append(kids,
-			ber.ContextConstructed(glow.NodeContentDescription, ber.UTF8(*n.Description)))
+			ber.ContextConstructed(glow.NodeContentDescription, ber.UTF8(*n.Description))) // [1]
+	}
+	if !n.IsOnline {
+		kids = append(kids,
+			ber.ContextConstructed(glow.NodeContentIsOnline, ber.Boolean(false))) // [3]
+	}
+	if n.SchemaIdentifiers != nil && *n.SchemaIdentifiers != "" {
+		kids = append(kids,
+			ber.ContextConstructed(glow.NodeContentSchemaIdentifiers, ber.UTF8(*n.SchemaIdentifiers))) // [4]
+	}
+	if n.TemplateReference != nil && *n.TemplateReference != "" {
+		parts, err := parseOID(*n.TemplateReference)
+		if err == nil && len(parts) > 0 {
+			kids = append(kids,
+				ber.ContextConstructed(glow.NodeContentTemplateReference, ber.RelOID(encodeRelativeOID(parts)))) // [5]
+		}
 	}
 	return ber.AppConstructed(glow.TagQualifiedNode,
 		ber.ContextConstructed(glow.QNodePath, ber.RelOID(encodeRelativeOID(e.oidParts))),
@@ -167,25 +189,29 @@ func (s *server) encodeQualifiedNode(e *entry, n *canonical.Node) ber.TLV {
 // encodeQualifiedParameter emits a QualifiedParameter APPLICATION[9] with
 // every defined ParameterContents field in ascending CTX-tag order (DER).
 //
-//	| Context Tag | Field             | Type         | Notes              |
-//	|-------------|-------------------|--------------|--------------------|
-//	|   [0]       | path              | RELATIVE-OID | absolute OID       |
-//	|   [1]       | contents          | SET          | fields in order:   |
-//	|     ├─[0]   | identifier        | EmberString  |                    |
-//	|     ├─[1]   | description       | EmberString  | optional           |
-//	|     ├─[2]   | value             | Value CHOICE | optional           |
-//	|     ├─[3]   | minimum           | Value CHOICE | optional           |
-//	|     ├─[4]   | maximum           | Value CHOICE | optional           |
-//	|     ├─[5]   | access            | INTEGER      |                    |
-//	|     ├─[6]   | format            | EmberString  | printf-style       |
-//	|     ├─[7]   | enumeration       | EmberString  | \n-separated       |
-//	|     ├─[8]   | factor            | INTEGER      | skipped if 0 or 1  |
-//	|     ├─[10]  | formula           | EmberString  | see Formulas.pdf   |
-//	|     ├─[11]  | step              | Value CHOICE | optional           |
-//	|     ├─[12]  | default           | Value CHOICE | optional           |
-//	|     ├─[13]  | type              | ParameterType| 1..7 if mapped     |
-//	|     ├─[14]  | streamIdentifier  | INTEGER      | optional           |
-//	|     └─[15]  | enumMap           | StringIntColl| APP[8]             |
+//	| Context Tag | Field             | Type            | Notes                |
+//	|-------------|-------------------|-----------------|----------------------|
+//	|   [0]       | path              | RELATIVE-OID    | absolute OID         |
+//	|   [1]       | contents          | SET             | fields in order:     |
+//	|     ├─[0]   | identifier        | EmberString     |                      |
+//	|     ├─[1]   | description       | EmberString     | optional             |
+//	|     ├─[2]   | value             | Value CHOICE    | optional             |
+//	|     ├─[3]   | minimum           | Value CHOICE    | optional             |
+//	|     ├─[4]   | maximum           | Value CHOICE    | optional             |
+//	|     ├─[5]   | access            | INTEGER         |                      |
+//	|     ├─[6]   | format            | EmberString     | printf-style         |
+//	|     ├─[7]   | enumeration       | EmberString     | \n-separated         |
+//	|     ├─[8]   | factor            | INTEGER         | skipped if 0 or 1    |
+//	|     ├─[9]   | isOnline          | BOOLEAN         | only when false      |
+//	|     ├─[10]  | formula           | EmberString     | see Formulas.pdf     |
+//	|     ├─[11]  | step              | Value CHOICE    | optional             |
+//	|     ├─[12]  | default           | Value CHOICE    | optional             |
+//	|     ├─[13]  | type              | ParameterType   | 1..7 if mapped       |
+//	|     ├─[14]  | streamIdentifier  | INTEGER         | optional             |
+//	|     ├─[15]  | enumMap           | StringIntColl   | APP[8]               |
+//	|     ├─[16]  | streamDescriptor  | StreamDesc      | APP[12] DTD 2.30+    |
+//	|     ├─[17]  | schemaIdentifiers | EmberString     | DTD 2.30+            |
+//	|     └─[18]  | templateReference | RELATIVE-OID    | DTD 2.30+            |
 //
 // Spec reference: Ember+ Documentation.pdf §ParameterContents p. 85.
 func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.TLV {
@@ -231,6 +257,12 @@ func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentFactor, ber.Integer(*p.Factor))) // [8]
 	}
+	// isOnline default true per spec p.85 — only emit when explicitly
+	// false (matches NodeContents [3] convention).
+	if !p.IsOnline {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentIsOnline, ber.Boolean(false))) // [9]
+	}
 	// Formula [CTX 10]: "provider|consumer" split, newline-separated
 	// in spec examples (see Ember+ Formulas.pdf). Full evaluator lands
 	// in a follow-up — for now we emit the string so consumers that
@@ -259,9 +291,43 @@ func (s *server) encodeQualifiedParameter(e *entry, p *canonical.Parameter) ber.
 		kids = append(kids,
 			ber.ContextConstructed(glow.ParamContentEnumMap, encodeEnumMap(p.EnumMap))) // [15]
 	}
+	// streamDescriptor [16]: a StreamDescription APP[12] wrapped inside
+	// the SET (format enum + offset). Only emitted for parameters that
+	// participate in a CollectionAggregate stream (spec p.86).
+	if p.StreamDescriptor != nil {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentStreamDescriptor, encodeStreamDescriptor(*p.StreamDescriptor))) // [16]
+	}
+	if p.SchemaIdentifiers != nil && *p.SchemaIdentifiers != "" {
+		kids = append(kids,
+			ber.ContextConstructed(glow.ParamContentSchemaIdentifiers, ber.UTF8(*p.SchemaIdentifiers))) // [17]
+	}
+	if p.TemplateReference != nil && *p.TemplateReference != "" {
+		parts, err := parseOID(*p.TemplateReference)
+		if err == nil && len(parts) > 0 {
+			kids = append(kids,
+				ber.ContextConstructed(glow.ParamContentTemplateReference, ber.RelOID(encodeRelativeOID(parts)))) // [18]
+		}
+	}
 	return ber.AppConstructed(glow.TagQualifiedParameter,
 		ber.ContextConstructed(glow.QParamPath, ber.RelOID(encodeRelativeOID(e.oidParts))),
 		ber.ContextConstructed(glow.QParamContents, ber.Set(kids...)),
+	)
+}
+
+// encodeStreamDescriptor builds a StreamDescription [APPLICATION 12]
+// from the canonical descriptor. The wrapper TLV carries the SET fields
+// (format + offset) in ascending CTX-tag order.
+//
+//	StreamDescription ::= [APPLICATION 12] SEQUENCE {
+//	  format  [0] StreamFormat,
+//	  offset  [1] Integer32 }
+//
+// Spec reference: Ember+ Documentation.pdf §StreamDescription p. 86.
+func encodeStreamDescriptor(d canonical.StreamDescriptor) ber.TLV {
+	return ber.AppConstructed(glow.TagStreamDescription,
+		ber.ContextConstructed(glow.StreamDescFormat, ber.Integer(int64(d.Format))),
+		ber.ContextConstructed(glow.StreamDescOffset, ber.Integer(int64(d.Offset))),
 	)
 }
 

@@ -63,6 +63,8 @@ func (s *server) encodeQualifiedMatrix(e *entry, m *canonical.Matrix) (ber.TLV, 
 //	|   [8]       | parametersLocation       | RELATIVE-OID | optional      |
 //	|   [9]       | gainParameterNumber      | INTEGER      | optional      |
 //	|   [10]      | labels                   | SEQUENCE OF  | Label APP[18] |
+//	|   [11]      | schemaIdentifiers        | EmberString  | DTD 2.30+     |
+//	|   [12]      | templateReference        | RELATIVE-OID | DTD 2.30+     |
 //
 // Spec reference: Ember+ Documentation.pdf §MatrixContents p. 88.
 func encodeMatrixContents(m *canonical.Matrix) (ber.TLV, error) {
@@ -116,6 +118,20 @@ func encodeMatrixContents(m *canonical.Matrix) (ber.TLV, error) {
 		}
 		kids = append(kids,
 			ber.ContextConstructed(glow.MatContentLabels, ber.Sequence(items...))) // [10]
+	}
+	if m.SchemaIdentifiers != nil && *m.SchemaIdentifiers != "" {
+		kids = append(kids,
+			ber.ContextConstructed(glow.MatContentSchemaIdentifiers, ber.UTF8(*m.SchemaIdentifiers))) // [11]
+	}
+	if m.TemplateReference != nil && *m.TemplateReference != "" {
+		parts, err := parseOID(*m.TemplateReference)
+		if err != nil {
+			return ber.TLV{}, fmt.Errorf("templateReference %q: %w", *m.TemplateReference, err)
+		}
+		if len(parts) > 0 {
+			kids = append(kids,
+				ber.ContextConstructed(glow.MatContentTemplateReference, ber.RelOID(encodeRelativeOID(parts)))) // [12]
+		}
 	}
 	return ber.Set(kids...), nil
 }

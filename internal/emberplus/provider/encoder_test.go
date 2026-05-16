@@ -90,6 +90,122 @@ func TestRoundTrip_NodeWithParameter(t *testing.T) {
 	}
 }
 
+// TestEncodeNode_DTD230Fields asserts the Node encoder emits the four
+// NodeContents fields introduced by DTD 2.30 (spec p.87):
+//
+//	[3]  isOnline          — only when false (default true)
+//	[4]  schemaIdentifiers — newline-separated string
+//	[5]  templateReference — RELATIVE-OID
+//
+// isRoot [2] is always omitted: only the conceptual tree root would set
+// it, and modern viewers infer root from path=[].
+func TestEncodeNode_DTD230Fields(t *testing.T) {
+	schema := "com.lawo.routing/1"
+	tmpl := "9.1"
+	child := &canonical.Node{
+		Header: canonical.Header{
+			Number: 1, Identifier: "primary", Path: "router.primary", OID: "1.1",
+			IsOnline: false, Access: canonical.AccessRead,
+			Children: canonical.EmptyChildren(),
+		},
+		SchemaIdentifiers: &schema,
+		TemplateReference: &tmpl,
+	}
+	root := &canonical.Node{
+		Header: canonical.Header{
+			Number: 1, Identifier: "router", Path: "router", OID: "1",
+			IsOnline: true, Access: canonical.AccessRead,
+			Children: []canonical.Element{child},
+		},
+	}
+	srv := newServer(nil, &canonical.Export{Root: root})
+
+	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	els, err := glow.DecodeRoot(reply)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(els) != 1 || els[0].Node == nil {
+		t.Fatalf("want 1 Node, got %+v", els)
+	}
+	n := els[0].Node
+	if n.IsOnline {
+		t.Errorf("isOnline = true, want false (was explicit on canonical)")
+	}
+	if n.SchemaIdentifiers != schema {
+		t.Errorf("schemaIdentifiers = %q, want %q", n.SchemaIdentifiers, schema)
+	}
+	if len(n.TemplateReference) != 2 || n.TemplateReference[0] != 9 || n.TemplateReference[1] != 1 {
+		t.Errorf("templateReference = %v, want [9 1]", n.TemplateReference)
+	}
+}
+
+// TestEncodeParameter_DTD230Fields asserts the Parameter encoder emits
+// the four ParameterContents fields introduced by DTD 2.30 (spec p.85):
+//
+//	[9]  isOnline          — only when false (default true)
+//	[16] streamDescriptor  — StreamDescription [APP 12]
+//	[17] schemaIdentifiers
+//	[18] templateReference
+func TestEncodeParameter_DTD230Fields(t *testing.T) {
+	schema := "com.lawo.gain/1"
+	tmpl := "9.2"
+	p := &canonical.Parameter{
+		Header: canonical.Header{
+			Number: 1, Identifier: "gain", Path: "router.gain", OID: "1.1",
+			IsOnline: false, Access: canonical.AccessReadWrite,
+			Children: canonical.EmptyChildren(),
+		},
+		Type:              canonical.ParamReal,
+		Value:             float64(-12.0),
+		StreamDescriptor:  &canonical.StreamDescriptor{Format: int(glow.StreamFmtFloat32LittleEndian), Offset: 8},
+		SchemaIdentifiers: &schema,
+		TemplateReference: &tmpl,
+	}
+	root := &canonical.Node{
+		Header: canonical.Header{
+			Number: 1, Identifier: "router", Path: "router", OID: "1",
+			IsOnline: true, Access: canonical.AccessRead,
+			Children: []canonical.Element{p},
+		},
+	}
+	srv := newServer(nil, &canonical.Export{Root: root})
+
+	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	els, err := glow.DecodeRoot(reply)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(els) != 1 || els[0].Parameter == nil {
+		t.Fatalf("want 1 Parameter, got %+v", els)
+	}
+	gp := els[0].Parameter
+	if gp.IsOnline {
+		t.Errorf("isOnline = true, want false")
+	}
+	if gp.StreamDescriptor == nil {
+		t.Fatalf("streamDescriptor missing")
+	}
+	if gp.StreamDescriptor.Format != glow.StreamFmtFloat32LittleEndian {
+		t.Errorf("streamDescriptor.format = %d, want %d", gp.StreamDescriptor.Format, glow.StreamFmtFloat32LittleEndian)
+	}
+	if gp.StreamDescriptor.Offset != 8 {
+		t.Errorf("streamDescriptor.offset = %d, want 8", gp.StreamDescriptor.Offset)
+	}
+	if gp.SchemaIdentifiers != schema {
+		t.Errorf("schemaIdentifiers = %q, want %q", gp.SchemaIdentifiers, schema)
+	}
+	if len(gp.TemplateReference) != 2 || gp.TemplateReference[0] != 9 || gp.TemplateReference[1] != 2 {
+		t.Errorf("templateReference = %v, want [9 2]", gp.TemplateReference)
+	}
+}
+
 func TestSetValueBroadcast_UpdatesTree(t *testing.T) {
 	p := &canonical.Parameter{
 		Header: canonical.Header{

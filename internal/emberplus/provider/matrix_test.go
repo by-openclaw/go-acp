@@ -125,6 +125,39 @@ func TestRoundTrip_Matrix_NToN(t *testing.T) {
 	}
 }
 
+// TestEncodeMatrix_DTD230Fields asserts the Matrix encoder emits the
+// two MatrixContents fields introduced by DTD 2.30 (spec p.88):
+//
+//	[11] schemaIdentifiers — newline-separated string
+//	[12] templateReference — RELATIVE-OID
+func TestEncodeMatrix_DTD230Fields(t *testing.T) {
+	schema := "com.lawo.signalMatrix/1"
+	tmpl := "9.3"
+	m := &canonical.Matrix{
+		Type:              canonical.MatrixOneToN,
+		Mode:              canonical.ModeLinear,
+		SchemaIdentifiers: &schema,
+		TemplateReference: &tmpl,
+	}
+	srv := buildMatrixTree(t, m)
+
+	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	els, err := glow.DecodeRoot(reply)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	got := els[0].Matrix
+	if got.SchemaIdentifiers != schema {
+		t.Errorf("schemaIdentifiers = %q, want %q", got.SchemaIdentifiers, schema)
+	}
+	if len(got.TemplateReference) != 2 || got.TemplateReference[0] != 9 || got.TemplateReference[1] != 3 {
+		t.Errorf("templateReference = %v, want [9 3]", got.TemplateReference)
+	}
+}
+
 // TestApplyConnection_Absolute replaces a target's sources.
 func TestApplyConnection_Absolute(t *testing.T) {
 	m := &canonical.Matrix{

@@ -134,6 +134,12 @@ type Matrix struct {
 	TargetParams     map[string]map[string]any    `json:"targetParams"`
 	SourceParams     map[string]map[string]any    `json:"sourceParams"`
 	ConnectionParams map[string]map[string]any    `json:"connectionParams"`
+
+	// DTD 2.30+ Matrix contents fields (spec p.88).
+	// schemaIdentifiers [11] EmberString OPTIONAL — newline-separated list.
+	// templateReference [12] RELATIVE-OID OPTIONAL — OID path to a Template.
+	TemplateReference *string `json:"templateReference,omitempty"`
+	SchemaIdentifiers *string `json:"schemaIdentifiers,omitempty"`
 }
 
 // Kind implements Element.
@@ -167,6 +173,8 @@ func (m *Matrix) UnmarshalJSON(data []byte) error {
 		TargetParams             map[string]map[string]any    `json:"targetParams"`
 		SourceParams             map[string]map[string]any    `json:"sourceParams"`
 		ConnectionParams         map[string]map[string]any    `json:"connectionParams"`
+		TemplateReference        *string                      `json:"templateReference"`
+		SchemaIdentifiers        *string                      `json:"schemaIdentifiers"`
 	}
 	var raw alias
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -203,5 +211,7 @@ func (m *Matrix) UnmarshalJSON(data []byte) error {
 	m.TargetParams = raw.TargetParams
 	m.SourceParams = raw.SourceParams
 	m.ConnectionParams = raw.ConnectionParams
+	m.TemplateReference = raw.TemplateReference
+	m.SchemaIdentifiers = raw.SchemaIdentifiers
 	return nil
 }
