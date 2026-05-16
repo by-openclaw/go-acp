@@ -11,8 +11,8 @@ import (
 // wire captures on 10.6.239.113 cannot reach (both TinyEmberPlus
 // providers ship a single "Primary" level). The synthetic tree here
 // carries two label levels — Primary and Long — under separate
-// basePaths, mirroring the smh emulator's shape
-// (internal/emberplus/assets/smh/emulator/ember-server/src/data-model-new.ts).
+// basePaths, mirroring the smh emulator's shape (now under
+// legacy/emberplus/smh/emulator/, local-only per ADR-0025).
 //
 // Expectations under --labels=inline:
 //   - TargetLabels/SourceLabels keyed by labels[i].description
