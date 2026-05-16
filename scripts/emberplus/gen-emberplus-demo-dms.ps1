@@ -377,9 +377,9 @@ $glowChildren = @(
     # Two stream Parameters with streamIdentifier (spec p.85 [14] streamIdentifier).
     # Subscribe(30) on these enables the streamer.
     [ordered]@{ number=10; identifier="vu_left";  path="$glowRoot.vu_left";  oid="$glowOid.10"; isOnline=$true; access="read"; type="real"; value=-60.0;
-                minimum=-128.0; maximum=15.0; format="%.2f °dB"; streamIdentifier=1001 }
+                minimum=-128.0; maximum=15.0; format="%.2f dB"; streamIdentifier=1001 }
     [ordered]@{ number=11; identifier="vu_right"; path="$glowRoot.vu_right"; oid="$glowOid.11"; isOnline=$true; access="read"; type="real"; value=-60.0;
-                minimum=-128.0; maximum=15.0; format="%.2f °dB"; streamIdentifier=1002 }
+                minimum=-128.0; maximum=15.0; format="%.2f dB"; streamIdentifier=1002 }
 )
 Save-DM "glow-types-strict" "1.0.0" (NodeOf 6 $glowRoot $glowRoot $glowOid $glowChildren)
 
