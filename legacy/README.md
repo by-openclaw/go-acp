@@ -23,6 +23,10 @@ recovering test fixtures, etc.).
 | `audits/audits/`, `audits/cerebrum - forms/`, `audits/lawo-walk/`, `audits/vsm/` | mixed audit dumps | snapshots from real-device validation runs |
 | `audits/*.json`, `audits/*.jsonl`, `audits/*.EmBER`, `audits/*.xml`, `audits/*.pptx`, `audits/*.md` | mixed | DM caches, S101 captures, vendor configs, the SMH Vision requirements deck |
 | `emberplus/smh/` | BY-RESEARCH TS Ember+ emulator | reference TypeScript emulator (ports 9000 / 9090 / 9092); convention — targets labeled `1`, sources labeled `2`. Used historically as the testbed for Ember+ wire-format work |
+| `cmd-acp2pidstat/` | standalone Go probe (`main.go`, ~3.7 KB) | one-shot ACP2 pidstat reader for `raw.an2.jsonl` captures; never built into the dhs binary |
+| `cmd-dump9093/` | standalone Go probe (`main.go`, ~7.2 KB) | one-shot Ember+ wire-capture probe targeting `127.0.0.1:9093`; dumps `.audit/strict/9093-rx.{bin,txt}`; never built into the dhs binary |
+| `emberplus-cap/` | Ember+ wire captures | `glow.json`, `raw.s101.jsonl`, `tree.json` — historical capture of an Ember+ provider session, ~5 MB total |
+| `fixtures/axon/` | Axon Synapse ACP2 captures | `raw.an2.jsonl` (~19 MB), `tree.json` (~76 MB), `meta.json` + per-firmware subdirs (`6.7.4/`, `acp2/`, `convert-hybrid/`); pre-dates current `internal/<proto>/testdata/` layout |
 
 ## Tracking
 
