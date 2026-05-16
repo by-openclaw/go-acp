@@ -2,7 +2,7 @@
 
 ## Three layers
 
-```
+```text
 ┌──────────────────────────────────────────────────┐
 │  Serialization layer                             │
 │  JSON / YAML / CSV                               │
@@ -97,4 +97,4 @@ concerns here.
 
 ---
 
-Copyright (c) 2026 BY-SYSTEMS SRL - www.by-systems.be
+Copyright (c) 2026 BY-SYSTEMS SRL — <https://www.by-systems.be>
