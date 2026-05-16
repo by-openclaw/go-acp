@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -49,4 +50,58 @@ func hotLoadEmberplusDM(plug protocol.Protocol, dmIdentity string, slot int, noW
 	fmt.Fprintf(os.Stderr, "DM hot-load %q — seeded %d objects (no walk)\n",
 		dmIdentity, len(snap.Slots[0].Objects))
 	return true, nil
+}
+
+// ensureEmberplusTree is the auto-cache wrapper: try hot-load from
+// .cache/dm/emberplus/<identity>.json first; on cache miss walk the
+// device, then auto-extract the DM so the NEXT call is fast.
+//
+//  1. dmIdentity != "" + cache hit  -> hot-load, no walk
+//  2. dmIdentity != "" + cache miss + !noWalk -> walk, auto-extract
+//     under provided identity, return
+//  3. dmIdentity == "" + !noWalk -> walk, IdentityProbe, auto-extract
+//     under the probed identity (so next run can pass --dm <id>)
+//  4. noWalk + cache miss -> error (fail-fast)
+//
+// Non-Ember+ protocols fall through to a plain Walk — same as before.
+// The auto-extract step is best-effort: if IdentityProbe fails or the
+// plugin doesn't implement dmSplitter, we still return success because
+// the verb's in-RAM tree is populated and the op can proceed.
+func ensureEmberplusTree(ctx context.Context, plug protocol.Protocol, host string, port int, dmIdentity string, slot int, noWalk bool) error {
+	// Step 1+2: try the explicit-identity hot-load path.
+	if dmIdentity != "" {
+		seeded, err := hotLoadEmberplusDM(plug, dmIdentity, slot, noWalk)
+		if err != nil {
+			return err
+		}
+		if seeded {
+			return nil
+		}
+	}
+	if noWalk {
+		return fmt.Errorf("--no-walk: no cached DM available (drop --no-walk to walk + auto-extract once, then re-run with --dm)")
+	}
+	// Step 3: walk + auto-extract.
+	if _, err := plug.Walk(ctx, slot); err != nil {
+		return fmt.Errorf("walk: %w", err)
+	}
+	ep, ok := plug.(*emberplus.Plugin)
+	if !ok {
+		return nil
+	}
+	// Best-effort identity probe + split-and-persist. Either failure
+	// is logged but not fatal — the in-RAM tree is populated and the
+	// caller's op (invoke/set/get/matrix) can run.
+	identity := dmIdentity
+	if identity == "" {
+		probed, perr := ep.IdentityProbe(ctx, slot)
+		if perr != nil {
+			fmt.Fprintf(os.Stderr, "DM auto-extract: identity probe skipped (%v)\n", perr)
+			return nil
+		}
+		identity = probed
+	}
+	splitDMByMatrix(ctx, plug, host, port, identity)
+	fmt.Fprintf(os.Stderr, "DM auto-extract %q — next call: pass --dm %q to skip the walk\n", identity, identity)
+	return nil
 }

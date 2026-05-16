@@ -44,26 +44,16 @@ func runGet(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	opCtx, cancel := withTimeout(ctx, cf.timeout)
-	defer cancel()
-
-	// Ember+ DM hot-load (refs #438): seed the in-RAM tree from
-	// .cache/dm/emberplus/<identity>.json so GetValue's ensureWalked
-	// sees a populated tree and skips the per-call wire walk. No-op
-	// for non-Ember+ protocols or when --dm is unset.
-	dmSeeded, err := hotLoadEmberplusDM(plug, *dmIdentity, *slot, false)
-	if err != nil {
-		return err
-	}
-
-	// Path-based addressing: walk first, then lookup by path key.
-	// Label-based: resolve from cache or walk. Skip entirely when the
-	// DM has already seeded the tree (Ember+ hot-load path).
-	if !dmSeeded && (*pathFlag != "" || *label != "") {
-		// Resolution walk uses the raw signal-only ctx, not opCtx.
-		// A tree walk takes as long as it takes (44k objects on ACP2
-		// slot 1 needs minutes); --timeout only bounds the single
-		// GetValue below.
+	// Ember+ DM auto-cache (refs #438, ADR-0022): hot-load from cache
+	// when --dm hits; otherwise walk + auto-extract by identity so the
+	// next call is fast. Only kicks in for path/label resolution; pure
+	// --id calls skip this entirely.
+	if cf.protocol == "emberplus" && (*pathFlag != "" || *label != "") {
+		if err := ensureEmberplusTree(ctx, plug, host, cf.port, *dmIdentity, *slot, false); err != nil {
+			return err
+		}
+	} else if cf.protocol != "emberplus" && (*pathFlag != "" || *label != "") {
+		// Non-Ember+ protocols keep the legacy walk-for-resolution path.
 		if _, err := plug.Walk(ctx, *slot); err != nil {
 			return fmt.Errorf("walk for resolution: %w", err)
 		}
@@ -73,6 +63,11 @@ func runGet(ctx context.Context, args []string) error {
 			*id = cachedID
 		}
 	}
+
+	// Per-op timer started AFTER walk/DM-load so the GetValue wait
+	// sees a fresh --timeout budget — matches cmd_invoke / cmd_set.
+	opCtx, cancel := withTimeout(ctx, cf.timeout)
+	defer cancel()
 
 	req := protocol.ValueRequest{
 		Slot:  *slot,

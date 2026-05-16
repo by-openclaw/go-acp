@@ -64,27 +64,22 @@ func runMatrix(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	opCtx, cancel := withTimeout(ctx, cf.timeout)
-	defer cancel()
-
 	// Cast to Ember+ plugin to access MatrixConnect.
 	ep, ok := plug.(*emberplus.Plugin)
 	if !ok {
 		return fmt.Errorf("matrix command is only supported for Ember+ protocol")
 	}
 
-	// Hot-load path: when --dm <identity> is set, seed the tree from
-	// .cache/dm/emberplus/<identity>.json and skip the wire walk (refs
-	// #438, ADR-0022).
-	seeded, err := hotLoadEmberplusDM(plug, *dmIdentity, *slot, *noWalk)
-	if err != nil {
+	// DM auto-cache: cache hit → no walk; cache miss → walk + auto-extract
+	// so the next call hits the cache (refs #438, ADR-0022).
+	if err := ensureEmberplusTree(ctx, plug, host, cf.port, *dmIdentity, *slot, *noWalk); err != nil {
 		return err
 	}
-	if !seeded {
-		if _, err := plug.Walk(ctx, *slot); err != nil {
-			return fmt.Errorf("walk: %w", err)
-		}
-	}
+
+	// Per-op timer started AFTER walk/DM-load so MatrixConnect sees
+	// a fresh --timeout budget — same pattern as cmd_invoke / cmd_set.
+	opCtx, cancel := withTimeout(ctx, cf.timeout)
+	defer cancel()
 
 	if err := ep.MatrixConnect(opCtx, *matrixPath, int32(*target), sources, operation); err != nil {
 		return err
