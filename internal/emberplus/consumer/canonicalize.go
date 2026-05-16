@@ -402,7 +402,7 @@ func (p *Plugin) buildParameter(e *treeEntry) *canonical.Parameter {
 	format, unit := splitFormatUnit(pr.Format)
 
 	var streamID *int64
-	if pr.StreamIdentifier != 0 {
+	if pr.HasStreamIdentifier {
 		v := pr.StreamIdentifier
 		streamID = &v
 	}

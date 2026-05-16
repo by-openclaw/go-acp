@@ -53,7 +53,8 @@ type Parameter struct {
 	Step              any               // Contents [11]
 	Default           any               // Contents [12]
 	Type              int64             // Contents [13] ParameterType enum
-	StreamIdentifier  int64             // Contents [14] globally-unique stream id
+	StreamIdentifier  int64             // Contents [14] globally-unique stream id (use HasStreamIdentifier to distinguish absent from 0)
+	HasStreamIdentifier bool            // true iff the wire carried the [14] tag — required because integer 0 is a valid streamIdentifier value
 	EnumMap           map[int64]string  // Contents [15] StringIntegerCollection
 	StreamDescriptor  *StreamDescription // Contents [16]
 	SchemaIdentifiers string            // Contents [17]

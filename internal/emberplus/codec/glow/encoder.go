@@ -129,6 +129,70 @@ func EncodeSubscribe(path []int32) []byte {
 	return ber.EncodeTLV(wrapRoot(param))
 }
 
+// EncodeSubscribeLegacy builds a Subscribe command for a parameter
+// path using the non-qualified Glow form (DTD <2.10). The provider's
+// path index is keyed on the nested Node/Parameter chain — the
+// QualifiedParameter wrapper used by EncodeSubscribe is unknown to
+// legacy providers and they reply "parameter not found". Both forms
+// are valid per spec; consumer chooses based on the form the provider
+// used in its walk reply.
+//
+// Wire shape:
+//
+//	RootElementCollection
+//	└── Node(number=p[0])
+//	    └── children → ElementCollection
+//	        └── Node(number=p[1])
+//	            └── ... (deepening Node nesting for each path segment)
+//	                └── Parameter(number=p[N-1])
+//	                    └── children → ElementCollection
+//	                        └── Command(30 Subscribe)
+//
+// Spec reference: Ember+ Documentation.pdf §Glow Tree p. 84.
+func EncodeSubscribeLegacy(path []int32) []byte {
+	return encodeLegacyCommand(path, CmdSubscribe)
+}
+
+// EncodeUnsubscribeLegacy is the non-qualified counterpart of
+// EncodeUnsubscribe. See EncodeSubscribeLegacy.
+func EncodeUnsubscribeLegacy(path []int32) []byte {
+	return encodeLegacyCommand(path, CmdUnsubscribe)
+}
+
+// encodeLegacyCommand walks the path from leaf to root, wrapping each
+// segment in a Node (or Parameter for the leaf) per the non-qualified
+// Glow encoding.
+func encodeLegacyCommand(path []int32, cmdNum int64) []byte {
+	if len(path) == 0 {
+		return nil
+	}
+	cmd := ber.AppConstructed(TagCommand,
+		ber.ContextConstructed(CmdCtxNumber, ber.Integer(cmdNum)),
+	)
+	// Leaf: Parameter with children → Command.
+	cur := ber.AppConstructed(TagParameter,
+		ber.ContextConstructed(ParamNumber, ber.Integer(int64(path[len(path)-1]))),
+		ber.ContextConstructed(ParamChildren,
+			ber.AppConstructed(TagElementCollection,
+				ber.ContextConstructed(0, cmd),
+			),
+		),
+	)
+	// Wrap successive parents from path[N-2] up to path[0] as Node
+	// containers, each holding the previous element in its children.
+	for i := len(path) - 2; i >= 0; i-- {
+		cur = ber.AppConstructed(TagNode,
+			ber.ContextConstructed(NodeNumber, ber.Integer(int64(path[i]))),
+			ber.ContextConstructed(NodeChildren,
+				ber.AppConstructed(TagElementCollection,
+					ber.ContextConstructed(0, cur),
+				),
+			),
+		)
+	}
+	return ber.EncodeTLV(wrapRoot(cur))
+}
+
 // EncodeUnsubscribe builds an Unsubscribe command for a parameter path.
 //
 // Same layout as EncodeSubscribe with Command.number [0] = 31 Unsubscribe:

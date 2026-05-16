@@ -361,6 +361,7 @@ func decodeParamContents(p *Parameter, tlv ber.TLV) {
 			p.Type = decodeIntValue(child)
 		case ParamContentStreamIdentifier:
 			p.StreamIdentifier = decodeIntValue(child)
+			p.HasStreamIdentifier = true
 		case ParamContentEnumMap:
 			p.EnumMap = decodeEnumMap(child)
 		case ParamContentStreamDescriptor:
