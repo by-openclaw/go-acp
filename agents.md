@@ -11,24 +11,34 @@ Per **ADR-0015** (single source of truth) this file MUST NOT restate
 ADR content. Read the ADR index first; only protocol-specific status
 and session bootstrap material lives here.
 
-Foundational ADRs:
+Accepted ADRs (full list, in numeric order — 0017 is parked, omitted):
 
 | ADR | Topic |
 | --- | --- |
 | [0001](docs/adr/0001-per-connector-binary-and-repo.md) | per-connector binary + own repo |
 | [0002](docs/adr/0002-canonical-cli-verbs-flags.md) | canonical CLI verbs + flags |
 | [0003](docs/adr/0003-license-jwt-eddsa-vault-transit.md) | license JWT-EdDSA + Vault Transit |
-| [0005](docs/adr/0005-dep-policy.md) | external dependency policy |
+| [0004](docs/adr/0004-trial-fingerprint-binding.md) | trial license fingerprint binding |
+| [0005](docs/adr/0005-dep-policy.md) | external dependency policy + accepted-library manifest |
 | [0006](docs/adr/0006-codec-stdlib-only.md) | codec stdlib-only forever |
 | [0007](docs/adr/0007-ensure-verb.md) | `ensure --state --check` verb contract |
 | [0008](docs/adr/0008-compliance-audit-pack.md) | per-connector COMPLIANCE.md |
-| [0009](docs/adr/0009-plugin-supervisor.md) | plugin supervisor |
-| [0011](docs/adr/0011-odoo-record-of-truth.md) | Odoo as customer + license + asset record |
+| [0009](docs/adr/0009-plugin-supervisor.md) | plugin supervisor (`hashicorp/go-plugin`) |
+| [0010](docs/adr/0010-vault-internal-only.md) | Vault internal-only — never public |
+| [0011](docs/adr/0011-odoo-record-of-truth.md) | Odoo as customer + license + asset record-of-truth |
+| [0012](docs/adr/0012-shared-discovery-layer.md) | shared discovery layer (mDNS / unicast / peer-list) |
 | [0013](docs/adr/0013-no-commit-churn.md) | one approved unit = one commit |
 | [0014](docs/adr/0014-issue-tracking-discipline.md) | issue → branch → tests → PR → CI green → `@yboujraf` approval → merge |
 | [0015](docs/adr/0015-single-source-of-truth.md) | no duplicated rules across docs |
 | [0016](docs/adr/0016-multi-os-support.md) | multi-OS support |
 | [0018](docs/adr/0018-info-verb-build-identity.md) | `info` verb build identity |
+| [0019](docs/adr/0019-documentation-structure.md) | documentation structure (split-aware) |
+| [0020](docs/adr/0020-capture-and-fixture-layout.md) | capture and fixture file layout (buckets) |
+| [0021](docs/adr/0021-wire-trace-jsonl-contract.md) | wire-trace JSONL contract + replay semantics |
+| [0022](docs/adr/0022-card-data-model.md) | card data model — Device / Frame / Slot / Card / DM |
+| [0023](docs/adr/0023-matrix-entity.md) | matrix entity — matrix_id / level_id / size / behavior |
+| [0024](docs/adr/0024-federation-mirror-and-virtual-frame.md) | federation — mirror frame vs virtual frame |
+| [0025](docs/adr/0025-per-connector-definition-of-done.md) | per-connector definition of done (6 deliverables) |
 
 Read alongside:
 
