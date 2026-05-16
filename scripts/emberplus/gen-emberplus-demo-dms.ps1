@@ -13,7 +13,7 @@
 # Re-run any time to regenerate. Idempotent.
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = Resolve-Path "$PSScriptRoot\.."
+$repoRoot = Resolve-Path "$PSScriptRoot\..\.."
 $dmDir = Join-Path $repoRoot ".cache\dm\emberplus"
 $manifestDir = Join-Path $repoRoot ".cache\manifest"
 New-Item -ItemType Directory -Force -Path $dmDir | Out-Null

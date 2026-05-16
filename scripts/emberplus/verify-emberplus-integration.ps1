@@ -18,7 +18,7 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
-$dhs = Join-Path $PSScriptRoot "..\bin\dhs.exe"
+$dhs = Join-Path $PSScriptRoot "..\..\bin\dhs.exe"
 if (-not (Test-Path $dhs)) {
     Write-Error "dhs.exe not found at $dhs"
     exit 2
