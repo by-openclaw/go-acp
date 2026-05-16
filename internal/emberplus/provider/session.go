@@ -9,6 +9,8 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/emberplus/codec/glow"
@@ -32,10 +34,18 @@ type session struct {
 	// subs is the set of OIDs this consumer subscribed to. Protected by
 	// server.mu (subscription table fan-out is server-wide).
 	subs map[string]struct{}
+
+	// lastActive is the UnixNano of the most recent frame we *read*
+	// from this peer (any frame — keepalive counts as activity, see
+	// session.run). Updated lock-free via atomic; sampled by the
+	// server's idle-sweeper. Default value 0 means "never active"; we
+	// stamp it in newSession so the first sweep doesn't kill a session
+	// that just connected.
+	lastActive atomic.Int64
 }
 
 func newSession(srv *server, conn net.Conn) *session {
-	return &session{
+	s := &session{
 		id:     conn.RemoteAddr().String(),
 		conn:   conn,
 		reader: s101.NewReader(conn),
@@ -46,6 +56,8 @@ func newSession(srv *server, conn net.Conn) *session {
 		closed: make(chan struct{}),
 		subs:   map[string]struct{}{},
 	}
+	s.lastActive.Store(time.Now().UnixNano())
+	return s
 }
 
 // run is the session lifecycle: start write pump, read frames until EOF
@@ -68,6 +80,10 @@ func (s *session) run(ctx context.Context) {
 			}
 			return
 		}
+		// Activity stamp for the idle-sweeper. Any successful frame
+		// read (including keepalive) keeps the session alive — only
+		// truly silent peers get swept.
+		s.lastActive.Store(time.Now().UnixNano())
 		if err := s.handleFrame(frame); err != nil {
 			s.logger.Debug("handle frame", slog.String("err", err.Error()))
 			// non-fatal — keep reading.
@@ -265,6 +281,28 @@ func (s *session) handleEmber(payload []byte) error {
 		}
 		return nil
 	}
+	// Fall-through: payload decoded but matched none of {command,
+	// matrix-connection, set-value}. Surface the element kinds so we can
+	// SEE what unknown client gestures (Cerebrum's "Change..." button
+	// being a current suspect) put on the wire. Without this trace,
+	// unrecognised frames vanish silently and look identical to "client
+	// sent nothing at all".
+	kinds := make([]string, 0, len(els))
+	for _, e := range els {
+		switch {
+		case e.Parameter != nil:
+			kinds = append(kinds, fmt.Sprintf("param(num=%d,path=%v,hasVal=%v)", e.Parameter.Number, e.Parameter.Path, e.Parameter.Value != nil))
+		case e.Node != nil:
+			kinds = append(kinds, fmt.Sprintf("node(num=%d,path=%v,kids=%d)", e.Node.Number, e.Node.Path, len(e.Node.Children)))
+		case e.Matrix != nil:
+			kinds = append(kinds, fmt.Sprintf("matrix(num=%d,conns=%d)", e.Matrix.Number, len(e.Matrix.Connections)))
+		case e.Function != nil:
+			kinds = append(kinds, fmt.Sprintf("function(num=%d)", e.Function.Number))
+		default:
+			kinds = append(kinds, "unknown")
+		}
+	}
+	s.logger.Debug("inbound frame unhandled", slog.Any("kinds", kinds), slog.Int("payload_bytes", len(payload)))
 	return nil
 }
 

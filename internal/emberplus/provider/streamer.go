@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"math"
+	"math/rand"
 	"time"
 
 	"dhs/internal/export/canonical"
@@ -61,24 +62,21 @@ func (s *server) collectStreams() []streamEntry {
 	return out
 }
 
-// streamTick computes sine-wave values for a caller-filtered subset of
-// entries and encodes them as one Root{StreamCollection}. Returns nil
-// if the subset is empty so the caller can skip send() entirely.
+// streamTick emits one StreamEntry per provided entry with a uniformly
+// random value drawn fresh each call from [min, max]. Returns nil if the
+// subset is empty so the caller can skip send() entirely.
 //
 // Wire shape (spec p.93):
 //
 //	Root [APP 0] → StreamCollection [APP 6] → [CTX 0] → StreamEntry [APP 5]
 //	  StreamEntry { [0] streamIdentifier Integer32, [1] streamValue Value }
-func streamTick(entries []streamEntry, t time.Time) []byte {
+func streamTick(entries []streamEntry) []byte {
 	if len(entries) == 0 {
 		return nil
 	}
 	items := make([]ber.TLV, 0, len(entries))
-	phase := float64(t.UnixMilli()) / 500.0 // 2-second period
 	for _, e := range entries {
-		amp := (e.max - e.min) / 2
-		mid := (e.max + e.min) / 2
-		raw := mid + amp*math.Sin(phase+float64(e.id))
+		raw := e.min + rand.Float64()*(e.max-e.min)
 		var val ber.TLV
 		switch e.kind {
 		case canonical.ParamReal:
@@ -86,7 +84,7 @@ func streamTick(entries []streamEntry, t time.Time) []byte {
 		case canonical.ParamInteger:
 			val = ber.Integer(int64(math.Round(raw)))
 		case canonical.ParamBoolean:
-			val = ber.Boolean(raw > mid)
+			val = ber.Boolean(rand.Float64() < 0.5)
 		default:
 			val = ber.Real(raw)
 		}
@@ -128,8 +126,8 @@ func (s *server) runStreamer(ctx context.Context, interval time.Duration) {
 			return
 		case <-s.stopped:
 			return
-		case t := <-ticker.C:
-			s.fanoutStreams(entries, t)
+		case <-ticker.C:
+			s.fanoutStreams(entries)
 		}
 	}
 }
@@ -137,7 +135,7 @@ func (s *server) runStreamer(ctx context.Context, interval time.Duration) {
 // fanoutStreams builds a per-session StreamCollection restricted to the
 // entries that session has Subscribed to. Sessions with no relevant
 // subscriptions are skipped entirely.
-func (s *server) fanoutStreams(entries []streamEntry, t time.Time) {
+func (s *server) fanoutStreams(entries []streamEntry) {
 	// Snapshot sessions + their subs under the server lock, then do the
 	// (potentially slow) per-session encode + send outside it.
 	type sessFilter struct {
@@ -162,9 +160,10 @@ func (s *server) fanoutStreams(entries []streamEntry, t time.Time) {
 	s.mu.Unlock()
 
 	for _, w := range work {
-		payload := streamTick(w.want, t)
+		payload := streamTick(w.want)
 		if payload != nil {
 			w.sess.send(payload)
 		}
 	}
 }
+
