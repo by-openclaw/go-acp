@@ -73,6 +73,37 @@ function LabelLevel($num, $ident, $path, $oid, $tgtCount, $srcCount, $prefix) {
     )
 }
 
+# Per-signal control params: a Node tree where each target / source has
+# its own Node containing gain + mode + mute Parameters. Sits as a
+# sibling of the label levels — labels stay simple string Parameters
+# (Lawo basePath/<num> convention) while ParamsBank carries the
+# controllable per-signal state. Used by every matrix demo so live
+# clients can SetValue against gain / mode / mute per signal.
+function SignalParams($num, $ident, $path, $oid, $signalCount) {
+    $kids = @()
+    for ($i = 0; $i -lt $signalCount; $i++) {
+        $sigPath = "$path.$i"
+        $sigOid  = "$oid.$i"
+        $kids += NodeOf $i "$i" $sigPath $sigOid @(
+            (IntegerParam 1 "gain" "$sigPath.gain" "$sigOid.1" 0 -1000 100 1 "readWrite")
+            ([ordered]@{
+                number = 2; identifier = "mode"; path = "$sigPath.mode"; oid = "$sigOid.2"
+                isOnline = $true; access = "readWrite"; type = "enum"; value = 0
+                enumMap = @(
+                    [ordered]@{ key = "auto";    value = 0 }
+                    [ordered]@{ key = "manual";  value = 1 }
+                    [ordered]@{ key = "bypass";  value = 2 }
+                )
+            })
+            ([ordered]@{
+                number = 3; identifier = "mute"; path = "$sigPath.mute"; oid = "$sigOid.3"
+                isOnline = $true; access = "readWrite"; type = "boolean"; value = $false
+            })
+        )
+    }
+    NodeOf $num $ident $path $oid $kids
+}
+
 # ---------------- 1. identity-strict ----------------
 $identityRoot = NodeOf 0 "identity" "identity" "1.0" @(
     StringParam 1 "product"  "identity.product"  "1.0.1" "dhs-emberplus-integration"
@@ -87,6 +118,8 @@ function BuildMatrixSubtree($rootIdent, $rootOid, $matrixType, $tgtCount, $srcCo
     $children = @(
         (LabelLevel 1 "labelsPrimary"   "$rootIdent.labelsPrimary"   "$base.1" $tgtCount $srcCount "Pri")
         (LabelLevel 2 "labelsSecondary" "$rootIdent.labelsSecondary" "$base.2" $tgtCount $srcCount "Sec")
+        (SignalParams 4 "targetParams"  "$rootIdent.targetParams"    "$base.4" $tgtCount)
+        (SignalParams 5 "sourceParams"  "$rootIdent.sourceParams"    "$base.5" $srcCount)
     )
     $conns = @()
     for ($i = 0; $i -lt [Math]::Min($tgtCount, $srcCount); $i++) {
@@ -148,6 +181,8 @@ $nTNChildren = @(
     (LabelLevel 1 "labelsPrimary"   "$nTNRoot.labelsPrimary"   "$nTNOid.1" $tgtCount $srcCount "Pri")
     (LabelLevel 2 "labelsSecondary" "$nTNRoot.labelsSecondary" "$nTNOid.2" $tgtCount $srcCount "Sec")
     $paramsNode
+    (SignalParams 5 "targetParams" "$nTNRoot.targetParams" "$nTNOid.5" $tgtCount)
+    (SignalParams 6 "sourceParams" "$nTNRoot.sourceParams" "$nTNOid.6" $srcCount)
 )
 
 $nTNConns = @(
@@ -203,9 +238,39 @@ function SparseLabelLevel($num, $ident, $path, $oid, $tgtNums, $srcNums, $prefix
     )
 }
 
+# Sparse per-signal control params: same shape as SignalParams but keyed
+# by the explicit signal numbers — only the declared ten signals carry
+# state, matching the sparse-matrix declaration.
+function SparseSignalParams($num, $ident, $path, $oid, $signalNums) {
+    $kids = @()
+    foreach ($n in $signalNums) {
+        $sigPath = "$path.$n"
+        $sigOid  = "$oid.$n"
+        $kids += NodeOf $n "$n" $sigPath $sigOid @(
+            (IntegerParam 1 "gain" "$sigPath.gain" "$sigOid.1" 0 -1000 100 1 "readWrite")
+            ([ordered]@{
+                number = 2; identifier = "mode"; path = "$sigPath.mode"; oid = "$sigOid.2"
+                isOnline = $true; access = "readWrite"; type = "enum"; value = 0
+                enumMap = @(
+                    [ordered]@{ key = "auto";   value = 0 }
+                    [ordered]@{ key = "manual"; value = 1 }
+                    [ordered]@{ key = "bypass"; value = 2 }
+                )
+            })
+            ([ordered]@{
+                number = 3; identifier = "mute"; path = "$sigPath.mute"; oid = "$sigOid.3"
+                isOnline = $true; access = "readWrite"; type = "boolean"; value = $false
+            })
+        )
+    }
+    NodeOf $num $ident $path $oid $kids
+}
+
 $dynChildren = @(
     (SparseLabelLevel 1 "labelsPrimary"   "$dynRoot.labelsPrimary"   "$dynOid.1" $dynSparseTgts $dynSparseSrcs "Pri")
     (SparseLabelLevel 2 "labelsSecondary" "$dynRoot.labelsSecondary" "$dynOid.2" $dynSparseTgts $dynSparseSrcs "Sec")
+    (SparseSignalParams 4 "targetParams" "$dynRoot.targetParams" "$dynOid.4" $dynSparseTgts)
+    (SparseSignalParams 5 "sourceParams" "$dynRoot.sourceParams" "$dynOid.5" $dynSparseSrcs)
 )
 
 $dynTgtsArr = @(); foreach ($n in $dynSparseTgts) { $dynTgtsArr += [ordered]@{ number = $n } }
