@@ -10,7 +10,7 @@ import (
 	"dhs/internal/acp1/codec"
 	"dhs/internal/dmlib"
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func TestParseCardPath(t *testing.T) {
@@ -85,7 +85,7 @@ func (r *fakeDMResolver) Resolve(fp dmlib.Fingerprint) (*dmlib.Schema, error) {
 	return &dmlib.Schema{
 		Fingerprint: fp,
 		Slots: map[int]*export.Snapshot{
-			1: {Slots: []export.SlotDump{{Slot: 1, Objects: []protocol.Object{}}}},
+			1: {Slots: []export.SlotDump{{Slot: 1, Objects: []consumer.Object{}}}},
 		},
 	}, nil
 }
@@ -181,24 +181,24 @@ func schemaWithIdentity(slot int, model, swRev string) *dmlib.Schema {
 				Slots: []export.SlotDump{
 					{
 						Slot: slot,
-						Objects: []protocol.Object{
+						Objects: []consumer.Object{
 							{
 								Slot:   slot,
 								Group:  "identity",
 								ID:     0,
 								Label:  "Card name",
-								Kind:   protocol.KindString,
+								Kind:   consumer.KindString,
 								Access: 0x01, // read
-								Value:  protocol.Value{Kind: protocol.KindString, Str: model},
+								Value:  consumer.Value{Kind: consumer.KindString, Str: model},
 							},
 							{
 								Slot:   slot,
 								Group:  "identity",
 								ID:     3,
 								Label:  "Sw revision",
-								Kind:   protocol.KindString,
+								Kind:   consumer.KindString,
 								Access: 0x01,
-								Value:  protocol.Value{Kind: protocol.KindString, Str: swRev},
+								Value:  consumer.Value{Kind: consumer.KindString, Str: swRev},
 							},
 						},
 					},

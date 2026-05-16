@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // IdentityProbe returns "<Product>@<Version>" for the connected provider.
@@ -259,7 +259,7 @@ func identityStringValue(entry *treeEntry) string {
 	if entry == nil {
 		return ""
 	}
-	if entry.obj.Value.Kind == protocol.KindString {
+	if entry.obj.Value.Kind == consumer.KindString {
 		return entry.obj.Value.Str
 	}
 	if entry.glowParam != nil && entry.glowParam.Value != nil {

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TestSaveLoadByIdentity_PreservesMetaAndContent pins the per-card DM
@@ -22,7 +22,7 @@ func TestSaveLoadByIdentity_PreservesMetaAndContent(t *testing.T) {
 	dir := t.TempDir()
 	saver := NewTreeStore(dir)
 
-	objs := []protocol.Object{
+	objs := []consumer.Object{
 		{
 			// Slot is set on purpose — writer must ZERO it (DM is
 			// slot-agnostic). Round-trip should come back with Slot=0.
@@ -30,7 +30,7 @@ func TestSaveLoadByIdentity_PreservesMetaAndContent(t *testing.T) {
 			ID:    70232,
 			Label: "Backup Input",
 			Path:  []string{"BOARD", "Stream"},
-			Kind:  protocol.KindEnum,
+			Kind:  consumer.KindEnum,
 			Unit:  "dBFS",
 			Meta: map[string]any{
 				"acp2.objType": uint8(2),
@@ -60,7 +60,7 @@ func TestSaveLoadByIdentity_PreservesMetaAndContent(t *testing.T) {
 	if rt.Slot != 0 {
 		t.Errorf("DM is slot-agnostic — writer must zero Slot, got Slot=%d", rt.Slot)
 	}
-	if rt.ID != 70232 || rt.Label != "Backup Input" || rt.Kind != protocol.KindEnum {
+	if rt.ID != 70232 || rt.Label != "Backup Input" || rt.Kind != consumer.KindEnum {
 		t.Errorf("base fields lost: id=%d label=%q kind=%v", rt.ID, rt.Label, rt.Kind)
 	}
 	if rt.Unit != "dBFS" {
@@ -90,9 +90,9 @@ func TestSaveByIdentity_EmitsCleanDMShape(t *testing.T) {
 	dir := t.TempDir()
 	store := NewTreeStore(dir)
 
-	objs := []protocol.Object{{
+	objs := []consumer.Object{{
 		Slot: 0, ID: 0, Group: "identity", Label: "Card name",
-		Kind: protocol.KindString,
+		Kind: consumer.KindString,
 	}}
 	if err := store.SaveByIdentity("acp1", "RRS18@1601", objs); err != nil {
 		t.Fatalf("SaveByIdentity: %v", err)
@@ -139,7 +139,7 @@ func TestSaveByIdentity_EmitsCleanDMShape(t *testing.T) {
 func TestIdentityPath_PerProtocolSubfolder(t *testing.T) {
 	dir := t.TempDir()
 	store := NewTreeStore(dir)
-	objs := []protocol.Object{{Slot: 0, ID: 0, Label: "Card name"}}
+	objs := []consumer.Object{{Slot: 0, ID: 0, Label: "Card name"}}
 	if err := store.SaveByIdentity("acp1", "RRS18@1601", objs); err != nil {
 		t.Fatalf("SaveByIdentity: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestLoadByIdentity_FallbackToLegacyPath(t *testing.T) {
 		Device: export.DeviceInfo{IP: "10.41.40.195", Protocol: "acp2"},
 		Slots: []export.SlotDump{{
 			Slot:    1,
-			Objects: []protocol.Object{{Slot: 1, ID: 67604, Label: "Destination IP"}},
+			Objects: []consumer.Object{{Slot: 1, ID: 67604, Label: "Destination IP"}},
 		}},
 	}
 	f, _ := os.Create(legacyFile)
@@ -194,9 +194,9 @@ func TestLoadByIdentity_FallbackToLegacyPath(t *testing.T) {
 func TestLoadByIdentity_NewDMShape(t *testing.T) {
 	dir := t.TempDir()
 	store := NewTreeStore(dir)
-	objs := []protocol.Object{
-		{Slot: 0, ID: 0, Label: "Card name", Kind: protocol.KindString},
-		{Slot: 0, ID: 1, Label: "User label", Kind: protocol.KindString},
+	objs := []consumer.Object{
+		{Slot: 0, ID: 0, Label: "Card name", Kind: consumer.KindString},
+		{Slot: 0, ID: 1, Label: "User label", Kind: consumer.KindString},
 	}
 	if err := store.SaveByIdentity("acp2", "SHPRM1@0.7", objs); err != nil {
 		t.Fatalf("SaveByIdentity: %v", err)

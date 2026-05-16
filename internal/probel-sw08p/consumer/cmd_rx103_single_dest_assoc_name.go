@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // SingleDestAssocName fetches one destination-association name.
@@ -33,7 +33,7 @@ func (p *Plugin) SingleDestAssocName(
 	}
 	r, derr := codec.DecodeDestAssocNamesResponse(reply)
 	if derr != nil {
-		return "", &protocol.TransportError{Op: "decode", Err: derr}
+		return "", &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	if len(r.Names) == 0 {
 		return "", nil

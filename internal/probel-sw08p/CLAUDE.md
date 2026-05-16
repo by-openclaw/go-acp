@@ -12,7 +12,7 @@ idioms); this file holds the Probel-specific wire spec + quirks.
 internal/probel-sw08p/
 ├── CLAUDE.md    ← this file
 ├── codec/       stdlib-only byte codec (lift-to-own-repo ready)
-├── consumer/    package probel — implements protocol.Protocol
+├── consumer/    package probel — implements consumer.Protocol
 ├── provider/    package probel — implements provider.Provider
 ├── wireshark/   Lua dissector (TODO — see #TBD)
 └── assets/      SW-P-08 spec + Commie + TS SW-P-08 emulator

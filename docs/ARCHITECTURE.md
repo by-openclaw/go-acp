@@ -9,32 +9,32 @@
 │  internal/export/                                │
 ├──────────────────────────────────────────────────┤
 │  Normalized layer                                │
-│  protocol.Object  protocol.Value                 │
-│  internal/protocol/types.go                      │
+│  consumer.Object  consumer.Value                 │
+│  internal/consumer/types.go                      │
 ├──────────────────────────────────────────────────┤
 │  Wire layer (per-protocol)                       │
-│  internal/protocol/acp1/   acp2/   {future}/    │
+│  internal/consumer/acp1/   acp2/   {future}/    │
 │  internal/transport/                             │
 └──────────────────────────────────────────────────┘
 ```
 
 - **Wire layer**: protocol-specific encode/decode. Each protocol lives in
-  `internal/protocol/{name}/` and speaks its own binary format.
-- **Normalized layer**: `protocol.Object` is the single shared type that
+  `internal/consumer/{name}/` and speaks its own binary format.
+- **Normalized layer**: `consumer.Object` is the single shared type that
   CLI, REST API, storage, and export all consume. Both ACP1 and ACP2
   plugins fill it with their superset of metadata.
-- **Serialization layer**: converts `protocol.Object` to JSON, YAML, or CSV
+- **Serialization layer**: converts `consumer.Object` to JSON, YAML, or CSV
   for export/import.
 
 ## Plugin model
 
 Compile-time registration via `init()`. Each protocol package calls
-`protocol.Register(&Factory{})` at import time. The CLI and server
+`consumer.Register(&Factory{})` at import time. The CLI and server
 main files import the protocol packages as blank imports:
 
 ```go
-import _ "dhs/internal/protocol/acp1"
-import _ "dhs/internal/protocol/acp2"
+import _ "dhs/internal/consumer/acp1"
+import _ "dhs/internal/consumer/acp2"
 ```
 
 No runtime plugin loading. No external config. Adding a protocol means

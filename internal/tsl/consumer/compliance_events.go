@@ -8,7 +8,7 @@ import "dhs/internal/tsl/codec"
 // row in internal/tsl/CLAUDE.md "Compliance events" and a Note kind
 // the codec already emits during Decode.
 //
-// Authoritative spec: internal/tsl/assets/tsl-umd-protocol.txt.
+// Authoritative spec: internal/tsl/assets/tsl-umd-consumer.txt.
 //
 // The generic Profile counter lives in internal/protocol/compliance/.
 // Classification:

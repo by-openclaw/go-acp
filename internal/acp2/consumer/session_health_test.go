@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func TestSessionHealth_NoSession(t *testing.T) {
@@ -64,7 +64,7 @@ func TestSessionHealth_ConnectedStaleRx(t *testing.T) {
 
 func TestSessionHealth_IsLiveAt_HelperPure(t *testing.T) {
 	now := time.Now()
-	h := protocol.SessionHealth{
+	h := consumer.SessionHealth{
 		LastRx:     now.Add(-30 * time.Second),
 		StaleAfter: 90 * time.Second,
 	}
@@ -89,24 +89,24 @@ func TestGetSlotInfo_IsOnlineTruthTable(t *testing.T) {
 	now := time.Now()
 	cases := []struct {
 		name        string
-		status      protocol.SlotStatus
+		status      consumer.SlotStatus
 		lastRxAgo   time.Duration
 		wantOnline  bool
-		wantState   protocol.SlotState
+		wantState   consumer.SlotState
 	}{
-		{"present-and-live", protocol.SlotPresent, 1 * time.Second, true, protocol.SlotStatePresent},
-		{"present-but-silent", protocol.SlotPresent, 2 * time.Hour, false, protocol.SlotStatePresent},
-		{"removed-but-live", protocol.SlotRemoved, 1 * time.Second, false, protocol.SlotStateRemoved},
-		{"no-card-but-live", protocol.SlotNoCard, 1 * time.Second, false, protocol.SlotStateNoCard},
-		{"error-but-live", protocol.SlotError, 1 * time.Second, false, protocol.SlotStateError},
-		{"boot-but-live", protocol.SlotBootMode, 1 * time.Second, false, protocol.SlotStateBoot},
+		{"present-and-live", consumer.SlotPresent, 1 * time.Second, true, consumer.SlotStatePresent},
+		{"present-but-silent", consumer.SlotPresent, 2 * time.Hour, false, consumer.SlotStatePresent},
+		{"removed-but-live", consumer.SlotRemoved, 1 * time.Second, false, consumer.SlotStateRemoved},
+		{"no-card-but-live", consumer.SlotNoCard, 1 * time.Second, false, consumer.SlotStateNoCard},
+		{"error-but-live", consumer.SlotError, 1 * time.Second, false, consumer.SlotStateError},
+		{"boot-but-live", consumer.SlotBootMode, 1 * time.Second, false, consumer.SlotStateBoot},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			p := &Plugin{logger: slog.Default()}
 			s := &Session{
 				logger:       slog.Default(),
-				slotStatus:   []protocol.SlotStatus{tc.status, tc.status}, // slot 0 + 1
+				slotStatus:   []consumer.SlotStatus{tc.status, tc.status}, // slot 0 + 1
 				slotLastSeen: []time.Time{now, now},
 			}
 			s.lastRxNS.Store(now.Add(-tc.lastRxAgo).UnixNano())
@@ -132,12 +132,12 @@ func TestGetSlotInfo_IsOnlineTruthTable(t *testing.T) {
 
 func TestSessionMarkSlotProbed_ExtendsTables(t *testing.T) {
 	s := &Session{logger: slog.Default()}
-	st := protocol.SlotPresent
+	st := consumer.SlotPresent
 	s.MarkSlotProbed(5, &st)
 	if len(s.slotStatus) < 6 {
 		t.Fatalf("slotStatus len = %d, want >= 6 after probing slot 5", len(s.slotStatus))
 	}
-	if s.slotStatus[5] != protocol.SlotPresent {
+	if s.slotStatus[5] != consumer.SlotPresent {
 		t.Fatalf("slotStatus[5] = %v, want SlotPresent", s.slotStatus[5])
 	}
 	if s.slotLastSeen[5].IsZero() {

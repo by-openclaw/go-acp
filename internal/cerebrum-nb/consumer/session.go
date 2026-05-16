@@ -125,7 +125,7 @@ func (s *Session) APIVersion() string {
 }
 
 // APIVersionMajor returns the integer major component of the
-// login_reply api_ver — useful as protocol.DeviceInfo.ProtocolVersion.
+// login_reply api_ver — useful as consumer.DeviceInfo.ProtocolVersion.
 // Note: Cerebrum currently ships api_ver="0.x"; major can legitimately
 // be 0. Use APIVersion() for display.
 func (s *Session) APIVersionMajor() int {

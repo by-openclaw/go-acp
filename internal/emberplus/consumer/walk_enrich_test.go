@@ -3,7 +3,7 @@ package emberplus
 import (
 	"testing"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TestEnrichMatrixLabels_InlineTargetSource pins the post-walk join
@@ -12,7 +12,7 @@ import (
 // canonical.Matrix.TargetLabels / SourceLabels shape so the DM file is
 // self-contained for crosspoint rendering.
 func TestEnrichMatrixLabels_InlineTargetSource(t *testing.T) {
-	objs := []protocol.Object{
+	objs := []consumer.Object{
 		// The matrix carrying labels[basePath="1.2.1", description="Primary"]
 		{
 			OID:   "1.2.3",
@@ -38,14 +38,14 @@ func TestEnrichMatrixLabels_InlineTargetSource(t *testing.T) {
 			OID:   "1.2.1.1.3",
 			Label: "t-3",
 			Path:  []string{"router", "nToN", "labels", "targets", "t-3"},
-			Value: protocol.Value{Kind: protocol.KindString, Str: "AES-T-3"},
+			Value: consumer.Value{Kind: consumer.KindString, Str: "AES-T-3"},
 			Meta:  map[string]any{"element": "parameter", "type": "string"},
 		},
 		{
 			OID:   "1.2.1.1.6",
 			Label: "t-6",
 			Path:  []string{"router", "nToN", "labels", "targets", "t-6"},
-			Value: protocol.Value{Kind: protocol.KindString, Str: "AES-T-6"},
+			Value: consumer.Value{Kind: consumer.KindString, Str: "AES-T-6"},
 			Meta:  map[string]any{"element": "parameter", "type": "string"},
 		},
 		// Sources container (number=2)
@@ -59,13 +59,13 @@ func TestEnrichMatrixLabels_InlineTargetSource(t *testing.T) {
 			OID:   "1.2.1.2.3",
 			Label: "s-3",
 			Path:  []string{"router", "nToN", "labels", "sources", "s-3"},
-			Value: protocol.Value{Kind: protocol.KindString, Str: "AES-S-3"},
+			Value: consumer.Value{Kind: consumer.KindString, Str: "AES-S-3"},
 			Meta:  map[string]any{"element": "parameter", "type": "string"},
 		},
 	}
 
 	enriched := enrichMatrixLabels(objs)
-	var matrix *protocol.Object
+	var matrix *consumer.Object
 	for i := range enriched {
 		if enriched[i].OID == "1.2.3" {
 			matrix = &enriched[i]
@@ -96,7 +96,7 @@ func TestEnrichMatrixLabels_InlineTargetSource(t *testing.T) {
 // description keys the inline map by basePath (matches the resolver's
 // fallback convention).
 func TestEnrichMatrixLabels_DescriptionFallback(t *testing.T) {
-	objs := []protocol.Object{
+	objs := []consumer.Object{
 		{
 			OID: "1.2.3", Label: "matrix",
 			Path: []string{"router", "matrix"},
@@ -110,7 +110,7 @@ func TestEnrichMatrixLabels_DescriptionFallback(t *testing.T) {
 		{
 			OID:   "9.9.1.0",
 			Path:  []string{"router", "lbl", "targets", "first"},
-			Value: protocol.Value{Kind: protocol.KindString, Str: "T0"},
+			Value: consumer.Value{Kind: consumer.KindString, Str: "T0"},
 			Meta:  map[string]any{"element": "parameter"},
 		},
 	}
@@ -125,7 +125,7 @@ func TestEnrichMatrixLabels_DescriptionFallback(t *testing.T) {
 // enriched objects and verifies the shape is stable (no double-write,
 // no shape change).
 func TestEnrichMatrixLabels_Idempotent(t *testing.T) {
-	objs := []protocol.Object{
+	objs := []consumer.Object{
 		{
 			OID: "1.2.3", Label: "matrix",
 			Path: []string{"router", "matrix"},
@@ -139,7 +139,7 @@ func TestEnrichMatrixLabels_Idempotent(t *testing.T) {
 		{
 			OID:   "8.8.1.5",
 			Path:  []string{"router", "lbl", "targets", "t-5"},
-			Value: protocol.Value{Kind: protocol.KindString, Str: "Five"},
+			Value: consumer.Value{Kind: consumer.KindString, Str: "Five"},
 			Meta:  map[string]any{"element": "parameter"},
 		},
 	}

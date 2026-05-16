@@ -1,6 +1,6 @@
 // Package probelsw02p is the Probel SW-P-02 consumer plugin — it opens a
 // TCP session to a matrix controller (rx side) and exposes matrix /
-// crosspoint operations through the protocol.Protocol interface.
+// crosspoint operations through the consumer.Protocol interface.
 //
 // Layering (mirror of acp1 / acp2 / emberplus / probel-sw08p consumer
 // packages):
@@ -25,8 +25,8 @@ import (
 
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw02p/codec"
-	"dhs/internal/protocol"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/transport"
 )
 
@@ -50,7 +50,7 @@ const DefaultAppKeepaliveSpacing = 2 * time.Second
 const DefaultBootstrapSpacing = 10 * time.Millisecond
 
 func init() {
-	protocol.Register(&Factory{})
+	consumer.Register(&Factory{})
 }
 
 // Factory registers the SW-P-02 consumer plugin with the compile-time
@@ -58,8 +58,8 @@ func init() {
 type Factory struct{}
 
 // Meta publishes the static descriptor used by the CLI + API.
-func (f *Factory) Meta() protocol.ProtocolMeta {
-	return protocol.ProtocolMeta{
+func (f *Factory) Meta() consumer.ProtocolMeta {
+	return consumer.ProtocolMeta{
 		Name:        "probel-sw02p",
 		DefaultPort: DefaultPort,
 		Description: "Probel SW-P-02 matrix controller (TCP)",
@@ -67,7 +67,7 @@ func (f *Factory) Meta() protocol.ProtocolMeta {
 }
 
 // New constructs a fresh consumer plugin bound to the given logger.
-func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
+func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
 	return &Plugin{logger: logger}
 }
 
@@ -166,7 +166,7 @@ func (p *Plugin) Metrics() *metrics.Connector {
 // IsOnline reports whether the plugin considers the matrix alive —
 // true if we have seen any rx frame within DefaultOnlineStaleAfter.
 // Mirrors the canonical.Header.IsOnline flag surfaced by the Ember+
-// mirror: one "alive" bool, same semantics across every protocol.
+// mirror: one "alive" bool, same semantics across every consumer.
 // False before Connect and after Disconnect once the staleness
 // threshold elapses.
 func (p *Plugin) IsOnline() bool {
@@ -260,7 +260,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 	cli, err := codec.Dial(ctx, addr, p.logger, cfg)
 	if err != nil {
-		return &protocol.TransportError{Op: "connect", Err: err}
+		return &consumer.TransportError{Op: "connect", Err: err}
 	}
 	p.client = cli
 	p.host = ip
@@ -313,7 +313,7 @@ func (p *Plugin) getClient() (*codec.Client, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.client == nil {
-		return nil, protocol.ErrNotConnected
+		return nil, consumer.ErrNotConnected
 	}
 	return p.client, nil
 }
@@ -327,43 +327,43 @@ func (p *Plugin) ExposeClient() (*codec.Client, error) {
 // GetDeviceInfo is not applicable to SW-P-02 in the scaffold. Per-
 // command commits may populate a synthetic DeviceInfo derived from
 // Device-Name / Status replies.
-func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
+func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
 	if _, err := p.getClient(); err != nil {
-		return protocol.DeviceInfo{}, err
+		return consumer.DeviceInfo{}, err
 	}
-	return protocol.DeviceInfo{IP: p.host, Port: p.port}, nil
+	return consumer.DeviceInfo{IP: p.host, Port: p.port}, nil
 }
 
 // GetSlotInfo — slots are not an SW-P-02 concept.
-func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, error) {
-	return protocol.SlotInfo{}, protocol.ErrNotImplemented
+func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
+	return consumer.SlotInfo{}, consumer.ErrNotImplemented
 }
 
 // Walk enumerates matrices / levels / destinations / sources. Lands in
 // the "source + destination names + sizes" per-command commit.
-func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) {
-	return nil, protocol.ErrNotImplemented
+func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) {
+	return nil, consumer.ErrNotImplemented
 }
 
 // GetValue — for SW-P-02, GetValue on a crosspoint returns its current
 // source. Lands in the CrosspointInterrogate per-command commit.
-func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
-	return protocol.Value{}, protocol.ErrNotImplemented
+func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
+	return consumer.Value{}, consumer.ErrNotImplemented
 }
 
 // SetValue — for SW-P-02, SetValue on a crosspoint connects the named
 // source. Lands in the CrosspointConnect per-command commit.
-func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
-	return protocol.Value{}, protocol.ErrNotImplemented
+func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
+	return consumer.Value{}, consumer.ErrNotImplemented
 }
 
 // Subscribe attaches a callback for async tallies. Wiring lands in the
 // CrosspointTally per-command commit.
-func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
-	return protocol.ErrNotImplemented
+func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
+	return consumer.ErrNotImplemented
 }
 
 // Unsubscribe removes a tally callback.
-func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
-	return protocol.ErrNotImplemented
+func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
+	return consumer.ErrNotImplemented
 }

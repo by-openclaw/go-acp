@@ -3,7 +3,7 @@ package emberplus
 import (
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // enrichMatrixLabels resolves each matrix's basePath pointer into an
@@ -26,7 +26,7 @@ import (
 // Idempotent: re-running on already-enriched objects leaves them
 // unchanged. Cache files written then loaded then re-walked then
 // re-cached keep the same shape.
-func enrichMatrixLabels(objs []protocol.Object) []protocol.Object {
+func enrichMatrixLabels(objs []consumer.Object) []consumer.Object {
 	byOID := make(map[string]int, len(objs))
 	for i, o := range objs {
 		if o.OID != "" {
@@ -130,7 +130,7 @@ func normaliseLabelsField(v any) []labelEntry {
 // extractLabelValues returns {indexAsString: labelString} for every
 // direct child of the containerOID. Direct child = OID is exactly
 // "<containerOID>.<segment>" with no further dots.
-func extractLabelValues(objs []protocol.Object, containerOID string) map[string]string {
+func extractLabelValues(objs []consumer.Object, containerOID string) map[string]string {
 	prefix := containerOID + "."
 	out := make(map[string]string)
 	for _, o := range objs {
@@ -141,7 +141,7 @@ func extractLabelValues(objs []protocol.Object, containerOID string) map[string]
 		if strings.Contains(remainder, ".") {
 			continue
 		}
-		if o.Value.Kind != protocol.KindString {
+		if o.Value.Kind != consumer.KindString {
 			continue
 		}
 		if o.Value.Str == "" {

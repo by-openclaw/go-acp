@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"dhs/internal/emberplus/codec/glow"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func newSeedTestPlugin() *Plugin {
@@ -16,7 +16,7 @@ func newSeedTestPlugin() *Plugin {
 // the cache shape (Object.OID + Object.Path + Meta["element"]="node").
 func TestSeed_Node(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "1.2",
 		Label: "identity",
 		Path:  []string{"router", "identity"},
@@ -45,7 +45,7 @@ func TestSeed_Node(t *testing.T) {
 // needs after hot-load.
 func TestSeed_Parameter(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "1.4.1.3",
 		Label: "value",
 		Path:  []string{"router", "streams", "stream1", "value"},
@@ -75,7 +75,7 @@ func TestSeed_Parameter(t *testing.T) {
 // without re-walking.
 func TestSeed_StreamIndex(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "1.4.1.3",
 		Label: "value",
 		Path:  []string{"router", "streams", "stream1", "value"},
@@ -99,7 +99,7 @@ func TestSeed_StreamIndex(t *testing.T) {
 // presence bit on the seed side.
 func TestSeed_StreamIndexZero(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "1.4.1.3",
 		Label: "value",
 		Path:  []string{"router", "streams", "stream0", "value"},
@@ -127,7 +127,7 @@ func TestSeed_StreamIndexZero(t *testing.T) {
 // arg.
 func TestSeed_Matrix(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "1.2.3",
 		Label: "matrix",
 		Path:  []string{"router", "nToN", "matrix"},
@@ -153,7 +153,7 @@ func TestSeed_Matrix(t *testing.T) {
 // reads children.
 func TestSeed_RoundTripIdentity(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{
 		{
 			OID:   "1.0",
 			Label: "identity",
@@ -164,14 +164,14 @@ func TestSeed_RoundTripIdentity(t *testing.T) {
 			OID:   "1.0.1",
 			Label: "product",
 			Path:  []string{"router", "identity", "product"},
-			Value: protocol.Value{Kind: protocol.KindString, Str: "Tiny Ember+ Router"},
+			Value: consumer.Value{Kind: consumer.KindString, Str: "Tiny Ember+ Router"},
 			Meta:  map[string]any{"element": "parameter", "type": "string"},
 		},
 		{
 			OID:   "1.0.3",
 			Label: "version",
 			Path:  []string{"router", "identity", "version"},
-			Value: protocol.Value{Kind: protocol.KindString, Str: "1.6.2"},
+			Value: consumer.Value{Kind: consumer.KindString, Str: "1.6.2"},
 			Meta:  map[string]any{"element": "parameter", "type": "string"},
 		},
 	})
@@ -189,7 +189,7 @@ func TestSeed_RoundTripIdentity(t *testing.T) {
 // flattens to one logical slot).
 func TestSeed_RejectsNonZeroSlot(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(1, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(1, []consumer.Object{{
 		OID:   "1.0.1",
 		Label: "product",
 		Path:  []string{"router", "identity", "product"},
@@ -206,7 +206,7 @@ func TestSeed_RejectsNonZeroSlot(t *testing.T) {
 // — get/set/matrix on such an entry then re-walks gracefully).
 func TestSeed_UnknownElementKeepsLabelIndex(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "9.9.9",
 		Label: "mystery",
 		Path:  []string{"mystery"},
@@ -229,7 +229,7 @@ func TestSeed_UnknownElementKeepsLabelIndex(t *testing.T) {
 // crosspoint UI without re-walking.
 func TestSeed_MatrixFullSchema(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "1.2.3",
 		Label: "matrix",
 		Path:  []string{"router", "nToN", "matrix"},
@@ -300,7 +300,7 @@ func TestSeed_MatrixFullSchema(t *testing.T) {
 // cached Meta. Pinned per spec p.91 (Function/TupleDescription).
 func TestSeed_FunctionTuples(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "1.4.1",
 		Label: "add",
 		Path:  []string{"router", "functions", "add"},
@@ -336,7 +336,7 @@ func TestSeed_FunctionTuples(t *testing.T) {
 // writes) flow back into p.templates and become ResolveTemplate-able.
 func TestSeed_TemplateRoundTrip(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "0.5.2",
 		Label: "Gain template",
 		Meta: map[string]any{
@@ -362,7 +362,7 @@ func TestSeed_TemplateRoundTrip(t *testing.T) {
 // confirmation flips them — ADR-0022 freshness contract.
 func TestSeed_FreshnessStale(t *testing.T) {
 	p := newSeedTestPlugin()
-	p.SeedTreeFromCachedObjects(0, []protocol.Object{{
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{{
 		OID:   "1.0.1",
 		Label: "product",
 		Path:  []string{"router", "identity", "product"},

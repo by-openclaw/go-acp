@@ -13,18 +13,18 @@ import (
 	"fmt"
 	"sort"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp1/consumer"
 	"dhs/internal/acp2/consumer"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer/compliance"
 	emberplus "dhs/internal/emberplus/consumer"
 )
 
 // pluginProfile returns the compliance profile attached to the given
 // plugin, or nil if the plugin does not expose one. Dispatches by
 // concrete type since ComplianceProfile() is not in the
-// protocol.Protocol interface (it's optional per-plugin).
-func pluginProfile(plug protocol.Protocol) *compliance.Profile {
+// consumer.Protocol interface (it's optional per-plugin).
+func pluginProfile(plug consumer.Protocol) *compliance.Profile {
 	switch p := plug.(type) {
 	case *emberplus.Plugin:
 		return p.ComplianceProfile()

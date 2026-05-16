@@ -14,7 +14,7 @@ internal/tsl/
 ├── codec/           stdlib-only byte codec (lift-ready). One file per
 │                    version+frame-type: v31_frame.go, v40_xdata.go,
 │                    v50_packet.go, v50_dmsg.go, v50_dle_stx.go.
-├── consumer/        package tsl — implements protocol.Protocol
+├── consumer/        package tsl — implements consumer.Protocol
 ├── provider/        package tsl — implements provider.Provider
 ├── wireshark/       dissector_tsl.lua (covers all three versions)
 └── assets/          tsl-umd-protocol.pdf + extracted .txt + Miranda JARs

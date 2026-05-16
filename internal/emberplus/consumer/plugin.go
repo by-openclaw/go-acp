@@ -1,6 +1,6 @@
 // Package emberplus is the Ember+ consumer plugin. See the package doc in
 // types.go for the layered architecture (ber / s101 / glow / plugin /
-// session). This file wires the consumer to the generic protocol.Protocol
+// session). This file wires the consumer to the generic consumer.Protocol
 // interface and maintains the in-RAM tree model.
 //
 // Tree model (spec-neutral, project-specific):
@@ -24,15 +24,15 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/protocol"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/matrix"
 	"dhs/internal/transport"
 )
 
 func init() {
-	protocol.Register(&Factory{})
+	consumer.Register(&Factory{})
 }
 
 // Factory registers the Ember+ plugin with the compile-time registry.
@@ -40,8 +40,8 @@ type Factory struct{}
 
 // Meta publishes the static descriptor used by the plugin registry, CLI
 // help, and API discovery endpoints.
-func (f *Factory) Meta() protocol.ProtocolMeta {
-	return protocol.ProtocolMeta{
+func (f *Factory) Meta() consumer.ProtocolMeta {
+	return consumer.ProtocolMeta{
 		Name:        "emberplus",
 		DefaultPort: DefaultPort,
 		Description: "Ember+ (Glow/S101/TCP) consumer",
@@ -50,7 +50,7 @@ func (f *Factory) Meta() protocol.ProtocolMeta {
 
 // New constructs a fresh Plugin instance. Each device connection uses a
 // separate Plugin so cached tree state cannot cross devices.
-func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
+func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
 	return &Plugin{logger: logger}
 }
 
@@ -72,7 +72,7 @@ const (
 	FreshnessUpdated
 )
 
-// Plugin implements protocol.Protocol for Ember+ providers.
+// Plugin implements consumer.Protocol for Ember+ providers.
 type Plugin struct {
 	logger  *slog.Logger
 	session *Session
@@ -93,7 +93,7 @@ type Plugin struct {
 	// streamIndex maps a streamIdentifier (spec p.93 StreamEntry) to the
 	// set of parameter paths that share it. A single stream identifier
 	// may fan out across several parameters via StreamDescription offset.
-	subs        map[string]protocol.EventFunc
+	subs        map[string]consumer.EventFunc
 	streamSubs  map[string][]int32
 	streamIndex map[int64][]string
 	subsMu      sync.RWMutex
@@ -246,7 +246,7 @@ func (p *Plugin) SetRecorder(r *transport.Recorder) {
 // struct (consumed by matrix / invoke operations that need the numeric
 // path and full metadata).
 type treeEntry struct {
-	obj protocol.Object
+	obj consumer.Object
 
 	// Exactly one Glow pointer is non-nil — mirrors glow.Element's union.
 	glowNode   *glow.Node
@@ -273,7 +273,7 @@ type treeEntry struct {
 	// the subscriber notify; carries the field-diff between the
 	// prior and current glowParam. Copied onto the outgoing Event
 	// by notifySubscribers, then cleared (diff is per-event).
-	pendingChanges []protocol.FieldChange
+	pendingChanges []consumer.FieldChange
 
 	// lastEmittedRendered is the stringified value rendered at the
 	// last successful notifySubscribers fire. Used to suppress the
@@ -297,7 +297,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.labelIndex = make(map[string][]*treeEntry)
 	p.numPath = make(map[string]string)
 	p.treeMu.Unlock()
-	p.subs = make(map[string]protocol.EventFunc)
+	p.subs = make(map[string]consumer.EventFunc)
 	p.streamSubs = make(map[string][]int32)
 	p.streamIndex = make(map[int64][]string)
 	p.templates = make(map[string]*glow.Template)
@@ -409,16 +409,16 @@ func (p *Plugin) emitRootSessionEvent(connected bool, reason string) {
 		oldLbl, newLbl = "n", "y"
 	}
 
-	changes := []protocol.FieldChange{
+	changes := []consumer.FieldChange{
 		{Name: "isOnline", Old: oldLbl, New: newLbl},
 	}
 	if reason != "" {
-		changes = append(changes, protocol.FieldChange{
+		changes = append(changes, consumer.FieldChange{
 			Name: "reason", Old: "", New: reason,
 		})
 	}
 
-	ev := protocol.Event{
+	ev := consumer.Event{
 		Slot:      0,
 		Timestamp: time.Now(),
 		Changes:   changes,
@@ -479,8 +479,8 @@ func (p *Plugin) Disconnect() error {
 // host/port. The single-slot report lets generic code — `acp export`,
 // `acp import`, `--all` — iterate once instead of skipping the
 // provider entirely.
-func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
-	return protocol.DeviceInfo{
+func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
+	return consumer.DeviceInfo{
 		IP:              p.connIP,
 		Port:            p.connPort,
 		ProtocolVersion: 1,
@@ -490,25 +490,25 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error)
 
 // GetSlotInfo pretends the whole Ember+ tree is slot 0. Any other slot is
 // a usage error.
-func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, error) {
+func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
 	if slot != 0 {
-		return protocol.SlotInfo{}, fmt.Errorf("emberplus: only slot 0 supported")
+		return consumer.SlotInfo{}, fmt.Errorf("emberplus: only slot 0 supported")
 	}
-	return protocol.SlotInfo{Slot: 0, Status: protocol.SlotPresent}, nil
+	return consumer.SlotInfo{Slot: 0, Status: consumer.SlotPresent}, nil
 }
 
 // Walk triggers a full GetDirectory and blocks until the tree stops
 // growing. Uses a settle timer: after receiving new entries it waits 2s of
 // silence before returning (typical TinyEmber+ walk = 2–3s, real devices
 // can take longer). Total bound is 15s of silence.
-func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) {
+func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) {
 	if slot != 0 {
 		return nil, fmt.Errorf("emberplus: only slot 0")
 	}
 
 	s := p.currentSession()
 	if s == nil {
-		return nil, protocol.ErrNotConnected
+		return nil, consumer.ErrNotConnected
 	}
 
 	if err := s.SendGetDirectory(); err != nil {
@@ -548,9 +548,9 @@ done:
 // label parameters under each basePath have been decoded.
 // enrichMatrixLabels does that inline join so the DM file is
 // self-contained — provider-side canonical.Matrix shape.
-func (p *Plugin) snapshot() []protocol.Object {
+func (p *Plugin) snapshot() []consumer.Object {
 	p.treeMu.RLock()
-	out := make([]protocol.Object, 0, len(p.numIndex))
+	out := make([]consumer.Object, 0, len(p.numIndex))
 	for _, entry := range p.numIndex {
 		out = append(out, entry.obj)
 	}
@@ -560,19 +560,19 @@ func (p *Plugin) snapshot() []protocol.Object {
 }
 
 // appendTemplateObjects serializes templates (which live in
-// p.templates separate from the tree) as synthetic protocol.Objects
+// p.templates separate from the tree) as synthetic consumer.Objects
 // with Meta["element"] = "template", so the DM cache round-trip
 // preserves them. SeedTreeFromCachedObjects registers them back in
 // p.templates via seedTemplate (no entry in numIndex — templates are
 // looked up by ResolveTemplate, not iterated).
-func appendTemplateObjects(out []protocol.Object, p *Plugin) []protocol.Object {
+func appendTemplateObjects(out []consumer.Object, p *Plugin) []consumer.Object {
 	p.templatesMu.RLock()
 	defer p.templatesMu.RUnlock()
 	for key, t := range p.templates {
 		if t == nil {
 			continue
 		}
-		out = append(out, protocol.Object{
+		out = append(out, consumer.Object{
 			OID:   key,
 			Label: t.Description,
 			Meta: map[string]any{
@@ -597,7 +597,7 @@ func appendTemplateObjects(out []protocol.Object, p *Plugin) []protocol.Object {
 //     so this only matches on ID.
 //
 // Returns ("", nil) when nothing matches.
-func (p *Plugin) findEntry(req protocol.ValueRequest) (string, *treeEntry) {
+func (p *Plugin) findEntry(req consumer.ValueRequest) (string, *treeEntry) {
 	p.treeMu.RLock()
 	defer p.treeMu.RUnlock()
 
@@ -651,9 +651,9 @@ func (p *Plugin) ensureWalked(ctx context.Context, op string) error {
 // generally the current value. If freshness is Stale the caller can check
 // entry.freshness and issue a targeted Subscribe to wait for a live value
 // (not done here — callers opt in).
-func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
+func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
 	if err := p.ensureWalked(ctx, "get"); err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	key, entry := p.findEntry(req)
@@ -661,7 +661,7 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 		p.treeMu.RLock()
 		size := len(p.numIndex)
 		p.treeMu.RUnlock()
-		return protocol.Value{}, WrapProto(fmt.Sprintf("object not found (tree has %d entries)", size), nil)
+		return consumer.Value{}, WrapProto(fmt.Sprintf("object not found (tree has %d entries)", size), nil)
 	}
 	p.logger.Debug("emberplus: GetValue",
 		"key", key, "label", entry.obj.Label, "freshness", entry.freshness)
@@ -678,38 +678,38 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 //
 // Error semantics (see internal/protocol/errors.go):
 //
-//   - protocol.ErrNotConnected → session is dead; no wire traffic sent.
+//   - consumer.ErrNotConnected → session is dead; no wire traffic sent.
 //     Returns the last known value from the tree.
-//   - protocol.ErrWriteTimeout → send succeeded but no confirming
+//   - consumer.ErrWriteTimeout → send succeeded but no confirming
 //     announce arrived within defaultWriteTimeout. Tree value
 //     unchanged.
-//   - protocol.ErrWriteCoerced → provider announced a different value
+//   - consumer.ErrWriteCoerced → provider announced a different value
 //     (clamp, round). Returned Value reflects what the provider
 //     applied. Caller opts-in to accept via errors.Is.
 //
 // The method is blocking; callers wanting fire-and-forget writes
 // should cancel ctx early.
-func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
+func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
 	// Session-liveness gate: never send on a dead session.
 	p.mu.Lock()
 	connected := p.sessionConnected
 	p.mu.Unlock()
 	if !connected {
-		return protocol.Value{}, protocol.ErrNotConnected
+		return consumer.Value{}, consumer.ErrNotConnected
 	}
 
 	s := p.currentSession()
 	if s == nil {
-		return protocol.Value{}, protocol.ErrNotConnected
+		return consumer.Value{}, consumer.ErrNotConnected
 	}
 
 	if err := p.ensureWalked(ctx, "set"); err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	key, entry := p.findEntry(req)
 	if entry == nil || entry.glowParam == nil {
-		return protocol.Value{}, WrapProto("parameter not found", nil)
+		return consumer.Value{}, WrapProto("parameter not found", nil)
 	}
 	path := entry.glowParam.Path
 	if len(path) == 0 {
@@ -718,10 +718,10 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		path = cloneInt32Slice(entry.numericPath)
 	}
 	if len(path) == 0 {
-		return protocol.Value{}, WrapProto("parameter has no path", nil)
+		return consumer.Value{}, WrapProto("parameter has no path", nil)
 	}
 
-	if val.Kind == protocol.KindUnknown {
+	if val.Kind == consumer.KindUnknown {
 		val.Kind = entry.obj.Kind
 	}
 	coerceStringToTyped(&val)
@@ -739,7 +739,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	defer p.pendingSets.unregister(key)
 
 	if err := s.SendSetValue(path, glowVal); err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	// Await confirmation or timeout.
@@ -750,7 +750,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	case <-ctx.Done():
 		return entry.obj.Value, ctx.Err()
 	case <-timer.C:
-		return entry.obj.Value, protocol.ErrWriteTimeout
+		return entry.obj.Value, consumer.ErrWriteTimeout
 	case r := <-ps.done:
 		return r.value, r.err
 	}
@@ -772,10 +772,10 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 //
 // Returns an error only when the session is dead or the path is not a
 // Parameter.
-func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
+func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
 	s := p.currentSession()
 	if s == nil {
-		return protocol.ErrNotConnected
+		return consumer.ErrNotConnected
 	}
 
 	if req.Path == "" && req.Label == "" && req.ID < 0 {
@@ -850,7 +850,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 
 // Unsubscribe removes a callback. Sends Command 31 only if the original
 // subscription was explicit (streamed parameter per spec p.31).
-func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
+func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	s := p.currentSession()
 	if s == nil {
 		return nil
@@ -892,7 +892,7 @@ func (p *Plugin) unsubscribeAll() {
 		paths = append(paths, path)
 	}
 	p.streamSubs = make(map[string][]int32)
-	p.subs = make(map[string]protocol.EventFunc)
+	p.subs = make(map[string]consumer.EventFunc)
 	p.subsMu.Unlock()
 
 	s := p.currentSession()
@@ -918,13 +918,13 @@ func (p *Plugin) unsubscribeAll() {
 func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target int32, sources []int32, operation int64) error {
 	s := p.currentSession()
 	if s == nil {
-		return protocol.ErrNotConnected
+		return consumer.ErrNotConnected
 	}
 	if err := p.ensureWalked(ctx, "matrix"); err != nil {
 		return err
 	}
 
-	_, entry := p.findEntry(protocol.ValueRequest{Path: matrixPath, ID: -1})
+	_, entry := p.findEntry(consumer.ValueRequest{Path: matrixPath, ID: -1})
 	if entry == nil || entry.glowMatrix == nil {
 		return WrapProto(fmt.Sprintf("matrix not found at path %q", matrixPath), nil)
 	}
@@ -974,7 +974,7 @@ func (p *Plugin) StreamParameterPaths(filter int64) []string {
 // MatrixSnapshot returns the derived matrix state for the matrix at
 // matrixPath, or nil if not a matrix. Useful for UIs rendering a tally.
 func (p *Plugin) MatrixSnapshot(matrixPath string) []matrix.TargetState {
-	_, entry := p.findEntry(protocol.ValueRequest{Path: matrixPath, ID: -1})
+	_, entry := p.findEntry(consumer.ValueRequest{Path: matrixPath, ID: -1})
 	if entry == nil || entry.matrixState == nil {
 		return nil
 	}
@@ -986,13 +986,13 @@ func (p *Plugin) MatrixSnapshot(matrixPath string) []matrix.TargetState {
 func (p *Plugin) InvokeFunction(ctx context.Context, funcPath string, args []any) (*glow.InvocationResult, error) {
 	s := p.currentSession()
 	if s == nil {
-		return nil, protocol.ErrNotConnected
+		return nil, consumer.ErrNotConnected
 	}
 	if err := p.ensureWalked(ctx, "invoke"); err != nil {
 		return nil, err
 	}
 
-	_, entry := p.findEntry(protocol.ValueRequest{Path: funcPath, ID: -1})
+	_, entry := p.findEntry(consumer.ValueRequest{Path: funcPath, ID: -1})
 	if entry == nil || entry.glowFunc == nil {
 		return nil, WrapProto(fmt.Sprintf("function not found at path %q", funcPath), nil)
 	}
@@ -1170,7 +1170,7 @@ func (p *Plugin) deliverStreamValue(entry *treeEntry, value any) {
 
 	newRendered := formatAny(value)
 	if oldRendered != newRendered {
-		entry.pendingChanges = []protocol.FieldChange{{
+		entry.pendingChanges = []consumer.FieldChange{{
 			Name: "value",
 			Old:  oldRendered,
 			New:  newRendered,
@@ -1275,7 +1275,7 @@ func streamFormatSize(format int64) int {
 }
 
 // assignToValue writes value into v using the kind classification.
-func assignToValue(v *protocol.Value, kind protocol.ValueKind, value any) {
+func assignToValue(v *consumer.Value, kind consumer.ValueKind, value any) {
 	v.Kind = kind
 	switch t := value.(type) {
 	case int64:
@@ -1337,12 +1337,12 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []
 		numericPath: numPath,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
-		obj: protocol.Object{
+		obj: consumer.Object{
 			Slot:   0,
 			ID:     int(n.Number),
 			OID:    numericKey(numPath),
 			Label:  n.Identifier,
-			Kind:   protocol.KindRaw,
+			Kind:   consumer.KindRaw,
 			Path:   stringPath,
 			Access: 1,
 			Meta:   nodeMeta(n),
@@ -1728,7 +1728,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 
 	stringPath := p.pathForElement(numPath, param.Identifier, param.Number, parentPath)
 
-	obj := protocol.Object{
+	obj := consumer.Object{
 		Slot:   0,
 		ID:     int(param.Number),
 		OID:    numericKey(numPath),
@@ -1771,15 +1771,15 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	// this restore, a description-change announce would reset the watch
 	// output to "?" (Kind=Unknown).
 	if !announceCarriedValue && seen {
-		if existing.obj.Value.Kind != protocol.KindUnknown {
+		if existing.obj.Value.Kind != consumer.KindUnknown {
 			obj.Value = existing.obj.Value
-			if obj.Kind == protocol.KindUnknown {
+			if obj.Kind == consumer.KindUnknown {
 				obj.Kind = existing.obj.Value.Kind
 			}
 		}
 	}
 
-	if param.Type == glow.ParamTypeEnum || obj.Kind == protocol.KindEnum {
+	if param.Type == glow.ParamTypeEnum || obj.Kind == consumer.KindEnum {
 		if param.Enumeration != "" {
 			obj.EnumItems = strings.Split(param.Enumeration, "\n")
 		}
@@ -1877,12 +1877,12 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 		matrixState: state,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
-		obj: protocol.Object{
+		obj: consumer.Object{
 			Slot:   0,
 			ID:     int(m.Number),
 			OID:    numericKey(numPath),
 			Label:  m.Identifier,
-			Kind:   protocol.KindRaw,
+			Kind:   consumer.KindRaw,
 			Path:   stringPath,
 			Access: 3,
 			Meta:   matrixMeta(m),
@@ -1965,7 +1965,7 @@ func (p *Plugin) notifyMatrixSubscribers(entry *treeEntry, c glow.Connection) {
 	if entry.glowMatrix != nil {
 		desc = entry.glowMatrix.Description
 	}
-	fn(protocol.Event{
+	fn(consumer.Event{
 		Slot:        0,
 		ID:          entry.obj.ID,
 		OID:         entry.obj.OID,
@@ -1976,7 +1976,7 @@ func (p *Plugin) notifyMatrixSubscribers(entry *treeEntry, c glow.Connection) {
 		Group:       entry.obj.Group,
 		Freshness:   freshnessLabel(entry.freshness),
 		Timestamp:   time.Now(),
-		MatrixChange: &protocol.MatrixChange{
+		MatrixChange: &consumer.MatrixChange{
 			Target:      int64(c.Target),
 			Sources:     sources,
 			Operation:   connOpName(c.Operation),
@@ -2003,12 +2003,12 @@ func (p *Plugin) processFunction(f *glow.Function, parentPath []string, parentNu
 		numericPath: numPath,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
-		obj: protocol.Object{
+		obj: consumer.Object{
 			Slot:   0,
 			ID:     int(f.Number),
 			OID:    numericKey(numPath),
 			Label:  f.Identifier,
-			Kind:   protocol.KindRaw,
+			Kind:   consumer.KindRaw,
 			Path:   stringPath,
 			Access: 2,
 			Meta:   functionMeta(f),
@@ -2089,7 +2089,7 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 		changes := entry.pendingChanges
 		entry.pendingChanges = nil
 		entry.lastEmittedRendered = rendered
-		fn(protocol.Event{
+		fn(consumer.Event{
 			Slot:        0,
 			ID:          entry.obj.ID,
 			OID:         entry.obj.OID,
@@ -2108,7 +2108,7 @@ func (p *Plugin) notifySubscribers(entry *treeEntry) {
 }
 
 // freshnessLabel maps the internal Freshness enum to the canonical
-// string used on protocol.Event.Freshness. Keeps the enum internal
+// string used on consumer.Event.Freshness. Keeps the enum internal
 // while the public surface stays string-based.
 func freshnessLabel(f Freshness) string {
 	switch f {
@@ -2200,66 +2200,66 @@ func cloneInt32Slice(in []int32) []int32 {
 }
 
 // paramKindFrom maps a Glow ParameterType to the generic ValueKind.
-func paramKindFrom(p *glow.Parameter) protocol.ValueKind {
+func paramKindFrom(p *glow.Parameter) consumer.ValueKind {
 	switch p.Type {
 	case glow.ParamTypeInteger:
-		return protocol.KindInt
+		return consumer.KindInt
 	case glow.ParamTypeReal:
-		return protocol.KindFloat
+		return consumer.KindFloat
 	case glow.ParamTypeString:
-		return protocol.KindString
+		return consumer.KindString
 	case glow.ParamTypeBoolean:
-		return protocol.KindBool
+		return consumer.KindBool
 	case glow.ParamTypeEnum:
-		return protocol.KindEnum
+		return consumer.KindEnum
 	case glow.ParamTypeOctets:
-		return protocol.KindRaw
+		return consumer.KindRaw
 	}
-	return protocol.KindUnknown
+	return consumer.KindUnknown
 }
 
 // populateValue unions-in the decoded Parameter.Value into obj.Value using
 // the kind classification decided above. A nil Value (spec null) leaves
 // Value at its zero.
-func populateValue(obj *protocol.Object, param *glow.Parameter) {
+func populateValue(obj *consumer.Object, param *glow.Parameter) {
 	if param.Value == nil {
 		return
 	}
 	switch v := param.Value.(type) {
 	case int64:
-		if obj.Kind == protocol.KindUnknown {
-			obj.Kind = protocol.KindInt
-			obj.Value.Kind = protocol.KindInt
+		if obj.Kind == consumer.KindUnknown {
+			obj.Kind = consumer.KindInt
+			obj.Value.Kind = consumer.KindInt
 		}
 		switch obj.Kind {
-		case protocol.KindInt:
+		case consumer.KindInt:
 			obj.Value.Int = v
-		case protocol.KindUint:
+		case consumer.KindUint:
 			obj.Value.Uint = uint64(v)
-		case protocol.KindEnum:
+		case consumer.KindEnum:
 			obj.Value.Enum = uint8(v)
 			obj.Value.Uint = uint64(v)
-		case protocol.KindFloat:
+		case consumer.KindFloat:
 			obj.Value.Float = float64(v)
 		default:
 			obj.Value.Int = v
 		}
 	case float64:
-		if obj.Kind == protocol.KindUnknown {
-			obj.Kind = protocol.KindFloat
-			obj.Value.Kind = protocol.KindFloat
+		if obj.Kind == consumer.KindUnknown {
+			obj.Kind = consumer.KindFloat
+			obj.Value.Kind = consumer.KindFloat
 		}
 		obj.Value.Float = v
 	case string:
-		if obj.Kind == protocol.KindUnknown {
-			obj.Kind = protocol.KindString
-			obj.Value.Kind = protocol.KindString
+		if obj.Kind == consumer.KindUnknown {
+			obj.Kind = consumer.KindString
+			obj.Value.Kind = consumer.KindString
 		}
 		obj.Value.Str = v
 	case bool:
-		if obj.Kind == protocol.KindUnknown {
-			obj.Kind = protocol.KindBool
-			obj.Value.Kind = protocol.KindBool
+		if obj.Kind == consumer.KindUnknown {
+			obj.Kind = consumer.KindBool
+			obj.Value.Kind = consumer.KindBool
 		}
 		obj.Value.Bool = v
 	case []byte:
@@ -2292,30 +2292,30 @@ func appendEnumMap(existing []string, em map[int64]string) []string {
 // coerceStringToTyped parses val.Str into the typed field that matches
 // val.Kind. Called when the CLI passes --value as a string but the
 // parameter type is numeric/boolean/enum.
-func coerceStringToTyped(val *protocol.Value) {
-	if val.Str == "" || val.Kind == protocol.KindString {
+func coerceStringToTyped(val *consumer.Value) {
+	if val.Str == "" || val.Kind == consumer.KindString {
 		return
 	}
 	switch val.Kind {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		if n, err := strconv.ParseInt(val.Str, 10, 64); err == nil {
 			val.Int = n
 			val.Str = ""
 		}
-	case protocol.KindUint:
+	case consumer.KindUint:
 		if n, err := strconv.ParseUint(val.Str, 10, 64); err == nil {
 			val.Uint = n
 			val.Str = ""
 		}
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		if f, err := strconv.ParseFloat(val.Str, 64); err == nil {
 			val.Float = f
 			val.Str = ""
 		}
-	case protocol.KindBool:
+	case consumer.KindBool:
 		val.Bool = val.Str == "true" || val.Str == "1" || val.Str == "yes"
 		val.Str = ""
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		if n, err := strconv.ParseUint(val.Str, 10, 8); err == nil {
 			val.Enum = uint8(n)
 			val.Uint = n
@@ -2324,22 +2324,22 @@ func coerceStringToTyped(val *protocol.Value) {
 	}
 }
 
-// valueToGlow renders a typed protocol.Value into a Glow-encoder input.
+// valueToGlow renders a typed consumer.Value into a Glow-encoder input.
 // Every encoded wire field uses the returned Go type's default mapping
 // (see glow/encoder.go encodeAnyValue).
-func valueToGlow(val protocol.Value) any {
+func valueToGlow(val consumer.Value) any {
 	switch val.Kind {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		return val.Int
-	case protocol.KindUint:
+	case consumer.KindUint:
 		return int64(val.Uint)
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return val.Float
-	case protocol.KindString:
+	case consumer.KindString:
 		return val.Str
-	case protocol.KindBool:
+	case consumer.KindBool:
 		return val.Bool
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		return int64(val.Enum)
 	}
 	if val.Str != "" {

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // fixture builds a tiny on-disk DM library tree under t.TempDir() with two
@@ -17,17 +17,17 @@ func fixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 
-	rrs1601 := makeSnapshot("RRS18", []protocol.Object{
-		{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: protocol.KindString},
-		{Slot: 1, Group: "control", ID: 5, Label: "Gain", Kind: protocol.KindInt, Min: int64(-60), Max: int64(12)},
+	rrs1601 := makeSnapshot("RRS18", []consumer.Object{
+		{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: consumer.KindString},
+		{Slot: 1, Group: "control", ID: 5, Label: "Gain", Kind: consumer.KindInt, Min: int64(-60), Max: int64(12)},
 	})
-	rrs1602 := makeSnapshot("RRS18", []protocol.Object{
-		{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: protocol.KindString},
-		{Slot: 1, Group: "control", ID: 5, Label: "Gain", Kind: protocol.KindInt, Min: int64(-90), Max: int64(12)},
-		{Slot: 1, Group: "control", ID: 8, Label: "Mute", Kind: protocol.KindBool},
+	rrs1602 := makeSnapshot("RRS18", []consumer.Object{
+		{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: consumer.KindString},
+		{Slot: 1, Group: "control", ID: 5, Label: "Gain", Kind: consumer.KindInt, Min: int64(-90), Max: int64(12)},
+		{Slot: 1, Group: "control", ID: 8, Label: "Mute", Kind: consumer.KindBool},
 	})
-	rrs1601acp2 := makeSnapshot("RRS18", []protocol.Object{
-		{Slot: 1, ID: 1234, Label: "Card Name", Kind: protocol.KindString},
+	rrs1601acp2 := makeSnapshot("RRS18", []consumer.Object{
+		{Slot: 1, ID: 1234, Label: "Card Name", Kind: consumer.KindString},
 	})
 
 	writeAt(t, root, "axon", "synapse", "RRS18-1601", "acp1", 1, rrs1601)
@@ -56,7 +56,7 @@ func writeAt(t *testing.T, root, vendor, product, modelRev, proto string, slot i
 	_ = slot
 }
 
-func makeSnapshot(cardName string, objs []protocol.Object) *export.Snapshot {
+func makeSnapshot(cardName string, objs []consumer.Object) *export.Snapshot {
 	return &export.Snapshot{
 		Device: export.DeviceInfo{
 			IP:       "10.6.239.113",
@@ -190,8 +190,8 @@ func TestPersist_Roundtrip(t *testing.T) {
 			Model: "RRS18", SwRev: "2000", Proto: "acp1",
 		},
 		Slots: map[int]*export.Snapshot{
-			1: makeSnapshot("RRS18", []protocol.Object{
-				{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: protocol.KindString},
+			1: makeSnapshot("RRS18", []consumer.Object{
+				{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: consumer.KindString},
 			}),
 		},
 	}
@@ -221,9 +221,9 @@ func TestPersist_AtomicReplaceExisting(t *testing.T) {
 			Model: "RRS18", SwRev: "1601", Proto: "acp1",
 		},
 		Slots: map[int]*export.Snapshot{
-			1: makeSnapshot("RRS18-updated", []protocol.Object{
-				{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: protocol.KindString},
-				{Slot: 1, Group: "control", ID: 9, Label: "NewControl", Kind: protocol.KindBool},
+			1: makeSnapshot("RRS18-updated", []consumer.Object{
+				{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: consumer.KindString},
+				{Slot: 1, Group: "control", ID: 9, Label: "NewControl", Kind: consumer.KindBool},
 			}),
 		},
 	}
@@ -244,21 +244,21 @@ func TestDiff_AddedRemovedChanged(t *testing.T) {
 	prev := &Schema{
 		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1601", Proto: "acp1"},
 		Slots: map[int]*export.Snapshot{
-			1: makeSnapshot("RRS18", []protocol.Object{
-				{Slot: 1, ID: 1, Label: "A", Kind: protocol.KindInt},
-				{Slot: 1, ID: 2, Label: "B", Kind: protocol.KindInt},
-				{Slot: 1, ID: 3, Label: "C", Kind: protocol.KindInt},
+			1: makeSnapshot("RRS18", []consumer.Object{
+				{Slot: 1, ID: 1, Label: "A", Kind: consumer.KindInt},
+				{Slot: 1, ID: 2, Label: "B", Kind: consumer.KindInt},
+				{Slot: 1, ID: 3, Label: "C", Kind: consumer.KindInt},
 			}),
 		},
 	}
 	cur := &Schema{
 		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1601", Proto: "acp1"},
 		Slots: map[int]*export.Snapshot{
-			1: makeSnapshot("RRS18", []protocol.Object{
-				{Slot: 1, ID: 1, Label: "A", Kind: protocol.KindInt}, // unchanged
-				{Slot: 1, ID: 2, Label: "B", Kind: protocol.KindFloat}, // changed kind
+			1: makeSnapshot("RRS18", []consumer.Object{
+				{Slot: 1, ID: 1, Label: "A", Kind: consumer.KindInt}, // unchanged
+				{Slot: 1, ID: 2, Label: "B", Kind: consumer.KindFloat}, // changed kind
 				// C removed
-				{Slot: 1, ID: 4, Label: "D", Kind: protocol.KindBool}, // added
+				{Slot: 1, ID: 4, Label: "D", Kind: consumer.KindBool}, // added
 			}),
 		},
 	}
@@ -304,13 +304,13 @@ func TestDiff_ModelMismatch_FlagsAndReturnsEmpty(t *testing.T) {
 	prev := &Schema{
 		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1601", Proto: "acp1"},
 		Slots: map[int]*export.Snapshot{
-			1: makeSnapshot("RRS18", []protocol.Object{{Slot: 1, ID: 1, Label: "A"}}),
+			1: makeSnapshot("RRS18", []consumer.Object{{Slot: 1, ID: 1, Label: "A"}}),
 		},
 	}
 	cur := &Schema{
 		Fingerprint: Fingerprint{Model: "GJA840", SwRev: "0101", Proto: "acp1"},
 		Slots: map[int]*export.Snapshot{
-			1: makeSnapshot("GJA840", []protocol.Object{{Slot: 1, ID: 1, Label: "B"}}),
+			1: makeSnapshot("GJA840", []consumer.Object{{Slot: 1, ID: 1, Label: "B"}}),
 		},
 	}
 	r := New(t.TempDir())
@@ -328,13 +328,13 @@ func TestDiff_SameModel_DifferentSwRev_OK(t *testing.T) {
 	prev := &Schema{
 		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1601", Proto: "acp1"},
 		Slots: map[int]*export.Snapshot{
-			1: makeSnapshot("RRS18", []protocol.Object{{Slot: 1, ID: 1, Label: "A"}}),
+			1: makeSnapshot("RRS18", []consumer.Object{{Slot: 1, ID: 1, Label: "A"}}),
 		},
 	}
 	cur := &Schema{
 		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1602", Proto: "acp1"},
 		Slots: map[int]*export.Snapshot{
-			1: makeSnapshot("RRS18", []protocol.Object{
+			1: makeSnapshot("RRS18", []consumer.Object{
 				{Slot: 1, ID: 1, Label: "A"},
 				{Slot: 1, ID: 2, Label: "NewControl"},
 			}),

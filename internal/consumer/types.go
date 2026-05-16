@@ -3,7 +3,7 @@
 //
 // Wire-format specifics live in sibling packages (acp1/, acp2/, ...).
 // Nothing outside cmd/ and the plugin's own package may import those.
-package protocol
+package consumer
 
 import (
 	"context"

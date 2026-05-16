@@ -12,7 +12,7 @@ import (
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer/compliance"
 )
 
 // Server is the exported alias for the concrete Probel provider. Mirrors

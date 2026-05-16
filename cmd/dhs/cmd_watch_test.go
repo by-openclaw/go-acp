@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TestWatchCacheKey_DistinguishesGroupsForSharedID pins the fix for #236:
@@ -61,19 +61,19 @@ func TestWatchCacheKey_ACP2EmptyGroup(t *testing.T) {
 // prints baseline), second event with one slot delta emits one line.
 func TestFrameStatusDelta_BaselineThenSingleChange(t *testing.T) {
 	// Helper using the protocol's SlotStatus constants directly.
-	P := protocol.SlotPresent
-	N := protocol.SlotNoCard
-	U := protocol.SlotPowerUp
+	P := consumer.SlotPresent
+	N := consumer.SlotNoCard
+	U := consumer.SlotPowerUp
 
 	// First call: prev nil → no transitions returned (baseline path).
-	if got := frameStatusDelta(nil, []protocol.SlotStatus{P, N, N, P}); len(got) != 0 {
+	if got := frameStatusDelta(nil, []consumer.SlotStatus{P, N, N, P}); len(got) != 0 {
 		t.Errorf("baseline: got %d transitions, want 0: %v", len(got), got)
 	}
 
 	// Single slot transition: slot 2 N → U.
 	got := frameStatusDelta(
-		[]protocol.SlotStatus{P, N, N, P},
-		[]protocol.SlotStatus{P, N, U, P},
+		[]consumer.SlotStatus{P, N, N, P},
+		[]consumer.SlotStatus{P, N, U, P},
 	)
 	if len(got) != 1 {
 		t.Fatalf("got %d transitions, want 1: %v", len(got), got)
@@ -86,8 +86,8 @@ func TestFrameStatusDelta_BaselineThenSingleChange(t *testing.T) {
 // TestFrameStatusDelta_NoChange covers re-broadcast suppression: same
 // strip in/out yields zero transitions so watch prints nothing.
 func TestFrameStatusDelta_NoChange(t *testing.T) {
-	strip := []protocol.SlotStatus{
-		protocol.SlotPresent, protocol.SlotPresent, protocol.SlotNoCard,
+	strip := []consumer.SlotStatus{
+		consumer.SlotPresent, consumer.SlotPresent, consumer.SlotNoCard,
 	}
 	if got := frameStatusDelta(strip, strip); len(got) != 0 {
 		t.Errorf("idempotent re-broadcast emitted %d transitions: %v", len(got), got)
@@ -98,22 +98,22 @@ func TestFrameStatusDelta_NoChange(t *testing.T) {
 // observed on slot 19 (no_card → power_up → error → removed → boot →
 // present) to lock the slot-only diff output.
 func TestFrameStatusDelta_FullCycle(t *testing.T) {
-	mkStrip := func(slot19 protocol.SlotStatus) []protocol.SlotStatus {
-		s := make([]protocol.SlotStatus, 31)
-		s[0] = protocol.SlotPresent
-		s[1] = protocol.SlotPresent
+	mkStrip := func(slot19 consumer.SlotStatus) []consumer.SlotStatus {
+		s := make([]consumer.SlotStatus, 31)
+		s[0] = consumer.SlotPresent
+		s[1] = consumer.SlotPresent
 		s[19] = slot19
 		return s
 	}
 	steps := []struct {
-		from, to protocol.SlotStatus
+		from, to consumer.SlotStatus
 		want     string
 	}{
-		{protocol.SlotNoCard, protocol.SlotPowerUp, "slot 19: no_card -> power_up"},
-		{protocol.SlotPowerUp, protocol.SlotError, "slot 19: power_up -> error"},
-		{protocol.SlotError, protocol.SlotRemoved, "slot 19: error -> removed"},
-		{protocol.SlotRemoved, protocol.SlotBootMode, "slot 19: removed -> boot_mode"},
-		{protocol.SlotBootMode, protocol.SlotPresent, "slot 19: boot_mode -> present"},
+		{consumer.SlotNoCard, consumer.SlotPowerUp, "slot 19: no_card -> power_up"},
+		{consumer.SlotPowerUp, consumer.SlotError, "slot 19: power_up -> error"},
+		{consumer.SlotError, consumer.SlotRemoved, "slot 19: error -> removed"},
+		{consumer.SlotRemoved, consumer.SlotBootMode, "slot 19: removed -> boot_mode"},
+		{consumer.SlotBootMode, consumer.SlotPresent, "slot 19: boot_mode -> present"},
 	}
 	for _, st := range steps {
 		out := frameStatusDelta(mkStrip(st.from), mkStrip(st.to))
@@ -127,8 +127,8 @@ func TestFrameStatusDelta_FullCycle(t *testing.T) {
 // a frame whose slot count grew gets the new positions reported as
 // no_card -> X transitions.
 func TestFrameStatusDelta_LengthMismatch(t *testing.T) {
-	prev := []protocol.SlotStatus{protocol.SlotPresent}
-	cur := []protocol.SlotStatus{protocol.SlotPresent, protocol.SlotPresent}
+	prev := []consumer.SlotStatus{consumer.SlotPresent}
+	cur := []consumer.SlotStatus{consumer.SlotPresent, consumer.SlotPresent}
 	got := frameStatusDelta(prev, cur)
 	if len(got) != 1 || got[0] != "slot 1: no_card -> present" {
 		t.Errorf("length-grow: got %v want [\"slot 1: no_card -> present\"]", got)

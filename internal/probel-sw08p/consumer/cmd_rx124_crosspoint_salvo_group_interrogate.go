@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // SalvoGroupInterrogate fetches one slot (ConnectIndex) of a salvo
@@ -30,7 +30,7 @@ func (p *Plugin) SalvoGroupInterrogate(
 	}
 	tally, derr := codec.DecodeSalvoGroupTally(reply)
 	if derr != nil {
-		return codec.SalvoGroupTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.SalvoGroupTallyParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return tally, nil
 }

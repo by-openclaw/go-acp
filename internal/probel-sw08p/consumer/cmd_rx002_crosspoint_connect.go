@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // CrosspointConnect asks the matrix to route src → dst on
@@ -37,7 +37,7 @@ func (p *Plugin) CrosspointConnect(
 	}
 	c, derr := codec.DecodeCrosspointConnected(reply)
 	if derr != nil {
-		return codec.CrosspointConnectedParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.CrosspointConnectedParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return c, nil
 }

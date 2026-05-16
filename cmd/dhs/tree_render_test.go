@@ -5,28 +5,28 @@ import (
 	"strings"
 	"testing"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // fixtureACP2Tree returns an ACP2-shaped slice with ROOT_NODE_V2 as the
 // implicit root, INPUT and OUTPUT branches, and a few leaves with kinds.
 // Mirrors the live Neuron card layout.
-func fixtureACP2Tree() []protocol.Object {
-	return []protocol.Object{
-		{ID: 1, Label: "ROOT_NODE_V2", Path: []string{"ROOT_NODE_V2"}, Kind: protocol.KindRaw, Access: 1},
-		{ID: 12820, Label: "INPUT", Path: []string{"ROOT_NODE_V2", "INPUT"}, Kind: protocol.KindRaw, Access: 1},
-		{ID: 15522, Label: "SDI", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI"}, Kind: protocol.KindRaw, Access: 1},
-		{ID: 15750, Label: "CHANNEL 01", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01"}, Kind: protocol.KindRaw, Access: 1},
-		{ID: 15758, Label: "Direction", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01", "Direction"}, Kind: protocol.KindEnum, Access: 3,
+func fixtureACP2Tree() []consumer.Object {
+	return []consumer.Object{
+		{ID: 1, Label: "ROOT_NODE_V2", Path: []string{"ROOT_NODE_V2"}, Kind: consumer.KindRaw, Access: 1},
+		{ID: 12820, Label: "INPUT", Path: []string{"ROOT_NODE_V2", "INPUT"}, Kind: consumer.KindRaw, Access: 1},
+		{ID: 15522, Label: "SDI", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI"}, Kind: consumer.KindRaw, Access: 1},
+		{ID: 15750, Label: "CHANNEL 01", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01"}, Kind: consumer.KindRaw, Access: 1},
+		{ID: 15758, Label: "Direction", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01", "Direction"}, Kind: consumer.KindEnum, Access: 3,
 			EnumItems: []string{"Input", "Output", "Off"},
-			Value:     protocol.Value{Kind: protocol.KindEnum, Enum: 0, Str: "Input"}},
-		{ID: 15765, Label: "Used", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01", "Used"}, Kind: protocol.KindBool, Access: 1,
-			Value: protocol.Value{Kind: protocol.KindBool, Bool: true}},
-		{ID: 15770, Label: "Video Format", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01", "Video Format"}, Kind: protocol.KindEnum, Access: 1,
+			Value:     consumer.Value{Kind: consumer.KindEnum, Enum: 0, Str: "Input"}},
+		{ID: 15765, Label: "Used", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01", "Used"}, Kind: consumer.KindBool, Access: 1,
+			Value: consumer.Value{Kind: consumer.KindBool, Bool: true}},
+		{ID: 15770, Label: "Video Format", Path: []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01", "Video Format"}, Kind: consumer.KindEnum, Access: 1,
 			EnumItems: []string{"1080i59", "1080p30"},
-			Value:     protocol.Value{Kind: protocol.KindEnum, Enum: 0, Str: "1080i59"}},
-		{ID: 15228, Label: "OUTPUT", Path: []string{"ROOT_NODE_V2", "OUTPUT"}, Kind: protocol.KindRaw, Access: 1},
-		{ID: 15231, Label: "SDI", Path: []string{"ROOT_NODE_V2", "OUTPUT", "SDI"}, Kind: protocol.KindRaw, Access: 1},
+			Value:     consumer.Value{Kind: consumer.KindEnum, Enum: 0, Str: "1080i59"}},
+		{ID: 15228, Label: "OUTPUT", Path: []string{"ROOT_NODE_V2", "OUTPUT"}, Kind: consumer.KindRaw, Access: 1},
+		{ID: 15231, Label: "SDI", Path: []string{"ROOT_NODE_V2", "OUTPUT", "SDI"}, Kind: consumer.KindRaw, Access: 1},
 	}
 }
 
@@ -152,15 +152,15 @@ func TestRenderTree_BothFocusFlags_ReturnsError(t *testing.T) {
 
 // fixtureACP1Tree returns an ACP1-shaped slice — flat groups, empty
 // Path on leaves, non-empty Group. Confirms the renderer is generic.
-func fixtureACP1Tree() []protocol.Object {
-	return []protocol.Object{
-		{ID: 0, Label: "Frame Status", Group: "frame", Path: []string{"frame", "Frame Status"}, Kind: protocol.KindFrame, Access: 1},
-		{ID: 1, Label: "Card Name", Group: "identity", Path: []string{"identity", "Card Name"}, Kind: protocol.KindString, Access: 1,
-			Value: protocol.Value{Kind: protocol.KindString, Str: "MyCard"}},
-		{ID: 2, Label: "Serial Number", Group: "identity", Path: []string{"identity", "Serial Number"}, Kind: protocol.KindString, Access: 1,
-			Value: protocol.Value{Kind: protocol.KindString, Str: "SN42"}},
-		{ID: 10, Label: "Gain", Group: "control", Path: []string{"control", "Gain"}, Kind: protocol.KindFloat, Access: 3,
-			Value: protocol.Value{Kind: protocol.KindFloat, Float: -3.5}},
+func fixtureACP1Tree() []consumer.Object {
+	return []consumer.Object{
+		{ID: 0, Label: "Frame Status", Group: "frame", Path: []string{"frame", "Frame Status"}, Kind: consumer.KindFrame, Access: 1},
+		{ID: 1, Label: "Card Name", Group: "identity", Path: []string{"identity", "Card Name"}, Kind: consumer.KindString, Access: 1,
+			Value: consumer.Value{Kind: consumer.KindString, Str: "MyCard"}},
+		{ID: 2, Label: "Serial Number", Group: "identity", Path: []string{"identity", "Serial Number"}, Kind: consumer.KindString, Access: 1,
+			Value: consumer.Value{Kind: consumer.KindString, Str: "SN42"}},
+		{ID: 10, Label: "Gain", Group: "control", Path: []string{"control", "Gain"}, Kind: consumer.KindFloat, Access: 3,
+			Value: consumer.Value{Kind: consumer.KindFloat, Float: -3.5}},
 	}
 }
 

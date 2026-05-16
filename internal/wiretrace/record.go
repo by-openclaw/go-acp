@@ -19,7 +19,7 @@ const (
 // transport-level data unit. It is used here intentionally to
 // disambiguate from "Frame", which is overloaded in this codebase:
 //
-//   - protocol.KindFrame / SlotStatus / FrameStatus mean a chassis
+//   - consumer.KindFrame / SlotStatus / FrameStatus mean a chassis
 //     frame holding slot cards (ACP1 / ACP2 spec vocabulary).
 //   - s101.Frame, probel.Frame, cerebrum.Frame, tsl.FrameV31Event mean
 //     one wire-format unit per protocol codec.

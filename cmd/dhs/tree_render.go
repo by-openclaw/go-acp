@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // pathNode is one position in the tree built from Object.Path slices.
@@ -15,7 +15,7 @@ import (
 // to Name for those.
 type pathNode struct {
 	Name     string
-	Obj      *protocol.Object
+	Obj      *consumer.Object
 	Children map[string]*pathNode
 }
 
@@ -36,7 +36,7 @@ func (n *pathNode) sortedChildren() []*pathNode {
 // root is synthetic; its Children are the real top-level segments.
 // ACP1 objects with empty Path but non-empty Group are placed under a
 // single-segment path equal to the group name.
-func buildPathTree(objs []protocol.Object) *pathNode {
+func buildPathTree(objs []consumer.Object) *pathNode {
 	root := newPathNode("")
 	for i := range objs {
 		o := &objs[i]
@@ -83,7 +83,7 @@ type treeRenderOpts struct {
 //
 // Depth is measured from the focus node; 0 means unlimited. Ancestors
 // above the focus always render regardless of Depth.
-func renderTree(w io.Writer, objs []protocol.Object, opts treeRenderOpts) error {
+func renderTree(w io.Writer, objs []consumer.Object, opts treeRenderOpts) error {
 	if opts.FromPath != "" && opts.FromOID != "" {
 		return fmt.Errorf("--from-path and --from-oid are mutually exclusive")
 	}
@@ -186,7 +186,7 @@ func formatNodeLine(n *pathNode) string {
 	return line
 }
 
-func formatOID(o *protocol.Object) string {
+func formatOID(o *consumer.Object) string {
 	if o.OID != "" {
 		return o.OID
 	}
@@ -214,7 +214,7 @@ func splitFocusPath(s string) []string {
 //   - leaf focus (CHANNEL 01.Direction)         → segments at the end of a leaf path
 //   - intermediate focus (INPUT.SDI.CHANNEL 01) → segments mid-path inside leaf paths
 //   - ACP1 group focus (identity)               → first segment of leaf paths
-func resolveFromPath(objs []protocol.Object, userSegs []string) ([]string, bool) {
+func resolveFromPath(objs []consumer.Object, userSegs []string) ([]string, bool) {
 	if len(userSegs) == 0 {
 		return nil, false
 	}
@@ -245,7 +245,7 @@ func resolveFromPath(objs []protocol.Object, userSegs []string) ([]string, bool)
 // resolveFromOID accepts either a dotted Ember+ OID (matched against
 // Object.OID) or a decimal integer matching Object.ID (ACP1 byte /
 // ACP2 obj-id). Returns the full Path of the first match.
-func resolveFromOID(objs []protocol.Object, oid string) ([]string, bool) {
+func resolveFromOID(objs []consumer.Object, oid string) ([]string, bool) {
 	for i := range objs {
 		if objs[i].OID != "" && objs[i].OID == oid {
 			path := objs[i].Path

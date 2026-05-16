@@ -28,8 +28,8 @@ import (
 // they are all invoked in registration order.
 //
 // RawEventFunc is the low-level callback used internally by the plugin
-// wiring. The public protocol.EventFunc is wrapped around this at the
-// Plugin.Subscribe layer so higher-level code sees decoded protocol.Event
+// wiring. The public consumer.EventFunc is wrapped around this at the
+// Plugin.Subscribe layer so higher-level code sees decoded consumer.Event
 // values with resolved labels, not raw Messages.
 type RawEventFunc func(msg *codec.Message)
 

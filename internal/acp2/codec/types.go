@@ -315,7 +315,7 @@ func (e *ACP2Error) Error() string {
 	return fmt.Sprintf("acp2 error (obj-id %d): %s", e.ObjID, desc)
 }
 
-func (e *ACP2Error) dhsError() {} //nolint:unused // implements protocol.DHSError interface
+func (e *ACP2Error) dhsError() {} //nolint:unused // implements consumer.DHSError interface
 
 // AN2Error represents an AN2-layer error (proto=0, type=error).
 type AN2Error struct {
@@ -328,4 +328,4 @@ func (e *AN2Error) Error() string {
 	return fmt.Sprintf("an2 error (slot %d, func %d): %s", e.Slot, e.Func, e.Msg)
 }
 
-func (e *AN2Error) dhsError() {} //nolint:unused // implements protocol.DHSError interface
+func (e *AN2Error) dhsError() {} //nolint:unused // implements consumer.DHSError interface

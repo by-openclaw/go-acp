@@ -13,7 +13,7 @@ import (
 	emberplus "dhs/internal/emberplus/consumer"
 	"dhs/internal/export/canonical"
 	"dhs/internal/manifest"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/storage"
 )
 
@@ -123,7 +123,7 @@ func runWatch(ctx context.Context, args []string) error {
 				// others ignore the call (interface assertion is
 				// optional).
 				if seeder, ok := plug.(interface {
-					SeedTreeFromCachedObjects(slot int, objs []protocol.Object)
+					SeedTreeFromCachedObjects(slot int, objs []consumer.Object)
 				}); ok && sd.Slot == *slot {
 					seeder.SeedTreeFromCachedObjects(sd.Slot, sd.Objects)
 				}
@@ -149,7 +149,7 @@ func runWatch(ctx context.Context, args []string) error {
 	if treeStore != nil && !walkScope.empty() {
 		if probe, hot := plug.(interface {
 			IdentityProbe(context.Context, int) (string, error)
-			SeedTreeFromCachedObjects(slot int, objs []protocol.Object)
+			SeedTreeFromCachedObjects(slot int, objs []consumer.Object)
 		}); hot {
 			loaded := map[string]int{} // identity -> objects (for log line)
 			seenSlots := map[int]struct{}{}
@@ -189,7 +189,7 @@ func runWatch(ctx context.Context, args []string) error {
 		}()
 	}
 
-	req := protocol.ValueRequest{
+	req := consumer.ValueRequest{
 		Slot:  *slot,
 		Group: *group,
 		Label: *label,
@@ -205,8 +205,8 @@ func runWatch(ctx context.Context, args []string) error {
 	// Subscribe. The plugin pushes decoded Event values into our channel
 	// via the callback; we print them from the main goroutine so output
 	// is serialised cleanly with Ctrl-C handling.
-	events := make(chan protocol.Event, 128)
-	if err := plug.Subscribe(req, func(ev protocol.Event) {
+	events := make(chan consumer.Event, 128)
+	if err := plug.Subscribe(req, func(ev consumer.Event) {
 		select {
 		case events <- ev:
 		default:
@@ -226,7 +226,7 @@ func runWatch(ctx context.Context, args []string) error {
 	// prevFrame remembers the last frame-status slice so we can emit
 	// per-slot deltas instead of dumping the full 31-slot strip on every
 	// announce. Kept slot-list-empty until the first frame event arrives.
-	var prevFrame []protocol.SlotStatus
+	var prevFrame []consumer.SlotStatus
 
 	for {
 		select {
@@ -235,7 +235,7 @@ func runWatch(ctx context.Context, args []string) error {
 		case ev := <-events:
 			// Frame-status announce drives hot-plug enrichment (#254).
 			// ACP1 emits group=frame, id=0 with a SlotStatus[] payload.
-			if ev.Group == "frame" && ev.ID == 0 && ev.Value.Kind == protocol.KindFrame {
+			if ev.Group == "frame" && ev.ID == 0 && ev.Value.Kind == consumer.KindFrame {
 				enricher.observe(ctx, plug, ev.Timestamp, ev.Value.SlotStatus)
 			}
 
@@ -291,7 +291,7 @@ func runWatch(ctx context.Context, args []string) error {
 			// dumping the full 31-slot strip every time. First event of
 			// the session prints a baseline; subsequent events with no
 			// change are suppressed entirely. (refs #239)
-			if ev.Value.Kind == protocol.KindFrame {
+			if ev.Value.Kind == consumer.KindFrame {
 				cur := ev.Value.SlotStatus
 				ts := ev.Timestamp.Format("15:04:05")
 				fr := ev.Freshness
@@ -373,7 +373,7 @@ func runWatch(ctx context.Context, args []string) error {
 // returns no entries in that case so the caller can branch cleanly.
 // Length mismatches between prev and cur are tolerated by treating the
 // missing positions as SlotNoCard. (refs #239)
-func frameStatusDelta(prev, cur []protocol.SlotStatus) []string {
+func frameStatusDelta(prev, cur []consumer.SlotStatus) []string {
 	if len(prev) == 0 {
 		return nil
 	}
@@ -383,7 +383,7 @@ func frameStatusDelta(prev, cur []protocol.SlotStatus) []string {
 	}
 	var out []string
 	for i := 0; i < n; i++ {
-		var oldS, newS protocol.SlotStatus
+		var oldS, newS consumer.SlotStatus
 		if i < len(prev) {
 			oldS = prev[i]
 		}
@@ -421,7 +421,7 @@ type unknownCTXAuditor interface {
 // tracked any unknowns AND identity is non-empty. No-op when the
 // plugin doesn't satisfy unknownCTXAuditor or nothing was recorded.
 // Quiet on the "nothing to write" case; warns on filesystem errors.
-func writeUnknownCTXAuditIfAny(plug protocol.Protocol, proto, identity string) {
+func writeUnknownCTXAuditIfAny(plug consumer.Protocol, proto, identity string) {
 	if identity == "" {
 		return
 	}
@@ -450,7 +450,7 @@ func writeUnknownCTXAuditIfAny(plug protocol.Protocol, proto, identity string) {
 // filter to the plugin if it supports it. No-op when the plugin
 // doesn't satisfy the optional capability or when no filter flags
 // were set.
-func applyWildcardFilter(plug protocol.Protocol, pathFilter string, noStreams, streamsOnly bool) {
+func applyWildcardFilter(plug consumer.Protocol, pathFilter string, noStreams, streamsOnly bool) {
 	if pathFilter == "" && !noStreams && !streamsOnly {
 		return
 	}
@@ -565,7 +565,7 @@ func parseWalkScope(slot int, slotsArg string, noWalk bool) (walkScope, error) {
 // slot per GetSlotInfo; walkNone → empty (no hot-load needed since no
 // subscription scope is set). Errors are best-effort: failure to read
 // device info just returns whatever's already known.
-func hotLoadSlots(ctx context.Context, plug protocol.Protocol, scope walkScope) []int {
+func hotLoadSlots(ctx context.Context, plug consumer.Protocol, scope walkScope) []int {
 	switch scope.mode {
 	case walkList:
 		out := make([]int, len(scope.slots))
@@ -579,7 +579,7 @@ func hotLoadSlots(ctx context.Context, plug protocol.Protocol, scope walkScope) 
 		out := make([]int, 0, info.NumSlots)
 		for s := 0; s < info.NumSlots; s++ {
 			si, serr := plug.GetSlotInfo(ctx, s)
-			if serr != nil || si.Status != protocol.SlotPresent {
+			if serr != nil || si.Status != consumer.SlotPresent {
 				continue
 			}
 			out = append(out, s)
@@ -591,7 +591,7 @@ func hotLoadSlots(ctx context.Context, plug protocol.Protocol, scope walkScope) 
 
 // runWalkScope executes the walk decision against the live plugin.
 // Errors print to stderr and do not abort other slots in the batch.
-func runWalkScope(ctx context.Context, plug protocol.Protocol, host, proto string, scope walkScope) {
+func runWalkScope(ctx context.Context, plug consumer.Protocol, host, proto string, scope walkScope) {
 	switch scope.mode {
 	case walkNone:
 		return
@@ -607,7 +607,7 @@ func runWalkScope(ctx context.Context, plug protocol.Protocol, host, proto strin
 		}
 		for s := 0; s < info.NumSlots; s++ {
 			si, serr := plug.GetSlotInfo(ctx, s)
-			if serr != nil || si.Status != protocol.SlotPresent {
+			if serr != nil || si.Status != consumer.SlotPresent {
 				continue
 			}
 			walkSlotAndCache(ctx, plug, host, proto, s)
@@ -636,7 +636,7 @@ type canonicalExporter interface {
 	ExportCanonical(ctx context.Context) (*canonical.Export, error)
 }
 
-func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto string, slot int) {
+func walkSlotAndCache(ctx context.Context, plug consumer.Protocol, host, proto string, slot int) {
 	objs, werr := plug.Walk(ctx, slot)
 	if werr != nil {
 		fmt.Fprintf(os.Stderr, "warning: walk slot %d failed: %v\n", slot, werr)
@@ -661,7 +661,7 @@ func walkSlotAndCache(ctx context.Context, plug protocol.Protocol, host, proto s
 // (refs #438, ADR-0022). Returns nil when the plugin doesn't satisfy
 // the canonicalExporter contract or when canonicalize fails — the
 // caller falls back to flat-Objects-only DM in that case.
-func canonicalTreeFromPlug(ctx context.Context, plug protocol.Protocol) *canonical.Export {
+func canonicalTreeFromPlug(ctx context.Context, plug consumer.Protocol) *canonical.Export {
 	ce, ok := plug.(canonicalExporter)
 	if !ok {
 		return nil
@@ -693,7 +693,7 @@ func canonicalTreeFromPlug(ctx context.Context, plug protocol.Protocol) *canonic
 //
 // Plugins that do NOT satisfy identityProber fall back to the
 // legacy IP-keyed `.cache/devices/<ip>/slot_<n>.json` layout.
-func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) string {
+func saveSlotCache(ctx context.Context, prober identityProber, host, proto string, slot int, objs []consumer.Object, tree *canonical.Export) string {
 	if treeStore == nil {
 		return ""
 	}
@@ -790,7 +790,7 @@ func writeSlotManifest(deviceName, proto, host string, port int, bindings []slot
 	fmt.Fprintf(os.Stderr, "manifest written: %s (%d slot(s))\n", path, len(bindings))
 }
 
-// defaultTransportFor returns the canonical transport per protocol.
+// defaultTransportFor returns the canonical transport per consumer.
 // ACP1 is UDP-by-default; AN2 (ACP2) + Ember+ are TCP.
 func defaultTransportFor(proto string) string {
 	switch proto {
@@ -808,7 +808,7 @@ func defaultTransportFor(proto string) string {
 //
 // Parameters host/objs are unused — kept on the signature to match
 // the saveSlotCache contract so caller plumbing is uniform.
-func saveAndSplitForEmberplus(ctx context.Context, plug protocol.Protocol, prober identityProber, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) {
+func saveAndSplitForEmberplus(ctx context.Context, plug consumer.Protocol, prober identityProber, host, proto string, slot int, objs []consumer.Object, tree *canonical.Export) {
 	// Write the full-provider DM first — keeps the consumer's
 	// existing `--dm "<Device>@<SwRev>"` fast path working (matrix /
 	// get / set / stream hot-load against one file). Then the
@@ -840,7 +840,7 @@ func saveAndSplitForEmberplus(ctx context.Context, plug protocol.Protocol, probe
 // also carries the canonical.Export shape per ADR-0022. host + slot
 // params kept for symmetry with the IP-keyed Save path and future
 // logging; they are NOT written to disk.
-func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, slot int, objs []protocol.Object, tree *canonical.Export) error {
+func saveIdentityCache(store *storage.TreeStore, identity, host, proto string, slot int, objs []consumer.Object, tree *canonical.Export) error {
 	_ = host
 	_ = slot
 	if tree == nil {
@@ -870,7 +870,7 @@ type dmSplitter interface {
 	SplitAndPersistDM(ctx context.Context, store *storage.TreeStore, providerIdentity string) ([]emberplus.SlotRef, error)
 }
 
-func splitDMByMatrix(ctx context.Context, plug protocol.Protocol, host string, port int, identity string) {
+func splitDMByMatrix(ctx context.Context, plug consumer.Protocol, host string, port int, identity string) {
 	if treeStore == nil {
 		return
 	}

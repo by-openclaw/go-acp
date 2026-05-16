@@ -20,12 +20,12 @@ import (
 	"log/slog"
 	"net"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func init() {
-	protocol.Register(&Factory{version: V10})
-	protocol.Register(&Factory{version: V11})
+	consumer.Register(&Factory{version: V10})
+	consumer.Register(&Factory{version: V11})
 }
 
 // Version selects the OSC wire version a Plugin speaks.
@@ -68,15 +68,15 @@ type Factory struct {
 	version Version
 }
 
-func (f *Factory) Meta() protocol.ProtocolMeta {
-	return protocol.ProtocolMeta{
+func (f *Factory) Meta() consumer.ProtocolMeta {
+	return consumer.ProtocolMeta{
 		Name:        f.version.name(),
 		DefaultPort: f.version.defaultPort(),
 		Description: f.version.description(),
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
+func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
 	return &Plugin{version: f.version, logger: logger}
 }
 
@@ -89,7 +89,7 @@ func NewPluginV11(logger *slog.Logger) *Plugin {
 	return &Plugin{version: V11, logger: logger}
 }
 
-// Plugin implements protocol.Protocol for one OSC version. Connect
+// Plugin implements consumer.Protocol for one OSC version. Connect
 // opens a UDP listener on (ip, port); TCP transports (length-prefix for
 // v1.0, SLIP for v1.1) are wired via separate ConnectTCP* methods.
 type Plugin struct {
@@ -186,30 +186,30 @@ func (p *Plugin) SubscribePattern(pattern string, h Handler) error {
 	return nil
 }
 
-func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
-	return protocol.DeviceInfo{}, protocol.ErrNotImplemented
+func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
+	return consumer.DeviceInfo{}, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, error) {
-	return protocol.SlotInfo{}, protocol.ErrNotImplemented
+func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
+	return consumer.SlotInfo{}, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) {
-	return nil, protocol.ErrNotImplemented
+func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) {
+	return nil, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
-	return protocol.Value{}, protocol.ErrNotImplemented
+func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
+	return consumer.Value{}, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
-	return protocol.Value{}, protocol.ErrNotImplemented
+func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
+	return consumer.Value{}, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
-	return protocol.ErrNotImplemented
+func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
+	return consumer.ErrNotImplemented
 }
 
-func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
+func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	return nil
 }

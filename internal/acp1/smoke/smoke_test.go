@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp1/codec"
 	"dhs/internal/acp1/consumer"
 )
@@ -30,7 +30,7 @@ func skipIfNoHost(t *testing.T) {
 	}
 }
 
-func connectPlugin(t *testing.T) protocol.Protocol {
+func connectPlugin(t *testing.T) consumer.Protocol {
 	t.Helper()
 	skipIfNoHost(t)
 	f := &acp1.Factory{}
@@ -80,7 +80,7 @@ func TestIntegration_GetByLabel(t *testing.T) {
 	if _, err := plug.Walk(ctx, 0); err != nil {
 		t.Fatalf("Walk: %v", err)
 	}
-	val, err := plug.GetValue(ctx, protocol.ValueRequest{Slot: 0, Label: "Card name"})
+	val, err := plug.GetValue(ctx, consumer.ValueRequest{Slot: 0, Label: "Card name"})
 	if err != nil {
 		t.Fatalf("GetValue: %v", err)
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // ProtectDeviceName resolves a deviceID (0-1023) to its 8-char ASCII
@@ -30,7 +30,7 @@ func (p *Plugin) ProtectDeviceName(
 	}
 	r, derr := codec.DecodeProtectDeviceNameResponse(reply)
 	if derr != nil {
-		return "", &protocol.TransportError{Op: "decode", Err: derr}
+		return "", &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return r.DeviceName, nil
 }

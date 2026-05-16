@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 	"dhs/internal/acp1/codec"
 )
@@ -29,8 +29,8 @@ import (
 // so capture / replay round-trips can be asserted in CI.
 //
 // --out-params remains a follow-up.
-func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts protocol.ValidateOpts) (*protocol.ValidateReport, error) {
-	report := &protocol.ValidateReport{
+func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts consumer.ValidateOpts) (*consumer.ValidateReport, error) {
+	report := &consumer.ValidateReport{
 		PerDirection: map[wiretrace.Direction]int{},
 	}
 
@@ -45,12 +45,12 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 		group codec.ObjGroup
 		id    uint8
 	}
-	objects := map[objKey]protocol.Object{}
+	objects := map[objKey]consumer.Object{}
 	// frameStatuses captures the latest decoded frame-status reply
 	// (slot 0, group=frame, id=0) so the replay tree can stamp each
 	// SlotDump with the per-slot status it had at capture time —
 	// matching what GetSlotInfo populates on a live walk.
-	var frameStatuses []protocol.SlotStatus
+	var frameStatuses []consumer.SlotStatus
 
 	var lastReqMTID uint32
 	for i, t := range trames {
@@ -60,7 +60,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		raw, err := hex.DecodeString(t.Hex)
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				Err:        fmt.Sprintf("hex decode: %v", err),
@@ -70,7 +70,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		msg, err := codec.Decode(raw)
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				HexPrefix:  shortHex(raw),
@@ -125,9 +125,9 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 				len(msg.Value) >= 1 {
 				num := int(msg.Value[0])
 				if num > 0 && len(msg.Value) >= 1+num {
-					frameStatuses = make([]protocol.SlotStatus, num)
+					frameStatuses = make([]consumer.SlotStatus, num)
 					for i := 0; i < num; i++ {
-						frameStatuses[i] = protocol.SlotStatus(msg.Value[1+i])
+						frameStatuses[i] = consumer.SlotStatus(msg.Value[1+i])
 					}
 				}
 			}
@@ -156,8 +156,8 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 // frameStatuses is the per-slot status array captured from the
 // getValue(slot=0, group=frame, id=0) reply, used to stamp each
 // SlotDump.Status (matches what live GetSlotInfo populates).
-func writeReplayTree[K comparable](path string, objects map[K]protocol.Object, frameStatuses []protocol.SlotStatus) error {
-	bySlot := map[int][]protocol.Object{}
+func writeReplayTree[K comparable](path string, objects map[K]consumer.Object, frameStatuses []consumer.SlotStatus) error {
+	bySlot := map[int][]consumer.Object{}
 	for _, o := range objects {
 		bySlot[o.Slot] = append(bySlot[o.Slot], o)
 	}

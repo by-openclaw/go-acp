@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func TestProductYAML_Roundtrip(t *testing.T) {
@@ -147,8 +147,8 @@ func TestResolve_LoadsProductMetadata(t *testing.T) {
 			Model: "RRS18", SwRev: "1601", Proto: "acp1",
 		},
 		Slots: map[int]*export.Snapshot{
-			1: makeSnapshot("RRS18", []protocol.Object{
-				{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: protocol.KindString},
+			1: makeSnapshot("RRS18", []consumer.Object{
+				{Slot: 1, Group: "control", ID: 0, Label: "Card Name", Kind: consumer.KindString},
 			}),
 		},
 		Product: ProductMeta{

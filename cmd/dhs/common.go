@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"dhs/internal/logging"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp1/consumer"
 	"dhs/internal/storage"
 	"dhs/internal/transport"
@@ -147,7 +147,7 @@ func isDirectoryCapture(path string) bool {
 // connect builds a fresh plugin instance, dials the host, and returns the
 // live Protocol along with a cleanup function. Every subcommand starts
 // with this; the cleanup runs on function exit.
-func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protocol, func(), error) {
+func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protocol, func(), error) {
 	if host == "" {
 		return nil, nil, fmt.Errorf("host argument is required")
 	}
@@ -176,7 +176,7 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 		}
 	}
 
-	factory, err := protocol.Get(cf.protocol)
+	factory, err := consumer.Get(cf.protocol)
 	if err != nil {
 		if recorder != nil {
 			_ = recorder.Close()
@@ -208,10 +208,10 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 	}
 
 	// Keep-alive selection is also plugin-specific via the optional
-	// protocol.KeepAliver capability. Plugins that don't implement it
+	// consumer.KeepAliver capability. Plugins that don't implement it
 	// silently ignore the flags.
-	if ka, ok := plug.(protocol.KeepAliver); ok {
-		ka.SetKeepAlive(protocol.KeepAliveConfig{
+	if ka, ok := plug.(consumer.KeepAliver); ok {
+		ka.SetKeepAlive(consumer.KeepAliveConfig{
 			Interval: cf.keepalive,
 			Timeout:  cf.keepaliveTimeout,
 		})
@@ -254,7 +254,7 @@ func connect(ctx context.Context, host string, cf *commonFlags) (protocol.Protoc
 //
 // One-shot verbs (info, walk, get, set, health) keep the fail-fast
 // connect() so a typo'd IP doesn't hang forever.
-func connectWithRetry(ctx context.Context, host string, cf *commonFlags) (protocol.Protocol, func(), error) {
+func connectWithRetry(ctx context.Context, host string, cf *commonFlags) (consumer.Protocol, func(), error) {
 	const (
 		initial = 1 * time.Second
 		cap_    = 30 * time.Second

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"dhs/internal/protocol"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/acp1/codec"
 )
 
@@ -58,9 +58,9 @@ func (w *Walker) SetProfile(p *compliance.Profile) {
 type SlotTree struct {
 	Slot     int
 	BootMode uint8
-	Objects  []protocol.Object
+	Objects  []consumer.Object
 	// ACPTypes is parallel to Objects and holds the fine-grained ACP1
-	// ObjectType for each entry. The public protocol.Object only carries
+	// ObjectType for each entry. The public consumer.Object only carries
 	// the widened ValueKind (Integer and Long both map to KindInt), so
 	// the value codec needs this side channel to pick the correct wire
 	// width at get/set time.
@@ -111,7 +111,7 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*SlotTree, error) {
 	tree := &SlotTree{
 		Slot:     slot,
 		BootMode: root.BootMode,
-		Objects:  make([]protocol.Object, 0, cap),
+		Objects:  make([]consumer.Object, 0, cap),
 		ACPTypes: make([]codec.ObjectType, 0, cap),
 		Labels:   map[string]map[string]int{},
 	}
@@ -197,8 +197,8 @@ func (w *Walker) getObject(ctx context.Context, slot int, group codec.ObjGroup, 
 //   - Byte / Enum / Alarm priority → uint64
 //   - Float → float64
 //   - IPAddr → uint64 (u32 widened)
-func toProtocolObject(d *codec.DecodedObject, slot int, group codec.ObjGroup, id uint8) protocol.Object {
-	o := protocol.Object{
+func toProtocolObject(d *codec.DecodedObject, slot int, group codec.ObjGroup, id uint8) consumer.Object {
+	o := consumer.Object{
 		Slot:  slot,
 		Group: group.String(),
 		Path:  []string{group.String()},
@@ -216,46 +216,46 @@ func toProtocolObject(d *codec.DecodedObject, slot int, group codec.ObjGroup, id
 	}
 	switch d.Type {
 	case codec.TypeInteger, codec.TypeLong:
-		o.Kind = protocol.KindInt
+		o.Kind = consumer.KindInt
 		o.Min = d.MinInt
 		o.Max = d.MaxInt
 		o.Step = d.StepInt
 		o.Def = d.DefInt
-		o.Value = protocol.Value{Kind: protocol.KindInt, Int: d.IntVal}
+		o.Value = consumer.Value{Kind: consumer.KindInt, Int: d.IntVal}
 	case codec.TypeByte:
-		o.Kind = protocol.KindUint
+		o.Kind = consumer.KindUint
 		o.Min = uint64(d.MinByte)
 		o.Max = uint64(d.MaxByte)
 		o.Step = uint64(d.StepByte)
 		o.Def = uint64(d.DefByte)
-		o.Value = protocol.Value{Kind: protocol.KindUint, Uint: uint64(d.ByteVal)}
+		o.Value = consumer.Value{Kind: consumer.KindUint, Uint: uint64(d.ByteVal)}
 	case codec.TypeFloat:
-		o.Kind = protocol.KindFloat
+		o.Kind = consumer.KindFloat
 		o.Min = d.MinFloat
 		o.Max = d.MaxFloat
 		o.Step = d.StepFloat
 		o.Def = d.DefFloat
-		o.Value = protocol.Value{Kind: protocol.KindFloat, Float: d.FloatVal}
+		o.Value = consumer.Value{Kind: consumer.KindFloat, Float: d.FloatVal}
 	case codec.TypeIPAddr:
-		o.Kind = protocol.KindIPAddr
+		o.Kind = consumer.KindIPAddr
 		o.Min = d.MinUint
 		o.Max = d.MaxUint
 		o.Def = d.DefUint
 		u := uint32(d.UintVal)
-		o.Value = protocol.Value{
-			Kind: protocol.KindIPAddr,
+		o.Value = consumer.Value{
+			Kind: consumer.KindIPAddr,
 			Uint: d.UintVal,
 			IPAddr: [4]byte{
 				byte(u >> 24), byte(u >> 16), byte(u >> 8), byte(u),
 			},
 		}
 	case codec.TypeEnum:
-		o.Kind = protocol.KindEnum
+		o.Kind = consumer.KindEnum
 		o.EnumItems = d.EnumItems
 		o.Def = uint64(d.DefByte)
 		o.SubGroupMarker = d.IsSubGroupMarker()
-		ev := protocol.Value{
-			Kind: protocol.KindEnum,
+		ev := consumer.Value{
+			Kind: consumer.KindEnum,
 			Enum: d.ByteVal,
 			Uint: uint64(d.ByteVal),
 		}
@@ -264,28 +264,28 @@ func toProtocolObject(d *codec.DecodedObject, slot int, group codec.ObjGroup, id
 		}
 		o.Value = ev
 	case codec.TypeString:
-		o.Kind = protocol.KindString
+		o.Kind = consumer.KindString
 		o.MaxLen = int(d.MaxLen)
 		o.SubGroupMarker = d.IsSubGroupMarker()
-		o.Value = protocol.Value{Kind: protocol.KindString, Str: d.StrValue}
+		o.Value = consumer.Value{Kind: consumer.KindString, Str: d.StrValue}
 	case codec.TypeAlarm:
-		o.Kind = protocol.KindAlarm
+		o.Kind = consumer.KindAlarm
 		o.AlarmPriority = d.Priority
 		o.AlarmTag = d.Tag
 		o.AlarmOnMsg = d.EventOnMsg
 		o.AlarmOffMsg = d.EventOffMsg
 		// Surface the priority byte as a Uint so the CLI has a single
 		// formatter path for "current value".
-		o.Value = protocol.Value{Kind: protocol.KindUint, Uint: uint64(d.Priority)}
+		o.Value = consumer.Value{Kind: consumer.KindUint, Uint: uint64(d.Priority)}
 	case codec.TypeFrame:
-		o.Kind = protocol.KindFrame
-		statuses := make([]protocol.SlotStatus, len(d.SlotStatus))
+		o.Kind = consumer.KindFrame
+		statuses := make([]consumer.SlotStatus, len(d.SlotStatus))
 		for i, s := range d.SlotStatus {
-			statuses[i] = protocol.SlotStatus(s)
+			statuses[i] = consumer.SlotStatus(s)
 		}
-		o.Value = protocol.Value{Kind: protocol.KindFrame, SlotStatus: statuses}
+		o.Value = consumer.Value{Kind: consumer.KindFrame, SlotStatus: statuses}
 	default:
-		o.Kind = protocol.KindUnknown
+		o.Kind = consumer.KindUnknown
 	}
 	return o
 }

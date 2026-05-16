@@ -12,11 +12,11 @@ import (
 	"sync"
 
 	"dhs/internal/cerebrum-nb/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func init() {
-	protocol.Register(&Factory{})
+	consumer.Register(&Factory{})
 }
 
 // DefaultPort is the Cerebrum NB WebSocket default port. Configurable
@@ -26,15 +26,15 @@ const DefaultPort = 40007
 // Factory builds Plugin instances. Registered at init().
 type Factory struct{}
 
-func (f *Factory) Meta() protocol.ProtocolMeta {
-	return protocol.ProtocolMeta{
+func (f *Factory) Meta() consumer.ProtocolMeta {
+	return consumer.ProtocolMeta{
 		Name:        "cerebrum-nb",
 		DefaultPort: DefaultPort,
 		Description: "EVS Cerebrum Northbound API (XML over WebSocket; a.k.a. Neuron Bridge)",
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
+func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
 	return NewPlugin(logger)
 }
 
@@ -168,7 +168,7 @@ func (p *Plugin) Compliance() *Profile {
 	return p.session.compliance
 }
 
-// ----- protocol.Protocol shim methods -----
+// ----- consumer.Protocol shim methods -----
 //
 // Cerebrum is a control-plane (router-of-routers), not a card-frame
 // device. The slot/walk/getValue/setValue interface bends; we map the
@@ -179,16 +179,16 @@ func (p *Plugin) Compliance() *Profile {
 
 // GetDeviceInfo polls Cerebrum and returns the redundancy snapshot as
 // DeviceInfo. ProtocolVersion is parsed from the login_reply api_ver.
-func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
+func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
 	sess := p.Session()
 	if sess == nil {
-		return protocol.DeviceInfo{}, fmt.Errorf("cerebrum-nb: not connected")
+		return consumer.DeviceInfo{}, fmt.Errorf("cerebrum-nb: not connected")
 	}
 	if _, err := sess.Poll(ctx); err != nil {
-		return protocol.DeviceInfo{}, err
+		return consumer.DeviceInfo{}, err
 	}
 	host, port := sess.RemoteHostPort()
-	return protocol.DeviceInfo{
+	return consumer.DeviceInfo{
 		IP:              host,
 		Port:            port,
 		ProtocolVersion: sess.APIVersionMajor(),
@@ -199,32 +199,32 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error)
 // Cerebrum's control-plane shape — the richer Session methods are the
 // supported entry points.
 
-func (p *Plugin) GetSlotInfo(_ context.Context, _ int) (protocol.SlotInfo, error) {
-	return protocol.SlotInfo{}, fmt.Errorf("cerebrum-nb: slot-info not applicable; use Session.ListDevices / ListRouters")
+func (p *Plugin) GetSlotInfo(_ context.Context, _ int) (consumer.SlotInfo, error) {
+	return consumer.SlotInfo{}, fmt.Errorf("cerebrum-nb: slot-info not applicable; use Session.ListDevices / ListRouters")
 }
 
-func (p *Plugin) Walk(_ context.Context, _ int) ([]protocol.Object, error) {
+func (p *Plugin) Walk(_ context.Context, _ int) ([]consumer.Object, error) {
 	return nil, fmt.Errorf("cerebrum-nb: walk not applicable; use Session.WalkAll")
 }
 
-func (p *Plugin) GetValue(_ context.Context, _ protocol.ValueRequest) (protocol.Value, error) {
-	return protocol.Value{}, fmt.Errorf("cerebrum-nb: get-value not applicable; use Session.Obtain")
+func (p *Plugin) GetValue(_ context.Context, _ consumer.ValueRequest) (consumer.Value, error) {
+	return consumer.Value{}, fmt.Errorf("cerebrum-nb: get-value not applicable; use Session.Obtain")
 }
 
-func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
+func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
 	sess := p.Session()
 	if sess == nil {
-		return protocol.Value{}, fmt.Errorf("cerebrum-nb: not connected")
+		return consumer.Value{}, fmt.Errorf("cerebrum-nb: not connected")
 	}
 	if req.Path == "" {
-		return protocol.Value{}, fmt.Errorf("cerebrum-nb: set-value requires Path of form 'device.sub_device.object'")
+		return consumer.Value{}, fmt.Errorf("cerebrum-nb: set-value requires Path of form 'device.sub_device.object'")
 	}
-	if val.Kind != protocol.KindString {
-		return protocol.Value{}, fmt.Errorf("cerebrum-nb: set-value: only string values mapped to <device SET_VALUE> (got %s)", val.Kind)
+	if val.Kind != consumer.KindString {
+		return consumer.Value{}, fmt.Errorf("cerebrum-nb: set-value: only string values mapped to <device SET_VALUE> (got %s)", val.Kind)
 	}
 	devName, sub, obj, err := splitDevicePath(req.Path)
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 	body := &codec.DeviceAction{
 		Type:       "SET_VALUE",
@@ -234,7 +234,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		Value:      val.Str,
 	}
 	if err := sess.Action(ctx, body); err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 	return val, nil
 }
@@ -242,10 +242,10 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 // Subscribe / Unsubscribe through the generic interface aren't wired —
 // CLI verbs use Session.Subscribe<X> directly to express the §5
 // addressing precisely.
-func (p *Plugin) Subscribe(_ protocol.ValueRequest, _ protocol.EventFunc) error {
-	return fmt.Errorf("cerebrum-nb: protocol.Subscribe not implemented; use Session.Subscribe<Routing|Category|Salvo|Device|Datastore>")
+func (p *Plugin) Subscribe(_ consumer.ValueRequest, _ consumer.EventFunc) error {
+	return fmt.Errorf("cerebrum-nb: consumer.Subscribe not implemented; use Session.Subscribe<Routing|Category|Salvo|Device|Datastore>")
 }
 
-func (p *Plugin) Unsubscribe(_ protocol.ValueRequest) error {
-	return fmt.Errorf("cerebrum-nb: protocol.Unsubscribe not implemented; use Session.UnsubscribeAll")
+func (p *Plugin) Unsubscribe(_ consumer.ValueRequest) error {
+	return fmt.Errorf("cerebrum-nb: consumer.Unsubscribe not implemented; use Session.UnsubscribeAll")
 }

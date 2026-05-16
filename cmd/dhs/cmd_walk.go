@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp1/consumer"
 	"dhs/internal/acp2/consumer"
 	"dhs/internal/emberplus/consumer"
@@ -55,8 +55,8 @@ func runWalk(ctx context.Context, args []string) error {
 	filterLower := strings.ToLower(*filter)
 	if p, ok := plug.(interface{ SetWalkProgress(acp2.WalkProgressFunc) }); ok && !*tree {
 		streaming = true
-		p.SetWalkProgress(func(count int, obj *protocol.Object) {
-			if obj.Kind == protocol.KindRaw && obj.Label == "" {
+		p.SetWalkProgress(func(count int, obj *consumer.Object) {
+			if obj.Kind == consumer.KindRaw && obj.Label == "" {
 				return // skip node containers
 			}
 			if !matchPathPrefix(obj.Path, pathSegs) {
@@ -103,7 +103,7 @@ func runWalk(ctx context.Context, args []string) error {
 				fmt.Printf("\nslot %d — error reading status: %v\n", s, serr)
 				continue
 			}
-			if si.Status != protocol.SlotPresent {
+			if si.Status != consumer.SlotPresent {
 				continue
 			}
 			walked++
@@ -197,7 +197,7 @@ func runWalk(ctx context.Context, args []string) error {
 // writer based on the concrete plugin type. Each plugin produces a
 // canonical `tree.json` in the same schema; Ember+ additionally
 // writes `glow.json` for wire-level cross-checking.
-func writeCanonicalCapture(ctx context.Context, dir string, plug protocol.Protocol, cf *commonFlags) error {
+func writeCanonicalCapture(ctx context.Context, dir string, plug consumer.Protocol, cf *commonFlags) error {
 	switch p := plug.(type) {
 	case *emberplus.Plugin:
 		return writeEmberplusCapture(ctx, dir, p, cf)
@@ -256,7 +256,7 @@ func writeACP1Capture(ctx context.Context, dir string, p *acp1.Plugin) error {
 // log. No-op when plug isn't the Ember+ plugin. Mode flags on cf
 // select the canonical resolver contract: pointer (default, wire-
 // faithful), inline (absorb referenced subtrees), or both.
-func writeEmberplusCapture(ctx context.Context, dir string, plug protocol.Protocol, cf *commonFlags) error {
+func writeEmberplusCapture(ctx context.Context, dir string, plug consumer.Protocol, cf *commonFlags) error {
 	ep, ok := plug.(*emberplus.Plugin)
 	if !ok {
 		return nil

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/protocol"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/transport"
 	"dhs/internal/acp2/codec"
 )
@@ -20,21 +20,21 @@ import (
 // Importing this package from cmd/ is enough to make "acp2" selectable
 // by name via the --protocol flag.
 func init() {
-	protocol.Register(&Factory{})
+	consumer.Register(&Factory{})
 }
 
 // Factory builds ACP2 Plugin instances.
 type Factory struct{}
 
-func (f *Factory) Meta() protocol.ProtocolMeta {
-	return protocol.ProtocolMeta{
+func (f *Factory) Meta() consumer.ProtocolMeta {
+	return consumer.ProtocolMeta{
 		Name:        "acp2",
 		DefaultPort: codec.DefaultPort,
 		Description: "Axon Control Protocol v2 (AN2/TCP)",
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
+func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
 	return &Plugin{logger: logger}
 }
 
@@ -81,7 +81,7 @@ type Plugin struct {
 	// kaCfg captures the operator's --keepalive / --keepalive-timeout
 	// choice (set via SetKeepAlive). Zero values mean "use plugin
 	// defaults"; sentinel constants disable the prober / watchdog.
-	kaCfg protocol.KeepAliveConfig
+	kaCfg consumer.KeepAliveConfig
 
 	// ka is the running keep-alive state when a session is up; nil
 	// before Connect and after Disconnect.
@@ -103,7 +103,7 @@ type Plugin struct {
 // Meta (set by walker.go on a normal walk). Objects without those
 // keys are kept in the tree for label resolution but their value
 // decoding falls back to KindRaw — same as today.
-func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
+func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []consumer.Object) {
 	p.mu.Lock()
 	if p.trees == nil {
 		p.trees = newWalkedTreeCache(32, 0)
@@ -113,7 +113,7 @@ func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
 
 	tree := &WalkedTree{
 		Slot:        slot,
-		Objects:     make([]protocol.Object, 0, len(objs)),
+		Objects:     make([]consumer.Object, 0, len(objs)),
 		ObjTypes:    make([]codec.ACP2ObjType, 0, len(objs)),
 		NumTypes:    make([]codec.NumberType, 0, len(objs)),
 		OptionsMaps: make([]map[uint32]string, 0, len(objs)),
@@ -215,7 +215,7 @@ type subKey struct {
 	id    int
 }
 
-func reqToSubKey(req protocol.ValueRequest) subKey {
+func reqToSubKey(req consumer.ValueRequest) subKey {
 	return subKey{req.Slot, req.Label, req.ID}
 }
 
@@ -224,8 +224,8 @@ func reqToSubKey(req protocol.ValueRequest) subKey {
 // sessionID is refreshed each reconnect by registering the closure on
 // the new session.
 type activeSubscription struct {
-	req       protocol.ValueRequest
-	fn        protocol.EventFunc
+	req       consumer.ValueRequest
+	fn        consumer.EventFunc
 	sessionID int
 }
 
@@ -319,15 +319,15 @@ func (p *Plugin) Disconnect() error {
 }
 
 // GetDeviceInfo returns device metadata from the AN2 handshake.
-func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
+func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
 	p.mu.Lock()
 	s := p.session
 	p.mu.Unlock()
 	if s == nil {
-		return protocol.DeviceInfo{}, protocol.ErrNotConnected
+		return consumer.DeviceInfo{}, consumer.ErrNotConnected
 	}
 
-	return protocol.DeviceInfo{
+	return consumer.DeviceInfo{
 		IP:              s.Host(),
 		Port:            s.Port(),
 		NumSlots:        s.NumSlots(),
@@ -349,23 +349,23 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error)
 // flips false → IsOnline flips false for every slot regardless of
 // last-known State. This matches Cerebrum + VSM Studio behaviour
 // (amber, read-only) on disconnect and slot-pull events.
-func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, error) {
+func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
 	p.mu.Lock()
 	s := p.session
 	p.mu.Unlock()
 	if s == nil {
-		return protocol.SlotInfo{}, protocol.ErrNotConnected
+		return consumer.SlotInfo{}, consumer.ErrNotConnected
 	}
 
 	si := s.SlotInfoFromAN2(slot) // populates Status, State, LiveAt
-	si.IsOnline = si.State == protocol.SlotStatePresent && p.SessionLive()
+	si.IsOnline = si.State == consumer.SlotStatePresent && p.SessionLive()
 
 	// If the slot has been walked, add identity from the tree.
 	tree, _ := p.trees.Get(slot)
 	if tree != nil {
 		si.Identity = make(map[string]string)
 		for _, obj := range tree.Objects {
-			if obj.Kind == protocol.KindString && obj.Value.Str != "" {
+			if obj.Kind == consumer.KindString && obj.Value.Str != "" {
 				si.Identity[obj.Label] = obj.Value.Str
 			}
 		}
@@ -376,7 +376,7 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, 
 
 // Walk enumerates every object on the given slot using DFS traversal.
 // Results are cached; subsequent calls return the cached tree.
-func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) {
+func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) {
 	if tree, ok := p.trees.Get(slot); ok {
 		return tree.Objects, nil
 	}
@@ -385,7 +385,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 	w := p.walker
 	p.mu.Unlock()
 	if w == nil {
-		return nil, protocol.ErrNotConnected
+		return nil, consumer.ErrNotConnected
 	}
 
 	tree, err := w.Walk(ctx, slot)
@@ -417,7 +417,7 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 	s := p.session
 	p.mu.Unlock()
 	if s == nil {
-		return "", protocol.ErrNotConnected
+		return "", consumer.ErrNotConnected
 	}
 	walker := NewWalker(s, p.logger)
 
@@ -444,18 +444,18 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 }
 
 // GetValue reads one object value via ACP2 get_property(pid=8).
-func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
+func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
 	p.mu.Lock()
 	s := p.session
 	p.mu.Unlock()
 	if s == nil {
-		return protocol.Value{}, protocol.ErrNotConnected
+		return consumer.Value{}, consumer.ErrNotConnected
 	}
 	tree, _ := p.trees.Get(req.Slot)
 
 	objID, objType, numType, _, err := p.resolveRequest(req, tree)
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	// If no tree → type unknown. Fetch object metadata via get_object
@@ -464,7 +464,7 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 		var miniTree *WalkedTree
 		objType, numType, miniTree, err = p.fetchObjectMeta(ctx, s, uint8(req.Slot), objID)
 		if err != nil {
-			return protocol.Value{}, err
+			return consumer.Value{}, err
 		}
 		tree = miniTree
 	}
@@ -485,7 +485,7 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 		Idx:   targetIdx,
 	})
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	// Decode the targeted property from the reply. Fall back to the raw
@@ -497,26 +497,26 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 			if targetPID == codec.PIDValue {
 				return decodePropertyValue(prop, objType, numType, tree, objID)
 			}
-			return protocol.Value{Kind: protocol.KindRaw, Raw: prop.Data}, nil
+			return consumer.Value{Kind: consumer.KindRaw, Raw: prop.Data}, nil
 		}
 	}
 
-	return protocol.Value{Kind: protocol.KindRaw, Raw: msg.Body}, nil
+	return consumer.Value{Kind: consumer.KindRaw, Raw: msg.Body}, nil
 }
 
 // SetValue writes one object value via ACP2 set_property(pid=8).
-func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
+func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
 	p.mu.Lock()
 	s := p.session
 	p.mu.Unlock()
 	if s == nil {
-		return protocol.Value{}, protocol.ErrNotConnected
+		return consumer.Value{}, consumer.ErrNotConnected
 	}
 	tree, _ := p.trees.Get(req.Slot)
 
 	objID, objType, numType, obj, err := p.resolveRequest(req, tree)
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	// If no tree → type unknown. Fetch object metadata via get_object
@@ -525,7 +525,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		var miniTree *WalkedTree
 		objType, numType, miniTree, err = p.fetchObjectMeta(ctx, s, uint8(req.Slot), objID)
 		if err != nil {
-			return protocol.Value{}, err
+			return consumer.Value{}, err
 		}
 		tree = miniTree
 		if len(miniTree.Objects) > 0 {
@@ -550,7 +550,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	// Build the value property for the set request.
 	prop, err := encodeSetProperty(objType, numType, obj, val, reverseEnum)
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	msg, err := s.DoACP2(ctx, uint8(req.Slot), &codec.ACP2Message{
@@ -562,7 +562,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		Properties: []codec.Property{prop},
 	})
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	// Decode the confirmed value from the reply.
@@ -573,19 +573,19 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		}
 	}
 
-	return protocol.Value{Kind: protocol.KindRaw, Raw: msg.Body}, nil
+	return consumer.Value{Kind: consumer.KindRaw, Raw: msg.Body}, nil
 }
 
 // Subscribe registers a callback for ACP2 announces matching req. The
 // (req, fn) pair is stored in p.activeSubs so it survives session loss
 // — on reconnect, the same closure is re-registered on the new session
 // (see reconnectOnce).
-func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
+func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
 	p.mu.Lock()
 	s := p.session
 	if s == nil {
 		p.mu.Unlock()
-		return protocol.ErrNotConnected
+		return consumer.ErrNotConnected
 	}
 	if p.activeSubs == nil {
 		p.activeSubs = make(map[subKey]*activeSubscription)
@@ -598,7 +598,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 }
 
 // Unsubscribe removes a previously registered Subscribe.
-func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
+func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	p.mu.Lock()
 	s := p.session
 	key := reqToSubKey(req)
@@ -615,13 +615,13 @@ func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
 }
 
 // buildAnnounceClosure produces the AnnounceFunc that filters incoming
-// announces by req and invokes fn with a decoded protocol.Event.
+// announces by req and invokes fn with a decoded consumer.Event.
 // Extracted so reconnectOnce can re-register the same shape against a
 // fresh session without re-running Subscribe (which would also re-emit
 // the activeSubs bookkeeping). The closure captures p, req, fn — none
 // of which change on reconnect, so the same logic applies before and
 // after.
-func (p *Plugin) buildAnnounceClosure(req protocol.ValueRequest, fn protocol.EventFunc) AnnounceFunc {
+func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.EventFunc) AnnounceFunc {
 	slot := req.Slot
 	wantID := req.ID
 	wantLabel := req.Label
@@ -634,7 +634,7 @@ func (p *Plugin) buildAnnounceClosure(req protocol.ValueRequest, fn protocol.Eve
 			return
 		}
 
-		ev := protocol.Event{
+		ev := consumer.Event{
 			Slot:      int(annSlot),
 			ID:        int(msg.ObjID),
 			Timestamp: time.Now(),
@@ -681,15 +681,15 @@ func (p *Plugin) buildAnnounceClosure(req protocol.ValueRequest, fn protocol.Eve
 				// the wire shape; map it to the corresponding ACP2 ObjType
 				// so Enum / IPv4 / String announces decode typed instead
 				// of falling through to KindRaw.
-				if ev.Value.Kind == protocol.KindUnknown && prop.Data != nil {
+				if ev.Value.Kind == consumer.KindUnknown && prop.Data != nil {
 					nt := codec.NumberType(prop.VType)
 					ot := objTypeFromVType(nt)
 					val, derr := decodePropertyValue(prop, ot, nt, nil, msg.ObjID)
 					if derr == nil {
 						ev.Value = val
 					}
-					if ev.Value.Kind == protocol.KindUnknown {
-						ev.Value = protocol.Value{Kind: protocol.KindRaw, Raw: prop.Data}
+					if ev.Value.Kind == consumer.KindUnknown {
+						ev.Value = consumer.Value{Kind: consumer.KindRaw, Raw: prop.Data}
 					}
 				}
 				break
@@ -703,17 +703,17 @@ func (p *Plugin) buildAnnounceClosure(req protocol.ValueRequest, fn protocol.Eve
 // ---- Internal helpers ----
 
 // resolveRequest translates a ValueRequest into an ACP2 obj-id, object type,
-// number type, and (optionally) the cached protocol.Object.
-func (p *Plugin) resolveRequest(req protocol.ValueRequest, tree *WalkedTree) (uint32, codec.ACP2ObjType, codec.NumberType, *protocol.Object, error) {
+// number type, and (optionally) the cached consumer.Object.
+func (p *Plugin) resolveRequest(req consumer.ValueRequest, tree *WalkedTree) (uint32, codec.ACP2ObjType, codec.NumberType, *consumer.Object, error) {
 	if req.Label != "" {
 		if tree == nil {
 			return 0, 0, 0, nil, fmt.Errorf("%w: no walked tree for slot %d",
-				protocol.ErrUnknownLabel, req.Slot)
+				consumer.ErrUnknownLabel, req.Slot)
 		}
 		idx := tree.Lookup(req.Label)
 		if idx < 0 {
 			return 0, 0, 0, nil, fmt.Errorf("%w: label %q not found on slot %d",
-				protocol.ErrUnknownLabel, req.Label, req.Slot)
+				consumer.ErrUnknownLabel, req.Label, req.Slot)
 		}
 		obj := &tree.Objects[idx]
 		return uint32(obj.ID), tree.ObjTypes[idx], tree.NumTypes[idx], obj, nil
@@ -758,8 +758,8 @@ func objTypeFromVType(nt codec.NumberType) codec.ACP2ObjType {
 	}
 }
 
-// decodePropertyValue decodes a value Property into a protocol.Value.
-func decodePropertyValue(p *codec.Property, objType codec.ACP2ObjType, numType codec.NumberType, tree *WalkedTree, objID uint32) (protocol.Value, error) {
+// decodePropertyValue decodes a value Property into a consumer.Value.
+func decodePropertyValue(p *codec.Property, objType codec.ACP2ObjType, numType codec.NumberType, tree *WalkedTree, objID uint32) (consumer.Value, error) {
 	switch objType {
 	case codec.ObjTypeNumber:
 		nt := codec.NumberType(p.VType)
@@ -768,22 +768,22 @@ func decodePropertyValue(p *codec.Property, objType codec.ACP2ObjType, numType c
 		}
 		intV, uintV, floatV, err := codec.DecodeNumericValue(nt, p.Data)
 		if err != nil {
-			return protocol.Value{Kind: protocol.KindRaw, Raw: p.Data}, nil
+			return consumer.Value{Kind: consumer.KindRaw, Raw: p.Data}, nil
 		}
 		switch numberTypeToKind(nt) {
-		case protocol.KindInt:
-			return protocol.Value{Kind: protocol.KindInt, Int: intV, Raw: p.Data}, nil
-		case protocol.KindUint:
-			return protocol.Value{Kind: protocol.KindUint, Uint: uintV, Raw: p.Data}, nil
-		case protocol.KindFloat:
-			return protocol.Value{Kind: protocol.KindFloat, Float: floatV, Raw: p.Data}, nil
+		case consumer.KindInt:
+			return consumer.Value{Kind: consumer.KindInt, Int: intV, Raw: p.Data}, nil
+		case consumer.KindUint:
+			return consumer.Value{Kind: consumer.KindUint, Uint: uintV, Raw: p.Data}, nil
+		case consumer.KindFloat:
+			return consumer.Value{Kind: consumer.KindFloat, Float: floatV, Raw: p.Data}, nil
 		}
 
 	case codec.ObjTypeEnum, codec.ObjTypePreset:
 		if len(p.Data) >= 4 {
 			fullIdx := binary.BigEndian.Uint32(p.Data[0:4])
-			ev := protocol.Value{
-				Kind: protocol.KindEnum,
+			ev := consumer.Value{
+				Kind: consumer.KindEnum,
 				Enum: uint8(fullIdx),
 				Uint: uint64(fullIdx),
 				Raw:  p.Data,
@@ -806,8 +806,8 @@ func decodePropertyValue(p *codec.Property, objType codec.ACP2ObjType, numType c
 
 	case codec.ObjTypeIPv4:
 		if len(p.Data) >= 4 {
-			return protocol.Value{
-				Kind: protocol.KindIPAddr,
+			return consumer.Value{
+				Kind: consumer.KindIPAddr,
 				IPAddr: [4]byte{
 					p.Data[0], p.Data[1], p.Data[2], p.Data[3],
 				},
@@ -816,18 +816,18 @@ func decodePropertyValue(p *codec.Property, objType codec.ACP2ObjType, numType c
 		}
 
 	case codec.ObjTypeString:
-		return protocol.Value{
-			Kind: protocol.KindString,
+		return consumer.Value{
+			Kind: consumer.KindString,
 			Str:  codec.PropertyString(p),
 			Raw:  p.Data,
 		}, nil
 	}
 
-	return protocol.Value{Kind: protocol.KindRaw, Raw: p.Data}, nil
+	return consumer.Value{Kind: consumer.KindRaw, Raw: p.Data}, nil
 }
 
 // encodeSetProperty builds the value Property for a set_property request.
-func encodeSetProperty(objType codec.ACP2ObjType, numType codec.NumberType, obj *protocol.Object, val protocol.Value, reverseEnum map[string]uint32) (codec.Property, error) {
+func encodeSetProperty(objType codec.ACP2ObjType, numType codec.NumberType, obj *consumer.Object, val consumer.Value, reverseEnum map[string]uint32) (codec.Property, error) {
 	// If raw bytes are provided, use them directly.
 	if len(val.Raw) > 0 && val.Str == "" && val.Int == 0 && val.Float == 0 && val.Uint == 0 {
 		return codec.MakeValueProperty(codec.PIDValue, numType, val.Raw), nil
@@ -928,7 +928,7 @@ func (p *Plugin) fetchObjectMeta(ctx context.Context, s *Session, slot uint8, ob
 	// Build a minimal single-object tree for decodePropertyValue.
 	miniTree := &WalkedTree{
 		Slot: int(slot),
-		Objects: []protocol.Object{
+		Objects: []consumer.Object{
 			{Slot: int(slot), ID: int(objID), Label: label},
 		},
 		ObjTypes:    []codec.ACP2ObjType{objType},

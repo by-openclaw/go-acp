@@ -3,7 +3,7 @@ package emberplus
 import (
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // extractFormatUnit returns the unit suffix from an Ember+ printf-style
@@ -33,19 +33,19 @@ func extractFormatUnit(format string) string {
 // value", which is intrinsically a real-number transform.
 //
 // factor <= 1 (or non-numeric Value) → Value returned unchanged.
-func applyFactor(v protocol.Value, factor int64) protocol.Value {
+func applyFactor(v consumer.Value, factor int64) consumer.Value {
 	if factor <= 1 {
 		return v
 	}
 	switch v.Kind {
-	case protocol.KindInt:
-		return protocol.Value{
-			Kind:  protocol.KindFloat,
+	case consumer.KindInt:
+		return consumer.Value{
+			Kind:  consumer.KindFloat,
 			Float: float64(v.Int) / float64(factor),
 		}
-	case protocol.KindFloat:
-		return protocol.Value{
-			Kind:  protocol.KindFloat,
+	case consumer.KindFloat:
+		return consumer.Value{
+			Kind:  consumer.KindFloat,
 			Float: v.Float / float64(factor),
 		}
 	default:
@@ -64,9 +64,9 @@ func applyFactor(v protocol.Value, factor int64) protocol.Value {
 // Falls back to the entry's stored obj.Value / obj.Unit when no
 // glowParam is attached (e.g. before processParameter has merged
 // the first announce).
-func displayValueAndUnit(entry *treeEntry) (protocol.Value, string) {
+func displayValueAndUnit(entry *treeEntry) (consumer.Value, string) {
 	if entry == nil {
-		return protocol.Value{}, ""
+		return consumer.Value{}, ""
 	}
 	val := entry.obj.Value
 	unit := entry.obj.Unit

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // Ensure the readers satisfy a common shape.
@@ -86,7 +86,7 @@ func LoadSnapshot(path string) (*Snapshot, error) {
 //
 // dryRun=true logs what WOULD be written and returns without touching
 // the device.
-func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool) (*ImportReport, error) {
+func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool) (*ImportReport, error) {
 	rep := &ImportReport{DryRun: dryRun}
 
 	// Optional offline pre-flight check. Plugins that can validate a
@@ -94,7 +94,7 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 	// see internal/protocol/value_validator.go. ACP2 does — uses a
 	// single get_object to catch phantom obj-ids before SetValue, and
 	// rejects enum values outside the options list.
-	validator, _ := plug.(protocol.ValueValidator)
+	validator, _ := plug.(consumer.ValueValidator)
 
 	// No protocol needs a pre-walk on import any more. ACP2 + EmberPlus
 	// have per-object meta fetch since v0.10.0; ACP1 gained the same
@@ -122,8 +122,8 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 			// than a simple SetValue. Use obj.Kind (set from the
 			// "kind" field in every format) rather than obj.Value.Kind
 			// which YAML/CSV may leave as KindUnknown for some values.
-			if obj.Kind == protocol.KindUnknown ||
-				obj.Kind == protocol.KindFrame {
+			if obj.Kind == consumer.KindUnknown ||
+				obj.Kind == consumer.KindFrame {
 				rep.Skipped++
 				rep.Skips = append(rep.Skips, skipFrom(dump.Slot, obj, "unknown_kind"))
 				continue
@@ -147,7 +147,7 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 			// that *at least one* unique key is set. CSV round-trip
 			// (issue #38) carries oid + path + id + label so every
 			// protocol gets its unambiguous key back.
-			req := protocol.ValueRequest{Slot: dump.Slot}
+			req := consumer.ValueRequest{Slot: dump.Slot}
 			switch s.Device.Protocol {
 			case "acp1":
 				req.Group = obj.Group
@@ -186,7 +186,7 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 			if validator != nil {
 				if vErr := validator.ValidateValue(ctx, req, obj.Value); vErr != nil {
 					reason := "validation_failed"
-					if errors.Is(vErr, protocol.ErrObjectNotFound) {
+					if errors.Is(vErr, consumer.ErrObjectNotFound) {
 						reason = "not_found"
 					}
 					rep.Skipped++
@@ -213,13 +213,13 @@ func Apply(ctx context.Context, plug protocol.Protocol, s *Snapshot, dryRun bool
 // skipFrom builds a SkipRecord describing one row the importer chose
 // not to attempt. Reason is a short one-word code ("read_only" /
 // "unknown_kind" / "marker") so the CLI can group the report by cause.
-func skipFrom(slot int, obj protocol.Object, reason string) SkipRecord {
+func skipFrom(slot int, obj consumer.Object, reason string) SkipRecord {
 	path := obj.Label
 	if len(obj.Path) > 0 {
 		path = strings.Join(obj.Path, ".")
 	}
 	kind := "unknown"
-	if obj.Kind != protocol.KindUnknown {
+	if obj.Kind != consumer.KindUnknown {
 		kind = obj.Kind.String()
 	}
 	access := "R--"

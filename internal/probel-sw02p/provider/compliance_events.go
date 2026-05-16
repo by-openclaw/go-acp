@@ -42,7 +42,7 @@ const (
 	// tally UI exclusively from tx 04 broadcasts per §3.2.6. The
 	// deviation fires once per emitted slot so every occurrence is
 	// auditable in metrics and logs. See SW-P-08 issue #92 for the
-	// precedent on the sibling protocol.
+	// precedent on the sibling consumer.
 	SalvoEmittedConnected = "probel_sw02p_salvo_emitted_connected"
 
 	// An rx 102 PROTECT CONNECT or rx 104 PROTECT DIS-CONNECT was

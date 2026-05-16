@@ -62,7 +62,7 @@ internal/
   provider/                   neutral provider-plugin registry + iface
   acp1/                       per-protocol self-contained subtree
     CLAUDE.md                 atomic wire-format context
-    consumer/                 package acp1 — implements protocol.Protocol
+    consumer/                 package acp1 — implements consumer.Protocol
     provider/                 package acp1 — implements provider.Provider
     wireshark/                dhs_acpv1.lua
     docs/                     consumer.md / provider.md / README.md
@@ -113,8 +113,8 @@ content here.
 
 Both compile-time, Tier-1 registries:
 
-- `internal/protocol/` — consumer plugins. One `init()` per protocol calls
-  `protocol.Register(&Factory{})`.
+- `internal/consumer/` — consumer plugins. One `init()` per protocol calls
+  `consumer.Register(&Factory{})`.
 - `internal/provider/` — provider plugins. Same pattern, different registry.
 
 `cmd/dhs/main.go` blank-imports each consumer + provider package to trigger
@@ -150,7 +150,7 @@ spec deviation, the plugin absorbs it (keeps running) and fires a
 `compliance.Event`. Consumers of the library see the event count + summary;
 the library never silently works around a deviation.
 
-See `internal/protocol/compliance/` and each protocol's
+See `internal/consumer/compliance/` and each protocol's
 `compliance_events.go`.
 
 ---
@@ -187,7 +187,7 @@ Every transport / session layer exposes live metrics on its connector:
 frames/bytes (rx, tx), latency p50/p95/p99 (µs), errors (NAK, decode,
 reconnect), memory, CPU%, uptime. Use `atomic.Uint64` for counters,
 log-linear histogram for latency, no mutex on the hot path. The
-neutral `ConnectorMetrics` struct lives in `internal/protocol/` and
+neutral `ConnectorMetrics` struct lives in `internal/consumer/` and
 `internal/provider/`; each plugin exposes `Metrics()` on its session.
 
 Producer surface: `dhs producer <proto> serve --metrics-addr :9100`
@@ -438,9 +438,9 @@ See `feedback_amwa_strict_all_versions` in memory.
 
 1. `mkdir internal/<name>/{codec,consumer,provider,wireshark}` (codec
    optional if the wire codec is trivial).
-2. Copy `internal/protocol/_template/` into `internal/<name>/consumer/`;
-   implement `protocol.Protocol` + `Factory` with
-   `func init() { protocol.Register(&Factory{}) }`.
+2. Copy `internal/consumer/_template/` into `internal/<name>/consumer/`;
+   implement `consumer.Protocol` + `Factory` with
+   `func init() { consumer.Register(&Factory{}) }`.
 3. Mirror for the provider under `internal/<name>/provider/`, registering
    with `provider.Register`.
 4. Create `internal/<name>/CLAUDE.md` — wire format, command catalog,

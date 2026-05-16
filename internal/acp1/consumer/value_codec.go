@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp1/codec"
 )
 
@@ -31,11 +31,11 @@ import (
 // decoder in property.go.
 
 // DecodeValueBytes converts the raw value bytes from a getValue/setValue
-// reply into a typed protocol.Value, using the cached Object to resolve
+// reply into a typed consumer.Value, using the cached Object to resolve
 // type-specific context (enum items, integer width, etc.).
 //
 // The fine-grained ACP1 type is passed in explicitly because the widened
-// protocol.ValueKind cannot distinguish Integer (int16) from Long (int32)
+// consumer.ValueKind cannot distinguish Integer (int16) from Long (int32)
 // — both surface as KindInt to the rest of the system.
 //
 // Per-type raw-value layout (no type/num_props prefix — scoped by object):
@@ -55,8 +55,8 @@ import (
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" pp. 21–27.
-func DecodeValueBytes(obj protocol.Object, acpType codec.ObjectType, raw []byte) (protocol.Value, error) {
-	v := protocol.Value{
+func DecodeValueBytes(obj consumer.Object, acpType codec.ObjectType, raw []byte) (consumer.Value, error) {
+	v := consumer.Value{
 		Kind: obj.Kind,
 		Raw:  append([]byte(nil), raw...),
 	}
@@ -133,7 +133,7 @@ func DecodeValueBytes(obj protocol.Object, acpType codec.ObjectType, raw []byte)
 		if len(raw) < 1 {
 			return v, fmt.Errorf("acp1 decode alarm: need 1 byte, got %d", len(raw))
 		}
-		v.Kind = protocol.KindUint
+		v.Kind = consumer.KindUint
 		v.Uint = uint64(raw[0])
 		return v, nil
 
@@ -150,16 +150,16 @@ func DecodeValueBytes(obj protocol.Object, acpType codec.ObjectType, raw []byte)
 			return v, fmt.Errorf("acp1 decode frame: %d slots declared, %d status bytes",
 				num, len(raw)-1)
 		}
-		v.Kind = protocol.KindFrame
-		v.SlotStatus = make([]protocol.SlotStatus, num)
+		v.Kind = consumer.KindFrame
+		v.SlotStatus = make([]consumer.SlotStatus, num)
 		for i := 0; i < num; i++ {
-			v.SlotStatus[i] = protocol.SlotStatus(raw[1+i])
+			v.SlotStatus[i] = consumer.SlotStatus(raw[1+i])
 		}
 		return v, nil
 
 	case codec.TypeRoot, codec.TypeFile, codec.TypeReserved:
 		// Other compound types — leave as raw bytes.
-		v.Kind = protocol.KindRaw
+		v.Kind = consumer.KindRaw
 		return v, nil
 	}
 	return v, fmt.Errorf("acp1 decode: unsupported type %d", acpType)
@@ -169,7 +169,7 @@ func DecodeValueBytes(obj protocol.Object, acpType codec.ObjectType, raw []byte)
 // the object's declared ACP1 type and (for Enum / String) its captured
 // metadata to validate the input.
 //
-// The caller provides the desired value in the protocol.Value field that
+// The caller provides the desired value in the consumer.Value field that
 // matches the object's kind: Int for integer/long, Uint for byte,
 // Float for float, Str for string/enum/ipaddr (with permissive parsing).
 // This is the inverse of DecodeValueBytes with a forgiving input policy:
@@ -190,7 +190,7 @@ func DecodeValueBytes(obj protocol.Object, acpType codec.ObjectType, raw []byte)
 //
 // Spec reference: AXON-ACP_v1_4.pdf §"Methods" p. 28 and
 // §"Objects by Type" pp. 21–27.
-func EncodeValueBytes(obj protocol.Object, acpType codec.ObjectType, val protocol.Value) ([]byte, error) {
+func EncodeValueBytes(obj consumer.Object, acpType codec.ObjectType, val consumer.Value) ([]byte, error) {
 	switch acpType {
 	case codec.TypeInteger:
 		n, err := coerceInt(val, -32768, 32767)
@@ -255,9 +255,9 @@ func EncodeValueBytes(obj protocol.Object, acpType codec.ObjectType, val protoco
 	return nil, fmt.Errorf("acp1 encode: unsupported type %d", acpType)
 }
 
-// coerceInt resolves a protocol.Value to a signed integer. Priority:
+// coerceInt resolves a consumer.Value to a signed integer. Priority:
 // Value.Str (parsed) → Value.Int → Value.Uint → Value.Float (truncated).
-func coerceInt(v protocol.Value, min, max int64) (int64, error) {
+func coerceInt(v consumer.Value, min, max int64) (int64, error) {
 	var n int64
 	switch {
 	case v.Str != "":
@@ -282,7 +282,7 @@ func coerceInt(v protocol.Value, min, max int64) (int64, error) {
 }
 
 // coerceUint is the unsigned counterpart for Byte objects.
-func coerceUint(v protocol.Value, max uint64) (uint64, error) {
+func coerceUint(v consumer.Value, max uint64) (uint64, error) {
 	var n uint64
 	switch {
 	case v.Str != "":
@@ -305,7 +305,7 @@ func coerceUint(v protocol.Value, max uint64) (uint64, error) {
 }
 
 // coerceFloat accepts any numeric form plus decimal strings.
-func coerceFloat(v protocol.Value) (float64, error) {
+func coerceFloat(v consumer.Value) (float64, error) {
 	if v.Str != "" {
 		return strconv.ParseFloat(strings.TrimSpace(v.Str), 64)
 	}
@@ -321,7 +321,7 @@ func coerceFloat(v protocol.Value) (float64, error) {
 }
 
 // coerceIP accepts dotted-quad strings and raw uint32 values.
-func coerceIP(v protocol.Value) (uint32, error) {
+func coerceIP(v consumer.Value) (uint32, error) {
 	if v.Str != "" {
 		parts := strings.Split(strings.TrimSpace(v.Str), ".")
 		if len(parts) != 4 {
@@ -352,7 +352,7 @@ func coerceIP(v protocol.Value) (uint32, error) {
 // object's captured EnumItems. Accepts either an item name ("On") or a
 // numeric index ("1"). Numeric form lets users bypass the label when the
 // enum items contain tricky characters.
-func coerceEnum(items []string, v protocol.Value) (byte, error) {
+func coerceEnum(items []string, v consumer.Value) (byte, error) {
 	if v.Str != "" {
 		s := strings.TrimSpace(v.Str)
 		// Map lookup: label → index. ACP1 enums are 0-based sequential.

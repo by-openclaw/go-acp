@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"dhs/internal/export/canonical"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp2/codec"
 )
 
@@ -37,31 +37,31 @@ func TestCanonicalize_Empty(t *testing.T) {
 func TestCanonicalize_SingleSlot(t *testing.T) {
 	tree := &WalkedTree{
 		Slot: 0,
-		Objects: []protocol.Object{
+		Objects: []consumer.Object{
 			{
 				Slot: 0, ID: 1, Label: "ROOT_NODE_V2",
 				Path:  []string{"ROOT_NODE_V2"},
-				Kind:  protocol.KindRaw, Access: 1,
+				Kind:  consumer.KindRaw, Access: 1,
 			},
 			{
 				Slot: 0, ID: 100, Label: "BOARD",
 				Path:  []string{"ROOT_NODE_V2", "BOARD"},
-				Kind:  protocol.KindRaw, Access: 1,
+				Kind:  consumer.KindRaw, Access: 1,
 			},
 			{
 				Slot: 0, ID: 47431, Label: "ACP Trace",
 				Path:  []string{"ROOT_NODE_V2", "BOARD", "ACP Trace"},
 				Group: "BOARD",
-				Kind:  protocol.KindEnum, Access: 3,
+				Kind:  consumer.KindEnum, Access: 3,
 				EnumItems: []string{"Off", "On"},
-				Value:     protocol.Value{Kind: protocol.KindEnum, Enum: 0, Str: "Off"},
+				Value:     consumer.Value{Kind: consumer.KindEnum, Enum: 0, Str: "Off"},
 			},
 			{
 				Slot: 0, ID: 3, Label: "User Label 1",
 				Path:   []string{"ROOT_NODE_V2", "IDENTITY", "User Label 1"},
 				Group:  "IDENTITY",
-				Kind:   protocol.KindString, Access: 3, MaxLen: 17,
-				Value:  protocol.Value{Kind: protocol.KindString, Str: "ACP2-OK"},
+				Kind:   consumer.KindString, Access: 3, MaxLen: 17,
+				Value:  consumer.Value{Kind: consumer.KindString, Str: "ACP2-OK"},
 			},
 		},
 		ObjTypes: []codec.ACP2ObjType{codec.ObjTypeNode, codec.ObjTypeNode, codec.ObjTypeEnum, codec.ObjTypeString},

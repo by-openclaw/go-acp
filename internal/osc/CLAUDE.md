@@ -12,7 +12,7 @@ idioms); this file holds OSC-specific wire spec + quirks.
 internal/osc/
 ├── CLAUDE.md        ← this file
 ├── codec/           stdlib-only byte codec (lift-ready)
-├── consumer/        package osc — implements protocol.Protocol (both versions)
+├── consumer/        package osc — implements consumer.Protocol (both versions)
 ├── provider/        package osc — implements provider.Provider (both versions)
 └── wireshark/       dhs_osc.lua — full dhs dissector covering
                      UDP + TCP/length-prefix (1.0) + TCP/SLIP (1.1);

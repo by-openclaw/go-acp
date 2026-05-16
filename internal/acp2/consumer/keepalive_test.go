@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func TestResolvedKeepAlive_Defaults(t *testing.T) {
@@ -22,7 +22,7 @@ func TestResolvedKeepAlive_Defaults(t *testing.T) {
 
 func TestResolvedKeepAlive_CustomInterval(t *testing.T) {
 	p := &Plugin{logger: slog.Default()}
-	p.kaCfg = protocol.KeepAliveConfig{Interval: 2 * time.Second}
+	p.kaCfg = consumer.KeepAliveConfig{Interval: 2 * time.Second}
 	interval, timeout := p.resolvedKeepAlive()
 	if interval != 2*time.Second {
 		t.Fatalf("interval = %v, want 2s", interval)
@@ -34,7 +34,7 @@ func TestResolvedKeepAlive_CustomInterval(t *testing.T) {
 
 func TestResolvedKeepAlive_DisableInterval(t *testing.T) {
 	p := &Plugin{logger: slog.Default()}
-	p.kaCfg = protocol.KeepAliveConfig{Interval: protocol.DisableInterval}
+	p.kaCfg = consumer.KeepAliveConfig{Interval: consumer.DisableInterval}
 	interval, timeout := p.resolvedKeepAlive()
 	if interval != 0 {
 		t.Fatalf("disabled interval = %v, want 0", interval)
@@ -46,7 +46,7 @@ func TestResolvedKeepAlive_DisableInterval(t *testing.T) {
 
 func TestResolvedKeepAlive_DisableTimeout(t *testing.T) {
 	p := &Plugin{logger: slog.Default()}
-	p.kaCfg = protocol.KeepAliveConfig{Interval: 5 * time.Second, Timeout: protocol.DisableTimeout}
+	p.kaCfg = consumer.KeepAliveConfig{Interval: 5 * time.Second, Timeout: consumer.DisableTimeout}
 	_, timeout := p.resolvedKeepAlive()
 	if timeout != 0 {
 		t.Fatalf("disabled timeout = %v, want 0", timeout)
@@ -63,7 +63,7 @@ func TestSessionLive_NoSession(t *testing.T) {
 func TestSessionLive_DisabledTimeout(t *testing.T) {
 	p := &Plugin{logger: slog.Default()}
 	p.session = &Session{logger: slog.Default()}
-	p.kaCfg = protocol.KeepAliveConfig{Timeout: protocol.DisableTimeout}
+	p.kaCfg = consumer.KeepAliveConfig{Timeout: consumer.DisableTimeout}
 	if !p.SessionLive() {
 		t.Fatal("SessionLive() = false with disabled timeout, want true (transport-up = live)")
 	}
@@ -100,7 +100,7 @@ func TestSessionLive_StaleRx(t *testing.T) {
 
 func TestSetKeepAlive_StoresCfg(t *testing.T) {
 	p := &Plugin{logger: slog.Default()}
-	cfg := protocol.KeepAliveConfig{Interval: 7 * time.Second, Timeout: 30 * time.Second}
+	cfg := consumer.KeepAliveConfig{Interval: 7 * time.Second, Timeout: 30 * time.Second}
 	p.SetKeepAlive(cfg)
 	if p.kaCfg != cfg {
 		t.Fatalf("kaCfg = %+v, want %+v", p.kaCfg, cfg)

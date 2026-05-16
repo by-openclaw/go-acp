@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"dhs/internal/acp1/consumer"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 	"dhs/internal/acp1/codec"
 )
@@ -41,13 +41,13 @@ func loadTrames(t *testing.T, scenario string) []wiretrace.Trame {
 	return trames
 }
 
-func newPlugin(t *testing.T) protocol.Validator {
+func newPlugin(t *testing.T) consumer.Validator {
 	t.Helper()
 	f := &acp1.Factory{}
 	plug := f.New(slog.Default())
-	v, ok := plug.(protocol.Validator)
+	v, ok := plug.(consumer.Validator)
 	if !ok {
-		t.Fatal("acp1.Plugin does not implement protocol.Validator")
+		t.Fatal("acp1.Plugin does not implement consumer.Validator")
 	}
 	return v
 }
@@ -61,7 +61,7 @@ func TestReplay_ACP1MessageDecode(t *testing.T) {
 		t.Fatal("no trames in capture")
 	}
 	v := newPlugin(t)
-	report, err := v.Validate(context.Background(), trames, protocol.ValidateOpts{})
+	report, err := v.Validate(context.Background(), trames, consumer.ValidateOpts{})
 	if err != nil {
 		t.Fatalf("Validate: %v", err)
 	}

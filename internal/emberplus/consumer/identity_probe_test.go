@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"dhs/internal/emberplus/codec/glow"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func newProbeTestPlugin() *Plugin {
@@ -28,7 +28,7 @@ func addIdentityNode(p *Plugin, oid []int32, path []string, schemaIdentifiers st
 		SchemaIdentifiers: schemaIdentifiers,
 	}
 	e := &treeEntry{
-		obj: protocol.Object{
+		obj: consumer.Object{
 			Path:  append([]string(nil), path...),
 			Label: n.Identifier,
 		},
@@ -47,10 +47,10 @@ func addChildParam(p *Plugin, parent *treeEntry, childNum int32, identifier, val
 	oid := append(append([]int32(nil), parent.numericPath...), childNum)
 	path := append(append([]string(nil), parent.obj.Path...), identifier)
 	e := &treeEntry{
-		obj: protocol.Object{
+		obj: consumer.Object{
 			Path:  path,
 			Label: identifier,
-			Value: protocol.Value{Kind: protocol.KindString, Str: value},
+			Value: consumer.Value{Kind: consumer.KindString, Str: value},
 		},
 		glowParam:   &glow.Parameter{Identifier: identifier, Value: value},
 		numericPath: oid,

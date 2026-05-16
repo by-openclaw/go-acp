@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // slotTreeCache is a bounded LRU + TTL cache for walked SlotTree
@@ -154,7 +154,7 @@ func (c *slotTreeCache) Len() int {
 // No-op when the slot isn't cached, the group is unknown, or the object
 // wasn't walked. Takes the cache mutex so concurrent Gets and Puts stay
 // consistent.
-func (c *slotTreeCache) UpdateObjectValue(slot int, group string, id int, val protocol.Value) {
+func (c *slotTreeCache) UpdateObjectValue(slot int, group string, id int, val consumer.Value) {
 	if c == nil {
 		return
 	}

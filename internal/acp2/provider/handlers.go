@@ -26,7 +26,7 @@ const (
 )
 
 // Slot status codes emitted by GetSlotInfo. Values mirror the consumer's
-// protocol.SlotStatus semantics (2 = present / card inserted). Spec
+// consumer.SlotStatus semantics (2 = present / card inserted). Spec
 // §3.3.3 p.9.
 const (
 	slotStatusEmpty   uint8 = 0

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TieLineInterrogate asks the matrix for a tie-line tally: the list
@@ -33,7 +33,7 @@ func (p *Plugin) TieLineInterrogate(
 	}
 	t, derr := codec.DecodeTieLineTally(reply)
 	if derr != nil {
-		return codec.TieLineTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.TieLineTallyParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return t, nil
 }
