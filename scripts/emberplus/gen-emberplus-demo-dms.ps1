@@ -42,10 +42,17 @@ function StringParam($num, $ident, $path, $oid, $val, $access = "read") {
 }
 
 function IntegerParam($num, $ident, $path, $oid, $val, $min, $max, $step = 1, $access = "readWrite") {
+    # Force numeric typing — bare negative literals like `-1000` arrive
+    # at the function body as STRINGS because PowerShell's positional-
+    # argument binder reads the leading `-` as a switch-style token. The
+    # downstream ConvertTo-Json then writes them as quoted strings
+    # ("-1000"), and Cerebrum / EmberViewer fall back to min=0 (default
+    # for an int field that decoded as string). Casting here makes every
+    # call site safe regardless of how the caller spells the literal.
     [ordered]@{
-        number = $num; identifier = $ident; path = $path; oid = $oid
+        number = [int]$num; identifier = $ident; path = $path; oid = $oid
         isOnline = $true; access = $access; type = "integer"
-        value = $val; minimum = $min; maximum = $max; step = $step
+        value = [long]$val; minimum = [long]$min; maximum = [long]$max; step = [long]$step
     }
 }
 
@@ -205,7 +212,7 @@ $nTNMatrix = [ordered]@{
     type = "nToN"; mode = "linear"
     targetCount = $tgtCount; sourceCount = $srcCount
     maximumTotalConnects = 16
-    maximumConnectsPerTarget = 4
+    maximumConnectsPerTarget = 2
     parametersLocation = $paramsBase
     gainParameterNumber = 1
     labels = @(
@@ -326,15 +333,26 @@ $argsListLocks   = ,(Arg "matrixPath" "string")
 $argsStoreSalvo  = ,(Arg "matrixPath" "string") + ,(Arg "salvoID" "integer") + ,(Arg "targets" "string")
 $argsRecallSalvo = ,(Arg "matrixPath" "string") + ,(Arg "salvoID" "integer")
 $argsListSalvos  = ,(Arg "matrixPath" "string")
-$retOk           = ,(Arg "ok" "boolean")
-$retCount        = ,(Arg "count" "integer")
+$argsGetSalvo    = ,(Arg "matrixPath" "string") + ,(Arg "salvoID" "integer")
+
+# Each function declares its OWN result tuple — name + type match what
+# the impl actually returns. Spec p.91 Tuple: one Value per declared
+# result item. Reusing generic "ok"/"count" labels hides whether the
+# value is a flag, a count, or a delimited list.
+$retSetLock      = ,(Arg "previous"  "boolean")  # prior lock state of target
+$retListLocks    = ,(Arg "locked"    "string")   # CSV of locked target IDs
+$retStoreSalvo   = ,(Arg "stored"    "boolean")  # true if >=1 connection saved
+$retRecallSalvo  = ,(Arg "applied"   "integer")  # count of connections restored
+$retListSalvos   = ,(Arg "salvos"    "string")   # CSV of stored salvo IDs
+$retGetSalvo     = ,(Arg "dump"      "string")   # <tgt>=<csvSrcs>;... format
 
 $fnChildren = @(
-    (FunctionOf 1 "setLock"     "$fnRoot.setLock"     "$fnOid.1" $argsSetLock     $retOk)
-    (FunctionOf 2 "listLocks"   "$fnRoot.listLocks"   "$fnOid.2" $argsListLocks   $retCount)
-    (FunctionOf 3 "storeSalvo"  "$fnRoot.storeSalvo"  "$fnOid.3" $argsStoreSalvo  $retOk)
-    (FunctionOf 4 "recallSalvo" "$fnRoot.recallSalvo" "$fnOid.4" $argsRecallSalvo $retCount)
-    (FunctionOf 5 "listSalvos"  "$fnRoot.listSalvos"  "$fnOid.5" $argsListSalvos  $retCount)
+    (FunctionOf 1 "setLock"     "$fnRoot.setLock"     "$fnOid.1" $argsSetLock     $retSetLock)
+    (FunctionOf 2 "listLocks"   "$fnRoot.listLocks"   "$fnOid.2" $argsListLocks   $retListLocks)
+    (FunctionOf 3 "storeSalvo"  "$fnRoot.storeSalvo"  "$fnOid.3" $argsStoreSalvo  $retStoreSalvo)
+    (FunctionOf 4 "recallSalvo" "$fnRoot.recallSalvo" "$fnOid.4" $argsRecallSalvo $retRecallSalvo)
+    (FunctionOf 5 "listSalvos"  "$fnRoot.listSalvos"  "$fnOid.5" $argsListSalvos  $retListSalvos)
+    (FunctionOf 6 "getSalvo"    "$fnRoot.getSalvo"    "$fnOid.6" $argsGetSalvo    $retGetSalvo)
 )
 Save-DM "functions-strict" "1.0.0" (NodeOf 5 $fnRoot $fnRoot $fnOid $fnChildren)
 

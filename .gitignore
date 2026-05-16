@@ -74,6 +74,12 @@ internal/emberplus/assets/smh/
 /captures/*
 !/captures/README.md
 
+# Local working scratch — wire-trace audits, ad-hoc debug exports, stale
+# issue notes that were dropped under bin/. Same /* + !README pattern
+# as /captures/ so the directory's purpose stays documented in-tree.
+/archive/*
+!/archive/README.md
+
 # Root-level assets/ is reserved as a scratch dir for ad-hoc debug /
 # validation runs. Real spec assets live under internal/<proto>/assets/.
 /assets/

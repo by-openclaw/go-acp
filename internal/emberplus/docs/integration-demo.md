@@ -10,13 +10,16 @@ The DMs assembled here are deliberately compact (4×4 for fixed
 matrices, 10 sparse signals in a 1000×1000 dynamic matrix) so a full
 walk completes in well under a second. All seeds live under
 `.cache/dm/emberplus/` and are regenerated from
-`scripts/gen-emberplus-demo-dms.ps1`.
+`scripts/emberplus/gen-emberplus-demo-dms.ps1`.
 
 ## 1. Generate seeds + start the producer
 
 ```powershell
 # (Re)generate all DMs + manifest. Idempotent.
-powershell -ExecutionPolicy Bypass -File .\scripts\gen-emberplus-demo-dms.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\emberplus\gen-emberplus-demo-dms.ps1
+
+# (Optional) End-to-end verifier: labels + per-tgt/src/XPT params + crosspoints
+# powershell -ExecutionPolicy Bypass -File .\scripts\emberplus\verify-emberplus-integration.ps1
 
 # Build the binary
 go build -o bin/dhs.exe ./cmd/dhs
