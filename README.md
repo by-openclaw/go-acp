@@ -14,6 +14,46 @@ One binary covers both directions:
 
 ---
 
+## Connector definition of done (ADR-0025)
+
+A connector is **DONE** only when all five deliverables exist together (per [ADR-0025](docs/adr/0025-per-connector-definition-of-done.md)). No "ship now, finish later" — fixes that build on partial connectors cause the regression-and-circle pattern this rule prevents.
+
+The five deliverables, one column each in the per-connector state table below:
+
+1. **Consumer** — strict-spec, every CLI verb the spec defines (Probel general/extended form selection is a tested boundary decision per command; Ember+ is DTD 2.60 only).
+2. **Producer** — strict-spec, every CLI verb the spec defines.
+3. **Integration test (CLI)** — Go tests under `internal/<proto>/integration/` that drive the actual `dhs consumer/producer <proto> <verb>` binary against a live producer. Per-test classification: PASS / FAIL-real / FAIL-expected (error-handling success) / TIMEOUT. PowerShell verify scripts can sit alongside for live-rig parity.
+4. **`.cache/dm` + manifest generator** — Go generator owned by the connector, called from test `setUp`, writes a local `.cache/dm/<proto>/...` + `.cache/manifest/...` next to the test files. Tests **MUST NOT** `t.Skip` when the cache is empty.
+5. **Wireshark `.lua` dissector** — `internal/<proto>/wireshark/dhs_<proto>.lua` covering every transport + version + command with per-frame Info column detail that uniquely identifies the message.
+
+Legend: ✅ done · 🟡 partial · ❌ missing or stub
+
+| Connector | Consumer | Producer | Integration test (CLI) | `.cache` generator | Wireshark `.lua` | Notes |
+|---|---|---|---|---|---|---|
+| **ACP1** | ✅ all verbs | ✅ | 🟡 smoke (4 funcs) — does not drive full CLI surface | ❌ | ✅ `dhs_acpv1.lua` | Needs CLI integration test covering walk/get/set/watch/discover end-to-end |
+| **ACP2** | ✅ all verbs | ✅ | ❌ `t.Skip("not implemented yet")` placeholder | ❌ | ✅ `dhs_acpv2.lua` | Integration test is a stub. Every PR claiming "ACP2 green" since this file landed has not been ACP2-tested at all. |
+| **Ember+ (DTD 2.60)** | 🟡 — dotted-path `resolveMatrix` bug fixed locally, not yet merged | 🟡 — same | 🟡 `scripts/emberplus/verify-emberplus-integration.ps1` (22 assertions, labels + per-tgt/src/XPT params only). No matrix-connect, no salvo, no reject paths, no streams. | ❌ — `scripts/emberplus/gen-emberplus-demo-dms.ps1` is PowerShell, not Go, lives outside the integration test folder | ✅ `dhs_emberplus.lua` | Highest-priority connector to bring to DoD next. |
+| **Probel SW-P-08** | ✅ all §3.2 cmds; general/extended form selection covered in `codec/` tests | ✅ multi-session tally + salvo fan-out validated | 🟡 heavy codec coverage (151 funcs) + smh emulator validation, but no `internal/probel-sw08p/integration/` CLI-binary tests | ❌ | ✅ `dhs_probel_sw08p.lua` | Codec layer exemplary; CLI integration layer absent. |
+| **Probel SW-P-02** | ✅ all §3 cmds; protect-blocks-connect with state echo | ✅ | 🟡 codec + provider unit tests; no CLI-binary integration | ❌ | ✅ `dhs_probel_sw02p.lua` | |
+| **OSC 1.0 / 1.1** | ✅ | ✅ | ✅ 6 files / 23 funcs under `internal/osc/integration/` — closest thing to a reference shape | ✅ pcap replay fixture + osc.js byte oracle | ✅ `dhs_osc.lua` | Reference for what a complete connector looks like under this ADR. |
+| **TSL UMD v3.1/v4/v5** | ✅ | ✅ | 🟡 4 files / 10 funcs — partial CLI coverage | ✅ testdata fixtures | ✅ `dhs_tsl.lua` | |
+| **EVS Cerebrum NB** | ✅ 12 verbs (UPPERCASE wire-form live-verified on production fleet) | ❌ deferred | ❌ 2 consumer unit tests, no CLI integration | ❌ | ✅ `dhs_cerebrum_nb.lua` | Provider intentionally deferred per scope. |
+| **AMWA NMOS** | 🟡 IS-04 walk + IS-04 Controller; IS-05/07/08/12/MS-05 plugins in-flight | 🟡 Node + Registry + Events serve | 🟡 AMWA Testing tool harness (external Python) — full conformance on IS-04-01/02 v1.0–v1.3 | 🟡 AMWA fixtures | 🟡 HTTP/WS layer in dissector | Spec-strict every published minor per `feedback_amwa_strict_all_versions` |
+
+### What's NOT YET tested (and why)
+
+| Connector | Untested area | Blocker |
+|---|---|---|
+| Ember+ | Real Lawo router (production hardware) — DTD 2.60 + matrices + streams | Waiting for VPN restoration to reach the production rig (codeowner note 2026-05-16) |
+| Ember+ | DHD provider full surface (1605 stream-param fanout) | Need a live DHD sample on the test rig — TinyEmberPlus DHD_Example1 covers the wire bug surface but not throughput/load |
+| Probel | Real EMTWO / Lawo VSM matrix at full N×M scale | Waiting for cross-vendor testbed access |
+| ACP2 | Real Synapse cards with enum-typed objects (#79) | Awaiting card sample with enum property exposure |
+| NMOS | Real-peer Cerebrum NMOS HA failover under load | Production rig access |
+
+Per-connector runbook (every CLI verb with a captured real-run example) is a separate deliverable per connector — tracked under `internal/<proto>/docs/runbook.md`.
+
+---
+
 ## Protocols
 
 | Protocol        | Transport         | Port      | Consumer | Provider | Docs |

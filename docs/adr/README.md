@@ -51,6 +51,10 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0019](0019-documentation-structure.md) | Documentation structure (split-aware) | accepted |
 | [0020](0020-capture-and-fixture-layout.md) | Capture and fixture file layout | accepted |
 | [0021](0021-wire-trace-jsonl-contract.md) | Wire-trace JSONL contract + replay semantics | accepted |
+| [0022](0022-card-data-model.md) | Card data model — Device/Frame/Slot/Card/DM | accepted |
+| [0023](0023-matrix-entity.md) | Matrix entity — matrix_id/level_id/size/behavior | accepted |
+| [0024](0024-federation-mirror-and-virtual-frame.md) | Federation — mirror frame vs virtual frame | accepted |
+| [0025](0025-per-connector-definition-of-done.md) | Per-connector definition of done (5 deliverables) | proposed |
 
 ## ADR-0017 parking note
 
