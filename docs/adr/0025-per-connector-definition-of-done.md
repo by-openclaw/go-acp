@@ -1,6 +1,6 @@
 # ADR-0025 — Per-connector definition of done
 
-Status: proposed
+Status: accepted
 
 This ADR is a **living document**. Add new facts in the Revisions
 trailer at the end. Do not spawn a new ADR number unless the whole
