@@ -180,22 +180,14 @@ func (s *State) CanConnect(target int32, newSources []int32, op int64) error {
 		return fmt.Errorf("target %d is locked (spec p.89 ConnectionDisposition)", target)
 	}
 
-	// Spec p.33: oneToN and oneToOne require exactly 1 source per
-	// target. Explicit disconnect would leave the target unrouted,
-	// violating the invariant. Reject pre-flight with guidance
-	// instead of sending a request the provider will silently drop.
-	if op == glow.ConnOpDisconnect {
-		switch s.Type {
-		case glow.MatrixTypeOneToN:
-			return fmt.Errorf(
-				"oneToN matrix: disconnect not permitted (target must keep exactly 1 source) — " +
-					"reroute to a silence source instead, or use op=absolute with the new source [spec p.33]")
-		case glow.MatrixTypeOneToOne:
-			return fmt.Errorf(
-				"oneToOne matrix: disconnect not permitted (target must keep exactly 1 source) — " +
-					"reroute to a silence source instead, or use op=absolute with the new source [spec p.33]")
-		}
-	}
+	// Spec p.89: ConnectionOperation.Disconnect removes the listed
+	// sources from the connection. The resulting empty sources[] is
+	// a legal "target unrouted" state for every matrix type per spec
+	// — including oneToN and oneToOne. Earlier code rejected Disconnect
+	// pre-flight on these types citing "spec p.33", but that was the
+	// same misreading as PR #98's provider-side coercion. Letting
+	// Disconnect through here matches what every shipping Ember+ client
+	// (Cerebrum, EmberPlusView, VSM) expects to be able to send.
 
 	projected := projectSources(s.Targets[target], newSources, op)
 
