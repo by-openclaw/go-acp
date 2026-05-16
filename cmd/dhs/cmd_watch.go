@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	emberplus "dhs/internal/emberplus/consumer"
 	"dhs/internal/export/canonical"
 	"dhs/internal/manifest"
@@ -80,9 +80,9 @@ func runWatch(ctx context.Context, args []string) error {
 		return scopeErr
 	}
 
-	var resolver dmlib.Resolver
+	var resolver devicemodel.Resolver
 	if *dmLibrary != "" {
-		resolver = dmlib.New(*dmLibrary)
+		resolver = devicemodel.New(*dmLibrary)
 	}
 	enricher := newHotPlugEnricher(resolver, *autoWalkOnPlug, os.Stdout)
 

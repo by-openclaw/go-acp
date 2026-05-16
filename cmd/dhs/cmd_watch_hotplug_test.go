@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	"dhs/internal/export"
 	"dhs/internal/consumer"
 )
@@ -75,28 +75,28 @@ func (f *fakePlugin) SeedFromDM(slot int, snap *export.Snapshot) error {
 
 // fakeResolver hands out a canned schema or ErrNotFound.
 type fakeResolver struct {
-	schema *dmlib.Schema
+	schema *devicemodel.Schema
 	err    error
 }
 
-func (r *fakeResolver) Resolve(fp dmlib.Fingerprint) (*dmlib.Schema, error) {
+func (r *fakeResolver) Resolve(fp devicemodel.Fingerprint) (*devicemodel.Schema, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
 	return r.schema, nil
 }
-func (r *fakeResolver) LookupAlternate(fp dmlib.Fingerprint) ([]dmlib.Fingerprint, error) {
+func (r *fakeResolver) LookupAlternate(fp devicemodel.Fingerprint) ([]devicemodel.Fingerprint, error) {
 	return nil, nil
 }
-func (r *fakeResolver) Persist(s *dmlib.Schema) error { return nil }
-func (r *fakeResolver) Diff(prev, cur *dmlib.Schema) dmlib.Diff {
-	return dmlib.Diff{}
+func (r *fakeResolver) Persist(s *devicemodel.Schema) error { return nil }
+func (r *fakeResolver) Diff(prev, cur *devicemodel.Schema) devicemodel.Diff {
+	return devicemodel.Diff{}
 }
 
 // makeSchema builds a minimal Schema with one slot dump containing N objects.
-func makeSchema(slot, nObjs int) *dmlib.Schema {
+func makeSchema(slot, nObjs int) *devicemodel.Schema {
 	objs := make([]consumer.Object, nObjs)
-	return &dmlib.Schema{
+	return &devicemodel.Schema{
 		Slots: map[int]*export.Snapshot{
 			slot: {
 				Slots: []export.SlotDump{{Slot: slot, Objects: objs}},
@@ -185,7 +185,7 @@ func TestHotPlugEnricher_BootToPresent_TriggersEnrichment(t *testing.T) {
 func TestHotPlugEnricher_BootToPresent_NoDMEntry(t *testing.T) {
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(
-		&fakeResolver{err: dmlib.ErrNotFound},
+		&fakeResolver{err: devicemodel.ErrNotFound},
 		false,
 		&buf,
 	)

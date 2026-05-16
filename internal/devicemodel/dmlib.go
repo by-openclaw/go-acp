@@ -12,7 +12,7 @@
 //
 // This package is cross-protocol foundation; it has no plugin imports and
 // uses no third-party dependencies.
-package dmlib
+package devicemodel
 
 import (
 	"errors"

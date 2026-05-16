@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	"dhs/internal/acp1/codec"
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	"dhs/internal/export/canonical"
 	"dhs/internal/transport"
 )
@@ -61,7 +61,7 @@ type server struct {
 
 	// dmLibrary, when non-nil, drives slot.load via the DM-library
 	// resolver. Set via SetDMLibrary at startup.
-	dmLibrary dmlib.Resolver
+	dmLibrary devicemodel.Resolver
 }
 
 // SetInsertTiming switches the cascade timing for new transitions.

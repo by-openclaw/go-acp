@@ -26,7 +26,7 @@ import (
 // Returns:
 //
 //	ErrNoDMLibrary       no resolver attached
-//	dmlib.ErrNotFound    card path does not resolve
+//	devicemodel.ErrNotFound    card path does not resolve
 //	tree.ReplaceSlot err underlying type / range conversion failure
 func (s *server) PreloadSlot(slot uint8, cardPath string) error {
 	s.mu.Lock()

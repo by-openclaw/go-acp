@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	"dhs/internal/export"
 	"dhs/internal/consumer"
 )
@@ -16,12 +16,12 @@ import (
 func TestParseCardPath(t *testing.T) {
 	cases := []struct {
 		in   string
-		want dmlib.Fingerprint
+		want devicemodel.Fingerprint
 		err  bool
 	}{
 		{
 			in: "axon/synapse/RRS18-1601/acp1",
-			want: dmlib.Fingerprint{
+			want: devicemodel.Fingerprint{
 				Vendor: "axon", Product: "synapse",
 				Model: "RRS18", SwRev: "1601", Proto: "acp1",
 			},
@@ -29,7 +29,7 @@ func TestParseCardPath(t *testing.T) {
 		{
 			// Hyphenated model: split on the LAST '-'.
 			in: "lawo/vsm/GIO-12-2000/acp2",
-			want: dmlib.Fingerprint{
+			want: devicemodel.Fingerprint{
 				Vendor: "lawo", Product: "vsm",
 				Model: "GIO-12", SwRev: "2000", Proto: "acp2",
 			},
@@ -60,17 +60,17 @@ func TestParseCardPath(t *testing.T) {
 	}
 }
 
-// fakeDMResolver satisfies dmlib.Resolver with canned answers. When
+// fakeDMResolver satisfies devicemodel.Resolver with canned answers. When
 // schemas is non-nil the resolver returns the schema keyed by the
 // fingerprint's "Model-SwRev" string, so a single test can swap
 // between models / firmware revs by editing the map in place.
 type fakeDMResolver struct {
 	resolveErr error
-	calledFP   dmlib.Fingerprint
-	schemas    map[string]*dmlib.Schema
+	calledFP   devicemodel.Fingerprint
+	schemas    map[string]*devicemodel.Schema
 }
 
-func (r *fakeDMResolver) Resolve(fp dmlib.Fingerprint) (*dmlib.Schema, error) {
+func (r *fakeDMResolver) Resolve(fp devicemodel.Fingerprint) (*devicemodel.Schema, error) {
 	r.calledFP = fp
 	if r.resolveErr != nil {
 		return nil, r.resolveErr
@@ -80,20 +80,20 @@ func (r *fakeDMResolver) Resolve(fp dmlib.Fingerprint) (*dmlib.Schema, error) {
 		if s, ok := r.schemas[key]; ok {
 			return s, nil
 		}
-		return nil, dmlib.ErrNotFound
+		return nil, devicemodel.ErrNotFound
 	}
-	return &dmlib.Schema{
+	return &devicemodel.Schema{
 		Fingerprint: fp,
 		Slots: map[int]*export.Snapshot{
 			1: {Slots: []export.SlotDump{{Slot: 1, Objects: []consumer.Object{}}}},
 		},
 	}, nil
 }
-func (r *fakeDMResolver) LookupAlternate(fp dmlib.Fingerprint) ([]dmlib.Fingerprint, error) {
+func (r *fakeDMResolver) LookupAlternate(fp devicemodel.Fingerprint) ([]devicemodel.Fingerprint, error) {
 	return nil, nil
 }
-func (r *fakeDMResolver) Persist(s *dmlib.Schema) error      { return nil }
-func (r *fakeDMResolver) Diff(p, c *dmlib.Schema) dmlib.Diff { return dmlib.Diff{} }
+func (r *fakeDMResolver) Persist(s *devicemodel.Schema) error      { return nil }
+func (r *fakeDMResolver) Diff(p, c *devicemodel.Schema) devicemodel.Diff { return devicemodel.Diff{} }
 
 func TestSlotLoad_NoResolverConfigured(t *testing.T) {
 	s := newTestServer(t)
@@ -114,10 +114,10 @@ func TestSlotLoad_BadCardPath(t *testing.T) {
 
 func TestSlotLoad_ResolverMiss(t *testing.T) {
 	s := newTestServer(t)
-	s.SetDMLibrary(&fakeDMResolver{resolveErr: dmlib.ErrNotFound})
+	s.SetDMLibrary(&fakeDMResolver{resolveErr: devicemodel.ErrNotFound})
 	err := s.SlotLoad(context.Background(), 1, "axon/synapse/RRS18-1601/acp1")
-	if !errors.Is(err, dmlib.ErrNotFound) {
-		t.Fatalf("err = %v, want dmlib.ErrNotFound", err)
+	if !errors.Is(err, devicemodel.ErrNotFound) {
+		t.Fatalf("err = %v, want devicemodel.ErrNotFound", err)
 	}
 }
 
@@ -161,7 +161,7 @@ func TestSlotLoad_PassesFingerprintToResolver(t *testing.T) {
 	if err := s.SlotLoad(context.Background(), 1, path); err != nil {
 		t.Fatalf("SlotLoad: %v", err)
 	}
-	want := dmlib.Fingerprint{
+	want := devicemodel.Fingerprint{
 		Vendor: "axon", Product: "synapse",
 		Model: "RRS18", SwRev: "1601", Proto: "acp1",
 	}
@@ -170,12 +170,12 @@ func TestSlotLoad_PassesFingerprintToResolver(t *testing.T) {
 	}
 }
 
-// schemaWithIdentity builds a minimal *dmlib.Schema whose only object
+// schemaWithIdentity builds a minimal *devicemodel.Schema whose only object
 // is identity[0]=Card-Label. Just enough to verify that ReplaceSlot
 // truly swaps the served identity.
-func schemaWithIdentity(slot int, model, swRev string) *dmlib.Schema {
-	return &dmlib.Schema{
-		Fingerprint: dmlib.Fingerprint{Model: model, SwRev: swRev, Proto: "acp1"},
+func schemaWithIdentity(slot int, model, swRev string) *devicemodel.Schema {
+	return &devicemodel.Schema{
+		Fingerprint: devicemodel.Fingerprint{Model: model, SwRev: swRev, Proto: "acp1"},
 		Slots: map[int]*export.Snapshot{
 			slot: {
 				Slots: []export.SlotDump{
@@ -224,7 +224,7 @@ func TestSlotLoad_ReplacesIdentity(t *testing.T) {
 	s.SetInsertTiming(InsertTimingFast)
 
 	r := &fakeDMResolver{
-		schemas: map[string]*dmlib.Schema{
+		schemas: map[string]*devicemodel.Schema{
 			"RRS18-1601": schemaWithIdentity(1, "RRS18", "1601"),
 		},
 	}
@@ -250,7 +250,7 @@ func TestSlotLoad_TwoLoadsSameSlot_SecondWins(t *testing.T) {
 	s.SetInsertTiming(InsertTimingFast)
 
 	r := &fakeDMResolver{
-		schemas: map[string]*dmlib.Schema{
+		schemas: map[string]*devicemodel.Schema{
 			"RRS18-1601":  schemaWithIdentity(1, "RRS18", "1601"),
 			"2GS110-2728": schemaWithIdentity(1, "2GS110", "2728"),
 		},
@@ -292,7 +292,7 @@ func TestSlotLoad_FromPresentState_Succeeds(t *testing.T) {
 		t.Fatalf("setup: slot 1 status = %d, want present (2)", got)
 	}
 	r := &fakeDMResolver{
-		schemas: map[string]*dmlib.Schema{
+		schemas: map[string]*devicemodel.Schema{
 			"RRS18-1601": schemaWithIdentity(1, "RRS18", "1601"),
 		},
 	}
@@ -333,7 +333,7 @@ func TestSlotUnload_RemovesEntries(t *testing.T) {
 	s.SetInsertTiming(InsertTimingFast)
 
 	r := &fakeDMResolver{
-		schemas: map[string]*dmlib.Schema{
+		schemas: map[string]*devicemodel.Schema{
 			"RRS18-1601": schemaWithIdentity(1, "RRS18", "1601"),
 		},
 	}

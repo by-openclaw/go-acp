@@ -1,4 +1,4 @@
-package dmlib_test
+package devicemodel_test
 
 import (
 	"fmt"
@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	"dhs/internal/export"
 )
 
-// TestDM_Diff_LiveCapture demonstrates dmlib.Diff against the schemas
+// TestDM_Diff_LiveCapture demonstrates devicemodel.Diff against the schemas
 // extracted from the simulator's nine unique cards. Surfaces per-slot
 // Added/Removed/Changed object labels for every cross-pair.
 //
@@ -41,7 +41,7 @@ func TestDM_Diff_LiveCapture(t *testing.T) {
 		{"GJA840-0101", 16, "GJA840@0101"},
 		{"HRB990-1010", 19, "HRB990@1010"},
 	}
-	loaded := map[string]*dmlib.Schema{}
+	loaded := map[string]*devicemodel.Schema{}
 	for _, c := range cards {
 		path := filepath.Join(root, c.dir, "acp1", fmt.Sprintf("slot_%d.json", c.slot))
 		f, err := os.Open(path)
@@ -64,7 +64,7 @@ func TestDM_Diff_LiveCapture(t *testing.T) {
 				snap.Slots[i].Objects[j].Slot = 1
 			}
 		}
-		// Parse "MODEL@REV" so the dmlib.Diff (Model, Proto) gate can
+		// Parse "MODEL@REV" so the devicemodel.Diff (Model, Proto) gate can
 		// reject cross-model pairs as Mismatch. Diff is only valid
 		// between firmware revisions of the same product.
 		// fmt.Sscanf does NOT support POSIX character classes in Go;
@@ -73,8 +73,8 @@ func TestDM_Diff_LiveCapture(t *testing.T) {
 		if len(parts) != 2 {
 			t.Fatalf("bad label %q", c.label)
 		}
-		loaded[c.label] = &dmlib.Schema{
-			Fingerprint: dmlib.Fingerprint{
+		loaded[c.label] = &devicemodel.Schema{
+			Fingerprint: devicemodel.Fingerprint{
 				Model: parts[0],
 				SwRev: parts[1],
 				Proto: "acp1",
@@ -83,7 +83,7 @@ func TestDM_Diff_LiveCapture(t *testing.T) {
 		}
 	}
 
-	r := dmlib.New(t.TempDir())
+	r := devicemodel.New(t.TempDir())
 
 	// Same-model firmware diffs (the only meaningful case). The
 	// simulator only has the 2GS110 family with two firmware revs;
@@ -103,7 +103,7 @@ func TestDM_Diff_LiveCapture(t *testing.T) {
 			}
 			diff := r.Diff(before, after)
 			if diff.Mismatch {
-				t.Fatalf("%s: dmlib.Diff reports Mismatch — Models differ", d.title)
+				t.Fatalf("%s: devicemodel.Diff reports Mismatch — Models differ", d.title)
 			}
 			fmt.Printf("\n=== %s ===\n", d.title)
 			fmt.Printf("AddedSlots:   %v\n", diff.AddedSlots)

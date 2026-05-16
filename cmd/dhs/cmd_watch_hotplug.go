@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	"dhs/internal/export"
 	"dhs/internal/consumer"
 )
@@ -35,7 +35,7 @@ type hotPlugEnricher struct {
 	mu             sync.Mutex
 	prev           map[int]consumer.SlotStatus
 	prevFP         map[int]consumer.CardIdentity // last-seen fingerprint per slot
-	resolver       dmlib.Resolver                // nil ⇒ no DM-library lookups
+	resolver       devicemodel.Resolver                // nil ⇒ no DM-library lookups
 	autoWalkOnPlug bool
 
 	// outMu serialises writes to out. Separate from mu so the
@@ -63,7 +63,7 @@ type seederIface interface {
 	SeedFromDM(slot int, snap *export.Snapshot) error
 }
 
-func newHotPlugEnricher(resolver dmlib.Resolver, autoWalkOnPlug bool, out io.Writer) *hotPlugEnricher {
+func newHotPlugEnricher(resolver devicemodel.Resolver, autoWalkOnPlug bool, out io.Writer) *hotPlugEnricher {
 	if out == nil {
 		out = os.Stdout
 	}
@@ -179,16 +179,16 @@ func (h *hotPlugEnricher) enrich(ctx context.Context, plug consumer.Protocol, sl
 	if h.resolver == nil {
 		return swapTag, fp, "no-resolver", nil
 	}
-	schema, rerr := h.resolver.Resolve(dmlib.Fingerprint{
+	schema, rerr := h.resolver.Resolve(devicemodel.Fingerprint{
 		Model: id.Model,
 		SwRev: id.SwRev,
 		Proto: "acp1", // todo: cross-protocol once Phase 2 wires this verb
 	})
 	if rerr != nil {
-		if errors.Is(rerr, dmlib.ErrNotFound) {
+		if errors.Is(rerr, devicemodel.ErrNotFound) {
 			return swapTag, fp, "no-DM-entry", nil
 		}
-		return swapTag, fp, "", fmt.Errorf("dmlib.Resolve: %w", rerr)
+		return swapTag, fp, "", fmt.Errorf("devicemodel.Resolve: %w", rerr)
 	}
 
 	seeder, ok := plug.(seederIface)
