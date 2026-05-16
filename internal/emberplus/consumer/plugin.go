@@ -142,6 +142,14 @@ type Plugin struct {
 	wildcardPathFilter  []string // dotted prefixes: OID ("1.2.3") or label-path ("mixers.primary")
 	wildcardSkipStreams bool     // true → drop streamIdentifier != 0
 	wildcardStreamsOnly bool     // true → keep streamIdentifier != 0 only
+
+	// unknownCTX accumulates CTX tags the decoder skipped in
+	// NodeContents / ParameterContents / MatrixContents /
+	// FunctionContents SETs (spec p.93 — decoders MUST tolerate
+	// unknown CTX silently). The audit Markdown report is rendered
+	// from this collection at end of walk / session for sharing
+	// with the device vendor.
+	unknownCTX *unknownCTXAudit
 }
 
 // SetWildcardSubscribeFilter narrows the set of Parameters the
@@ -297,6 +305,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.profile = &compliance.Profile{}
 	p.connIP = ip
 	p.connPort = port
+	p.unknownCTX = newUnknownCTXAudit()
 	p.mu.Unlock()
 
 	s.SetOnElement(p.handleElements)
@@ -1285,6 +1294,9 @@ func (p *Plugin) processNode(n *glow.Node, parentPath []string, parentNumPath []
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, n.Identifier)
 	}
+	if p.unknownCTX != nil && len(n.UnknownContents) > 0 {
+		p.unknownCTX.record("node", numPath, n.UnknownContents)
+	}
 	stringPath := p.pathForElement(numPath, n.Identifier, n.Number, parentPath)
 
 	// "Have we seen this Node before?" — determines whether an empty
@@ -1654,6 +1666,9 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, param.Identifier)
 	}
+	if p.unknownCTX != nil && len(param.UnknownContents) > 0 {
+		p.unknownCTX.record("parameter", numPath, param.UnknownContents)
+	}
 
 	// Announce-vs-walk merge (Ember+ spec p.85): announces typically
 	// carry ONLY the changed field(s) inside ParameterContents — the
@@ -1813,6 +1828,9 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, m.Identifier)
 	}
+	if p.unknownCTX != nil && len(m.UnknownContents) > 0 {
+		p.unknownCTX.record("matrix", numPath, m.UnknownContents)
+	}
 	stringPath := p.pathForElement(numPath, m.Identifier, m.Number, parentPath)
 	numKey := numericKey(numPath)
 
@@ -1952,6 +1970,9 @@ func (p *Plugin) processFunction(f *glow.Function, parentPath []string, parentNu
 	numPath := p.resolveNumPath(f.Path, parentNumPath, f.Number)
 	if len(numPath) > 0 {
 		p.registerNumericPath(numPath, f.Identifier)
+	}
+	if p.unknownCTX != nil && len(f.UnknownContents) > 0 {
+		p.unknownCTX.record("function", numPath, f.UnknownContents)
 	}
 	stringPath := p.pathForElement(numPath, f.Identifier, f.Number, parentPath)
 

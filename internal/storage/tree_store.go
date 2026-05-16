@@ -34,6 +34,17 @@ func NewTreeStore(baseDir string) *TreeStore {
 	return &TreeStore{baseDir: baseDir}
 }
 
+// BaseDir returns the on-disk root the store writes under (typically
+// ".cache" next to the binary). Callers that need to compose sibling
+// paths — e.g. ".cache/audit/<proto>/..." next to ".cache/dm/<proto>/..."
+// — use this accessor rather than reaching for the unexported field.
+func (s *TreeStore) BaseDir() string {
+	if s == nil {
+		return ""
+	}
+	return s.baseDir
+}
+
 // NewTreeStoreInProjectCache creates a store rooted at .cache/ next to
 // the project (or install) root. Per ADR-0020 Bucket 4: cache is
 // gitignored and regeneratable, separate from manual captures.

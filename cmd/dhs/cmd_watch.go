@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -405,6 +406,44 @@ func frameStatusDelta(prev, cur []protocol.SlotStatus) []string {
 // flags (they don't satisfy the interface).
 type wildcardSubscribeFilterer interface {
 	SetWildcardSubscribeFilter(paths []string, noStreams, streamsOnly bool)
+}
+
+// unknownCTXAuditor is the optional capability a plugin implements to
+// emit a Markdown audit of unrecognised context-tagged fields seen
+// during a session (Ember+ today — spec p.93 forward-compat slot).
+// Private to cmd/dhs/. Plugins without the contract are no-op.
+type unknownCTXAuditor interface {
+	WriteUnknownCTXAuditTo(path string) error
+}
+
+// writeUnknownCTXAuditIfAny renders the unknown-CTX audit to
+// .cache/audit/<proto>/<identity>-unknown-ctx.md when the plugin
+// tracked any unknowns AND identity is non-empty. No-op when the
+// plugin doesn't satisfy unknownCTXAuditor or nothing was recorded.
+// Quiet on the "nothing to write" case; warns on filesystem errors.
+func writeUnknownCTXAuditIfAny(plug protocol.Protocol, proto, identity string) {
+	if identity == "" {
+		return
+	}
+	auditor, ok := plug.(unknownCTXAuditor)
+	if !ok {
+		return
+	}
+	if treeStore == nil {
+		return
+	}
+	base := treeStore.BaseDir()
+	if base == "" {
+		return
+	}
+	path := filepath.Join(base, "audit", proto, identity+"-unknown-ctx.md")
+	if err := auditor.WriteUnknownCTXAuditTo(path); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: unknown-CTX audit write: %v\n", err)
+		return
+	}
+	if _, err := os.Stat(path); err == nil {
+		fmt.Fprintf(os.Stderr, "unknown-CTX audit: %s\n", path)
+	}
 }
 
 // applyWildcardFilter parses the --path comma-list and forwards the

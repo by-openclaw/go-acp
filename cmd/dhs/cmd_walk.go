@@ -119,6 +119,7 @@ func runWalk(ctx context.Context, args []string) error {
 			prober, _ := plug.(identityProber)
 			if identity := saveSlotCache(ctx, prober, host, cf.protocol, s, objs, canonicalTreeFromPlug(ctx, plug)); identity != "" {
 				bindings = append(bindings, slotBinding{Slot: s, Identity: identity})
+				writeUnknownCTXAuditIfAny(plug, cf.protocol, identity)
 			}
 			objs = filterByPath(objs, pathSegs)
 			if *tree {
@@ -157,7 +158,11 @@ func runWalk(ctx context.Context, args []string) error {
 	// .cache/dm/<identity>.json; ACP1/Ember+ -> IP-keyed
 	// .cache/devices/<ip>/slot_<n>.json. See saveSlotCache.
 	prober, _ := plug.(identityProber)
-	saveSlotCache(ctx, prober, host, cf.protocol, *slot, objs, canonicalTreeFromPlug(ctx, plug))
+	identity := saveSlotCache(ctx, prober, host, cf.protocol, *slot, objs, canonicalTreeFromPlug(ctx, plug))
+	// Optional audit: when the plugin tracked unknown CTX tags during
+	// the walk (Ember+ only today), drop a Markdown report alongside
+	// the DM so the operator can share it with the device vendor.
+	writeUnknownCTXAuditIfAny(plug, cf.protocol, identity)
 	objs = filterByPath(objs, pathSegs)
 	if *tree {
 		fmt.Printf("\nslot %d — %d objects\n\n", *slot, len(objs))
