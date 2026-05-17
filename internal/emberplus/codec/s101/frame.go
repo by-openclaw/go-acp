@@ -10,8 +10,6 @@
 // Reference: S101 specification (Lawo Ember+ docs)
 package s101
 
-import "errors"
-
 // Frame markers.
 const (
 	BOF byte = 0xFE // Beginning of frame
@@ -49,12 +47,6 @@ const (
 	// matching that label keeps wire-trace diffing trivial.
 	DTDMinorVersion byte = 0x3C // 60
 	DTDMajorVersion byte = 0x02 // 2
-)
-
-var (
-	ErrBadFrame   = errors.New("s101: invalid frame (missing BOF/EOF)")
-	ErrBadCRC     = errors.New("s101: CRC mismatch")
-	ErrTruncated  = errors.New("s101: truncated frame")
 )
 
 // Frame is a decoded S101 frame.

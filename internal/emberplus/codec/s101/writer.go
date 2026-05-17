@@ -43,7 +43,7 @@ func (w *Writer) WriteFrame(f *Frame) error {
 	}
 	_, err := w.w.Write(data)
 	if err != nil {
-		return fmt.Errorf("s101 write: %w", err)
+		return fmt.Errorf("%w: %v", ErrWriteFailed, err)
 	}
 	return nil
 }

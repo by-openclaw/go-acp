@@ -45,7 +45,7 @@ func (r *Reader) ReadFrame() (*Frame, error) {
 	for {
 		b, err := r.r.ReadByte()
 		if err != nil {
-			return nil, fmt.Errorf("s101 read: %w", err)
+			return nil, fmt.Errorf("%w: %v", ErrReadFailed, err)
 		}
 		if b == BOF {
 			break
@@ -66,7 +66,7 @@ func (r *Reader) ReadFrame() (*Frame, error) {
 	for {
 		b, err := r.r.ReadByte()
 		if err != nil {
-			return nil, fmt.Errorf("s101 read: %w", err)
+			return nil, fmt.Errorf("%w: %v", ErrReadFailed, err)
 		}
 		if b == BOF {
 			buf = buf[:0]
@@ -78,7 +78,7 @@ func (r *Reader) ReadFrame() (*Frame, error) {
 			break
 		}
 		if len(buf) > 65536 {
-			return nil, fmt.Errorf("s101: frame too large (%d bytes)", len(buf))
+			return nil, fmt.Errorf("%w: %d bytes (cap 65536)", ErrFrameTooLarge, len(buf))
 		}
 	}
 
