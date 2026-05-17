@@ -51,7 +51,7 @@ type Recorder struct {
 func NewRecorder(path string) (*Recorder, error) {
 	f, err := os.Create(path)
 	if err != nil {
-		return nil, fmt.Errorf("capture: create %s: %w", path, err)
+		return nil, fmt.Errorf("%w: create %s: %v", ErrCaptureCreateFailed, path, err)
 	}
 	return &Recorder{
 		file: f,

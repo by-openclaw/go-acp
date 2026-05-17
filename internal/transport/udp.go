@@ -10,7 +10,6 @@ package transport
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"syscall"
@@ -36,10 +35,10 @@ type UDPConn struct {
 // failure.
 func DialUDP(ctx context.Context, host string, port int) (*UDPConn, error) {
 	if host == "" {
-		return nil, fmt.Errorf("transport: DialUDP: empty host")
+		return nil, fmt.Errorf("%w: DialUDP: empty host", ErrInvalidHost)
 	}
 	if port <= 0 || port > 65535 {
-		return nil, fmt.Errorf("transport: DialUDP: port out of range: %d", port)
+		return nil, fmt.Errorf("%w: DialUDP: port %d outside [1, 65535]", ErrInvalidPort, port)
 	}
 
 	// net.Dialer honours ctx for the (short) DNS resolution that happens
@@ -47,12 +46,12 @@ func DialUDP(ctx context.Context, host string, port int) (*UDPConn, error) {
 	var d net.Dialer
 	netConn, err := d.DialContext(ctx, "udp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
-		return nil, fmt.Errorf("udp dial %s:%d: %w", host, port, err)
+		return nil, fmt.Errorf("%w: udp dial %s:%d: %v", classifyDialError(err), host, port, err)
 	}
 	udp, ok := netConn.(*net.UDPConn)
 	if !ok {
 		_ = netConn.Close()
-		return nil, fmt.Errorf("udp dial %s:%d: not a *net.UDPConn (%T)", host, port, netConn)
+		return nil, fmt.Errorf("%w: udp dial %s:%d: not a *net.UDPConn (%T)", ErrWrongConnType, host, port, netConn)
 	}
 	return &UDPConn{conn: udp}, nil
 }
@@ -61,19 +60,19 @@ func DialUDP(ctx context.Context, host string, port int) (*UDPConn, error) {
 // the whole datagram leaves the host or Send returns an error.
 func (c *UDPConn) Send(ctx context.Context, payload []byte) error {
 	if c == nil || c.conn == nil {
-		return errors.New("udp: send on nil conn")
+		return fmt.Errorf("%w: send on udp", ErrNilConn)
 	}
 	// ACP1 UDP datagrams are ≤ 141 bytes per spec — anything larger means
 	// the caller built a malformed packet. Fail loudly instead of letting
 	// IP fragmentation hide the bug (spec p. 7: "IP fragmentation ... is
 	// not supported in ACP").
 	if len(payload) == 0 {
-		return errors.New("udp: send empty payload")
+		return fmt.Errorf("%w: send on udp", ErrEmptyPayload)
 	}
 
 	if dl, ok := ctx.Deadline(); ok {
 		if err := c.conn.SetWriteDeadline(dl); err != nil {
-			return fmt.Errorf("udp set write deadline: %w", err)
+			return fmt.Errorf("%w: udp write deadline: %v", ErrSetDeadlineFailed, err)
 		}
 	} else {
 		// Clear any previous deadline.
@@ -82,10 +81,10 @@ func (c *UDPConn) Send(ctx context.Context, payload []byte) error {
 
 	n, err := c.conn.Write(payload)
 	if err != nil {
-		return fmt.Errorf("udp write: %w", err)
+		return fmt.Errorf("%w: udp write: %v", ErrWriteFailed, err)
 	}
 	if n != len(payload) {
-		return fmt.Errorf("udp short write: %d/%d", n, len(payload))
+		return fmt.Errorf("%w: udp wrote %d of %d bytes", ErrShortWrite, n, len(payload))
 	}
 	return nil
 }
@@ -96,15 +95,15 @@ func (c *UDPConn) Send(ctx context.Context, payload []byte) error {
 // which the caller sets based on consumer. For ACP1 that's 141 bytes.
 func (c *UDPConn) Receive(ctx context.Context, maxSize int) ([]byte, error) {
 	if c == nil || c.conn == nil {
-		return nil, errors.New("udp: receive on nil conn")
+		return nil, fmt.Errorf("%w: receive on udp", ErrNilConn)
 	}
 	if maxSize <= 0 {
-		return nil, fmt.Errorf("udp: invalid maxSize %d", maxSize)
+		return nil, fmt.Errorf("%w: udp maxSize %d must be > 0", ErrInvalidMaxSize, maxSize)
 	}
 
 	if dl, ok := ctx.Deadline(); ok {
 		if err := c.conn.SetReadDeadline(dl); err != nil {
-			return nil, fmt.Errorf("udp set read deadline: %w", err)
+			return nil, fmt.Errorf("%w: udp read deadline: %v", ErrSetDeadlineFailed, err)
 		}
 	} else {
 		_ = c.conn.SetReadDeadline(time.Time{})
@@ -121,10 +120,10 @@ func (c *UDPConn) Receive(ctx context.Context, maxSize int) ([]byte, error) {
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
 			return nil, context.DeadlineExceeded
 		}
-		return nil, fmt.Errorf("udp read: %w", err)
+		return nil, fmt.Errorf("%w: udp read: %v", ErrReadFailed, err)
 	}
 	if n > maxSize {
-		return nil, fmt.Errorf("udp: oversized datagram %d > %d", n, maxSize)
+		return nil, fmt.Errorf("%w: udp datagram %d > max %d", ErrOversizedDatagram, n, maxSize)
 	}
 	out := make([]byte, n)
 	copy(out, buf[:n])
@@ -139,7 +138,7 @@ func (c *UDPConn) Close() error {
 	err := c.conn.Close()
 	c.conn = nil
 	if err != nil {
-		return fmt.Errorf("udp close: %w", err)
+		return fmt.Errorf("%w: udp close: %v", ErrCloseFailed, err)
 	}
 	return nil
 }
@@ -180,7 +179,7 @@ type UDPListener struct {
 // in tests.
 func ListenUDP(ctx context.Context, port int) (*UDPListener, error) {
 	if port < 0 || port > 65535 {
-		return nil, fmt.Errorf("transport: ListenUDP: port out of range: %d", port)
+		return nil, fmt.Errorf("%w: ListenUDP: port %d outside [0, 65535]", ErrInvalidPort, port)
 	}
 
 	// net.ListenConfig exposes a Control callback that runs after socket
@@ -199,12 +198,12 @@ func ListenUDP(ctx context.Context, port int) (*UDPListener, error) {
 	}
 	pc, err := lc.ListenPacket(ctx, "udp4", fmt.Sprintf(":%d", port))
 	if err != nil {
-		return nil, fmt.Errorf("udp listen :%d: %w", port, err)
+		return nil, fmt.Errorf("%w: udp listen :%d: %v", ErrListenFailed, port, err)
 	}
 	udpConn, ok := pc.(*net.UDPConn)
 	if !ok {
 		_ = pc.Close()
-		return nil, fmt.Errorf("udp listen :%d: unexpected conn type %T", port, pc)
+		return nil, fmt.Errorf("%w: udp listen :%d: unexpected conn type %T", ErrWrongConnType, port, pc)
 	}
 	return &UDPListener{conn: udpConn}, nil
 }
@@ -215,15 +214,15 @@ func ListenUDP(ctx context.Context, port int) (*UDPListener, error) {
 // it from hard socket errors.
 func (l *UDPListener) Receive(ctx context.Context, maxSize int) ([]byte, net.Addr, error) {
 	if l == nil || l.conn == nil {
-		return nil, nil, errors.New("udp: receive on nil listener")
+		return nil, nil, fmt.Errorf("%w: receive on udp listener", ErrNilConn)
 	}
 	if maxSize <= 0 {
-		return nil, nil, fmt.Errorf("udp: invalid maxSize %d", maxSize)
+		return nil, nil, fmt.Errorf("%w: udp listener maxSize %d must be > 0", ErrInvalidMaxSize, maxSize)
 	}
 
 	if dl, ok := ctx.Deadline(); ok {
 		if err := l.conn.SetReadDeadline(dl); err != nil {
-			return nil, nil, fmt.Errorf("udp set read deadline: %w", err)
+			return nil, nil, fmt.Errorf("%w: udp listener read deadline: %v", ErrSetDeadlineFailed, err)
 		}
 	} else {
 		_ = l.conn.SetReadDeadline(time.Time{})
@@ -235,10 +234,10 @@ func (l *UDPListener) Receive(ctx context.Context, maxSize int) ([]byte, net.Add
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
 			return nil, nil, context.DeadlineExceeded
 		}
-		return nil, nil, fmt.Errorf("udp read: %w", err)
+		return nil, nil, fmt.Errorf("%w: udp listener read: %v", ErrReadFailed, err)
 	}
 	if n > maxSize {
-		return nil, addr, fmt.Errorf("udp: oversized datagram %d > %d", n, maxSize)
+		return nil, addr, fmt.Errorf("%w: udp listener datagram %d > max %d", ErrOversizedDatagram, n, maxSize)
 	}
 	out := make([]byte, n)
 	copy(out, buf[:n])
@@ -253,7 +252,7 @@ func (l *UDPListener) Close() error {
 	err := l.conn.Close()
 	l.conn = nil
 	if err != nil {
-		return fmt.Errorf("udp close: %w", err)
+		return fmt.Errorf("%w: udp listener close: %v", ErrCloseFailed, err)
 	}
 	return nil
 }

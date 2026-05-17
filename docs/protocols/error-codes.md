@@ -38,9 +38,22 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 
 | Code | Status | When | Anchor |
 |---|---|---|---|
-| `transport:refused` | pending (R1b) | TCP dial returns ECONNREFUSED | OS / Go `net.OpError` |
-| `transport:timeout` | pending (R1b) | dial / read / write deadline elapsed | OS / `net.Error.Timeout()` |
-| `transport:reset` | pending (R1b) | TCP RST mid-session | OS / ECONNRESET |
+| `transport:refused` | defined (R1b) | TCP dial returns ECONNREFUSED — `classifyDialError` detects via `errors.Is(err, syscall.ECONNREFUSED)` | OS / Go `net.OpError` |
+| `transport:timeout` | defined (R1b) | dial / read / write deadline elapsed | OS / `net.Error.Timeout()` |
+| `transport:dial-failed` | defined (R1b) | dial failed with an unrecognised error mode (fallback when not refused / not timeout) | OS |
+| `transport:listen-failed` | defined (R1b) | bind/listen on a UDP port failed | OS |
+| `transport:nil-conn` | defined (R1b) | method called on nil `*TCPConn` / `*UDPConn` / `*UDPListener` — programming error | dhs |
+| `transport:payload-too-large` | defined (R1b) | send payload exceeded MLEN cap (4 GiB on TCP) | dhs |
+| `transport:set-deadline-failed` | defined (R1b) | `SetReadDeadline` / `SetWriteDeadline` syscall failed | OS |
+| `transport:write-failed` | defined (R1b) | TCP/UDP write returned an OS error mid-send | OS |
+| `transport:short-write` | defined (R1b) | UDP wrote fewer bytes than the payload — datagram truncated | OS |
+| `transport:read-failed` | defined (R1b) | TCP/UDP read returned an OS error mid-receive (not a deadline; deadlines map to `context.DeadlineExceeded` for compatibility) | OS |
+| `transport:oversized-datagram` | defined (R1b) | received UDP datagram > caller-supplied `maxSize` | dhs |
+| `transport:mlen-out-of-range` | defined (R1b) | TCP framer: MLEN < 8 or > caller-supplied `maxPayload` | dhs framing |
+| `transport:wrong-conn-type` | defined (R1b) | `net.Dial` / `net.ListenPacket` returned a connection of unexpected concrete type | dhs |
+| `transport:close-failed` | defined (R1b) | connection `Close()` returned an OS error | OS |
+| `transport:capture-create-failed` | defined (R1b) | `os.Create` on the `--capture` file failed (perms / dir missing) | OS |
+| `transport:reset` | pending (future) | TCP RST mid-session — would need read/write site detection via `errors.Is(err, syscall.ECONNRESET)`; currently surfaces as `transport:read-failed` or `transport:write-failed` | OS / ECONNRESET |
 
 ### s101
 
@@ -88,6 +101,10 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 | `validation:out-of-range-low` | pending (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | value below Parameter `minimum` | Ember+ Doc §p.86 |
 | `validation:out-of-range-high` | pending (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | value above Parameter `maximum` | Ember+ Doc §p.86 |
 | `validation:step-misaligned` | pending (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | value not on Parameter `step` grid | Ember+ Doc §p.86 |
+| `validation:invalid-host` | defined (R1b) | host string empty on Dial | dhs |
+| `validation:invalid-port` | defined (R1b) | port outside [1, 65535] on Dial or [0, 65535] on Listen | dhs |
+| `validation:empty-payload` | defined (R1b) | Send called with a zero-length payload | dhs |
+| `validation:invalid-max-size` | defined (R1b) | Receive called with non-positive `maxSize` / `maxPayload` | dhs |
 | `validation:invalid-oid` | pending (R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)) | `--path` matches OID regex but bad syntax (`1..2`) | dhs |
 | `validation:invalid-format` | pending (R11 [#482](https://github.com/by-openclaw/go-acp/issues/482) · R22 [#487](https://github.com/by-openclaw/go-acp/issues/487)) | `--format` value not in supported set | dhs |
 | `validation:invalid-duration` | pending (R22 [#487](https://github.com/by-openclaw/go-acp/issues/487)) | `--since` not a Go duration | dhs |
