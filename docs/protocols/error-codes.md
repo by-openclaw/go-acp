@@ -59,10 +59,15 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 
 | Code | Status | When | Anchor |
 |---|---|---|---|
-| `s101:crc-mismatch` | pending (R1c) | CRC-16/CCITT verify failed on frame inner bytes | Ember+ Doc §S101 Framing p.94 |
-| `s101:bad-escape` | pending (R1c) | escape-stuffing rule violated (`0xFD 0xDE` expected) | spec p.94 |
-| `s101:unknown-message-type` | pending (R1c) | S101 header carries an unrecognized type byte | spec p.94 |
-| `s101:multi-frame-truncated` | pending (R1c) | MPM flag set but stream ended mid-message | spec p.94 |
+| `s101:bad-frame` | defined (R1c) | frame missing BOF or EOF marker | Ember+ Doc §S101 Framing p.94 |
+| `s101:crc-mismatch` | defined (R1c) | CRC-16/CCITT verify failed on unescaped inner bytes | spec p.94 |
+| `s101:truncated` | defined (R1c) | frame ends mid-header or mid-content (insufficient bytes for declared shape) | spec p.94 |
+| `s101:frame-too-large` | defined (R1c) | running buffer grew past 64 KiB safety cap before EOF — defends against unbounded pre-frame garbage on a misbehaving peer | dhs framing safety |
+| `s101:read-failed` | defined (R1c) | underlying `io.Reader` returned an error during frame scan (BOF search or content collection); EOF passes through unwrapped for stream-close semantics | OS |
+| `s101:write-failed` | defined (R1c) | underlying `io.Writer` returned an error during `WriteFrame` | OS |
+| `s101:bad-escape` | pending (future) | escape-stuffing rule violated (`0xFD 0xDE` expected) — currently surfaces as `s101:crc-mismatch` because escape errors cascade into CRC failures | spec p.94 |
+| `s101:unknown-message-type` | pending (future) | S101 header carries an unrecognized type byte — currently surfaces as `s101:bad-frame` | spec p.94 |
+| `s101:multi-frame-truncated` | pending (future) | MPM flag set but stream ended mid-message — currently surfaces as `s101:truncated` | spec p.94 |
 
 ### glow / ber
 
