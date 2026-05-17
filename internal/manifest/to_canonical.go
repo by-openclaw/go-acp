@@ -116,6 +116,15 @@ func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
 				if derr != nil {
 					return nil, fmt.Errorf("manifest frame=%q slot dm=%q: parse canonical root: %w", fr.Name, sl.DM, derr)
 				}
+				// Reroot the grafted subtree's internal Path values to
+				// be device-prefixed. Strict-canonical slot DMs (per
+				// the Ember+ integration-test fixtures) carry paths
+				// like "oneToN.matrix" instead of "<device>.oneToN.matrix";
+				// without rerooting the provider's byIDP index ends up
+				// with un-prefixed paths and builtin function args of
+				// the form "<device>.<matrix>.matrix" don't resolve.
+				// Refs #456.
+				rerootPaths(slotEl, rootIdent)
 				root.Children = append(root.Children, slotEl)
 				if len(dm.Templates) > 0 {
 					collectedTemplates = append(collectedTemplates, dm.Templates...)
@@ -137,6 +146,41 @@ func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
 	}
 
 	return &canonical.Export{Root: root, Templates: collectedTemplates}, nil
+}
+
+// rerootPaths walks the canonical element subtree rooted at el and
+// rewrites every Header.Path so it begins with prefix + ".". If a
+// node's existing Path is empty, equals prefix, or already starts
+// with prefix + ".", it is left alone — this makes the helper
+// idempotent and safe to call regardless of whether the source DM
+// carried a device-prefixed root (e.g. dhs-emberplus-integration
+// strict DMs use bare "oneToN.X" paths while Tiny Ember+ Router uses
+// "router.oneToN.X"; both end up consistently prefixed after).
+//
+// Refs #456 — the provider's byIDP index in tree.go uses Header.Path
+// verbatim, so the dotted lookup form callers naturally assemble
+// (device-rooted) must match what the tree was indexed under.
+func rerootPaths(el canonical.Element, prefix string) {
+	if el == nil || prefix == "" {
+		return
+	}
+	hdr := el.Common()
+	if hdr == nil {
+		return
+	}
+	switch {
+	case hdr.Path == "":
+		// nothing to reroot — defensive guard for malformed DMs
+	case hdr.Path == prefix:
+		// already at the synthetic root; nothing to prepend
+	case strings.HasPrefix(hdr.Path, prefix+"."):
+		// already prefixed (e.g. legacy "router.X" + prefix="router")
+	default:
+		hdr.Path = prefix + "." + hdr.Path
+	}
+	for _, child := range hdr.Children {
+		rerootPaths(child, prefix)
+	}
 }
 
 // deriveSharedRootIdentifier inspects every slot DM referenced by the
