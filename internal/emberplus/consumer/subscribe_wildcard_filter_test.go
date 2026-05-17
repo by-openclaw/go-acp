@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"dhs/internal/emberplus/codec/glow"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func newFilterTestPlugin() *Plugin {
@@ -21,7 +21,7 @@ func newFilterTestPlugin() *Plugin {
 // the given streamIdentifier (0 = plain, !=0 = stream).
 func addFilterParam(p *Plugin, oid []int32, path []string, streamID int64) *treeEntry {
 	e := &treeEntry{
-		obj: protocol.Object{
+		obj: consumer.Object{
 			Path:  append([]string(nil), path...),
 			Label: path[len(path)-1],
 		},

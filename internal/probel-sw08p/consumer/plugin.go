@@ -1,6 +1,6 @@
 // Package probel is the Probel SW-P-08 consumer plugin — it opens a TCP
 // session to a matrix controller (rx side) and exposes matrix / crosspoint
-// operations through the protocol.Protocol interface.
+// operations through the consumer.Protocol interface.
 //
 // Layering (mirror of acp1 / acp2 / emberplus consumer packages):
 //
@@ -25,8 +25,8 @@ import (
 
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/transport"
 )
 
@@ -38,7 +38,7 @@ import (
 const DefaultOnlineStaleAfter = 90 * time.Second
 
 func init() {
-	protocol.Register(&Factory{})
+	consumer.Register(&Factory{})
 }
 
 // Factory registers the Probel consumer plugin with the compile-time
@@ -46,8 +46,8 @@ func init() {
 type Factory struct{}
 
 // Meta publishes the static descriptor used by the CLI + API.
-func (f *Factory) Meta() protocol.ProtocolMeta {
-	return protocol.ProtocolMeta{
+func (f *Factory) Meta() consumer.ProtocolMeta {
+	return consumer.ProtocolMeta{
 		Name:        "probel-sw08p",
 		DefaultPort: DefaultPort,
 		Description: "Probel SW-P-08 / SW-P-88 matrix controller (TCP)",
@@ -55,7 +55,7 @@ func (f *Factory) Meta() protocol.ProtocolMeta {
 }
 
 // New constructs a fresh consumer plugin bound to the given logger.
-func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
+func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
 	return &Plugin{logger: logger}
 }
 
@@ -137,7 +137,7 @@ func (p *Plugin) Metrics() *metrics.Connector {
 // if we have seen any rx frame (application or DLE ACK / NAK) within
 // DefaultOnlineStaleAfter. Mirrors the canonical.Header.IsOnline flag
 // surfaced by the Ember+ mirror: one "alive" bool, same semantics across
-// every protocol. False before Connect and after Disconnect once the
+// every consumer. False before Connect and after Disconnect once the
 // staleness threshold elapses.
 func (p *Plugin) IsOnline() bool {
 	return p.IsOnlineWithin(DefaultOnlineStaleAfter)
@@ -241,7 +241,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 	cli, err := codec.Dial(ctx, addr, p.logger, cfg)
 	if err != nil {
-		return &protocol.TransportError{Op: "connect", Err: err}
+		return &consumer.TransportError{Op: "connect", Err: err}
 	}
 	p.client = cli
 	p.host = ip
@@ -284,7 +284,7 @@ func (p *Plugin) getClient() (*codec.Client, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.client == nil {
-		return nil, protocol.ErrNotConnected
+		return nil, consumer.ErrNotConnected
 	}
 	return p.client, nil
 }
@@ -300,45 +300,45 @@ func (p *Plugin) ExposeClient() (*codec.Client, error) {
 // GetDeviceInfo is not applicable to SW-P-08 (no rack-controller identity
 // object). Per-command PRs may populate a synthetic DeviceInfo derived
 // from Dual-Controller-Status / Device-Name-Request replies.
-func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
+func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
 	if _, err := p.getClient(); err != nil {
-		return protocol.DeviceInfo{}, err
+		return consumer.DeviceInfo{}, err
 	}
-	return protocol.DeviceInfo{IP: p.host, Port: p.port}, nil
+	return consumer.DeviceInfo{IP: p.host, Port: p.port}, nil
 }
 
 // GetSlotInfo — slots are not a Probel concept. Returns NotImplemented
 // until we decide whether to synthesise matrix/level as slot pairs.
-func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, error) {
-	return protocol.SlotInfo{}, protocol.ErrNotImplemented
+func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
+	return consumer.SlotInfo{}, consumer.ErrNotImplemented
 }
 
 // Walk enumerates matrices / levels / destinations / sources. Lands in the
 // "source + destination names + sizes" per-command PR.
-func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) {
-	return nil, protocol.ErrNotImplemented
+func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) {
+	return nil, consumer.ErrNotImplemented
 }
 
 // GetValue — for Probel, GetValue on a crosspoint returns its current
 // source. Lands in the CrosspointInterrogate per-command PR.
-func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
-	return protocol.Value{}, protocol.ErrNotImplemented
+func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
+	return consumer.Value{}, consumer.ErrNotImplemented
 }
 
 // SetValue — for Probel, SetValue on a crosspoint connects the named
 // source. Lands in the CrosspointConnect per-command PR.
-func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
-	return protocol.Value{}, protocol.ErrNotImplemented
+func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
+	return consumer.Value{}, consumer.ErrNotImplemented
 }
 
 // Subscribe attaches a callback for async tallies. The wiring of
-// codec.Client.Subscribe into protocol.Event lands in the
+// codec.Client.Subscribe into consumer.Event lands in the
 // CrosspointTally per-command PR.
-func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
-	return protocol.ErrNotImplemented
+func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
+	return consumer.ErrNotImplemented
 }
 
 // Unsubscribe removes a tally callback. Pairs with Subscribe.
-func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
-	return protocol.ErrNotImplemented
+func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
+	return consumer.ErrNotImplemented
 }

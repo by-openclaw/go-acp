@@ -46,7 +46,7 @@ Tree structure similar to ACP2:
 | RPC functions | No | Yes |
 | Strings | ASCII (ACP1) / UTF-8 (ACP2) | UTF-8 |
 
-**Key similarity**: both use tree-based parameter models with typed values, min/max constraints, and access levels. `protocol.Object` can represent Ember+ parameters with minor additions (Matrix and Function would need new `ValueKind` entries).
+**Key similarity**: both use tree-based parameter models with typed values, min/max constraints, and access levels. `consumer.Object` can represent Ember+ parameters with minor additions (Matrix and Function would need new `ValueKind` entries).
 
 ## Existing Go Library
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // ReadCSV parses a CSV snapshot produced by WriteCSV. Reconstructs a
@@ -84,7 +84,7 @@ func ReadCSV(r io.Reader) (*Snapshot, error) {
 		if len(pathSegs) == 1 {
 			group = pathSegs[0]
 		}
-		obj := protocol.Object{
+		obj := consumer.Object{
 			Slot:  slotNum,
 			OID:   col(row, idx, "oid"),
 			Group: group,
@@ -159,30 +159,30 @@ func col(row []string, idx map[string]int, name string) string {
 }
 
 // parseValueKind reverses kindName.
-func parseValueKind(s string) protocol.ValueKind {
+func parseValueKind(s string) consumer.ValueKind {
 	switch strings.ToLower(s) {
 	case "bool":
-		return protocol.KindBool
+		return consumer.KindBool
 	case "int":
-		return protocol.KindInt
+		return consumer.KindInt
 	case "uint":
-		return protocol.KindUint
+		return consumer.KindUint
 	case "float":
-		return protocol.KindFloat
+		return consumer.KindFloat
 	case "enum":
-		return protocol.KindEnum
+		return consumer.KindEnum
 	case "string":
-		return protocol.KindString
+		return consumer.KindString
 	case "ipaddr":
-		return protocol.KindIPAddr
+		return consumer.KindIPAddr
 	case "alarm":
-		return protocol.KindAlarm
+		return consumer.KindAlarm
 	case "frame":
-		return protocol.KindFrame
+		return consumer.KindFrame
 	case "raw":
-		return protocol.KindRaw
+		return consumer.KindRaw
 	}
-	return protocol.KindUnknown
+	return consumer.KindUnknown
 }
 
 // parseAccess reverses accessStr.
@@ -201,25 +201,25 @@ func parseAccess(s string) uint8 {
 }
 
 // parseNum converts a numeric string to the right Go type based on kind.
-func parseNum(s string, kind protocol.ValueKind) any {
+func parseNum(s string, kind consumer.ValueKind) any {
 	if s == "" {
 		return nil
 	}
 	switch kind {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		n, _ := strconv.ParseInt(s, 10, 64)
 		return n
-	case protocol.KindUint:
+	case consumer.KindUint:
 		n, _ := strconv.ParseUint(s, 10, 64)
 		return n
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		f, _ := strconv.ParseFloat(s, 64)
 		return f
 	}
 	return nil
 }
 
-// parseCSVValue builds a protocol.Value from the CSV value + value_name
+// parseCSVValue builds a consumer.Value from the CSV value + value_name
 // columns.
 //
 // On a type-incompatible value (e.g. "not_a_number" in an int column),
@@ -227,41 +227,41 @@ func parseNum(s string, kind protocol.ValueKind) any {
 // importer's Validate / unknown_kind skip path catches it. This is the
 // signal that the CSV cell didn't parse — without it the silent
 // zero-default would let the importer write garbage.
-func parseCSVValue(kind protocol.ValueKind, val, name string, items []string) protocol.Value {
-	v := protocol.Value{Kind: kind}
+func parseCSVValue(kind consumer.ValueKind, val, name string, items []string) consumer.Value {
+	v := consumer.Value{Kind: kind}
 	switch kind {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		n, err := strconv.ParseInt(val, 10, 64)
 		if err != nil && val != "" {
-			return protocol.Value{Kind: protocol.KindUnknown}
+			return consumer.Value{Kind: consumer.KindUnknown}
 		}
 		v.Int = n
-	case protocol.KindUint:
+	case consumer.KindUint:
 		n, err := strconv.ParseUint(val, 10, 64)
 		if err != nil && val != "" {
-			return protocol.Value{Kind: protocol.KindUnknown}
+			return consumer.Value{Kind: consumer.KindUnknown}
 		}
 		v.Uint = n
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		f, err := strconv.ParseFloat(val, 64)
 		if err != nil && val != "" {
-			return protocol.Value{Kind: protocol.KindUnknown}
+			return consumer.Value{Kind: consumer.KindUnknown}
 		}
 		v.Float = f
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		idx, err := strconv.Atoi(val)
 		if err != nil && val != "" {
-			return protocol.Value{Kind: protocol.KindUnknown}
+			return consumer.Value{Kind: consumer.KindUnknown}
 		}
 		v.Enum = uint8(idx)
 		v.Str = name
-	case protocol.KindString:
+	case consumer.KindString:
 		v.Str = val
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		var a, b, c, d uint8
 		n, err := fmt.Sscanf(val, "%d.%d.%d.%d", &a, &b, &c, &d)
 		if (err != nil || n != 4) && val != "" {
-			return protocol.Value{Kind: protocol.KindUnknown}
+			return consumer.Value{Kind: consumer.KindUnknown}
 		}
 		v.IPAddr = [4]byte{a, b, c, d}
 	}

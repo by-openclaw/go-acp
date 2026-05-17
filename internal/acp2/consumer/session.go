@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"dhs/internal/protocol"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/transport"
 	"dhs/internal/acp2/codec"
 )
@@ -36,7 +36,7 @@ type Session struct {
 	an2VersionMajor uint8
 	an2VersionMinor uint8
 	numSlots        int
-	slotStatus      []protocol.SlotStatus
+	slotStatus      []consumer.SlotStatus
 	acp2Version     uint8
 
 	// mtid pool: 1-255 available, 0 reserved for announces.
@@ -80,7 +80,7 @@ type Session struct {
 	// slotLastSeen records the wall-clock time we last had wire evidence
 	// of a particular slot's status (handshake AN2 GetSlotInfo or a
 	// keep-alive probe of that slot). Used to populate
-	// protocol.SlotInfo.LiveAt without inventing a per-slot timestamp
+	// consumer.SlotInfo.LiveAt without inventing a per-slot timestamp
 	// elsewhere. Lock around mu (already taken when slotStatus is
 	// touched).
 	slotLastSeen []time.Time
@@ -143,7 +143,7 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(ip, fmt.Sprintf("%d", port)))
 	if err != nil {
-		return &protocol.TransportError{Op: "connect", Err: err}
+		return &consumer.TransportError{Op: "connect", Err: err}
 	}
 	if tc, ok := conn.(*net.TCPConn); ok {
 		_ = tc.SetNoDelay(true)
@@ -220,7 +220,7 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 	// Card slots are numbered 1..N (slot 0 = rack controller, not a card).
 	// We query slots 0..N to cover the controller + all cards.
 	totalSlots := s.numSlots + 1 // include slot 0 (controller)
-	s.slotStatus = make([]protocol.SlotStatus, totalSlots)
+	s.slotStatus = make([]consumer.SlotStatus, totalSlots)
 	s.slotLastSeen = make([]time.Time, totalSlots)
 	for slot := 0; slot < totalSlots; slot++ {
 		s.logger.Debug("acp2: AN2 GetSlotInfo", "slot", slot)
@@ -234,7 +234,7 @@ func (s *Session) an2Handshake(ctx context.Context) error {
 		// Reply: func_echo(u8) + stat(u8) + num_protos(u8) + protos(u8[])
 		// Spec §3.3.3 p. 9. Status is at reply[1], not reply[0].
 		if len(reply) >= 2 {
-			s.slotStatus[slot] = protocol.SlotStatus(reply[1])
+			s.slotStatus[slot] = consumer.SlotStatus(reply[1])
 			s.slotLastSeen[slot] = time.Now()
 			s.logger.Debug("acp2: slot info", "slot", slot, "status", reply[1],
 				"raw", fmt.Sprintf("%x", reply))
@@ -409,7 +409,7 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 	defer s.writeMu.Unlock()
 
 	if s.conn == nil {
-		return protocol.ErrNotConnected
+		return consumer.ErrNotConnected
 	}
 
 	if dl, ok := ctx.Deadline(); ok {
@@ -419,7 +419,7 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 	}
 
 	if _, err := s.conn.Write(data); err != nil {
-		return &protocol.TransportError{Op: "send", Err: err}
+		return &consumer.TransportError{Op: "send", Err: err}
 	}
 	return nil
 }
@@ -496,7 +496,7 @@ func (s *Session) handleAN2Internal(f *codec.AN2Frame) {
 		// AN2 slot events (e.g. card insertion/removal).
 		s.logger.Debug("acp2: AN2 slot event", "slot", f.Slot, "payload_len", len(f.Payload))
 		if len(f.Payload) >= 1 {
-			status := protocol.SlotStatus(f.Payload[0])
+			status := consumer.SlotStatus(f.Payload[0])
 			s.mu.Lock()
 			if int(f.Slot) < len(s.slotStatus) {
 				s.slotStatus[f.Slot] = status
@@ -682,11 +682,11 @@ func (s *Session) ACP2Version() uint8 {
 }
 
 // SlotStatus returns the status of a given slot.
-func (s *Session) SlotStatus(slot int) protocol.SlotStatus {
+func (s *Session) SlotStatus(slot int) consumer.SlotStatus {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if slot < 0 || slot >= len(s.slotStatus) {
-		return protocol.SlotNoCard
+		return consumer.SlotNoCard
 	}
 	return s.slotStatus[slot]
 }
@@ -733,10 +733,10 @@ func isClosedErr(err error) bool {
 // (timestamp of the last GetSlotInfo reply that touched this slot).
 // IsOnline is left for the Plugin to derive — it depends on
 // SessionLive() which the Session itself doesn't expose.
-func (s *Session) SlotInfoFromAN2(slot int) protocol.SlotInfo {
+func (s *Session) SlotInfoFromAN2(slot int) consumer.SlotInfo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	si := protocol.SlotInfo{Slot: slot}
+	si := consumer.SlotInfo{Slot: slot}
 	if slot >= 0 && slot < len(s.slotStatus) {
 		si.Status = s.slotStatus[slot]
 		si.State = si.Status.State()
@@ -763,14 +763,14 @@ func (s *Session) LastRx() time.Time {
 // keep-alive prober after a successful AN2 GetSlotInfo. Allocates the
 // slot tables on first call if the handshake didn't run yet
 // (defensive — handshake should always run before keep-alive starts).
-func (s *Session) MarkSlotProbed(slot int, status *protocol.SlotStatus) {
+func (s *Session) MarkSlotProbed(slot int, status *consumer.SlotStatus) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if slot < 0 {
 		return
 	}
 	if slot >= len(s.slotStatus) {
-		extended := make([]protocol.SlotStatus, slot+1)
+		extended := make([]consumer.SlotStatus, slot+1)
 		copy(extended, s.slotStatus)
 		s.slotStatus = extended
 	}

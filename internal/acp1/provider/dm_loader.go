@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	"dhs/internal/export"
 )
 
@@ -16,7 +16,7 @@ import (
 // on disk, and the provider replaces the served tree entries for the
 // target slot before driving the cascade. Subsequent identity-probe
 // replies reflect the new card.
-func (s *server) SetDMLibrary(r dmlib.Resolver) {
+func (s *server) SetDMLibrary(r devicemodel.Resolver) {
 	s.mu.Lock()
 	s.dmLibrary = r
 	s.mu.Unlock()
@@ -38,7 +38,7 @@ func (s *server) SetDMLibrary(r dmlib.Resolver) {
 // Returns:
 //
 //	ErrNoDMLibrary       no resolver attached (configure --dm-library)
-//	dmlib.ErrNotFound    card path does not resolve
+//	devicemodel.ErrNotFound    card path does not resolve
 //	tree.ReplaceSlot err underlying type / range conversion failure
 func (s *server) SlotLoad(ctx context.Context, slot uint8, cardPath string) error {
 	s.mu.Lock()
@@ -82,7 +82,7 @@ func (s *server) SlotUnload(slot uint8) {
 // Multi-slot products have one snapshot per slot keyed by slot
 // number; single-slot products store under whatever slot the original
 // walk hit. Match priority: exact slot match, then any single entry.
-func pickSnapshot(schema *dmlib.Schema, slot int) *export.Snapshot {
+func pickSnapshot(schema *devicemodel.Schema, slot int) *export.Snapshot {
 	if schema == nil {
 		return nil
 	}
@@ -110,20 +110,20 @@ var ErrNoDMLibrary = errors.New("acp1 provider: DM library not configured (use -
 // model-rev splits on the last "-" so "RRS18-1601" yields
 // (Model="RRS18", SwRev="1601") and "GIO-12-2000" yields
 // (Model="GIO-12", SwRev="2000").
-func parseCardPath(s string) (dmlib.Fingerprint, error) {
+func parseCardPath(s string) (devicemodel.Fingerprint, error) {
 	parts := strings.Split(s, "/")
 	if len(parts) != 4 {
-		return dmlib.Fingerprint{}, fmt.Errorf("card path %q: expected 4 components vendor/product/model-rev/proto", s)
+		return devicemodel.Fingerprint{}, fmt.Errorf("card path %q: expected 4 components vendor/product/model-rev/proto", s)
 	}
 	vendor, product, modelRev, proto := parts[0], parts[1], parts[2], parts[3]
 	if vendor == "" || product == "" || modelRev == "" || proto == "" {
-		return dmlib.Fingerprint{}, fmt.Errorf("card path %q: empty component", s)
+		return devicemodel.Fingerprint{}, fmt.Errorf("card path %q: empty component", s)
 	}
 	idx := strings.LastIndex(modelRev, "-")
 	if idx <= 0 || idx == len(modelRev)-1 {
-		return dmlib.Fingerprint{}, fmt.Errorf("card path %q: model-rev component %q must be <model>-<rev>", s, modelRev)
+		return devicemodel.Fingerprint{}, fmt.Errorf("card path %q: model-rev component %q must be <model>-<rev>", s, modelRev)
 	}
-	return dmlib.Fingerprint{
+	return devicemodel.Fingerprint{
 		Vendor:  vendor,
 		Product: product,
 		Model:   modelRev[:idx],

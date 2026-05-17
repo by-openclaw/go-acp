@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"dhs/internal/export/canonical"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp1/codec"
 )
 
@@ -46,25 +46,25 @@ func TestCanonicalize_SlotTree(t *testing.T) {
 	tree := &SlotTree{
 		Slot:     0,
 		BootMode: 0,
-		Objects: []protocol.Object{
+		Objects: []consumer.Object{
 			{Slot: 0, Group: "identity", ID: 0, Label: "Card name",
-				Kind: protocol.KindString, Access: 0x01,
-				Value: protocol.Value{Kind: protocol.KindString, Str: "RRS18"},
+				Kind: consumer.KindString, Access: 0x01,
+				Value: consumer.Value{Kind: consumer.KindString, Str: "RRS18"},
 				MaxLen: 8},
 			{Slot: 0, Group: "control", ID: 7, Label: "GainA",
-				Kind: protocol.KindFloat, Access: 0x03,
+				Kind: consumer.KindFloat, Access: 0x03,
 				Min: float64(0), Max: float64(150), Step: float64(1), Def: float64(100),
 				Unit: "%",
-				Value: protocol.Value{Kind: protocol.KindFloat, Float: 42.5}},
+				Value: consumer.Value{Kind: consumer.KindFloat, Float: 42.5}},
 			{Slot: 0, Group: "status", ID: 6, Label: "Temp_Left",
-				Kind: protocol.KindInt, Access: 0x01,
+				Kind: consumer.KindInt, Access: 0x01,
 				Min: int64(-50), Max: int64(150),
 				Unit: "C",
-				Value: protocol.Value{Kind: protocol.KindInt, Int: 37}},
+				Value: consumer.Value{Kind: consumer.KindInt, Int: 37}},
 			{Slot: 0, Group: "control", ID: 4, Label: "Broadcasts",
-				Kind: protocol.KindEnum, Access: 0x03,
+				Kind: consumer.KindEnum, Access: 0x03,
 				EnumItems: []string{"Off", "On", "Auto"},
-				Value: protocol.Value{Kind: protocol.KindEnum, Enum: 2}},
+				Value: consumer.Value{Kind: consumer.KindEnum, Enum: 2}},
 		},
 		ACPTypes: []codec.ObjectType{codec.TypeString, codec.TypeFloat, codec.TypeInteger, codec.TypeEnum},
 	}

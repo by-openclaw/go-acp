@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // dryRunMock is the minimal plugin stub Apply needs to reach its
@@ -30,23 +30,23 @@ type dryRunMock struct{}
 
 func (dryRunMock) Connect(context.Context, string, int) error { return nil }
 func (dryRunMock) Disconnect() error                          { return nil }
-func (dryRunMock) GetDeviceInfo(context.Context) (protocol.DeviceInfo, error) {
-	return protocol.DeviceInfo{}, nil
+func (dryRunMock) GetDeviceInfo(context.Context) (consumer.DeviceInfo, error) {
+	return consumer.DeviceInfo{}, nil
 }
-func (dryRunMock) GetSlotInfo(context.Context, int) (protocol.SlotInfo, error) {
-	return protocol.SlotInfo{}, nil
+func (dryRunMock) GetSlotInfo(context.Context, int) (consumer.SlotInfo, error) {
+	return consumer.SlotInfo{}, nil
 }
-func (dryRunMock) Walk(context.Context, int) ([]protocol.Object, error) { return nil, nil }
-func (dryRunMock) GetValue(context.Context, protocol.ValueRequest) (protocol.Value, error) {
-	return protocol.Value{}, nil
+func (dryRunMock) Walk(context.Context, int) ([]consumer.Object, error) { return nil, nil }
+func (dryRunMock) GetValue(context.Context, consumer.ValueRequest) (consumer.Value, error) {
+	return consumer.Value{}, nil
 }
-func (dryRunMock) SetValue(context.Context, protocol.ValueRequest, protocol.Value) (protocol.Value, error) {
-	return protocol.Value{}, nil
+func (dryRunMock) SetValue(context.Context, consumer.ValueRequest, consumer.Value) (consumer.Value, error) {
+	return consumer.Value{}, nil
 }
-func (dryRunMock) Subscribe(protocol.ValueRequest, protocol.EventFunc) error { return nil }
-func (dryRunMock) Unsubscribe(protocol.ValueRequest) error                   { return nil }
+func (dryRunMock) Subscribe(consumer.ValueRequest, consumer.EventFunc) error { return nil }
+func (dryRunMock) Unsubscribe(consumer.ValueRequest) error                   { return nil }
 
-var _ protocol.Protocol = dryRunMock{}
+var _ consumer.Protocol = dryRunMock{}
 var _ = slog.Default // keep import available for future debug
 
 // -----------------------------------------------------------------------
@@ -63,25 +63,25 @@ func acp1Snapshot() *export.Snapshot {
 		Slots: []export.SlotDump{{
 			Slot:     1,
 			WalkedAt: time.Date(2026, 4, 19, 12, 0, 0, 0, time.UTC),
-			Objects: []protocol.Object{
+			Objects: []consumer.Object{
 				{ // writable float
 					Slot: 1, Group: "control", Path: []string{"control"},
-					ID: 7, Label: "GainA", Kind: protocol.KindFloat,
+					ID: 7, Label: "GainA", Kind: consumer.KindFloat,
 					Access: 3, Unit: "%",
 					Min: float64(0), Max: float64(150), Step: float64(1), Def: float64(100),
-					Value: protocol.Value{Kind: protocol.KindFloat, Float: 50.8},
+					Value: consumer.Value{Kind: consumer.KindFloat, Float: 50.8},
 				},
 				{ // writable enum
 					Slot: 1, Group: "control", Path: []string{"control"},
-					ID: 4, Label: "Broadcasts", Kind: protocol.KindEnum,
+					ID: 4, Label: "Broadcasts", Kind: consumer.KindEnum,
 					Access: 3, EnumItems: []string{"Off", "On"},
-					Value: protocol.Value{Kind: protocol.KindEnum, Enum: 1, Str: "On"},
+					Value: consumer.Value{Kind: consumer.KindEnum, Enum: 1, Str: "On"},
 				},
 				{ // read-only identity string — must land in Skipped
 					Slot: 1, Group: "identity", Path: []string{"identity"},
-					ID: 0, Label: "Card name", Kind: protocol.KindString,
+					ID: 0, Label: "Card name", Kind: consumer.KindString,
 					Access: 1, MaxLen: 16,
-					Value: protocol.Value{Kind: protocol.KindString, Str: "CDV08v06"},
+					Value: consumer.Value{Kind: consumer.KindString, Str: "CDV08v06"},
 				},
 			},
 		}},
@@ -100,30 +100,30 @@ func acp2Snapshot() *export.Snapshot {
 		Slots: []export.SlotDump{{
 			Slot:     0,
 			WalkedAt: time.Date(2026, 4, 19, 12, 0, 0, 0, time.UTC),
-			Objects: []protocol.Object{
+			Objects: []consumer.Object{
 				{ // writable hierarchical enum
 					Slot: 0, Path: []string{"BOARD", "ACP Trace"},
-					ID: 47431, Label: "ACP Trace", Kind: protocol.KindEnum,
+					ID: 47431, Label: "ACP Trace", Kind: consumer.KindEnum,
 					Access: 3, EnumItems: []string{"Off", "On"},
-					Value: protocol.Value{Kind: protocol.KindEnum, Enum: 0, Str: "Off"},
+					Value: consumer.Value{Kind: consumer.KindEnum, Enum: 0, Str: "Off"},
 				},
 				{ // duplicate label #1 — different sub-node
 					Slot: 0, Path: []string{"STATUS", "PSU", "1", "Present"},
-					ID: 60001, Label: "Present", Kind: protocol.KindEnum,
+					ID: 60001, Label: "Present", Kind: consumer.KindEnum,
 					Access: 1, EnumItems: []string{"no", "yes"},
-					Value: protocol.Value{Kind: protocol.KindEnum, Enum: 1, Str: "yes"},
+					Value: consumer.Value{Kind: consumer.KindEnum, Enum: 1, Str: "yes"},
 				},
 				{ // duplicate label #2 — same label, different ID
 					Slot: 0, Path: []string{"STATUS", "PSU", "2", "Present"},
-					ID: 60002, Label: "Present", Kind: protocol.KindEnum,
+					ID: 60002, Label: "Present", Kind: consumer.KindEnum,
 					Access: 1, EnumItems: []string{"no", "yes"},
-					Value: protocol.Value{Kind: protocol.KindEnum, Enum: 0, Str: "no"},
+					Value: consumer.Value{Kind: consumer.KindEnum, Enum: 0, Str: "no"},
 				},
 				{ // writable string with max length
 					Slot: 0, Path: []string{"IDENTITY", "User Label 1"},
-					ID: 12345, Label: "User Label 1", Kind: protocol.KindString,
+					ID: 12345, Label: "User Label 1", Kind: consumer.KindString,
 					Access: 3, MaxLen: 17,
-					Value: protocol.Value{Kind: protocol.KindString, Str: "Studio A"},
+					Value: consumer.Value{Kind: consumer.KindString, Str: "Studio A"},
 				},
 			},
 		}},
@@ -141,27 +141,27 @@ func emberplusSnapshot() *export.Snapshot {
 		Slots: []export.SlotDump{{
 			Slot:     0,
 			WalkedAt: time.Date(2026, 4, 19, 12, 0, 0, 0, time.UTC),
-			Objects: []protocol.Object{
+			Objects: []consumer.Object{
 				{ // writable float — channel 1 gain
 					Slot: 0, OID: "1.2.1.3",
 					Path: []string{"router", "inputs", "ch1", "gain"},
-					ID:   3, Label: "gain", Kind: protocol.KindFloat,
+					ID:   3, Label: "gain", Kind: consumer.KindFloat,
 					Access: 3, Unit: "dB",
-					Value: protocol.Value{Kind: protocol.KindFloat, Float: -6.0},
+					Value: consumer.Value{Kind: consumer.KindFloat, Float: -6.0},
 				},
 				{ // duplicate label — channel 2 gain, disambiguated by OID
 					Slot: 0, OID: "1.2.2.3",
 					Path: []string{"router", "inputs", "ch2", "gain"},
-					ID:   3, Label: "gain", Kind: protocol.KindFloat,
+					ID:   3, Label: "gain", Kind: consumer.KindFloat,
 					Access: 3, Unit: "dB",
-					Value: protocol.Value{Kind: protocol.KindFloat, Float: -12.0},
+					Value: consumer.Value{Kind: consumer.KindFloat, Float: -12.0},
 				},
 				{ // read-only integer — must land in Skipped
 					Slot: 0, OID: "1.1",
 					Path: []string{"identity", "version"},
-					ID:   1, Label: "version", Kind: protocol.KindInt,
+					ID:   1, Label: "version", Kind: consumer.KindInt,
 					Access: 1,
-					Value:  protocol.Value{Kind: protocol.KindInt, Int: 230},
+					Value:  consumer.Value{Kind: consumer.KindInt, Int: 230},
 				},
 			},
 		}},
@@ -197,7 +197,7 @@ func TestCSV_PreservesOIDAndPath(t *testing.T) {
 				t.Fatalf("ReadCSV: %v", err)
 			}
 			// Flatten both sides for pair-wise comparison.
-			var want, have []protocol.Object
+			var want, have []consumer.Object
 			for _, s := range c.snap.Slots {
 				want = append(want, s.Objects...)
 			}

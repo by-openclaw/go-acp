@@ -222,7 +222,7 @@ Every non-trivial resolution during export writes an event to the connection's
 compliance profile. Events help debug providers that bend the spec:
 
 Events are grouped by source. Full authoritative list in
-`internal/protocol/emberplus/compliance/profile.go`.
+`internal/consumer/emberplus/compliance/profile.go`.
 
 ### Resolver (matrix-scoped, templates, gain, labels)
 

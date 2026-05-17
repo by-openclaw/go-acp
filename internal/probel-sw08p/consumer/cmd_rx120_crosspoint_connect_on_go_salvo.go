@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // SalvoConnectOnGo appends one crosspoint to a salvo group. Repeat for
@@ -35,7 +35,7 @@ func (p *Plugin) SalvoConnectOnGo(
 	}
 	ack, derr := codec.DecodeSalvoConnectOnGoAck(reply)
 	if derr != nil {
-		return codec.SalvoConnectOnGoAckParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.SalvoConnectOnGoAckParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return ack, nil
 }

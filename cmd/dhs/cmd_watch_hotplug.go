@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // hotPlugEnricher reacts to per-slot frame-status transitions in the
@@ -33,9 +33,9 @@ import (
 // access from a single event-handler goroutine.
 type hotPlugEnricher struct {
 	mu             sync.Mutex
-	prev           map[int]protocol.SlotStatus
-	prevFP         map[int]protocol.CardIdentity // last-seen fingerprint per slot
-	resolver       dmlib.Resolver                // nil ⇒ no DM-library lookups
+	prev           map[int]consumer.SlotStatus
+	prevFP         map[int]consumer.CardIdentity // last-seen fingerprint per slot
+	resolver       devicemodel.Resolver                // nil ⇒ no DM-library lookups
 	autoWalkOnPlug bool
 
 	// outMu serialises writes to out. Separate from mu so the
@@ -57,19 +57,19 @@ func (h *hotPlugEnricher) printf(format string, a ...any) {
 
 // seederIface is the optional contract a plugin satisfies when it
 // supports DM-library seeding. ACP1 satisfies it via Plugin.SeedFromDM.
-// Defined here (in the watch verb) rather than in internal/protocol so
+// Defined here (in the watch verb) rather than in internal/consumer so
 // that the protocol/ tier stays free of export.* imports.
 type seederIface interface {
 	SeedFromDM(slot int, snap *export.Snapshot) error
 }
 
-func newHotPlugEnricher(resolver dmlib.Resolver, autoWalkOnPlug bool, out io.Writer) *hotPlugEnricher {
+func newHotPlugEnricher(resolver devicemodel.Resolver, autoWalkOnPlug bool, out io.Writer) *hotPlugEnricher {
 	if out == nil {
 		out = os.Stdout
 	}
 	return &hotPlugEnricher{
-		prev:           map[int]protocol.SlotStatus{},
-		prevFP:         map[int]protocol.CardIdentity{},
+		prev:           map[int]consumer.SlotStatus{},
+		prevFP:         map[int]consumer.CardIdentity{},
 		resolver:       resolver,
 		autoWalkOnPlug: autoWalkOnPlug,
 		out:            out,
@@ -80,7 +80,7 @@ func newHotPlugEnricher(resolver dmlib.Resolver, autoWalkOnPlug bool, out io.Wri
 // and emits a hot-plug row for every transition that requires action.
 // Returns the list of slots whose state changed, for downstream
 // orchestration in tests.
-func (h *hotPlugEnricher) observe(ctx context.Context, plug protocol.Protocol, ts time.Time, statuses []protocol.SlotStatus) []int {
+func (h *hotPlugEnricher) observe(ctx context.Context, plug consumer.Protocol, ts time.Time, statuses []consumer.SlotStatus) []int {
 	if len(statuses) == 0 {
 		return nil
 	}
@@ -97,9 +97,9 @@ func (h *hotPlugEnricher) observe(ctx context.Context, plug protocol.Protocol, t
 			// there's no boot→present transition to catch later.
 			// Synthesise the transition as no_card → cur so the
 			// downstream switch routes it correctly.
-			if cur == protocol.SlotPresent {
+			if cur == consumer.SlotPresent {
 				transitioned = append(transitioned, slot)
-				h.handleTransition(ctx, plug, ts, slot, protocol.SlotNoCard, cur)
+				h.handleTransition(ctx, plug, ts, slot, consumer.SlotNoCard, cur)
 			}
 			continue
 		}
@@ -114,12 +114,12 @@ func (h *hotPlugEnricher) observe(ctx context.Context, plug protocol.Protocol, t
 
 // handleTransition prints the hot-plug row and triggers enrichment when
 // the transition warrants it.
-func (h *hotPlugEnricher) handleTransition(ctx context.Context, plug protocol.Protocol, ts time.Time, slot int, prev, cur protocol.SlotStatus) {
+func (h *hotPlugEnricher) handleTransition(ctx context.Context, plug consumer.Protocol, ts time.Time, slot int, prev, cur consumer.SlotStatus) {
 	tsStr := ts.Format("15:04:05")
 	tag := fmt.Sprintf("s%-2d %s -> %s", slot, prev.State(), cur.State())
 
 	switch {
-	case cur == protocol.SlotPresent && prev != protocol.SlotPresent:
+	case cur == consumer.SlotPresent && prev != consumer.SlotPresent:
 		// Any path landing on present triggers enrichment. The
 		// canonical path is boot → present (real hardware always
 		// passes through boot); simulator and post-controller-boot
@@ -133,13 +133,13 @@ func (h *hotPlugEnricher) handleTransition(ctx context.Context, plug protocol.Pr
 			return
 		}
 		h.printf("%s  hot-plug  %s  %s %s  %s\n", tsStr, tag, swapTag, fp, seedRows)
-	case cur == protocol.SlotRemoved, prev == protocol.SlotRemoved && cur == protocol.SlotNoCard, cur == protocol.SlotNoCard:
+	case cur == consumer.SlotRemoved, prev == consumer.SlotRemoved && cur == consumer.SlotNoCard, cur == consumer.SlotNoCard:
 		// Hot-removal cascade: keep emitting rows, no re-seed. Drop
 		// the cached fingerprint so a re-plug starts fresh
 		// ("discovered") rather than silently assuming continuity.
 		delete(h.prevFP, slot)
 		h.printf("%s  hot-plug  %s\n", tsStr, tag)
-	case cur == protocol.SlotError:
+	case cur == consumer.SlotError:
 		h.printf("%s  hot-plug  %s  card faulted\n", tsStr, tag)
 	default:
 		// Intermediate transitions (no_card→powerup, powerup→boot):
@@ -156,14 +156,14 @@ func (h *hotPlugEnricher) handleTransition(ctx context.Context, plug protocol.Pr
 //	fp         current fingerprint MODEL@REV
 //	seedRows   seed-result tag (seeded(N objs) / no-resolver /
 //	           no-DM-entry / no-Seeder / schema-empty)
-func (h *hotPlugEnricher) enrich(ctx context.Context, plug protocol.Protocol, slot int) (string, string, string, error) {
-	idr, ok := plug.(protocol.Identifier)
+func (h *hotPlugEnricher) enrich(ctx context.Context, plug consumer.Protocol, slot int) (string, string, string, error) {
+	idr, ok := plug.(consumer.Identifier)
 	if !ok {
 		return "discovered", "(no Identifier)", "skipped", nil
 	}
 	id, err := idr.GetIdentity(ctx, slot)
 	if err != nil {
-		if errors.Is(err, protocol.ErrIdentityUnresolved) {
+		if errors.Is(err, consumer.ErrIdentityUnresolved) {
 			return "discovered", "id-unresolved", "no-DM-entry", nil
 		}
 		return "", "", "", fmt.Errorf("identity: %w", err)
@@ -179,16 +179,16 @@ func (h *hotPlugEnricher) enrich(ctx context.Context, plug protocol.Protocol, sl
 	if h.resolver == nil {
 		return swapTag, fp, "no-resolver", nil
 	}
-	schema, rerr := h.resolver.Resolve(dmlib.Fingerprint{
+	schema, rerr := h.resolver.Resolve(devicemodel.Fingerprint{
 		Model: id.Model,
 		SwRev: id.SwRev,
 		Proto: "acp1", // todo: cross-protocol once Phase 2 wires this verb
 	})
 	if rerr != nil {
-		if errors.Is(rerr, dmlib.ErrNotFound) {
+		if errors.Is(rerr, devicemodel.ErrNotFound) {
 			return swapTag, fp, "no-DM-entry", nil
 		}
-		return swapTag, fp, "", fmt.Errorf("dmlib.Resolve: %w", rerr)
+		return swapTag, fp, "", fmt.Errorf("devicemodel.Resolve: %w", rerr)
 	}
 
 	seeder, ok := plug.(seederIface)
@@ -243,7 +243,7 @@ func (h *hotPlugEnricher) enrich(ctx context.Context, plug protocol.Protocol, sl
 //	fw-upgrade      same Model, current SwRev > prior (lex compare)
 //	fw-downgrade    same Model, current SwRev < prior
 //	card-swap       different Model
-func classifyFingerprintShift(prev, cur protocol.CardIdentity, _ map[int]protocol.CardIdentity) string {
+func classifyFingerprintShift(prev, cur consumer.CardIdentity, _ map[int]consumer.CardIdentity) string {
 	if prev.Model == "" {
 		return "discovered"
 	}

@@ -25,7 +25,7 @@ no exceptions. Specifically forbidden:
   ones).
 - Any third-party Go module not in stdlib.
 - Any CGo binding.
-- Any `internal/amwa/*`, `internal/transport/*`, `internal/protocol`,
+- Any `internal/amwa/*`, `internal/transport/*`, `internal/consumer`,
   `internal/provider`, or other internal-package import.
 
 Permitted:

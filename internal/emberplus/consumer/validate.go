@@ -7,14 +7,14 @@ import (
 
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 )
 
-// Compile-time assertion: emberplus Plugin satisfies protocol.Validator
+// Compile-time assertion: emberplus Plugin satisfies consumer.Validator
 // so `dhs consumer emberplus validate <frames.jsonl>` resolves cleanly
 // at the CLI type-assert (cmd/dhs/cmd_validate.go).
-var _ protocol.Validator = (*Plugin)(nil)
+var _ consumer.Validator = (*Plugin)(nil)
 
 // Validate decodes captured Ember+ wire-trace records (Trames per
 // ADR-0021) through the S101 framer + BER + Glow stack, asserts S101
@@ -29,8 +29,8 @@ var _ protocol.Validator = (*Plugin)(nil)
 //
 // --out-tree / --out-params (per ADR-0002) are not yet wired here —
 // they land in a follow-up PR that integrates canonicalize.go.
-func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts protocol.ValidateOpts) (*protocol.ValidateReport, error) {
-	report := &protocol.ValidateReport{
+func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts consumer.ValidateOpts) (*consumer.ValidateReport, error) {
+	report := &consumer.ValidateReport{
 		PerDirection: map[wiretrace.Direction]int{},
 	}
 
@@ -45,7 +45,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		raw, err := hex.DecodeString(t.Hex)
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				Err:        fmt.Sprintf("hex decode: %v", err),
@@ -55,7 +55,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		frame, err := s101.Decode(raw)
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				HexPrefix:  shortHex(raw),
@@ -93,7 +93,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 				continue
 			}
 			if _, err := glow.DecodeRoot(frame.Payload); err != nil {
-				report.Errors = append(report.Errors, protocol.ValidateError{
+				report.Errors = append(report.Errors, consumer.ValidateError{
 					TrameIndex: i,
 					Direction:  t.Direction,
 					HexPrefix:  shortHex(frame.Payload),

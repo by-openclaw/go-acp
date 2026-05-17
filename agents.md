@@ -66,12 +66,12 @@ knowledge of Go or protocol internals.
 
 ```
 cmd/dhs/                        single CLI binary (consumer + producer)
-internal/protocol/              neutral consumer-plugin registry + iface
+internal/consumer/              neutral consumer-plugin registry + iface
 internal/provider/              neutral provider-plugin registry + iface
 internal/<proto>/               per-protocol self-contained subtree:
   CLAUDE.md                     atomic wire-format context (read this!)
   codec/                        stdlib-only byte codec (lift-ready)
-  consumer/                     package <proto> — implements protocol.Protocol
+  consumer/                     package <proto> — implements consumer.Protocol
   provider/                     package <proto> — implements provider.Provider
   wireshark/                    dissector_<proto>.lua
   docs/                         consumer / provider / README per protocol
@@ -346,7 +346,7 @@ shipping controller implements that path — all update from cmd 04 per
 
 ### Add a new protocol
 
-See `CLAUDE.md` → "Adding a new protocol". Copy `internal/protocol/_template/`,
+See `CLAUDE.md` → "Adding a new protocol". Copy `internal/consumer/_template/`,
 create the `internal/<name>/CLAUDE.md`, register in both consumer + provider
 registries, blank-import in `cmd/dhs/main.go`.
 

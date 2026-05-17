@@ -11,7 +11,7 @@ import (
 	"dhs/internal/export/canonical"
 )
 
-// dmFile mirrors internal/storage.DM (kept duplicated to avoid an
+// dmFile mirrors internal/datastore.DM (kept duplicated to avoid an
 // import cycle between manifest and storage).
 //
 // Two shapes are supported on disk:
@@ -27,7 +27,7 @@ type dmFile struct {
 	Objects   []dmObject                 `json:"objects,omitempty"`
 }
 
-// dmObject mirrors protocol.Object — only the fields we use.
+// dmObject mirrors consumer.Object — only the fields we use.
 type dmObject struct {
 	Slot   int            `json:"slot"`
 	Group  string         `json:"group,omitempty"`
@@ -338,7 +338,7 @@ func buildSlotNode(slotNum int, sl Slot, dm *dmFile, devName string) (*canonical
 			}
 			param.EnumMap = entries
 		}
-		// Unwrap the protocol.Value envelope into a scalar the
+		// Unwrap the consumer.Value envelope into a scalar the
 		// provider's tree builder accepts. The DM stores values as
 		// {kind, str|int|uint|float|bool|enum|ip} (per Value.MarshalJSON).
 		// Passing the envelope as-is breaks buildProperties which expects
@@ -531,7 +531,7 @@ func sanitiseScalar(typeStr, formatHint string, v any) any {
 	return v
 }
 
-// unwrapValue pulls the scalar out of a serialised protocol.Value
+// unwrapValue pulls the scalar out of a serialised consumer.Value
 // envelope:  {"kind":"int","int":42} → int64(42).
 // Returns (nil, false) on null, empty, or unsupported envelopes; the
 // caller leaves Parameter.Value zero so the provider's tree builder

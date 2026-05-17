@@ -22,7 +22,7 @@ Closes #
 - [ ] core
 - [ ] ci / chore
 
-**Cross-protocol changes** (`cmd/dhs/*`, `internal/protocol/*`, or more than one `internal/<proto>/`): justify why the change can't be plugin-internal.
+**Cross-protocol changes** (`cmd/dhs/*`, `internal/consumer/*`, or more than one `internal/<proto>/`): justify why the change can't be plugin-internal.
 
 ## Wire evidence (protocol changes only)
 

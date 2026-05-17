@@ -11,9 +11,9 @@
 //
 // Reuses consumer-side packages for symmetric work:
 //
-//	internal/protocol/emberplus/s101    framing (symmetric)
-//	internal/protocol/emberplus/ber     TLV codec
-//	internal/protocol/emberplus/glow    decoder + tag constants (decoder is symmetric)
+//	internal/consumer/emberplus/s101    framing (symmetric)
+//	internal/consumer/emberplus/ber     TLV codec
+//	internal/consumer/emberplus/glow    decoder + tag constants (decoder is symmetric)
 package emberplus
 
 import (

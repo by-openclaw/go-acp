@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"dhs/internal/export/canonical"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp1/codec"
 )
 
@@ -169,9 +169,9 @@ func buildGroupNode(slot int, slotOID, slotPath string, groupNumber int, groupNa
 	}
 }
 
-// buildParameter maps a protocol.Object to a canonical.Parameter. Spec
+// buildParameter maps a consumer.Object to a canonical.Parameter. Spec
 // cross-refs are in per-kind switch below.
-func buildParameter(obj protocol.Object, acpType codec.ObjectType, parentOID, parentPath string) *canonical.Parameter {
+func buildParameter(obj consumer.Object, acpType codec.ObjectType, parentOID, parentPath string) *canonical.Parameter {
 	oid := parentOID + "." + strconv.Itoa(obj.ID)
 	path := parentPath + "." + obj.Label
 	// Use Label as identifier; fall back to "#<id>" when a device
@@ -215,7 +215,7 @@ func buildParameter(obj protocol.Object, acpType codec.ObjectType, parentOID, pa
 
 	// Enum: lift the item list into canonical EnumMap (key=label,
 	// value=ordinal). Spec p.24 — comma-delimited item_list.
-	if obj.Kind == protocol.KindEnum && len(obj.EnumItems) > 0 {
+	if obj.Kind == consumer.KindEnum && len(obj.EnumItems) > 0 {
 		entries := make([]canonical.EnumEntry, 0, len(obj.EnumItems))
 		for i, item := range obj.EnumItems {
 			entries = append(entries, canonical.EnumEntry{
@@ -231,7 +231,7 @@ func buildParameter(obj protocol.Object, acpType codec.ObjectType, parentOID, pa
 	// Alarm event messages (spec p.25). Carry as Parameter description
 	// joined "on: <msg>\noff: <msg>" when present — no dedicated field
 	// in the canonical shape; operators read via description.
-	if obj.Kind == protocol.KindAlarm {
+	if obj.Kind == consumer.KindAlarm {
 		parts := []string{}
 		if obj.AlarmOnMsg != "" {
 			parts = append(parts, "on: "+obj.AlarmOnMsg)
@@ -248,7 +248,7 @@ func buildParameter(obj protocol.Object, acpType codec.ObjectType, parentOID, pa
 	// String MaxLen: exposed via format hint "maxLen=N" so the UI
 	// can render an input width. Canonical schema doesn't have a
 	// dedicated max-length field; format is the documented overflow.
-	if obj.Kind == protocol.KindString && obj.MaxLen > 0 {
+	if obj.Kind == consumer.KindString && obj.MaxLen > 0 {
 		hint := "maxLen=" + strconv.Itoa(obj.MaxLen)
 		p.Format = &hint
 	}
@@ -258,25 +258,25 @@ func buildParameter(obj protocol.Object, acpType codec.ObjectType, parentOID, pa
 
 // kindToCanonicalType maps ValueKind + ACP1 ObjectType to the canonical
 // parameter type string (docs/protocols/elements/parameter.md).
-func kindToCanonicalType(k protocol.ValueKind, acpType codec.ObjectType) string {
+func kindToCanonicalType(k consumer.ValueKind, acpType codec.ObjectType) string {
 	switch k {
-	case protocol.KindBool:
+	case consumer.KindBool:
 		return canonical.ParamBoolean
-	case protocol.KindInt, protocol.KindUint:
+	case consumer.KindInt, consumer.KindUint:
 		return canonical.ParamInteger
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return canonical.ParamReal
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		return canonical.ParamEnum
-	case protocol.KindString, protocol.KindIPAddr:
+	case consumer.KindString, consumer.KindIPAddr:
 		return canonical.ParamString
-	case protocol.KindAlarm:
+	case consumer.KindAlarm:
 		// ACP1 alarms are active-or-idle + text messages — boolean
 		// with description carries the richest canonical shape.
 		return canonical.ParamBoolean
-	case protocol.KindRaw:
+	case consumer.KindRaw:
 		return canonical.ParamOctets
-	case protocol.KindFrame:
+	case consumer.KindFrame:
 		// Frame status is a slot array; no Parameter mapping
 		// materialises. Caller skips.
 		return canonical.ParamOctets
@@ -309,30 +309,30 @@ func accessString(a uint8) string {
 	return canonical.AccessRead
 }
 
-// valueToAny turns a protocol.Value into the right Go scalar for the
+// valueToAny turns a consumer.Value into the right Go scalar for the
 // canonical JSON value field. Kind dispatches to the typed union
 // member; unknown / frame / raw kinds yield nil so the output shows
 // `"value": null` rather than a typed zero.
-func valueToAny(v protocol.Value) any {
+func valueToAny(v consumer.Value) any {
 	switch v.Kind {
-	case protocol.KindBool:
+	case consumer.KindBool:
 		return v.Bool
-	case protocol.KindInt:
+	case consumer.KindInt:
 		return v.Int
-	case protocol.KindUint:
+	case consumer.KindUint:
 		return v.Uint
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return v.Float
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		return int64(v.Enum)
-	case protocol.KindString:
+	case consumer.KindString:
 		return v.Str
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		return strconv.Itoa(int(v.IPAddr[0])) + "." +
 			strconv.Itoa(int(v.IPAddr[1])) + "." +
 			strconv.Itoa(int(v.IPAddr[2])) + "." +
 			strconv.Itoa(int(v.IPAddr[3]))
-	case protocol.KindAlarm:
+	case consumer.KindAlarm:
 		// Alarm carried as boolean active/idle; the message pair
 		// lands in description.
 		return v.Bool

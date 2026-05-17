@@ -9,7 +9,7 @@ import (
 	"dhs/internal/acp1/codec"
 	"dhs/internal/export"
 	"dhs/internal/export/canonical"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // snapshotToEntries flattens a single-slot DM-library snapshot into
@@ -22,7 +22,7 @@ import (
 // — those belong to slot 0 (rack controller) and are never replaced
 // during a card hot-plug.
 //
-// The snapshot's protocol.Object carries Kind (widened) plus an
+// The snapshot's consumer.Object carries Kind (widened) plus an
 // optional Meta["acp1_type"] hint that disambiguates Integer vs Long
 // vs Byte. When the hint is absent we infer from Kind plus min/max
 // range: KindUint -> Byte, KindInt with min/max within int16 -> Integer,
@@ -113,7 +113,7 @@ func findSlotDump(snap *export.Snapshot, slot int) *export.SlotDump {
 // acpTypeFromObject derives the ACP1 wire type. Honours
 // Meta["acp1_type"] when the walker persisted it (consumer/seed.go
 // convention); otherwise infers from Kind plus min/max range.
-func acpTypeFromObject(o protocol.Object) codec.ObjectType {
+func acpTypeFromObject(o consumer.Object) codec.ObjectType {
 	if o.Meta != nil {
 		if raw, ok := o.Meta["acp1_type"]; ok {
 			switch v := raw.(type) {
@@ -129,24 +129,24 @@ func acpTypeFromObject(o protocol.Object) codec.ObjectType {
 		}
 	}
 	switch o.Kind {
-	case protocol.KindUint:
+	case consumer.KindUint:
 		return codec.TypeByte
-	case protocol.KindInt:
+	case consumer.KindInt:
 		if intExceedsI16(o.Min) || intExceedsI16(o.Max) || intExceedsI16(o.Def) {
 			return codec.TypeLong
 		}
 		return codec.TypeInteger
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return codec.TypeFloat
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		return codec.TypeEnum
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		return codec.TypeIPAddr
-	case protocol.KindString:
+	case consumer.KindString:
 		return codec.TypeString
-	case protocol.KindAlarm, protocol.KindBool:
+	case consumer.KindAlarm, consumer.KindBool:
 		return codec.TypeAlarm
-	case protocol.KindFrame:
+	case consumer.KindFrame:
 		return codec.TypeFrame
 	}
 	return codec.TypeInteger
@@ -205,7 +205,7 @@ func anyAsInt64(v any) (int64, bool) {
 // + session can read identically to a tree.json-loaded one. The pair
 // (Type, Format) MUST round-trip through deriveACPType to acpType so
 // the provider's encoder picks the right wire width.
-func objectToParameter(o protocol.Object, acpType codec.ObjectType) (*canonical.Parameter, error) {
+func objectToParameter(o consumer.Object, acpType codec.ObjectType) (*canonical.Parameter, error) {
 	ident := o.Label
 	if ident == "" {
 		ident = "#" + strconv.Itoa(o.ID)
@@ -245,7 +245,7 @@ func objectToParameter(o protocol.Object, acpType codec.ObjectType) (*canonical.
 		p.Unit = &u
 	}
 
-	if o.Kind == protocol.KindEnum && len(o.EnumItems) > 0 {
+	if o.Kind == consumer.KindEnum && len(o.EnumItems) > 0 {
 		entries := make([]canonical.EnumEntry, 0, len(o.EnumItems))
 		for i, item := range o.EnumItems {
 			entries = append(entries, canonical.EnumEntry{
@@ -258,7 +258,7 @@ func objectToParameter(o protocol.Object, acpType codec.ObjectType) (*canonical.
 		p.Enumeration = &joined
 	}
 
-	if o.Kind == protocol.KindAlarm {
+	if o.Kind == consumer.KindAlarm {
 		// The provider's encoder reads alarm priority/tag from a Format
 		// hint suffix and the on/off messages from Description.
 		// Schemas don't carry priority/tag separately — preserve
@@ -333,7 +333,7 @@ func canonicalTypeFor(t codec.ObjectType) string {
 // String objects carrying MaxLen append a "maxLen=N" attribute the
 // encoder reads via stringMaxLen. Multiple parts are comma-joined, e.g.
 // "ipv4,maxLen=16".
-func formatHintFor(o protocol.Object, acpType codec.ObjectType) string {
+func formatHintFor(o consumer.Object, acpType codec.ObjectType) string {
 	parts := []string{}
 	switch acpType {
 	case codec.TypeLong:
@@ -355,42 +355,42 @@ func formatHintFor(o protocol.Object, acpType codec.ObjectType) string {
 	return strings.Join(parts, ",")
 }
 
-// valueAny renders a protocol.Value as the Go scalar the encoder
+// valueAny renders a consumer.Value as the Go scalar the encoder
 // expects under the matching canonical Type. For DM-library snapshots
 // values are usually zero (schemas are value-less by design — the
 // consumer's SeedFromDM clears them), but we still pass through what's
 // present so a non-empty schema retains its values verbatim.
-func valueAny(o protocol.Object, acpType codec.ObjectType) any {
+func valueAny(o consumer.Object, acpType codec.ObjectType) any {
 	v := o.Value
 	switch acpType {
 	case codec.TypeInteger, codec.TypeLong:
 		switch v.Kind {
-		case protocol.KindInt:
+		case consumer.KindInt:
 			return v.Int
-		case protocol.KindUint:
+		case consumer.KindUint:
 			return int64(v.Uint)
 		}
 		return int64(0)
 	case codec.TypeByte:
 		switch v.Kind {
-		case protocol.KindUint:
+		case consumer.KindUint:
 			return int64(v.Uint)
-		case protocol.KindInt:
+		case consumer.KindInt:
 			return v.Int
 		}
 		return int64(0)
 	case codec.TypeFloat:
-		if v.Kind == protocol.KindFloat {
+		if v.Kind == consumer.KindFloat {
 			return v.Float
 		}
 		return float64(0)
 	case codec.TypeEnum:
-		if v.Kind == protocol.KindEnum {
+		if v.Kind == consumer.KindEnum {
 			return int64(v.Enum)
 		}
 		return int64(0)
 	case codec.TypeIPAddr:
-		if v.Kind == protocol.KindIPAddr {
+		if v.Kind == consumer.KindIPAddr {
 			return strconv.Itoa(int(v.IPAddr[0])) + "." +
 				strconv.Itoa(int(v.IPAddr[1])) + "." +
 				strconv.Itoa(int(v.IPAddr[2])) + "." +
@@ -398,12 +398,12 @@ func valueAny(o protocol.Object, acpType codec.ObjectType) any {
 		}
 		return "0.0.0.0"
 	case codec.TypeString, codec.TypeFile:
-		if v.Kind == protocol.KindString {
+		if v.Kind == consumer.KindString {
 			return v.Str
 		}
 		return ""
 	case codec.TypeAlarm:
-		if v.Kind == protocol.KindBool || v.Kind == protocol.KindAlarm {
+		if v.Kind == consumer.KindBool || v.Kind == consumer.KindAlarm {
 			return v.Bool
 		}
 		return false

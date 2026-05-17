@@ -5,7 +5,7 @@
 //
 // Also pins the TSL "no walk verb" contract — TSL is positional UMD
 // tally with no walkable tree, so Walk / GetValue / SetValue /
-// Subscribe must all return protocol.ErrNotImplemented for every
+// Subscribe must all return consumer.ErrNotImplemented for every
 // version.
 package tsl_test
 
@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/tsl/consumer"
 	"dhs/internal/wiretrace"
 )
@@ -45,12 +45,12 @@ func loadTrames(t *testing.T, protoName, scenario string) []wiretrace.Trame {
 	return trames
 }
 
-func newValidator(t *testing.T, factory *tsl.Factory) protocol.Validator {
+func newValidator(t *testing.T, factory *tsl.Factory) consumer.Validator {
 	t.Helper()
 	plug := factory.New(slog.Default())
-	v, ok := plug.(protocol.Validator)
+	v, ok := plug.(consumer.Validator)
 	if !ok {
-		t.Fatalf("tsl Plugin (%s) does not implement protocol.Validator", factory.Meta().Name)
+		t.Fatalf("tsl Plugin (%s) does not implement consumer.Validator", factory.Meta().Name)
 	}
 	return v
 }
@@ -64,7 +64,7 @@ func TestReplay_TslV50DMSG(t *testing.T) {
 		t.Fatal("no trames in capture")
 	}
 	v := newValidator(t, &tsl.Factory{})
-	report, err := v.Validate(context.Background(), trames, protocol.ValidateOpts{})
+	report, err := v.Validate(context.Background(), trames, consumer.ValidateOpts{})
 	if err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
@@ -84,11 +84,11 @@ func TestReplay_TslV50DMSG(t *testing.T) {
 // TSL "no walk verb" contract. TSL is positional UMD tally — there
 // is no walkable tree, no per-object value to read or write, no
 // per-object subscribe path. The Plugin.Walk / GetValue / SetValue /
-// Subscribe methods MUST return protocol.ErrNotImplemented for
+// Subscribe methods MUST return consumer.ErrNotImplemented for
 // every registered version (V31, V40, V50). Future feature PRs
 // that try to wire Walk for TSL break this test, by design — TSL
 // callers use SubscribeV31 / SubscribeV40 / SubscribeV50, not the
-// generic protocol.Protocol.Subscribe path.
+// generic consumer.consumer.Subscribe path.
 func TestPlugin_WalkReturnsErrNotImplemented_AllVersions(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -99,26 +99,26 @@ func TestPlugin_WalkReturnsErrNotImplemented_AllVersions(t *testing.T) {
 		{"v50", tsl.NewPluginV50},
 	}
 	ctx := context.Background()
-	req := protocol.ValueRequest{ID: 1}
+	req := consumer.ValueRequest{ID: 1}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			p := c.factory(slog.Default())
-			if _, err := p.Walk(ctx, 0); !errors.Is(err, protocol.ErrNotImplemented) {
+			if _, err := p.Walk(ctx, 0); !errors.Is(err, consumer.ErrNotImplemented) {
 				t.Errorf("Walk: got %v, want ErrNotImplemented", err)
 			}
-			if _, err := p.GetValue(ctx, req); !errors.Is(err, protocol.ErrNotImplemented) {
+			if _, err := p.GetValue(ctx, req); !errors.Is(err, consumer.ErrNotImplemented) {
 				t.Errorf("GetValue: got %v, want ErrNotImplemented", err)
 			}
-			if _, err := p.SetValue(ctx, req, protocol.Value{}); !errors.Is(err, protocol.ErrNotImplemented) {
+			if _, err := p.SetValue(ctx, req, consumer.Value{}); !errors.Is(err, consumer.ErrNotImplemented) {
 				t.Errorf("SetValue: got %v, want ErrNotImplemented", err)
 			}
-			if err := p.Subscribe(req, nil); !errors.Is(err, protocol.ErrNotImplemented) {
+			if err := p.Subscribe(req, nil); !errors.Is(err, consumer.ErrNotImplemented) {
 				t.Errorf("Subscribe: got %v, want ErrNotImplemented", err)
 			}
-			if _, err := p.GetDeviceInfo(ctx); !errors.Is(err, protocol.ErrNotImplemented) {
+			if _, err := p.GetDeviceInfo(ctx); !errors.Is(err, consumer.ErrNotImplemented) {
 				t.Errorf("GetDeviceInfo: got %v, want ErrNotImplemented", err)
 			}
-			if _, err := p.GetSlotInfo(ctx, 0); !errors.Is(err, protocol.ErrNotImplemented) {
+			if _, err := p.GetSlotInfo(ctx, 0); !errors.Is(err, consumer.ErrNotImplemented) {
 				t.Errorf("GetSlotInfo: got %v, want ErrNotImplemented", err)
 			}
 		})

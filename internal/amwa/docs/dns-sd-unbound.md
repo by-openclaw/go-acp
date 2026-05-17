@@ -192,7 +192,7 @@ records deviate (priority collisions, missing keys, malformed `pri`)
 are catalogued in
 [`../codec/dnssd/types.go`](../codec/dnssd/types.go) and surface via
 the `compliance.Event` channel — see
-[`internal/protocol/compliance/`](../../protocol/compliance/).
+[`internal/consumer/compliance/`](../../protocol/compliance/).
 
 ---
 

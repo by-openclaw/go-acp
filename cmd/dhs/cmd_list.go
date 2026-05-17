@@ -3,17 +3,17 @@ package main
 import (
 	"fmt"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func runListProtocols() error {
-	names := protocol.List()
+	names := consumer.List()
 	if len(names) == 0 {
 		fmt.Println("(no protocols registered — this is a build configuration bug)")
 		return nil
 	}
 	for _, name := range names {
-		f, err := protocol.Get(name)
+		f, err := consumer.Get(name)
 		if err != nil {
 			continue
 		}

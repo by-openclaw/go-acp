@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // ProtectTallyDump requests the protect table for one (matrix, level),
@@ -35,7 +35,7 @@ func (p *Plugin) ProtectTallyDump(
 	}
 	d, derr := codec.DecodeProtectTallyDump(reply)
 	if derr != nil {
-		return codec.ProtectTallyDumpParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.ProtectTallyDumpParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return d, nil
 }

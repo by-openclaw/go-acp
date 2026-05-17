@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"os"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	emberplus "dhs/internal/emberplus/consumer"
 )
 
@@ -65,7 +65,7 @@ func runStream(ctx context.Context, args []string) error {
 
 	for _, path := range paths {
 		p := path
-		err := ep.Subscribe(protocol.ValueRequest{Path: p, ID: -1}, func(ev protocol.Event) {
+		err := ep.Subscribe(consumer.ValueRequest{Path: p, ID: -1}, func(ev consumer.Event) {
 			fmt.Printf("%s %s = %s\n",
 				ev.Timestamp.Format("15:04:05.000"), p, formatStreamValue(ev.Value))
 		})
@@ -80,17 +80,17 @@ func runStream(ctx context.Context, args []string) error {
 
 // formatStreamValue renders a Value for stream output. Terse form: one line,
 // no Kind prefix (the path already identifies the parameter).
-func formatStreamValue(v protocol.Value) string {
+func formatStreamValue(v consumer.Value) string {
 	switch v.Kind {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		return fmt.Sprintf("%d", v.Int)
-	case protocol.KindUint:
+	case consumer.KindUint:
 		return fmt.Sprintf("%d", v.Uint)
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return fmt.Sprintf("%g", v.Float)
-	case protocol.KindBool:
+	case consumer.KindBool:
 		return fmt.Sprintf("%t", v.Bool)
-	case protocol.KindString:
+	case consumer.KindString:
 		return v.Str
 	}
 	if len(v.Raw) > 0 {

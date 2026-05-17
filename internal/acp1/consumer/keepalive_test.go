@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TestResolvedKeepAlive_Defaults asserts the per-knob fallback rules
@@ -13,43 +13,43 @@ import (
 func TestResolvedKeepAlive_Defaults(t *testing.T) {
 	cases := []struct {
 		name        string
-		cfg         protocol.KeepAliveConfig
+		cfg         consumer.KeepAliveConfig
 		wantInt     time.Duration
 		wantTimeout time.Duration
 	}{
 		{
 			name:        "zero/zero -> defaults",
-			cfg:         protocol.KeepAliveConfig{},
+			cfg:         consumer.KeepAliveConfig{},
 			wantInt:     defaultKeepAliveInterval,
 			wantTimeout: 3 * defaultKeepAliveInterval,
 		},
 		{
 			name:        "explicit interval -> 3x default timeout",
-			cfg:         protocol.KeepAliveConfig{Interval: 2 * time.Second},
+			cfg:         consumer.KeepAliveConfig{Interval: 2 * time.Second},
 			wantInt:     2 * time.Second,
 			wantTimeout: 6 * time.Second,
 		},
 		{
 			name:        "explicit interval + explicit timeout",
-			cfg:         protocol.KeepAliveConfig{Interval: 2 * time.Second, Timeout: 30 * time.Second},
+			cfg:         consumer.KeepAliveConfig{Interval: 2 * time.Second, Timeout: 30 * time.Second},
 			wantInt:     2 * time.Second,
 			wantTimeout: 30 * time.Second,
 		},
 		{
 			name:        "DisableInterval -> no probes, default timeout",
-			cfg:         protocol.KeepAliveConfig{Interval: protocol.DisableInterval},
+			cfg:         consumer.KeepAliveConfig{Interval: consumer.DisableInterval},
 			wantInt:     0,
 			wantTimeout: defaultKeepAliveTimeout,
 		},
 		{
 			name:        "DisableTimeout -> probes only",
-			cfg:         protocol.KeepAliveConfig{Interval: 5 * time.Second, Timeout: protocol.DisableTimeout},
+			cfg:         consumer.KeepAliveConfig{Interval: 5 * time.Second, Timeout: consumer.DisableTimeout},
 			wantInt:     5 * time.Second,
 			wantTimeout: 0,
 		},
 		{
 			name:        "DisableInterval + DisableTimeout -> fully off",
-			cfg:         protocol.KeepAliveConfig{Interval: protocol.DisableInterval, Timeout: protocol.DisableTimeout},
+			cfg:         consumer.KeepAliveConfig{Interval: consumer.DisableInterval, Timeout: consumer.DisableTimeout},
 			wantInt:     0,
 			wantTimeout: 0,
 		},
@@ -82,7 +82,7 @@ func TestSessionLive_NoSink(t *testing.T) {
 func TestSessionLive_NoTimeout(t *testing.T) {
 	p := &Plugin{
 		tsSink: &timestampSink{},
-		kaCfg:  protocol.KeepAliveConfig{Timeout: protocol.DisableTimeout},
+		kaCfg:  consumer.KeepAliveConfig{Timeout: consumer.DisableTimeout},
 	}
 	if !p.SessionLive() {
 		t.Error("SessionLive should be true when timeout is disabled")
@@ -94,7 +94,7 @@ func TestSessionLive_NoTimeout(t *testing.T) {
 func TestSessionLive_FreshThenStale(t *testing.T) {
 	p := &Plugin{
 		tsSink: &timestampSink{},
-		kaCfg:  protocol.KeepAliveConfig{Interval: 100 * time.Millisecond, Timeout: 250 * time.Millisecond},
+		kaCfg:  consumer.KeepAliveConfig{Interval: 100 * time.Millisecond, Timeout: 250 * time.Millisecond},
 	}
 	// Prime — same trick the real Connect path uses to skip the
 	// connect-to-first-rx grace window.

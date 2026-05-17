@@ -7,22 +7,22 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func TestHealthFlipped(t *testing.T) {
-	base := protocol.SessionHealth{Reachable: true, Connected: true, Live: true}
+	base := consumer.SessionHealth{Reachable: true, Connected: true, Live: true}
 
 	cases := []struct {
 		name string
-		cur  protocol.SessionHealth
+		cur  consumer.SessionHealth
 		want bool
 	}{
 		{"identical", base, false},
-		{"reachable-flipped", protocol.SessionHealth{Reachable: false, Connected: true, Live: true}, true},
-		{"connected-flipped", protocol.SessionHealth{Reachable: true, Connected: false, Live: true}, true},
-		{"live-flipped", protocol.SessionHealth{Reachable: true, Connected: true, Live: false}, true},
-		{"all-flipped", protocol.SessionHealth{}, true},
+		{"reachable-flipped", consumer.SessionHealth{Reachable: false, Connected: true, Live: true}, true},
+		{"connected-flipped", consumer.SessionHealth{Reachable: true, Connected: false, Live: true}, true},
+		{"live-flipped", consumer.SessionHealth{Reachable: true, Connected: true, Live: false}, true},
+		{"all-flipped", consumer.SessionHealth{}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -38,11 +38,11 @@ func TestHealthFlipped_TimestampChangesIgnored(t *testing.T) {
 	// Timestamps moving forward without bit-flips should NOT count as a
 	// transition. Only the 3 layer bools matter.
 	t0 := time.Now()
-	prev := protocol.SessionHealth{
+	prev := consumer.SessionHealth{
 		Reachable: true, Connected: true, Live: true,
 		LastRx: t0,
 	}
-	cur := protocol.SessionHealth{
+	cur := consumer.SessionHealth{
 		Reachable: true, Connected: true, Live: true,
 		LastRx: t0.Add(time.Second),
 	}
@@ -53,7 +53,7 @@ func TestHealthFlipped_TimestampChangesIgnored(t *testing.T) {
 
 func TestPrintHealth_Text(t *testing.T) {
 	var buf bytes.Buffer
-	h := protocol.SessionHealth{
+	h := consumer.SessionHealth{
 		Reachable:  true,
 		Connected:  true,
 		Live:       false,
@@ -80,7 +80,7 @@ func TestPrintHealth_Text(t *testing.T) {
 
 func TestPrintHealth_JSON(t *testing.T) {
 	var buf bytes.Buffer
-	h := protocol.SessionHealth{
+	h := consumer.SessionHealth{
 		Reachable:  true,
 		Connected:  false,
 		Live:       false,

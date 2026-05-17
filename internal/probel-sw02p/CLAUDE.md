@@ -13,7 +13,7 @@ quirks.
 internal/probel-sw02p/
 ├── CLAUDE.md    ← this file
 ├── codec/       stdlib-only byte codec (lift-to-own-repo ready)
-├── consumer/    package probelsw02p — implements protocol.Protocol
+├── consumer/    package probelsw02p — implements consumer.Protocol
 ├── provider/    package probelsw02p — implements provider.Provider
 ├── wireshark/   Lua dissector (landed; covers all 33 bytes)
 └── assets/      SW-P-02 spec (Issue 26 .doc + antiword-extracted .txt)

@@ -12,6 +12,6 @@
 // v5 TCP adds a DLE(0xFE)/STX(0x02) wrapper + 0xFE byte stuffing around
 // the packet — handled by a separate DLE/STX framer.
 //
-// Spec source: internal/tsl/assets/tsl-umd-protocol.txt (pdftotext
+// Spec source: internal/tsl/assets/tsl-umd-consumer.txt (pdftotext
 // extract of the TSL UMD Protocol PDF).
 package codec

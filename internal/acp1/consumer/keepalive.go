@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 
 	"dhs/internal/acp1/codec"
 )
@@ -27,7 +27,7 @@ const (
 // by the Plugin under p.mu; methods take the lock themselves where
 // they don't already hold it.
 type keepAliveState struct {
-	cfg protocol.KeepAliveConfig
+	cfg consumer.KeepAliveConfig
 
 	// done closes when the loops should exit (Disconnect path).
 	done chan struct{}
@@ -42,12 +42,12 @@ type keepAliveState struct {
 // SetKeepAlive applies the operator's --keepalive / --keepalive-timeout
 // choice. Must be called before Connect. Default values fill in for
 // any zero-valued field; sentinel constants
-// (protocol.DisableInterval / DisableTimeout) turn the prober and
+// (consumer.DisableInterval / DisableTimeout) turn the prober and
 // the watchdog off respectively.
 //
-// Implements protocol.KeepAliver — the cross-protocol contract the
+// Implements consumer.KeepAliver — the cross-protocol contract the
 // CLI uses to push the same flags into every plugin uniformly.
-func (p *Plugin) SetKeepAlive(cfg protocol.KeepAliveConfig) {
+func (p *Plugin) SetKeepAlive(cfg consumer.KeepAliveConfig) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.kaCfg = cfg
@@ -60,7 +60,7 @@ func (p *Plugin) resolvedKeepAlive() (interval, timeout time.Duration) {
 	switch p.kaCfg.Interval {
 	case 0:
 		interval = defaultKeepAliveInterval
-	case protocol.DisableInterval:
+	case consumer.DisableInterval:
 		interval = 0
 	default:
 		interval = p.kaCfg.Interval
@@ -72,7 +72,7 @@ func (p *Plugin) resolvedKeepAlive() (interval, timeout time.Duration) {
 		} else {
 			timeout = defaultKeepAliveTimeout
 		}
-	case protocol.DisableTimeout:
+	case consumer.DisableTimeout:
 		timeout = 0
 	default:
 		timeout = p.kaCfg.Timeout
@@ -85,7 +85,7 @@ func (p *Plugin) resolvedKeepAlive() (interval, timeout time.Duration) {
 // to drive the freshness column: live = true → freshness=live, false
 // → freshness=cache.
 //
-// Implements protocol.SessionLiveAccessor.
+// Implements consumer.SessionLiveAccessor.
 func (p *Plugin) SessionLive() bool {
 	p.mu.Lock()
 	sink := p.tsSink

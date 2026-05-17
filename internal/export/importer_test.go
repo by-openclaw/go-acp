@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
-// countingPlugin satisfies protocol.Protocol and counts Walk + SetValue
+// countingPlugin satisfies consumer.Protocol and counts Walk + SetValue
 // calls so tests can assert which device-touching paths Apply took.
 // validateErr (if set) is returned by ValidateValue — used by tests
 // that exercise the ValueValidator skip path.
@@ -21,28 +21,28 @@ type countingPlugin struct {
 
 func (p *countingPlugin) Connect(context.Context, string, int) error { return nil }
 func (p *countingPlugin) Disconnect() error                          { return nil }
-func (p *countingPlugin) GetDeviceInfo(context.Context) (protocol.DeviceInfo, error) {
-	return protocol.DeviceInfo{}, nil
+func (p *countingPlugin) GetDeviceInfo(context.Context) (consumer.DeviceInfo, error) {
+	return consumer.DeviceInfo{}, nil
 }
-func (p *countingPlugin) GetSlotInfo(context.Context, int) (protocol.SlotInfo, error) {
-	return protocol.SlotInfo{}, nil
+func (p *countingPlugin) GetSlotInfo(context.Context, int) (consumer.SlotInfo, error) {
+	return consumer.SlotInfo{}, nil
 }
-func (p *countingPlugin) Walk(context.Context, int) ([]protocol.Object, error) {
+func (p *countingPlugin) Walk(context.Context, int) ([]consumer.Object, error) {
 	p.walkCalls++
 	return nil, nil
 }
-func (p *countingPlugin) GetValue(context.Context, protocol.ValueRequest) (protocol.Value, error) {
-	return protocol.Value{}, nil
+func (p *countingPlugin) GetValue(context.Context, consumer.ValueRequest) (consumer.Value, error) {
+	return consumer.Value{}, nil
 }
-func (p *countingPlugin) SetValue(context.Context, protocol.ValueRequest, protocol.Value) (protocol.Value, error) {
+func (p *countingPlugin) SetValue(context.Context, consumer.ValueRequest, consumer.Value) (consumer.Value, error) {
 	p.setCalls++
-	return protocol.Value{}, nil
+	return consumer.Value{}, nil
 }
-func (p *countingPlugin) Subscribe(protocol.ValueRequest, protocol.EventFunc) error { return nil }
-func (p *countingPlugin) Unsubscribe(protocol.ValueRequest) error                   { return nil }
+func (p *countingPlugin) Subscribe(consumer.ValueRequest, consumer.EventFunc) error { return nil }
+func (p *countingPlugin) Unsubscribe(consumer.ValueRequest) error                   { return nil }
 
-// ValidateValue makes countingPlugin satisfy protocol.ValueValidator.
-func (p *countingPlugin) ValidateValue(context.Context, protocol.ValueRequest, protocol.Value) error {
+// ValidateValue makes countingPlugin satisfy consumer.ValueValidator.
+func (p *countingPlugin) ValidateValue(context.Context, consumer.ValueRequest, consumer.Value) error {
 	p.validateCalls++
 	return p.validateErr
 }
@@ -57,25 +57,25 @@ type nonValidatorPlugin struct {
 
 func (p *nonValidatorPlugin) Connect(context.Context, string, int) error { return nil }
 func (p *nonValidatorPlugin) Disconnect() error                          { return nil }
-func (p *nonValidatorPlugin) GetDeviceInfo(context.Context) (protocol.DeviceInfo, error) {
-	return protocol.DeviceInfo{}, nil
+func (p *nonValidatorPlugin) GetDeviceInfo(context.Context) (consumer.DeviceInfo, error) {
+	return consumer.DeviceInfo{}, nil
 }
-func (p *nonValidatorPlugin) GetSlotInfo(context.Context, int) (protocol.SlotInfo, error) {
-	return protocol.SlotInfo{}, nil
+func (p *nonValidatorPlugin) GetSlotInfo(context.Context, int) (consumer.SlotInfo, error) {
+	return consumer.SlotInfo{}, nil
 }
-func (p *nonValidatorPlugin) Walk(context.Context, int) ([]protocol.Object, error) {
+func (p *nonValidatorPlugin) Walk(context.Context, int) ([]consumer.Object, error) {
 	p.walkCalls++
 	return nil, nil
 }
-func (p *nonValidatorPlugin) GetValue(context.Context, protocol.ValueRequest) (protocol.Value, error) {
-	return protocol.Value{}, nil
+func (p *nonValidatorPlugin) GetValue(context.Context, consumer.ValueRequest) (consumer.Value, error) {
+	return consumer.Value{}, nil
 }
-func (p *nonValidatorPlugin) SetValue(context.Context, protocol.ValueRequest, protocol.Value) (protocol.Value, error) {
+func (p *nonValidatorPlugin) SetValue(context.Context, consumer.ValueRequest, consumer.Value) (consumer.Value, error) {
 	p.setCalls++
-	return protocol.Value{}, nil
+	return consumer.Value{}, nil
 }
-func (p *nonValidatorPlugin) Subscribe(protocol.ValueRequest, protocol.EventFunc) error { return nil }
-func (p *nonValidatorPlugin) Unsubscribe(protocol.ValueRequest) error                   { return nil }
+func (p *nonValidatorPlugin) Subscribe(consumer.ValueRequest, consumer.EventFunc) error { return nil }
+func (p *nonValidatorPlugin) Unsubscribe(consumer.ValueRequest) error                   { return nil }
 
 func snapshotForTest(proto string) *Snapshot {
 	return &Snapshot{
@@ -83,14 +83,14 @@ func snapshotForTest(proto string) *Snapshot {
 		Slots: []SlotDump{
 			{
 				Slot: 1,
-				Objects: []protocol.Object{
+				Objects: []consumer.Object{
 					{ID: 67604, Path: []string{"OUTPUT", "IP", "VIDEO", "STREAM 1", "LEG 1", "Destination IP"},
-						Kind: protocol.KindString, Access: 0x03,
-						Value: protocol.Value{Kind: protocol.KindString, Str: "239.129.1.20"}},
+						Kind: consumer.KindString, Access: 0x03,
+						Value: consumer.Value{Kind: consumer.KindString, Str: "239.129.1.20"}},
 					{ID: 67605, Path: []string{"OUTPUT", "IP", "VIDEO", "STREAM 1", "LEG 1", "Destination Port"},
-						Kind: protocol.KindInt, Access: 0x03,
-						Value: protocol.Value{Kind: protocol.KindInt, Int: 12700}},
-					{ID: 99, Path: []string{"READ_ONLY"}, Kind: protocol.KindString, Access: 0x01},
+						Kind: consumer.KindInt, Access: 0x03,
+						Value: consumer.Value{Kind: consumer.KindInt, Int: 12700}},
+					{ID: 99, Path: []string{"READ_ONLY"}, Kind: consumer.KindString, Access: 0x01},
 				},
 			},
 		},
@@ -172,7 +172,7 @@ func TestApply_ACP1_ApplySkipsWalk(t *testing.T) {
 // importer must skip the row with reason "not_found" and never call
 // SetValue.
 func TestApply_ValidateNotFound_SkipsRow(t *testing.T) {
-	p := &countingPlugin{validateErr: protocol.ErrObjectNotFound}
+	p := &countingPlugin{validateErr: consumer.ErrObjectNotFound}
 	rep, err := Apply(context.Background(), p, snapshotForTest("acp2"), false)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
@@ -202,7 +202,7 @@ func TestApply_ValidateFailed_SkipsRow(t *testing.T) {
 	wrapped := errors.New("enum not in options")
 	p := &countingPlugin{
 		// wrap so errors.Is works the same way the importer expects.
-		validateErr: errors.Join(protocol.ErrValidationFailed, wrapped),
+		validateErr: errors.Join(consumer.ErrValidationFailed, wrapped),
 	}
 	rep, err := Apply(context.Background(), p, snapshotForTest("acp2"), true)
 	if err != nil {

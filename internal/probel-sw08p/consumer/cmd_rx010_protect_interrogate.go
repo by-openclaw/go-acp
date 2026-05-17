@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // ProtectInterrogate asks the matrix "what is the protect state of this
@@ -33,7 +33,7 @@ func (p *Plugin) ProtectInterrogate(
 	}
 	t, derr := codec.DecodeProtectTally(reply)
 	if derr != nil {
-		return codec.ProtectTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.ProtectTallyParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return t, nil
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/emberplus/codec/glow"
 )
 
@@ -14,18 +14,18 @@ import (
 // that case (no diff to show).
 //
 // The canonical field set matches the one documented on
-// protocol.FieldChange. Stable order for deterministic rendering.
-func diffParameters(prev, next *glow.Parameter) []protocol.FieldChange {
+// consumer.FieldChange. Stable order for deterministic rendering.
+func diffParameters(prev, next *glow.Parameter) []consumer.FieldChange {
 	if prev == nil || next == nil {
 		return nil
 	}
-	var out []protocol.FieldChange
+	var out []consumer.FieldChange
 
 	add := func(name, old, newVal string) {
 		if old == newVal {
 			return
 		}
-		out = append(out, protocol.FieldChange{Name: name, Old: old, New: newVal})
+		out = append(out, consumer.FieldChange{Name: name, Old: old, New: newVal})
 	}
 
 	// Value — stringify generically; real-number tolerance is left

@@ -2,13 +2,13 @@ package probelsw08p
 
 // Compliance event labels — per-spec named deviations the Probel
 // provider observes on inbound traffic. Same philosophy as the
-// consumer side (internal/protocol/probel/compliance_events.go):
+// consumer side (internal/consumer/probel/compliance_events.go):
 // absorb + fire event; never silently work around. See
 // memory/feedback_no_workaround.md §7–9.
 //
 // Authoritative spec: internal/probel-sw08p/assets/probel-sw08p/SW-P-08 Issue 30.doc.
 //
-// The generic Profile counter lives in internal/protocol/compliance/.
+// The generic Profile counter lives in internal/consumer/compliance/.
 // Aggregated across every accepted session since Serve started.
 //
 // Adding a new label is an API change — downstream tooling may

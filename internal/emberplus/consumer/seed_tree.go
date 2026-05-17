@@ -7,11 +7,11 @@ import (
 
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/matrix"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // SeedTreeFromCachedObjects rehydrates the in-RAM tree from a slice of
-// canonical protocol.Object loaded from .cache/dm/emberplus/<identity>.json
+// canonical consumer.Object loaded from .cache/dm/emberplus/<identity>.json
 // (per ADR-0022). Each Object carries an Ember+-specific Meta map written
 // by the walker (nodeMeta / parameterMeta / matrixMeta / functionMeta);
 // this method reads those keys back into minimal glow.Node / glow.Parameter
@@ -47,7 +47,7 @@ import (
 // The contract mirrors ACP2's SeedTreeFromCachedObjects (#363): seed
 // enough structure for the watch/get/set/matrix paths to function;
 // per-value enrichment continues live.
-func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
+func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []consumer.Object) {
 	if slot != 0 {
 		return
 	}
@@ -111,7 +111,7 @@ func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
 // seedOneEntry rebuilds the appropriate glow.* struct for one Object
 // based on its Meta["element"] discriminator. Unknown / missing element
 // returns nil — caller skips it.
-func (p *Plugin) seedOneEntry(o protocol.Object, now time.Time) *treeEntry {
+func (p *Plugin) seedOneEntry(o consumer.Object, now time.Time) *treeEntry {
 	numericPath := parseNumericOID(o.OID)
 	if len(numericPath) == 0 {
 		return nil
@@ -443,7 +443,7 @@ func decodeInt32Slice(v any) []int32 {
 // internal/emberplus/CLAUDE.md "Quirks / landmines", so a stub
 // Template{Path, Qualified, Description} is enough for current
 // callers of ResolveTemplate.
-func (p *Plugin) seedTemplate(o protocol.Object) {
+func (p *Plugin) seedTemplate(o consumer.Object) {
 	if o.OID == "" {
 		return
 	}

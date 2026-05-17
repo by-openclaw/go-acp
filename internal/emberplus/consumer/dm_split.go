@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"dhs/internal/export/canonical"
-	"dhs/internal/storage"
+	"dhs/internal/datastore"
 )
 
 // SplitAndPersistDM walks the canonical tree, identifies every "slot"
@@ -46,7 +46,7 @@ type SlotRef struct {
 // Returns the list of slot refs persisted (for manifest writer /
 // logger). On any per-slot save error the partial list is returned
 // alongside the error so the caller can decide whether to keep going.
-func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *storage.TreeStore, providerIdentity string) ([]SlotRef, error) {
+func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *datastore.TreeStore, providerIdentity string) ([]SlotRef, error) {
 	tree, err := p.ExportCanonical(ctx)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *storage.TreeStore
 	if !ok {
 		// Single matrix at root (very unusual). Persist as one DM
 		// keyed by providerIdentity itself — degenerate but valid.
-		if err := store.WriteDM("emberplus", providerIdentity, storage.DM{
+		if err := store.WriteDM("emberplus", providerIdentity, datastore.DM{
 			Protocol: "emberplus",
 			Root:     tree.Root,
 		}); err != nil {
@@ -87,7 +87,7 @@ func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *storage.TreeStore
 			continue
 		}
 		slotIdentity := nodeChild.Identifier + "@" + swRev
-		if err := store.WriteDM("emberplus", slotIdentity, storage.DM{
+		if err := store.WriteDM("emberplus", slotIdentity, datastore.DM{
 			Protocol: "emberplus",
 			Root:     nodeChild,
 		}); err != nil {
@@ -141,7 +141,7 @@ func subtreeIsSlotWorthy(n *canonical.Node) bool {
 	return false
 }
 
-// splitIdentityForSplit duplicates storage.splitIdentity (private
+// splitIdentityForSplit duplicates datastore.splitIdentity (private
 // there). Returns (model, swRev) split on the LAST '@'.
 func splitIdentityForSplit(identity string) (string, string) {
 	i := strings.LastIndex(identity, "@")

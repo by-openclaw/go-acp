@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // ProtectConnect requests protection on (matrix, level, dst) owned by
@@ -33,7 +33,7 @@ func (p *Plugin) ProtectConnect(
 	}
 	c, derr := codec.DecodeProtectConnected(reply)
 	if derr != nil {
-		return codec.ProtectConnectedParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.ProtectConnectedParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return c, nil
 }

@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TestFilter_EmptyPassesEverything — nil filter and zero-value filter
@@ -137,7 +137,7 @@ func TestFilter_NoMatches(t *testing.T) {
 // without ApplyFilter. Useful for future callers (REST API) that want
 // to evaluate filter membership per object.
 func TestFilter_MatchesHelper(t *testing.T) {
-	obj := protocol.Object{
+	obj := consumer.Object{
 		ID:    42,
 		Label: "Gain",
 		Path:  []string{"BOARD", "Gain"},

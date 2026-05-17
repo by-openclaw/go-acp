@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // ReadYAML parses a YAML snapshot produced by WriteYAML. This is NOT a
@@ -29,7 +29,7 @@ func ReadYAML(r io.Reader) (*Snapshot, error) {
 	var (
 		section  string // "device", "slots"
 		curSlot  *SlotDump
-		curObj   *protocol.Object
+		curObj   *consumer.Object
 		curGroup string // current group name (identity, control, ...)
 
 		// Hierarchical (ACP2) state: track nested path by indent.
@@ -135,7 +135,7 @@ func ReadYAML(r io.Reader) (*Snapshot, error) {
 		// --- Flat format: object list entry (indent 6, starts with "- "). ---
 		if section == "slots" && indent == 6 && strings.HasPrefix(trimmed, "- ") && !hierMode {
 			flushObj(&curSlot.Objects, curObj)
-			curObj = &protocol.Object{
+			curObj = &consumer.Object{
 				Slot:  curSlot.Slot,
 				Group: curGroup,
 				Path:  []string{curGroup},
@@ -181,7 +181,7 @@ func ReadYAML(r io.Reader) (*Snapshot, error) {
 
 				// Create object — will be filled by subsequent
 				// property lines. Label is the key itself.
-				curObj = &protocol.Object{
+				curObj = &consumer.Object{
 					Slot:  curSlot.Slot,
 					Label: unquote(key),
 					Group: curGroup,
@@ -206,8 +206,8 @@ func ReadYAML(r io.Reader) (*Snapshot, error) {
 	return snap, nil
 }
 
-// applyObjectField sets one key:value pair on a protocol.Object.
-func applyObjectField(o *protocol.Object, key, val string) {
+// applyObjectField sets one key:value pair on a consumer.Object.
+func applyObjectField(o *consumer.Object, key, val string) {
 	switch key {
 	case "label":
 		o.Label = unquote(val)
@@ -258,22 +258,22 @@ func applyObjectField(o *protocol.Object, key, val string) {
 }
 
 // applyValue sets the Object's Value field from a YAML scalar.
-func applyValue(o *protocol.Object, val string) {
+func applyValue(o *consumer.Object, val string) {
 	o.Value.Kind = o.Kind
 	s := unquote(val)
 	switch o.Kind {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		o.Value.Int, _ = strconv.ParseInt(s, 10, 64)
-	case protocol.KindUint:
+	case consumer.KindUint:
 		o.Value.Uint, _ = strconv.ParseUint(s, 10, 64)
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		o.Value.Float, _ = strconv.ParseFloat(s, 64)
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		n, _ := strconv.Atoi(s)
 		o.Value.Enum = uint8(n)
-	case protocol.KindString:
+	case consumer.KindString:
 		o.Value.Str = s
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		var a, b, c, d uint8
 		_, _ = fmt.Sscanf(s, "%d.%d.%d.%d", &a, &b, &c, &d)
 		o.Value.IPAddr = [4]byte{a, b, c, d}
@@ -281,7 +281,7 @@ func applyValue(o *protocol.Object, val string) {
 }
 
 // flushObj appends a completed object to the slice if non-nil.
-func flushObj(objs *[]protocol.Object, o *protocol.Object) {
+func flushObj(objs *[]consumer.Object, o *consumer.Object) {
 	if o != nil {
 		*objs = append(*objs, *o)
 	}

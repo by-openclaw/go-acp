@@ -48,5 +48,5 @@
 // repeatedly with the same Versioned instance is a no-op. Registering
 // a different instance under the same (SpecID, APIVer) key is a
 // programming error and panics — same semantics as
-// [internal/protocol].Register.
+// [internal/consumer].Register.
 package spec

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // SalvoGo fires a salvo group: op=SalvoOpSet applies the stored routes,
@@ -30,7 +30,7 @@ func (p *Plugin) SalvoGo(
 	}
 	ack, derr := codec.DecodeSalvoGoDoneAck(reply)
 	if derr != nil {
-		return codec.SalvoGoDoneAckParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.SalvoGoDoneAckParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return ack, nil
 }

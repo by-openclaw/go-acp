@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // csvHeader is the fixed column order every row follows. Adding a
@@ -63,7 +63,7 @@ func WriteCSV(w io.Writer, s *Snapshot) error {
 			for _, o := range groups.items[gname] {
 				// Skip container nodes (kind=raw) — they have no
 				// value and exist only as tree structure in ACP2.
-				if o.Kind == protocol.KindRaw {
+				if o.Kind == consumer.KindRaw {
 					continue
 				}
 				row := buildCSVRow(s.Device, slot, o)
@@ -77,9 +77,9 @@ func WriteCSV(w io.Writer, s *Snapshot) error {
 	return cw.Error()
 }
 
-// buildCSVRow maps one protocol.Object to a flat []string matching
+// buildCSVRow maps one consumer.Object to a flat []string matching
 // csvHeader. Missing fields become empty strings.
-func buildCSVRow(dev DeviceInfo, slot SlotDump, o protocol.Object) []string {
+func buildCSVRow(dev DeviceInfo, slot SlotDump, o consumer.Object) []string {
 	row := make([]string, len(csvHeader))
 	// ip, protocol, slot, oid, path
 	row[0] = dev.IP
@@ -107,7 +107,7 @@ func buildCSVRow(dev DeviceInfo, slot SlotDump, o protocol.Object) []string {
 		row[17] = strconv.Itoa(o.MaxLen)
 	}
 	// alarm
-	if o.Kind == protocol.KindAlarm {
+	if o.Kind == consumer.KindAlarm {
 		row[18] = strconv.Itoa(int(o.AlarmPriority))
 		row[19] = fmt.Sprintf("0x%02X", o.AlarmTag)
 		row[20] = o.AlarmOnMsg
@@ -124,7 +124,7 @@ func buildCSVRow(dev DeviceInfo, slot SlotDump, o protocol.Object) []string {
 // level) this is usually just "control" / "status" / "identity" /
 // "alarm" / "frame". Falls back to the legacy Group field when Path is
 // empty.
-func joinPath(o protocol.Object) string {
+func joinPath(o consumer.Object) string {
 	if len(o.Path) > 0 {
 		return strings.Join(o.Path, ".")
 	}
@@ -134,23 +134,23 @@ func joinPath(o protocol.Object) string {
 // valueAndName renders the object's current value into the CSV's
 // (value, value_name) column pair. value_name is the human-readable
 // form for enums; empty otherwise.
-func valueAndName(o protocol.Object) (string, string) {
+func valueAndName(o consumer.Object) (string, string) {
 	v := o.Value
 	switch v.Kind {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		return strconv.FormatInt(v.Int, 10), ""
-	case protocol.KindUint:
+	case consumer.KindUint:
 		return strconv.FormatUint(v.Uint, 10), ""
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return strconv.FormatFloat(v.Float, 'g', -1, 64), ""
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		return strconv.Itoa(int(v.Enum)), v.Str
-	case protocol.KindString:
+	case consumer.KindString:
 		return v.Str, ""
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		return fmt.Sprintf("%d.%d.%d.%d",
 			v.IPAddr[0], v.IPAddr[1], v.IPAddr[2], v.IPAddr[3]), ""
-	case protocol.KindFrame:
+	case consumer.KindFrame:
 		return "", ""
 	}
 	return "", ""
@@ -158,7 +158,7 @@ func valueAndName(o protocol.Object) (string, string) {
 
 // slotStatusPipe renders a SlotStatus slice as a pipe-separated string
 // of human-readable names: "present|error|boot_mode|...".
-func slotStatusPipe(statuses []protocol.SlotStatus) string {
+func slotStatusPipe(statuses []consumer.SlotStatus) string {
 	if len(statuses) == 0 {
 		return ""
 	}
@@ -188,27 +188,27 @@ func numStr(v any) string {
 
 // kindName mirrors the CLI helper — duplicated here to keep the export
 // package self-contained (no import from cmd/acp).
-func kindName(k protocol.ValueKind) string {
+func kindName(k consumer.ValueKind) string {
 	switch k {
-	case protocol.KindBool:
+	case consumer.KindBool:
 		return "bool"
-	case protocol.KindInt:
+	case consumer.KindInt:
 		return "int"
-	case protocol.KindUint:
+	case consumer.KindUint:
 		return "uint"
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return "float"
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		return "enum"
-	case protocol.KindString:
+	case consumer.KindString:
 		return "string"
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		return "ipaddr"
-	case protocol.KindAlarm:
+	case consumer.KindAlarm:
 		return "alarm"
-	case protocol.KindFrame:
+	case consumer.KindFrame:
 		return "frame"
-	case protocol.KindRaw:
+	case consumer.KindRaw:
 		return "raw"
 	default:
 		return "unknown"

@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // acp1StaleAfter is the rolling-window threshold past which the device
@@ -73,7 +73,7 @@ func (t *timestampingTransport) Close() error { return t.inner.Close() }
 // SessionHealth implements the cross-protocol HealthChecker (#248).
 // Maps the 3 layers (Reachable / Connected / Live) onto ACP1's
 // transport mix per the design table.
-func (p *Plugin) SessionHealth(ctx context.Context) protocol.SessionHealth {
+func (p *Plugin) SessionHealth(ctx context.Context) consumer.SessionHealth {
 	p.mu.Lock()
 	c := p.client
 	host := p.host
@@ -82,7 +82,7 @@ func (p *Plugin) SessionHealth(ctx context.Context) protocol.SessionHealth {
 	sink := p.tsSink
 	p.mu.Unlock()
 
-	out := protocol.SessionHealth{
+	out := consumer.SessionHealth{
 		StaleAfter: acp1StaleAfter,
 	}
 	if sink != nil {

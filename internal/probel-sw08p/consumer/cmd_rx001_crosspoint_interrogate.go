@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // CrosspointInterrogate queries the current source routed to one
@@ -34,7 +34,7 @@ func (p *Plugin) CrosspointInterrogate(
 	}
 	t, derr := codec.DecodeCrosspointTally(reply)
 	if derr != nil {
-		return codec.CrosspointTallyParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.CrosspointTallyParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return t, nil
 }

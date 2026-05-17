@@ -6,15 +6,15 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 )
 
 // Compile-time assertion: probel-sw08p Plugin satisfies
-// protocol.Validator so `dhs consumer probel-sw08p validate
+// consumer.Validator so `dhs consumer probel-sw08p validate
 // <frames.jsonl>` resolves cleanly at the CLI type-assert
 // (cmd/dhs/cmd_validate.go).
-var _ protocol.Validator = (*Plugin)(nil)
+var _ consumer.Validator = (*Plugin)(nil)
 
 // Validate decodes captured SW-P-08 wire-trace records (Trames per
 // ADR-0021) through the codec.Unpack framer + checksum verification,
@@ -35,8 +35,8 @@ var _ protocol.Validator = (*Plugin)(nil)
 // they'll dispatch to Canonicalize() in a follow-up PR once the
 // consumer aggregates per-crosspoint state from cmd 003 / cmd 022 /
 // cmd 023 tally traffic.
-func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts protocol.ValidateOpts) (*protocol.ValidateReport, error) {
-	report := &protocol.ValidateReport{
+func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts consumer.ValidateOpts) (*consumer.ValidateReport, error) {
+	report := &consumer.ValidateReport{
 		PerDirection: map[wiretrace.Direction]int{},
 	}
 
@@ -51,7 +51,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		raw, err := hex.DecodeString(t.Hex)
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				Err:        fmt.Sprintf("hex decode: %v", err),
@@ -76,7 +76,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		frame, _, err := codec.Unpack(raw)
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				HexPrefix:  shortHex(raw),

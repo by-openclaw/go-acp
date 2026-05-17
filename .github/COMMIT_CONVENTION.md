@@ -23,13 +23,13 @@
 
 | Scope | Package |
 |-------|---------|
-| `acp1` | `internal/protocol/acp1/` |
-| `acp2` | `internal/protocol/acp2/` |
+| `acp1` | `internal/consumer/acp1/` |
+| `acp2` | `internal/consumer/acp2/` |
 | `transport` | `internal/transport/` |
 | `export` | `internal/export/` |
 | `cli` | `cmd/acp/` |
 | `api` | `cmd/acp-srv/`, `api/` |
-| `core` | `internal/protocol/` (shared types) |
+| `core` | `internal/consumer/` (shared types) |
 | `ci` | `.github/workflows/` |
 
 ## Examples

@@ -8,7 +8,7 @@ package probelsw08p
 //
 // Authoritative spec: internal/probel-sw08p/assets/probel-sw08p/SW-P-08 Issue 30.doc.
 //
-// The generic Profile counter lives in internal/protocol/compliance/.
+// The generic Profile counter lives in internal/consumer/compliance/.
 // Classification:
 //   - strict  : zero events fired this session
 //   - partial : one or more events fired, all within tolerance

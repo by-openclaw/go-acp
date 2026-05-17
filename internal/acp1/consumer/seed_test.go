@@ -8,10 +8,10 @@ import (
 
 	"dhs/internal/acp1/codec"
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
-func makeSeedSnapshot(slot int, objs []protocol.Object) *export.Snapshot {
+func makeSeedSnapshot(slot int, objs []consumer.Object) *export.Snapshot {
 	return &export.Snapshot{
 		Device: export.DeviceInfo{IP: "10.6.239.113", Protocol: "acp1"},
 		Slots: []export.SlotDump{{
@@ -29,10 +29,10 @@ func TestSeedFromDM_PopulatesTreeAndLabels(t *testing.T) {
 		trees:  newSlotTreeCache(8, time.Hour),
 	}
 
-	snap := makeSeedSnapshot(1, []protocol.Object{
-		{Slot: 1, Group: "identity", ID: 0, Label: "Card Name", Kind: protocol.KindString},
-		{Slot: 1, Group: "control", ID: 5, Label: "Gain", Kind: protocol.KindFloat, Unit: "dB"},
-		{Slot: 1, Group: "status", ID: 0, Label: "Pct", Kind: protocol.KindUint, Unit: "%"},
+	snap := makeSeedSnapshot(1, []consumer.Object{
+		{Slot: 1, Group: "identity", ID: 0, Label: "Card Name", Kind: consumer.KindString},
+		{Slot: 1, Group: "control", ID: 5, Label: "Gain", Kind: consumer.KindFloat, Unit: "dB"},
+		{Slot: 1, Group: "status", ID: 0, Label: "Pct", Kind: consumer.KindUint, Unit: "%"},
 	})
 
 	if err := p.SeedFromDM(1, snap); err != nil {
@@ -74,11 +74,11 @@ func TestSeedFromDM_StripsValues(t *testing.T) {
 		trees:  newSlotTreeCache(8, time.Hour),
 	}
 
-	snap := makeSeedSnapshot(1, []protocol.Object{
+	snap := makeSeedSnapshot(1, []consumer.Object{
 		{
 			Slot: 1, Group: "control", ID: 5, Label: "Gain",
-			Kind:  protocol.KindFloat,
-			Value: protocol.Value{Kind: protocol.KindFloat, Float: -6.0},
+			Kind:  consumer.KindFloat,
+			Value: consumer.Value{Kind: consumer.KindFloat, Float: -6.0},
 		},
 	})
 	if err := p.SeedFromDM(1, snap); err != nil {
@@ -99,9 +99,9 @@ func TestSeedFromDM_MetaACPTypeOverridesKindMapping(t *testing.T) {
 		trees:  newSlotTreeCache(8, time.Hour),
 	}
 
-	snap := makeSeedSnapshot(1, []protocol.Object{
+	snap := makeSeedSnapshot(1, []consumer.Object{
 		{Slot: 1, Group: "control", ID: 5, Label: "Counter",
-			Kind: protocol.KindInt,
+			Kind: consumer.KindInt,
 			Meta: map[string]any{"acp1_type": float64(codec.TypeLong)},
 		},
 	})
@@ -118,7 +118,7 @@ func TestSeedFromDM_NotConnected(t *testing.T) {
 	p := &Plugin{logger: slog.Default()} // p.trees is nil
 	snap := makeSeedSnapshot(1, nil)
 	err := p.SeedFromDM(1, snap)
-	if !errors.Is(err, protocol.ErrNotConnected) {
+	if !errors.Is(err, consumer.ErrNotConnected) {
 		t.Fatalf("err = %v, want ErrNotConnected", err)
 	}
 }
@@ -140,8 +140,8 @@ func TestSeedFromDM_SlotMismatch_FallbackToSingleEntry(t *testing.T) {
 		logger: slog.Default(),
 		trees:  newSlotTreeCache(8, time.Hour),
 	}
-	snap := makeSeedSnapshot(0, []protocol.Object{
-		{Slot: 0, Group: "control", ID: 5, Label: "Gain", Kind: protocol.KindFloat},
+	snap := makeSeedSnapshot(0, []consumer.Object{
+		{Slot: 0, Group: "control", ID: 5, Label: "Gain", Kind: consumer.KindFloat},
 	})
 	if err := p.SeedFromDM(1, snap); err != nil {
 		t.Fatalf("SeedFromDM: %v", err)
@@ -161,8 +161,8 @@ func TestSeedFromDM_MissingSlot_MultiSlotSnapshot(t *testing.T) {
 	snap := &export.Snapshot{
 		Device: export.DeviceInfo{IP: "x", Protocol: "acp1"},
 		Slots: []export.SlotDump{
-			{Slot: 1, Objects: []protocol.Object{{Slot: 1, ID: 1}}},
-			{Slot: 2, Objects: []protocol.Object{{Slot: 2, ID: 1}}},
+			{Slot: 1, Objects: []consumer.Object{{Slot: 1, ID: 1}}},
+			{Slot: 2, Objects: []consumer.Object{{Slot: 2, ID: 1}}},
 		},
 		CreatedAt: time.Now(),
 	}

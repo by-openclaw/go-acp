@@ -43,7 +43,7 @@ func NewRegistry[T Versioned]() *Registry[T] {
 // the same key is a no-op. Calling it with a different instance under
 // an already-registered key panics — that's a programming error
 // (two minor packages claiming the same APIVer, or a typo in
-// SpecID). Same semantics as protocol.Register.
+// SpecID). Same semantics as consumer.Register.
 //
 // Registering codecs for different SpecIDs in the same Registry also
 // panics — Registry is per-spec. The first Register call captures the
