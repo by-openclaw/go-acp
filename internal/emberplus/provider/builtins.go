@@ -199,7 +199,7 @@ func (s *server) makeBuiltinSetLock() FunctionImpl {
 		}
 		oid, _, ok := s.resolveMatrix(matrixRef)
 		if !ok {
-			return []any{false}, nil
+			return nil, fmt.Errorf("setLock: matrix %q not found", matrixRef)
 		}
 		prev := s.locks.set(oid, target, on)
 		return []any{prev}, nil
@@ -219,7 +219,7 @@ func (s *server) makeBuiltinListLocks() FunctionImpl {
 		}
 		oid, _, ok := s.resolveMatrix(matrixRef)
 		if !ok {
-			return []any{""}, nil
+			return nil, fmt.Errorf("listLocks: matrix %q not found", matrixRef)
 		}
 		targets := s.locks.list(oid)
 		parts := make([]string, len(targets))
@@ -262,9 +262,11 @@ func builtinSum(args []any) ([]any, error) {
 // resolveMatrix accepts either a numeric OID ("1.4.3") or a dotted
 // identifier path ("router.nToN.matrix") and returns the canonical OID
 // plus the underlying Matrix element. Returns ("", nil, false) if the
-// ref does not resolve to a Matrix — so storeSalvo/recallSalvo reject
-// attempts against label string params, nodes, or bogus OIDs rather
-// than silently keying into the salvo store.
+// ref does not resolve to a Matrix — every caller (setLock /
+// listLocks / storeSalvo / recallSalvo / listSalvos / getSalvo)
+// surfaces the miss as a *function-level error* so the consumer's
+// InvocationResult carries Success=false rather than a falsy default
+// indistinguishable from a real result. Refs #455.
 func (s *server) resolveMatrix(ref string) (string, *canonical.Matrix, bool) {
 	e, ok := s.tree.lookupOID(ref)
 	if !ok {
@@ -300,7 +302,7 @@ func (s *server) makeBuiltinRecallSalvo() FunctionImpl {
 		}
 		oid, _, ok := s.resolveMatrix(matrixRef)
 		if !ok {
-			return []any{int64(0)}, nil
+			return nil, fmt.Errorf("recallSalvo: matrix %q not found", matrixRef)
 		}
 		conns, ok := s.salvos.recall(oid, salvoID)
 		if !ok {
@@ -361,8 +363,11 @@ func filterConnectionsByTargets(conns []canonical.MatrixConnection, list string)
 //                                  delimited strings.
 //
 // Returns true if at least one connection was stored. False when the
-// matrix resolves but no listed target has any current sources, or the
-// ref does not resolve to a Matrix.
+// matrix resolves but no listed target has any current sources.
+// Returns (nil, err) — i.e. Success=false on the wire — when the ref
+// does not resolve to a Matrix; the consumer must distinguish "no
+// connections to snapshot" (success=true, result=false) from "matrix
+// not found" (success=false). Refs #455.
 func (s *server) makeBuiltinStoreSalvo() FunctionImpl {
 	return func(args []any) ([]any, error) {
 		if len(args) < 2 {
@@ -381,7 +386,7 @@ func (s *server) makeBuiltinStoreSalvo() FunctionImpl {
 		}
 		oid, m, ok := s.resolveMatrix(matrixRef)
 		if !ok {
-			return []any{false}, nil
+			return nil, fmt.Errorf("storeSalvo: matrix %q not found", matrixRef)
 		}
 		filtered := filterConnectionsByTargets(m.Connections, targetFilter)
 		if len(filtered) == 0 {
@@ -396,9 +401,11 @@ func (s *server) makeBuiltinStoreSalvo() FunctionImpl {
 // IDs for the given matrix, ascending. Args:
 //   - args[0] string matrixPath — OID or dotted identifier path
 //
-// Empty string if the matrix has no salvos yet. Returns an empty string
-// for non-matrix refs rather than an error so consumers can probe
-// cheaply without trapping exceptions.
+// Empty string if the matrix has no salvos yet. Returns (nil, err) —
+// Success=false on the wire — when the ref does not resolve to a
+// Matrix; the consumer must distinguish "no salvos stored yet"
+// (success=true, result="") from "matrix not found"
+// (success=false). Refs #455.
 func (s *server) makeBuiltinListSalvos() FunctionImpl {
 	return func(args []any) ([]any, error) {
 		if len(args) < 1 {
@@ -410,7 +417,7 @@ func (s *server) makeBuiltinListSalvos() FunctionImpl {
 		}
 		oid, _, ok := s.resolveMatrix(matrixRef)
 		if !ok {
-			return []any{""}, nil
+			return nil, fmt.Errorf("listSalvos: matrix %q not found", matrixRef)
 		}
 		ids := s.salvos.list(oid)
 		parts := make([]string, len(ids))
@@ -432,8 +439,9 @@ func (s *server) makeBuiltinListSalvos() FunctionImpl {
 // Example: salvo with target 0 → [1,2], target 5 → [3], target 7 → []
 // returns "0=1,2;5=3;7=".
 //
-// Empty string for an unknown matrix or salvo ID — same cheap-probe
-// convention as listSalvos.
+// Empty string for an unknown salvo ID inside a valid matrix. Returns
+// (nil, err) — Success=false on the wire — when the ref does not
+// resolve to a Matrix at all. Refs #455.
 func (s *server) makeBuiltinGetSalvo() FunctionImpl {
 	return func(args []any) ([]any, error) {
 		if len(args) < 2 {
@@ -449,7 +457,7 @@ func (s *server) makeBuiltinGetSalvo() FunctionImpl {
 		}
 		oid, _, ok := s.resolveMatrix(matrixRef)
 		if !ok {
-			return []any{""}, nil
+			return nil, fmt.Errorf("getSalvo: matrix %q not found", matrixRef)
 		}
 		conns, ok := s.salvos.recall(oid, salvoID)
 		if !ok {
