@@ -49,6 +49,13 @@ func TestExitCode_LockedContract(t *testing.T) {
 		{name: "plugin:unknown-label → 2", err: consumer.ErrUnknownLabel, want: 2},
 		{name: "plugin:object-not-found → 2", err: consumer.ErrObjectNotFound, want: 2},
 		{name: "plugin:identity-unresolved → 2", err: consumer.ErrIdentityUnresolved, want: 2},
+		{name: "validation:invalid-format → 2", err: consumer.ErrInvalidFormat, want: 2},
+		{name: "validation:out-of-range-low → 2", err: consumer.ErrOutOfRangeLow, want: 2},
+		{name: "validation:out-of-range-high → 2", err: consumer.ErrOutOfRangeHigh, want: 2},
+		{name: "validation:step-misaligned → 2", err: consumer.ErrStepMisaligned, want: 2},
+		{name: "validation:invalid-enum-label → 2", err: consumer.ErrInvalidEnumLabel, want: 2},
+		{name: "validation:enum-not-supported → 2", err: consumer.ErrEnumNotSupported, want: 2},
+		{name: "validation:round-not-applicable → 2", err: consumer.ErrRoundNotApplicable, want: 2},
 
 		// Wrapped chains — the typed code is still discovered.
 		{name: "wrapped transport:refused → 1", err: fmt.Errorf("%w: connect 127.0.0.1:9100: ...", transport.ErrRefused), want: 1},
@@ -89,6 +96,9 @@ func TestExitCode_NeverThreeOrMore(t *testing.T) {
 		consumer.ErrNotImplemented, consumer.ErrNotConnected, consumer.ErrUnknownLabel,
 		consumer.ErrWriteTimeout, consumer.ErrWriteCoerced, consumer.ErrWriteRejected,
 		consumer.ErrObjectNotFound, consumer.ErrValidationFailed, consumer.ErrIdentityUnresolved,
+		consumer.ErrInvalidFormat,
+		consumer.ErrOutOfRangeLow, consumer.ErrOutOfRangeHigh, consumer.ErrStepMisaligned,
+		consumer.ErrInvalidEnumLabel, consumer.ErrEnumNotSupported, consumer.ErrRoundNotApplicable,
 	}
 	for _, s := range sentinels {
 		got := exitCode(s)

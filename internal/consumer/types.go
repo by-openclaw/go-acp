@@ -365,6 +365,13 @@ type ValueRequest struct {
 	// means "the plugin's default property" — ACP2 reads pid=8 (value).
 	// Pass 1 to read object_type, 2 label, 3 access, etc. ACP2-specific.
 	PID int
+
+	// Round, when true on a SetValue call, snaps an off-step numeric
+	// --value to the nearest legal step instead of returning
+	// validation:step-misaligned. Ignored on non-numeric Parameters
+	// (which return validation:round-not-applicable when Round=true).
+	// Read paths ignore this field. Refs R16 #483.
+	Round bool
 }
 
 // Value is a decoded object value. Exactly one of the typed fields is set

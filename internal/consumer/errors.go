@@ -55,6 +55,43 @@ var (
 	// owns its own supported set; the code is shared so scripts can
 	// dispatch on it uniformly.
 	ErrInvalidFormat = errcode.New(errcode.LayerValidation, "invalid-format", errcode.ClassUsage)
+
+	// ErrOutOfRangeLow is returned by SetValue when --value is
+	// numerically less than the Parameter's declared minimum (Ember+
+	// Contents [3]). Caught pre-send so the operator sees the limit
+	// instead of relying on the provider to either coerce or reject
+	// silently. Refs R16 #483.
+	ErrOutOfRangeLow = errcode.New(errcode.LayerValidation, "out-of-range-low", errcode.ClassUsage)
+
+	// ErrOutOfRangeHigh is returned by SetValue when --value exceeds
+	// the Parameter's declared maximum (Ember+ Contents [4]). Refs
+	// R16 #483.
+	ErrOutOfRangeHigh = errcode.New(errcode.LayerValidation, "out-of-range-high", errcode.ClassUsage)
+
+	// ErrStepMisaligned is returned by SetValue when --value is not
+	// an integer multiple of the Parameter's declared step (Ember+
+	// Contents [11]), measured from the minimum when present and 0
+	// otherwise. Strict by default; the CLI's --round flag rounds to
+	// the nearest legal step and continues. Refs R16 #483.
+	ErrStepMisaligned = errcode.New(errcode.LayerValidation, "step-misaligned", errcode.ClassUsage)
+
+	// ErrInvalidEnumLabel is returned by SetValue when --value is a
+	// string that does not appear in the Parameter's enumMap (the
+	// integer-keyed label table from Ember+ Contents [15]). Refs R16
+	// #483.
+	ErrInvalidEnumLabel = errcode.New(errcode.LayerValidation, "invalid-enum-label", errcode.ClassUsage)
+
+	// ErrEnumNotSupported is returned by SetValue when --value is a
+	// label-shaped string but the target Parameter is KindEnum
+	// without an enumMap (no integer-to-label table on the wire).
+	// The operator must address by integer index instead. Refs R16
+	// #483.
+	ErrEnumNotSupported = errcode.New(errcode.LayerValidation, "enum-not-supported", errcode.ClassUsage)
+
+	// ErrRoundNotApplicable is returned by SetValue when --round was
+	// passed but the target Parameter is non-numeric (string, enum,
+	// bool — nothing to snap to). Refs R16 #483.
+	ErrRoundNotApplicable = errcode.New(errcode.LayerValidation, "round-not-applicable", errcode.ClassUsage)
 )
 
 // DHSError is the root of all protocol-family errors. Both transport-layer

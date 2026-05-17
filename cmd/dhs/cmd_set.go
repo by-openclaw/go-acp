@@ -33,6 +33,7 @@ func runSet(ctx context.Context, args []string) error {
 	valueStr := fs.String("value", "", "typed value (e.g. -3.0, \"On\", \"192.168.1.5\", \"CH1\"); empty string is valid for string objects")
 	valueHex := fs.String("raw", "", "raw wire bytes as hex — escape hatch bypassing typed encoding")
 	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of walking the slot to resolve --path/--label")
+	round := fs.Bool("round", false, "R16 #483: snap an off-step numeric --value to the nearest legal step instead of erroring with validation:step-misaligned (Ember+ only — non-numeric Parameters return validation:round-not-applicable)")
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the walk is skipped — refs #438, ADR-0022.`)
 	host, rest, err := popHost(args)
 	if err != nil {
@@ -141,6 +142,7 @@ func runSet(ctx context.Context, args []string) error {
 		Group: *group,
 		Label: *label,
 		ID:    *id,
+		Round: *round,
 	}
 	confirmed, err := plug.SetValue(opCtx, req, val)
 	if err != nil {
