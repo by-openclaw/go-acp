@@ -98,8 +98,8 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 
 | Code | Status | When | Anchor |
 |---|---|---|---|
-| `emberplus:invocation-failed` | pending (R1f) | `InvocationResult.Success=false`, no description | Ember+ Doc §p.92 |
-| `emberplus:invocation-failed-with-description` | pending (R1f) | `Success=false` + provider populated `description` | Ember+ Doc §p.92 |
+| `emberplus:invocation-failed` | defined (R1f) | `InvocationResult.Success=false` on the wire. `InvokeFunction` returns the result pointer alongside the typed error so callers can still print the (possibly-empty) result tuple while the error sets exit 1 | Ember+ Doc §p.92 |
+| `emberplus:invocation-failed-with-description` | defined (sentinel only, R1f) | reserved for the case when the codec decodes the optional `description` field — currently the codec doesn't parse it, so every `Success=false` maps to `emberplus:invocation-failed`. Codec extension is separate scope | Ember+ Doc §p.92 |
 
 ### validation
 
