@@ -10,8 +10,10 @@ Authoritative refs:
 
 Wireshark dissector: `./wireshark/dhs_emberplus.lua`.
 
-Testbed emulator: `internal/emberplus/assets/smh/` (BY-RESEARCH TS emulator, port 9000/9090/9092);
-convention — targets labeled `1`, sources labeled `2`.
+Testbed emulator: `legacy/emberplus/smh/` (BY-RESEARCH TS emulator, port 9000/9090/9092);
+convention — targets labeled `1`, sources labeled `2`. The emulator is
+local-only legacy from dhs 2016 era, scheduled for removal once the
+Ember+ connector meets the ADR-0025 5-deliverable bar.
 
 ---
 

@@ -7,10 +7,10 @@ One file per element type, each carrying:
 - **Provider variations / edge cases** — how real-world Ember+ providers diverge from the textbook.
 - **Consumer handling** — what resolvers do, which compliance events fire.
 
-The samples are the same style as
-[`internal/emberplus/assets/smh/emulator/ember-server/src/data-model-new.ts`](../../../internal/emberplus/assets/smh/emulator/ember-server/src/data-model-new.ts) —
-literal JSON tree fragments you can read top-to-bottom — but split per type
-and expanded to cover every case listed below.
+The samples are the same style as the BY-RESEARCH TS emulator's
+`data-model-new.ts` (now under `legacy/emberplus/smh/emulator/`, local-only
+per ADR-0025) — literal JSON tree fragments you can read top-to-bottom —
+but split per type and expanded to cover every case listed below.
 
 | File                             | Type       | Status   | Variations covered                                                          |
 |----------------------------------|------------|----------|-----------------------------------------------------------------------------|

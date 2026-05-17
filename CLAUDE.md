@@ -75,7 +75,6 @@ internal/
     codec/                    stdlib-only wire codec (ber / glow / s101 / matrix)
     consumer/   provider/   wireshark/   docs/
     assets/                   Ember+ PDFs + TinyEmber+/EmberPlusView tools
-                              + BY-RESEARCH TS emulator (assets/smh/)
   probel-sw08p/               Probel SW-P-08 / SW-P-88 matrix control
     CLAUDE.md
     codec/                    stdlib-only wire codec (lift-ready)
