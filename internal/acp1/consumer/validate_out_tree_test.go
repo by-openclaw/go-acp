@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 	"dhs/internal/acp1/codec"
 )
@@ -85,7 +85,7 @@ func TestValidateOutTree_WritesSnapshot(t *testing.T) {
 	}
 
 	out := filepath.Join(t.TempDir(), "tree.json")
-	report, err := p.Validate(context.Background(), trames, protocol.ValidateOpts{
+	report, err := p.Validate(context.Background(), trames, consumer.ValidateOpts{
 		OutTree: out,
 	})
 	if err != nil {
@@ -155,7 +155,7 @@ func TestValidateOutTree_LatestReplyWins(t *testing.T) {
 		buildGetObjectTrame(t, 2, 1, codec.GroupIdentity, 0, idV2),
 	}
 	out := filepath.Join(t.TempDir(), "tree.json")
-	if _, err := p.Validate(context.Background(), trames, protocol.ValidateOpts{OutTree: out}); err != nil {
+	if _, err := p.Validate(context.Background(), trames, consumer.ValidateOpts{OutTree: out}); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
 	f, err := os.Open(out)
@@ -193,7 +193,7 @@ func TestValidateOutTree_NoGetObjectInputProducesEmptySnapshot(t *testing.T) {
 		{Direction: wiretrace.DirectionRx, Hex: hex.EncodeToString(repRaw)},
 	}
 	out := filepath.Join(t.TempDir(), "tree.json")
-	if _, err := p.Validate(context.Background(), trames, protocol.ValidateOpts{OutTree: out}); err != nil {
+	if _, err := p.Validate(context.Background(), trames, consumer.ValidateOpts{OutTree: out}); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
 	f, err := os.Open(out)
@@ -212,7 +212,7 @@ func TestValidateOutTree_NoGetObjectInputProducesEmptySnapshot(t *testing.T) {
 
 func TestValidateOutTree_OutParamsStillRejected(t *testing.T) {
 	p := newPluginForOutTree(t)
-	_, err := p.Validate(context.Background(), nil, protocol.ValidateOpts{OutParams: "x.csv"})
+	_, err := p.Validate(context.Background(), nil, consumer.ValidateOpts{OutParams: "x.csv"})
 	if err == nil {
 		t.Fatal("--out-params should still error")
 	}

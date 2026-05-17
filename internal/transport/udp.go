@@ -4,7 +4,7 @@
 //
 // Every transport honours context.Context cancellation and exposes an
 // explicit per-call deadline. That is the only way the ACP1 retry loop
-// in internal/protocol/acp1/client.go can implement spec-compliant
+// in internal/consumer/acp1/client.go can implement spec-compliant
 // transaction timeouts without racing the socket read.
 package transport
 
@@ -93,7 +93,7 @@ func (c *UDPConn) Send(ctx context.Context, payload []byte) error {
 // Receive blocks until one datagram arrives or the context's deadline
 // expires. The returned slice is a copy owned by the caller — the
 // transport never retains it. Max inbound size is bounded by maxSize,
-// which the caller sets based on protocol. For ACP1 that's 141 bytes.
+// which the caller sets based on consumer. For ACP1 that's 141 bytes.
 func (c *UDPConn) Receive(ctx context.Context, maxSize int) ([]byte, error) {
 	if c == nil || c.conn == nil {
 		return nil, errors.New("udp: receive on nil conn")

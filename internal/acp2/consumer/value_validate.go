@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"dhs/internal/acp2/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // ValidateValue is the offline pre-flight check for one (req, val) pair.
-// Implements protocol.ValueValidator — the import / dry-run path uses
+// Implements consumer.ValueValidator — the import / dry-run path uses
 // it to surface bad obj-ids, enum-out-of-options, and basic type
 // mismatches before any state-changing wire send.
 //
@@ -26,20 +26,20 @@ import (
 //  4. IPv4: val.IPAddr non-zero OR val.Str parseable.
 //
 // Returns nil when the SetValue is safe to attempt; otherwise wraps
-// protocol.ErrObjectNotFound or protocol.ErrValidationFailed.
-func (p *Plugin) ValidateValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) error {
+// consumer.ErrObjectNotFound or consumer.ErrValidationFailed.
+func (p *Plugin) ValidateValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) error {
 	p.mu.Lock()
 	s := p.session
 	p.mu.Unlock()
 	if s == nil {
-		return protocol.ErrNotConnected
+		return consumer.ErrNotConnected
 	}
 
 	tree, _ := p.trees.Get(req.Slot)
 
 	objID, objType, numType, obj, err := p.resolveRequest(req, tree)
 	if err != nil {
-		return fmt.Errorf("%w: %v", protocol.ErrValidationFailed, err)
+		return fmt.Errorf("%w: %v", consumer.ErrValidationFailed, err)
 	}
 
 	// No tree → fetch metadata via single get_object. ACP2Error stat=1
@@ -50,9 +50,9 @@ func (p *Plugin) ValidateValue(ctx context.Context, req protocol.ValueRequest, v
 		if err != nil {
 			var acpErr *codec.ACP2Error
 			if errors.As(err, &acpErr) && acpErr.Status == codec.ErrInvalidObjID {
-				return fmt.Errorf("%w: obj-id %d", protocol.ErrObjectNotFound, objID)
+				return fmt.Errorf("%w: obj-id %d", consumer.ErrObjectNotFound, objID)
 			}
-			return fmt.Errorf("%w: meta fetch failed: %v", protocol.ErrValidationFailed, err)
+			return fmt.Errorf("%w: meta fetch failed: %v", consumer.ErrValidationFailed, err)
 		}
 		tree = miniTree
 		if len(miniTree.Objects) > 0 {
@@ -79,7 +79,7 @@ func (p *Plugin) ValidateValue(ctx context.Context, req protocol.ValueRequest, v
 
 // validateValueAgainstType is the type-check half of Validate, separated
 // so tests can drive it without setting up a Plugin + session.
-func validateValueAgainstType(objType codec.ACP2ObjType, numType codec.NumberType, obj *protocol.Object, val protocol.Value, reverseEnum map[string]uint32) error {
+func validateValueAgainstType(objType codec.ACP2ObjType, numType codec.NumberType, obj *consumer.Object, val consumer.Value, reverseEnum map[string]uint32) error {
 	_ = numType
 	// Raw bytes escape hatch — caller knows the wire shape, trust them.
 	if len(val.Raw) > 0 && val.Str == "" && val.Int == 0 && val.Float == 0 && val.Uint == 0 {
@@ -90,13 +90,13 @@ func validateValueAgainstType(objType codec.ACP2ObjType, numType codec.NumberTyp
 	case codec.ObjTypeNumber:
 		// KindUnknown means the CSV row's value didn't parse as the
 		// declared kind — that's the upstream signal for a bad type cell.
-		if val.Kind == protocol.KindUnknown {
-			return fmt.Errorf("%w: numeric object got unparseable value", protocol.ErrValidationFailed)
+		if val.Kind == consumer.KindUnknown {
+			return fmt.Errorf("%w: numeric object got unparseable value", consumer.ErrValidationFailed)
 		}
 		// A claimed numeric row with KindString and a non-empty Str means
 		// the CSV had a non-numeric in the value column.
-		if val.Kind == protocol.KindString && val.Str != "" {
-			return fmt.Errorf("%w: numeric object got string value %q", protocol.ErrValidationFailed, val.Str)
+		if val.Kind == consumer.KindString && val.Str != "" {
+			return fmt.Errorf("%w: numeric object got string value %q", consumer.ErrValidationFailed, val.Str)
 		}
 		return nil
 
@@ -115,7 +115,7 @@ func validateValueAgainstType(objType codec.ACP2ObjType, numType codec.NumberTyp
 					return nil
 				}
 			}
-			return fmt.Errorf("%w: enum value %d (label %q) not in options", protocol.ErrValidationFailed, val.Enum, val.Str)
+			return fmt.Errorf("%w: enum value %d (label %q) not in options", consumer.ErrValidationFailed, val.Enum, val.Str)
 		}
 		// No options map captured — best-effort accept; device will catch.
 		return nil
@@ -125,16 +125,16 @@ func validateValueAgainstType(objType codec.ACP2ObjType, numType codec.NumberTyp
 			return nil
 		}
 		if val.Str == "" {
-			return fmt.Errorf("%w: ipv4 object got empty value", protocol.ErrValidationFailed)
+			return fmt.Errorf("%w: ipv4 object got empty value", consumer.ErrValidationFailed)
 		}
 		parts := strings.Split(val.Str, ".")
 		if len(parts) != 4 {
-			return fmt.Errorf("%w: ipv4 value %q malformed", protocol.ErrValidationFailed, val.Str)
+			return fmt.Errorf("%w: ipv4 value %q malformed", consumer.ErrValidationFailed, val.Str)
 		}
 		for _, p := range parts {
 			n, err := strconv.Atoi(p)
 			if err != nil || n < 0 || n > 255 {
-				return fmt.Errorf("%w: ipv4 value %q malformed", protocol.ErrValidationFailed, val.Str)
+				return fmt.Errorf("%w: ipv4 value %q malformed", consumer.ErrValidationFailed, val.Str)
 			}
 		}
 		return nil
@@ -148,5 +148,5 @@ func validateValueAgainstType(objType codec.ACP2ObjType, numType codec.NumberTyp
 	return nil
 }
 
-// Compile-time check that the plugin satisfies protocol.ValueValidator.
-var _ protocol.ValueValidator = (*Plugin)(nil)
+// Compile-time check that the plugin satisfies consumer.ValueValidator.
+var _ consumer.ValueValidator = (*Plugin)(nil)

@@ -8,7 +8,7 @@
 //
 // On load, the store validates against the live device Card Name.
 // If the card was swapped, the cache is discarded.
-package storage
+package datastore
 
 import (
 	"encoding/json"
@@ -21,7 +21,7 @@ import (
 
 	"dhs/internal/export"
 	"dhs/internal/export/canonical"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TreeStore manages cached tree files on disk.
@@ -79,12 +79,12 @@ func (s *TreeStore) slotPath(ip string, slot int) string {
 // Save writes a walked tree to disk using the same hierarchical JSON
 // format as `dhs export --format json`. Values are stripped before
 // writing — per CLAUDE.md, property values are NEVER written to disk.
-func (s *TreeStore) Save(ip, proto string, slot int, objs []protocol.Object) error {
+func (s *TreeStore) Save(ip, proto string, slot int, objs []consumer.Object) error {
 	// Strip values from objects.
-	stripped := make([]protocol.Object, len(objs))
+	stripped := make([]consumer.Object, len(objs))
 	for i, o := range objs {
 		stripped[i] = o
-		stripped[i].Value = protocol.Value{} // no values on disk
+		stripped[i].Value = consumer.Value{} // no values on disk
 	}
 
 	// Build a Snapshot — same as export.
@@ -202,11 +202,11 @@ type DM struct {
 	// Templates carries the canonical-tree TemplateEntry list when
 	// the source provider exposes Glow templates (Ember+ §p.54-58).
 	Templates []*canonical.TemplateEntry `json:"templates,omitempty"`
-	// Objects is the legacy flat protocol.Object slice — ACP1/ACP2 use
+	// Objects is the legacy flat consumer.Object slice — ACP1/ACP2 use
 	// this exclusively today. Ember+ no longer writes it: the
 	// canonical Root supersedes (refs #438). Kept on the struct so
 	// legacy ACP1/ACP2 callers keep working until they migrate.
-	Objects []protocol.Object `json:"objects,omitempty"`
+	Objects []consumer.Object `json:"objects,omitempty"`
 }
 
 // UnmarshalJSON dispatches DM.Root through canonical.UnmarshalElement
@@ -220,7 +220,7 @@ func (d *DM) UnmarshalJSON(data []byte) error {
 		Protocol  string                     `json:"protocol"`
 		Root      json.RawMessage            `json:"root"`
 		Templates []*canonical.TemplateEntry `json:"templates"`
-		Objects   []protocol.Object          `json:"objects"`
+		Objects   []consumer.Object          `json:"objects"`
 	}
 	var raw alias
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -273,7 +273,7 @@ func splitIdentity(identity string) (string, string) {
 //     file then carries ONLY the canonical hierarchical tree —
 //     identity fields at top level, no flat Objects redundancy.
 //   - For ACP1 / ACP2 (legacy path): pass Objects. Root nil. The DM
-//     file carries the flat protocol.Object slice.
+//     file carries the flat consumer.Object slice.
 //
 // Atomic write same as SaveByIdentity.
 func (s *TreeStore) WriteDM(proto, identity string, dm DM) error {
@@ -303,7 +303,7 @@ func (s *TreeStore) WriteDM(proto, identity string, dm DM) error {
 	// consumer's per-verb hot-load needs the flat list to seed
 	// numIndex without re-walking the canonical tree on every call.
 	if dm.Objects != nil {
-		clean := make([]protocol.Object, len(dm.Objects))
+		clean := make([]consumer.Object, len(dm.Objects))
 		for i, o := range dm.Objects {
 			clean[i] = o
 			clean[i].Slot = 0
@@ -345,7 +345,7 @@ func (s *TreeStore) writeDMToPath(proto, identity string, dm DM) error {
 }
 
 // Atomic write: tmp file + rename.
-func (s *TreeStore) SaveByIdentity(proto, identity string, objs []protocol.Object) error {
+func (s *TreeStore) SaveByIdentity(proto, identity string, objs []consumer.Object) error {
 	if proto == "" {
 		return fmt.Errorf("storage: SaveByIdentity: empty proto")
 	}
@@ -355,7 +355,7 @@ func (s *TreeStore) SaveByIdentity(proto, identity string, objs []protocol.Objec
 	model, swRev := splitIdentity(identity)
 
 	// Zero Slot on each object — the DM is slot-agnostic.
-	clean := make([]protocol.Object, len(objs))
+	clean := make([]consumer.Object, len(objs))
 	for i, o := range objs {
 		clean[i] = o
 		clean[i].Slot = 0
@@ -472,9 +472,9 @@ func (s *TreeStore) LoadByIdentity(proto, identity string) (*export.Snapshot, er
 
 // FindCardName extracts the Card Name from a list of objects.
 // Used for identity validation.
-func FindCardName(objs []protocol.Object) string {
+func FindCardName(objs []consumer.Object) string {
 	for _, o := range objs {
-		if o.Label == "Card Name" && o.Value.Kind == protocol.KindString {
+		if o.Label == "Card Name" && o.Value.Kind == consumer.KindString {
 			return o.Value.Str
 		}
 	}

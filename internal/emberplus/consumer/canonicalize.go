@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"dhs/internal/export/canonical"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/emberplus/codec/glow"
 )
 
@@ -580,12 +580,12 @@ func (p *Plugin) buildTemplateEntry(t *glow.Template) *canonical.TemplateEntry {
 	synthetic := func(identifier string) *treeEntry {
 		return &treeEntry{
 			numericPath: t.Path,
-			obj: protocol.Object{
+			obj: consumer.Object{
 				Slot:  0,
 				ID:    number,
 				OID:   oid,
 				Label: identifier,
-				Kind:  protocol.KindRaw,
+				Kind:  consumer.KindRaw,
 				Path:  []string{identifier},
 			},
 		}

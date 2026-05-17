@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"dhs/internal/export/canonical"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer/compliance"
 )
 
 // TestResolveMatrixLabels_MultiLevel exercises the N>=2 case that the

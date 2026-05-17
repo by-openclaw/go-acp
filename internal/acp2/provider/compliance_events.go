@@ -11,7 +11,7 @@ package acp2
 //
 // Authoritative spec: internal/acp2/assets/acp2_protocol.docx.
 //
-// The generic Profile counter lives in internal/protocol/compliance/.
+// The generic Profile counter lives in internal/consumer/compliance/.
 // Aggregated across every accepted session since Serve started.
 const (
 	// Spec acp2_protocol.docx §5.4 row 15 specifies fixed 72-byte

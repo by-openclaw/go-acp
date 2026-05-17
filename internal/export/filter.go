@@ -3,7 +3,7 @@ package export
 import (
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // ImportFilter narrows an import operation to a specific subset of
@@ -41,7 +41,7 @@ func (f *ImportFilter) Empty() bool {
 
 // Matches reports whether the object satisfies at least one of the
 // filter's criteria. Called per object by ApplyFilter.
-func (f *ImportFilter) Matches(o protocol.Object) bool {
+func (f *ImportFilter) Matches(o consumer.Object) bool {
 	if f.Empty() {
 		return true
 	}

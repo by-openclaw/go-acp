@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // ProtectDisconnect releases the protect on (matrix, level, dst) owned
@@ -33,7 +33,7 @@ func (p *Plugin) ProtectDisconnect(
 	}
 	d, derr := codec.DecodeProtectDisconnected(reply)
 	if derr != nil {
-		return codec.ProtectDisconnectedParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.ProtectDisconnectedParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return d, nil
 }

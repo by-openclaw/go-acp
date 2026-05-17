@@ -34,9 +34,9 @@ import (
 	"os"
 	"os/signal"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 
-	// Consumer plugins — blank imports register with internal/protocol.
+	// Consumer plugins — blank imports register with internal/consumer.
 	_ "dhs/internal/acp1/consumer"
 	_ "dhs/internal/acp2/consumer"
 	_ "dhs/internal/cerebrum-nb/consumer"
@@ -374,11 +374,11 @@ func hasHelpFlag(args []string) bool {
 // exitCode maps error classes to CLI exit codes: 0 success, 1 protocol
 // error, 2 validation/usage error, 3 transport error.
 func exitCode(err error) int {
-	var verr *protocol.ValidationError
+	var verr *consumer.ValidationError
 	if errors.As(err, &verr) {
 		return 2
 	}
-	var terr *protocol.TransportError
+	var terr *consumer.TransportError
 	if errors.As(err, &terr) {
 		return 3
 	}

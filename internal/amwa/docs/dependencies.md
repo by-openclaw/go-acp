@@ -3,9 +3,9 @@
 Layered architecture with **enforced one-way dependency flow**. Every
 new file lands in exactly one layer; layer N may import layer < N
 only. Cross-protocol imports are forbidden outside neutral
-infrastructure (`internal/protocol/`, `internal/provider/`,
-`internal/registry/`, `internal/protocol/compliance/`,
-`internal/storage/`, `internal/metrics/`, `internal/transport/`).
+infrastructure (`internal/consumer/`, `internal/provider/`,
+`internal/registry/`, `internal/consumer/compliance/`,
+`internal/datastore/`, `internal/metrics/`, `internal/transport/`).
 
 This file is normative. The `depguard` golangci-lint rule + a
 `go list -deps` test in CI enforce it; reviewers reject any PR that
@@ -23,7 +23,7 @@ introduces a back-arrow.
 │  Allowed:  dhs/internal/amwa/consumer    (blank import + verb dispatch)     │
 │            dhs/internal/amwa/provider    (blank import)                    │
 │            dhs/internal/amwa/registry    (blank import)                    │
-│            dhs/internal/protocol         (interface, registry lookup)       │
+│            dhs/internal/consumer         (interface, registry lookup)       │
 │            dhs/internal/provider         (interface, registry lookup)       │
 │            dhs/internal/registry         (interface, registry lookup)       │
 │  Forbidden: anything under internal/amwa/codec/* directly                   │
@@ -39,11 +39,11 @@ introduces a back-arrow.
 │                                                                            │
 │  Allowed:  dhs/internal/amwa/session/*                                      │
 │            dhs/internal/amwa/codec/*                                        │
-│            dhs/internal/protocol           (interface only)                 │
+│            dhs/internal/consumer           (interface only)                 │
 │            dhs/internal/provider           (interface only)                 │
 │            dhs/internal/registry           (interface only — NEW slot)      │
-│            dhs/internal/protocol/compliance                                │
-│            dhs/internal/storage            (portable data dir)              │
+│            dhs/internal/consumer/compliance                                │
+│            dhs/internal/datastore            (portable data dir)              │
 │            dhs/internal/metrics            (connector + Prom)               │
 │  Forbidden: any other internal/<proto>/*                                    │
 │             cmd/*                                                          │
@@ -64,7 +64,7 @@ introduces a back-arrow.
 │                                                                            │
 │  Allowed:  dhs/internal/amwa/codec/*                                        │
 │            dhs/internal/transport       (HTTP/WS capture)                   │
-│            dhs/internal/protocol/compliance                                │
+│            dhs/internal/consumer/compliance                                │
 │            dhs/internal/metrics                                            │
 │  Forbidden: dhs/internal/amwa/{consumer,provider,registry}                  │
 │             cmd/*                                                          │
@@ -209,7 +209,7 @@ The graph has THREE tiers within Layer 1:
 
 ## New Tier-1 registry slot — `internal/registry/`
 
-NMOS Registry doesn't fit `internal/protocol/` (consumer plugins) nor
+NMOS Registry doesn't fit `internal/consumer/` (consumer plugins) nor
 `internal/provider/` (provider plugins). It is a dual-face middleware:
 left face consumes registrations, right face provides catalogue. Same
 process, two faces.
@@ -220,7 +220,7 @@ A **new Tier-1 plugin slot** lands in this branch:
 internal/registry/
 ├── registry.go           neutral interface every Registry plugin implements
 ├── factory.go            Factory + Register() + Lookup() — same shape as
-│                         internal/protocol/ + internal/provider/
+│                         internal/consumer/ + internal/provider/
 └── compliance/           OPTIONAL — registry-side compliance events
 ```
 
@@ -366,11 +366,11 @@ without breaking the layering:
 
 | Package | Purpose | Layers allowed |
 |---|---|---|
-| `dhs/internal/storage` | Portable data dir + atomic file writes | 2, 3 |
+| `dhs/internal/datastore` | Portable data dir + atomic file writes | 2, 3 |
 | `dhs/internal/metrics` | Connector counters + Prom registry | 2, 3 |
 | `dhs/internal/transport` | HTTP/WS capture (`--capture` flag) | 2 only |
-| `dhs/internal/protocol/compliance` | Compliance.Profile + event types | 2, 3 |
-| `dhs/internal/protocol` | Consumer interface + registry | 3, 4 |
+| `dhs/internal/consumer/compliance` | Compliance.Profile + event types | 2, 3 |
+| `dhs/internal/consumer` | Consumer interface + registry | 3, 4 |
 | `dhs/internal/provider` | Provider interface + registry | 3, 4 |
 | `dhs/internal/registry` *(NEW)* | Registry interface + registry | 3, 4 |
 

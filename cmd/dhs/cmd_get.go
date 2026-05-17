@@ -6,7 +6,7 @@ import (
 	"flag"
 	"fmt"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func runGet(ctx context.Context, args []string) error {
@@ -69,7 +69,7 @@ func runGet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	req := protocol.ValueRequest{
+	req := consumer.ValueRequest{
 		Slot:  *slot,
 		Path:  *pathFlag,
 		Group: *group,
@@ -84,7 +84,7 @@ func runGet(ctx context.Context, args []string) error {
 	}
 	// Look up the object metadata (range, step, unit) before formatting
 	// so we can apply unit suffixes and step-based float precision.
-	var meta *protocol.Object
+	var meta *consumer.Object
 	if *label != "" {
 		meta = findObjectByLabel(plug, *slot, *group, *label)
 	}

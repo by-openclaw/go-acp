@@ -1,5 +1,5 @@
 // Package registry defines the interface a Registry-role plugin must
-// implement. Tier-1 compile-time slot, sibling to internal/protocol/
+// implement. Tier-1 compile-time slot, sibling to internal/consumer/
 // (consumer plugins) and internal/provider/ (provider plugins).
 //
 // A Registry is a dual-face middleware: its left face consumes

@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"dhs/internal/emberplus/consumer"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 )
 
@@ -40,13 +40,13 @@ func loadTrames(t *testing.T, scenario string) []wiretrace.Trame {
 	return trames
 }
 
-func newValidator(t *testing.T) protocol.Validator {
+func newValidator(t *testing.T) consumer.Validator {
 	t.Helper()
 	f := &emberplus.Factory{}
 	plug := f.New(slog.Default())
-	v, ok := plug.(protocol.Validator)
+	v, ok := plug.(consumer.Validator)
 	if !ok {
-		t.Fatal("emberplus.Plugin does not implement protocol.Validator")
+		t.Fatal("emberplus.Plugin does not implement consumer.Validator")
 	}
 	return v
 }
@@ -60,7 +60,7 @@ func TestReplay_EmberplusTreeWalk(t *testing.T) {
 		t.Fatal("no trames in capture")
 	}
 	v := newValidator(t)
-	report, err := v.Validate(context.Background(), trames, protocol.ValidateOpts{})
+	report, err := v.Validate(context.Background(), trames, consumer.ValidateOpts{})
 	if err != nil {
 		t.Fatalf("Validate: %v", err)
 	}

@@ -25,7 +25,7 @@ internal/emberplus/
 │   ├── glow/    GlowDTD tagged structures
 │   ├── s101/    S101 framing (keep-alive, CRC16, escape)
 │   └── matrix/  matrix/target/source encoder helpers
-├── consumer/    package emberplus — implements protocol.Protocol
+├── consumer/    package emberplus — implements consumer.Protocol
 ├── provider/    package emberplus — implements provider.Provider
 ├── wireshark/   dhs_emberplus.lua
 ├── docs/        consumer.md / provider.md / README.md

@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp2/codec"
 )
 
@@ -15,7 +15,7 @@ import (
 // acp1.SlotTree but for the ACP2 hierarchical object model.
 type WalkedTree struct {
 	Slot    int
-	Objects []protocol.Object
+	Objects []consumer.Object
 	// ObjTypes parallels Objects — the ACP2 object type for each entry.
 	ObjTypes []codec.ACP2ObjType
 	// NumTypes parallels Objects — the NumberType for numeric objects.
@@ -39,7 +39,7 @@ func (t *WalkedTree) Lookup(label string) int {
 }
 
 // WalkProgressFunc is called after each object is added to the tree during walk.
-type WalkProgressFunc func(count int, obj *protocol.Object)
+type WalkProgressFunc func(count int, obj *consumer.Object)
 
 // Walker performs a DFS walk of the ACP2 object tree starting from the root.
 type Walker struct {
@@ -131,7 +131,7 @@ func (w *Walker) WalkIdentity(ctx context.Context, slot int) (map[string]string,
 			if lerr != nil {
 				continue
 			}
-			if leafObj.Label == "" || leafObj.Value.Kind != protocol.KindString {
+			if leafObj.Label == "" || leafObj.Value.Kind != consumer.KindString {
 				continue
 			}
 			out[leafObj.Label] = leafObj.Value.Str
@@ -144,10 +144,10 @@ func (w *Walker) WalkIdentity(ctx context.Context, slot int) (map[string]string,
 // walkObject and WalkIdentity. Splitting it lets the targeted walk
 // reuse the byte-decoder without inheriting walkObject's
 // recurse-into-everything behaviour.
-func (w *Walker) getOne(ctx context.Context, slot int, objID uint32, path []string) (protocol.Object, codec.ACP2ObjType, codec.NumberType, map[uint32]string, []uint32, error) {
+func (w *Walker) getOne(ctx context.Context, slot int, objID uint32, path []string) (consumer.Object, codec.ACP2ObjType, codec.NumberType, map[uint32]string, []uint32, error) {
 	select {
 	case <-ctx.Done():
-		return protocol.Object{}, 0, 0, nil, nil, ctx.Err()
+		return consumer.Object{}, 0, 0, nil, nil, ctx.Err()
 	default:
 	}
 	msg, err := w.session.DoACP2(ctx, uint8(slot), &codec.ACP2Message{
@@ -157,14 +157,14 @@ func (w *Walker) getOne(ctx context.Context, slot int, objID uint32, path []stri
 		Idx:   0,
 	})
 	if err != nil {
-		return protocol.Object{}, 0, 0, nil, nil, fmt.Errorf("get_object(%d): %w", objID, err)
+		return consumer.Object{}, 0, 0, nil, nil, fmt.Errorf("get_object(%d): %w", objID, err)
 	}
 	obj, objType, numType, optMap, children := w.parseObjectProperties(msg.Properties, slot, objID, path)
 	return obj, objType, numType, optMap, children, nil
 }
 
 // walkObject fetches one object via get_object and recursively walks its children.
-// path tracks the label path from root to current node for protocol.Object.Path.
+// path tracks the label path from root to current node for consumer.Object.Path.
 func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []string, tree *WalkedTree) error {
 	select {
 	case <-ctx.Done():
@@ -187,7 +187,7 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 	// Parse properties from the reply.
 	obj, objType, numType, optMap, children := w.parseObjectProperties(msg.Properties, slot, objID, path)
 
-	// Stash type info on the protocol.Object via Meta so the
+	// Stash type info on the consumer.Object via Meta so the
 	// hierarchical disk snapshot survives a round-trip and can rebuild
 	// the WalkedTree parallel arrays at hot-load time. Keys live in the
 	// "acp2." namespace to avoid colliding with cross-protocol Meta.
@@ -244,9 +244,9 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 	return nil
 }
 
-// parseObjectProperties extracts a protocol.Object from ACP2 property headers.
-func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID uint32, parentPath []string) (protocol.Object, codec.ACP2ObjType, codec.NumberType, map[uint32]string, []uint32) {
-	obj := protocol.Object{
+// parseObjectProperties extracts a consumer.Object from ACP2 property headers.
+func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID uint32, parentPath []string) (consumer.Object, codec.ACP2ObjType, codec.NumberType, map[uint32]string, []uint32) {
+	obj := consumer.Object{
 		Slot: slot,
 		ID:   int(objID),
 	}
@@ -395,27 +395,27 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 		obj.Group = obj.Path[1]
 	}
 
-	// Map ACP2 object type to protocol.ValueKind.
+	// Map ACP2 object type to consumer.ValueKind.
 	switch objType {
 	case codec.ObjTypeNode:
-		obj.Kind = protocol.KindRaw // containers have no scalar value
+		obj.Kind = consumer.KindRaw // containers have no scalar value
 	case codec.ObjTypeEnum:
-		obj.Kind = protocol.KindEnum
+		obj.Kind = consumer.KindEnum
 	case codec.ObjTypeNumber:
 		obj.Kind = numberTypeToKind(numType)
 	case codec.ObjTypeIPv4:
-		obj.Kind = protocol.KindIPAddr
+		obj.Kind = consumer.KindIPAddr
 	case codec.ObjTypeString:
-		obj.Kind = protocol.KindString
+		obj.Kind = consumer.KindString
 	case codec.ObjTypePreset:
-		obj.Kind = protocol.KindEnum // presets are enumeration-like
+		obj.Kind = consumer.KindEnum // presets are enumeration-like
 	}
 
 	return obj, objType, numType, optionsMap, children
 }
 
 // decodeValue decodes a pid=8 (value) property into the Object's Value field.
-func (w *Walker) decodeValue(p *codec.Property, objType codec.ACP2ObjType, numType codec.NumberType, obj *protocol.Object, optMap map[uint32]string) {
+func (w *Walker) decodeValue(p *codec.Property, objType codec.ACP2ObjType, numType codec.NumberType, obj *consumer.Object, optMap map[uint32]string) {
 	switch objType {
 	case codec.ObjTypeNumber:
 		nt := codec.NumberType(p.VType)
@@ -425,23 +425,23 @@ func (w *Walker) decodeValue(p *codec.Property, objType codec.ACP2ObjType, numTy
 		intV, uintV, floatV, err := codec.DecodeNumericValue(nt, p.Data)
 		if err != nil {
 			w.logger.Debug("acp2: walker: decode numeric value", "err", err)
-			obj.Value = protocol.Value{Kind: protocol.KindRaw, Raw: p.Data}
+			obj.Value = consumer.Value{Kind: consumer.KindRaw, Raw: p.Data}
 			return
 		}
 		switch numberTypeToKind(nt) {
-		case protocol.KindInt:
-			obj.Value = protocol.Value{Kind: protocol.KindInt, Int: intV, Raw: p.Data}
-		case protocol.KindUint:
-			obj.Value = protocol.Value{Kind: protocol.KindUint, Uint: uintV, Raw: p.Data}
-		case protocol.KindFloat:
-			obj.Value = protocol.Value{Kind: protocol.KindFloat, Float: floatV, Raw: p.Data}
+		case consumer.KindInt:
+			obj.Value = consumer.Value{Kind: consumer.KindInt, Int: intV, Raw: p.Data}
+		case consumer.KindUint:
+			obj.Value = consumer.Value{Kind: consumer.KindUint, Uint: uintV, Raw: p.Data}
+		case consumer.KindFloat:
+			obj.Value = consumer.Value{Kind: consumer.KindFloat, Float: floatV, Raw: p.Data}
 		}
 
 	case codec.ObjTypeEnum, codec.ObjTypePreset:
 		if len(p.Data) >= 4 {
 			fullIdx := binary.BigEndian.Uint32(p.Data[0:4])
-			ev := protocol.Value{
-				Kind: protocol.KindEnum,
+			ev := consumer.Value{
+				Kind: consumer.KindEnum,
 				Enum: uint8(fullIdx),
 				Uint: uint64(fullIdx),
 				Raw:  p.Data,
@@ -456,8 +456,8 @@ func (w *Walker) decodeValue(p *codec.Property, objType codec.ACP2ObjType, numTy
 
 	case codec.ObjTypeIPv4:
 		if len(p.Data) >= 4 {
-			obj.Value = protocol.Value{
-				Kind: protocol.KindIPAddr,
+			obj.Value = consumer.Value{
+				Kind: consumer.KindIPAddr,
 				IPAddr: [4]byte{
 					p.Data[0], p.Data[1], p.Data[2], p.Data[3],
 				},
@@ -466,21 +466,21 @@ func (w *Walker) decodeValue(p *codec.Property, objType codec.ACP2ObjType, numTy
 		}
 
 	case codec.ObjTypeString:
-		obj.Value = protocol.Value{
-			Kind: protocol.KindString,
+		obj.Value = consumer.Value{
+			Kind: consumer.KindString,
 			Str:  codec.PropertyString(p),
 			Raw:  p.Data,
 		}
 
 	default:
 		if p.Data != nil {
-			obj.Value = protocol.Value{Kind: protocol.KindRaw, Raw: p.Data}
+			obj.Value = consumer.Value{Kind: consumer.KindRaw, Raw: p.Data}
 		}
 	}
 }
 
 // decodeConstraint decodes min/max/step/default properties.
-func (w *Walker) decodeConstraint(p *codec.Property, objType codec.ACP2ObjType, numType codec.NumberType, obj *protocol.Object, which string) {
+func (w *Walker) decodeConstraint(p *codec.Property, objType codec.ACP2ObjType, numType codec.NumberType, obj *consumer.Object, which string) {
 	// Enum/preset: only default makes sense (u32 index).
 	if (objType == codec.ObjTypeEnum || objType == codec.ObjTypePreset) && which == "default" {
 		if len(p.Data) >= 4 {
@@ -503,11 +503,11 @@ func (w *Walker) decodeConstraint(p *codec.Property, objType codec.ACP2ObjType, 
 
 	var val any
 	switch numberTypeToKind(nt) {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		val = intV
-	case protocol.KindUint:
+	case consumer.KindUint:
 		val = uintV
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		val = floatV
 	default:
 		return
@@ -525,30 +525,30 @@ func (w *Walker) decodeConstraint(p *codec.Property, objType codec.ACP2ObjType, 
 	}
 }
 
-// numberTypeToKind maps an ACP2 NumberType to a protocol.ValueKind.
-func numberTypeToKind(nt codec.NumberType) protocol.ValueKind {
+// numberTypeToKind maps an ACP2 NumberType to a consumer.ValueKind.
+func numberTypeToKind(nt codec.NumberType) consumer.ValueKind {
 	switch nt {
 	case codec.NumTypeS8, codec.NumTypeS16, codec.NumTypeS32, codec.NumTypeS64:
-		return protocol.KindInt
+		return consumer.KindInt
 	case codec.NumTypeU8, codec.NumTypeU16, codec.NumTypeU32, codec.NumTypeU64:
-		return protocol.KindUint
+		return consumer.KindUint
 	case codec.NumTypeFloat:
-		return protocol.KindFloat
+		return consumer.KindFloat
 	case codec.NumTypePreset:
-		return protocol.KindEnum
+		return consumer.KindEnum
 	case codec.NumTypeIPv4:
-		return protocol.KindIPAddr
+		return consumer.KindIPAddr
 	case codec.NumTypeString:
-		return protocol.KindString
+		return consumer.KindString
 	default:
-		return protocol.KindRaw
+		return consumer.KindRaw
 	}
 }
 
 // setMeta writes a key/value into obj.Meta, lazily allocating the map.
 // Used by the walker to stash protocol-specific decoded values that
 // don't fit the fixed Object fields.
-func setMeta(obj *protocol.Object, key string, value any) {
+func setMeta(obj *consumer.Object, key string, value any) {
 	if obj.Meta == nil {
 		obj.Meta = make(map[string]any)
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // AllSourceNames asks the matrix for every source name on one
@@ -41,7 +41,7 @@ func (p *Plugin) AllSourceNames(
 	}
 	r, derr := codec.DecodeSourceNamesResponse(reply)
 	if derr != nil {
-		return codec.SourceNamesResponseParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.SourceNamesResponseParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return r, nil
 }

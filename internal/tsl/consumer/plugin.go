@@ -19,13 +19,13 @@ import (
 	"log/slog"
 	"net"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func init() {
-	protocol.Register(&Factory{version: V31})
-	protocol.Register(&Factory{version: V40})
-	protocol.Register(&Factory{version: V50})
+	consumer.Register(&Factory{version: V31})
+	consumer.Register(&Factory{version: V40})
+	consumer.Register(&Factory{version: V50})
 }
 
 // Version identifies one of the three TSL UMD wire versions.
@@ -77,8 +77,8 @@ type Factory struct {
 }
 
 // Meta returns the registry metadata.
-func (f *Factory) Meta() protocol.ProtocolMeta {
-	return protocol.ProtocolMeta{
+func (f *Factory) Meta() consumer.ProtocolMeta {
+	return consumer.ProtocolMeta{
 		Name:        f.version.name(),
 		DefaultPort: f.version.defaultPort(),
 		Description: f.version.description(),
@@ -86,7 +86,7 @@ func (f *Factory) Meta() protocol.ProtocolMeta {
 }
 
 // New instantiates a Plugin for this version.
-func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
+func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
 	return &Plugin{version: f.version, logger: logger}
 }
 
@@ -106,7 +106,7 @@ func NewPluginV50(logger *slog.Logger) *Plugin {
 	return &Plugin{version: V50, logger: logger}
 }
 
-// Plugin implements protocol.Protocol for one TSL version. For v3.1 and
+// Plugin implements consumer.Protocol for one TSL version. For v3.1 and
 // v4.0 it opens a UDP listener; v5.0 additionally supports TCP with
 // DLE/STX wrapper (wired alongside v5 codec).
 type Plugin struct {
@@ -198,7 +198,7 @@ func (p *Plugin) BoundTCPAddr() *net.TCPAddr {
 }
 
 // SubscribeV31 registers a handler for v3.1 frames. For the generic
-// protocol.Protocol.Subscribe path, see Subscribe.
+// consumer.consumer.Subscribe path, see Subscribe.
 func (p *Plugin) SubscribeV31(h V31Handler) error {
 	if p.session == nil {
 		return fmt.Errorf("tsl %s: not connected", p.version.name())
@@ -240,30 +240,30 @@ func (p *Plugin) SubscribeV50(h V50Handler) error {
 	return nil
 }
 
-func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
-	return protocol.DeviceInfo{}, protocol.ErrNotImplemented
+func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
+	return consumer.DeviceInfo{}, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, error) {
-	return protocol.SlotInfo{}, protocol.ErrNotImplemented
+func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
+	return consumer.SlotInfo{}, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) {
-	return nil, protocol.ErrNotImplemented
+func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) {
+	return nil, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
-	return protocol.Value{}, protocol.ErrNotImplemented
+func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
+	return consumer.Value{}, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
-	return protocol.Value{}, protocol.ErrNotImplemented
+func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
+	return consumer.Value{}, consumer.ErrNotImplemented
 }
 
-func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
-	return protocol.ErrNotImplemented
+func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
+	return consumer.ErrNotImplemented
 }
 
-func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
+func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	return nil
 }

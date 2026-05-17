@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // runExport walks every present slot on the device and writes the
@@ -82,7 +82,7 @@ func runExport(ctx context.Context, args []string) error {
 		if serr != nil {
 			continue
 		}
-		if si.Status != protocol.SlotPresent {
+		if si.Status != consumer.SlotPresent {
 			continue
 		}
 		objs, werr := plug.Walk(ctx, s)

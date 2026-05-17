@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"dhs/internal/protocol"
-	"dhs/internal/storage"
+	"dhs/internal/consumer"
+	"dhs/internal/datastore"
 )
 
 // fakeProber satisfies the new per-slot identityProber contract.
@@ -36,13 +36,13 @@ func withTempStore(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	prev := treeStore
-	treeStore = storage.NewTreeStore(root)
+	treeStore = datastore.NewTreeStore(root)
 	t.Cleanup(func() { treeStore = prev })
 	return root
 }
 
-func makeObjs() []protocol.Object {
-	return []protocol.Object{
+func makeObjs() []consumer.Object {
+	return []consumer.Object{
 		{Slot: 1, ID: 70232, Label: "Backup Input"},
 	}
 }
@@ -153,8 +153,8 @@ func TestSaveSlotCache_ACP2_DifferentCardsTwoFiles(t *testing.T) {
 	}}
 	ctx := context.Background()
 
-	slot0 := []protocol.Object{{Slot: 0, ID: 1, Label: "BOARD"}}
-	slot1 := []protocol.Object{{Slot: 1, ID: 70232, Label: "Backup Input"}}
+	slot0 := []consumer.Object{{Slot: 0, ID: 1, Label: "BOARD"}}
+	slot1 := []consumer.Object{{Slot: 1, ID: 70232, Label: "Backup Input"}}
 
 	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 0, slot0, nil)
 	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1, nil)
@@ -185,8 +185,8 @@ func TestSaveSlotCache_ACP2_SameCardTwoSlots_OneFile(t *testing.T) {
 	prober := &fakeProber{identity: "SHPIO@0.7"} // every slot returns this card
 	ctx := context.Background()
 
-	slot0Objs := []protocol.Object{{Slot: 0, ID: 70232, Label: "Backup Input"}}
-	slot1Objs := []protocol.Object{{Slot: 1, ID: 70232, Label: "Backup Input"}}
+	slot0Objs := []consumer.Object{{Slot: 0, ID: 70232, Label: "Backup Input"}}
+	slot1Objs := []consumer.Object{{Slot: 1, ID: 70232, Label: "Backup Input"}}
 
 	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 0, slot0Objs, nil)
 	saveSlotCache(ctx, prober, "10.41.40.4", "acp2", 1, slot1Objs, nil)

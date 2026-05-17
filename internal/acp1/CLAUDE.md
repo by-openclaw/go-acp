@@ -17,7 +17,7 @@ When any codec question arises: **spec first, dissector second, C# third**.
 ```
 internal/acp1/
 ├── CLAUDE.md    ← this file
-├── consumer/    package acp1 — implements protocol.Protocol
+├── consumer/    package acp1 — implements consumer.Protocol
 ├── provider/    package acp1 — implements provider.Provider
 ├── wireshark/   dhs_acpv1.lua
 ├── docs/        consumer.md / provider.md / README.md

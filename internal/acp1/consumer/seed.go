@@ -6,7 +6,7 @@ import (
 
 	"dhs/internal/acp1/codec"
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // SeedFromDM pre-populates the in-memory slot-tree cache from a DM-library
@@ -20,7 +20,7 @@ import (
 // Hot-swap is the caller's responsibility (watch hot-plug enrichment
 // re-seeds when GetIdentity returns a different fingerprint).
 //
-// ACPTypes is populated via best-effort mapping from protocol.ValueKind.
+// ACPTypes is populated via best-effort mapping from consumer.ValueKind.
 // Kind is a widened type (KindInt covers Integer + Long), so the wire
 // width may be wrong for set/get round-trip until the real walk fires.
 // This is acceptable: seeded values arrive only via announces (decoded
@@ -35,7 +35,7 @@ func (p *Plugin) SeedFromDM(slot int, snap *export.Snapshot) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.trees == nil {
-		return protocol.ErrNotConnected
+		return consumer.ErrNotConnected
 	}
 
 	sd := findSlot(snap, slot)
@@ -43,12 +43,12 @@ func (p *Plugin) SeedFromDM(slot int, snap *export.Snapshot) error {
 		return fmt.Errorf("acp1: SeedFromDM: snapshot has no slot %d", slot)
 	}
 
-	objs := make([]protocol.Object, len(sd.Objects))
+	objs := make([]consumer.Object, len(sd.Objects))
 	acpTypes := make([]codec.ObjectType, len(sd.Objects))
 	labels := map[string]map[string]int{}
 	for i, o := range sd.Objects {
 		objs[i] = o
-		objs[i].Value = protocol.Value{} // schemas are value-less
+		objs[i].Value = consumer.Value{} // schemas are value-less
 		acpTypes[i] = kindToACPType(o.Kind, o.Meta)
 		if o.Group != "" && o.Label != "" {
 			if labels[o.Group] == nil {
@@ -89,7 +89,7 @@ func findSlot(snap *export.Snapshot, slot int) *export.SlotDump {
 //
 // Plugins MAY persist the original ACPType under Object.Meta["acp1_type"]
 // during walk; when present, the meta override wins.
-func kindToACPType(k protocol.ValueKind, meta map[string]any) codec.ObjectType {
+func kindToACPType(k consumer.ValueKind, meta map[string]any) codec.ObjectType {
 	if meta != nil {
 		if raw, ok := meta["acp1_type"]; ok {
 			switch v := raw.(type) {
@@ -105,21 +105,21 @@ func kindToACPType(k protocol.ValueKind, meta map[string]any) codec.ObjectType {
 		}
 	}
 	switch k {
-	case protocol.KindBool, protocol.KindEnum:
+	case consumer.KindBool, consumer.KindEnum:
 		return codec.TypeEnum
-	case protocol.KindInt:
+	case consumer.KindInt:
 		return codec.TypeInteger
-	case protocol.KindUint:
+	case consumer.KindUint:
 		return codec.TypeByte
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return codec.TypeFloat
-	case protocol.KindString:
+	case consumer.KindString:
 		return codec.TypeString
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		return codec.TypeIPAddr
-	case protocol.KindAlarm:
+	case consumer.KindAlarm:
 		return codec.TypeAlarm
-	case protocol.KindFrame:
+	case consumer.KindFrame:
 		return codec.TypeFrame
 	}
 	return codec.ObjectType(0)

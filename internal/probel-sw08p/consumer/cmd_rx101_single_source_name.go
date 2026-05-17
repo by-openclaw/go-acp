@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // SingleSourceName fetches one source's name. Per spec §3.3.19 Note 5,
@@ -36,7 +36,7 @@ func (p *Plugin) SingleSourceName(
 	}
 	r, derr := codec.DecodeSourceNamesResponse(reply)
 	if derr != nil {
-		return "", &protocol.TransportError{Op: "decode", Err: derr}
+		return "", &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	if len(r.Names) == 0 {
 		return "", nil

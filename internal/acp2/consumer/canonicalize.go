@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"dhs/internal/export/canonical"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp2/codec"
 )
 
@@ -134,7 +134,7 @@ func buildACP2SlotNode(slot int, tree *WalkedTree) *canonical.Node {
 // segment is the element's identifier; everything before is the parent
 // path. Node-type objects are attached as Nodes; everything else as
 // Parameter.
-func placeACP2Object(slot int, slotOID, slotIdent string, obj protocol.Object, objType codec.ACP2ObjType, numType codec.NumberType, nodeByPath map[string]*canonical.Node) {
+func placeACP2Object(slot int, slotOID, slotIdent string, obj consumer.Object, objType codec.ACP2ObjType, numType codec.NumberType, nodeByPath map[string]*canonical.Node) {
 	if len(obj.Path) == 0 {
 		return
 	}
@@ -221,9 +221,9 @@ func ensureACP2Chain(slot int, slotOID, slotIdent string, segments []string, nod
 	}
 }
 
-// buildACP2Parameter maps a protocol.Object (leaf) to a canonical.Parameter.
+// buildACP2Parameter maps a consumer.Object (leaf) to a canonical.Parameter.
 // Spec cross-refs for each property come from acp2_protocol.pdf.
-func buildACP2Parameter(obj protocol.Object, objType codec.ACP2ObjType, numType codec.NumberType, slotOID, path string) *canonical.Parameter {
+func buildACP2Parameter(obj consumer.Object, objType codec.ACP2ObjType, numType codec.NumberType, slotOID, path string) *canonical.Parameter {
 	oid := slotOID + "." + strconv.Itoa(obj.ID)
 
 	p := &canonical.Parameter{
@@ -286,7 +286,7 @@ func buildACP2Parameter(obj protocol.Object, objType codec.ACP2ObjType, numType 
 
 // acp2Identifier returns a stable identifier for an object. Falls back
 // to "#<id>" when the device leaves the label empty (rare but allowed).
-func acp2Identifier(obj protocol.Object) string {
+func acp2Identifier(obj consumer.Object) string {
 	if obj.Label != "" {
 		return obj.Label
 	}
@@ -297,21 +297,21 @@ func acp2Identifier(obj protocol.Object) string {
 // an ACP2 leaf. The walker has already mapped ACP2ObjType → ValueKind
 // (see walker.go parseObjectProperties), so we mostly dispatch on Kind;
 // objType / numType disambiguate the special cases.
-func acp2KindToCanonicalType(k protocol.ValueKind, objType codec.ACP2ObjType, numType codec.NumberType) string {
+func acp2KindToCanonicalType(k consumer.ValueKind, objType codec.ACP2ObjType, numType codec.NumberType) string {
 	switch k {
-	case protocol.KindBool:
+	case consumer.KindBool:
 		return canonical.ParamBoolean
-	case protocol.KindInt, protocol.KindUint:
+	case consumer.KindInt, consumer.KindUint:
 		return canonical.ParamInteger
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return canonical.ParamReal
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		return canonical.ParamEnum
-	case protocol.KindString:
+	case consumer.KindString:
 		return canonical.ParamString
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		return canonical.ParamString
-	case protocol.KindRaw:
+	case consumer.KindRaw:
 		return canonical.ParamOctets
 	}
 	// Unknown kind — fall back on objType / numType for leaf disambiguation.
@@ -354,24 +354,24 @@ func acp2AccessString(a uint8) string {
 // acp2ValueToAny produces the right Go scalar for the canonical JSON
 // `value` field. Matches ACP1's valueToAny signature so downstream code
 // stays uniform.
-func acp2ValueToAny(v protocol.Value) any {
+func acp2ValueToAny(v consumer.Value) any {
 	switch v.Kind {
-	case protocol.KindBool:
+	case consumer.KindBool:
 		return v.Bool
-	case protocol.KindInt:
+	case consumer.KindInt:
 		return v.Int
-	case protocol.KindUint:
+	case consumer.KindUint:
 		return v.Uint
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		return v.Float
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		if v.Str != "" {
 			return v.Str
 		}
 		return int64(v.Enum)
-	case protocol.KindString:
+	case consumer.KindString:
 		return v.Str
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		return strconv.Itoa(int(v.IPAddr[0])) + "." +
 			strconv.Itoa(int(v.IPAddr[1])) + "." +
 			strconv.Itoa(int(v.IPAddr[2])) + "." +

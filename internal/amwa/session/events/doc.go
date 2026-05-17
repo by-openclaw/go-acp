@@ -14,7 +14,7 @@
 //	  internal/amwa/session/events/   (this package)
 //
 // Allowed imports: stdlib, internal/amwa/codec/*, internal/amwa/session/http
-// (for WebSocket primitives), internal/protocol/compliance,
+// (for WebSocket primitives), internal/consumer/compliance,
 // internal/metrics. Never imports any plugin layer.
 //
 // MQTT bridging is intentionally out of scope here — IS-07 v1.0.1

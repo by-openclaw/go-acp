@@ -18,7 +18,7 @@ import (
 // patch the deviation away. Every event is auditable.
 //
 // Fields mirror the cross-protocol compliance.Event shape from
-// internal/protocol/compliance/, with NMOS-specific identifiers
+// internal/consumer/compliance/, with NMOS-specific identifiers
 // (SpecID + APIVer + SpecPatch) added so reports stay attributable
 // across the 14-spec suite.
 type ComplianceEvent struct {

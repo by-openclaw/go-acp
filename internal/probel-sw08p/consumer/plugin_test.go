@@ -6,13 +6,13 @@ import (
 	"log/slog"
 	"testing"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TestFactoryMeta verifies the registration contract: the plugin
 // announces itself as "probel-sw08p" on the default SW-P-08 TCP port.
 func TestFactoryMeta(t *testing.T) {
-	f, err := protocol.Get("probel-sw08p")
+	f, err := consumer.Get("probel-sw08p")
 	if err != nil {
 		t.Fatalf("probel plugin not registered: %v", err)
 	}
@@ -33,16 +33,16 @@ func TestStubsReturnNotImplemented(t *testing.T) {
 	p := &Plugin{logger: logger}
 	ctx := context.Background()
 
-	if _, err := p.Walk(ctx, 0); err != protocol.ErrNotImplemented {
+	if _, err := p.Walk(ctx, 0); err != consumer.ErrNotImplemented {
 		t.Errorf("Walk err = %v; want ErrNotImplemented", err)
 	}
-	if _, err := p.GetValue(ctx, protocol.ValueRequest{}); err != protocol.ErrNotImplemented {
+	if _, err := p.GetValue(ctx, consumer.ValueRequest{}); err != consumer.ErrNotImplemented {
 		t.Errorf("GetValue err = %v; want ErrNotImplemented", err)
 	}
-	if _, err := p.SetValue(ctx, protocol.ValueRequest{}, protocol.Value{}); err != protocol.ErrNotImplemented {
+	if _, err := p.SetValue(ctx, consumer.ValueRequest{}, consumer.Value{}); err != consumer.ErrNotImplemented {
 		t.Errorf("SetValue err = %v; want ErrNotImplemented", err)
 	}
-	if err := p.Subscribe(protocol.ValueRequest{}, func(protocol.Event) {}); err != protocol.ErrNotImplemented {
+	if err := p.Subscribe(consumer.ValueRequest{}, func(consumer.Event) {}); err != consumer.ErrNotImplemented {
 		t.Errorf("Subscribe err = %v; want ErrNotImplemented", err)
 	}
 }

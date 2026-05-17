@@ -42,7 +42,7 @@ connectors.
   `internal/<proto>/` lifts cleanly.
 - Cross-connector imports are forbidden (`internal/<proto>/*` may
   not import `internal/<other-proto>/*`); only neutral packages
-  (`internal/transport/*`, `internal/protocol`, `internal/provider`)
+  (`internal/transport/*`, `internal/consumer`, `internal/provider`)
   cross the seam.
 - Ops teams orchestrate hot-add / hot-remove via standard process
   management (systemd / Ansible / Kubernetes); see ADR-0009 for the

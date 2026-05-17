@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TallyDumpResult carries the decoded reply of a CrosspointTallyDump
@@ -49,13 +49,13 @@ func (p *Plugin) CrosspointTallyDump(
 	if reply.ID == codec.TxCrosspointTallyDumpByte {
 		b, derr := codec.DecodeCrosspointTallyDumpByte(reply)
 		if derr != nil {
-			return TallyDumpResult{}, &protocol.TransportError{Op: "decode", Err: derr}
+			return TallyDumpResult{}, &consumer.TransportError{Op: "decode", Err: derr}
 		}
 		res.Byte = b
 	} else {
 		w, derr := codec.DecodeCrosspointTallyDumpWord(reply)
 		if derr != nil {
-			return TallyDumpResult{}, &protocol.TransportError{Op: "decode", Err: derr}
+			return TallyDumpResult{}, &consumer.TransportError{Op: "decode", Err: derr}
 		}
 		res.Word = w
 		res.IsWord = true

@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"dhs/internal/acp1/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // SeedTreeFromCachedObjects rebuilds an in-memory SlotTree from a
@@ -22,7 +22,7 @@ import (
 //
 // Re-seeding the same slot is safe — the cache Put replaces the prior
 // entry. Existing labels map is rebuilt from o.Group + o.Label.
-func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
+func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []consumer.Object) {
 	p.mu.Lock()
 	if p.trees == nil {
 		p.trees = newSlotTreeCache(defaultCacheConfig().MaxSize, defaultCacheConfig().TTL)
@@ -32,7 +32,7 @@ func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []protocol.Object) {
 
 	tree := &SlotTree{
 		Slot:     slot,
-		Objects:  make([]protocol.Object, 0, len(objs)),
+		Objects:  make([]consumer.Object, 0, len(objs)),
 		ACPTypes: make([]codec.ObjectType, 0, len(objs)),
 		Labels:   make(map[string]map[string]int, 8),
 	}
@@ -99,19 +99,19 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 //
 // Three deterministic getObject calls. NAK on the Card Label probe
 // fires the IdentityNAK compliance event and returns
-// protocol.ErrIdentityUnresolved. NAKs on SwRev / HwRev leave those
+// consumer.ErrIdentityUnresolved. NAKs on SwRev / HwRev leave those
 // fields empty but do not fail — partial fingerprints are still useful
 // for DM-library partial-match lookup.
 //
 // Vendor strings come straight off the wire. Persistence callers must
 // run them through internal/identity sanitisers before disk write.
-func (p *Plugin) GetIdentity(ctx context.Context, slot int) (protocol.CardIdentity, error) {
+func (p *Plugin) GetIdentity(ctx context.Context, slot int) (consumer.CardIdentity, error) {
 	p.mu.Lock()
 	c := p.client
 	profile := p.profile
 	p.mu.Unlock()
 	if c == nil {
-		return protocol.CardIdentity{}, protocol.ErrNotConnected
+		return consumer.CardIdentity{}, consumer.ErrNotConnected
 	}
 
 	model, err := identityField(ctx, c, slot, 0)
@@ -119,7 +119,7 @@ func (p *Plugin) GetIdentity(ctx context.Context, slot int) (protocol.CardIdenti
 		if profile != nil {
 			profile.Note(IdentityNAK)
 		}
-		return protocol.CardIdentity{}, fmt.Errorf("%w: card label: %v", protocol.ErrIdentityUnresolved, err)
+		return consumer.CardIdentity{}, fmt.Errorf("%w: card label: %v", consumer.ErrIdentityUnresolved, err)
 	}
 
 	// SwRev + HwRev are best-effort. Empty on miss; the DM-library
@@ -127,7 +127,7 @@ func (p *Plugin) GetIdentity(ctx context.Context, slot int) (protocol.CardIdenti
 	swrev, _ := identityField(ctx, c, slot, 3)
 	hwrev, _ := identityField(ctx, c, slot, 4)
 
-	return protocol.CardIdentity{
+	return consumer.CardIdentity{
 		Model: model,
 		SwRev: swrev,
 		HwRev: hwrev,

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
-	"dhs/internal/protocol"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/compliance"
 )
 
 // stringObject builds the wire bytes for a String identity object
@@ -110,7 +110,7 @@ func TestGetIdentity_CardLabelNAK_FiresComplianceEvent(t *testing.T) {
 	ft.recv = [][]byte{errReply}
 
 	_, err := p.GetIdentity(context.Background(), 1)
-	if !errors.Is(err, protocol.ErrIdentityUnresolved) {
+	if !errors.Is(err, consumer.ErrIdentityUnresolved) {
 		t.Fatalf("err = %v, want ErrIdentityUnresolved", err)
 	}
 	if got := p.profile.Snapshot()[IdentityNAK]; got != 1 {
@@ -148,21 +148,21 @@ func TestGetIdentity_PartialIdentity_OnSwRevNAK(t *testing.T) {
 func TestGetIdentity_NotConnected(t *testing.T) {
 	p := &Plugin{logger: slog.Default()}
 	_, err := p.GetIdentity(context.Background(), 1)
-	if !errors.Is(err, protocol.ErrNotConnected) {
+	if !errors.Is(err, consumer.ErrNotConnected) {
 		t.Fatalf("err = %v, want ErrNotConnected", err)
 	}
 }
 
 func TestCardIdentity_IsZero(t *testing.T) {
-	if !(protocol.CardIdentity{}).IsZero() {
+	if !(consumer.CardIdentity{}).IsZero() {
 		t.Fatal("zero value should be zero")
 	}
-	if (protocol.CardIdentity{Model: "RRS18"}).IsZero() {
+	if (consumer.CardIdentity{Model: "RRS18"}).IsZero() {
 		t.Fatal("non-zero Model should not be zero")
 	}
 }
 
 func TestPlugin_SatisfiesIdentifier(t *testing.T) {
-	// Compile-time assertion that *Plugin satisfies protocol.Identifier.
-	var _ protocol.Identifier = (*Plugin)(nil)
+	// Compile-time assertion that *Plugin satisfies consumer.Identifier.
+	var _ consumer.Identifier = (*Plugin)(nil)
 }

@@ -6,15 +6,15 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/tsl/codec"
 	"dhs/internal/wiretrace"
 )
 
-// Compile-time assertion: TSL Plugin satisfies protocol.Validator so
+// Compile-time assertion: TSL Plugin satisfies consumer.Validator so
 // `dhs consumer tsl-vXX validate <frames.jsonl>` resolves cleanly at
 // the CLI type-assert (cmd/dhs/cmd_validate.go).
-var _ protocol.Validator = (*Plugin)(nil)
+var _ consumer.Validator = (*Plugin)(nil)
 
 // Validate decodes captured TSL UMD wire-trace records (Trames per
 // ADR-0021) through the version-specific decoder bound to this
@@ -39,8 +39,8 @@ var _ protocol.Validator = (*Plugin)(nil)
 // --out-tree / --out-params (per ADR-0002) defer to Canonicalize() in
 // a follow-up PR once the consumer aggregates per-INDEX display state
 // from the V31/V40/V50 frame stream.
-func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts protocol.ValidateOpts) (*protocol.ValidateReport, error) {
-	report := &protocol.ValidateReport{
+func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts consumer.ValidateOpts) (*consumer.ValidateReport, error) {
+	report := &consumer.ValidateReport{
 		PerDirection: map[wiretrace.Direction]int{},
 	}
 
@@ -55,7 +55,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		raw, err := hex.DecodeString(t.Hex)
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				Err:        fmt.Sprintf("hex decode: %v", err),
@@ -65,7 +65,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		notes, err := p.decodeOne(raw)
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				HexPrefix:  shortHex(raw),

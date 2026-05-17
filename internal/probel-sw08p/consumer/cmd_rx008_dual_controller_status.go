@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // DualControllerStatus queries the 1:1 redundancy state (master vs.
@@ -28,7 +28,7 @@ func (p *Plugin) DualControllerStatus(
 	}
 	r, derr := codec.DecodeDualControllerStatusResponse(reply)
 	if derr != nil {
-		return codec.DualControllerStatusParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.DualControllerStatusParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return r, nil
 }

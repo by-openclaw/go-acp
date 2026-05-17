@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"dhs/internal/acp2/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TestSeedTreeFromCachedObjects pins #353: a snapshot's per-object
@@ -19,7 +19,7 @@ import (
 // (float64 / map[string]any) via metaToUint8 + decodeStringlyOptionsMap.
 func TestSeedTreeFromCachedObjects_DirectTypes(t *testing.T) {
 	p := &Plugin{trees: newWalkedTreeCache(4, 0)}
-	objs := []protocol.Object{
+	objs := []consumer.Object{
 		{
 			Slot: 1, ID: 17671, Label: "IO Board",
 			Meta: map[string]any{
@@ -50,7 +50,7 @@ func TestSeedTreeFromCachedObjects_DirectTypes(t *testing.T) {
 // which is what tree_store.LoadByIdentity returns from disk.
 func TestSeedTreeFromCachedObjects_PostJSONShape(t *testing.T) {
 	p := &Plugin{trees: newWalkedTreeCache(4, 0)}
-	objs := []protocol.Object{
+	objs := []consumer.Object{
 		{
 			Slot: 1, ID: 21127, Label: "Fan Control",
 			Meta: map[string]any{

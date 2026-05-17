@@ -2,7 +2,7 @@
 //
 // A "device snapshot" is everything a walker knows about one device at a
 // moment in time: the device IP/port/protocol, plus one or more walked
-// slots, each containing the flat list of decoded protocol.Object values.
+// slots, each containing the flat list of decoded consumer.Object values.
 // The package supports three formats:
 //
 //	JSON  — lossless, stdlib encoding/json, single file
@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // Snapshot is the top-level object every export file contains. It is
@@ -34,7 +34,7 @@ type Snapshot struct {
 }
 
 // DeviceInfo is the per-snapshot device header. Mirrors the subset of
-// protocol.DeviceInfo we care about for persistence.
+// consumer.DeviceInfo we care about for persistence.
 type DeviceInfo struct {
 	IP              string `json:"ip"`
 	Port            int    `json:"port"`
@@ -49,7 +49,7 @@ type SlotDump struct {
 	Slot    int               `json:"slot"`
 	Status  string            `json:"status,omitempty"`
 	WalkedAt time.Time        `json:"walked_at"`
-	Objects []protocol.Object `json:"objects"`
+	Objects []consumer.Object `json:"objects"`
 }
 
 // Format is the enum of supported serialization formats.

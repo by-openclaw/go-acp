@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"dhs/internal/acp2/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TestSeedTreeFromCachedObjects pins the disk-cache fast-path for
@@ -24,7 +24,7 @@ func TestSeedTreeFromCachedObjects(t *testing.T) {
 	p := &Plugin{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 
 	// Build snapshot-shaped objects: live-walker shape (uint8 in Meta).
-	objs := []protocol.Object{
+	objs := []consumer.Object{
 		{
 			Slot: 1, ID: 5, Label: "Volume",
 			Meta: map[string]any{
@@ -78,7 +78,7 @@ func TestSeedTreeFromCachedObjects(t *testing.T) {
 func TestSeedTreeFromCachedObjects_JSONRoundTrip(t *testing.T) {
 	p := &Plugin{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 
-	objs := []protocol.Object{
+	objs := []consumer.Object{
 		{
 			Slot: 1, ID: 5, Label: "Vol",
 			Meta: map[string]any{
@@ -123,9 +123,9 @@ func TestSeedTreeFromCachedObjects_JSONRoundTrip(t *testing.T) {
 // slice fills are O(n).
 func TestSeedTreeFromCachedObjects_TimingFastPath(t *testing.T) {
 	p := &Plugin{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	objs := make([]protocol.Object, 5000)
+	objs := make([]consumer.Object, 5000)
 	for i := range objs {
-		objs[i] = protocol.Object{
+		objs[i] = consumer.Object{
 			Slot: 1, ID: i + 1, Label: "x",
 			Meta: map[string]any{
 				"acp2.objType": uint8(codec.ObjTypeNumber),

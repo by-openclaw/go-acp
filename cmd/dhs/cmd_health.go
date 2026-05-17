@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func runHealth(ctx context.Context, args []string) error {
@@ -31,7 +31,7 @@ func runHealth(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	checker, ok := plug.(protocol.HealthChecker)
+	checker, ok := plug.(consumer.HealthChecker)
 	if !ok {
 		return fmt.Errorf("health: protocol %q does not implement HealthChecker yet", cf.protocol)
 	}
@@ -49,7 +49,7 @@ func runHealth(ctx context.Context, args []string) error {
 	ticker := time.NewTicker(*interval)
 	defer ticker.Stop()
 
-	var prev *protocol.SessionHealth
+	var prev *consumer.SessionHealth
 	emit := func() {
 		opCtx, cancel := withTimeout(ctx, cf.timeout)
 		snap := checker.SessionHealth(opCtx)
@@ -86,7 +86,7 @@ flags:
 Common flags from --help apply (--protocol, --transport, --port, ...).`)
 }
 
-func printHealthBuf(w io.Writer, host, proto string, h protocol.SessionHealth, asJSON bool) {
+func printHealthBuf(w io.Writer, host, proto string, h consumer.SessionHealth, asJSON bool) {
 	if asJSON {
 		_ = json.NewEncoder(w).Encode(struct {
 			Host       string `json:"host"`
@@ -127,13 +127,13 @@ func printHealthBuf(w io.Writer, host, proto string, h protocol.SessionHealth, a
 // healthFlipped reports whether any of the 3 layer bits changed between
 // two snapshots. Pure helper so the watch-loop transition logic is unit
 // testable.
-func healthFlipped(prev, cur protocol.SessionHealth) bool {
+func healthFlipped(prev, cur consumer.SessionHealth) bool {
 	return prev.Reachable != cur.Reachable ||
 		prev.Connected != cur.Connected ||
 		prev.Live != cur.Live
 }
 
-func liveContext(h protocol.SessionHealth) string {
+func liveContext(h consumer.SessionHealth) string {
 	if h.LastRx.IsZero() {
 		return "(no rx yet)"
 	}

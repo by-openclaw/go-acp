@@ -1,4 +1,4 @@
-package dmlib
+package devicemodel
 
 import (
 	"encoding/json"

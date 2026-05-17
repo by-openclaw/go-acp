@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
-// fakePlugin satisfies the subset of protocol.Protocol that the watch
-// hot-plug enricher exercises plus protocol.Identifier and seederIface.
+// fakePlugin satisfies the subset of consumer.Protocol that the watch
+// hot-plug enricher exercises plus consumer.Identifier and seederIface.
 type fakePlugin struct {
-	identity     protocol.CardIdentity
+	identity     consumer.CardIdentity
 	identityErr  error
 	seedErr      error
 	seedCalls    int
@@ -30,13 +30,13 @@ type fakePlugin struct {
 
 func (f *fakePlugin) Connect(ctx context.Context, ip string, port int) error { return nil }
 func (f *fakePlugin) Disconnect() error                                       { return f.disconnect }
-func (f *fakePlugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
-	return protocol.DeviceInfo{}, nil
+func (f *fakePlugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
+	return consumer.DeviceInfo{}, nil
 }
-func (f *fakePlugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, error) {
-	return protocol.SlotInfo{Slot: slot}, nil
+func (f *fakePlugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
+	return consumer.SlotInfo{Slot: slot}, nil
 }
-func (f *fakePlugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) {
+func (f *fakePlugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) {
 	f.walkCalls++
 	if f.walkSignaled != nil {
 		close(f.walkSignaled)
@@ -45,24 +45,24 @@ func (f *fakePlugin) Walk(ctx context.Context, slot int) ([]protocol.Object, err
 	if f.walkErr != nil {
 		return nil, f.walkErr
 	}
-	objs := make([]protocol.Object, f.walkObjsRet)
+	objs := make([]consumer.Object, f.walkObjsRet)
 	return objs, nil
 }
-func (f *fakePlugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
-	return protocol.Value{}, nil
+func (f *fakePlugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
+	return consumer.Value{}, nil
 }
-func (f *fakePlugin) SetValue(ctx context.Context, req protocol.ValueRequest, v protocol.Value) (protocol.Value, error) {
+func (f *fakePlugin) SetValue(ctx context.Context, req consumer.ValueRequest, v consumer.Value) (consumer.Value, error) {
 	return v, nil
 }
-func (f *fakePlugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
+func (f *fakePlugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
 	return nil
 }
-func (f *fakePlugin) Unsubscribe(req protocol.ValueRequest) error { return nil }
+func (f *fakePlugin) Unsubscribe(req consumer.ValueRequest) error { return nil }
 
 // Identifier
-func (f *fakePlugin) GetIdentity(ctx context.Context, slot int) (protocol.CardIdentity, error) {
+func (f *fakePlugin) GetIdentity(ctx context.Context, slot int) (consumer.CardIdentity, error) {
 	if f.identityErr != nil {
-		return protocol.CardIdentity{}, f.identityErr
+		return consumer.CardIdentity{}, f.identityErr
 	}
 	return f.identity, nil
 }
@@ -75,28 +75,28 @@ func (f *fakePlugin) SeedFromDM(slot int, snap *export.Snapshot) error {
 
 // fakeResolver hands out a canned schema or ErrNotFound.
 type fakeResolver struct {
-	schema *dmlib.Schema
+	schema *devicemodel.Schema
 	err    error
 }
 
-func (r *fakeResolver) Resolve(fp dmlib.Fingerprint) (*dmlib.Schema, error) {
+func (r *fakeResolver) Resolve(fp devicemodel.Fingerprint) (*devicemodel.Schema, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
 	return r.schema, nil
 }
-func (r *fakeResolver) LookupAlternate(fp dmlib.Fingerprint) ([]dmlib.Fingerprint, error) {
+func (r *fakeResolver) LookupAlternate(fp devicemodel.Fingerprint) ([]devicemodel.Fingerprint, error) {
 	return nil, nil
 }
-func (r *fakeResolver) Persist(s *dmlib.Schema) error { return nil }
-func (r *fakeResolver) Diff(prev, cur *dmlib.Schema) dmlib.Diff {
-	return dmlib.Diff{}
+func (r *fakeResolver) Persist(s *devicemodel.Schema) error { return nil }
+func (r *fakeResolver) Diff(prev, cur *devicemodel.Schema) devicemodel.Diff {
+	return devicemodel.Diff{}
 }
 
 // makeSchema builds a minimal Schema with one slot dump containing N objects.
-func makeSchema(slot, nObjs int) *dmlib.Schema {
-	objs := make([]protocol.Object, nObjs)
-	return &dmlib.Schema{
+func makeSchema(slot, nObjs int) *devicemodel.Schema {
+	objs := make([]consumer.Object, nObjs)
+	return &devicemodel.Schema{
 		Slots: map[int]*export.Snapshot{
 			slot: {
 				Slots: []export.SlotDump{{Slot: slot, Objects: objs}},
@@ -116,7 +116,7 @@ func TestHotPlugEnricher_FirstSight_NonPresentSlotsRecordedSilently(t *testing.T
 
 	// First-sight: slot 0 = no_card → no action.
 	transitioned := enr.observe(context.Background(), plug, time.Now(),
-		[]protocol.SlotStatus{protocol.SlotNoCard})
+		[]consumer.SlotStatus{consumer.SlotNoCard})
 	if len(transitioned) != 0 {
 		t.Fatalf("first sight no_card returned transitioned=%v, want []", transitioned)
 	}
@@ -133,11 +133,11 @@ func TestHotPlugEnricher_FirstSight_PresentSlotEnriches(t *testing.T) {
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(nil, false, &buf)
 	plug := &fakePlugin{
-		identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"},
+		identity: consumer.CardIdentity{Model: "RRS18", SwRev: "1601"},
 	}
 
 	transitioned := enr.observe(context.Background(), plug, time.Now(),
-		[]protocol.SlotStatus{protocol.SlotPresent})
+		[]consumer.SlotStatus{consumer.SlotPresent})
 	if len(transitioned) != 1 || transitioned[0] != 0 {
 		t.Fatalf("first sight present returned transitioned=%v, want [0]", transitioned)
 	}
@@ -158,14 +158,14 @@ func TestHotPlugEnricher_BootToPresent_TriggersEnrichment(t *testing.T) {
 		&buf,
 	)
 	plug := &fakePlugin{
-		identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"},
+		identity: consumer.CardIdentity{Model: "RRS18", SwRev: "1601"},
 	}
 
 	t0 := time.Date(2026, 5, 5, 18, 42, 0, 0, time.UTC)
 	enr.observe(context.Background(), plug, t0,
-		[]protocol.SlotStatus{protocol.SlotBootMode}) // first sight, prev=boot
+		[]consumer.SlotStatus{consumer.SlotBootMode}) // first sight, prev=boot
 	enr.observe(context.Background(), plug, t0,
-		[]protocol.SlotStatus{protocol.SlotPresent}) // boot→present transition
+		[]consumer.SlotStatus{consumer.SlotPresent}) // boot→present transition
 
 	if plug.seedCalls != 1 {
 		t.Fatalf("SeedFromDM calls = %d, want 1", plug.seedCalls)
@@ -185,19 +185,19 @@ func TestHotPlugEnricher_BootToPresent_TriggersEnrichment(t *testing.T) {
 func TestHotPlugEnricher_BootToPresent_NoDMEntry(t *testing.T) {
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(
-		&fakeResolver{err: dmlib.ErrNotFound},
+		&fakeResolver{err: devicemodel.ErrNotFound},
 		false,
 		&buf,
 	)
 	plug := &fakePlugin{
-		identity: protocol.CardIdentity{Model: "RRS19", SwRev: "9999"},
+		identity: consumer.CardIdentity{Model: "RRS19", SwRev: "9999"},
 	}
 
 	t0 := time.Date(2026, 5, 5, 18, 42, 0, 0, time.UTC)
 	enr.observe(context.Background(), plug, t0,
-		[]protocol.SlotStatus{protocol.SlotBootMode})
+		[]consumer.SlotStatus{consumer.SlotBootMode})
 	enr.observe(context.Background(), plug, t0,
-		[]protocol.SlotStatus{protocol.SlotPresent})
+		[]consumer.SlotStatus{consumer.SlotPresent})
 
 	if plug.seedCalls != 0 {
 		t.Fatalf("SeedFromDM should not be called on DM miss; got %d", plug.seedCalls)
@@ -212,12 +212,12 @@ func TestHotPlugEnricher_IdentityUnresolved(t *testing.T) {
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(&fakeResolver{schema: makeSchema(1, 1)}, false, &buf)
 	plug := &fakePlugin{
-		identityErr: protocol.ErrIdentityUnresolved,
+		identityErr: consumer.ErrIdentityUnresolved,
 	}
 
 	t0 := time.Now()
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 
 	if plug.seedCalls != 0 {
 		t.Fatalf("SeedFromDM should not run on identity-unresolved; got %d", plug.seedCalls)
@@ -237,14 +237,14 @@ func TestHotPlugEnricher_AutoWalkOnPlug(t *testing.T) {
 	)
 	walkSignal := make(chan struct{})
 	plug := &fakePlugin{
-		identity:     protocol.CardIdentity{Model: "RRS18", SwRev: "1601"},
+		identity:     consumer.CardIdentity{Model: "RRS18", SwRev: "1601"},
 		walkObjsRet:  5,
 		walkSignaled: walkSignal,
 	}
 
 	t0 := time.Now()
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 
 	select {
 	case <-walkSignal:
@@ -263,17 +263,17 @@ func TestHotPlugEnricher_HotRemove_NoReseed(t *testing.T) {
 	// that's what this test pins.
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(&fakeResolver{schema: makeSchema(1, 1)}, false, &buf)
-	plug := &fakePlugin{identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}}
+	plug := &fakePlugin{identity: consumer.CardIdentity{Model: "RRS18", SwRev: "1601"}}
 
 	t0 := time.Now()
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 	seedAfterFirstSight := plug.seedCalls
 	if seedAfterFirstSight != 1 {
 		t.Fatalf("first-sight present should enrich once; seedCalls = %d", seedAfterFirstSight)
 	}
 
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotRemoved})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotNoCard})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotRemoved})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotNoCard})
 
 	if plug.seedCalls != seedAfterFirstSight {
 		t.Fatalf("hot-remove cascade should not re-seed; seedCalls = %d, want %d",
@@ -288,15 +288,15 @@ func TestHotPlugEnricher_HotRemove_NoReseed(t *testing.T) {
 func TestClassifyFingerprintShift(t *testing.T) {
 	cases := []struct {
 		name string
-		prev protocol.CardIdentity
-		cur  protocol.CardIdentity
+		prev consumer.CardIdentity
+		cur  consumer.CardIdentity
 		want string
 	}{
-		{"first-sight", protocol.CardIdentity{}, protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, "discovered"},
-		{"re-confirmed-same", protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, "re-confirmed"},
-		{"fw-upgrade", protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, protocol.CardIdentity{Model: "RRS18", SwRev: "1602"}, "fw-upgrade RRS18 1601 →"},
-		{"fw-downgrade", protocol.CardIdentity{Model: "RRS18", SwRev: "1602"}, protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, "fw-downgrade RRS18 1602 →"},
-		{"card-swap", protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}, protocol.CardIdentity{Model: "GJA840", SwRev: "0101"}, "card-swap RRS18@1601 →"},
+		{"first-sight", consumer.CardIdentity{}, consumer.CardIdentity{Model: "RRS18", SwRev: "1601"}, "discovered"},
+		{"re-confirmed-same", consumer.CardIdentity{Model: "RRS18", SwRev: "1601"}, consumer.CardIdentity{Model: "RRS18", SwRev: "1601"}, "re-confirmed"},
+		{"fw-upgrade", consumer.CardIdentity{Model: "RRS18", SwRev: "1601"}, consumer.CardIdentity{Model: "RRS18", SwRev: "1602"}, "fw-upgrade RRS18 1601 →"},
+		{"fw-downgrade", consumer.CardIdentity{Model: "RRS18", SwRev: "1602"}, consumer.CardIdentity{Model: "RRS18", SwRev: "1601"}, "fw-downgrade RRS18 1602 →"},
+		{"card-swap", consumer.CardIdentity{Model: "RRS18", SwRev: "1601"}, consumer.CardIdentity{Model: "GJA840", SwRev: "0101"}, "card-swap RRS18@1601 →"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -314,47 +314,47 @@ func TestHotPlugEnricher_FingerprintShifts_LiveDiagnostic(t *testing.T) {
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(&fakeResolver{schema: makeSchema(0, 1)}, false, &buf)
 	plug := &fakePlugin{
-		identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"},
+		identity: consumer.CardIdentity{Model: "RRS18", SwRev: "1601"},
 	}
 
 	// 1) Initial discovery.
 	t0 := time.Now()
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 	if !strings.Contains(buf.String(), "discovered RRS18@1601") {
 		t.Fatalf("missing 'discovered' for initial; output: %q", buf.String())
 	}
 	buf.Reset()
 
 	// 2) Same card re-confirmed: cycle through boot then back to present.
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 	if !strings.Contains(buf.String(), "re-confirmed RRS18@1601") {
 		t.Fatalf("missing 're-confirmed'; output: %q", buf.String())
 	}
 	buf.Reset()
 
 	// 3) Firmware upgrade: same model, higher sw_rev.
-	plug.identity = protocol.CardIdentity{Model: "RRS18", SwRev: "1602"}
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	plug.identity = consumer.CardIdentity{Model: "RRS18", SwRev: "1602"}
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 	if !strings.Contains(buf.String(), "fw-upgrade RRS18 1601") {
 		t.Fatalf("missing 'fw-upgrade'; output: %q", buf.String())
 	}
 	buf.Reset()
 
 	// 4) Firmware downgrade.
-	plug.identity = protocol.CardIdentity{Model: "RRS18", SwRev: "1500"}
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	plug.identity = consumer.CardIdentity{Model: "RRS18", SwRev: "1500"}
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 	if !strings.Contains(buf.String(), "fw-downgrade RRS18 1602") {
 		t.Fatalf("missing 'fw-downgrade'; output: %q", buf.String())
 	}
 	buf.Reset()
 
 	// 5) Card swap to a different model.
-	plug.identity = protocol.CardIdentity{Model: "GJA840", SwRev: "0101"}
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	plug.identity = consumer.CardIdentity{Model: "GJA840", SwRev: "0101"}
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 	if !strings.Contains(buf.String(), "card-swap RRS18@1500") {
 		t.Fatalf("missing 'card-swap'; output: %q", buf.String())
 	}
@@ -366,14 +366,14 @@ func TestHotPlugEnricher_NoCard_DropsCachedFingerprint(t *testing.T) {
 	// physical card is re-inserted — we cannot assume continuity.
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(&fakeResolver{schema: makeSchema(0, 1)}, false, &buf)
-	plug := &fakePlugin{identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}}
+	plug := &fakePlugin{identity: consumer.CardIdentity{Model: "RRS18", SwRev: "1601"}}
 
 	t0 := time.Now()
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotRemoved})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotNoCard})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotRemoved})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotNoCard})
 	buf.Reset()
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 	if strings.Contains(buf.String(), "re-confirmed") {
 		t.Fatalf("re-plug after no_card should NOT be re-confirmed; output: %q", buf.String())
 	}
@@ -391,24 +391,24 @@ func TestHotPlugEnricher_NoCard_DropsCachedFingerprint(t *testing.T) {
 func TestHotPlugEnricher_AnyPathToPresent_TriggersEnrichment(t *testing.T) {
 	cases := []struct {
 		name string
-		prev protocol.SlotStatus
+		prev consumer.SlotStatus
 	}{
-		{"boot-to-present", protocol.SlotBootMode},
-		{"powerup-to-present", protocol.SlotPowerUp},
-		{"removed-to-present", protocol.SlotRemoved},
-		{"error-to-present", protocol.SlotError},
-		{"no_card-to-present", protocol.SlotNoCard},
+		{"boot-to-present", consumer.SlotBootMode},
+		{"powerup-to-present", consumer.SlotPowerUp},
+		{"removed-to-present", consumer.SlotRemoved},
+		{"error-to-present", consumer.SlotError},
+		{"no_card-to-present", consumer.SlotNoCard},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			enr := newHotPlugEnricher(&fakeResolver{schema: makeSchema(0, 1)}, false, &buf)
-			plug := &fakePlugin{identity: protocol.CardIdentity{Model: "RRS18", SwRev: "1601"}}
+			plug := &fakePlugin{identity: consumer.CardIdentity{Model: "RRS18", SwRev: "1601"}}
 
 			t0 := time.Now()
-			enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{tc.prev})
+			enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{tc.prev})
 			before := plug.seedCalls
-			enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+			enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 			if plug.seedCalls <= before {
 				t.Fatalf("%s did not trigger enrichment; seedCalls before=%d after=%d",
 					tc.name, before, plug.seedCalls)
@@ -426,9 +426,9 @@ func TestHotPlugEnricher_StableState_NoOutput(t *testing.T) {
 	plug := &fakePlugin{}
 	t0 := time.Now()
 
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 	buf.Reset() // ignore first-sight (no output anyway)
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 
 	if buf.Len() != 0 {
 		t.Fatalf("stable state emitted output: %q", buf.String())
@@ -438,19 +438,19 @@ func TestHotPlugEnricher_StableState_NoOutput(t *testing.T) {
 // Compile-time guard: *fakePlugin must satisfy the interfaces the
 // enricher type-asserts. Drift here breaks live behaviour silently.
 var (
-	_ protocol.Protocol   = (*fakePlugin)(nil)
-	_ protocol.Identifier = (*fakePlugin)(nil)
+	_ consumer.Protocol   = (*fakePlugin)(nil)
+	_ consumer.Identifier = (*fakePlugin)(nil)
 	_ seederIface         = (*fakePlugin)(nil)
 )
 
 func TestHotPlugEnricher_NilResolver_NoSeed(t *testing.T) {
 	var buf bytes.Buffer
 	enr := newHotPlugEnricher(nil, false, &buf)
-	plug := &fakePlugin{identity: protocol.CardIdentity{Model: "X", SwRev: "1"}}
+	plug := &fakePlugin{identity: consumer.CardIdentity{Model: "X", SwRev: "1"}}
 
 	t0 := time.Now()
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotBootMode})
-	enr.observe(context.Background(), plug, t0, []protocol.SlotStatus{protocol.SlotPresent})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotBootMode})
+	enr.observe(context.Background(), plug, t0, []consumer.SlotStatus{consumer.SlotPresent})
 
 	if plug.seedCalls != 0 {
 		t.Fatalf("SeedFromDM called with nil resolver: %d", plug.seedCalls)

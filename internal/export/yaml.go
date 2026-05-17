@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // WriteYAML emits a Snapshot as YAML. We deliberately avoid importing
@@ -63,7 +63,7 @@ func WriteYAML(w io.Writer, s *Snapshot) error {
 // nodes with only children are containers (rendered as YAML maps).
 type objectTreeNode struct {
 	name     string
-	obj      *protocol.Object // nil for pure container nodes
+	obj      *consumer.Object // nil for pure container nodes
 	children []*objectTreeNode
 	childIdx map[string]int // name → index into children
 }
@@ -71,7 +71,7 @@ type objectTreeNode struct {
 // buildObjectTree constructs a tree from flat objects using their Path.
 // Path[0] is always ROOT_NODE_V2 for ACP2 — we skip it and start from
 // Path[1] (BOARD, PSU, etc.) so the tree matches Cerebrum's view.
-func buildObjectTree(objs []protocol.Object) *objectTreeNode {
+func buildObjectTree(objs []consumer.Object) *objectTreeNode {
 	// Detect ACP2 by ROOT_NODE_V2 prefix.
 	acp2 := false
 	for _, o := range objs {
@@ -104,7 +104,7 @@ func buildObjectTree(objs []protocol.Object) *objectTreeNode {
 				}
 				cur = cur.children[idx]
 			}
-			if o.Kind != protocol.KindRaw {
+			if o.Kind != consumer.KindRaw {
 				cur.obj = o
 			}
 		} else {
@@ -167,7 +167,7 @@ func writeTreeNode(sb *strings.Builder, indent int, node *objectTreeNode) {
 }
 
 // writeTreeLeaf renders properties of a leaf object under its parent key.
-func writeTreeLeaf(sb *strings.Builder, indent int, o *protocol.Object) {
+func writeTreeLeaf(sb *strings.Builder, indent int, o *consumer.Object) {
 	pad := strings.Repeat(" ", indent)
 
 	writeKVPad(sb, pad, "id", o.ID)
@@ -178,15 +178,15 @@ func writeTreeLeaf(sb *strings.Builder, indent int, o *protocol.Object) {
 	}
 
 	switch o.Kind {
-	case protocol.KindInt, protocol.KindUint, protocol.KindFloat:
+	case consumer.KindInt, consumer.KindUint, consumer.KindFloat:
 		writeKVPad(sb, pad, "min", o.Min)
 		writeKVPad(sb, pad, "max", o.Max)
 		writeKVPad(sb, pad, "step", o.Step)
 		writeKVPad(sb, pad, "default", o.Def)
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		writeKVPad(sb, pad, "enum_items", o.EnumItems)
 		writeKVPad(sb, pad, "default", o.Def)
-	case protocol.KindString:
+	case consumer.KindString:
 		if o.MaxLen > 0 {
 			writeKVPad(sb, pad, "max_len", o.MaxLen)
 		}
@@ -199,15 +199,15 @@ func writeTreeLeaf(sb *strings.Builder, indent int, o *protocol.Object) {
 // order preserved for stable output.
 type orderedGroups struct {
 	order []string
-	items map[string][]protocol.Object
+	items map[string][]consumer.Object
 }
 
 // groupByPath partitions objects by their group name. For ACP1 this is
 // the Group field (identity/control/status/alarm). For ACP2 the Group
 // field is empty — we use the second Path element (BOARD, PSU, etc.)
 // since Path[0] is always ROOT_NODE_V2.
-func groupByPath(objs []protocol.Object) orderedGroups {
-	g := orderedGroups{items: map[string][]protocol.Object{}}
+func groupByPath(objs []consumer.Object) orderedGroups {
+	g := orderedGroups{items: map[string][]consumer.Object{}}
 	for _, o := range objs {
 		name := o.Group
 		if name == "" && len(o.Path) > 1 {
@@ -229,27 +229,27 @@ func groupByPath(objs []protocol.Object) orderedGroups {
 // writeValue renders the current value of an Object — the one field
 // the import pipeline actually writes back. Kept in one place so the
 // encoding is consistent across all kinds.
-func writeValue(sb *strings.Builder, pad string, o protocol.Object) {
+func writeValue(sb *strings.Builder, pad string, o consumer.Object) {
 	v := o.Value
 	switch v.Kind {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		writeKVPad(sb, pad, "value", v.Int)
-	case protocol.KindUint:
+	case consumer.KindUint:
 		writeKVPad(sb, pad, "value", v.Uint)
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		writeKVPad(sb, pad, "value", v.Float)
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		writeKVPad(sb, pad, "value", v.Enum)
 		if v.Str != "" {
 			writeKVPad(sb, pad, "value_name", v.Str)
 		}
-	case protocol.KindString:
+	case consumer.KindString:
 		writeKVPad(sb, pad, "value", v.Str)
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		writeKVPad(sb, pad, "value",
 			fmt.Sprintf("%d.%d.%d.%d",
 				v.IPAddr[0], v.IPAddr[1], v.IPAddr[2], v.IPAddr[3]))
-	case protocol.KindFrame:
+	case consumer.KindFrame:
 		if len(v.SlotStatus) > 0 {
 			sb.WriteString(pad)
 			sb.WriteString("slot_status:\n")

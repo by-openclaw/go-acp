@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // orFirst returns the first non-empty argument, or "" if all are empty.
@@ -69,17 +69,17 @@ func runSet(ctx context.Context, args []string) error {
 		return fmt.Errorf("either --path, --label, or --id is required")
 	}
 
-	var val protocol.Value
+	var val consumer.Value
 	if *valueHex != "" {
 		raw, herr := hex.DecodeString(strings.TrimPrefix(*valueHex, "0x"))
 		if herr != nil {
 			return fmt.Errorf("--raw: %w", herr)
 		}
-		val = protocol.Value{Kind: protocol.KindRaw, Raw: raw}
+		val = consumer.Value{Kind: consumer.KindRaw, Raw: raw}
 	} else {
 		// Typed value: stash the user's string and let EncodeValueBytes
 		// coerce it to the right wire form based on the object's kind.
-		val = protocol.Value{Str: *valueStr}
+		val = consumer.Value{Str: *valueStr}
 	}
 
 	plug, cleanup, err := connect(ctx, host, cf)
@@ -135,7 +135,7 @@ func runSet(ctx context.Context, args []string) error {
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
 
-	req := protocol.ValueRequest{
+	req := consumer.ValueRequest{
 		Slot:  *slot,
 		Path:  *pathFlag,
 		Group: *group,
@@ -146,7 +146,7 @@ func runSet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	var meta *protocol.Object
+	var meta *consumer.Object
 	if *label != "" {
 		meta = findObjectByLabel(plug, *slot, *group, *label)
 	}

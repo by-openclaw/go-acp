@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"dhs/internal/acp2/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 )
 
@@ -22,8 +22,8 @@ import (
 //
 // --out-tree / --out-params (per ADR-0002) are not yet wired here —
 // they land in a follow-up PR that integrates canonicalize.go.
-func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts protocol.ValidateOpts) (*protocol.ValidateReport, error) {
-	report := &protocol.ValidateReport{
+func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts consumer.ValidateOpts) (*consumer.ValidateReport, error) {
+	report := &consumer.ValidateReport{
 		PerDirection: map[wiretrace.Direction]int{},
 	}
 
@@ -39,7 +39,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		raw, err := hex.DecodeString(t.Hex)
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				Err:        fmt.Sprintf("hex decode: %v", err),
@@ -49,7 +49,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 
 		frame, err := codec.ReadAN2Frame(bytes.NewReader(raw))
 		if err != nil {
-			report.Errors = append(report.Errors, protocol.ValidateError{
+			report.Errors = append(report.Errors, consumer.ValidateError{
 				TrameIndex: i,
 				Direction:  t.Direction,
 				HexPrefix:  shortHex(raw),
@@ -75,7 +75,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts pr
 			}
 			msg, err := codec.DecodeACP2Message(frame.Payload)
 			if err != nil {
-				report.Errors = append(report.Errors, protocol.ValidateError{
+				report.Errors = append(report.Errors, consumer.ValidateError{
 					TrameIndex: i,
 					Direction:  t.Direction,
 					HexPrefix:  shortHex(frame.Payload),

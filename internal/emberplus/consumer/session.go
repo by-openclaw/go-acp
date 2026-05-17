@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
 	"dhs/internal/transport"

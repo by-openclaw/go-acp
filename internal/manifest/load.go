@@ -10,7 +10,7 @@ import (
 
 // Load reads a manifest JSON file at path and validates its top-level
 // shape. Per-protocol `addr` blocks are NOT validated here — that
-// belongs to the plugin that owns the protocol.
+// belongs to the plugin that owns the consumer.
 //
 // Validation:
 //   - device.name and device.protocol non-empty

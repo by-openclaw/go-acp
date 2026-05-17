@@ -374,7 +374,7 @@ internal/amwa/codec/
 instance under the same `(SpecID, APIVer)` key. Calling with a
 different instance under an already-registered key panics — that's a
 duplicate-init bug. Empty SpecID / APIVer / SpecPatch panic. Same
-semantics as `internal/protocol.Register`.
+semantics as `internal/consumer.Register`.
 
 ### Cross-cutting concerns in `spec/`
 

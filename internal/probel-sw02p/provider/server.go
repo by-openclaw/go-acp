@@ -11,7 +11,7 @@ import (
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw02p/codec"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer/compliance"
 )
 
 // Server is the exported alias for the concrete SW-P-02 provider.

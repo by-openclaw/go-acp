@@ -8,7 +8,7 @@
 // one library so the line schema cannot drift between uses.
 //
 // Stdlib only — this package is lift-to-own-repo ready per ADR-0006.
-// In particular, wiretrace does NOT depend on internal/protocol so the
+// In particular, wiretrace does NOT depend on internal/consumer so the
 // dependency arrow runs protocol → wiretrace and not the other way.
 package wiretrace
 

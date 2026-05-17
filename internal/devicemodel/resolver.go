@@ -12,7 +12,7 @@
 //
 // This package is cross-protocol foundation; it has no plugin imports and
 // uses no third-party dependencies.
-package dmlib
+package devicemodel
 
 import (
 	"errors"
@@ -24,7 +24,7 @@ import (
 
 	"dhs/internal/export"
 	"dhs/internal/identity"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // Sentinel errors returned by the resolver.
@@ -477,7 +477,7 @@ func diffSlot(prev, cur *export.Snapshot) SlotDiff {
 
 // objectsEqual compares schema-relevant Object fields. Value is ignored
 // because schemas are value-less; only structure matters.
-func objectsEqual(a, b protocol.Object) bool {
+func objectsEqual(a, b consumer.Object) bool {
 	return a.Slot == b.Slot &&
 		a.Group == b.Group &&
 		a.ID == b.ID &&

@@ -1,7 +1,7 @@
 // Package probel is the Probel SW-P-08 provider plugin — it serves a
 // canonical tree as an SW-P-08 matrix controller (tx side) over TCP.
 //
-// Symmetric to the consumer plugin at internal/protocol/probel. Reuses
+// Symmetric to the consumer plugin at internal/consumer/probel. Reuses
 // internal/probel for the byte framer + per-command codecs. Per-command
 // request handlers (CrosspointConnect / Interrogate / TallyDump / …) are
 // added by follow-up per-command PRs; this scaffold only wires the

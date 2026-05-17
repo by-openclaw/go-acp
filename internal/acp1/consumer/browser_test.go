@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/acp1/codec"
 )
 
@@ -13,7 +13,7 @@ import (
 // device replies. Proves the walker:
 //   - issues getObject in the spec order (root → identity → control → status → alarm)
 //   - builds the label → index map correctly
-//   - populates protocol.Object fields from DecodedObject
+//   - populates consumer.Object fields from DecodedObject
 //
 // We control the client's MTID counter so we can pre-build replies with
 // matching MTIDs. Each queued reply corresponds to one transaction.
@@ -112,7 +112,7 @@ func TestWalker_HappyPath(t *testing.T) {
 	if ctrl.Group != "control" || ctrl.Label != "Gain" || ctrl.Unit != "dB" {
 		t.Errorf("control: %+v", ctrl)
 	}
-	if ctrl.Kind != protocol.KindFloat {
+	if ctrl.Kind != consumer.KindFloat {
 		t.Errorf("control kind: got %d, want float", ctrl.Kind)
 	}
 	minf, okMin := ctrl.Min.(float64)
@@ -126,7 +126,7 @@ func TestWalker_HappyPath(t *testing.T) {
 	if stat.Group != "status" || stat.Label != "Pct" || stat.Unit != "%" {
 		t.Errorf("status: %+v", stat)
 	}
-	if stat.Kind != protocol.KindUint {
+	if stat.Kind != consumer.KindUint {
 		t.Errorf("status kind: got %d, want uint", stat.Kind)
 	}
 
@@ -159,7 +159,7 @@ func TestWalker_SlotOutOfRange(t *testing.T) {
 func TestResolve(t *testing.T) {
 	tree := &SlotTree{
 		Slot: 1,
-		Objects: []protocol.Object{
+		Objects: []consumer.Object{
 			{Slot: 1, Group: "control", ID: 7, Label: "Gain"},
 			{Slot: 1, Group: "status", ID: 3, Label: "Temp"},
 		},
@@ -170,43 +170,43 @@ func TestResolve(t *testing.T) {
 	}
 
 	// 1. Label lookup with explicit group
-	g, id, err := resolve(protocol.ValueRequest{Slot: 1, Group: "control", Label: "Gain"}, tree)
+	g, id, err := resolve(consumer.ValueRequest{Slot: 1, Group: "control", Label: "Gain"}, tree)
 	if err != nil || g != codec.GroupControl || id != 7 {
 		t.Errorf("label+group: got g=%d id=%d err=%v", g, id, err)
 	}
 
 	// 2. Label lookup without group (searches all)
-	g, id, err = resolve(protocol.ValueRequest{Slot: 1, Label: "Temp"}, tree)
+	g, id, err = resolve(consumer.ValueRequest{Slot: 1, Label: "Temp"}, tree)
 	if err != nil || g != codec.GroupStatus || id != 3 {
 		t.Errorf("label-only: got g=%d id=%d err=%v", g, id, err)
 	}
 
 	// 3. Label not found
-	_, _, err = resolve(protocol.ValueRequest{Slot: 1, Group: "control", Label: "Nope"}, tree)
+	_, _, err = resolve(consumer.ValueRequest{Slot: 1, Group: "control", Label: "Nope"}, tree)
 	if err == nil {
 		t.Error("expected ErrUnknownLabel for missing label")
 	}
 
 	// 4. Label supplied but no tree
-	_, _, err = resolve(protocol.ValueRequest{Slot: 1, Label: "Gain"}, nil)
+	_, _, err = resolve(consumer.ValueRequest{Slot: 1, Label: "Gain"}, nil)
 	if err == nil {
 		t.Error("expected error when tree is nil")
 	}
 
 	// 5. Group+ID fallback (no label)
-	g, id, err = resolve(protocol.ValueRequest{Slot: 1, Group: "alarm", ID: 5}, nil)
+	g, id, err = resolve(consumer.ValueRequest{Slot: 1, Group: "alarm", ID: 5}, nil)
 	if err != nil || g != codec.GroupAlarm || id != 5 {
 		t.Errorf("group+id: got g=%d id=%d err=%v", g, id, err)
 	}
 
 	// 6. Invalid group name
-	_, _, err = resolve(protocol.ValueRequest{Slot: 1, Group: "bogus", ID: 0}, nil)
+	_, _, err = resolve(consumer.ValueRequest{Slot: 1, Group: "bogus", ID: 0}, nil)
 	if err == nil {
 		t.Error("expected error for invalid group")
 	}
 
 	// 7. ID out of range
-	_, _, err = resolve(protocol.ValueRequest{Slot: 1, Group: "control", ID: 999}, nil)
+	_, _, err = resolve(consumer.ValueRequest{Slot: 1, Group: "control", ID: 999}, nil)
 	if err == nil {
 		t.Error("expected error for ID > 255")
 	}

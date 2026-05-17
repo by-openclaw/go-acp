@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"dhs/internal/acp2/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // TestObjTypeFromVType pins #351: the announce fallback maps the
@@ -54,8 +54,8 @@ func TestDecodePropertyValue_FallbackTypes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("decodePropertyValue: %v", err)
 		}
-		if v.Kind != protocol.KindEnum {
-			t.Errorf("Kind=%v want %v", v.Kind, protocol.KindEnum)
+		if v.Kind != consumer.KindEnum {
+			t.Errorf("Kind=%v want %v", v.Kind, consumer.KindEnum)
 		}
 		if v.Uint != 674 {
 			t.Errorf("Uint=%d want 674", v.Uint)
@@ -77,8 +77,8 @@ func TestDecodePropertyValue_FallbackTypes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("decodePropertyValue: %v", err)
 		}
-		if v.Kind != protocol.KindIPAddr {
-			t.Errorf("Kind=%v want %v", v.Kind, protocol.KindIPAddr)
+		if v.Kind != consumer.KindIPAddr {
+			t.Errorf("Kind=%v want %v", v.Kind, consumer.KindIPAddr)
 		}
 		if v.IPAddr != [4]byte{10, 41, 40, 5} {
 			t.Errorf("IPAddr=%v want [10 41 40 5]", v.IPAddr)
@@ -99,8 +99,8 @@ func TestDecodePropertyValue_FallbackTypes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("decodePropertyValue: %v", err)
 		}
-		if v.Kind != protocol.KindString {
-			t.Errorf("Kind=%v want %v", v.Kind, protocol.KindString)
+		if v.Kind != consumer.KindString {
+			t.Errorf("Kind=%v want %v", v.Kind, consumer.KindString)
 		}
 		if v.Str != "OSD-1" {
 			t.Errorf("Str=%q want %q", v.Str, "OSD-1")
@@ -121,8 +121,8 @@ func TestDecodePropertyValue_FallbackTypes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("decodePropertyValue: %v", err)
 		}
-		if v.Kind != protocol.KindUint {
-			t.Errorf("Kind=%v want %v", v.Kind, protocol.KindUint)
+		if v.Kind != consumer.KindUint {
+			t.Errorf("Kind=%v want %v", v.Kind, consumer.KindUint)
 		}
 		if v.Uint != 10 {
 			t.Errorf("Uint=%d want 10", v.Uint)

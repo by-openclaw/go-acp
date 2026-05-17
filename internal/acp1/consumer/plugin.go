@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/protocol"
-	"dhs/internal/protocol/compliance"
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/transport"
 	"dhs/internal/acp1/codec"
 )
@@ -18,21 +18,21 @@ import (
 // Importing this package from cmd/ is enough to make "acp1" selectable
 // by name via the --protocol flag (CLI) or protocol query parameter (API).
 func init() {
-	protocol.Register(&Factory{})
+	consumer.Register(&Factory{})
 }
 
 // Factory builds ACP1 Plugin instances.
 type Factory struct{}
 
-func (f *Factory) Meta() protocol.ProtocolMeta {
-	return protocol.ProtocolMeta{
+func (f *Factory) Meta() consumer.ProtocolMeta {
+	return consumer.ProtocolMeta{
 		Name:        "acp1",
 		DefaultPort: codec.DefaultPort,
 		Description: "Axon Control Protocol v1.4 (UDP direct)",
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) protocol.Protocol {
+func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
 	return &Plugin{logger: logger}
 }
 
@@ -129,7 +129,7 @@ type Plugin struct {
 	// Keep-alive (cross-protocol contract). kaCfg is the operator's
 	// CLI choice (set via SetKeepAlive); ka holds the running prober +
 	// watchdog goroutines for the current Connect lifetime.
-	kaCfg protocol.KeepAliveConfig
+	kaCfg consumer.KeepAliveConfig
 	ka    *keepAliveState
 }
 
@@ -168,7 +168,7 @@ type subKey struct {
 	id    int
 }
 
-func reqKey(req protocol.ValueRequest) subKey {
+func reqKey(req consumer.ValueRequest) subKey {
 	return subKey{req.Slot, req.Group, req.Label, req.ID}
 }
 
@@ -257,7 +257,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 	conn, err := transport.DialUDP(ctx, ip, port)
 	if err != nil {
-		return &protocol.TransportError{Op: "connect", Err: err}
+		return &consumer.TransportError{Op: "connect", Err: err}
 	}
 	p.udpConn = conn
 	var tr Transport = conn
@@ -289,7 +289,7 @@ func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 func (p *Plugin) connectTCP(ctx context.Context, ip string, port int) error {
 	conn, err := transport.DialTCP(ctx, ip, port)
 	if err != nil {
-		return &protocol.TransportError{Op: "connect", Err: err}
+		return &consumer.TransportError{Op: "connect", Err: err}
 	}
 	p.tcpConn = conn
 	// Note: TCP recording not yet supported — TCPClient takes *TCPConn directly.
@@ -370,13 +370,13 @@ func (p *Plugin) Transport() TransportKind {
 // to discover how many slots the device has and the per-slot status.
 // This is how acp discover / acp connect learn the device shape before
 // walking individual slots.
-func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error) {
+func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
 	p.mu.Lock()
 	c := p.client
 	host, port := p.host, p.port
 	p.mu.Unlock()
 	if c == nil {
-		return protocol.DeviceInfo{}, protocol.ErrNotConnected
+		return consumer.DeviceInfo{}, consumer.ErrNotConnected
 	}
 
 	// getValue(frame, 0) at slot 0 returns [num_slots, status_array...].
@@ -390,15 +390,15 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error)
 	}
 	reply, err := c.Do(ctx, req)
 	if err != nil {
-		return protocol.DeviceInfo{}, err
+		return consumer.DeviceInfo{}, err
 	}
 	if reply.IsError() {
-		return protocol.DeviceInfo{}, reply.ErrCode()
+		return consumer.DeviceInfo{}, reply.ErrCode()
 	}
 	if len(reply.Value) < 1 {
-		return protocol.DeviceInfo{}, fmt.Errorf("acp1: frame status reply too short")
+		return consumer.DeviceInfo{}, fmt.Errorf("acp1: frame status reply too short")
 	}
-	return protocol.DeviceInfo{
+	return consumer.DeviceInfo{
 		IP:              host,
 		Port:            port,
 		NumSlots:        int(reply.Value[0]),
@@ -409,20 +409,20 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (protocol.DeviceInfo, error)
 // GetSlotInfo returns the status of a single slot plus, if the slot has
 // already been walked, its identity strings (card label, description,
 // serial). Unwalked slots return only the status byte.
-func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, error) {
+func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
 	p.mu.Lock()
 	c := p.client
 	cache := p.trees
 	p.mu.Unlock()
 	if c == nil {
-		return protocol.SlotInfo{}, protocol.ErrNotConnected
+		return consumer.SlotInfo{}, consumer.ErrNotConnected
 	}
 	var tree *SlotTree
 	if cache != nil {
 		tree, _ = cache.Get(slot)
 	}
 
-	info := protocol.SlotInfo{Slot: slot}
+	info := consumer.SlotInfo{Slot: slot}
 
 	// Read the rack controller's frame status for the status byte.
 	req := &codec.Message{
@@ -441,7 +441,7 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, 
 	}
 	// reply.Value = [num_slots, status_0, status_1, ...]
 	if len(reply.Value) >= slot+2 {
-		info.Status = protocol.SlotStatus(reply.Value[slot+1])
+		info.Status = consumer.SlotStatus(reply.Value[slot+1])
 	}
 
 	// If we have a walked tree, surface identity strings from the
@@ -463,13 +463,13 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (protocol.SlotInfo, 
 // fresh walk, call Disconnect and re-Connect first. A dedicated
 // --refresh flag on the CLI (and /api/.../objects?refresh=true on the
 // server) is the Phase-2 story.
-func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) {
+func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) {
 	p.mu.Lock()
 	cache := p.trees
 	w := p.walker
 	p.mu.Unlock()
 	if w == nil {
-		return nil, protocol.ErrNotConnected
+		return nil, consumer.ErrNotConnected
 	}
 	if cache != nil {
 		if cached, ok := cache.Get(slot); ok {
@@ -489,16 +489,16 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]protocol.Object, error) 
 }
 
 // GetValue reads one object value and decodes it into the appropriate
-// typed field of protocol.Value (Int/Float/Str/Enum/IPAddr) using the
+// typed field of consumer.Value (Int/Float/Str/Enum/IPAddr) using the
 // cached walker tree. Label-addressed calls require a prior Walk. Raw
 // bytes are always included in the returned Value for round-trip fidelity.
-func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (protocol.Value, error) {
+func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
 	p.mu.Lock()
 	c := p.client
 	cache := p.trees
 	p.mu.Unlock()
 	if c == nil {
-		return protocol.Value{}, protocol.ErrNotConnected
+		return consumer.Value{}, consumer.ErrNotConnected
 	}
 	var tree *SlotTree
 	if cache != nil {
@@ -507,7 +507,7 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 
 	group, id, err := resolve(req, tree)
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	m := &codec.Message{
@@ -519,10 +519,10 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 	}
 	reply, err := c.Do(ctx, m)
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 	if reply.IsError() {
-		return protocol.Value{}, reply.ErrCode()
+		return consumer.Value{}, reply.ErrCode()
 	}
 
 	obj, acpType, found := findObject(tree, group, id)
@@ -545,20 +545,20 @@ func (p *Plugin) GetValue(ctx context.Context, req protocol.ValueRequest) (proto
 // doesn't traverse (root, frame, file). It infers the ObjectType from
 // the group alone and calls DecodeValueBytes with a synthetic empty
 // Object. Unknown groups return raw bytes.
-func decodeByGroup(group codec.ObjGroup, raw []byte) (protocol.Value, error) {
-	var synth protocol.Object
+func decodeByGroup(group codec.ObjGroup, raw []byte) (consumer.Value, error) {
+	var synth consumer.Object
 	var t codec.ObjectType
 	switch group {
 	case codec.GroupFrame:
-		synth.Kind = protocol.KindFrame
+		synth.Kind = consumer.KindFrame
 		t = codec.TypeFrame
 	case codec.GroupRoot:
 		t = codec.TypeRoot
 	case codec.GroupFile:
 		t = codec.TypeFile
 	default:
-		return protocol.Value{
-			Kind: protocol.KindRaw,
+		return consumer.Value{
+			Kind: consumer.KindRaw,
 			Raw:  append([]byte(nil), raw...),
 		}, nil
 	}
@@ -566,16 +566,16 @@ func decodeByGroup(group codec.ObjGroup, raw []byte) (protocol.Value, error) {
 }
 
 // SetValue writes one object value. Accepts typed input via the
-// protocol.Value fields (Int, Float, Str, Enum) and encodes to the right
+// consumer.Value fields (Int, Float, Str, Enum) and encodes to the right
 // wire bytes based on the object's ACP1 type. Requires a prior Walk so
 // the plugin knows the object's type.
-func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val protocol.Value) (protocol.Value, error) {
+func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
 	p.mu.Lock()
 	c := p.client
 	cache := p.trees
 	p.mu.Unlock()
 	if c == nil {
-		return protocol.Value{}, protocol.ErrNotConnected
+		return consumer.Value{}, consumer.ErrNotConnected
 	}
 	var tree *SlotTree
 	if cache != nil {
@@ -584,7 +584,7 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 
 	group, id, err := resolve(req, tree)
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 
 	// Encode value bytes. If the caller supplied raw bytes directly (via
@@ -603,14 +603,14 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 		if !found {
 			obj, acpType, err = p.fetchObjectMeta(ctx, req.Slot, group, id)
 			if err != nil {
-				return protocol.Value{}, fmt.Errorf("acp1 set: fetch meta slot=%d group=%s id=%d: %w",
+				return consumer.Value{}, fmt.Errorf("acp1 set: fetch meta slot=%d group=%s id=%d: %w",
 					req.Slot, group, id, err)
 			}
 			found = true
 		}
 		wireBytes, err = EncodeValueBytes(obj, acpType, val)
 		if err != nil {
-			return protocol.Value{}, err
+			return consumer.Value{}, err
 		}
 	}
 
@@ -624,18 +624,18 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 	}
 	reply, err := c.Do(ctx, m)
 	if err != nil {
-		return protocol.Value{}, err
+		return consumer.Value{}, err
 	}
 	if reply.IsError() {
-		return protocol.Value{}, reply.ErrCode()
+		return consumer.Value{}, reply.ErrCode()
 	}
 
 	// Decode the confirmed value (device echoes the stored value).
 	if found {
 		return DecodeValueBytes(obj, acpType, reply.Value)
 	}
-	return protocol.Value{
-		Kind: protocol.KindRaw,
+	return consumer.Value{
+		Kind: consumer.KindRaw,
 		Raw:  append([]byte(nil), reply.Value...),
 	}, nil
 }
@@ -643,9 +643,9 @@ func (p *Plugin) SetValue(ctx context.Context, req protocol.ValueRequest, val pr
 // findObject looks up an Object and its ACP1 type inside a walked tree
 // by (group, id). Returns false if the tree is nil or the object wasn't
 // walked. O(n) — acceptable for typical tree sizes under 512 objects.
-func findObject(tree *SlotTree, group codec.ObjGroup, id byte) (protocol.Object, codec.ObjectType, bool) {
+func findObject(tree *SlotTree, group codec.ObjGroup, id byte) (consumer.Object, codec.ObjectType, bool) {
 	if tree == nil {
-		return protocol.Object{}, 0, false
+		return consumer.Object{}, 0, false
 	}
 	gname := group.String()
 	for i, o := range tree.Objects {
@@ -660,7 +660,7 @@ func findObject(tree *SlotTree, group codec.ObjGroup, id byte) (protocol.Object,
 			return o, tree.ACPTypes[i], true
 		}
 	}
-	return protocol.Object{}, 0, false
+	return consumer.Object{}, 0, false
 }
 
 // Subscribe registers a live-announcement callback. The request's Slot,
@@ -672,17 +672,17 @@ func findObject(tree *SlotTree, group codec.ObjGroup, id byte) (protocol.Object,
 //
 // Label resolution requires a prior Walk on the target slot. When a
 // matching announcement arrives the callback is invoked synchronously
-// inside the listener goroutine with a decoded protocol.Event.
+// inside the listener goroutine with a decoded consumer.Event.
 //
 // Returns ErrNotConnected if the listener failed to bind at Connect
 // time (typically: ACP port already in use by another process).
-func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) error {
+func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
 	p.mu.Lock()
 	l := p.listener
 	tcpClient, tcpOK := p.client.(*TCPClient)
 	p.mu.Unlock()
 	if l == nil && !tcpOK {
-		return protocol.ErrNotConnected
+		return consumer.ErrNotConnected
 	}
 
 	// Resolve label to (group, id) if a label was supplied. Bare group
@@ -717,7 +717,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 			tree, _ = cache.Get(int(msg.MAddr))
 		}
 
-		ev := protocol.Event{
+		ev := consumer.Event{
 			Slot:      int(msg.MAddr),
 			Group:     msg.ObjGroup.String(),
 			ID:        int(msg.ObjID),
@@ -754,7 +754,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 					val,
 				)
 			} else {
-				ev.Value = protocol.Value{Kind: protocol.KindRaw, Raw: msg.Value}
+				ev.Value = consumer.Value{Kind: consumer.KindRaw, Raw: msg.Value}
 			}
 		} else {
 			// Frame / root / file objects are never in the walked tree.
@@ -764,7 +764,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 			if val, derr := decodeByGroup(msg.ObjGroup, msg.Value); derr == nil {
 				ev.Value = val
 			} else {
-				ev.Value = protocol.Value{Kind: protocol.KindRaw, Raw: msg.Value}
+				ev.Value = consumer.Value{Kind: consumer.KindRaw, Raw: msg.Value}
 			}
 		}
 		fn(ev)
@@ -806,7 +806,7 @@ func (p *Plugin) Subscribe(req protocol.ValueRequest, fn protocol.EventFunc) err
 
 // Unsubscribe removes a previously-registered Subscribe by matching the
 // same request tuple. A request that was never registered is a no-op.
-func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
+func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	p.mu.Lock()
 	l := p.listener
 	tcpClient, tcpOK := p.client.(*TCPClient)
@@ -840,7 +840,7 @@ func (p *Plugin) Unsubscribe(req protocol.ValueRequest) error {
 // explicit pair instead of erroring. CSV import rows carry id + label
 // for round-trip fidelity; label resolution needs a walked tree but
 // id doesn't, so this lets walk-free import work for ACP1.
-func resolve(req protocol.ValueRequest, tree *SlotTree) (codec.ObjGroup, byte, error) {
+func resolve(req consumer.ValueRequest, tree *SlotTree) (codec.ObjGroup, byte, error) {
 	if req.Label != "" {
 		if tree == nil {
 			// Cold-cache fall-through: prefer the explicit (Group, ID)
@@ -851,7 +851,7 @@ func resolve(req protocol.ValueRequest, tree *SlotTree) (codec.ObjGroup, byte, e
 				}
 			}
 			return 0, 0, fmt.Errorf("%w: no walked tree for slot %d",
-				protocol.ErrUnknownLabel, req.Slot)
+				consumer.ErrUnknownLabel, req.Slot)
 		}
 
 		// 1. Primary search: within the declared group (if any).
@@ -887,11 +887,11 @@ func resolve(req protocol.ValueRequest, tree *SlotTree) (codec.ObjGroup, byte, e
 			if idx := tree.Lookup(gname, req.Label); idx >= 0 {
 				obj := tree.Objects[idx]
 				return 0, 0, fmt.Errorf("%w: label %q not in group %q — found in %q (id %d). Try --group %s",
-					protocol.ErrUnknownLabel, req.Label, req.Group, gname, obj.ID, gname)
+					consumer.ErrUnknownLabel, req.Label, req.Group, gname, obj.ID, gname)
 			}
 		}
 		return 0, 0, fmt.Errorf("%w: label %q not found in any group on slot %d",
-			protocol.ErrUnknownLabel, req.Label, req.Slot)
+			consumer.ErrUnknownLabel, req.Label, req.Slot)
 	}
 
 	// Address by explicit group + id — no walker needed.

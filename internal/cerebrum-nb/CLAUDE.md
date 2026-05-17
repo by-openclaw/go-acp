@@ -29,7 +29,7 @@ internal/cerebrum-nb/
 ├── codec/
 │   ├── ws/               stdlib-only RFC 6455 WebSocket client
 │   └── xml/              stdlib-only XML codec for §2/§4/§5 elements
-├── consumer/             package cerebrum_nb — implements protocol.Protocol
+├── consumer/             package cerebrum_nb — implements consumer.Protocol
 ├── wireshark/            dhs_cerebrum_nb.lua — full WS-frame + XML
 │                         payload dissector
 ├── docs/

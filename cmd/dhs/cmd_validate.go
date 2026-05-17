@@ -9,7 +9,7 @@ import (
 	"os"
 	"sort"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 )
 
@@ -36,7 +36,7 @@ func runValidate(ctx context.Context, args []string) error {
 	}
 	_ = fs.Parse(rest)
 
-	factory, err := protocol.Get(cf.protocol)
+	factory, err := consumer.Get(cf.protocol)
 	if err != nil {
 		return err
 	}
@@ -54,12 +54,12 @@ func runValidate(ctx context.Context, args []string) error {
 
 	plug := factory.New(slog.Default())
 
-	validator, ok := plug.(protocol.Validator)
+	validator, ok := plug.(consumer.Validator)
 	if !ok {
-		return fmt.Errorf("validate: protocol %q does not implement protocol.Validator yet (per-protocol migration tracker: issue #212)", cf.protocol)
+		return fmt.Errorf("validate: protocol %q does not implement consumer.Validator yet (per-protocol migration tracker: issue #212)", cf.protocol)
 	}
 
-	report, err := validator.Validate(ctx, trames, protocol.ValidateOpts{
+	report, err := validator.Validate(ctx, trames, consumer.ValidateOpts{
 		OutTree:   *outTree,
 		OutParams: *outParams,
 		StopAt:    *stopAt,

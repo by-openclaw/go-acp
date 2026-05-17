@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // AllSourceAssocNames asks the matrix for every source-association
@@ -32,7 +32,7 @@ func (p *Plugin) AllSourceAssocNames(
 	}
 	r, derr := codec.DecodeSourceAssocNamesResponse(reply)
 	if derr != nil {
-		return codec.SourceAssocNamesResponseParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.SourceAssocNamesResponseParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return r, nil
 }

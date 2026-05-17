@@ -1,5 +1,5 @@
 // Package provider defines the interface a protocol provider (server) plugin
-// must implement. Symmetric with internal/protocol (consumer / client side).
+// must implement. Symmetric with internal/consumer (consumer / client side).
 //
 // A Provider serves a tree to one or more consumers. It owns the listener,
 // accept loop, per-connection state, and broadcast fan-out. Input is a

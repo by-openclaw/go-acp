@@ -19,7 +19,7 @@ import (
 	"syscall"
 	"time"
 
-	"dhs/internal/dmlib"
+	"dhs/internal/devicemodel"
 	"dhs/internal/export/canonical"
 	"dhs/internal/manifest"
 	"dhs/internal/metrics"
@@ -260,7 +260,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		// DM library: --dm-library points at tests/fixtures/products/
 		// so the admin slot.load verb (#260) can resolve cards.
 		if *dmLibraryRoot != "" {
-			acp1Srv.SetDMLibrary(dmlib.New(*dmLibraryRoot))
+			acp1Srv.SetDMLibrary(devicemodel.New(*dmLibraryRoot))
 		}
 
 		// --preload installs schemas onto slots BEFORE Serve binds the

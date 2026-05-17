@@ -18,7 +18,7 @@ Viewer under test: Lawo VSM Axon Neuron driver. Spec-strict, no workarounds.
 ```
 internal/acp2/
 ├── CLAUDE.md    ← this file
-├── consumer/    package acp2 — implements protocol.Protocol
+├── consumer/    package acp2 — implements consumer.Protocol
 ├── provider/    package acp2 — implements provider.Provider
 ├── wireshark/   dhs_acpv2.lua
 ├── docs/        consumer.md / provider.md / README.md

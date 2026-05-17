@@ -14,7 +14,7 @@ import "dhs/internal/acp2/codec"
 //   - internal/acp2/assets/an2_protocol.pdf   (AN2 transport, magic, frame
 //     layout, ProtocolEvents handshake)
 //
-// The generic Profile counter lives in internal/protocol/compliance/.
+// The generic Profile counter lives in internal/consumer/compliance/.
 // Classification:
 //   - strict  : zero events fired this session
 //   - partial : one or more events fired, all within tolerance

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 
 	emberplus "dhs/internal/emberplus/consumer"
 )
@@ -22,7 +22,7 @@ import (
 //
 // dmIdentity empty → no-op (false, nil). Lets verbs pass their flag
 // through unconditionally.
-func hotLoadEmberplusDM(plug protocol.Protocol, dmIdentity string, slot int, noWalk bool) (bool, error) {
+func hotLoadEmberplusDM(plug consumer.Protocol, dmIdentity string, slot int, noWalk bool) (bool, error) {
 	if dmIdentity == "" {
 		if noWalk {
 			return false, fmt.Errorf("--no-walk requires --dm <identity> for cache-driven mode")
@@ -67,7 +67,7 @@ func hotLoadEmberplusDM(plug protocol.Protocol, dmIdentity string, slot int, noW
 // The auto-extract step is best-effort: if IdentityProbe fails or the
 // plugin doesn't implement dmSplitter, we still return success because
 // the verb's in-RAM tree is populated and the op can proceed.
-func ensureEmberplusTree(ctx context.Context, plug protocol.Protocol, host string, port int, dmIdentity string, slot int, noWalk bool) error {
+func ensureEmberplusTree(ctx context.Context, plug consumer.Protocol, host string, port int, dmIdentity string, slot int, noWalk bool) error {
 	// Step 1+2: try the explicit-identity hot-load path.
 	if dmIdentity != "" {
 		seeded, err := hotLoadEmberplusDM(plug, dmIdentity, slot, noWalk)

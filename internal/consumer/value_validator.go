@@ -1,4 +1,4 @@
-package protocol
+package consumer
 
 import (
 	"context"
@@ -16,10 +16,10 @@ import (
 // interface — callers fall back to "ship the SetValue and catch the
 // device error". Use type assertion to detect support:
 //
-//	if v, ok := plug.(protocol.ValueValidator); ok { v.Validate(...) }
+//	if v, ok := plug.(consumer.ValueValidator); ok { v.Validate(...) }
 //
 // Naming intentionally differs from the trace-decoder Validator (see
-// internal/protocol/validator.go) — that interface decodes captured
+// internal/consumer/validator.go) — that interface decodes captured
 // trames offline, this one checks a single ValueRequest against the
 // live device's object catalogue.
 type ValueValidator interface {

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // acp2StaleAfter is the rolling-window threshold past which the
@@ -28,12 +28,12 @@ const acp2StaleAfter = 90 * time.Second
 // Plugin returns the snapshot synchronously without holding a probe
 // lock — Reachable is the only field that may take wall-clock time;
 // callers honour ctx for cancellation.
-func (p *Plugin) SessionHealth(ctx context.Context) protocol.SessionHealth {
+func (p *Plugin) SessionHealth(ctx context.Context) consumer.SessionHealth {
 	p.mu.Lock()
 	s := p.session
 	p.mu.Unlock()
 
-	out := protocol.SessionHealth{
+	out := consumer.SessionHealth{
 		StaleAfter: acp2StaleAfter,
 	}
 	if s == nil {

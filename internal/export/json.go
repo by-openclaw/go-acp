@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // WriteJSON emits a Snapshot as pretty-printed JSON. Uses stdlib
@@ -72,7 +72,7 @@ func jsonHierarchicalSnapshot(s *Snapshot) map[string]any {
 // typical for Ember+ internal nodes) are materialised as empty maps
 // so their children have a place to nest, but they do not produce a
 // leaf entry of their own.
-func buildJSONTree(objs []protocol.Object) map[string]any {
+func buildJSONTree(objs []consumer.Object) map[string]any {
 	root := make(map[string]any)
 	for _, o := range objs {
 		path := stripRootNodeSentinel(o.Path)
@@ -83,7 +83,7 @@ func buildJSONTree(objs []protocol.Object) map[string]any {
 		// We cannot flatten container props alongside children —
 		// they'd clash with child identifiers (e.g. a matrix's
 		// "labels" metadata field vs its "labels" child node).
-		if o.Kind == protocol.KindRaw {
+		if o.Kind == consumer.KindRaw {
 			sub := ensureMapChain(root, path)
 			if meta := containerMeta(o); meta != nil {
 				sub["_meta"] = meta
@@ -130,7 +130,7 @@ func stripRootNodeSentinel(path []string) []string {
 // (matrix type/connections/labels, function arguments/result, node
 // description/isOnline, etc). Returns nil when there is nothing
 // informative to emit.
-func containerMeta(o protocol.Object) map[string]any {
+func containerMeta(o consumer.Object) map[string]any {
 	m := map[string]any{}
 	if o.OID != "" {
 		m["oid"] = o.OID
@@ -171,7 +171,7 @@ func ensureMapChain(root map[string]any, segs []string) map[string]any {
 // Ember+ this also merges the plugin-supplied Meta (parameter
 // description/format/formula/factor/streamDescriptor/enumMap/...)
 // flat so the exported JSON can be fed back to a provider.
-func jsonLeaf(o protocol.Object) map[string]any {
+func jsonLeaf(o consumer.Object) map[string]any {
 	m := map[string]any{
 		"id":     o.ID,
 		"kind":   kindName(o.Kind),
@@ -184,15 +184,15 @@ func jsonLeaf(o protocol.Object) map[string]any {
 		m["unit"] = o.Unit
 	}
 	switch o.Kind {
-	case protocol.KindInt, protocol.KindUint, protocol.KindFloat:
+	case consumer.KindInt, consumer.KindUint, consumer.KindFloat:
 		m["min"] = o.Min
 		m["max"] = o.Max
 		m["step"] = o.Step
 		m["default"] = o.Def
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		m["enum_items"] = o.EnumItems
 		m["default"] = o.Def
-	case protocol.KindString:
+	case consumer.KindString:
 		if o.MaxLen > 0 {
 			m["max_len"] = o.MaxLen
 		}
@@ -200,20 +200,20 @@ func jsonLeaf(o protocol.Object) map[string]any {
 	// Value
 	v := o.Value
 	switch v.Kind {
-	case protocol.KindInt:
+	case consumer.KindInt:
 		m["value"] = v.Int
-	case protocol.KindUint:
+	case consumer.KindUint:
 		m["value"] = v.Uint
-	case protocol.KindFloat:
+	case consumer.KindFloat:
 		m["value"] = v.Float
-	case protocol.KindEnum:
+	case consumer.KindEnum:
 		m["value"] = v.Enum
 		if v.Str != "" {
 			m["value_name"] = v.Str
 		}
-	case protocol.KindString:
+	case consumer.KindString:
 		m["value"] = v.Str
-	case protocol.KindIPAddr:
+	case consumer.KindIPAddr:
 		m["value"] = fmt.Sprintf("%d.%d.%d.%d",
 			v.IPAddr[0], v.IPAddr[1], v.IPAddr[2], v.IPAddr[3])
 	}
@@ -281,7 +281,7 @@ func readHierarchicalJSON(raw json.RawMessage) (*Snapshot, error) {
 		dump.WalkedAt, _ = parseTime(sd.WalkedAt)
 
 		// Try array first (flat), then map (hierarchical).
-		var flatObjs []protocol.Object
+		var flatObjs []consumer.Object
 		if err := json.Unmarshal(sd.Objects, &flatObjs); err == nil {
 			dump.Objects = flatObjs
 		} else {
@@ -297,14 +297,14 @@ func readHierarchicalJSON(raw json.RawMessage) (*Snapshot, error) {
 }
 
 // flattenJSONTree recursively walks a nested JSON map and produces flat
-// protocol.Object entries. Each leaf has "id", "kind", "value" etc.
+// consumer.Object entries. Each leaf has "id", "kind", "value" etc.
 // Each branch is a container node with sub-keys.
 //
 // Sort the map keys before iteration so the resulting slice order is
 // deterministic. Without this, callers that compare against expected
 // positional output (e.g. validate_out_tree_test.go) flake roughly
 // 50% of CI runs because Go map iteration is randomised.
-func flattenJSONTree(tree map[string]json.RawMessage, slot int, path []string, out *[]protocol.Object) {
+func flattenJSONTree(tree map[string]json.RawMessage, slot int, path []string, out *[]consumer.Object) {
 	names := make([]string, 0, len(tree))
 	for name := range tree {
 		names = append(names, name)
@@ -322,7 +322,7 @@ func flattenJSONTree(tree map[string]json.RawMessage, slot int, path []string, o
 
 		if _, hasID := leaf["id"]; hasID {
 			// Leaf object.
-			obj := protocol.Object{
+			obj := consumer.Object{
 				Slot:  slot,
 				Label: name,
 				Path:  curPath,

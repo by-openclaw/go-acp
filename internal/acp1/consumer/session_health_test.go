@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func TestPlugin_SatisfiesHealthChecker(t *testing.T) {
-	var _ protocol.HealthChecker = (*Plugin)(nil)
+	var _ consumer.HealthChecker = (*Plugin)(nil)
 }
 
 func TestSessionHealth_DefaultsWhenNotConnected(t *testing.T) {

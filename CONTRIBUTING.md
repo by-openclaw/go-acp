@@ -19,7 +19,7 @@ Each protocol lives in its own subtree at `internal/<proto>/`:
 internal/<proto>/
 ├── CLAUDE.md     atomic per-protocol context (read first)
 ├── codec/        stdlib-only byte codec (lift-to-own-repo ready)
-├── consumer/     implements protocol.Protocol
+├── consumer/     implements consumer.Protocol
 ├── provider/     implements provider.Provider
 ├── wireshark/    dhs_<proto>.lua dissector
 ├── docs/         consumer / provider / README per protocol
@@ -27,7 +27,7 @@ internal/<proto>/
 ```
 
 Protocols are independent. **Do not** import one protocol package from
-another. See `internal/protocol/_template/` for a starting point.
+another. See `internal/consumer/_template/` for a starting point.
 
 ## Testing requirements
 

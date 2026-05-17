@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // MasterProtectConnect is the override-flavoured Protect Connect used
@@ -33,7 +33,7 @@ func (p *Plugin) MasterProtectConnect(
 	}
 	c, derr := codec.DecodeProtectConnected(reply)
 	if derr != nil {
-		return codec.ProtectConnectedParams{}, &protocol.TransportError{Op: "decode", Err: derr}
+		return codec.ProtectConnectedParams{}, &consumer.TransportError{Op: "decode", Err: derr}
 	}
 	return c, nil
 }

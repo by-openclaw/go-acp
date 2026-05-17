@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"dhs/internal/export"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func sampleSnapshot() *export.Snapshot {
@@ -22,26 +22,26 @@ func sampleSnapshot() *export.Snapshot {
 				Slot:     0,
 				Status:   "present",
 				WalkedAt: time.Date(2026, 4, 16, 12, 0, 0, 0, time.UTC),
-				Objects: []protocol.Object{
+				Objects: []consumer.Object{
 					{
 						Slot: 0, Group: "control", Path: []string{"control"},
-						ID: 7, Label: "GainA", Kind: protocol.KindFloat,
+						ID: 7, Label: "GainA", Kind: consumer.KindFloat,
 						Access: 3, Unit: "%",
 						Min: float64(0), Max: float64(150), Step: float64(1), Def: float64(100),
-						Value: protocol.Value{Kind: protocol.KindFloat, Float: 50.8},
+						Value: consumer.Value{Kind: consumer.KindFloat, Float: 50.8},
 					},
 					{
 						Slot: 0, Group: "control", Path: []string{"control"},
-						ID: 4, Label: "Broadcasts", Kind: protocol.KindEnum,
+						ID: 4, Label: "Broadcasts", Kind: consumer.KindEnum,
 						Access: 3, EnumItems: []string{"Off", "On"},
 						Def: uint64(1),
-						Value: protocol.Value{Kind: protocol.KindEnum, Enum: 1, Str: "On"},
+						Value: consumer.Value{Kind: consumer.KindEnum, Enum: 1, Str: "On"},
 					},
 					{
 						Slot: 0, Group: "identity", Path: []string{"identity"},
-						ID: 0, Label: "Card name", Kind: protocol.KindString,
+						ID: 0, Label: "Card name", Kind: consumer.KindString,
 						Access: 1, MaxLen: 8,
-						Value: protocol.Value{Kind: protocol.KindString, Str: "RRS18"},
+						Value: consumer.Value{Kind: consumer.KindString, Str: "RRS18"},
 					},
 				},
 			},
@@ -63,7 +63,7 @@ func TestJSON_RoundTrip(t *testing.T) {
 		t.Fatalf("objects: got %d, want 3", len(got.Slots[0].Objects))
 	}
 	// Lookup by label — hierarchical JSON uses maps (unordered).
-	var gainA *protocol.Object
+	var gainA *consumer.Object
 	for i := range got.Slots[0].Objects {
 		if got.Slots[0].Objects[i].Label == "GainA" {
 			gainA = &got.Slots[0].Objects[i]
@@ -92,7 +92,7 @@ func TestYAML_RoundTrip(t *testing.T) {
 		t.Fatalf("objects: got %d, want 3", len(got.Slots[0].Objects))
 	}
 	o := got.Slots[0].Objects[0]
-	if o.Label != "GainA" || o.Kind != protocol.KindFloat {
+	if o.Label != "GainA" || o.Kind != consumer.KindFloat {
 		t.Errorf("GainA: label=%q kind=%v", o.Label, o.Kind)
 	}
 }
@@ -123,11 +123,11 @@ func TestCSV_Writer_UsesDotSeparator(t *testing.T) {
 		Device: export.DeviceInfo{Protocol: "acp2"},
 		Slots: []export.SlotDump{{
 			Slot: 1,
-			Objects: []protocol.Object{{
+			Objects: []consumer.Object{{
 				Slot: 1, ID: 67604,
 				Path:  []string{"ROOT-NODE-V2", "OUTPUT", "IP", "VIDEO", "STREAM 1", "LEG 1", "Destination IP"},
-				Label: "Destination IP", Kind: protocol.KindString, Access: 3,
-				Value: protocol.Value{Kind: protocol.KindString, Str: "239.129.1.20"},
+				Label: "Destination IP", Kind: consumer.KindString, Access: 3,
+				Value: consumer.Value{Kind: consumer.KindString, Str: "239.129.1.20"},
 			}},
 		}},
 	}

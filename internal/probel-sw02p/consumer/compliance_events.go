@@ -10,7 +10,7 @@ package probelsw02p
 //
 //	internal/probel-sw08p/assets/probel-sw02/SW-P-02_issue_26.txt
 //
-// The generic Profile counter lives in internal/protocol/compliance/.
+// The generic Profile counter lives in internal/consumer/compliance/.
 // Classification:
 //   - strict  : zero events fired this session
 //   - partial : one or more events fired, all within tolerance

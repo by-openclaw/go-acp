@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"dhs/internal/emberplus/codec/glow"
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 func TestExtractFormatUnit(t *testing.T) {
@@ -29,45 +29,45 @@ func TestExtractFormatUnit(t *testing.T) {
 func TestApplyFactor(t *testing.T) {
 	cases := []struct {
 		name   string
-		in     protocol.Value
+		in     consumer.Value
 		factor int64
-		want   protocol.Value
+		want   consumer.Value
 	}{
 		{
 			name:   "int with factor 32 — Lawo metering centidB/32 → -128",
-			in:     protocol.Value{Kind: protocol.KindInt, Int: -4096},
+			in:     consumer.Value{Kind: consumer.KindInt, Int: -4096},
 			factor: 32,
-			want:   protocol.Value{Kind: protocol.KindFloat, Float: -128.0},
+			want:   consumer.Value{Kind: consumer.KindFloat, Float: -128.0},
 		},
 		{
 			name:   "int with factor 100 — generic centi-units",
-			in:     protocol.Value{Kind: protocol.KindInt, Int: -1234},
+			in:     consumer.Value{Kind: consumer.KindInt, Int: -1234},
 			factor: 100,
-			want:   protocol.Value{Kind: protocol.KindFloat, Float: -12.34},
+			want:   consumer.Value{Kind: consumer.KindFloat, Float: -12.34},
 		},
 		{
 			name:   "factor 1 — no scaling",
-			in:     protocol.Value{Kind: protocol.KindInt, Int: 42},
+			in:     consumer.Value{Kind: consumer.KindInt, Int: 42},
 			factor: 1,
-			want:   protocol.Value{Kind: protocol.KindInt, Int: 42},
+			want:   consumer.Value{Kind: consumer.KindInt, Int: 42},
 		},
 		{
 			name:   "factor 0 — no scaling",
-			in:     protocol.Value{Kind: protocol.KindInt, Int: 42},
+			in:     consumer.Value{Kind: consumer.KindInt, Int: 42},
 			factor: 0,
-			want:   protocol.Value{Kind: protocol.KindInt, Int: 42},
+			want:   consumer.Value{Kind: consumer.KindInt, Int: 42},
 		},
 		{
 			name:   "float input — scales as float",
-			in:     protocol.Value{Kind: protocol.KindFloat, Float: 6.4},
+			in:     consumer.Value{Kind: consumer.KindFloat, Float: 6.4},
 			factor: 2,
-			want:   protocol.Value{Kind: protocol.KindFloat, Float: 3.2},
+			want:   consumer.Value{Kind: consumer.KindFloat, Float: 3.2},
 		},
 		{
 			name:   "string input — unchanged",
-			in:     protocol.Value{Kind: protocol.KindString, Str: "hello"},
+			in:     consumer.Value{Kind: consumer.KindString, Str: "hello"},
 			factor: 100,
-			want:   protocol.Value{Kind: protocol.KindString, Str: "hello"},
+			want:   consumer.Value{Kind: consumer.KindString, Str: "hello"},
 		},
 	}
 	for _, c := range cases {
@@ -93,8 +93,8 @@ func TestDisplayValueAndUnit_MeteringParam(t *testing.T) {
 	// Real Lawo metering Parameter: raw int with factor 32, no
 	// format string (no unit).
 	entry := &treeEntry{
-		obj: protocol.Object{
-			Value: protocol.Value{Kind: protocol.KindInt, Int: -4096},
+		obj: consumer.Object{
+			Value: consumer.Value{Kind: consumer.KindInt, Int: -4096},
 			Unit:  "", // pre-scaled obj.Unit empty (format empty)
 		},
 		glowParam: &glow.Parameter{
@@ -103,7 +103,7 @@ func TestDisplayValueAndUnit_MeteringParam(t *testing.T) {
 		},
 	}
 	val, unit := displayValueAndUnit(entry)
-	if val.Kind != protocol.KindFloat {
+	if val.Kind != consumer.KindFloat {
 		t.Errorf("Kind = %v, want KindFloat after factor", val.Kind)
 	}
 	if val.Float != -128.0 {
@@ -118,8 +118,8 @@ func TestDisplayValueAndUnit_WithFormatUnit(t *testing.T) {
 	// Parameter with format "°dB" — unit should be "dB", factor
 	// applied if > 1.
 	entry := &treeEntry{
-		obj: protocol.Object{
-			Value: protocol.Value{Kind: protocol.KindInt, Int: -1234},
+		obj: consumer.Object{
+			Value: consumer.Value{Kind: consumer.KindInt, Int: -1234},
 		},
 		glowParam: &glow.Parameter{
 			Factor: 100,
@@ -127,7 +127,7 @@ func TestDisplayValueAndUnit_WithFormatUnit(t *testing.T) {
 		},
 	}
 	val, unit := displayValueAndUnit(entry)
-	if val.Kind != protocol.KindFloat || val.Float != -12.34 {
+	if val.Kind != consumer.KindFloat || val.Float != -12.34 {
 		t.Errorf("Value = {%v %g}, want {KindFloat -12.34}", val.Kind, val.Float)
 	}
 	if unit != "dB" {
@@ -137,8 +137,8 @@ func TestDisplayValueAndUnit_WithFormatUnit(t *testing.T) {
 
 func TestDisplayValueAndUnit_NoFactor_NoFormat(t *testing.T) {
 	entry := &treeEntry{
-		obj: protocol.Object{
-			Value: protocol.Value{Kind: protocol.KindInt, Int: 5},
+		obj: consumer.Object{
+			Value: consumer.Value{Kind: consumer.KindInt, Int: 5},
 			Unit:  "",
 		},
 		glowParam: &glow.Parameter{
@@ -147,7 +147,7 @@ func TestDisplayValueAndUnit_NoFactor_NoFormat(t *testing.T) {
 		},
 	}
 	val, unit := displayValueAndUnit(entry)
-	if val.Kind != protocol.KindInt || val.Int != 5 {
+	if val.Kind != consumer.KindInt || val.Int != 5 {
 		t.Errorf("Value = {%v %d}, want raw {KindInt 5}", val.Kind, val.Int)
 	}
 	if unit != "" {
@@ -157,8 +157,8 @@ func TestDisplayValueAndUnit_NoFactor_NoFormat(t *testing.T) {
 
 func TestDisplayValueAndUnit_NoGlowParam_Fallback(t *testing.T) {
 	entry := &treeEntry{
-		obj: protocol.Object{
-			Value: protocol.Value{Kind: protocol.KindString, Str: "Lawo"},
+		obj: consumer.Object{
+			Value: consumer.Value{Kind: consumer.KindString, Str: "Lawo"},
 			Unit:  "fallback-unit",
 		},
 		glowParam: nil,

@@ -1,4 +1,4 @@
-package protocol
+package consumer
 
 import (
 	"fmt"
@@ -22,16 +22,16 @@ var (
 // init(). Panics on duplicate name.
 func Register(f ProtocolFactory) {
 	if f == nil {
-		panic("protocol.Register: nil factory")
+		panic("consumer.Register: nil factory")
 	}
 	name := strings.ToLower(f.Meta().Name)
 	if name == "" {
-		panic("protocol.Register: empty name")
+		panic("consumer.Register: empty name")
 	}
 	regMu.Lock()
 	defer regMu.Unlock()
 	if _, dup := reg[name]; dup {
-		panic(fmt.Sprintf("protocol.Register: duplicate name %q", name))
+		panic(fmt.Sprintf("consumer.Register: duplicate name %q", name))
 	}
 	reg[name] = f
 }

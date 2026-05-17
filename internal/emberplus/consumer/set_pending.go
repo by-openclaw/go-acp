@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/protocol"
+	"dhs/internal/consumer"
 )
 
 // pendingSet captures one in-flight SetValue call waiting for the
@@ -14,12 +14,12 @@ import (
 // the matching parameter is seen in processParameter.
 type pendingSet struct {
 	expected any
-	kind     protocol.ValueKind
+	kind     consumer.ValueKind
 	done     chan pendingResult
 }
 
 type pendingResult struct {
-	value protocol.Value
+	value consumer.Value
 	err   error
 }
 
@@ -60,7 +60,7 @@ func (r *pendingSetRegistry) take(key string) *pendingSet {
 // valuesMatch tests whether the confirming announce's value equals
 // what the caller asked SetValue to set. Floating-point gets a
 // tolerance because providers round. Bytes + strings are exact.
-func valuesMatch(expected, actual any, kind protocol.ValueKind) bool {
+func valuesMatch(expected, actual any, kind consumer.ValueKind) bool {
 	if expected == nil && actual == nil {
 		return true
 	}
@@ -68,7 +68,7 @@ func valuesMatch(expected, actual any, kind protocol.ValueKind) bool {
 		return false
 	}
 
-	if kind == protocol.KindFloat {
+	if kind == consumer.KindFloat {
 		ef, eok := expected.(float64)
 		af, aok := actual.(float64)
 		if eok && aok {
@@ -107,7 +107,7 @@ func (p *Plugin) signalPendingSet(entry *treeEntry) {
 		// Success — provider echoed exactly what we asked for.
 	default:
 		res.err = fmt.Errorf("%w: expected=%v actual=%v",
-			protocol.ErrWriteCoerced, ps.expected, actual)
+			consumer.ErrWriteCoerced, ps.expected, actual)
 	}
 
 	select {
