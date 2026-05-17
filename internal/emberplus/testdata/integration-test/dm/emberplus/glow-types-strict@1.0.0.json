@@ -19,9 +19,12 @@
                                       "access":  "readWrite",
                                       "type":  "integer",
                                       "value":  42,
+                                      "default":  0,
                                       "minimum":  -100,
                                       "maximum":  100,
-                                      "step":  1
+                                      "step":  1,
+                                      "factor":  1,
+                                      "unit":  "counts"
                                   },
                                   {
                                       "number":  2,
@@ -32,8 +35,13 @@
                                       "access":  "readWrite",
                                       "type":  "real",
                                       "value":  3.14,
+                                      "default":  0,
                                       "minimum":  -1000,
-                                      "maximum":  1000
+                                      "maximum":  1000,
+                                      "step":  0.01,
+                                      "factor":  100,
+                                      "format":  "%.2f",
+                                      "unit":  "dB"
                                   },
                                   {
                                       "number":  3,
@@ -43,7 +51,8 @@
                                       "isOnline":  true,
                                       "access":  "readWrite",
                                       "type":  "string",
-                                      "value":  "hello"
+                                      "value":  "hello",
+                                      "default":  ""
                                   },
                                   {
                                       "number":  4,
@@ -53,7 +62,8 @@
                                       "isOnline":  true,
                                       "access":  "readWrite",
                                       "type":  "boolean",
-                                      "value":  true
+                                      "value":  true,
+                                      "default":  false
                                   },
                                   {
                                       "number":  5,
@@ -74,6 +84,7 @@
                                       "access":  "readWrite",
                                       "type":  "enum",
                                       "value":  1,
+                                      "default":  0,
                                       "enumMap":  [
                                                       {
                                                           "key":  "Off",
@@ -101,13 +112,28 @@
                                       "isOnline":  true,
                                       "access":  "readWrite",
                                       "type":  "octets",
-                                      "value":  "aGVsbG8="
+                                      "value":  "aGVsbG8=",
+                                      "default":  ""
                                   },
                                   {
                                       "number":  10,
+                                      "identifier":  "vu_zero",
+                                      "path":  "types.vu_zero",
+                                      "oid":  "1.6.10",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "type":  "real",
+                                      "value":  -60,
+                                      "minimum":  -128,
+                                      "maximum":  15,
+                                      "format":  "%.2f dB",
+                                      "streamIdentifier":  0
+                                  },
+                                  {
+                                      "number":  11,
                                       "identifier":  "vu_left",
                                       "path":  "types.vu_left",
-                                      "oid":  "1.6.10",
+                                      "oid":  "1.6.11",
                                       "isOnline":  true,
                                       "access":  "read",
                                       "type":  "real",
@@ -118,10 +144,10 @@
                                       "streamIdentifier":  1001
                                   },
                                   {
-                                      "number":  11,
+                                      "number":  12,
                                       "identifier":  "vu_right",
                                       "path":  "types.vu_right",
-                                      "oid":  "1.6.11",
+                                      "oid":  "1.6.12",
                                       "isOnline":  true,
                                       "access":  "read",
                                       "type":  "real",
