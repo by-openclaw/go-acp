@@ -116,6 +116,7 @@ type command struct {
 var commands = []command{
 	{"info", "read device info (slot count, per-slot status)", helpInfo, runInfo},
 	{"walk", "enumerate every object on a slot", helpWalk, runWalk},
+	{"tree", "render the device object tree as ASCII or PlantUML mindmap (R5b)", helpTree, runTree},
 	{"get", "read one object value", helpGet, runGet},
 	{"set", "write one object value", helpSet, runSet},
 	{"watch", "subscribe to live announcements", helpWatch, runWatch},

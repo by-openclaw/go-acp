@@ -109,10 +109,12 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 | `validation:invalid-integer` | partial (today emits free-text via `*consumer.ValidationError`; R1g formalizes) | `--value` not parseable as integer | dhs PR #453 |
 | `validation:invalid-real` | partial | `--value` not parseable as real | dhs PR #453 |
 | `validation:invalid-enum-index` | partial | `--value` outside enum range | dhs PR #453 |
-| `validation:invalid-enum-label` | pending (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | `--value` is label not in `enumMap` | Ember+ Doc §p.86 |
-| `validation:out-of-range-low` | pending (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | value below Parameter `minimum` | Ember+ Doc §p.86 |
-| `validation:out-of-range-high` | pending (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | value above Parameter `maximum` | Ember+ Doc §p.86 |
-| `validation:step-misaligned` | pending (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | value not on Parameter `step` grid | Ember+ Doc §p.86 |
+| `validation:invalid-enum-label` | defined (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | `--value` is label not in `enumMap` | Ember+ Doc §p.86 |
+| `validation:out-of-range-low` | defined (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | value below Parameter `minimum` | Ember+ Doc §p.86 |
+| `validation:out-of-range-high` | defined (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | value above Parameter `maximum` | Ember+ Doc §p.86 |
+| `validation:step-misaligned` | defined (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | value not on Parameter `step` grid | Ember+ Doc §p.86 |
+| `validation:enum-not-supported` | defined (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | `--value` is a label but Parameter has no `enumMap` | Ember+ Doc §p.86 |
+| `validation:round-not-applicable` | defined (R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)) | `--round` passed but target Parameter is non-numeric | dhs |
 | `validation:invalid-host` | defined (R1b) | host string empty on Dial | dhs |
 | `validation:invalid-port` | defined (R1b) | port outside [1, 65535] on Dial or [0, 65535] on Listen | dhs |
 | `validation:empty-payload` | defined (R1b) | Send called with a zero-length payload | dhs |

@@ -74,6 +74,7 @@ Every matrix carries `sourceParams[N].gain`, `targetParams[N].gain`, and (nToN o
 |---|---|---|---|
 | `info` | ✅ | GetDirectory(root) + identity walk | per-slot online + status |
 | `walk` | ✅ | GetDirectory recursive | every object in the tree |
+| `tree` | ✅ | GetDirectory recursive (or DM hot-load) | ASCII or PlantUML mindmap of the tree (post R5b [#469](https://github.com/by-openclaw/go-acp/issues/469)) |
 | `get` | ✅ | GetDirectory(path) | one value |
 | `set` | ✅ | SetValue | confirmed value (or ValidationError) |
 | `watch` | ✅ | Subscribe(30) on streams + implicit on params/matrices | live stream of value/connection changes |
@@ -302,7 +303,14 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 # confirmed value = 3
 ```
 
-> Out-of-range / step-mismatch / enum-by-label semantics pending **R16** (not yet filed).
+> Out-of-range / step-mismatch / enum-by-label semantics are live as of **R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)**:
+>
+> - Numeric `--value` below/above the Parameter's declared `minimum`/`maximum` (Ember+ Contents [3]/[4]) → `validation:out-of-range-low` / `validation:out-of-range-high` (exit `2`).
+> - Numeric `--value` not aligned to the declared `step` (Contents [11]) → `validation:step-misaligned` (exit `2`); the message names the nearest legal grid point. Pass `--round` to snap and continue.
+> - Enum `--value` as a **label** (e.g. `--value Low` on `{Off=0, Low=1, Medium=2, High=3}`) → resolved via the Parameter's enumMap to the integer index, then sent on the wire.
+> - Enum label not present in enumMap → `validation:invalid-enum-label` (exit `2`); stderr lists valid labels alphabetised.
+> - Enum label on a Parameter that ships **no** enumMap → `validation:enum-not-supported` (exit `2`) — address by integer index.
+> - `--round` on a non-numeric Parameter (string / enum / bool) → `validation:round-not-applicable` (exit `2`).
 
 ### Errors (post #453 + post R16 [#483](https://github.com/by-openclaw/go-acp/issues/483))
 
@@ -694,7 +702,7 @@ Current state on `main`. ✅ working, 🟡 partial, ❌ not implemented.
 | UC-1 | `info` — device summary | ✅ | ✅ | Online correct post #459 |
 | UC-2 | `walk` — full enumeration | ✅ | ✅ | tree_size ≈ 1361; DM auto-extracted to `.cache/dm/emberplus/<identity>@<rev>.json` |
 | UC-3 | `get` — single Parameter | ✅ | ✅ | every ParameterType + stream id=0 + id>0 + identity.dtdVersion |
-| UC-4 | `set` — single Parameter | ✅ | ✅ | typed-validation errors post #453; out-of-range / range-step rounding pending **R16** |
+| UC-4 | `set` — single Parameter | ✅ | ✅ | typed-validation errors post #453; range / step / enum-by-label live post R16 [#483](https://github.com/by-openclaw/go-acp/issues/483) (with `--round` snap) |
 | UC-5 | `watch` — live updates | ✅ | ✅ | streams + matrix tally + param announces |
 | UC-6 | `matrix` — Connect / Disconnect / Absolute | ✅ | ✅ | oneToOne source-steal accepted post #467 (fires `onetoone_source_steal_accepted`); oneToN over-cardinality + nToN capacity rejected client-side; lock honored |
 | UC-7 | `invoke` — function RPC | ✅ | ✅ | bogus matrixRef now errors post #457; dotted matrixRef resolves under synthetic root post #466 |

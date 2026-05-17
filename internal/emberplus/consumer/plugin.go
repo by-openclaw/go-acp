@@ -736,7 +736,18 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 	if val.Kind == consumer.KindUnknown {
 		val.Kind = entry.obj.Kind
 	}
+	// R16 #483: resolve enum label → integer index BEFORE the type
+	// coerce so `--value "Low"` on `{Off=0, Low=1, ...}` works
+	// transparently. Numeric input passes through unchanged.
+	if err := resolveEnumLabelToIndex(&val, entry.glowParam); err != nil {
+		return consumer.Value{}, err
+	}
 	if err := coerceStringToTyped(&val); err != nil {
+		return consumer.Value{}, err
+	}
+	// R16 #483: range / step gate. Strict by default; --round snaps
+	// off-step numerics to the nearest legal grid point.
+	if err := applyParameterConstraints(&val, entry.glowParam, req); err != nil {
 		return consumer.Value{}, err
 	}
 
