@@ -168,7 +168,19 @@ func (s *State) Snapshot() []TargetState {
 // Rules (spec p.33–34, p.89):
 //
 //	oneToN:   exactly 1 source per target; connect replaces.
-//	oneToOne: 1 source per target AND source used once globally.
+//	oneToOne: 1 source per target. The "source used once globally"
+//	          spec clause (p.33) is NOT enforced here — every shipping
+//	          provider (Lawo VSM, EmberPlusView-as-provider, TinyEmber+)
+//	          implements source-steal: setting src=A on tgt=B implicitly
+//	          disconnects A from its prior target. Same precedent as
+//	          feedback_probel_salvo_connected — when every shipping
+//	          controller contradicts a literal spec clause, the connector
+//	          aligns with the controllers. The provider's
+//	          applyMatrixConnections handles the actual steal on receive.
+//	          The consumer-side plugin.MatrixConnect fires the
+//	          EmberPlusOneToOneSourceStealAccepted compliance event when
+//	          it detects an implicit steal pre-flight, so operators see
+//	          the deviation in the profile counter. Refs #465.
 //	nToN:     len(sources[t]) <= MaxConnectsPerTarget;
 //	          sum(all targets) <= MaxTotalConnects.
 //	any type: reject if target disposition is locked (disposition 3).
@@ -202,20 +214,10 @@ func (s *State) CanConnect(target int32, newSources []int32, op int64) error {
 			return fmt.Errorf("oneToOne matrix: target %d would have %d sources (max 1) [spec p.33]",
 				target, len(projected))
 		}
-		// Source exclusivity: no other target may already use any source.
-		for _, src := range projected {
-			for tgtNum, tstate := range s.Targets {
-				if tgtNum == target {
-					continue
-				}
-				for _, cur := range tstate.Sources {
-					if cur == src {
-						return fmt.Errorf("oneToOne matrix: source %d already used by target %d [spec p.33]",
-							src, tgtNum)
-					}
-				}
-			}
-		}
+		// Source exclusivity (spec p.33 literal) is NOT enforced here —
+		// see CanConnect doc-comment for the source-steal precedent.
+		// The consumer's plugin.MatrixConnect detects the implicit
+		// steal pre-flight and fires a compliance event. Refs #465.
 	case glow.MatrixTypeNToN:
 		if s.MaxConnectsPerTarget > 0 && int32(len(projected)) > s.MaxConnectsPerTarget {
 			return fmt.Errorf("nToN matrix: target %d would have %d sources (max %d per target) [spec p.33]",
@@ -236,6 +238,45 @@ func (s *State) CanConnect(target int32, newSources []int32, op int64) error {
 		}
 	}
 	return nil
+}
+
+// DetectOneToOneSourceSteal reports whether a SET on a oneToOne matrix
+// would implicitly disconnect any of the requested sources from a
+// prior target (the source-steal case documented in CanConnect's
+// doc-comment; refs #465). Returns the list of (target, source) pairs
+// whose disconnection is implied — empty when no steal is needed.
+//
+// Pure read; safe to call under any goroutine. Returns nil for
+// non-oneToOne matrices.
+func (s *State) DetectOneToOneSourceSteal(target int32, newSources []int32) []SourceStealPair {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.Type != glow.MatrixTypeOneToOne {
+		return nil
+	}
+	var stolen []SourceStealPair
+	for _, src := range newSources {
+		for tgtNum, tstate := range s.Targets {
+			if tgtNum == target {
+				continue
+			}
+			for _, cur := range tstate.Sources {
+				if cur == src {
+					stolen = append(stolen, SourceStealPair{FromTarget: tgtNum, Source: src})
+				}
+			}
+		}
+	}
+	return stolen
+}
+
+// SourceStealPair names one (target, source) pair whose source is
+// being implicitly disconnected by a oneToOne SET. Used by the
+// consumer's compliance reporting so each individual deviation is
+// visible (not collapsed to a single event for a multi-source SET).
+type SourceStealPair struct {
+	FromTarget int32
+	Source     int32
 }
 
 // projectSources simulates the union/difference/replace that the provider
