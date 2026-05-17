@@ -14,8 +14,11 @@ walk completes in well under a second. All seeds live under
 
 ## 1. Generate seeds + start the producer
 
+Source-of-truth DMs + manifest live under
+`internal/emberplus/testdata/integration-test/` (per ADR-0025 #6).
+
 ```powershell
-# (Re)generate all DMs + manifest. Idempotent.
+# (Re)generate all DMs + manifest into internal/emberplus/testdata/integration-test/. Idempotent.
 powershell -ExecutionPolicy Bypass -File .\scripts\emberplus\gen-emberplus-demo-dms.ps1
 
 # (Optional) End-to-end verifier: labels + per-tgt/src/XPT params + crosspoints
@@ -24,9 +27,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\emberplus\gen-emberplus-demo-
 # Build the binary
 go build -o bin/dhs.exe ./cmd/dhs
 
-# Serve via the manifest
+# Serve from the testdata layout
 .\bin\dhs.exe producer emberplus serve `
-    --manifest .cache\manifest\emberplus-integration.json `
+    --manifest internal\emberplus\testdata\integration-test\manifest\emberplus-integration.json `
+    --cache-dir internal\emberplus\testdata\integration-test `
     --port 9100 `
     --log-level debug
 ```

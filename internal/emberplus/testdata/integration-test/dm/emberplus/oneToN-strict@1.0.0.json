@@ -1,0 +1,811 @@
+{
+    "model":  "oneToN-strict",
+    "sw_rev":  "1.0.0",
+    "protocol":  "emberplus",
+    "root":  {
+                 "number":  1,
+                 "identifier":  "oneToN",
+                 "path":  "oneToN",
+                 "oid":  "1.1",
+                 "isOnline":  true,
+                 "access":  "read",
+                 "children":  [
+                                  {
+                                      "number":  1,
+                                      "identifier":  "labelsPrimary",
+                                      "path":  "oneToN.labelsPrimary",
+                                      "oid":  "1.1.1",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "children":  [
+                                                       {
+                                                           "number":  1,
+                                                           "identifier":  "targets",
+                                                           "path":  "oneToN.labelsPrimary.targets",
+                                                           "oid":  "1.1.1.1",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  0,
+                                                                                "identifier":  "t-0",
+                                                                                "path":  "oneToN.labelsPrimary.targets.t-0",
+                                                                                "oid":  "1.1.1.1.0",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Pri-T0"
+                                                                            },
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "t-1",
+                                                                                "path":  "oneToN.labelsPrimary.targets.t-1",
+                                                                                "oid":  "1.1.1.1.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Pri-T1"
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "t-2",
+                                                                                "path":  "oneToN.labelsPrimary.targets.t-2",
+                                                                                "oid":  "1.1.1.1.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Pri-T2"
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "t-3",
+                                                                                "path":  "oneToN.labelsPrimary.targets.t-3",
+                                                                                "oid":  "1.1.1.1.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Pri-T3"
+                                                                            }
+                                                                        ]
+                                                       },
+                                                       {
+                                                           "number":  2,
+                                                           "identifier":  "sources",
+                                                           "path":  "oneToN.labelsPrimary.sources",
+                                                           "oid":  "1.1.1.2",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  0,
+                                                                                "identifier":  "s-0",
+                                                                                "path":  "oneToN.labelsPrimary.sources.s-0",
+                                                                                "oid":  "1.1.1.2.0",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Pri-S0"
+                                                                            },
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "s-1",
+                                                                                "path":  "oneToN.labelsPrimary.sources.s-1",
+                                                                                "oid":  "1.1.1.2.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Pri-S1"
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "s-2",
+                                                                                "path":  "oneToN.labelsPrimary.sources.s-2",
+                                                                                "oid":  "1.1.1.2.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Pri-S2"
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "s-3",
+                                                                                "path":  "oneToN.labelsPrimary.sources.s-3",
+                                                                                "oid":  "1.1.1.2.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Pri-S3"
+                                                                            }
+                                                                        ]
+                                                       }
+                                                   ]
+                                  },
+                                  {
+                                      "number":  2,
+                                      "identifier":  "labelsSecondary",
+                                      "path":  "oneToN.labelsSecondary",
+                                      "oid":  "1.1.2",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "children":  [
+                                                       {
+                                                           "number":  1,
+                                                           "identifier":  "targets",
+                                                           "path":  "oneToN.labelsSecondary.targets",
+                                                           "oid":  "1.1.2.1",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  0,
+                                                                                "identifier":  "t-0",
+                                                                                "path":  "oneToN.labelsSecondary.targets.t-0",
+                                                                                "oid":  "1.1.2.1.0",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Sec-T0"
+                                                                            },
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "t-1",
+                                                                                "path":  "oneToN.labelsSecondary.targets.t-1",
+                                                                                "oid":  "1.1.2.1.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Sec-T1"
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "t-2",
+                                                                                "path":  "oneToN.labelsSecondary.targets.t-2",
+                                                                                "oid":  "1.1.2.1.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Sec-T2"
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "t-3",
+                                                                                "path":  "oneToN.labelsSecondary.targets.t-3",
+                                                                                "oid":  "1.1.2.1.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Sec-T3"
+                                                                            }
+                                                                        ]
+                                                       },
+                                                       {
+                                                           "number":  2,
+                                                           "identifier":  "sources",
+                                                           "path":  "oneToN.labelsSecondary.sources",
+                                                           "oid":  "1.1.2.2",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  0,
+                                                                                "identifier":  "s-0",
+                                                                                "path":  "oneToN.labelsSecondary.sources.s-0",
+                                                                                "oid":  "1.1.2.2.0",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Sec-S0"
+                                                                            },
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "s-1",
+                                                                                "path":  "oneToN.labelsSecondary.sources.s-1",
+                                                                                "oid":  "1.1.2.2.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Sec-S1"
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "s-2",
+                                                                                "path":  "oneToN.labelsSecondary.sources.s-2",
+                                                                                "oid":  "1.1.2.2.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Sec-S2"
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "s-3",
+                                                                                "path":  "oneToN.labelsSecondary.sources.s-3",
+                                                                                "oid":  "1.1.2.2.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "string",
+                                                                                "value":  "Sec-S3"
+                                                                            }
+                                                                        ]
+                                                       }
+                                                   ]
+                                  },
+                                  {
+                                      "number":  4,
+                                      "identifier":  "targetParams",
+                                      "path":  "oneToN.targetParams",
+                                      "oid":  "1.1.4",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "children":  [
+                                                       {
+                                                           "number":  0,
+                                                           "identifier":  "0",
+                                                           "path":  "oneToN.targetParams.0",
+                                                           "oid":  "1.1.4.0",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "gain",
+                                                                                "path":  "oneToN.targetParams.0.gain",
+                                                                                "oid":  "1.1.4.0.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "integer",
+                                                                                "value":  0,
+                                                                                "minimum":  -1000,
+                                                                                "maximum":  100,
+                                                                                "step":  1
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "mode",
+                                                                                "path":  "oneToN.targetParams.0.mode",
+                                                                                "oid":  "1.1.4.0.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "enum",
+                                                                                "value":  0,
+                                                                                "enumMap":  [
+                                                                                                {
+                                                                                                    "key":  "auto",
+                                                                                                    "value":  0
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "manual",
+                                                                                                    "value":  1
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "bypass",
+                                                                                                    "value":  2
+                                                                                                }
+                                                                                            ]
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "mute",
+                                                                                "path":  "oneToN.targetParams.0.mute",
+                                                                                "oid":  "1.1.4.0.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "boolean",
+                                                                                "value":  false
+                                                                            }
+                                                                        ]
+                                                       },
+                                                       {
+                                                           "number":  1,
+                                                           "identifier":  "1",
+                                                           "path":  "oneToN.targetParams.1",
+                                                           "oid":  "1.1.4.1",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "gain",
+                                                                                "path":  "oneToN.targetParams.1.gain",
+                                                                                "oid":  "1.1.4.1.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "integer",
+                                                                                "value":  0,
+                                                                                "minimum":  -1000,
+                                                                                "maximum":  100,
+                                                                                "step":  1
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "mode",
+                                                                                "path":  "oneToN.targetParams.1.mode",
+                                                                                "oid":  "1.1.4.1.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "enum",
+                                                                                "value":  0,
+                                                                                "enumMap":  [
+                                                                                                {
+                                                                                                    "key":  "auto",
+                                                                                                    "value":  0
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "manual",
+                                                                                                    "value":  1
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "bypass",
+                                                                                                    "value":  2
+                                                                                                }
+                                                                                            ]
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "mute",
+                                                                                "path":  "oneToN.targetParams.1.mute",
+                                                                                "oid":  "1.1.4.1.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "boolean",
+                                                                                "value":  false
+                                                                            }
+                                                                        ]
+                                                       },
+                                                       {
+                                                           "number":  2,
+                                                           "identifier":  "2",
+                                                           "path":  "oneToN.targetParams.2",
+                                                           "oid":  "1.1.4.2",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "gain",
+                                                                                "path":  "oneToN.targetParams.2.gain",
+                                                                                "oid":  "1.1.4.2.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "integer",
+                                                                                "value":  0,
+                                                                                "minimum":  -1000,
+                                                                                "maximum":  100,
+                                                                                "step":  1
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "mode",
+                                                                                "path":  "oneToN.targetParams.2.mode",
+                                                                                "oid":  "1.1.4.2.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "enum",
+                                                                                "value":  0,
+                                                                                "enumMap":  [
+                                                                                                {
+                                                                                                    "key":  "auto",
+                                                                                                    "value":  0
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "manual",
+                                                                                                    "value":  1
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "bypass",
+                                                                                                    "value":  2
+                                                                                                }
+                                                                                            ]
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "mute",
+                                                                                "path":  "oneToN.targetParams.2.mute",
+                                                                                "oid":  "1.1.4.2.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "boolean",
+                                                                                "value":  false
+                                                                            }
+                                                                        ]
+                                                       },
+                                                       {
+                                                           "number":  3,
+                                                           "identifier":  "3",
+                                                           "path":  "oneToN.targetParams.3",
+                                                           "oid":  "1.1.4.3",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "gain",
+                                                                                "path":  "oneToN.targetParams.3.gain",
+                                                                                "oid":  "1.1.4.3.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "integer",
+                                                                                "value":  0,
+                                                                                "minimum":  -1000,
+                                                                                "maximum":  100,
+                                                                                "step":  1
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "mode",
+                                                                                "path":  "oneToN.targetParams.3.mode",
+                                                                                "oid":  "1.1.4.3.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "enum",
+                                                                                "value":  0,
+                                                                                "enumMap":  [
+                                                                                                {
+                                                                                                    "key":  "auto",
+                                                                                                    "value":  0
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "manual",
+                                                                                                    "value":  1
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "bypass",
+                                                                                                    "value":  2
+                                                                                                }
+                                                                                            ]
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "mute",
+                                                                                "path":  "oneToN.targetParams.3.mute",
+                                                                                "oid":  "1.1.4.3.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "boolean",
+                                                                                "value":  false
+                                                                            }
+                                                                        ]
+                                                       }
+                                                   ]
+                                  },
+                                  {
+                                      "number":  5,
+                                      "identifier":  "sourceParams",
+                                      "path":  "oneToN.sourceParams",
+                                      "oid":  "1.1.5",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "children":  [
+                                                       {
+                                                           "number":  0,
+                                                           "identifier":  "0",
+                                                           "path":  "oneToN.sourceParams.0",
+                                                           "oid":  "1.1.5.0",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "gain",
+                                                                                "path":  "oneToN.sourceParams.0.gain",
+                                                                                "oid":  "1.1.5.0.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "integer",
+                                                                                "value":  0,
+                                                                                "minimum":  -1000,
+                                                                                "maximum":  100,
+                                                                                "step":  1
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "mode",
+                                                                                "path":  "oneToN.sourceParams.0.mode",
+                                                                                "oid":  "1.1.5.0.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "enum",
+                                                                                "value":  0,
+                                                                                "enumMap":  [
+                                                                                                {
+                                                                                                    "key":  "auto",
+                                                                                                    "value":  0
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "manual",
+                                                                                                    "value":  1
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "bypass",
+                                                                                                    "value":  2
+                                                                                                }
+                                                                                            ]
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "mute",
+                                                                                "path":  "oneToN.sourceParams.0.mute",
+                                                                                "oid":  "1.1.5.0.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "boolean",
+                                                                                "value":  false
+                                                                            }
+                                                                        ]
+                                                       },
+                                                       {
+                                                           "number":  1,
+                                                           "identifier":  "1",
+                                                           "path":  "oneToN.sourceParams.1",
+                                                           "oid":  "1.1.5.1",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "gain",
+                                                                                "path":  "oneToN.sourceParams.1.gain",
+                                                                                "oid":  "1.1.5.1.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "integer",
+                                                                                "value":  0,
+                                                                                "minimum":  -1000,
+                                                                                "maximum":  100,
+                                                                                "step":  1
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "mode",
+                                                                                "path":  "oneToN.sourceParams.1.mode",
+                                                                                "oid":  "1.1.5.1.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "enum",
+                                                                                "value":  0,
+                                                                                "enumMap":  [
+                                                                                                {
+                                                                                                    "key":  "auto",
+                                                                                                    "value":  0
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "manual",
+                                                                                                    "value":  1
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "bypass",
+                                                                                                    "value":  2
+                                                                                                }
+                                                                                            ]
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "mute",
+                                                                                "path":  "oneToN.sourceParams.1.mute",
+                                                                                "oid":  "1.1.5.1.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "boolean",
+                                                                                "value":  false
+                                                                            }
+                                                                        ]
+                                                       },
+                                                       {
+                                                           "number":  2,
+                                                           "identifier":  "2",
+                                                           "path":  "oneToN.sourceParams.2",
+                                                           "oid":  "1.1.5.2",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "gain",
+                                                                                "path":  "oneToN.sourceParams.2.gain",
+                                                                                "oid":  "1.1.5.2.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "integer",
+                                                                                "value":  0,
+                                                                                "minimum":  -1000,
+                                                                                "maximum":  100,
+                                                                                "step":  1
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "mode",
+                                                                                "path":  "oneToN.sourceParams.2.mode",
+                                                                                "oid":  "1.1.5.2.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "enum",
+                                                                                "value":  0,
+                                                                                "enumMap":  [
+                                                                                                {
+                                                                                                    "key":  "auto",
+                                                                                                    "value":  0
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "manual",
+                                                                                                    "value":  1
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "bypass",
+                                                                                                    "value":  2
+                                                                                                }
+                                                                                            ]
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "mute",
+                                                                                "path":  "oneToN.sourceParams.2.mute",
+                                                                                "oid":  "1.1.5.2.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "boolean",
+                                                                                "value":  false
+                                                                            }
+                                                                        ]
+                                                       },
+                                                       {
+                                                           "number":  3,
+                                                           "identifier":  "3",
+                                                           "path":  "oneToN.sourceParams.3",
+                                                           "oid":  "1.1.5.3",
+                                                           "isOnline":  true,
+                                                           "access":  "read",
+                                                           "children":  [
+                                                                            {
+                                                                                "number":  1,
+                                                                                "identifier":  "gain",
+                                                                                "path":  "oneToN.sourceParams.3.gain",
+                                                                                "oid":  "1.1.5.3.1",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "integer",
+                                                                                "value":  0,
+                                                                                "minimum":  -1000,
+                                                                                "maximum":  100,
+                                                                                "step":  1
+                                                                            },
+                                                                            {
+                                                                                "number":  2,
+                                                                                "identifier":  "mode",
+                                                                                "path":  "oneToN.sourceParams.3.mode",
+                                                                                "oid":  "1.1.5.3.2",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "enum",
+                                                                                "value":  0,
+                                                                                "enumMap":  [
+                                                                                                {
+                                                                                                    "key":  "auto",
+                                                                                                    "value":  0
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "manual",
+                                                                                                    "value":  1
+                                                                                                },
+                                                                                                {
+                                                                                                    "key":  "bypass",
+                                                                                                    "value":  2
+                                                                                                }
+                                                                                            ]
+                                                                            },
+                                                                            {
+                                                                                "number":  3,
+                                                                                "identifier":  "mute",
+                                                                                "path":  "oneToN.sourceParams.3.mute",
+                                                                                "oid":  "1.1.5.3.3",
+                                                                                "isOnline":  true,
+                                                                                "access":  "readWrite",
+                                                                                "type":  "boolean",
+                                                                                "value":  false
+                                                                            }
+                                                                        ]
+                                                       }
+                                                   ]
+                                  },
+                                  {
+                                      "number":  3,
+                                      "identifier":  "matrix",
+                                      "path":  "oneToN.matrix",
+                                      "oid":  "1.1.3",
+                                      "isOnline":  true,
+                                      "access":  "readWrite",
+                                      "type":  "oneToN",
+                                      "mode":  "linear",
+                                      "targetCount":  4,
+                                      "sourceCount":  4,
+                                      "maximumTotalConnects":  null,
+                                      "maximumConnectsPerTarget":  1,
+                                      "parametersLocation":  null,
+                                      "gainParameterNumber":  null,
+                                      "labels":  [
+                                                     {
+                                                         "basePath":  "1.1.1",
+                                                         "description":  "Primary"
+                                                     },
+                                                     {
+                                                         "basePath":  "1.1.2",
+                                                         "description":  "Secondary"
+                                                     }
+                                                 ],
+                                      "targets":  [
+                                                      {
+                                                          "number":  0
+                                                      },
+                                                      {
+                                                          "number":  1
+                                                      },
+                                                      {
+                                                          "number":  2
+                                                      },
+                                                      {
+                                                          "number":  3
+                                                      }
+                                                  ],
+                                      "sources":  [
+                                                      {
+                                                          "number":  0
+                                                      },
+                                                      {
+                                                          "number":  1
+                                                      },
+                                                      {
+                                                          "number":  2
+                                                      },
+                                                      {
+                                                          "number":  3
+                                                      }
+                                                  ],
+                                      "connections":  [
+                                                          {
+                                                              "target":  0,
+                                                              "sources":  [
+                                                                              0
+                                                                          ],
+                                                              "operation":  "absolute",
+                                                              "disposition":  "tally",
+                                                              "locked":  false
+                                                          },
+                                                          {
+                                                              "target":  1,
+                                                              "sources":  [
+                                                                              1
+                                                                          ],
+                                                              "operation":  "absolute",
+                                                              "disposition":  "tally",
+                                                              "locked":  false
+                                                          },
+                                                          {
+                                                              "target":  2,
+                                                              "sources":  [
+                                                                              2
+                                                                          ],
+                                                              "operation":  "absolute",
+                                                              "disposition":  "locked",
+                                                              "locked":  true
+                                                          },
+                                                          {
+                                                              "target":  3,
+                                                              "sources":  [
+                                                                              3
+                                                                          ],
+                                                              "operation":  "absolute",
+                                                              "disposition":  "tally",
+                                                              "locked":  false
+                                                          }
+                                                      ],
+                                      "targetLabels":  null,
+                                      "sourceLabels":  null,
+                                      "targetParams":  null,
+                                      "sourceParams":  null,
+                                      "connectionParams":  null
+                                  }
+                              ]
+             },
+    "templates":  [
+
+                  ]
+}

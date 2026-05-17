@@ -1,0 +1,48 @@
+{
+    "model":  "identity-strict",
+    "sw_rev":  "1.0.0",
+    "protocol":  "emberplus",
+    "root":  {
+                 "number":  0,
+                 "identifier":  "identity",
+                 "path":  "identity",
+                 "oid":  "1.0",
+                 "isOnline":  true,
+                 "access":  "read",
+                 "children":  [
+                                  {
+                                      "number":  1,
+                                      "identifier":  "product",
+                                      "path":  "identity.product",
+                                      "oid":  "1.0.1",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "type":  "string",
+                                      "value":  "dhs-emberplus-integration"
+                                  },
+                                  {
+                                      "number":  2,
+                                      "identifier":  "company",
+                                      "path":  "identity.company",
+                                      "oid":  "1.0.2",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "type":  "string",
+                                      "value":  "BY-Systems"
+                                  },
+                                  {
+                                      "number":  3,
+                                      "identifier":  "version",
+                                      "path":  "identity.version",
+                                      "oid":  "1.0.3",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "type":  "string",
+                                      "value":  "1.0.0"
+                                  }
+                              ]
+             },
+    "templates":  [
+
+                  ]
+}
