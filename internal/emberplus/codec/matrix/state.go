@@ -189,7 +189,7 @@ func (s *State) CanConnect(target int32, newSources []int32, op int64) error {
 	defer s.mu.RUnlock()
 
 	if cur, ok := s.Targets[target]; ok && cur.Disposition == glow.ConnDispLocked {
-		return fmt.Errorf("target %d is locked (spec p.89 ConnectionDisposition)", target)
+		return fmt.Errorf("%w: target %d is locked (spec p.89 ConnectionDisposition)", ErrTargetLocked, target)
 	}
 
 	// Spec p.89: ConnectionOperation.Disconnect removes the listed
@@ -206,13 +206,13 @@ func (s *State) CanConnect(target int32, newSources []int32, op int64) error {
 	switch s.Type {
 	case glow.MatrixTypeOneToN:
 		if len(projected) > 1 {
-			return fmt.Errorf("oneToN matrix: target %d would have %d sources (max 1) [spec p.33]",
-				target, len(projected))
+			return fmt.Errorf("%w: oneToN matrix: target %d would have %d sources (max 1) [spec p.33]",
+				ErrCardinalityExceeded, target, len(projected))
 		}
 	case glow.MatrixTypeOneToOne:
 		if len(projected) > 1 {
-			return fmt.Errorf("oneToOne matrix: target %d would have %d sources (max 1) [spec p.33]",
-				target, len(projected))
+			return fmt.Errorf("%w: oneToOne matrix: target %d would have %d sources (max 1) [spec p.33]",
+				ErrCardinalityExceeded, target, len(projected))
 		}
 		// Source exclusivity (spec p.33 literal) is NOT enforced here —
 		// see CanConnect doc-comment for the source-steal precedent.
@@ -220,8 +220,8 @@ func (s *State) CanConnect(target int32, newSources []int32, op int64) error {
 		// steal pre-flight and fires a compliance event. Refs #465.
 	case glow.MatrixTypeNToN:
 		if s.MaxConnectsPerTarget > 0 && int32(len(projected)) > s.MaxConnectsPerTarget {
-			return fmt.Errorf("nToN matrix: target %d would have %d sources (max %d per target) [spec p.33]",
-				target, len(projected), s.MaxConnectsPerTarget)
+			return fmt.Errorf("%w: nToN matrix: target %d would have %d sources (max %d per target) [spec p.33]",
+				ErrMaxConnectsPerTarget, target, len(projected), s.MaxConnectsPerTarget)
 		}
 		if s.MaxTotalConnects > 0 {
 			total := int32(len(projected))
@@ -232,8 +232,8 @@ func (s *State) CanConnect(target int32, newSources []int32, op int64) error {
 				total += int32(len(tstate.Sources))
 			}
 			if total > s.MaxTotalConnects {
-				return fmt.Errorf("nToN matrix: total connects would be %d (max %d) [spec p.33]",
-					total, s.MaxTotalConnects)
+				return fmt.Errorf("%w: nToN matrix: total connects would be %d (max %d) [spec p.33]",
+					ErrMaxTotalConnects, total, s.MaxTotalConnects)
 			}
 		}
 	}

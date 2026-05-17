@@ -89,10 +89,10 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 
 | Code | Status | When | Anchor |
 |---|---|---|---|
-| `matrix:cardinality-exceeded` | pending (R1e) | matrix type (oneToOne / oneToN) limit violated | Ember+ Doc §p.33 |
-| `matrix:target-locked` | pending (R1e) | target's `ConnectionDisposition=Locked(3)` | Ember+ Doc §p.89; site already exists in `internal/emberplus/codec/matrix/state.go` |
-| `matrix:max-connects-per-target` | pending (R1e) | nToN per-target capacity exceeded | Ember+ Doc §p.88 |
-| `matrix:max-total-connects` | pending (R1e) | nToN total-connections capacity exceeded | Ember+ Doc §p.88 |
+| `matrix:target-locked` | defined (R1e) | target's `ConnectionDisposition=Locked(3)` blocks any state-mutating Connect/Disconnect | Ember+ Doc §p.89; site at `internal/emberplus/codec/matrix/state.go::CanConnect` |
+| `matrix:cardinality-exceeded` | defined (R1e) | oneToN / oneToOne matrix: target would have >1 source | Ember+ Doc §p.33 |
+| `matrix:max-connects-per-target` | defined (R1e) | nToN matrix: target's source count would exceed `MaxConnectsPerTarget` | Ember+ Doc §p.88 |
+| `matrix:max-total-connects` | defined (R1e) | nToN matrix: sum-across-all-targets would exceed `MaxTotalConnects` | Ember+ Doc §p.88 |
 
 ### emberplus
 
