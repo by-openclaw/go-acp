@@ -51,13 +51,15 @@ const (
 
 // Frame is a decoded S101 frame.
 type Frame struct {
-	Slot    byte   // slot (0x00)
-	MsgType byte   // message type: MsgEmBER or MsgKeepAlive
-	Command byte   // CmdEmBER, CmdKeepAliveReq, etc.
-	Version byte   // S101 version (0x01)
-	Flags   byte   // FlagSingle, FlagFirst, FlagLast
-	DTD     byte   // DTD identifier (0x01 = Glow)
-	Payload []byte // BER-encoded data (for EmBER frames)
+	Slot     byte   // slot (0x00)
+	MsgType  byte   // message type: MsgEmBER or MsgKeepAlive
+	Command  byte   // CmdEmBER, CmdKeepAliveReq, etc.
+	Version  byte   // S101 version (0x01)
+	Flags    byte   // FlagSingle, FlagFirst, FlagLast
+	DTD      byte   // DTD identifier (0x01 = Glow)
+	DTDMinor byte   // DTD minor version from app-bytes (e.g. 0x3C = 60); 0 when absent
+	DTDMajor byte   // DTD major version from app-bytes (e.g. 0x02 = 2); 0 when absent
+	Payload  []byte // BER-encoded data (for EmBER frames)
 }
 
 // Encode builds an S101 wire frame: BOF + header + escaped payload + CRC + EOF.
@@ -111,17 +113,29 @@ func Encode(f *Frame) []byte {
 		// dtd=161" against our provider. The de-facto contract is what
 		// the ecosystem honours, so we always emit the full 9-byte
 		// header.
+		// DTD app-bytes default to the canonical 2.60 advertised by
+		// the shipping Ember+ ecosystem; NewEmBERFrame seeds them via
+		// DTDMinorVersion / DTDMajorVersion. Callers may override (test
+		// fixtures simulating an older provider, replay tooling).
+		minor := f.DTDMinor
+		if minor == 0 {
+			minor = DTDMinorVersion
+		}
+		major := f.DTDMajor
+		if major == 0 {
+			major = DTDMajorVersion
+		}
 		raw = make([]byte, 0, 9+len(f.Payload))
 		raw = append(raw,
-			f.Slot,          // 0: slot
-			MsgEmBER,        // 1: message type
-			CmdEmBER,        // 2: command
-			VersionS101,     // 3: version
-			f.Flags,         // 4: flags
-			DTDGlow,         // 5: DTD type
-			AppBytesLen,     // 6: app bytes length (2)
-			DTDMinorVersion, // 7: DTD minor version (60)
-			DTDMajorVersion, // 8: DTD major version (2)
+			f.Slot,      // 0: slot
+			MsgEmBER,    // 1: message type
+			CmdEmBER,    // 2: command
+			VersionS101, // 3: version
+			f.Flags,     // 4: flags
+			DTDGlow,     // 5: DTD type
+			AppBytesLen, // 6: app bytes length (2)
+			minor,       // 7: DTD minor version
+			major,       // 8: DTD major version
 		)
 		raw = append(raw, f.Payload...)
 	}
@@ -226,8 +240,8 @@ func Decode(data []byte) (*Frame, error) {
 	if hasFullHeader {
 		f.DTD = content[5]
 		// content[6] = AppBytesLen (assumed 2)
-		// content[7] = DTD minor version
-		// content[8] = DTD major version
+		f.DTDMinor = content[7]
+		f.DTDMajor = content[8]
 		if len(content) > 9 {
 			f.Payload = content[9:]
 		}
@@ -289,13 +303,15 @@ func crcCCITT16(data []byte) uint16 {
 // NewEmBERFrame creates an S101 frame carrying a Glow BER payload.
 func NewEmBERFrame(payload []byte) *Frame {
 	return &Frame{
-		Slot:    SlotDefault,
-		MsgType: MsgEmBER,
-		Command: CmdEmBER,
-		Version: VersionS101,
-		Flags:   FlagSingle,
-		DTD:     DTDGlow,
-		Payload: payload,
+		Slot:     SlotDefault,
+		MsgType:  MsgEmBER,
+		Command:  CmdEmBER,
+		Version:  VersionS101,
+		Flags:    FlagSingle,
+		DTD:      DTDGlow,
+		DTDMinor: DTDMinorVersion,
+		DTDMajor: DTDMajorVersion,
+		Payload:  payload,
 	}
 }
 

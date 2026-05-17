@@ -30,6 +30,16 @@ func runInfo(ctx context.Context, args []string) error {
 	}
 	fmt.Printf("device       %s:%d\n", info.IP, info.Port)
 	fmt.Printf("protocol     %s v%d\n", cf.protocol, info.ProtocolVersion)
+	// R6 #470: surface the wire-level DTD revision the device advertises.
+	// "unknown" preserves a fixed-width column when the plugin has no
+	// equivalent surface (ACP1/ACP2 leave DeviceInfo.DtdVersion="") or
+	// the device's first frame carried no app-bytes and the identity
+	// fallback found nothing.
+	dtd := info.DtdVersion
+	if dtd == "" {
+		dtd = "unknown"
+	}
+	fmt.Printf("dtd_version  %s\n", dtd)
 	fmt.Printf("slots        %d\n", info.NumSlots)
 	fmt.Println()
 	fmt.Println("per-slot status:")
