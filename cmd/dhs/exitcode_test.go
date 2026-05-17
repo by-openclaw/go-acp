@@ -50,6 +50,7 @@ func TestExitCode_LockedContract(t *testing.T) {
 		{name: "plugin:object-not-found → 2", err: consumer.ErrObjectNotFound, want: 2},
 		{name: "plugin:identity-unresolved → 2", err: consumer.ErrIdentityUnresolved, want: 2},
 		{name: "validation:invalid-format → 2", err: consumer.ErrInvalidFormat, want: 2},
+		{name: "validation:invalid-oid → 2", err: consumer.ErrInvalidOID, want: 2},
 		{name: "validation:out-of-range-low → 2", err: consumer.ErrOutOfRangeLow, want: 2},
 		{name: "validation:out-of-range-high → 2", err: consumer.ErrOutOfRangeHigh, want: 2},
 		{name: "validation:step-misaligned → 2", err: consumer.ErrStepMisaligned, want: 2},
@@ -96,7 +97,7 @@ func TestExitCode_NeverThreeOrMore(t *testing.T) {
 		consumer.ErrNotImplemented, consumer.ErrNotConnected, consumer.ErrUnknownLabel,
 		consumer.ErrWriteTimeout, consumer.ErrWriteCoerced, consumer.ErrWriteRejected,
 		consumer.ErrObjectNotFound, consumer.ErrValidationFailed, consumer.ErrIdentityUnresolved,
-		consumer.ErrInvalidFormat,
+		consumer.ErrInvalidFormat, consumer.ErrInvalidOID,
 		consumer.ErrOutOfRangeLow, consumer.ErrOutOfRangeHigh, consumer.ErrStepMisaligned,
 		consumer.ErrInvalidEnumLabel, consumer.ErrEnumNotSupported, consumer.ErrRoundNotApplicable,
 	}

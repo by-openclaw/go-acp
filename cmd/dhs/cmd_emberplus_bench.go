@@ -16,7 +16,7 @@ import (
 func runEmberplusBench(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("emberplus-bench", flag.ExitOnError)
 	cf := addCommonFlags(fs)
-	matrixPath := fs.String("path", "", "matrix path (e.g. dhs-emberplus-integration.nToN.matrix)")
+	matrixPath := fs.String("path", "", "matrix path: dotted label OR numeric OID (e.g. dhs-emberplus-integration.nToN.matrix or 1.2)")
 	dmIdentity := fs.String("dm", "", `Ember+ DM identity for hot-load (e.g. "dhs-emberplus-integration@1.0.0").`)
 	n := fs.Int("n", 100, "number of crosspoint operations")
 	op := fs.String("op", "connect", "operation per op: connect | absolute | disconnect")
@@ -30,6 +30,9 @@ func runEmberplusBench(ctx context.Context, args []string) error {
 
 	if *matrixPath == "" {
 		return fmt.Errorf("--path is required")
+	}
+	if err := validatePathOrOID(*matrixPath); err != nil {
+		return err
 	}
 	if *n <= 0 {
 		return fmt.Errorf("--n must be > 0")

@@ -56,6 +56,14 @@ var (
 	// dispatch on it uniformly.
 	ErrInvalidFormat = errcode.New(errcode.LayerValidation, "invalid-format", errcode.ClassUsage)
 
+	// ErrInvalidOID is returned when a --path argument is composed of
+	// digits and dots (i.e. looks numeric) but isn't a syntactically
+	// valid Ember+ relative OID — leading/trailing dot, empty segment
+	// (`1..2`), or unbounded. A semantically-correct path that simply
+	// isn't in the tree yields plugin:object-not-found instead. Refs
+	// R21 #486.
+	ErrInvalidOID = errcode.New(errcode.LayerValidation, "invalid-oid", errcode.ClassUsage)
+
 	// ErrOutOfRangeLow is returned by SetValue when --value is
 	// numerically less than the Parameter's declared minimum (Ember+
 	// Contents [3]). Caught pre-send so the operator sees the limit

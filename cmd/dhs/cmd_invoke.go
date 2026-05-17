@@ -16,7 +16,7 @@ func runInvoke(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("invoke", flag.ExitOnError)
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number")
-	funcPath := fs.String("path", "", "dot-separated function path (e.g. router.functions.add)")
+	funcPath := fs.String("path", "", "function path: dotted label OR numeric OID (e.g. router.functions.add or 1.5.1)")
 	argsStr := fs.String("args", "", "comma-separated arguments (e.g. 3,5)")
 	format := fs.String("format", "raw", `result presentation: "raw" (default — provider's wire form) or "human" (pretty-print for getSalvo)`)
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "dhs-emberplus-integration@1.0.0"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the per-call walk is skipped — refs #438, ADR-0022.`)
@@ -28,6 +28,9 @@ func runInvoke(ctx context.Context, args []string) error {
 	_ = fs.Parse(rest)
 	if *funcPath == "" {
 		return fmt.Errorf("--path is required (e.g. router.functions.add)")
+	}
+	if err := validatePathOrOID(*funcPath); err != nil {
+		return err
 	}
 	if *format != "raw" && *format != "human" {
 		return fmt.Errorf("%w: --format must be \"raw\" or \"human\", got %q", consumer.ErrInvalidFormat, *format)

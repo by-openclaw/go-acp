@@ -74,6 +74,16 @@ func runWatch(ctx context.Context, args []string) error {
 	if *noStreams && *streamsOnly {
 		return fmt.Errorf("--no-streams and --streams-only are mutually exclusive")
 	}
+	if *pathFilter != "" {
+		for _, p := range strings.Split(*pathFilter, ",") {
+			if p = strings.TrimSpace(p); p == "" {
+				continue
+			}
+			if err := validatePathOrOID(p); err != nil {
+				return err
+			}
+		}
+	}
 
 	walkScope, scopeErr := parseWalkScope(*slot, *slotsArg, *noWalk)
 	if scopeErr != nil {

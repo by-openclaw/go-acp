@@ -113,7 +113,7 @@ Top-level OID map (current integration-test provider):
 | `1.5` | `functions` | builtins |
 | `1.6` | `types` | every ParameterType + 3 streams |
 
-> Today `--path` accepts the dotted label form only. Accepting OIDs in `--path` (e.g. `--path 1.6.1`) so operators can address by either form is pending **R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)** (per memory `project_path_by_id`).
+> `--path` accepts **both** forms — `--path 1.6.1` and `--path types.vInteger` resolve to the same Parameter. Detection: a string composed entirely of digits and dots routes through the numeric OID index; otherwise it goes through the dotted-label index. Malformed numeric forms (`1..2`, `1.`, `.1`) fail fast with `validation:invalid-oid` (exit `2`). Refs **R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)** (per memory `project_path_by_id`).
 
 ---
 
@@ -270,14 +270,14 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 # value = "2.60"
 ```
 
-> Address by OID directly (`--path 1.6.1`) is pending **R21** (per [Addressing](#addressing--by-path-vs-by-oid)).
+> Address by OID directly: `--path 1.6.1` resolves to the same Parameter as `--path types.vInteger` — both forms are accepted by every `--path`-using verb. Refs **R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)** (per [Addressing](#addressing--by-path-vs-by-oid)).
 
 ### Errors
 
 | Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | wrong path | `get ... --path bogus.path.here` | `plugin:object-not-found` | 2 |
-| invalid OID syntax (post R21) | `get ... --path 1..2` | `validation:invalid-oid` | 2 |
+| invalid OID syntax | `get ... --path 1..2` | `validation:invalid-oid` | 2 |
 | path resolves to non-Parameter | `get ... --path dhs-emberplus-integration.functions` | `plugin:wrong-kind` | 2 |
 | missing required path | `get 127.0.0.1 --port 9100` | (usage error) | 2 |
 | connection refused | `get ... --port 9999` | `transport:refused` | 1 |
