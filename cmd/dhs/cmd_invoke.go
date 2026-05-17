@@ -84,13 +84,15 @@ func runInvoke(ctx context.Context, args []string) error {
 	defer cancel()
 
 	result, err := ep.InvokeFunction(opCtx, *funcPath, funcArgs)
-	if err != nil {
-		return err
+	// emberplus.InvokeFunction returns (result, ErrInvocationFailed) when
+	// the provider replies Success=false. Print the visible result before
+	// propagating the error so operators still see the (possibly-empty)
+	// tuple alongside the typed exit code.
+	if result != nil {
+		fmt.Printf("invocation %d: success=%v\n", result.InvocationID, result.Success)
+		if len(result.Result) > 0 {
+			fmt.Printf("result: %v\n", result.Result)
+		}
 	}
-
-	fmt.Printf("invocation %d: success=%v\n", result.InvocationID, result.Success)
-	if len(result.Result) > 0 {
-		fmt.Printf("result: %v\n", result.Result)
-	}
-	return nil
+	return err
 }

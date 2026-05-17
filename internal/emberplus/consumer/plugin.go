@@ -1053,6 +1053,16 @@ func (p *Plugin) InvokeFunction(ctx context.Context, funcPath string, args []any
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case result := <-resultCh:
+		// Wire-level Success=false → typed error so the CLI exit
+		// dispatcher returns 1. The result pointer is still returned so
+		// callers can print the (possibly-empty) Result tuple alongside
+		// the error. Per memory feedback_error_contract_cross_os: the
+		// error string carries the diagnostic, exit code carries the
+		// pass/fail signal.
+		if result != nil && !result.Success {
+			return result, fmt.Errorf("%w: invocation %d on %q",
+				ErrInvocationFailed, result.InvocationID, funcPath)
+		}
 		return result, nil
 	}
 }
