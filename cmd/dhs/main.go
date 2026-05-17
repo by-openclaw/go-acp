@@ -35,6 +35,7 @@ import (
 	"os/signal"
 
 	"dhs/internal/consumer"
+	"dhs/internal/errcode"
 
 	// Consumer plugins — blank imports register with internal/consumer.
 	_ "dhs/internal/acp1/consumer"
@@ -371,16 +372,38 @@ func hasHelpFlag(args []string) bool {
 	return false
 }
 
-// exitCode maps error classes to CLI exit codes: 0 success, 1 protocol
-// error, 2 validation/usage error, 3 transport error.
+// exitCode maps an error to the CLI exit code per the locked contract
+// (memory feedback_error_contract_cross_os):
+//
+//	0 success
+//	1 runtime / wire / protocol error (any transport:*, s101:*, glow:*,
+//	  matrix:*, emberplus:*, session:* code or untyped runtime error)
+//	2 usage / validation / state error (validation:*, plugin:* codes,
+//	  legacy *consumer.ValidationError struct)
+//
+// Standard Unix; never 3+. Cross-OS uniform — PowerShell $LASTEXITCODE,
+// Bash $?, cmd.exe %ERRORLEVEL% all parse identically.
+//
+// Dispatch order:
+//  1. Typed *errcode.Code in the err chain → use its Class (0/1/2)
+//  2. Legacy *consumer.ValidationError struct → 2 (caller fault)
+//  3. Any other non-nil error → 1 (safe runtime fallback)
+//
+// The errcode.Exit helper handles cases (1) and (3); the
+// ValidationError-struct check is the back-compat bridge until every
+// callsite emits the typed validation:* codes.
 func exitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	// Step 1+3 — typed code in chain wins; otherwise runtime fallback.
+	if code := errcode.From(err); code != nil {
+		return int(code.Class)
+	}
+	// Step 2 — legacy struct → usage class.
 	var verr *consumer.ValidationError
 	if errors.As(err, &verr) {
 		return 2
-	}
-	var terr *consumer.TransportError
-	if errors.As(err, &terr) {
-		return 3
 	}
 	return 1
 }
