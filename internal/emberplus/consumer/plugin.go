@@ -985,15 +985,26 @@ func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target in
 }
 
 // StreamParameterPaths returns the numeric paths of every parameter
-// that carries a streamIdentifier. If filter >= 0 the result is limited
-// to that one streamIdentifier. Used by cmd stream (A8).
-func (p *Plugin) StreamParameterPaths(filter int64) []string {
+// that carries a streamIdentifier. If filter is empty, every stream
+// parameter is returned. Otherwise the result is limited to parameters
+// whose streamIdentifier appears in filter (R10 multi-subscribe).
+// Used by cmd stream (A8).
+func (p *Plugin) StreamParameterPaths(filter []int64) []string {
 	p.subsMu.RLock()
 	defer p.subsMu.RUnlock()
+	var allow map[int64]struct{}
+	if len(filter) > 0 {
+		allow = make(map[int64]struct{}, len(filter))
+		for _, id := range filter {
+			allow[id] = struct{}{}
+		}
+	}
 	var out []string
 	for id, paths := range p.streamIndex {
-		if filter >= 0 && id != filter {
-			continue
+		if allow != nil {
+			if _, ok := allow[id]; !ok {
+				continue
+			}
 		}
 		out = append(out, paths...)
 	}
