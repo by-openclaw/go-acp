@@ -490,11 +490,23 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error)
 
 // GetSlotInfo pretends the whole Ember+ tree is slot 0. Any other slot is
 // a usage error.
+//
+// IsOnline tracks the underlying session liveness — true when the consumer
+// is past Ember+ S101 handshake (sessionConnected). Ember+ has no per-slot
+// hot-plug semantics, so the slot follows the session bool 1:1. Refs #458.
 func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
 	if slot != 0 {
 		return consumer.SlotInfo{}, fmt.Errorf("emberplus: only slot 0 supported")
 	}
-	return consumer.SlotInfo{Slot: 0, Status: consumer.SlotPresent}, nil
+	p.mu.Lock()
+	live := p.sessionConnected
+	p.mu.Unlock()
+	return consumer.SlotInfo{
+		Slot:     0,
+		Status:   consumer.SlotPresent,
+		State:    consumer.SlotStatePresent,
+		IsOnline: live,
+	}, nil
 }
 
 // Walk triggers a full GetDirectory and blocks until the tree stops
