@@ -1,21 +1,28 @@
 # Generates the spec-clean Ember+ integration-test DM cards + manifest.
 #
-# Output:
-#   .cache/dm/emberplus/identity-strict@1.0.0.json
-#   .cache/dm/emberplus/oneToN-strict@1.0.0.json
-#   .cache/dm/emberplus/oneToOne-strict@1.0.0.json
-#   .cache/dm/emberplus/nToN-strict@1.0.0.json
-#   .cache/dm/emberplus/dynamic-strict@1.0.0.json
-#   .cache/dm/emberplus/functions-strict@1.0.0.json
-#   .cache/dm/emberplus/glow-types-strict@1.0.0.json
-#   .cache/manifest/emberplus-integration.json
+# Output (version-controlled source-of-truth, per ADR-0025 deliverable #6):
+#   internal/emberplus/testdata/integration-test/dm/emberplus/identity-strict@1.0.0.json
+#   internal/emberplus/testdata/integration-test/dm/emberplus/oneToN-strict@1.0.0.json
+#   internal/emberplus/testdata/integration-test/dm/emberplus/oneToOne-strict@1.0.0.json
+#   internal/emberplus/testdata/integration-test/dm/emberplus/nToN-strict@1.0.0.json
+#   internal/emberplus/testdata/integration-test/dm/emberplus/dynamic-strict@1.0.0.json
+#   internal/emberplus/testdata/integration-test/dm/emberplus/functions-strict@1.0.0.json
+#   internal/emberplus/testdata/integration-test/dm/emberplus/glow-types-strict@1.0.0.json
+#   internal/emberplus/testdata/integration-test/manifest/emberplus-integration.json
+#
+# Serve from this layout (cookbook command):
+#   dhs producer emberplus serve `
+#       --manifest internal/emberplus/testdata/integration-test/manifest/emberplus-integration.json `
+#       --cache-dir internal/emberplus/testdata/integration-test `
+#       --port 9100
 #
 # Re-run any time to regenerate. Idempotent.
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Resolve-Path "$PSScriptRoot\..\.."
-$dmDir = Join-Path $repoRoot ".cache\dm\emberplus"
-$manifestDir = Join-Path $repoRoot ".cache\manifest"
+$testdataRoot = Join-Path $repoRoot "internal\emberplus\testdata\integration-test"
+$dmDir = Join-Path $testdataRoot "dm\emberplus"
+$manifestDir = Join-Path $testdataRoot "manifest"
 New-Item -ItemType Directory -Force -Path $dmDir | Out-Null
 New-Item -ItemType Directory -Force -Path $manifestDir | Out-Null
 

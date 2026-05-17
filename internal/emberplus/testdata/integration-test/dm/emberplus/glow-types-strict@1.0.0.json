@@ -1,0 +1,139 @@
+{
+    "model":  "glow-types-strict",
+    "sw_rev":  "1.0.0",
+    "protocol":  "emberplus",
+    "root":  {
+                 "number":  6,
+                 "identifier":  "types",
+                 "path":  "types",
+                 "oid":  "1.6",
+                 "isOnline":  true,
+                 "access":  "read",
+                 "children":  [
+                                  {
+                                      "number":  1,
+                                      "identifier":  "vInteger",
+                                      "path":  "types.vInteger",
+                                      "oid":  "1.6.1",
+                                      "isOnline":  true,
+                                      "access":  "readWrite",
+                                      "type":  "integer",
+                                      "value":  42,
+                                      "minimum":  -100,
+                                      "maximum":  100,
+                                      "step":  1
+                                  },
+                                  {
+                                      "number":  2,
+                                      "identifier":  "vReal",
+                                      "path":  "types.vReal",
+                                      "oid":  "1.6.2",
+                                      "isOnline":  true,
+                                      "access":  "readWrite",
+                                      "type":  "real",
+                                      "value":  3.14,
+                                      "minimum":  -1000,
+                                      "maximum":  1000
+                                  },
+                                  {
+                                      "number":  3,
+                                      "identifier":  "vString",
+                                      "path":  "types.vString",
+                                      "oid":  "1.6.3",
+                                      "isOnline":  true,
+                                      "access":  "readWrite",
+                                      "type":  "string",
+                                      "value":  "hello"
+                                  },
+                                  {
+                                      "number":  4,
+                                      "identifier":  "vBoolean",
+                                      "path":  "types.vBoolean",
+                                      "oid":  "1.6.4",
+                                      "isOnline":  true,
+                                      "access":  "readWrite",
+                                      "type":  "boolean",
+                                      "value":  true
+                                  },
+                                  {
+                                      "number":  5,
+                                      "identifier":  "vTrigger",
+                                      "path":  "types.vTrigger",
+                                      "oid":  "1.6.5",
+                                      "isOnline":  true,
+                                      "access":  "write",
+                                      "type":  "trigger",
+                                      "value":  null
+                                  },
+                                  {
+                                      "number":  6,
+                                      "identifier":  "vEnum",
+                                      "path":  "types.vEnum",
+                                      "oid":  "1.6.6",
+                                      "isOnline":  true,
+                                      "access":  "readWrite",
+                                      "type":  "enum",
+                                      "value":  1,
+                                      "enumMap":  [
+                                                      {
+                                                          "key":  "Off",
+                                                          "value":  0
+                                                      },
+                                                      {
+                                                          "key":  "Low",
+                                                          "value":  1
+                                                      },
+                                                      {
+                                                          "key":  "Medium",
+                                                          "value":  2
+                                                      },
+                                                      {
+                                                          "key":  "High",
+                                                          "value":  3
+                                                      }
+                                                  ]
+                                  },
+                                  {
+                                      "number":  7,
+                                      "identifier":  "vOctets",
+                                      "path":  "types.vOctets",
+                                      "oid":  "1.6.7",
+                                      "isOnline":  true,
+                                      "access":  "readWrite",
+                                      "type":  "octets",
+                                      "value":  "aGVsbG8="
+                                  },
+                                  {
+                                      "number":  10,
+                                      "identifier":  "vu_left",
+                                      "path":  "types.vu_left",
+                                      "oid":  "1.6.10",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "type":  "real",
+                                      "value":  -60,
+                                      "minimum":  -128,
+                                      "maximum":  15,
+                                      "format":  "%.2f dB",
+                                      "streamIdentifier":  1001
+                                  },
+                                  {
+                                      "number":  11,
+                                      "identifier":  "vu_right",
+                                      "path":  "types.vu_right",
+                                      "oid":  "1.6.11",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "type":  "real",
+                                      "value":  -60,
+                                      "minimum":  -128,
+                                      "maximum":  15,
+                                      "format":  "%.2f dB",
+                                      "streamIdentifier":  1002
+                                  }
+                              ]
+             },
+    "templates":  [
+
+                  ]
+}

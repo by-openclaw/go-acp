@@ -1,0 +1,162 @@
+{
+    "model":  "functions-strict",
+    "sw_rev":  "1.0.0",
+    "protocol":  "emberplus",
+    "root":  {
+                 "number":  5,
+                 "identifier":  "functions",
+                 "path":  "functions",
+                 "oid":  "1.5",
+                 "isOnline":  true,
+                 "access":  "read",
+                 "children":  [
+                                  {
+                                      "number":  1,
+                                      "identifier":  "setLock",
+                                      "path":  "functions.setLock",
+                                      "oid":  "1.5.1",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "arguments":  [
+                                                        {
+                                                            "name":  "matrixPath",
+                                                            "type":  "string"
+                                                        },
+                                                        {
+                                                            "name":  "target",
+                                                            "type":  "integer"
+                                                        },
+                                                        {
+                                                            "name":  "locked",
+                                                            "type":  "boolean"
+                                                        }
+                                                    ],
+                                      "result":  [
+                                                     {
+                                                         "name":  "previous",
+                                                         "type":  "boolean"
+                                                     }
+                                                 ]
+                                  },
+                                  {
+                                      "number":  2,
+                                      "identifier":  "listLocks",
+                                      "path":  "functions.listLocks",
+                                      "oid":  "1.5.2",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "arguments":  [
+                                                        {
+                                                            "name":  "matrixPath",
+                                                            "type":  "string"
+                                                        }
+                                                    ],
+                                      "result":  [
+                                                     {
+                                                         "name":  "locked",
+                                                         "type":  "string"
+                                                     }
+                                                 ]
+                                  },
+                                  {
+                                      "number":  3,
+                                      "identifier":  "storeSalvo",
+                                      "path":  "functions.storeSalvo",
+                                      "oid":  "1.5.3",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "arguments":  [
+                                                        {
+                                                            "name":  "matrixPath",
+                                                            "type":  "string"
+                                                        },
+                                                        {
+                                                            "name":  "salvoID",
+                                                            "type":  "integer"
+                                                        },
+                                                        {
+                                                            "name":  "targets",
+                                                            "type":  "string"
+                                                        }
+                                                    ],
+                                      "result":  [
+                                                     {
+                                                         "name":  "stored",
+                                                         "type":  "boolean"
+                                                     }
+                                                 ]
+                                  },
+                                  {
+                                      "number":  4,
+                                      "identifier":  "recallSalvo",
+                                      "path":  "functions.recallSalvo",
+                                      "oid":  "1.5.4",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "arguments":  [
+                                                        {
+                                                            "name":  "matrixPath",
+                                                            "type":  "string"
+                                                        },
+                                                        {
+                                                            "name":  "salvoID",
+                                                            "type":  "integer"
+                                                        }
+                                                    ],
+                                      "result":  [
+                                                     {
+                                                         "name":  "applied",
+                                                         "type":  "integer"
+                                                     }
+                                                 ]
+                                  },
+                                  {
+                                      "number":  5,
+                                      "identifier":  "listSalvos",
+                                      "path":  "functions.listSalvos",
+                                      "oid":  "1.5.5",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "arguments":  [
+                                                        {
+                                                            "name":  "matrixPath",
+                                                            "type":  "string"
+                                                        }
+                                                    ],
+                                      "result":  [
+                                                     {
+                                                         "name":  "salvos",
+                                                         "type":  "string"
+                                                     }
+                                                 ]
+                                  },
+                                  {
+                                      "number":  6,
+                                      "identifier":  "getSalvo",
+                                      "path":  "functions.getSalvo",
+                                      "oid":  "1.5.6",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "arguments":  [
+                                                        {
+                                                            "name":  "matrixPath",
+                                                            "type":  "string"
+                                                        },
+                                                        {
+                                                            "name":  "salvoID",
+                                                            "type":  "integer"
+                                                        }
+                                                    ],
+                                      "result":  [
+                                                     {
+                                                         "name":  "dump",
+                                                         "type":  "string"
+                                                     }
+                                                 ]
+                                  }
+                              ]
+             },
+    "templates":  [
+
+                  ]
+}

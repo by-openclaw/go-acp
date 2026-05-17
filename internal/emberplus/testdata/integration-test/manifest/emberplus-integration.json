@@ -1,0 +1,62 @@
+{
+    "device":  {
+                   "name":  "dhs-emberplus-integration",
+                   "protocol":  "emberplus",
+                   "endpoints":  [
+                                     {
+                                         "ip":  "0.0.0.0",
+                                         "port":  9100,
+                                         "transport":  "tcp"
+                                     }
+                                 ]
+               },
+    "frames":  [
+                   {
+                       "name":  "main",
+                       "slots":  [
+                                     {
+                                         "addr":  {
+                                                      "oid":  "1.0"
+                                                  },
+                                         "dm":  "identity-strict@1.0.0"
+                                     },
+                                     {
+                                         "addr":  {
+                                                      "oid":  "1.1"
+                                                  },
+                                         "dm":  "oneToN-strict@1.0.0"
+                                     },
+                                     {
+                                         "addr":  {
+                                                      "oid":  "1.2"
+                                                  },
+                                         "dm":  "oneToOne-strict@1.0.0"
+                                     },
+                                     {
+                                         "addr":  {
+                                                      "oid":  "1.3"
+                                                  },
+                                         "dm":  "nToN-strict@1.0.0"
+                                     },
+                                     {
+                                         "addr":  {
+                                                      "oid":  "1.4"
+                                                  },
+                                         "dm":  "dynamic-strict@1.0.0"
+                                     },
+                                     {
+                                         "addr":  {
+                                                      "oid":  "1.5"
+                                                  },
+                                         "dm":  "functions-strict@1.0.0"
+                                     },
+                                     {
+                                         "addr":  {
+                                                      "oid":  "1.6"
+                                                  },
+                                         "dm":  "glow-types-strict@1.0.0"
+                                     }
+                                 ]
+                   }
+               ]
+}
