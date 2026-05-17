@@ -30,7 +30,9 @@ import (
 func DecodeRoot(data []byte) ([]Element, error) {
 	tlvs, err := ber.DecodeAll(data)
 	if err != nil {
-		return nil, fmt.Errorf("glow decode: %w", err)
+		// Two %w preserves both glow:* and ber:* in the errors.Is chain
+		// so callers can dispatch on either layer.
+		return nil, fmt.Errorf("%w: %w", ErrDecodeFailed, err)
 	}
 	var out []Element
 	for _, tlv := range tlvs {

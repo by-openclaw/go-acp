@@ -73,11 +73,17 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 
 | Code | Status | When | Anchor |
 |---|---|---|---|
-| `glow:bad-tag` | pending (R1d) | BER tag parse failure | ITU-T X.690 §8.1 |
-| `glow:bad-length` | pending (R1d) | BER length encoding invalid | X.690 §8.1.3 |
-| `glow:bad-real` | pending (R1d) | BER REAL decode failed | X.690 §8.5 + memory `reference_emberplus_ber_real` |
-| `glow:unknown-application-tag` | pending (R1d) | APPLICATION tag not in the GlowDTD enum | Ember+ Doc §p.84-91 |
-| `ber:bad-relative-oid` | pending (R1d) | RELATIVE-OID decode failed | X.690 §8.20 |
+| `glow:decode-failed` | defined (R1d) | `DecodeRoot` top-level wrap; preserves the underlying `ber:*` cause in the `errors.Is` chain via dual-`%w` so callers can dispatch on either layer | dhs |
+| `ber:truncated` | defined (R1d) | input buffer ends mid-element (insufficient bytes for declared tag / length / content) | X.690 §8.1 |
+| `ber:tag-too-long` | defined (R1d) | high-tag-number form exceeds 4-byte cap (X.690 §8.1.2.4 permits unbounded; dhs caps for safety) | X.690 §8.1.2.4 |
+| `ber:length-too-long` | defined (R1d) | long-form length exceeds 4-byte cap (X.690 §8.1.3.5 permits unbounded; dhs caps for safety) | X.690 §8.1.3.5 |
+| `ber:invalid-real` | defined (R1d) | REAL bytes fail to decode per X.690 §8.5 + the Ember+ ecosystem normalised-fraction convention | X.690 §8.5 + memory `reference_emberplus_ber_real` |
+| `ber:integer-overflow` | defined (R1d) | INTEGER content bytes encode a value outside int64 range | X.690 §8.3 |
+| `glow:bad-tag` | pending (future) | unknown APPLICATION tag at glow-schema level — currently surfaces as `ber:tag-too-long` or cascades to `glow:decode-failed` | Ember+ Doc §p.84-91 |
+| `glow:bad-length` | pending (future) | alias for `ber:length-too-long` in glow-schema context | X.690 §8.1.3 |
+| `glow:bad-real` | pending (future) | alias for `ber:invalid-real` in glow-schema context | X.690 §8.5 |
+| `glow:unknown-application-tag` | pending (future) | APPLICATION tag valid in BER but not in the GlowDTD enum (1..25) | Ember+ Doc §p.84-91 |
+| `ber:bad-relative-oid` | pending (future) | RELATIVE-OID decode failed — no callsite emits this distinctly today | X.690 §8.20 |
 
 ### matrix
 

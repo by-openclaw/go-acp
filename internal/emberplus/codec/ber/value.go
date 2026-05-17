@@ -241,7 +241,7 @@ func EncodeOctetString(b []byte) []byte {
 // Spec reference: ITU-T X.690 §8.2 (Encoding of a boolean value).
 func DecodeBoolean(data []byte) (bool, error) {
 	if len(data) != 1 {
-		return false, errTruncated
+		return false, ErrTruncated
 	}
 	return data[0] != 0, nil
 }
@@ -253,16 +253,16 @@ func DecodeBoolean(data []byte) (bool, error) {
 //	|   0    | MSB      |   1   | sign bit in bit 7; drives 64-bit sign-pad |
 //	|  1..N  | low bytes|  N-1  | big-endian remainder                      |
 //
-// Rejects encodings longer than 8 octets (errOverflow); the Glow subset
+// Rejects encodings longer than 8 octets (ErrOverflow); the Glow subset
 // never emits INTEGER wider than int64 in practice.
 //
 // Spec reference: ITU-T X.690 §8.3 (Encoding of an integer value).
 func DecodeInteger(data []byte) (int64, error) {
 	if len(data) == 0 {
-		return 0, errTruncated
+		return 0, ErrTruncated
 	}
 	if len(data) > 8 {
-		return 0, errOverflow
+		return 0, ErrOverflow
 	}
 
 	// Sign-extend to 8 bytes.
@@ -316,7 +316,7 @@ func DecodeReal(data []byte) (float64, error) {
 
 	// Decimal form (bit 7 = 0, bit 6 = 0) — not emitted by Glow, reject.
 	if first&0xC0 == 0x00 {
-		return 0, errInvalidReal
+		return 0, ErrInvalidReal
 	}
 
 	// Binary form: bit 7 = 1.
@@ -335,7 +335,7 @@ func DecodeReal(data []byte) (float64, error) {
 		case 2:
 			baseFactor = 4 // × 2^4 = base 16
 		default:
-			return 0, errInvalidReal
+			return 0, ErrInvalidReal
 		}
 		// Scaling factor: bits 3-2. Added to mantissa.
 		scale := int((first >> 2) & 0x03)
@@ -354,13 +354,13 @@ func DecodeReal(data []byte) (float64, error) {
 			expStart = 1
 		default:
 			if len(data) < 2 {
-				return 0, errInvalidReal
+				return 0, ErrInvalidReal
 			}
 			expLen = int(data[1])
 			expStart = 2
 		}
 		if expLen == 0 || expStart+expLen > len(data) {
-			return 0, errInvalidReal
+			return 0, ErrInvalidReal
 		}
 		exp, err := DecodeInteger(data[expStart : expStart+expLen])
 		if err != nil {
@@ -369,7 +369,7 @@ func DecodeReal(data []byte) (float64, error) {
 		// Mantissa — remaining bytes, unsigned big-endian.
 		mantBytes := data[expStart+expLen:]
 		if len(mantBytes) == 0 {
-			return 0, errInvalidReal
+			return 0, ErrInvalidReal
 		}
 		var mant uint64
 		for _, b := range mantBytes {
@@ -387,7 +387,7 @@ func DecodeReal(data []byte) (float64, error) {
 		v := sign * float64(mant) * math.Pow(2.0, float64(int(exp)*baseFactor+scale-shift))
 		return v, nil
 	}
-	return 0, errInvalidReal
+	return 0, ErrInvalidReal
 }
 
 // DecodeUTF8String reads a BER UTF8String from value bytes.
