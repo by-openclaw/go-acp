@@ -479,13 +479,60 @@ func (p *Plugin) Disconnect() error {
 // host/port. The single-slot report lets generic code — `acp export`,
 // `acp import`, `--all` — iterate once instead of skipping the
 // provider entirely.
+//
+// DtdVersion (refs #470): primary source is S101 app-bytes (offsets 7+8
+// = DTD minor/major), latched by the session on the first EmBER frame.
+// When `info` runs before any payload exchange the session has only
+// seen the S101 handshake, so GetDeviceInfo probes the provider with a
+// root GetDirectory and waits briefly for its reply — every shipping
+// Ember+ provider answers GetDirectory(root) with a 9-byte header
+// carrying the DTD app-bytes. The fallback is reading
+// `identity.dtdVersion` from the walked tree (rare — only providers
+// that emit 5-byte S101 headers ever need this path). Both routes
+// best-effort; failure leaves DtdVersion="" and cmd_info prints
+// "dtd_version unknown".
 func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
-	return consumer.DeviceInfo{
+	info := consumer.DeviceInfo{
 		IP:              p.connIP,
 		Port:            p.connPort,
 		ProtocolVersion: 1,
 		NumSlots:        1,
-	}, nil
+	}
+	info.DtdVersion = p.resolveDtdVersion(ctx)
+	return info, nil
+}
+
+// resolveDtdVersion returns the Ember+ DTD revision the connected
+// provider speaks. See GetDeviceInfo for the resolution order.
+func (p *Plugin) resolveDtdVersion(ctx context.Context) string {
+	s := p.currentSession()
+	if s == nil {
+		return ""
+	}
+	if v := s.DtdVersion(); v != "" {
+		return v
+	}
+	// Probe: provoke an EmBER reply so the session can latch app-bytes.
+	// Bounded wait — never hold up `info` for more than a short window.
+	probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	if err := s.SendGetDirectory(); err == nil {
+		if v := s.WaitForDtdVersion(probeCtx); v != "" {
+			return v
+		}
+	}
+	// Fallback: identity.dtdVersion in the walked tree. Skip the
+	// auto-walk — operators that want the slow path can run `walk`
+	// explicitly. If the tree is empty here the fallback simply
+	// returns "".
+	p.treeMu.RLock()
+	defer p.treeMu.RUnlock()
+	if entry, ok := p.pathIndex["identity.dtdVersion"]; ok {
+		if entry.obj.Value.Kind == consumer.KindString {
+			return entry.obj.Value.Str
+		}
+	}
+	return ""
 }
 
 // GetSlotInfo pretends the whole Ember+ tree is slot 0. Any other slot is

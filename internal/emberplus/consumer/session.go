@@ -65,6 +65,72 @@ type Session struct {
 	// to match the provider.
 	glowFormMu     sync.RWMutex
 	useLegacyGlow  bool
+
+	// dtdSeen latches the first DTD version advertised by the provider
+	// via S101 app-bytes (header offsets 7+8 = minor/major). Captured
+	// in readLoop on every EmBER frame; observable via DtdVersion()
+	// once dtdReady is closed. Refs #470.
+	dtdMu    sync.Mutex
+	dtdSeen  bool
+	dtdMinor byte
+	dtdMajor byte
+	dtdReady chan struct{}
+}
+
+// DtdVersion returns the DTD version advertised by the provider via
+// S101 app-bytes, formatted as "major.minor" (e.g. "2.60"). Returns ""
+// when no EmBER frame has been received yet, or the frames carried no
+// app-bytes (5-byte header variant). Refs #470.
+func (s *Session) DtdVersion() string {
+	s.dtdMu.Lock()
+	defer s.dtdMu.Unlock()
+	if !s.dtdSeen {
+		return ""
+	}
+	return fmt.Sprintf("%d.%d", s.dtdMajor, s.dtdMinor)
+}
+
+// WaitForDtdVersion blocks until the provider's DTD app-bytes have
+// been captured, or the context is cancelled. Returns the version
+// string (possibly "" if context fires before any EmBER frame is
+// received). Used by Plugin.GetDeviceInfo to provoke and read the
+// first frame's app-bytes without forcing a full Walk. Refs #470.
+func (s *Session) WaitForDtdVersion(ctx context.Context) string {
+	s.dtdMu.Lock()
+	if s.dtdSeen {
+		s.dtdMu.Unlock()
+		return s.DtdVersion()
+	}
+	ready := s.dtdReady
+	s.dtdMu.Unlock()
+	if ready == nil {
+		return ""
+	}
+	select {
+	case <-ready:
+	case <-ctx.Done():
+	}
+	return s.DtdVersion()
+}
+
+// noteDtd latches the first non-zero DTD minor/major seen on the wire.
+// Called from readLoop after every successful frame decode; subsequent
+// frames are ignored so a single boot-time observation pins the value.
+func (s *Session) noteDtd(minor, major byte) {
+	if minor == 0 && major == 0 {
+		return
+	}
+	s.dtdMu.Lock()
+	defer s.dtdMu.Unlock()
+	if s.dtdSeen {
+		return
+	}
+	s.dtdSeen = true
+	s.dtdMinor = minor
+	s.dtdMajor = major
+	if s.dtdReady != nil {
+		close(s.dtdReady)
+	}
 }
 
 // SetUseLegacyGlow pins the session to emit non-qualified Glow on
@@ -117,6 +183,7 @@ func NewSession(logger *slog.Logger) *Session {
 		keepAliveInterval: 10 * time.Second,
 		deadManThreshold:  30 * time.Second, // 3× keep-alive interval
 		invocations:       make(map[int32]chan *glow.InvocationResult),
+		dtdReady:          make(chan struct{}),
 	}
 }
 
@@ -465,7 +532,15 @@ func (s *Session) readLoop() {
 			continue
 		}
 
-		if !frame.IsEmBER() || len(frame.Payload) == 0 {
+		if !frame.IsEmBER() {
+			continue
+		}
+		// Latch DTD app-bytes from the first EmBER frame that carries
+		// the 9-byte header. Used by GetDeviceInfo to surface the
+		// device's Glow DTD revision without walking the tree. Refs
+		// #470.
+		s.noteDtd(frame.DTDMinor, frame.DTDMajor)
+		if len(frame.Payload) == 0 {
 			continue
 		}
 

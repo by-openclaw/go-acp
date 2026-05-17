@@ -29,6 +29,14 @@ type DeviceInfo struct {
 	// ProtocolVersion is the PVER byte for ACP1 (always 1 for v1.4 devices)
 	// or the ACP2 version number returned by get_version.
 	ProtocolVersion int
+
+	// DtdVersion is the wire-level protocol revision the device speaks,
+	// formatted as "major.minor". For Ember+ this is captured from the
+	// S101 app-bytes on the first EmBER frame (e.g. "2.60") or, as a
+	// fallback, from the identity.dtdVersion Parameter. Empty when the
+	// plugin has no equivalent surface (ACP1/ACP2) or the device did
+	// not advertise it. Refs #470.
+	DtdVersion string
 }
 
 // SlotStatus mirrors the ACP1 Frame Status byte values (spec p. 24).

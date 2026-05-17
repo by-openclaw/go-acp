@@ -194,14 +194,15 @@ Expected:
 
 ```
 device       127.0.0.1:9100
-protocol     emberplus v1                ← TODO: surface DTD `2.60` from identity, not "v1" — R6 #470
+protocol     emberplus v1
+dtd_version  2.60                                 ← post R6 #470
 slots        1
 
 per-slot status:
   slot  0   status=present    online=true        ← post #459
 ```
 
-> The `protocol emberplus v1` line shows the internal plugin version, not the device's Ember+ DTD revision. **R6 [#470](https://github.com/by-openclaw/go-acp/issues/470)** rewires `info` to read `identity.dtdVersion` from the device and display the real DTD revision (e.g. `dtd 2.60`).
+> `dtd_version` is the wire-level Glow DTD revision the connected device advertises. It is captured from the S101 app-bytes on the first EmBER frame; if a provider emits the older 5-byte S101 header (no app-bytes), the plugin falls back to walking `identity.dtdVersion`. Both routes are best-effort — when neither produces a value the line reads `dtd_version unknown` and `info` still exits 0. Refs **R6 [#470](https://github.com/by-openclaw/go-acp/issues/470)**.
 
 ### Errors
 
