@@ -49,6 +49,12 @@ var (
 	// echo indicates the write was refused (target locked, element
 	// offline, access denied).
 	ErrWriteRejected = errcode.New(errcode.LayerSession, "write-rejected", errcode.ClassRuntime)
+
+	// ErrInvalidFormat is returned when a CLI verb's --format flag
+	// receives a value outside the verb's supported set. Each verb
+	// owns its own supported set; the code is shared so scripts can
+	// dispatch on it uniformly.
+	ErrInvalidFormat = errcode.New(errcode.LayerValidation, "invalid-format", errcode.ClassUsage)
 )
 
 // DHSError is the root of all protocol-family errors. Both transport-layer

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"dhs/internal/consumer"
 	emberplus "dhs/internal/emberplus/consumer"
 )
 
@@ -17,6 +18,7 @@ func runInvoke(ctx context.Context, args []string) error {
 	slot := fs.Int("slot", 0, "slot number")
 	funcPath := fs.String("path", "", "dot-separated function path (e.g. router.functions.add)")
 	argsStr := fs.String("args", "", "comma-separated arguments (e.g. 3,5)")
+	format := fs.String("format", "raw", `result presentation: "raw" (default — provider's wire form) or "human" (pretty-print for getSalvo)`)
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "dhs-emberplus-integration@1.0.0"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the per-call walk is skipped — refs #438, ADR-0022.`)
 	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of falling back to a wire walk")
 	host, rest, err := popHost(args)
@@ -26,6 +28,9 @@ func runInvoke(ctx context.Context, args []string) error {
 	_ = fs.Parse(rest)
 	if *funcPath == "" {
 		return fmt.Errorf("--path is required (e.g. router.functions.add)")
+	}
+	if *format != "raw" && *format != "human" {
+		return fmt.Errorf("%w: --format must be \"raw\" or \"human\", got %q", consumer.ErrInvalidFormat, *format)
 	}
 
 	// Parse arguments — RFC 4180 CSV so a quoted field can carry a comma
@@ -91,8 +96,31 @@ func runInvoke(ctx context.Context, args []string) error {
 	if result != nil {
 		fmt.Printf("invocation %d: success=%v\n", result.InvocationID, result.Success)
 		if len(result.Result) > 0 {
-			fmt.Printf("result: %v\n", result.Result)
+			// R11 #482 — pretty-print getSalvo when --format human.
+			// For every other function (and for --format raw) keep the
+			// existing wire-form display.
+			if *format == "human" && isGetSalvoPath(*funcPath) {
+				if s, ok := result.Result[0].(string); ok {
+					fmt.Println(formatGetSalvoHuman(s))
+				} else {
+					// Unexpected shape — fall back to raw so the operator
+					// still sees something.
+					fmt.Printf("result: %v\n", result.Result)
+				}
+			} else {
+				fmt.Printf("result: %v\n", result.Result)
+			}
 		}
 	}
 	return err
+}
+
+// isGetSalvoPath returns true when the function path's last segment is
+// "getSalvo". Used by R11 #482 to gate the pretty-print formatter.
+func isGetSalvoPath(path string) bool {
+	idx := strings.LastIndex(path, ".")
+	if idx < 0 {
+		return path == "getSalvo"
+	}
+	return path[idx+1:] == "getSalvo"
 }
