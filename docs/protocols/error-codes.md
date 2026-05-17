@@ -105,6 +105,7 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 
 | Code | Status | When | Anchor |
 |---|---|---|---|
+| `validation:failed` | defined (R1g) | catch-all wrap when a `ValueValidator` rejects a client-side check (wrong type, IPv4 unparseable, enum out of range) | dhs `internal/consumer/value_validator.go` |
 | `validation:invalid-integer` | partial (today emits free-text via `*consumer.ValidationError`; R1g formalizes) | `--value` not parseable as integer | dhs PR #453 |
 | `validation:invalid-real` | partial | `--value` not parseable as real | dhs PR #453 |
 | `validation:invalid-enum-index` | partial | `--value` outside enum range | dhs PR #453 |
@@ -132,11 +133,13 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 
 | Code | Status | When | Anchor |
 |---|---|---|---|
-| `plugin:not-implemented` | partial (today: `ErrNotImplemented`) | plugin stub for unsupported operation | dhs `internal/consumer/errors.go:11` |
-| `plugin:not-connected` | partial (today: `ErrNotConnected`) | call requires a live transport and none established | dhs `internal/consumer/errors.go:15` |
-| `plugin:not-walked` | pending (R1g) | call requires walked tree state | dhs `internal/emberplus/consumer/plugin.go::ensureWalked` |
-| `plugin:object-not-found` | partial (today: `ErrObjectNotFound`) | tree miss on path / OID | dhs `internal/consumer/value_validator.go:34` |
-| `plugin:wrong-kind` | pending (R1g) | resolved object isn't the kind the verb needs (e.g. `set` on Node) | dhs |
+| `plugin:not-implemented` | defined (R1g) | plugin stub for unsupported operation | dhs `internal/consumer/errors.go` |
+| `plugin:not-connected` | defined (R1g) | call requires a live transport and none established | dhs `internal/consumer/errors.go` |
+| `plugin:unknown-label` | defined (R1g) | GetValue/SetValue request uses a Label that was never seen by the walker | dhs `internal/consumer/errors.go` |
+| `plugin:object-not-found` | defined (R1g) | tree miss on path / OID | dhs `internal/consumer/value_validator.go` |
+| `plugin:identity-unresolved` | defined (R1g) | `GetIdentity` could not fingerprint the card from the wire | dhs `internal/consumer/identity.go` |
+| `plugin:not-walked` | pending (future) | call requires walked tree state | dhs `internal/emberplus/consumer/plugin.go::ensureWalked` |
+| `plugin:wrong-kind` | pending (future) | resolved object isn't the kind the verb needs (e.g. `set` on Node) | dhs |
 | `plugin:by-session-unavailable` | pending (R22 [#487](https://github.com/by-openclaw/go-acp/issues/487)) | `profile --by-session` and no R24 admin endpoint reachable | dhs |
 | `plugin:admin-socket-not-found` | pending (R25 [#490](https://github.com/by-openclaw/go-acp/issues/490)) | local admin socket not found (producer not running) | dhs |
 
@@ -144,9 +147,9 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 
 | Code | Status | When | Anchor |
 |---|---|---|---|
-| `session:write-timeout` | partial (today: `ErrWriteTimeout`) | write transmitted, no confirm within window | dhs `internal/consumer/errors.go:24` |
-| `session:write-coerced` | partial (today: `ErrWriteCoerced`) | provider echoed a different value (clamp/round) | dhs `internal/consumer/errors.go:30` |
-| `session:write-rejected` | partial (today: `ErrWriteRejected`) | provider's echo refuses the write | dhs `internal/consumer/errors.go:35` |
+| `session:write-timeout` | defined (R1g) | write transmitted, no confirm within window | dhs `internal/consumer/errors.go` |
+| `session:write-coerced` | defined (R1g) | provider echoed a different value (clamp/round/enum-remap); callers may tolerate via `errors.Is(err, ErrWriteCoerced)` | dhs `internal/consumer/errors.go` |
+| `session:write-rejected` | defined (R1g) | provider's echo refuses the write | dhs `internal/consumer/errors.go` |
 | `session:dead` | pending (R1g) | session liveness layer reports dead | memory `project_session_health` |
 
 ---

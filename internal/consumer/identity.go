@@ -2,7 +2,8 @@ package consumer
 
 import (
 	"context"
-	"errors"
+
+	"dhs/internal/errcode"
 )
 
 // CardIdentity is the protocol-agnostic fingerprint that drives DM-library
@@ -33,4 +34,4 @@ type Identifier interface {
 // not provide enough information to fingerprint the card. Plugins fire
 // a per-protocol compliance event before returning this error so the
 // session profile reflects the failure.
-var ErrIdentityUnresolved = errors.New("protocol: card identity unresolved")
+var ErrIdentityUnresolved = errcode.New(errcode.LayerPlugin, "identity-unresolved", errcode.ClassUsage)

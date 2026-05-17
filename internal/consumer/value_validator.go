@@ -2,7 +2,8 @@ package consumer
 
 import (
 	"context"
-	"errors"
+
+	"dhs/internal/errcode"
 )
 
 // ValueValidator is the optional contract a Protocol implementation MAY
@@ -31,10 +32,10 @@ type ValueValidator interface {
 // single-object get_object. Callers (the importer) map this to a skip
 // reason of "not_found" so the operator sees the row was dropped
 // because the obj-id doesn't exist on the live device.
-var ErrObjectNotFound = errors.New("protocol: object not found")
+var ErrObjectNotFound = errcode.New(errcode.LayerPlugin, "object-not-found", errcode.ClassUsage)
 
 // ErrValidationFailed is returned by Validate when the value fails a
 // client-side check (wrong type, enum out of options, IPv4 not
 // parseable, etc.). Callers map this to a skip reason of
 // "validation_failed".
-var ErrValidationFailed = errors.New("protocol: validation failed")
+var ErrValidationFailed = errcode.New(errcode.LayerValidation, "failed", errcode.ClassUsage)
