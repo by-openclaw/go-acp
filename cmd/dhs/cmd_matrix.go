@@ -14,7 +14,7 @@ func runMatrix(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("matrix", flag.ExitOnError)
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number")
-	matrixPath := fs.String("path", "", "dot-separated matrix path (e.g. router.oneToN.matrix)")
+	matrixPath := fs.String("path", "", "matrix path: dotted label OR numeric OID (e.g. router.oneToN.matrix or 1.1)")
 	target := fs.Int("target", -1, "target number")
 	sourcesStr := fs.String("sources", "", "comma-separated source numbers (e.g. 1 or 1,2,3)")
 	op := fs.String("op", "absolute", "operation: absolute, connect, disconnect")
@@ -27,6 +27,9 @@ func runMatrix(ctx context.Context, args []string) error {
 	_ = fs.Parse(rest)
 	if *matrixPath == "" {
 		return fmt.Errorf("--path is required (e.g. router.oneToN.matrix)")
+	}
+	if err := validatePathOrOID(*matrixPath); err != nil {
+		return err
 	}
 	if *target < 0 {
 		return fmt.Errorf("--target is required")

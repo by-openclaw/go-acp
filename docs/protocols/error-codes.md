@@ -119,7 +119,7 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 | `validation:invalid-port` | defined (R1b) | port outside [1, 65535] on Dial or [0, 65535] on Listen | dhs |
 | `validation:empty-payload` | defined (R1b) | Send called with a zero-length payload | dhs |
 | `validation:invalid-max-size` | defined (R1b) | Receive called with non-positive `maxSize` / `maxPayload` | dhs |
-| `validation:invalid-oid` | pending (R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)) | `--path` matches OID regex but bad syntax (`1..2`) | dhs |
+| `validation:invalid-oid` | defined (R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)) | `--path` matches OID regex but bad syntax (`1..2`) | dhs |
 | `validation:invalid-format` | pending (R11 [#482](https://github.com/by-openclaw/go-acp/issues/482) · R22 [#487](https://github.com/by-openclaw/go-acp/issues/487)) | `--format` value not in supported set | dhs |
 | `validation:invalid-duration` | pending (R22 [#487](https://github.com/by-openclaw/go-acp/issues/487)) | `--since` not a Go duration | dhs |
 | `validation:invalid-id-token` | pending (R1g formalizes existing `--id` CSV errors from R10) | bad / empty token in CSV `--id` | dhs PR #479 (R10) |

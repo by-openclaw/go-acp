@@ -29,7 +29,7 @@ func runSet(ctx context.Context, args []string) error {
 	label := fs.String("label", "", "object label")
 	id := fs.Int("id", -1, "object id within group")
 	objectAlias := fs.Int("object", -1, "alias for --id (deprecated; ACP2 callers historically wrote --object)")
-	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
+	pathFlag := fs.String("path", "", "tree path: dotted label OR numeric OID (e.g. types.vInteger or 1.6.1)")
 	valueStr := fs.String("value", "", "typed value (e.g. -3.0, \"On\", \"192.168.1.5\", \"CH1\"); empty string is valid for string objects")
 	valueHex := fs.String("raw", "", "raw wire bytes as hex — escape hatch bypassing typed encoding")
 	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of walking the slot to resolve --path/--label")
@@ -68,6 +68,11 @@ func runSet(ctx context.Context, args []string) error {
 	}
 	if *pathFlag == "" && *label == "" && *id < 0 {
 		return fmt.Errorf("either --path, --label, or --id is required")
+	}
+	if *pathFlag != "" {
+		if err := validatePathOrOID(*pathFlag); err != nil {
+			return err
+		}
 	}
 
 	var val consumer.Value

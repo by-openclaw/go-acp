@@ -17,7 +17,7 @@ func runGet(ctx context.Context, args []string) error {
 	label := fs.String("label", "", "object label (preferred over --id, requires prior walk context)")
 	id := fs.Int("id", -1, "object id within group (alternative to --label)")
 	objectAlias := fs.Int("object", -1, "alias for --id (deprecated; ACP2 callers historically wrote --object)")
-	pathFlag := fs.String("path", "", "dot-separated tree path (e.g. router.oneToN.parameters.sourceGain)")
+	pathFlag := fs.String("path", "", "tree path: dotted label OR numeric OID (e.g. types.vInteger or 1.6.1)")
 	idx := fs.Int("idx", 0, "ACP2 preset idx (0 = ACTIVE INDEX; default)")
 	pid := fs.Int("pid", 0, "ACP2 property id to read (0 = default pid=8 value; set to read object_type/label/access/etc.)")
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the per-call walk is skipped — refs #438, ADR-0022.`)
@@ -36,6 +36,11 @@ func runGet(ctx context.Context, args []string) error {
 	}
 	if *pathFlag == "" && *label == "" && *id < 0 {
 		return fmt.Errorf("either --path, --label, or --id is required")
+	}
+	if *pathFlag != "" {
+		if err := validatePathOrOID(*pathFlag); err != nil {
+			return err
+		}
 	}
 
 	plug, cleanup, err := connect(ctx, host, cf)
