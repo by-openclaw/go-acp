@@ -74,6 +74,7 @@ Every matrix carries `sourceParams[N].gain`, `targetParams[N].gain`, and (nToN o
 |---|---|---|---|
 | `info` | ✅ | GetDirectory(root) + identity walk | per-slot online + status |
 | `walk` | ✅ | GetDirectory recursive | every object in the tree |
+| `tree` | ✅ | GetDirectory recursive (or DM hot-load) | ASCII or PlantUML mindmap of the tree (post R5b [#469](https://github.com/by-openclaw/go-acp/issues/469)) |
 | `get` | ✅ | GetDirectory(path) | one value |
 | `set` | ✅ | SetValue | confirmed value (or ValidationError) |
 | `watch` | ✅ | Subscribe(30) on streams + implicit on params/matrices | live stream of value/connection changes |
