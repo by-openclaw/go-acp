@@ -3,7 +3,6 @@ package transport
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -37,20 +36,20 @@ type TCPConn struct {
 // coalesce buffer waiting for more data.
 func DialTCP(ctx context.Context, host string, port int) (*TCPConn, error) {
 	if host == "" {
-		return nil, fmt.Errorf("transport: DialTCP: empty host")
+		return nil, fmt.Errorf("%w: DialTCP: empty host", ErrInvalidHost)
 	}
 	if port <= 0 || port > 65535 {
-		return nil, fmt.Errorf("transport: DialTCP: port out of range: %d", port)
+		return nil, fmt.Errorf("%w: DialTCP: port %d outside [1, 65535]", ErrInvalidPort, port)
 	}
 	var d net.Dialer
 	c, err := d.DialContext(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
-		return nil, fmt.Errorf("tcp dial %s:%d: %w", host, port, err)
+		return nil, fmt.Errorf("%w: dial %s:%d: %v", classifyDialError(err), host, port, err)
 	}
 	tc, ok := c.(*net.TCPConn)
 	if !ok {
 		_ = c.Close()
-		return nil, fmt.Errorf("tcp dial %s:%d: not a *net.TCPConn (%T)", host, port, c)
+		return nil, fmt.Errorf("%w: dial %s:%d: not a *net.TCPConn (%T)", ErrWrongConnType, host, port, c)
 	}
 	// ACP messages are small (≤ 141 bytes) and latency-sensitive. Disable
 	// Nagle so we don't sit 40 ms in a send buffer waiting for an ACK.
@@ -63,13 +62,13 @@ func DialTCP(ctx context.Context, host string, port int) (*TCPConn, error) {
 // receiver needs after stripping the 4-byte MLEN prefix.
 func (t *TCPConn) Send(ctx context.Context, payload []byte) error {
 	if t == nil || t.conn == nil {
-		return errors.New("tcp: send on nil conn")
+		return fmt.Errorf("%w: send on tcp", ErrNilConn)
 	}
 	if len(payload) == 0 {
-		return errors.New("tcp: send empty payload")
+		return fmt.Errorf("%w: send on tcp", ErrEmptyPayload)
 	}
 	if len(payload) > 0xFFFFFFFF {
-		return fmt.Errorf("tcp: payload too large: %d", len(payload))
+		return fmt.Errorf("%w: tcp payload %d > 4GiB", ErrPayloadTooLarge, len(payload))
 	}
 
 	t.writeMu.Lock()
@@ -77,7 +76,7 @@ func (t *TCPConn) Send(ctx context.Context, payload []byte) error {
 
 	if dl, ok := ctx.Deadline(); ok {
 		if err := t.conn.SetWriteDeadline(dl); err != nil {
-			return fmt.Errorf("tcp set write deadline: %w", err)
+			return fmt.Errorf("%w: tcp write deadline: %v", ErrSetDeadlineFailed, err)
 		}
 	} else {
 		_ = t.conn.SetWriteDeadline(time.Time{})
@@ -89,10 +88,10 @@ func (t *TCPConn) Send(ctx context.Context, payload []byte) error {
 	var lenBuf [4]byte
 	binary.BigEndian.PutUint32(lenBuf[:], uint32(len(payload)))
 	if _, err := t.conn.Write(lenBuf[:]); err != nil {
-		return fmt.Errorf("tcp write len: %w", err)
+		return fmt.Errorf("%w: tcp write len: %v", ErrWriteFailed, err)
 	}
 	if _, err := t.conn.Write(payload); err != nil {
-		return fmt.Errorf("tcp write payload: %w", err)
+		return fmt.Errorf("%w: tcp write payload: %v", ErrWriteFailed, err)
 	}
 	return nil
 }
@@ -107,15 +106,15 @@ func (t *TCPConn) Send(ctx context.Context, payload []byte) error {
 // hard socket errors.
 func (t *TCPConn) Receive(ctx context.Context, maxPayload int) ([]byte, error) {
 	if t == nil || t.conn == nil {
-		return nil, errors.New("tcp: receive on nil conn")
+		return nil, fmt.Errorf("%w: receive on tcp", ErrNilConn)
 	}
 	if maxPayload <= 0 {
-		return nil, fmt.Errorf("tcp: invalid maxPayload %d", maxPayload)
+		return nil, fmt.Errorf("%w: tcp maxPayload %d must be > 0", ErrInvalidMaxSize, maxPayload)
 	}
 
 	if dl, ok := ctx.Deadline(); ok {
 		if err := t.conn.SetReadDeadline(dl); err != nil {
-			return nil, fmt.Errorf("tcp set read deadline: %w", err)
+			return nil, fmt.Errorf("%w: tcp read deadline: %v", ErrSetDeadlineFailed, err)
 		}
 	} else {
 		_ = t.conn.SetReadDeadline(time.Time{})
@@ -127,7 +126,7 @@ func (t *TCPConn) Receive(ctx context.Context, maxPayload int) ([]byte, error) {
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
 			return nil, context.DeadlineExceeded
 		}
-		return nil, fmt.Errorf("tcp read len: %w", err)
+		return nil, fmt.Errorf("%w: tcp read len: %v", ErrReadFailed, err)
 	}
 	mlen := binary.BigEndian.Uint32(lenBuf[:])
 
@@ -137,10 +136,10 @@ func (t *TCPConn) Receive(ctx context.Context, maxPayload int) ([]byte, error) {
 	// be guesswork, so we return the error and let the client
 	// reconnect if it wants.
 	if mlen < 8 {
-		return nil, fmt.Errorf("tcp: MLEN %d below minimum 8", mlen)
+		return nil, fmt.Errorf("%w: tcp MLEN %d below minimum 8", ErrMLENOutOfRange, mlen)
 	}
 	if int(mlen) > maxPayload {
-		return nil, fmt.Errorf("tcp: MLEN %d > max %d", mlen, maxPayload)
+		return nil, fmt.Errorf("%w: tcp MLEN %d above max %d", ErrMLENOutOfRange, mlen, maxPayload)
 	}
 
 	payload := make([]byte, mlen)
@@ -148,7 +147,7 @@ func (t *TCPConn) Receive(ctx context.Context, maxPayload int) ([]byte, error) {
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
 			return nil, context.DeadlineExceeded
 		}
-		return nil, fmt.Errorf("tcp read payload: %w", err)
+		return nil, fmt.Errorf("%w: tcp read payload: %v", ErrReadFailed, err)
 	}
 	return payload, nil
 }
@@ -161,7 +160,7 @@ func (t *TCPConn) Close() error {
 	err := t.conn.Close()
 	t.conn = nil
 	if err != nil {
-		return fmt.Errorf("tcp close: %w", err)
+		return fmt.Errorf("%w: tcp close: %v", ErrCloseFailed, err)
 	}
 	return nil
 }
