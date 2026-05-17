@@ -102,7 +102,7 @@ func EncodeTag(t Tag) []byte {
 // Spec reference: ITU-T X.690 §8.1.2 (Identifier octets).
 func DecodeTag(buf []byte) (Tag, int, error) {
 	if len(buf) == 0 {
-		return Tag{}, 0, errTruncated
+		return Tag{}, 0, ErrTruncated
 	}
 
 	first := buf[0]
@@ -154,8 +154,8 @@ func decodeBase128(buf []byte) (uint32, int, error) {
 			return val, i + 1, nil
 		}
 		if i > 4 {
-			return 0, 0, errTagTooLong
+			return 0, 0, ErrTagTooLong
 		}
 	}
-	return 0, 0, errTruncated
+	return 0, 0, ErrTruncated
 }

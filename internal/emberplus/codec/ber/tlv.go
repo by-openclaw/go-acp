@@ -62,7 +62,7 @@ func EncodeTLV(t TLV) []byte {
 // Spec reference: ITU-T X.690 §8.1.1 (General rules for BER).
 func DecodeTLV(buf []byte) (TLV, int, error) {
 	if len(buf) == 0 {
-		return TLV{}, 0, errTruncated
+		return TLV{}, 0, ErrTruncated
 	}
 
 	tag, tagLen, err := DecodeTag(buf)
@@ -84,7 +84,7 @@ func DecodeTLV(buf []byte) (TLV, int, error) {
 		pos := headerLen
 		for {
 			if pos+2 > len(buf) {
-				return TLV{}, 0, errTruncated
+				return TLV{}, 0, ErrTruncated
 			}
 			// Check for EOC.
 			if buf[pos] == 0x00 && buf[pos+1] == 0x00 {
@@ -103,7 +103,7 @@ func DecodeTLV(buf []byte) (TLV, int, error) {
 
 	// Definite length.
 	if headerLen+length > len(buf) {
-		return TLV{}, 0, errTruncated
+		return TLV{}, 0, ErrTruncated
 	}
 
 	t := TLV{Tag: tag}

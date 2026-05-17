@@ -52,12 +52,12 @@ func EncodeLength(length int) []byte {
 //	| 0x00..0x7F  | short definite    | length = first octet (0..127)       |
 //	| 0x80        | indefinite        | length = -1 (EOC-terminated value)  |
 //	| 0x81..0x84  | long definite (N) | next N octets = big-endian length   |
-//	| >= 0x85     | rejected          | errLengthTooLong (cap at 4 octets)  |
+//	| >= 0x85     | rejected          | ErrLengthTooLong (cap at 4 octets)  |
 //
 // Spec reference: ITU-T X.690 §8.1.3 (Length octets).
 func DecodeLength(buf []byte) (int, int, error) {
 	if len(buf) == 0 {
-		return 0, 0, errTruncated
+		return 0, 0, ErrTruncated
 	}
 
 	first := buf[0]
@@ -75,10 +75,10 @@ func DecodeLength(buf []byte) (int, int, error) {
 	// Long form: n = number of subsequent length octets.
 	n := int(first & 0x7F)
 	if n > 4 {
-		return 0, 0, errLengthTooLong
+		return 0, 0, ErrLengthTooLong
 	}
 	if len(buf) < 1+n {
-		return 0, 0, errTruncated
+		return 0, 0, ErrTruncated
 	}
 
 	length := 0
