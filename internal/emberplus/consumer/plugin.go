@@ -947,6 +947,21 @@ func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target in
 		if err := entry.matrixState.CanConnect(target, sources, operation); err != nil {
 			return WrapProto("matrix validation", err)
 		}
+		// Fire one compliance event per implicit source-steal pair on
+		// oneToOne SETs (spec p.33 says source-exclusive, every
+		// shipping provider source-steals). Pre-flight detection lets
+		// the operator see the deviation in `dhs consumer emberplus
+		// profile`. Refs #465.
+		if stolen := entry.matrixState.DetectOneToOneSourceSteal(target, sources); len(stolen) > 0 {
+			for _, pair := range stolen {
+				p.profile.Note(OneToOneSourceStealAccepted)
+				p.logger.Debug("emberplus: oneToOne source-steal accepted",
+					"matrix_path", matrixPath,
+					"target", target,
+					"source", pair.Source,
+					"from_target", pair.FromTarget)
+			}
+		}
 	}
 
 	p.logger.Debug("emberplus: MatrixConnect",

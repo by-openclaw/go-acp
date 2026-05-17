@@ -144,4 +144,16 @@ const (
 	// reusing it across Parameters is a provider-side bug that
 	// causes value mis-dispatch.
 	StreamIDCollisionNoDescriptor = "stream_id_collision_no_descriptor"
+
+	// OneToOneSourceStealAccepted fires when the consumer issues a
+	// SET on an oneToOne matrix whose requested source is already
+	// routed to another target. Spec p.33 literal-reading says this
+	// is a violation (source must be used at most once globally), but
+	// every shipping Ember+ provider (Lawo VSM, EmberPlusView,
+	// TinyEmber+) implements source-steal: the source is implicitly
+	// disconnected from its prior target. The consumer accepts the
+	// SET (does NOT block via CanConnect) and fires this event so
+	// operators see the deviation in the profile counter. Refs #465,
+	// same precedent as feedback_probel_salvo_connected.
+	OneToOneSourceStealAccepted = "onetoone_source_steal_accepted"
 )

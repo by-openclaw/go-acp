@@ -26,7 +26,13 @@ func TestCanConnect_OneToN(t *testing.T) {
 	}
 }
 
-func TestCanConnect_OneToOne_SourceExclusive(t *testing.T) {
+// TestCanConnect_OneToOne_SourceStealAccepted pins #465: oneToOne
+// source-already-used is NOT rejected by CanConnect. Every shipping
+// Ember+ provider (Lawo VSM, EmberPlusView, TinyEmber+) implements
+// source-steal — the source is implicitly disconnected from its prior
+// target on receive. The consumer accepts the SET and the
+// plugin.MatrixConnect layer fires a compliance event.
+func TestCanConnect_OneToOne_SourceStealAccepted(t *testing.T) {
 	s := &State{
 		Type:        glow.MatrixTypeOneToOne,
 		TargetCount: 4, SourceCount: 4,
@@ -34,11 +40,49 @@ func TestCanConnect_OneToOne_SourceExclusive(t *testing.T) {
 			1: {Target: 1, Sources: []int32{3}},
 		},
 	}
-	if err := s.CanConnect(2, []int32{3}, glow.ConnOpAbsolute); err == nil {
-		t.Fatal("oneToOne should reject source 3 on target 2 when target 1 already uses it")
+	// Source 3 currently routed to target 1; setting it on target 2
+	// would have been rejected pre-#465. Now accepted (provider steals).
+	if err := s.CanConnect(2, []int32{3}, glow.ConnOpAbsolute); err != nil {
+		t.Errorf("oneToOne source-steal must be accepted (provider handles disconnect): %v", err)
 	}
+	// Unused source on a fresh target still works.
 	if err := s.CanConnect(2, []int32{5}, glow.ConnOpAbsolute); err != nil {
-		t.Fatalf("oneToOne should accept unused source: %v", err)
+		t.Errorf("oneToOne should accept unused source: %v", err)
+	}
+	// Cardinality-1 invariant (≤1 source per target) still enforced.
+	if err := s.CanConnect(2, []int32{5, 6}, glow.ConnOpAbsolute); err == nil {
+		t.Error("oneToOne should still reject 2 sources on a target [spec p.33 cardinality]")
+	}
+}
+
+// TestDetectOneToOneSourceSteal pins the steal-detection helper used
+// by the consumer's MatrixConnect to fire OneToOneSourceStealAccepted.
+func TestDetectOneToOneSourceSteal(t *testing.T) {
+	s := &State{
+		Type:        glow.MatrixTypeOneToOne,
+		TargetCount: 4, SourceCount: 4,
+		Targets: map[int32]*TargetState{
+			1: {Target: 1, Sources: []int32{3}},
+			0: {Target: 0, Sources: []int32{0}},
+		},
+	}
+	// Setting target 2 ← source 3 steals source 3 from target 1.
+	stolen := s.DetectOneToOneSourceSteal(2, []int32{3})
+	if len(stolen) != 1 || stolen[0].FromTarget != 1 || stolen[0].Source != 3 {
+		t.Errorf("steal-detect = %+v, want [{FromTarget:1 Source:3}]", stolen)
+	}
+	// Setting target 5 ← source 99 (neither routed) — no steal.
+	if stolen := s.DetectOneToOneSourceSteal(5, []int32{99}); len(stolen) != 0 {
+		t.Errorf("steal-detect on unrouted source = %+v, want empty", stolen)
+	}
+	// Setting target 0 ← source 0 (self, no other target has it) — no steal.
+	if stolen := s.DetectOneToOneSourceSteal(0, []int32{0}); len(stolen) != 0 {
+		t.Errorf("steal-detect on self-routed source = %+v, want empty", stolen)
+	}
+	// Non-oneToOne matrix returns nil regardless of state.
+	s.Type = glow.MatrixTypeNToN
+	if stolen := s.DetectOneToOneSourceSteal(2, []int32{3}); stolen != nil {
+		t.Errorf("steal-detect on nToN = %+v, want nil", stolen)
 	}
 }
 
