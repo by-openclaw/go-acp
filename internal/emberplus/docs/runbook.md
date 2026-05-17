@@ -118,9 +118,9 @@ Top-level OID map (current integration-test provider):
 
 ## Exit codes & error taxonomy
 
-Today's binary emits free-text error messages on stderr + a coarse exit code. **R1 [#468](https://github.com/by-openclaw/go-acp/issues/468)** locks in the standard Unix exit-code scheme (`0`/`1`/`2`) + a stable `<layer>:<code>: <message>` string in stderr so operators and scripts can dispatch on the code, not on free-text. **Diagnosis lives exclusively in the error string — never in the exit code.** The codes shown in every Errors table below are the **post-R1** contract.
+The binary emits a stable `<layer>:<code>: <human message>` string on stderr + a small-integer exit code per standard Unix (`0`/`1`/`2`). **Diagnosis lives exclusively in the error string — never in the exit code.** Locked by R1 [#468](https://github.com/by-openclaw/go-acp/issues/468) (delivered across PRs [#491](https://github.com/by-openclaw/go-acp/pull/491) · [#492](https://github.com/by-openclaw/go-acp/pull/492) · [#493](https://github.com/by-openclaw/go-acp/pull/493) · [#494](https://github.com/by-openclaw/go-acp/pull/494) · [#495](https://github.com/by-openclaw/go-acp/pull/495) · [#496](https://github.com/by-openclaw/go-acp/pull/496) · [#497](https://github.com/by-openclaw/go-acp/pull/497) · this final pass). Canonical list: [`docs/protocols/error-codes.md`](../../../docs/protocols/error-codes.md).
 
-### Exit code classes (post R1) — Unix-standard, cross-OS uniform
+### Exit code classes — Unix-standard, cross-OS uniform
 
 | Exit | Class | When |
 |---|---|---|
@@ -204,7 +204,7 @@ per-slot status:
 
 ### Errors
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | missing host | `info --port 9100` | (usage error) | 2 |
 | connection refused | `info 127.0.0.1 --port 9999 --timeout 2s` | `transport:refused` | 1 |
@@ -230,7 +230,7 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 
 ### Errors
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | connection refused | `walk ... --port 9999` | `transport:refused` | 1 |
 | timeout too small | `walk ... --timeout 1ms` | `transport:timeout` | 1 |
@@ -272,7 +272,7 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 
 ### Errors
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | wrong path | `get ... --path bogus.path.here` | `plugin:object-not-found` | 2 |
 | invalid OID syntax (post R21) | `get ... --path 1..2` | `validation:invalid-oid` | 2 |
@@ -306,7 +306,7 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 
 ### Errors (post #453 + post R16 [#483](https://github.com/by-openclaw/go-acp/issues/483))
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | unparseable int (#445) | `set ... gain --value -25.5` | `validation:invalid-integer` | 2 |
 | unparseable int (letters) | `set ... gain --value abc` | `validation:invalid-integer` | 2 |
@@ -360,7 +360,7 @@ Three event sources, all delivered through the same `watch` feed:
 
 ### Errors
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | connection refused | `watch ... --port 9999` | `transport:refused` | 1 |
 | bad path filter | `watch --path bogus` | (no error — filter matches nothing; exits 0 on Ctrl-C) | 0 |
@@ -411,7 +411,7 @@ Three event sources, all delivered through the same `watch` feed:
 
 ### Errors
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | oneToN over-cardinality | `matrix oneToN --target 0 --sources 1,2 --op absolute` | `matrix:cardinality-exceeded` | 1 |
 | nToN over capacity | `matrix nToN --target 0 --sources 0,1,2,3,4,5 --op absolute` | `matrix:max-connects-per-target` | 1 |
@@ -481,7 +481,7 @@ Function subtree at OID `1.5` carries six builtins:
 
 ### Errors (post #455 / #457)
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | bogus matrixRef | `invoke setLock --args "bogus.path,1,true"` | `emberplus:invocation-failed` (provider returns `Success=false`) | 1 |
 | description on failure | (provider returns `Success=false` + description) | `emberplus:invocation-failed-with-description` (description in stderr) | 1 |
@@ -532,7 +532,7 @@ Today the operator-visible behavior on an abruptly-killed consumer:
 
 ### Errors
 
-| Case | Command | Error code (post R1) | Exit |
+| Case | Command | Error code | Exit |
 |---|---|---|---|
 | bad token | `stream ... --id abc` | `validation:invalid-id-token` | 2 |
 | empty token mid-csv | `stream ... --id 0,,1001` | `validation:invalid-id-token` (empty) | 2 |
@@ -570,7 +570,7 @@ Today `profile` aggregates into one classification line + an event count. The co
 
 ### Errors
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | connection refused | `profile ... --port 9999` | `transport:refused` | 1 |
 | missing host | `profile --port 9100` | (usage error) | 2 |
@@ -626,7 +626,7 @@ Layout written:
 
 ### Errors
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | target dir unwritable | `extract ... --out /no/perm/` | `transport:report-target-unwritable` | 1 |
 | missing required flag | `extract ... --product foo` (no `--version`) | (usage error) | 2 |
@@ -675,7 +675,7 @@ Today only `matrix` ops are benchable. R13 [#474](https://github.com/by-openclaw
 
 ### Errors
 
-| Trigger | Command | Error code (post R1) | Exit |
+| Trigger | Command | Error code | Exit |
 |---|---|---|---|
 | missing `--path` | `bench --port 9100 --n 100` | (usage error) | 2 |
 | n ≤ 0 | `bench ... --n -1` | `validation:invalid-n` | 2 |
