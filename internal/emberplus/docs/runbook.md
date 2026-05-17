@@ -261,16 +261,22 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 | `1.0.4` | `identity.dtdVersion` | `"2.60"` |
 
 ```powershell
+# By dotted label
 .\bin\dhs.exe consumer emberplus get 127.0.0.1 --port 9100 --path dhs-emberplus-integration.types.vInteger
-# OID = 1.6.1
 # value = 42
 
+# Same call by OID — byte-equal output
+.\bin\dhs.exe consumer emberplus get 127.0.0.1 --port 9100 --path 1.6.1
+# value = 42
+
+# dtdVersion — by label and by OID
 .\bin\dhs.exe consumer emberplus get 127.0.0.1 --port 9100 --path dhs-emberplus-integration.identity.dtdVersion
-# OID = 1.0.4
+# value = "2.60"
+.\bin\dhs.exe consumer emberplus get 127.0.0.1 --port 9100 --path 1.0.4
 # value = "2.60"
 ```
 
-> Address by OID directly: `--path 1.6.1` resolves to the same Parameter as `--path types.vInteger` — both forms are accepted by every `--path`-using verb. Refs **R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)** (per [Addressing](#addressing--by-path-vs-by-oid)).
+> Both forms resolve through the same `Plugin.findEntry` path (numeric OID index tried first, dotted label index second). Every `--path`-using verb (`get`, `set`, `invoke`, `matrix`, `watch`, `bench`, `tree`) accepts either form interchangeably. Refs **R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)** (per [Addressing](#addressing--by-path-vs-by-oid)).
 
 ### Errors
 
@@ -289,19 +295,40 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 ### Happy
 
 ```powershell
+# Integer in declared min/max range — by label and by OID (byte-equal)
+.\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
+    --path dhs-emberplus-integration.types.vInteger --value 42
+# confirmed value = 42
+.\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
+    --path 1.6.1 --value 42
+# confirmed value = 42
+
+# Enum by integer index — by label and by OID
+.\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
+    --path dhs-emberplus-integration.types.vEnum --value 3
+# confirmed value = 3 (High)
+.\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
+    --path 1.6.6 --value 3
+# confirmed value = 3 (High)
+
+# Enum by LABEL — resolved via enumMap to integer index (R16 #483)
+.\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
+    --path 1.6.6 --value High
+# confirmed value = 3 (High)
+
+# Real Parameter in range — by label and by OID
 .\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.targetParams.0.gain --value -25
-# OID = 1.3.targetParams.0.gain  (numeric form varies by parametersLocation seed)
 # confirmed value = -25
-
 .\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.targetParams.0.mute --value true
 # confirmed value = true
 
+# Off-step value with --round — snaps to nearest legal grid point (R16 #483)
 .\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
-    --path dhs-emberplus-integration.types.vEnum --value 3
-# OID = 1.6.6
-# confirmed value = 3
+    --path dhs-emberplus-integration.types.vReal --value 1.3 --round
+# round: 1.3 → 1.5 (step=0.5)
+# confirmed value = 1.5
 ```
 
 > Out-of-range / step-mismatch / enum-by-label semantics are live as of **R16 [#483](https://github.com/by-openclaw/go-acp/issues/483)**:
@@ -390,31 +417,44 @@ Three event sources, all delivered through the same `watch` feed:
 ### Happy
 
 ```powershell
-# nToN — multi-source SET
+# nToN multi-source SET — by label
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.matrix `
     --target 10 --sources 3,4,5 --op absolute
-# OID = 1.3
-# matrix connect: target 10 ← sources [3 4 5] (op=absolute)
+# before: target 10 ← sources [] (no seed)
+# matrix connect: target 10 ← sources [3,4,5] (op=absolute)
+# after:  target 10 ← sources [3,4,5]
 
-# nToN — disconnect one source
+# Same call by OID — byte-equal
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
-    --path dhs-emberplus-integration.nToN.matrix `
-    --target 10 --sources 4 --op disconnect
-# matrix connect: target 10 ← sources [4] (op=disconnect)
+    --path 1.3 `
+    --target 10 --sources 3,4,5 --op absolute
+# matrix connect: target 10 ← sources [3,4,5] (op=absolute)
 
-# oneToN — replace single source
+# nToN — disconnect one source from the current set
+.\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
+    --path 1.3 `
+    --target 10 --sources 4 --op disconnect
+# before: target 10 ← sources [3,4,5]
+# matrix disconnect: target 10 -× source 4
+# after:  target 10 ← sources [3,5]
+
+# oneToN replace — by label and by OID
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.oneToN.matrix `
     --target 0 --sources 7 --op absolute
-# OID = 1.1 — target 0 now routed from src 7; prior src 0 dropped
-
-# oneToOne — source steal (post #467)
+# matrix connect: target 0 ← source 7 (op=absolute, prior source 0 dropped)
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
-    --path dhs-emberplus-integration.oneToOne.matrix `
+    --path 1.1 --target 0 --sources 7 --op absolute
+# matrix connect: target 0 ← source 7 (op=absolute, prior source 0 dropped)
+
+# oneToOne source-steal (post #467) — by OID
+.\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
+    --path 1.2 `
     --target 0 --sources 5 --op absolute
-# OID = 1.2 — matrix connect: target 0 ← sources [5] (op=absolute)
-# Source 5 was on target 5; now stolen to target 0 — target 5 implicitly disconnected.
+# before: target 0 ← source 0 ; target 5 ← source 5
+# matrix connect: target 0 ← source 5 (op=absolute, source-steal)
+# after:  target 0 ← source 5 ; target 5 ← (implicitly disconnected)
 # Profile counter: onetoone_source_steal_accepted += 1
 ```
 
@@ -443,49 +483,64 @@ Function subtree at OID `1.5` carries six builtins:
 | `1.5.3` | `functions.storeSalvo` | `(matrixRef, slot, label)` | `[true]` |
 | `1.5.4` | `functions.recallSalvo` | `(matrixRef, slot)` | `[rowsRestored]` |
 | `1.5.5` | `functions.listSalvos` | `(matrixRef)` | `[list of slot IDs]` |
-| `1.5.6` | `functions.getSalvo` | `(matrixRef, slot)` | `[serialized tgt=src list]` — human format pending **R11** |
+| `1.5.6` | `functions.getSalvo` | `(matrixRef, slot)` | `[serialized tgt=src list]` — pretty-printed by `--format human` (R11 [#499](https://github.com/by-openclaw/go-acp/pull/499)) |
 
 `matrixRef` accepts both OID (`1.1.3` → `oneToN.matrix`) and dotted path (`dhs-emberplus-integration.oneToN.matrix`) post #466.
 
 ### Happy
 
 ```powershell
-# Lock target 3 on oneToN — by matrix OID
+# setLock — by function label, matrixRef as OID
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.setLock `
     --args "1.1.3,3,true"
-# OID = 1.5.1 — invocation 1: success=true
-# result: [false]       (previous lock state)
+# invocation 1: success=true
+# result: [false]    (previous lock state)
 
-# Same via dotted matrixRef (post #466)
+# Same call — function path BY OID
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
-    --path dhs-emberplus-integration.functions.setLock `
+    --path 1.5.1 `
+    --args "1.1.3,3,true"
+# invocation 2: success=true
+# result: [false]
+
+# Same — matrixRef as dotted path (post #466)
+.\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
+    --path 1.5.1 `
     --args "dhs-emberplus-integration.oneToN.matrix,4,true"
-# invocation 1: success=true · result: [false]
+# invocation 3: success=true · result: [false]
 
-# List locked targets
+# listLocks — by label and by OID
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
-    --path dhs-emberplus-integration.functions.listLocks `
-    --args "1.1.3"
-# OID = 1.5.2 — result: [2,3,4]   (2 was pre-locked from seed)
+    --path dhs-emberplus-integration.functions.listLocks --args "1.1.3"
+# result: [2,3,4]    (target 2 was pre-locked from seed; we just added 3 + 4 above)
+.\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
+    --path 1.5.2 --args "1.1.3"
+# result: [2,3,4]
 
-# Store salvo — all current connections on oneToN
+# storeSalvo — capture current oneToN connections to slot 99
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
-    --path dhs-emberplus-integration.functions.storeSalvo `
-    --args "1.1.3,99,"
-# OID = 1.5.3 — result: [true]
+    --path 1.5.3 --args "1.1.3,99,"
+# result: [true]
 
-# Get salvo dump
+# getSalvo RAW (--format raw — the wire form)
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
-    --path dhs-emberplus-integration.functions.getSalvo `
-    --args "1.1.3,99"
-# OID = 1.5.6 — result: ["0=0;1=1;3=3;..."]   (tgt=src semicolon-separated; human format pending R11)
+    --path 1.5.6 --args "1.1.3,99"
+# result: ["0=0;1=1;5=3,4,5;7="]
 
-# Recall salvo
+# getSalvo HUMAN (--format human — R11 pretty-print)
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
-    --path dhs-emberplus-integration.functions.recallSalvo `
-    --args "1.1.3,99"
-# OID = 1.5.4 — result: [N]    (rows restored)
+    --path 1.5.6 --args "1.1.3,99" --format human
+# invocation N: success=true
+# tgt 0 <- Src [0]
+# tgt 1 <- Src [1]
+# tgt 5 <- Src [3,4,5]
+# tgt 7 <- Src []
+
+# recallSalvo
+.\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
+    --path 1.5.4 --args "1.1.3,99"
+# result: [N]    (rows restored)
 ```
 
 ### Errors (post #455 / #457)
@@ -604,34 +659,40 @@ Full reference — `--format {json|yaml|csv}` matrix, partial-export header, `--
 
 ---
 
-## 11. `extract` — capture per-product DM triple
+## 11. Cache layout — auto-populated by `walk`
+
+**For Ember+ devices (and every protocol with an identity surface — ACP1/ACP2 cards expose CardName+HwVersion), capture is automatic on `walk`.** The plugin reads `identity.product` / `identity.company` / `identity.version` straight off the wire, then writes:
+
+```
+.cache/dm/emberplus/<product>@<version>.json   per ADR-0022 — identity-keyed DM
+.cache/manifest/<device-name>.yaml             slot → identity binding
+.audit/walks/demo.jsonl                         (only if --capture was passed to `walk`)
+```
+
+No operator-supplied manufacturer / product / version / direction is needed — the identity node IS the source of truth.
+
+```powershell
+# This single call writes the DM
+.\bin\dhs.exe consumer emberplus walk 127.0.0.1 --port 9100
+# → .cache/dm/emberplus/dhs-emberplus-integration@1.0.0.json
+
+# Subsequent verbs hot-load it via --dm — no wire walk needed
+.\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
+    --dm dhs-emberplus-integration@1.0.0 `
+    --path 1.5.1 --args "1.1.3,3,true"
+```
+
+### Manual `extract` verb — fallback for protocols without identity
+
+The standalone `extract` verb (`--manufacturer --product --direction --version --out`) is retained for protocols/devices where no identity surface exists, or for capturing one-shot snapshots to a specific path under your control. **Not the primary path for Ember+** — you'll never need it against a spec-compliant Ember+ provider.
 
 ```powershell
 .\bin\dhs.exe consumer emberplus extract 127.0.0.1 --port 9100 `
     --manufacturer BY-Systems --product dhs-emberplus-integration `
     --direction in --version 1.0.0 --out .audit/extract-demo
-# OID = 1 (root) — recursive walk
-# Writes meta.json + wire.pcapng + tree.json under the fixture layout
 ```
 
-### Flags
-
-| Flag | Purpose | Example |
-|---|---|---|
-| `--manufacturer` | Manufacturer string baked into `meta.json` and the cache filename | `BY-Systems` |
-| `--product` | Product / Model name — drives `<Model@SwRev>.json` per ADR-0022 | `dhs-emberplus-integration` |
-| `--direction` | Capture direction from the **consumer's** perspective: `in` = device→consumer (announces, replies); `out` = consumer→device (commands). Stored in `meta.json` so replay tooling knows whether to feed frames forward or reverse | `in` |
-| `--version` | Software revision (SwRev) of the device being captured. Forms the cache filename `<Model@SwRev>.json` per ADR-0022. Multiple SwRev captures coexist side-by-side; the consumer hot-loads by exact match | `1.0.0` |
-| `--out` | Output directory; the triple `meta.json` + `wire.pcapng` + `tree.json` lands inside | `.audit/extract-demo` |
-
-Layout written:
-
-```
-.audit/extract-demo/
-├── meta.json     manufacturer + product + version + direction + capturedAt + protocol
-├── wire.pcapng   S101 frames replay-ready in Wireshark with dhs_emberplus.lua loaded
-└── tree.json     decoded Glow tree (same shape as .cache/dm/emberplus/<Model@SwRev>.json)
-```
+Future R-item: auto-derive manufacturer + product + version from identity when present, making the flags optional (file at runbook close).
 
 ### Errors
 
@@ -662,10 +723,17 @@ Full reference — Wireshark `--lua` mode ([#473](https://github.com/by-openclaw
 ## 13. `bench` — matrix latency
 
 ```powershell
+# By dotted label
 .\bin\dhs.exe consumer emberplus bench 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.matrix `
     --n 1000 --op connect --targets 16 --sources 16
-# OID = 1.3 — total: 1000 ops in N ms, M ops/s
+# total: 1000 ops in N ms, M ops/s
+
+# Same call by OID — byte-equal
+.\bin\dhs.exe consumer emberplus bench 127.0.0.1 --port 9100 `
+    --path 1.3 `
+    --n 1000 --op connect --targets 16 --sources 16
+# total: 1000 ops in N ms, M ops/s
 ```
 
 Flags: `--path` (matrix path), `--n` (op count, default 100), `--op` (connect / absolute / disconnect, default connect), `--targets` / `--sources` (wrap modulo, default 4).
@@ -691,6 +759,149 @@ Today only `matrix` ops are benchable. R13 [#474](https://github.com/by-openclaw
 | invalid op | `bench ... --op spin` | `validation:invalid-op` | 2 |
 | path resolves to non-Matrix | `bench ... --path dhs-emberplus-integration.types.vInteger` | `plugin:wrong-kind` | 2 |
 | connection refused | `bench ... --port 9999` | `transport:refused` | 1 |
+
+---
+
+## 14. Logging — current state + R15
+
+### Today (`main`)
+
+The producer + every consumer verb use Go's `log/slog` (per top-level CLAUDE.md "no `fmt.Println`"). Output goes to stderr. There is **no** `-v` flag, no `--log-format`, no `--log-only` yet.
+
+```powershell
+# Default — INFO level, text format
+.\bin\dhs.exe producer emberplus serve --manifest ... --port 9100
+
+# Lower the level via the `--log-level` flag the producer exposes
+.\bin\dhs.exe producer emberplus serve --manifest ... --port 9100 --log-level debug
+.\bin\dhs.exe producer emberplus serve --manifest ... --port 9100 --log-level warn
+
+# Levels accepted: debug | info | warn | error
+```
+
+Consumer verbs inherit `slog` and emit operational lines on stderr (e.g. `emberplus: connected`, `emberplus: GetValue ...`, `emberplus: keep-alive rx`). The level is fixed at INFO unless rebuilt with a different default.
+
+### Errors
+
+| Trigger | Command | Error code | Exit |
+|---|---|---|---|
+| invalid log level | `producer ... --log-level loud` | (usage error) | 2 |
+| log file unwritable | (future — see R15) | n/a today | n/a |
+
+### Pending — R15 [#476](https://github.com/by-openclaw/go-acp/issues/476)
+
+| Capability | Today | After R15 |
+|---|---|---|
+| Verbosity ladder | fixed at INFO unless rebuilt | `-v` / `-vv` / `-vvv` map to debug/trace/dump on every verb |
+| Output format | text only | `--log-format {text\|json\|loki}` — json for SIEM ingestion; loki for Grafana stack per `project_deployment_strategy` |
+| Quiet mode | n/a | `--log-only` suppresses stdout, only logs hit stderr — useful for piping JSON-only output to jq while keeping operational lines visible |
+| Per-package filter | n/a | `--log-pkg emberplus/codec/s101=debug` style scoped levels |
+| Logger sink | stderr only | `--log-file <path>` with rotation hooks (lumberjack) |
+
+Wire shape today (text):
+
+```
+2026-05-17T22:00:00Z INFO emberplus: connected host=127.0.0.1 port=9100
+2026-05-17T22:00:01Z INFO emberplus: walked tree_size=1361 duration=2.7s
+2026-05-17T22:00:02Z WARN emberplus: keep-alive rx_age=12s threshold=30s
+```
+
+Wire shape after R15 (`--log-format json`):
+
+```json
+{"ts":"2026-05-17T22:00:00Z","lvl":"INFO","msg":"connected","host":"127.0.0.1","port":9100,"pkg":"emberplus"}
+{"ts":"2026-05-17T22:00:01Z","lvl":"INFO","msg":"walked","tree_size":1361,"duration_ms":2700,"pkg":"emberplus"}
+```
+
+---
+
+## 15. Provider admin page — R24
+
+### Today (`main`)
+
+**Not implemented.** The producer exposes the wire on `--port 9100` and optionally a Prometheus `/metrics` + `/snapshot.json` on `--metrics-addr :9100` (per top-level CLAUDE.md "Performance + metrics"). There is no operator-facing admin webpage.
+
+### After R24 [#489](https://github.com/by-openclaw/go-acp/issues/489) — locked design (memory `feedback_admin_web_minimal`)
+
+```powershell
+.\bin\dhs.exe producer emberplus serve `
+    --manifest internal/emberplus/testdata/integration-test/manifest/emberplus-integration.json `
+    --port 9100 `
+    --admin-addr 127.0.0.1:9101    # NEW — separate port, loopback-only by default
+```
+
+Hard constraints — non-negotiable per memory:
+
+| Rule | Why |
+|---|---|
+| **Separate port** from the wire listener (`9101` vs `9100`) | Wire frames stay on their own socket; admin traffic can be firewalled independently |
+| **Static HTML5 only** — zero JS, zero CDN | No client-side code = no XSS surface; nothing to update for vendor-CVE noise |
+| **Read-only** — no forms, no buttons, no POST endpoints | Inspection only; mutations go through R25 admin verbs on a local socket (see §16) |
+| **CSP `default-src 'none'; style-src 'self'`** | Browser refuses to load scripts even if injected |
+| **Loopback-only by default** — `--admin-bind 127.0.0.1` | Operator must opt-in to network exposure |
+| **Zero third-party deps** — no Bootstrap, no Tailwind, no React | Bundle is a single .html with embedded `<style>` block |
+
+What the page surfaces (read-only):
+
+| Section | Content |
+|---|---|
+| Sessions | one row per live S101 session: peer host:port · `connectedAt` · `lastRX` · subscribed stream IDs · path filters |
+| Streamers | active stream IDs · subscriber count · last frame timestamp |
+| Compliance | profile classification + event counter table |
+| Metrics | rx/tx frames + bytes + latency p50/p95/p99 (mirrors `/metrics` content in HTML) |
+| Manifest | resolved device name + slot bindings + DM hot-load source |
+
+### Local-socket CLI (also R24)
+
+```powershell
+# Inspect sessions without the webpage
+.\bin\dhs.exe producer emberplus admin --socket /var/run/dhs-emberplus.sock sessions
+
+# Output: tabular session list (same data the admin page renders)
+```
+
+### Errors
+
+| Trigger | Command | Error code | Exit |
+|---|---|---|---|
+| port conflict | `producer ... --admin-addr 127.0.0.1:9100` (same as wire) | `validation:admin-port-conflict` | 2 |
+| network bind without opt-in | `producer ... --admin-addr 0.0.0.0:9101` (without `--admin-allow-external`) | `validation:admin-bind-external-blocked` | 2 |
+| socket unwritable | `admin --socket /no/perm.sock sessions` | `transport:report-target-unwritable` | 1 |
+
+---
+
+## 16. Runtime admin verbs — R25
+
+### Today (`main`)
+
+**Not implemented.** Every producer toggle (broadcasts gate, fuzz verb, log level) requires a producer restart today.
+
+### After R25 [#490](https://github.com/by-openclaw/go-acp/issues/490) — hot-reload via local socket
+
+```powershell
+# Toggle broadcasts gate without restarting
+.\bin\dhs.exe producer emberplus admin --socket /var/run/dhs-emberplus.sock `
+    set broadcasts off
+
+# Bump log level live
+.\bin\dhs.exe producer emberplus admin --socket /var/run/dhs-emberplus.sock `
+    set log-level debug
+
+# Show current admin state
+.\bin\dhs.exe producer emberplus admin --socket /var/run/dhs-emberplus.sock `
+    get state
+```
+
+Surface: every flag that today requires restart becomes a `set <key> <value>` on the admin socket. State changes are appended to the producer's slog feed at INFO level (`admin set broadcasts=off requested-by=<peer>`) so operations have an audit trail.
+
+### Errors
+
+| Trigger | Command | Error code | Exit |
+|---|---|---|---|
+| unknown key | `admin set bogus on` | `plugin:admin-unknown-key` | 2 |
+| invalid value | `admin set broadcasts maybe` | `validation:invalid-bool` | 2 |
+| socket not listening | (producer not running) | `transport:dial-failed` | 1 |
+| read-only key | `admin set protocol-version 2` (immutable at runtime) | `plugin:admin-readonly-key` | 2 |
 
 ---
 
@@ -723,31 +934,33 @@ Current state on `main`. ✅ working, 🟡 partial, ❌ not implemented.
 
 | R# | Issue | Status | Scope |
 |---|---|---|---|
-| R1 | [#468](https://github.com/by-openclaw/go-acp/issues/468) | open | layered error-code taxonomy (covers exit-code mapping per error class) |
+| R1 | [#468](https://github.com/by-openclaw/go-acp/issues/468) | **live** (#491–#498) | layered error-code taxonomy (covers exit-code mapping per error class) |
 | R2 | n/a — this doc | folded | runbook prose (verb-by-verb walkthrough — this doc) |
 | R3 | n/a — this doc | folded | runbook error coverage (each verb's Errors table) |
-| R4 | [#461](https://github.com/by-openclaw/go-acp/issues/461) | open + comment | export/import round-trip + `--dry-run` + `--scope` + per-type tally — full spec in [`runbook/export-import.md`](runbook/export-import.md) |
-| R5b | [#469](https://github.com/by-openclaw/go-acp/issues/469) | open | standalone `tree` verb + PlantUML |
-| R6 | [#470](https://github.com/by-openclaw/go-acp/issues/470) | open | `info` reads DTD version from device (kills the "emberplus v1" line) |
+| R4 | [#461](https://github.com/by-openclaw/go-acp/issues/461) | 🟡 pending | export/import round-trip + `--dry-run` + `--scope` + per-type tally — full spec in [`runbook/export-import.md`](runbook/export-import.md). More complex than ACP1/ACP2 (Glow has Matrix + Function + Template + enumMap surfaces) |
+| R5b | [#469](https://github.com/by-openclaw/go-acp/issues/469) | ✅ **landed [#503](https://github.com/by-openclaw/go-acp/pull/503)** — awaiting batch verify | standalone `tree` verb + PlantUML |
+| R6 | [#470](https://github.com/by-openclaw/go-acp/issues/470) | ✅ **landed [#500](https://github.com/by-openclaw/go-acp/pull/500)** — awaiting batch verify | `info` reads DTD version from device (replaces "emberplus v1" line) |
 | R7 | n/a — this doc | folded | runbook prose continued |
-| R8 | [#471](https://github.com/by-openclaw/go-acp/issues/471) | open | service installer epic (per-OS) |
-| R9 | [#472](https://github.com/by-openclaw/go-acp/issues/472) | open | provider stream idle-TTL eviction (no-keepalive → unsub streams) |
-| R10 | [#478](https://github.com/by-openclaw/go-acp/issues/478) | **landed [#479](https://github.com/by-openclaw/go-acp/pull/479)** | `stream --id` CSV multi-subscribe |
-| R11 | [#482](https://github.com/by-openclaw/go-acp/issues/482) | open | `invoke --format human` pretty-prints `getSalvo` result |
-| R12 | [#473](https://github.com/by-openclaw/go-acp/issues/473) | open | `validate --lua` via tshark — see [`runbook/validate.md`](runbook/validate.md) |
-| R13 | [#474](https://github.com/by-openclaw/go-acp/issues/474) | open | `bench` RFC 2544 + cold-start + recovery; expanded scope: glow / function / stream / transport per-op-kind profiles |
-| R14 | [#475](https://github.com/by-openclaw/go-acp/issues/475) | open | `--ensure {present\|absent\|dryrun}` (Ansible) |
-| R15 | [#476](https://github.com/by-openclaw/go-acp/issues/476) | open | `-v` ladder + `--log-format {text\|json\|loki}` + `--log-only` |
-| R16 | [#483](https://github.com/by-openclaw/go-acp/issues/483) | open | `set` range / step round + enum-by-label client-side validation |
-| R17 | folded into R8 | pending | per-OS firewall rules + runas-admin |
-| R18 | [#477](https://github.com/by-openclaw/go-acp/issues/477) | open | bidirectional mDNS on `_ember._tcp.local.` (consumer + provider) |
-| R19 | [#484](https://github.com/by-openclaw/go-acp/issues/484) | open | audit pass — consumer ↔ provider parity per use case + error-code surface |
-| R20 | [#485](https://github.com/by-openclaw/go-acp/issues/485) | open | per-protocol use-case matrix at `docs/protocols/use-cases/<proto>.md` |
-| R21 | [#486](https://github.com/by-openclaw/go-acp/issues/486) | open | `--path` accepts numeric OID alongside dotted label (per memory `project_path_by_id`) |
-| R22 | [#487](https://github.com/by-openclaw/go-acp/issues/487) | open | `profile` enhancements: per-event-kind + JSON + `--since` + `--by-session` + `--show-events` |
-| R23 | [#488](https://github.com/by-openclaw/go-acp/issues/488) | open | `validate --report <path.md\|path.json>` structured report |
-| R24 | [#489](https://github.com/by-openclaw/go-acp/issues/489) | open | provider session inventory — local-socket CLI + minimal HTML5 admin page on separate port |
-| R25 | [#490](https://github.com/by-openclaw/go-acp/issues/490) | open | provider runtime admin verbs — hot-reload toggles via local socket |
+| R8 | [#471](https://github.com/by-openclaw/go-acp/issues/471) | 🟡 pending | service installer epic (per-OS) + firewall rules + runas-admin (folds R17) |
+| R9 | [#472](https://github.com/by-openclaw/go-acp/issues/472) | 🟡 pending | provider stream idle-TTL eviction (no-keepalive → unsub streams) |
+| R10 | [#478](https://github.com/by-openclaw/go-acp/issues/478) | ✅ **landed [#479](https://github.com/by-openclaw/go-acp/pull/479)** — awaiting batch verify | `stream --id` CSV multi-subscribe |
+| R11 | [#482](https://github.com/by-openclaw/go-acp/issues/482) | ✅ **landed [#499](https://github.com/by-openclaw/go-acp/pull/499)** — awaiting batch verify | `invoke --format human` pretty-prints `getSalvo` result |
+| R12 | [#473](https://github.com/by-openclaw/go-acp/issues/473) | 🟡 pending | `validate --lua` via tshark — see [`runbook/validate.md`](runbook/validate.md) |
+| R13 | [#474](https://github.com/by-openclaw/go-acp/issues/474) | 🟡 pending | `bench` RFC 2544 + cold-start + recovery; expanded scope: glow / function / stream / transport per-op-kind profiles |
+| R14 | [#475](https://github.com/by-openclaw/go-acp/issues/475) | 🟡 pending | `--ensure {present\|absent\|dryrun}` (Ansible) |
+| R15 | [#476](https://github.com/by-openclaw/go-acp/issues/476) | 🟡 pending | `-v` ladder + `--log-format {text\|json\|loki}` + `--log-only` — **see [§14 Logging](#14-logging--current-state--r15)** |
+| R16 | [#483](https://github.com/by-openclaw/go-acp/issues/483) | ✅ **landed (bundled into [#503](https://github.com/by-openclaw/go-acp/pull/503))** — awaiting batch verify | `set` range / step round + enum-by-label client-side validation |
+| R17 | folded into R8 | folded | per-OS firewall rules + runas-admin (now part of R8 epic) |
+| R18 | [#477](https://github.com/by-openclaw/go-acp/issues/477) | 🟡 pending | bidirectional mDNS on `_ember._tcp.local.` (consumer + provider) |
+| R19 | [#484](https://github.com/by-openclaw/go-acp/issues/484) | 🟡 pending | audit pass — consumer ↔ provider parity per use case + error-code surface |
+| R20 | [#485](https://github.com/by-openclaw/go-acp/issues/485) | 🟡 pending | per-protocol use-case matrix at `docs/protocols/use-cases/<proto>.md` |
+| R21 | [#486](https://github.com/by-openclaw/go-acp/issues/486) | ✅ **landed [#501](https://github.com/by-openclaw/go-acp/pull/501)** — awaiting batch verify | `--path` accepts numeric OID alongside dotted label (per memory `project_path_by_id`) |
+| R22 | [#487](https://github.com/by-openclaw/go-acp/issues/487) | 🟡 pending | `profile` enhancements: per-event-kind + JSON + `--since` + `--by-session` + `--show-events` |
+| R23 | [#488](https://github.com/by-openclaw/go-acp/issues/488) | 🟡 pending | `validate --report <path.md\|path.json>` structured report |
+| R24 | [#489](https://github.com/by-openclaw/go-acp/issues/489) | 🟡 pending | provider session inventory — local-socket CLI + minimal HTML5 admin page on separate port — **see [§15 Admin web](#15-provider-admin-page--r24)** |
+| R25 | [#490](https://github.com/by-openclaw/go-acp/issues/490) | 🟡 pending | provider runtime admin verbs — hot-reload toggles via local socket — **see [§16 Admin verbs](#16-runtime-admin-verbs--r25)** |
+
+**Summary: 6 landed + awaiting your batch verify · 12 pending implementation · R1 fully live (8 PRs).** Issues stay OPEN per memory `feedback_no_auto_close_keywords` until codeowner closes after live runbook walk.
 
 ---
 
