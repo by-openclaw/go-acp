@@ -586,7 +586,7 @@ type MatrixChange struct {
 type EventFunc func(Event)
 
 // Protocol is the only interface the rest of the system sees. Every plugin
-// in internal/protocol/{name}/ implements this.
+// in internal/consumer/{name}/ implements this.
 type Protocol interface {
 	// Connect establishes the transport to the device. For ACP1 UDP this
 	// just binds and peer-filters the socket; for TCP/AN2 it completes the

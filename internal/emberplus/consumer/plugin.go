@@ -676,7 +676,7 @@ func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consu
 // confirming announce. Returns the confirmed value (may differ from
 // val when the provider coerces) and an error describing anomalies.
 //
-// Error semantics (see internal/protocol/errors.go):
+// Error semantics (see internal/consumer/errors.go):
 //
 //   - consumer.ErrNotConnected → session is dead; no wire traffic sent.
 //     Returns the last known value from the tree.

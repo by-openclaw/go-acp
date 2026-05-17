@@ -57,7 +57,7 @@ func (h *hotPlugEnricher) printf(format string, a ...any) {
 
 // seederIface is the optional contract a plugin satisfies when it
 // supports DM-library seeding. ACP1 satisfies it via Plugin.SeedFromDM.
-// Defined here (in the watch verb) rather than in internal/protocol so
+// Defined here (in the watch verb) rather than in internal/consumer so
 // that the protocol/ tier stays free of export.* imports.
 type seederIface interface {
 	SeedFromDM(slot int, snap *export.Snapshot) error

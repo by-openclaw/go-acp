@@ -4,7 +4,7 @@
 //
 // Every transport honours context.Context cancellation and exposes an
 // explicit per-call deadline. That is the only way the ACP1 retry loop
-// in internal/protocol/acp1/client.go can implement spec-compliant
+// in internal/consumer/acp1/client.go can implement spec-compliant
 // transaction timeouts without racing the socket read.
 package transport
 

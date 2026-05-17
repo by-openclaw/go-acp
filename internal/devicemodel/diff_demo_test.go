@@ -16,7 +16,7 @@ import (
 // extracted from the simulator's nine unique cards. Surfaces per-slot
 // Added/Removed/Changed object labels for every cross-pair.
 //
-// Run with `go test ./internal/dmlib/... -v -run TestDM_Diff_LiveCapture`.
+// Run with `go test ./internal/devicemodel/... -v -run TestDM_Diff_LiveCapture`.
 // Skips unless the captured fixtures exist (i.e. only meaningful after
 // the integration extraction has run).
 func TestDM_Diff_LiveCapture(t *testing.T) {

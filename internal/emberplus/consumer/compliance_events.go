@@ -11,7 +11,7 @@ package emberplus
 // and in docs/protocols/schema.md §6. Adding a new label is an API
 // change: downstream tooling may aggregate by key.
 //
-// The generic Profile counter lives in internal/protocol/compliance/.
+// The generic Profile counter lives in internal/consumer/compliance/.
 const (
 	// NonQualifiedElement fires when a provider delivers a Node /
 	// Parameter / Matrix / Function without a RELATIVE-OID path,

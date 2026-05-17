@@ -10,7 +10,7 @@ import "dhs/internal/tsl/codec"
 //
 // Authoritative spec: internal/tsl/assets/tsl-umd-consumer.txt.
 //
-// The generic Profile counter lives in internal/protocol/compliance/.
+// The generic Profile counter lives in internal/consumer/compliance/.
 // Classification:
 //   - strict  : zero events fired this session
 //   - partial : one or more events fired, all within tolerance

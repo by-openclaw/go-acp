@@ -1,5 +1,5 @@
 // Package template is a stub for a new protocol plugin.
-// Copy this directory to internal/protocol/{name}/ and implement.
+// Copy this directory to internal/consumer/{name}/ and implement.
 package template
 
 import (

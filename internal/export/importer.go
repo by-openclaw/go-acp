@@ -91,7 +91,7 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 
 	// Optional offline pre-flight check. Plugins that can validate a
 	// (req, val) pair without a wire send implement ValueValidator;
-	// see internal/protocol/value_validator.go. ACP2 does — uses a
+	// see internal/consumer/value_validator.go. ACP2 does — uses a
 	// single get_object to catch phantom obj-ids before SetValue, and
 	// rejects enum values outside the options list.
 	validator, _ := plug.(consumer.ValueValidator)

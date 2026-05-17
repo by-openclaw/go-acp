@@ -9,7 +9,7 @@ package probelsw02p
 //
 //	internal/probel-sw02p/assets/probel-sw02/SW-P-02_issue_26.txt
 //
-// The generic Profile counter lives in internal/protocol/compliance/.
+// The generic Profile counter lives in internal/consumer/compliance/.
 // Aggregated across every accepted session since Serve started.
 const (
 	// Spec §3.1 (Framing): inbound frame with bad checksum. The session

@@ -1,7 +1,7 @@
 // Package acp2 is the ACP2 provider plugin — it serves a canonical
 // tree.json as an ACP2 device over AN2/TCP port 2072.
 //
-// Symmetric to the consumer at internal/protocol/acp2. Reuses the
+// Symmetric to the consumer at internal/consumer/acp2. Reuses the
 // consumer's AN2 framer, ACP2 codec, and property codec verbatim
 // (all three are bidirectional by design). Adds:
 //
