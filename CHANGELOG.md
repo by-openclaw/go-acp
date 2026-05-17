@@ -45,6 +45,18 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.12.0](https://github.com/by-openclaw/go-acp/compare/v0.11.0...v0.12.0) (2026-05-17)
+
+
+### Features
+
+* **emberplus:** [#438](https://github.com/by-openclaw/go-acp/issues/438) DM-cache parity + provider hardening + integration demo verify (refs [#438](https://github.com/by-openclaw/go-acp/issues/438)) ([#441](https://github.com/by-openclaw/go-acp/issues/441)) ([374dc32](https://github.com/by-openclaw/go-acp/commit/374dc3286189e5ee42b2493f94f02ea0c8e09797))
+
+
+### Bug Fixes
+
+* **emberplus/consumer:** stream subscription on DTD &lt;=2.31 providers (refs [#436](https://github.com/by-openclaw/go-acp/issues/436)) ([#437](https://github.com/by-openclaw/go-acp/issues/437)) ([28bfbcf](https://github.com/by-openclaw/go-acp/commit/28bfbcf217d2498b675b6d99ec51f3c8a51d4b2f))
+
 ## [0.11.0](https://github.com/by-openclaw/go-acp/compare/v0.10.0...v0.11.0) (2026-05-14)
 
 
