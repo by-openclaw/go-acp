@@ -119,10 +119,14 @@ function SignalParams($num, $ident, $path, $oid, $signalCount) {
 }
 
 # ---------------- 1. identity-strict ----------------
+# dtdVersion advertises the Ember+ DTD level the provider implements
+# (per spec §2 DTD). dhs ships DTD 2.60 only (per internal/emberplus/CLAUDE.md
+# "DTD 2.60 only — no older DTDs").
 $identityRoot = NodeOf 0 "identity" "identity" "1.0" @(
-    StringParam 1 "product"  "identity.product"  "1.0.1" "dhs-emberplus-integration"
-    StringParam 2 "company"  "identity.company"  "1.0.2" "BY-Systems"
-    StringParam 3 "version"  "identity.version"  "1.0.3" "1.0.0"
+    StringParam 1 "product"    "identity.product"    "1.0.1" "dhs-emberplus-integration"
+    StringParam 2 "company"    "identity.company"    "1.0.2" "BY-Systems"
+    StringParam 3 "version"    "identity.version"    "1.0.3" "1.0.0"
+    StringParam 4 "dtdVersion" "identity.dtdVersion" "1.0.4" "2.60"
 )
 Save-DM "identity-strict" "1.0.0" $identityRoot
 
@@ -176,15 +180,18 @@ function BuildMatrixSubtree($rootIdent, $rootOid, $matrixType, $tgtCount, $srcCo
     NodeOf 1 $rootIdent $rootIdent $rootOid $children
 }
 
-Save-DM "oneToN-strict"  "1.0.0" (BuildMatrixSubtree "oneToN"  "1.1" "oneToN"  4 4 @(2) @{})
-Save-DM "oneToOne-strict" "1.0.0" (BuildMatrixSubtree "oneToOne" "1.2" "oneToOne" 4 4 @()  @{})
+# 16x16 per integration-test scope refresh — Pri+Sec labels, source-exclusive
+# oneToOne (provider applyConnection steals the source from any prior target
+# on Connect/Absolute), oneToN with one locked target preserved (target 2).
+Save-DM "oneToN-strict"   "1.0.0" (BuildMatrixSubtree "oneToN"   "1.1" "oneToN"   16 16 @(2) @{})
+Save-DM "oneToOne-strict" "1.0.0" (BuildMatrixSubtree "oneToOne" "1.2" "oneToOne" 16 16 @()  @{})
 
 # ---------------- 4. nToN-strict (4x4, 2 label levels, per-XPT gain via parametersLocation) ----------------
 # parametersLocation = "1.3.3" -> a Node tree with per-target/per-source/gain Parameter.
 $nTNRoot = "nToN"
 $nTNOid = "1.3"
 $paramsBase = "$nTNOid.3"
-$tgtCount = 4; $srcCount = 4
+$tgtCount = 16; $srcCount = 16
 
 $paramTargets = @()
 for ($t = 0; $t -lt $tgtCount; $t++) {
@@ -205,11 +212,14 @@ $nTNChildren = @(
     (SignalParams 6 "sourceParams" "$nTNRoot.sourceParams" "$nTNOid.6" $srcCount)
 )
 
+# Initial connections exercise multi-source-per-target (the N-to-N feature)
+# across a few targets, plus an unrouted target and a fully populated one.
 $nTNConns = @(
-    [ordered]@{ target = 0; sources = @(0,1); operation = "absolute"; disposition = "tally"; locked = $false }
-    [ordered]@{ target = 1; sources = @(1,2); operation = "absolute"; disposition = "tally"; locked = $false }
-    [ordered]@{ target = 2; sources = @(2);   operation = "absolute"; disposition = "tally"; locked = $false }
-    [ordered]@{ target = 3; sources = @();    operation = "absolute"; disposition = "tally"; locked = $false }
+    [ordered]@{ target = 0;  sources = @(0,1,2);   operation = "absolute"; disposition = "tally"; locked = $false }
+    [ordered]@{ target = 1;  sources = @(3,4);     operation = "absolute"; disposition = "tally"; locked = $false }
+    [ordered]@{ target = 5;  sources = @(5,6,7,8); operation = "absolute"; disposition = "tally"; locked = $false }
+    [ordered]@{ target = 7;  sources = @(7);       operation = "absolute"; disposition = "tally"; locked = $false }
+    [ordered]@{ target = 15; sources = @();        operation = "absolute"; disposition = "tally"; locked = $false }
 )
 $tgtsArr = @(); for ($i=0; $i -lt $tgtCount; $i++) { $tgtsArr += [ordered]@{ number = $i } }
 $srcsArr = @(); for ($i=0; $i -lt $srcCount; $i++) { $srcsArr += [ordered]@{ number = $i } }
@@ -218,8 +228,8 @@ $nTNMatrix = [ordered]@{
     isOnline = $true; access = "readWrite"
     type = "nToN"; mode = "linear"
     targetCount = $tgtCount; sourceCount = $srcCount
-    maximumTotalConnects = 16
-    maximumConnectsPerTarget = 2
+    maximumTotalConnects = 64
+    maximumConnectsPerTarget = 4
     parametersLocation = $paramsBase
     gainParameterNumber = 1
     labels = @(
@@ -235,12 +245,17 @@ $nTNMatrix = [ordered]@{
 $nTNChildren += $nTNMatrix
 Save-DM "nToN-strict" "1.0.0" (NodeOf 3 $nTNRoot $nTNRoot $nTNOid $nTNChildren)
 
-# ---------------- 5. dynamic-strict (1000x1000 declared, 10 sparse signals) ----------------
+# ---------------- 5. dynamic-strict (128x128 declared, 16 sparse signals with gaps) ----------------
+# Per integration-test scope: 128x128 declared capacity but only 16
+# sparse targets/sources actually present, demonstrating the "gap"
+# pattern (real dynamic matrices declare large index space but only a
+# fraction has live signals). Sparse indices are picked to fall across
+# the index range with deliberate gaps between adjacent declared signals.
 $dynRoot = "dynamic"
 $dynOid = "1.4"
-$dynSparseTgts = @(0, 50, 137, 200, 350, 401, 500, 750, 888, 999)
-$dynSparseSrcs = @(0, 50, 137, 200, 350, 401, 500, 750, 888, 999)
-$dynTgtCount = 1000; $dynSrcCount = 1000
+$dynSparseTgts = @(0, 5, 17, 24, 31, 42, 55, 64, 73, 86, 99, 104, 111, 119, 124, 127)
+$dynSparseSrcs = @(0, 5, 17, 24, 31, 42, 55, 64, 73, 86, 99, 104, 111, 119, 124, 127)
+$dynTgtCount = 128; $dynSrcCount = 128
 
 # Sparse label levels — Node trees containing only the declared signals
 function SparseLabelLevel($num, $ident, $path, $oid, $tgtNums, $srcNums, $prefix) {
@@ -295,18 +310,21 @@ $dynChildren = @(
 
 $dynTgtsArr = @(); foreach ($n in $dynSparseTgts) { $dynTgtsArr += [ordered]@{ number = $n } }
 $dynSrcsArr = @(); foreach ($n in $dynSparseSrcs) { $dynSrcsArr += [ordered]@{ number = $n } }
-# Seed a few connections among the sparse signals
+# Seed a few connections among the sparse signals — multi-src per target
+# (the N-to-N feature), plus an unrouted target, plus one locked target.
 $dynConns = @(
-    [ordered]@{ target = 0;   sources = @(0);          operation = "absolute"; disposition = "tally"; locked = $false }
-    [ordered]@{ target = 137; sources = @(401, 750);   operation = "absolute"; disposition = "tally"; locked = $false }
-    [ordered]@{ target = 888; sources = @(999);        operation = "absolute"; disposition = "tally"; locked = $true  }
+    [ordered]@{ target = 0;   sources = @(0);            operation = "absolute"; disposition = "tally"; locked = $false }
+    [ordered]@{ target = 17;  sources = @(5, 24, 42);    operation = "absolute"; disposition = "tally"; locked = $false }
+    [ordered]@{ target = 73;  sources = @(86, 99);       operation = "absolute"; disposition = "tally"; locked = $false }
+    [ordered]@{ target = 99;  sources = @(99);           operation = "absolute"; disposition = "tally"; locked = $true  }
+    [ordered]@{ target = 127; sources = @();             operation = "absolute"; disposition = "tally"; locked = $false }
 )
 $dynMatrix = [ordered]@{
     number = 3; identifier = "matrix"; path = "$dynRoot.matrix"; oid = "$dynOid.3"
     isOnline = $true; access = "readWrite"
     type = "nToN"; mode = "nonLinear"
     targetCount = $dynTgtCount; sourceCount = $dynSrcCount
-    maximumTotalConnects = 50
+    maximumTotalConnects = 64
     maximumConnectsPerTarget = 4
     parametersLocation = $null
     gainParameterNumber = $null
@@ -363,29 +381,58 @@ $fnChildren = @(
 )
 Save-DM "functions-strict" "1.0.0" (NodeOf 5 $fnRoot $fnRoot $fnOid $fnChildren)
 
-# ---------------- 7. glow-types-strict (all ParameterType + 2 streams) ----------------
+# ---------------- 7. glow-types-strict (all ParameterType + streams id=0 and id>0) ----------------
+# Every ParameterType (spec p.85 enum) with the full attr set per
+# integration-test scope: value + default + min + max + step + factor +
+# format + unit + enumMap (where applicable). Formula is intentionally
+# NOT set — formula evaluation is parked per #70 and providers must not
+# advertise a formula the consumer cannot evaluate.
+#
+# Known viewer-bug surface (Cerebrum + EmberPlusView):
+#   - vOctets is documented broken in both shipping consumers; the
+#     value is captured here for the regression record but operators
+#     should not rely on viewer display for octet round-trip.
+#
+# Streams cover BOTH streamIdentifier=0 (first-class wire value the
+# decoder must not treat as "absent") and streamIdentifier > 0.
 $glowRoot = "types"
 $glowOid  = "1.6"
 $glowChildren = @(
-    # One of each ParameterType (spec p.85 ParameterType enum)
-    IntegerParam 1 "vInteger" "$glowRoot.vInteger" "$glowOid.1" 42      -100 100
-    [ordered]@{ number=2; identifier="vReal";    path="$glowRoot.vReal";    oid="$glowOid.2"; isOnline=$true; access="readWrite"; type="real";    value=3.14;   minimum=-1000.0; maximum=1000.0 }
-    [ordered]@{ number=3; identifier="vString";  path="$glowRoot.vString";  oid="$glowOid.3"; isOnline=$true; access="readWrite"; type="string";  value="hello" }
-    [ordered]@{ number=4; identifier="vBoolean"; path="$glowRoot.vBoolean"; oid="$glowOid.4"; isOnline=$true; access="readWrite"; type="boolean"; value=$true }
-    [ordered]@{ number=5; identifier="vTrigger"; path="$glowRoot.vTrigger"; oid="$glowOid.5"; isOnline=$true; access="write";     type="trigger"; value=$null }
-    [ordered]@{ number=6; identifier="vEnum";    path="$glowRoot.vEnum";    oid="$glowOid.6"; isOnline=$true; access="readWrite"; type="enum";    value=1;
+    [ordered]@{ number=1; identifier="vInteger"; path="$glowRoot.vInteger"; oid="$glowOid.1"; isOnline=$true; access="readWrite"; type="integer";
+                value=[long]42; default=[long]0; minimum=[long](-100); maximum=[long]100; step=[long]1; factor=[long]1; unit="counts" }
+    [ordered]@{ number=2; identifier="vReal";    path="$glowRoot.vReal";    oid="$glowOid.2"; isOnline=$true; access="readWrite"; type="real";
+                value=3.14; default=0.0; minimum=-1000.0; maximum=1000.0; step=0.01; factor=[long]100; format="%.2f"; unit="dB" }
+    [ordered]@{ number=3; identifier="vString";  path="$glowRoot.vString";  oid="$glowOid.3"; isOnline=$true; access="readWrite"; type="string";
+                value="hello"; default="" }
+    [ordered]@{ number=4; identifier="vBoolean"; path="$glowRoot.vBoolean"; oid="$glowOid.4"; isOnline=$true; access="readWrite"; type="boolean";
+                value=$true; default=$false }
+    [ordered]@{ number=5; identifier="vTrigger"; path="$glowRoot.vTrigger"; oid="$glowOid.5"; isOnline=$true; access="write";     type="trigger";
+                value=$null }
+    [ordered]@{ number=6; identifier="vEnum";    path="$glowRoot.vEnum";    oid="$glowOid.6"; isOnline=$true; access="readWrite"; type="enum";
+                value=[long]1; default=[long]0;
                 enumMap=@(
                     [ordered]@{ key="Off";    value=0 }
                     [ordered]@{ key="Low";    value=1 }
                     [ordered]@{ key="Medium"; value=2 }
                     [ordered]@{ key="High";   value=3 }
                 ) }
-    [ordered]@{ number=7; identifier="vOctets";  path="$glowRoot.vOctets";  oid="$glowOid.7"; isOnline=$true; access="readWrite"; type="octets";  value="aGVsbG8=" }
-    # Two stream Parameters with streamIdentifier (spec p.85 [14] streamIdentifier).
-    # Subscribe(30) on these enables the streamer.
-    [ordered]@{ number=10; identifier="vu_left";  path="$glowRoot.vu_left";  oid="$glowOid.10"; isOnline=$true; access="read"; type="real"; value=-60.0;
+    [ordered]@{ number=7; identifier="vOctets";  path="$glowRoot.vOctets";  oid="$glowOid.7"; isOnline=$true; access="readWrite"; type="octets";
+                value="aGVsbG8="; default=""
+                # KNOWN viewer-bug: Cerebrum + EmberPlusView do not render vOctets.
+                # The wire round-trip works; only the UI is broken in the shipping
+                # consumers. Captured here so the regression layer keeps the
+                # wire-faithful encoding alive.
+              }
+    # Stream Parameters covering BOTH streamIdentifier=0 and id>0:
+    #   id=0 — the consumer must not treat the zero literal as "absent"; the
+    #          decoder reads it as a first-class value (spec p.85 [14] is an
+    #          integer; absence is signalled by tag-not-present, not zero).
+    #   id>0 — typical case, used by Lawo / TinyEmber+ fixtures.
+    [ordered]@{ number=10; identifier="vu_zero";  path="$glowRoot.vu_zero";  oid="$glowOid.10"; isOnline=$true; access="read"; type="real"; value=-60.0;
+                minimum=-128.0; maximum=15.0; format="%.2f dB"; streamIdentifier=0 }
+    [ordered]@{ number=11; identifier="vu_left";  path="$glowRoot.vu_left";  oid="$glowOid.11"; isOnline=$true; access="read"; type="real"; value=-60.0;
                 minimum=-128.0; maximum=15.0; format="%.2f dB"; streamIdentifier=1001 }
-    [ordered]@{ number=11; identifier="vu_right"; path="$glowRoot.vu_right"; oid="$glowOid.11"; isOnline=$true; access="read"; type="real"; value=-60.0;
+    [ordered]@{ number=12; identifier="vu_right"; path="$glowRoot.vu_right"; oid="$glowOid.12"; isOnline=$true; access="read"; type="real"; value=-60.0;
                 minimum=-128.0; maximum=15.0; format="%.2f dB"; streamIdentifier=1002 }
 )
 Save-DM "glow-types-strict" "1.0.0" (NodeOf 6 $glowRoot $glowRoot $glowOid $glowChildren)
@@ -420,4 +467,7 @@ Write-Host "wrote $manifestPath ($((Get-Item $manifestPath).Length) bytes)"
 
 Write-Host ""
 Write-Host "DONE. Start producer with:"
-Write-Host "  .\bin\dhs.exe producer emberplus serve --manifest .cache\manifest\emberplus-integration.json --port 9100 --log-level debug"
+Write-Host "  .\bin\dhs.exe producer emberplus serve ``"
+Write-Host "      --manifest internal\emberplus\testdata\integration-test\manifest\emberplus-integration.json ``"
+Write-Host "      --cache-dir internal\emberplus\testdata\integration-test ``"
+Write-Host "      --port 9100 --log-level debug"

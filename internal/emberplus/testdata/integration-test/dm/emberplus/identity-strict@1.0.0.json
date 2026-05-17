@@ -39,6 +39,16 @@
                                       "access":  "read",
                                       "type":  "string",
                                       "value":  "1.0.0"
+                                  },
+                                  {
+                                      "number":  4,
+                                      "identifier":  "dtdVersion",
+                                      "path":  "identity.dtdVersion",
+                                      "oid":  "1.0.4",
+                                      "isOnline":  true,
+                                      "access":  "read",
+                                      "type":  "string",
+                                      "value":  "2.60"
                                   }
                               ]
              },
