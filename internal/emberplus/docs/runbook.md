@@ -112,7 +112,70 @@ Top-level OID map (current integration-test provider):
 | `1.5` | `functions` | builtins |
 | `1.6` | `types` | every ParameterType + 3 streams |
 
-> Today `--path` accepts the dotted label form only. Accepting OIDs in `--path` (e.g. `--path 1.6.1`) so operators can address by either form is pending **R21** (per memory `project_path_by_id`).
+> Today `--path` accepts the dotted label form only. Accepting OIDs in `--path` (e.g. `--path 1.6.1`) so operators can address by either form is pending **R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)** (per memory `project_path_by_id`).
+
+---
+
+## Exit codes & error taxonomy
+
+Today's binary emits free-text error messages on stderr + a coarse exit code. **R1 [#468](https://github.com/by-openclaw/go-acp/issues/468)** locks in a 4-class exit code scheme + a stable `<layer>:<code>` string so operators and scripts can dispatch on the code, not on free-text. The codes shown in every Errors table below are the **post-R1** contract.
+
+### Exit code classes (post R1)
+
+| Exit | Class | When |
+|---|---|---|
+| **0** | success | verb completed; no errors |
+| **1** | protocol error — wire OK but semantic rejection | `matrix:target-locked`, `matrix:cardinality-exceeded`, `emberplus:invocation-failed` |
+| **2** | usage / state error — caller's fault | `validation:*`, `plugin:object-not-found`, `plugin:not-connected` |
+| **3** | wire / decode error — network or peer fault | `transport:*`, `s101:*`, `glow:*`, `session:write-timeout` |
+
+### Layer prefixes
+
+| Prefix | Owned by | Examples |
+|---|---|---|
+| `transport:` | `internal/transport/` + OS sockets | `transport:refused`, `transport:timeout`, `transport:reset` |
+| `s101:` | `internal/emberplus/codec/s101/` | `s101:crc-mismatch`, `s101:bad-escape`, `s101:multi-frame-truncated` |
+| `glow:` | `internal/emberplus/codec/glow/` + `codec/ber/` | `glow:bad-tag`, `glow:bad-length`, `glow:bad-real`, `glow:unknown-application-tag` |
+| `matrix:` | `internal/emberplus/codec/matrix/` | `matrix:cardinality-exceeded`, `matrix:target-locked`, `matrix:max-connects-per-target` |
+| `emberplus:` | `internal/emberplus/consumer/` + `provider/` | `emberplus:invocation-failed`, `emberplus:invocation-failed-with-description` |
+| `validation:` | `internal/consumer/` validation layer | `validation:invalid-integer`, `validation:out-of-range-low`, `validation:invalid-enum-label` |
+| `plugin:` | `internal/<proto>/` plugin state | `plugin:not-connected`, `plugin:not-walked`, `plugin:object-not-found` |
+| `session:` | session-state layer | `session:write-timeout`, `session:write-coerced`, `session:dead` |
+
+### Ember+ doesn't define wire-level error codes
+
+Unlike ACP2 (`stat=1..5`) or HTTP (`4xx/5xx`), the Ember+ wire format carries **no native error codes**. The only error signals on the wire are:
+
+| Wire signal | Meaning |
+|---|---|
+| `InvocationResult.Success=false` | Invoke failed — **no reason code** |
+| `Connection.Disposition=locked` | target locked, write rejected |
+| `offlineElement` marker | element no longer valid (tombstone) |
+| free-text `description` field | sometimes used by providers for human reason |
+
+The `emberplus:*` and `matrix:*` codes are this project's invention layered on top of those signals; operators won't find them in the Ember+ Documentation PDF.
+
+### Scripting dispatch (Ansible / shell)
+
+```powershell
+$out = (.\bin\dhs.exe consumer emberplus set --path types.vInteger --value abc 2>&1)
+switch -Regex ($out) {
+    '^validation:'  { 'caller error — bad input' }
+    '^transport:'   { 'network problem — retry' }
+    '^matrix:'      { 'protocol rejection — investigate' }
+}
+# $LASTEXITCODE is one of 0 / 1 / 2 / 3
+```
+
+```yaml
+# Ansible task example
+- name: gain set
+  command: dhs consumer emberplus set --path ... --value -25
+  register: r
+  failed_when:
+    - r.rc != 0
+    - r.stderr is not search('^validation:invalid-enum-label')   # tolerate one specific code
+```
 
 ---
 
@@ -140,11 +203,11 @@ per-slot status:
 
 ### Errors
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| missing host | `dhs consumer emberplus info --port 9100` | `error: usage: dhs consumer <proto> info <host> [...]` | 2 |
-| connection refused | `dhs consumer emberplus info 127.0.0.1 --port 9999 --timeout 2s` | `s101 framing error: connect 127.0.0.1:9999: ... actively refused it` | 1 |
-| unreachable host | `dhs consumer emberplus info 192.0.2.1 --port 9100 --timeout 2s` | `s101 framing error: ... i/o timeout` | 1 |
+| missing host | `info --port 9100` | (usage error) | 2 |
+| connection refused | `info 127.0.0.1 --port 9999 --timeout 2s` | `transport:refused` | 3 |
+| unreachable host | `info 192.0.2.1 --port 9100 --timeout 2s` | `transport:timeout` | 3 |
 
 ---
 
@@ -166,11 +229,13 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 
 ### Errors
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| connection refused | `walk ... --port 9999` | s101 framing error | 1 |
-| timeout too small | `walk ... --timeout 1ms` | `walk for "walk": context deadline exceeded` | 1 |
-| missing host | `walk --port 9100` | usage error | 2 |
+| connection refused | `walk ... --port 9999` | `transport:refused` | 3 |
+| timeout too small | `walk ... --timeout 1ms` | `transport:timeout` | 3 |
+| missing host | `walk --port 9100` | (usage error) | 2 |
+| bad S101 frame | (corrupted peer) | `s101:crc-mismatch` / `s101:bad-escape` | 3 |
+| unknown Glow tag | (peer emits non-spec tag) | `glow:unknown-application-tag` | 3 |
 
 ---
 
@@ -206,11 +271,13 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 
 ### Errors
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| wrong path | `get ... --path bogus.path.here` | `object not found (tree has 1361 entries)` | 1 |
-| missing required path | `get 127.0.0.1 --port 9100` | usage error | 2 |
-| connection refused | `get ... --port 9999` | s101 framing error | 1 |
+| wrong path | `get ... --path bogus.path.here` | `plugin:object-not-found` | 2 |
+| invalid OID syntax (post R21) | `get ... --path 1..2` | `validation:invalid-oid` | 2 |
+| path resolves to non-Parameter | `get ... --path dhs-emberplus-integration.functions` | `plugin:wrong-kind` | 2 |
+| missing required path | `get 127.0.0.1 --port 9100` | (usage error) | 2 |
+| connection refused | `get ... --port 9999` | `transport:refused` | 3 |
 
 ---
 
@@ -236,16 +303,20 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 
 > Out-of-range / step-mismatch / enum-by-label semantics pending **R16** (not yet filed).
 
-### Errors (post #453)
+### Errors (post #453 + post R16 [#483](https://github.com/by-openclaw/go-acp/issues/483))
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| unparseable int (#445) | `set ... gain --value -25.5` | `validation: value: invalid integer "-25.5"` | 2 |
-| unparseable int (letters) | `set ... gain --value abc` | `validation: value: invalid integer "abc"` | 2 |
-| unparseable real | `set ... vReal --value not-a-float` | `validation: value: invalid real "not-a-float"` | 2 |
-| enum overflow | `set ... vEnum --value 999` | `validation: value: invalid enum index "999"` | 2 |
-| write to read-only stream | `set ... vu_zero --value -10` | protocol error (provider rejects) | 1 |
-| wrong path | `set --path bogus --value 1` | `object not found` | 1 |
+| unparseable int (#445) | `set ... gain --value -25.5` | `validation:invalid-integer` | 2 |
+| unparseable int (letters) | `set ... gain --value abc` | `validation:invalid-integer` | 2 |
+| unparseable real | `set ... vReal --value not-a-float` | `validation:invalid-real` | 2 |
+| enum overflow | `set ... vEnum --value 999` | `validation:invalid-enum-index` | 2 |
+| **out of range low (R16)** | `set ... vInteger --value -200` (min=-100) | `validation:out-of-range-low` | 2 |
+| **out of range high (R16)** | `set ... vInteger --value 200` (max=100) | `validation:out-of-range-high` | 2 |
+| **step misaligned (R16)** | `set ... vReal --value 1.3` (step=0.5) | `validation:step-misaligned` | 2 |
+| **invalid enum label (R16)** | `set ... vEnum --value Bogus` | `validation:invalid-enum-label` | 2 |
+| write to read-only stream | `set ... vu_zero --value -10` | `emberplus:invocation-failed` (provider rejects) | 1 |
+| wrong path | `set --path bogus --value 1` | `plugin:object-not-found` | 2 |
 
 ---
 
@@ -288,11 +359,12 @@ Three event sources, all delivered through the same `watch` feed:
 
 ### Errors
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| connection refused | `watch ... --port 9999` | s101 framing error | 1 |
-| bad path filter | `watch --path bogus` | no events (filter matches nothing); exits clean on Ctrl-C | 0 / 1 |
-| missing host | `watch --port 9100` | usage error | 2 |
+| connection refused | `watch ... --port 9999` | `transport:refused` | 3 |
+| bad path filter | `watch --path bogus` | (no error — filter matches nothing; exits 0 on Ctrl-C) | 0 |
+| missing host | `watch --port 9100` | (usage error) | 2 |
+| connection lost mid-stream | (peer kills TCP) | `transport:reset` | 3 |
 
 ---
 
@@ -338,13 +410,15 @@ Three event sources, all delivered through the same `watch` feed:
 
 ### Errors
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| oneToN over-cardinality | `matrix oneToN --target 0 --sources 1,2 --op absolute` | `matrix validation: oneToN matrix: target 0 would have 2 sources (max 1) [spec p.33]` | 1 |
-| nToN over capacity | `matrix nToN --target 0 --sources 0,1,2,3,4,5 --op absolute` | `matrix validation: nToN matrix: target 0 would have 5 sources (max 4 per target)` | 1 |
-| locked target | `matrix oneToN --target 2 --sources 5 --op absolute` | rejected by provider; tally announce echoes back unchanged with `disposition: locked` | 1 |
-| wrong matrix path | `matrix --path bogus` | `matrix not found at path "bogus"` | 1 |
-| missing target | `matrix ... --sources 1` (no `--target`) | usage error | 2 |
+| oneToN over-cardinality | `matrix oneToN --target 0 --sources 1,2 --op absolute` | `matrix:cardinality-exceeded` | 1 |
+| nToN over capacity | `matrix nToN --target 0 --sources 0,1,2,3,4,5 --op absolute` | `matrix:max-connects-per-target` | 1 |
+| nToN total capacity | (sum exceeds `maxTotalConnects`) | `matrix:max-total-connects` | 1 |
+| locked target | `matrix oneToN --target 2 --sources 5 --op absolute` | `matrix:target-locked` (provider echoes `disposition:locked`) | 1 |
+| wrong matrix path | `matrix --path bogus` | `plugin:object-not-found` | 2 |
+| path resolves to non-Matrix | `matrix --path dhs-emberplus-integration.types.vInteger` | `plugin:wrong-kind` | 2 |
+| missing target | `matrix ... --sources 1` (no `--target`) | (usage error) | 2 |
 
 ---
 
@@ -406,12 +480,14 @@ Function subtree at OID `1.5` carries six builtins:
 
 ### Errors (post #455 / #457)
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| bogus matrixRef | `invoke setLock --args "bogus.path,1,true"` | `invocation 1: success=false` (was silent success pre-#457) | 1 |
-| missing arg | `invoke setLock --args "1.1.3"` | `setLock: need (matrixPath, target, locked)` | 1 |
-| wrong type arg | `invoke setLock --args "1.1.3,abc,true"` | bad arg types | 1 |
-| missing `--path` | `invoke --args "1.1.3,1,true"` | usage error | 2 |
+| bogus matrixRef | `invoke setLock --args "bogus.path,1,true"` | `emberplus:invocation-failed` (provider returns `Success=false`) | 1 |
+| description on failure | (provider returns `Success=false` + description) | `emberplus:invocation-failed-with-description` (description in stderr) | 1 |
+| missing arg | `invoke setLock --args "1.1.3"` | `validation:invocation-args-count` | 2 |
+| wrong type arg | `invoke setLock --args "1.1.3,abc,true"` | `validation:invocation-arg-type` | 2 |
+| missing `--path` | `invoke --args "1.1.3,1,true"` | (usage error) | 2 |
+| `--format bogus` (R11 [#482](https://github.com/by-openclaw/go-acp/issues/482)) | `invoke ... --format bogus` | `validation:invalid-format` | 2 |
 
 ---
 
@@ -455,13 +531,13 @@ Today the operator-visible behavior on an abruptly-killed consumer:
 
 ### Errors
 
-| Case | Command | Error | Exit |
+| Case | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| bad token | `stream ... --id abc` | `validation: --id: bad token "abc"` | 2 |
-| empty token mid-csv | `stream ... --id 0,,1001` | `validation: --id: empty token in "0,,1001"` | 2 |
-| trailing comma | `stream ... --id 0,1001,` | `validation: --id: empty token in "0,1001,"` | 2 |
-| connection refused | `stream ... --port 9999` | s101 framing error | 1 |
-| missing host | `stream --port 9100` | usage error | 2 |
+| bad token | `stream ... --id abc` | `validation:invalid-id-token` | 2 |
+| empty token mid-csv | `stream ... --id 0,,1001` | `validation:invalid-id-token` (empty) | 2 |
+| trailing comma | `stream ... --id 0,1001,` | `validation:invalid-id-token` (empty) | 2 |
+| connection refused | `stream ... --port 9999` | `transport:refused` | 3 |
+| missing host | `stream --port 9100` | (usage error) | 2 |
 
 ---
 
@@ -493,10 +569,13 @@ Today `profile` aggregates into one classification line + an event count. The co
 
 ### Errors
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| connection refused | `profile ... --port 9999` | s101 framing error | 1 |
-| missing host | `profile --port 9100` | usage error | 2 |
+| connection refused | `profile ... --port 9999` | `transport:refused` | 3 |
+| missing host | `profile --port 9100` | (usage error) | 2 |
+| invalid `--format` (R22 [#487](https://github.com/by-openclaw/go-acp/issues/487)) | `profile ... --format yaml` | `validation:invalid-format` | 2 |
+| invalid `--since` (R22) | `profile ... --since 5xx` | `validation:invalid-duration` | 2 |
+| `--by-session` without R24 (R22) | `profile ... --by-session` | `plugin:by-session-unavailable` | 2 |
 
 ---
 
@@ -546,12 +625,12 @@ Layout written:
 
 ### Errors
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| target dir unwritable | `extract ... --out /no/perm/` | `extract: mkdir /no/perm: permission denied` | 1 |
-| missing required flag | `extract ... --product foo` (no `--version`) | usage error | 2 |
-| connection refused | `extract ... --port 9999` | s101 framing error | 1 |
-| invalid direction | `extract ... --direction sideways` | `validation: --direction: must be "in" or "out"` | 2 |
+| target dir unwritable | `extract ... --out /no/perm/` | `transport:report-target-unwritable` | 1 |
+| missing required flag | `extract ... --product foo` (no `--version`) | (usage error) | 2 |
+| connection refused | `extract ... --port 9999` | `transport:refused` | 3 |
+| invalid direction | `extract ... --direction sideways` | `validation:invalid-direction` | 2 |
 
 ---
 
@@ -595,13 +674,13 @@ Today only `matrix` ops are benchable. R13 [#474](https://github.com/by-openclaw
 
 ### Errors
 
-| Trigger | Command | Expected | Exit |
+| Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| missing `--path` | `bench --port 9100 --n 100` | `--path is required` | 1 |
-| n ≤ 0 | `bench ... --n -1` | `--n must be > 0` | 1 |
-| invalid op | `bench ... --op spin` | `op must be connect, absolute, or disconnect` | 1 |
-| matrix path resolves to non-matrix | `bench ... --path dhs-emberplus-integration.types.vInteger` | `bench: target not a Matrix` | 1 |
-| connection refused | `bench ... --port 9999` | s101 framing error | 1 |
+| missing `--path` | `bench --port 9100 --n 100` | (usage error) | 2 |
+| n ≤ 0 | `bench ... --n -1` | `validation:invalid-n` | 2 |
+| invalid op | `bench ... --op spin` | `validation:invalid-op` | 2 |
+| path resolves to non-Matrix | `bench ... --path dhs-emberplus-integration.types.vInteger` | `plugin:wrong-kind` | 2 |
+| connection refused | `bench ... --port 9999` | `transport:refused` | 3 |
 
 ---
 
@@ -635,28 +714,30 @@ Current state on `main`. ✅ working, 🟡 partial, ❌ not implemented.
 | R# | Issue | Status | Scope |
 |---|---|---|---|
 | R1 | [#468](https://github.com/by-openclaw/go-acp/issues/468) | open | layered error-code taxonomy (covers exit-code mapping per error class) |
-| R2 | TBD | folded into this runbook | runbook prose (verb-by-verb walkthrough — this doc) |
-| R3 | TBD | folded into this runbook | runbook error coverage (each verb's Errors table) |
+| R2 | n/a — this doc | folded | runbook prose (verb-by-verb walkthrough — this doc) |
+| R3 | n/a — this doc | folded | runbook error coverage (each verb's Errors table) |
 | R4 | [#461](https://github.com/by-openclaw/go-acp/issues/461) | open + comment | export/import round-trip + `--dry-run` + `--scope` + per-type tally — full spec in [`runbook/export-import.md`](runbook/export-import.md) |
 | R5b | [#469](https://github.com/by-openclaw/go-acp/issues/469) | open | standalone `tree` verb + PlantUML |
 | R6 | [#470](https://github.com/by-openclaw/go-acp/issues/470) | open | `info` reads DTD version from device (kills the "emberplus v1" line) |
-| R7 | TBD | folded into this runbook | runbook prose continued |
+| R7 | n/a — this doc | folded | runbook prose continued |
 | R8 | [#471](https://github.com/by-openclaw/go-acp/issues/471) | open | service installer epic (per-OS) |
 | R9 | [#472](https://github.com/by-openclaw/go-acp/issues/472) | open | provider stream idle-TTL eviction (no-keepalive → unsub streams) |
 | R10 | [#478](https://github.com/by-openclaw/go-acp/issues/478) | **landed [#479](https://github.com/by-openclaw/go-acp/pull/479)** | `stream --id` CSV multi-subscribe |
-| R11 | TBD | not yet filed | `getSalvo` human format `tgt N <- Src [a,b,c]` |
+| R11 | [#482](https://github.com/by-openclaw/go-acp/issues/482) | open | `invoke --format human` pretty-prints `getSalvo` result |
 | R12 | [#473](https://github.com/by-openclaw/go-acp/issues/473) | open | `validate --lua` via tshark — see [`runbook/validate.md`](runbook/validate.md) |
 | R13 | [#474](https://github.com/by-openclaw/go-acp/issues/474) | open | `bench` RFC 2544 + cold-start + recovery; expanded scope: glow / function / stream / transport per-op-kind profiles |
 | R14 | [#475](https://github.com/by-openclaw/go-acp/issues/475) | open | `--ensure {present\|absent\|dryrun}` (Ansible) |
 | R15 | [#476](https://github.com/by-openclaw/go-acp/issues/476) | open | `-v` ladder + `--log-format {text\|json\|loki}` + `--log-only` |
-| R16 | TBD | not yet filed | `set` range/step round + enum-by-label |
+| R16 | [#483](https://github.com/by-openclaw/go-acp/issues/483) | open | `set` range / step round + enum-by-label client-side validation |
 | R17 | folded into R8 | pending | per-OS firewall rules + runas-admin |
 | R18 | [#477](https://github.com/by-openclaw/go-acp/issues/477) | open | bidirectional mDNS on `_ember._tcp.local.` (consumer + provider) |
-| R19 | TBD | not yet filed | audit pass: consumer-vs-provider parity per use case |
-| R20 | TBD | not yet filed | matrix doc at `docs/protocols/use-cases/emberplus.md` |
-| **R21** | TBD | not yet filed | `--path` accepts OID alongside dotted label (per memory `project_path_by_id`) |
-| **R22** | TBD | not yet filed | `profile` verb enhancements: per-event-kind tally + JSON output + history/filter |
-| **R23** | TBD | not yet filed | `validate --report <md\|json>` structured report — see [`runbook/validate.md`](runbook/validate.md) |
+| R19 | [#484](https://github.com/by-openclaw/go-acp/issues/484) | open | audit pass — consumer ↔ provider parity per use case + error-code surface |
+| R20 | [#485](https://github.com/by-openclaw/go-acp/issues/485) | open | per-protocol use-case matrix at `docs/protocols/use-cases/<proto>.md` |
+| R21 | [#486](https://github.com/by-openclaw/go-acp/issues/486) | open | `--path` accepts numeric OID alongside dotted label (per memory `project_path_by_id`) |
+| R22 | [#487](https://github.com/by-openclaw/go-acp/issues/487) | open | `profile` enhancements: per-event-kind + JSON + `--since` + `--by-session` + `--show-events` |
+| R23 | [#488](https://github.com/by-openclaw/go-acp/issues/488) | open | `validate --report <path.md\|path.json>` structured report |
+| R24 | [#489](https://github.com/by-openclaw/go-acp/issues/489) | open | provider session inventory — local-socket CLI + minimal HTML5 admin page on separate port |
+| R25 | [#490](https://github.com/by-openclaw/go-acp/issues/490) | open | provider runtime admin verbs — hot-reload toggles via local socket |
 
 ---
 
