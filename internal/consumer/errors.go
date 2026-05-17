@@ -1,38 +1,55 @@
 package consumer
 
 import (
-	"errors"
 	"fmt"
+
+	"dhs/internal/errcode"
 )
 
-// ErrNotImplemented is returned by plugin stubs for operations a protocol
-// does not support (e.g. Subscribe on a connectionless mode, or any method
-// not defined in the plugin's spec version).
-var ErrNotImplemented = errors.New("protocol: not implemented")
+// Typed sentinels — replace the prior `errors.New` variables. Identical
+// names for caller compatibility; type changes from *errors.errorString
+// to *errcode.Code so the CLI exit dispatcher recognises them.
+//
+// Per memory feedback_error_contract_cross_os — wire shape on stderr:
+//   "<layer>:<code>: <human message>".
+//
+// Class mapping (per R1 #468):
+//   plugin:*   → exit 2 (caller / state errors — "you sent something invalid")
+//   session:*  → exit 1 (runtime — wire interaction problem)
+//
+// ErrWriteCoerced is treated as a runtime error: the wire write succeeded,
+// but the provider returned a coerced value. Callers that want to tolerate
+// coerced writes (clamp / round / enum-remap) can `errors.Is(err,
+// ErrWriteCoerced)` and continue.
 
-// ErrNotConnected is returned when a call requires a live transport and
-// none has been established (or it has been torn down).
-var ErrNotConnected = errors.New("protocol: not connected")
+var (
+	// ErrNotImplemented is returned by plugin stubs for operations a
+	// protocol does not support.
+	ErrNotImplemented = errcode.New(errcode.LayerPlugin, "not-implemented", errcode.ClassUsage)
 
-// ErrUnknownLabel is returned by GetValue/SetValue when the request uses a
-// Label that was never seen by the walker.
-var ErrUnknownLabel = errors.New("protocol: label not found in walker map")
+	// ErrNotConnected is returned when a call requires a live transport
+	// and none has been established (or it has been torn down).
+	ErrNotConnected = errcode.New(errcode.LayerPlugin, "not-connected", errcode.ClassUsage)
 
-// ErrWriteTimeout is returned by SetValue when the set was transmitted
-// but the provider did not echo a confirming announce within the
-// configured write-confirm window. The tree's value stays unchanged.
-var ErrWriteTimeout = errors.New("protocol: write confirmation timeout")
+	// ErrUnknownLabel is returned by GetValue/SetValue when the request
+	// uses a Label that was never seen by the walker.
+	ErrUnknownLabel = errcode.New(errcode.LayerPlugin, "unknown-label", errcode.ClassUsage)
 
-// ErrWriteCoerced is returned by SetValue when the provider announced
-// back a value different from the one requested (clamp, round,
-// enum-remap). The returned Value reflects what the provider actually
-// applied, so the caller can decide to accept or retry.
-var ErrWriteCoerced = errors.New("protocol: write accepted but value coerced")
+	// ErrWriteTimeout is returned by SetValue when the set was
+	// transmitted but the provider did not echo a confirming announce
+	// within the configured write-confirm window.
+	ErrWriteTimeout = errcode.New(errcode.LayerSession, "write-timeout", errcode.ClassRuntime)
 
-// ErrWriteRejected is returned by SetValue when the provider's echo
-// indicates the write was refused (target locked, element offline,
-// access denied). Tree's value stays unchanged.
-var ErrWriteRejected = errors.New("protocol: write rejected by provider")
+	// ErrWriteCoerced is returned by SetValue when the provider
+	// announced back a value different from the one requested.
+	// Callers can opt-in to tolerate via errors.Is.
+	ErrWriteCoerced = errcode.New(errcode.LayerSession, "write-coerced", errcode.ClassRuntime)
+
+	// ErrWriteRejected is returned by SetValue when the provider's
+	// echo indicates the write was refused (target locked, element
+	// offline, access denied).
+	ErrWriteRejected = errcode.New(errcode.LayerSession, "write-rejected", errcode.ClassRuntime)
+)
 
 // DHSError is the root of all protocol-family errors. Both transport-layer
 // and object-layer failures implement this, so call sites can do one
