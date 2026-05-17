@@ -724,7 +724,9 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 	if val.Kind == consumer.KindUnknown {
 		val.Kind = entry.obj.Kind
 	}
-	coerceStringToTyped(&val)
+	if err := coerceStringToTyped(&val); err != nil {
+		return consumer.Value{}, err
+	}
 
 	glowVal := valueToGlow(val)
 
@@ -2292,36 +2294,68 @@ func appendEnumMap(existing []string, em map[int64]string) []string {
 // coerceStringToTyped parses val.Str into the typed field that matches
 // val.Kind. Called when the CLI passes --value as a string but the
 // parameter type is numeric/boolean/enum.
-func coerceStringToTyped(val *consumer.Value) {
+//
+// On parse failure the function returns a *consumer.ValidationError so
+// the CLI exits with status 2 (usage error) and the typed field is NOT
+// silently coerced to the Go zero value. Refs #445 — the previous
+// behaviour silently rewrote "-25.5" → 0 for an integer Parameter,
+// which violates the strict-spec posture in internal/emberplus/CLAUDE.md.
+//
+// KindBool stays permissive ("true"/"1"/"yes" → true; anything else →
+// false) to preserve existing CLI semantics — booleans have no natural
+// invalid form and operators routinely pass "off"/"no"/"0" expecting
+// the obvious mapping.
+func coerceStringToTyped(val *consumer.Value) error {
 	if val.Str == "" || val.Kind == consumer.KindString {
-		return
+		return nil
 	}
 	switch val.Kind {
 	case consumer.KindInt:
-		if n, err := strconv.ParseInt(val.Str, 10, 64); err == nil {
-			val.Int = n
-			val.Str = ""
+		n, err := strconv.ParseInt(val.Str, 10, 64)
+		if err != nil {
+			return &consumer.ValidationError{
+				Field:  "value",
+				Reason: fmt.Sprintf("invalid integer %q", val.Str),
+			}
 		}
+		val.Int = n
+		val.Str = ""
 	case consumer.KindUint:
-		if n, err := strconv.ParseUint(val.Str, 10, 64); err == nil {
-			val.Uint = n
-			val.Str = ""
+		n, err := strconv.ParseUint(val.Str, 10, 64)
+		if err != nil {
+			return &consumer.ValidationError{
+				Field:  "value",
+				Reason: fmt.Sprintf("invalid unsigned integer %q", val.Str),
+			}
 		}
+		val.Uint = n
+		val.Str = ""
 	case consumer.KindFloat:
-		if f, err := strconv.ParseFloat(val.Str, 64); err == nil {
-			val.Float = f
-			val.Str = ""
+		f, err := strconv.ParseFloat(val.Str, 64)
+		if err != nil {
+			return &consumer.ValidationError{
+				Field:  "value",
+				Reason: fmt.Sprintf("invalid real %q", val.Str),
+			}
 		}
+		val.Float = f
+		val.Str = ""
 	case consumer.KindBool:
 		val.Bool = val.Str == "true" || val.Str == "1" || val.Str == "yes"
 		val.Str = ""
 	case consumer.KindEnum:
-		if n, err := strconv.ParseUint(val.Str, 10, 8); err == nil {
-			val.Enum = uint8(n)
-			val.Uint = n
-			val.Str = ""
+		n, err := strconv.ParseUint(val.Str, 10, 8)
+		if err != nil {
+			return &consumer.ValidationError{
+				Field:  "value",
+				Reason: fmt.Sprintf("invalid enum index %q", val.Str),
+			}
 		}
+		val.Enum = uint8(n)
+		val.Uint = n
+		val.Str = ""
 	}
+	return nil
 }
 
 // valueToGlow renders a typed consumer.Value into a Glow-encoder input.
