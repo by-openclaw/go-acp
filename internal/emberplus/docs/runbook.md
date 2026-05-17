@@ -118,16 +118,17 @@ Top-level OID map (current integration-test provider):
 
 ## Exit codes & error taxonomy
 
-Today's binary emits free-text error messages on stderr + a coarse exit code. **R1 [#468](https://github.com/by-openclaw/go-acp/issues/468)** locks in a 4-class exit code scheme + a stable `<layer>:<code>` string so operators and scripts can dispatch on the code, not on free-text. The codes shown in every Errors table below are the **post-R1** contract.
+Today's binary emits free-text error messages on stderr + a coarse exit code. **R1 [#468](https://github.com/by-openclaw/go-acp/issues/468)** locks in the standard Unix exit-code scheme (`0`/`1`/`2`) + a stable `<layer>:<code>: <message>` string in stderr so operators and scripts can dispatch on the code, not on free-text. **Diagnosis lives exclusively in the error string — never in the exit code.** The codes shown in every Errors table below are the **post-R1** contract.
 
-### Exit code classes (post R1)
+### Exit code classes (post R1) — Unix-standard, cross-OS uniform
 
 | Exit | Class | When |
 |---|---|---|
 | **0** | success | verb completed; no errors |
-| **1** | protocol error — wire OK but semantic rejection | `matrix:target-locked`, `matrix:cardinality-exceeded`, `emberplus:invocation-failed` |
-| **2** | usage / state error — caller's fault | `validation:*`, `plugin:object-not-found`, `plugin:not-connected` |
-| **3** | wire / decode error — network or peer fault | `transport:*`, `s101:*`, `glow:*`, `session:write-timeout` |
+| **1** | any runtime error — caller reads stderr for the precise code | `transport:*`, `s101:*`, `glow:*`, `matrix:*`, `emberplus:*`, `session:*` |
+| **2** | usage / state error — Go `flag` parse failure or caller's input fault | `validation:*`, `plugin:object-not-found`, `plugin:not-connected`, missing required flag |
+
+Never `3+`. Cross-OS: PowerShell `$LASTEXITCODE`, Bash `$?`, `cmd.exe %ERRORLEVEL%` all read the same scheme.
 
 ### Layer prefixes
 
@@ -206,8 +207,8 @@ per-slot status:
 | Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
 | missing host | `info --port 9100` | (usage error) | 2 |
-| connection refused | `info 127.0.0.1 --port 9999 --timeout 2s` | `transport:refused` | 3 |
-| unreachable host | `info 192.0.2.1 --port 9100 --timeout 2s` | `transport:timeout` | 3 |
+| connection refused | `info 127.0.0.1 --port 9999 --timeout 2s` | `transport:refused` | 1 |
+| unreachable host | `info 192.0.2.1 --port 9100 --timeout 2s` | `transport:timeout` | 1 |
 
 ---
 
@@ -231,11 +232,11 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 
 | Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| connection refused | `walk ... --port 9999` | `transport:refused` | 3 |
-| timeout too small | `walk ... --timeout 1ms` | `transport:timeout` | 3 |
+| connection refused | `walk ... --port 9999` | `transport:refused` | 1 |
+| timeout too small | `walk ... --timeout 1ms` | `transport:timeout` | 1 |
 | missing host | `walk --port 9100` | (usage error) | 2 |
-| bad S101 frame | (corrupted peer) | `s101:crc-mismatch` / `s101:bad-escape` | 3 |
-| unknown Glow tag | (peer emits non-spec tag) | `glow:unknown-application-tag` | 3 |
+| bad S101 frame | (corrupted peer) | `s101:crc-mismatch` / `s101:bad-escape` | 1 |
+| unknown Glow tag | (peer emits non-spec tag) | `glow:unknown-application-tag` | 1 |
 
 ---
 
@@ -277,7 +278,7 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 | invalid OID syntax (post R21) | `get ... --path 1..2` | `validation:invalid-oid` | 2 |
 | path resolves to non-Parameter | `get ... --path dhs-emberplus-integration.functions` | `plugin:wrong-kind` | 2 |
 | missing required path | `get 127.0.0.1 --port 9100` | (usage error) | 2 |
-| connection refused | `get ... --port 9999` | `transport:refused` | 3 |
+| connection refused | `get ... --port 9999` | `transport:refused` | 1 |
 
 ---
 
@@ -361,10 +362,10 @@ Three event sources, all delivered through the same `watch` feed:
 
 | Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| connection refused | `watch ... --port 9999` | `transport:refused` | 3 |
+| connection refused | `watch ... --port 9999` | `transport:refused` | 1 |
 | bad path filter | `watch --path bogus` | (no error — filter matches nothing; exits 0 on Ctrl-C) | 0 |
 | missing host | `watch --port 9100` | (usage error) | 2 |
-| connection lost mid-stream | (peer kills TCP) | `transport:reset` | 3 |
+| connection lost mid-stream | (peer kills TCP) | `transport:reset` | 1 |
 
 ---
 
@@ -536,7 +537,7 @@ Today the operator-visible behavior on an abruptly-killed consumer:
 | bad token | `stream ... --id abc` | `validation:invalid-id-token` | 2 |
 | empty token mid-csv | `stream ... --id 0,,1001` | `validation:invalid-id-token` (empty) | 2 |
 | trailing comma | `stream ... --id 0,1001,` | `validation:invalid-id-token` (empty) | 2 |
-| connection refused | `stream ... --port 9999` | `transport:refused` | 3 |
+| connection refused | `stream ... --port 9999` | `transport:refused` | 1 |
 | missing host | `stream --port 9100` | (usage error) | 2 |
 
 ---
@@ -571,7 +572,7 @@ Today `profile` aggregates into one classification line + an event count. The co
 
 | Trigger | Command | Error code (post R1) | Exit |
 |---|---|---|---|
-| connection refused | `profile ... --port 9999` | `transport:refused` | 3 |
+| connection refused | `profile ... --port 9999` | `transport:refused` | 1 |
 | missing host | `profile --port 9100` | (usage error) | 2 |
 | invalid `--format` (R22 [#487](https://github.com/by-openclaw/go-acp/issues/487)) | `profile ... --format yaml` | `validation:invalid-format` | 2 |
 | invalid `--since` (R22) | `profile ... --since 5xx` | `validation:invalid-duration` | 2 |
@@ -629,7 +630,7 @@ Layout written:
 |---|---|---|---|
 | target dir unwritable | `extract ... --out /no/perm/` | `transport:report-target-unwritable` | 1 |
 | missing required flag | `extract ... --product foo` (no `--version`) | (usage error) | 2 |
-| connection refused | `extract ... --port 9999` | `transport:refused` | 3 |
+| connection refused | `extract ... --port 9999` | `transport:refused` | 1 |
 | invalid direction | `extract ... --direction sideways` | `validation:invalid-direction` | 2 |
 
 ---
@@ -680,7 +681,7 @@ Today only `matrix` ops are benchable. R13 [#474](https://github.com/by-openclaw
 | n ≤ 0 | `bench ... --n -1` | `validation:invalid-n` | 2 |
 | invalid op | `bench ... --op spin` | `validation:invalid-op` | 2 |
 | path resolves to non-Matrix | `bench ... --path dhs-emberplus-integration.types.vInteger` | `plugin:wrong-kind` | 2 |
-| connection refused | `bench ... --port 9999` | `transport:refused` | 3 |
+| connection refused | `bench ... --port 9999` | `transport:refused` | 1 |
 
 ---
 
