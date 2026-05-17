@@ -6,10 +6,10 @@ entry.
 
 ## Roles
 
-| Role | Who | Authority |
+| Role | Identities | Authority |
 | --- | --- | --- |
-| **Codeowner** | `@yboujraf` (GitHub) = `by-rune` (git author) = `yboujraf@by-systems.be` (email) — same person, three handles | All scope decisions, all PR approvals, all merges, all issue closes. The codeowner approves; the agent never approves itself. Enforced via `.github/CODEOWNERS`. |
-| **DevOps (agent)** | Claude (this agent) | Executes the work: branches, builds, tests, atomic commits, pushes, runs probes, drives the testbed. Never opens PRs or merges or closes issues without explicit codeowner "go" / "approuved" / "ok". |
+| **Codeowner** (human) | GitHub `@yboujraf`, email `yboujraf@by-systems.be`, org BY-SYSTEMS SRL | All scope decisions, all PR approvals, all merges, all issue closes. The codeowner approves; the agent never approves itself. Enforced via `.github/CODEOWNERS`. |
+| **DevOps** (agent) | Claude (this agent), git author `by-rune` | Executes the work: branches, builds, tests, atomic commits, pushes, runs probes, drives the testbed. Never opens PRs or merges or closes issues without explicit codeowner "go" / "approuved" / "ok". Commits land under `by-rune` so `git log` cleanly distinguishes agent work from any human edits. |
 
 Solo dev project — there are no other humans contributing.
 
