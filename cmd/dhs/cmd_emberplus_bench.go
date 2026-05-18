@@ -22,6 +22,7 @@ func runEmberplusBench(ctx context.Context, args []string) error {
 	op := fs.String("op", "connect", "operation per op: connect | absolute | disconnect")
 	targets := fs.Int("targets", 4, "wrap targets in [0, N) — defaults to nToN size")
 	sources := fs.Int("sources", 4, "wrap sources in [0, N) — defaults to nToN size")
+	profile := fs.String("profile", "", "R13 #474: named bench profile. One of rfc2544-throughput (n=10000, op=connect, fast as possible), rfc2544-latency (n=1000, op=absolute, measures per-op tail), rfc2544-recovery (n=500, op=disconnect after burst). Profile overrides --n and --op; v1 sets the defaults, v2 wires the ramp-up + reporting tail. Empty = use --n/--op directly.")
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer emberplus bench <host> --port N --path <matrix.path> --dm <id> [--n 100] [--op connect|absolute|disconnect] [--targets N] [--sources N]")
@@ -33,6 +34,16 @@ func runEmberplusBench(ctx context.Context, args []string) error {
 	}
 	if err := validatePathOrOID(*matrixPath); err != nil {
 		return err
+	}
+	// R13 #474 v1: named profile dispatch. Overrides --n / --op
+	// when set; v2 layers RFC 2544 ramp-up + tail-latency capture.
+	if *profile != "" {
+		pn, pop, perr := resolveBenchProfile(*profile)
+		if perr != nil {
+			return perr
+		}
+		*n = pn
+		*op = pop
 	}
 	if *n <= 0 {
 		return fmt.Errorf("--n must be > 0")
