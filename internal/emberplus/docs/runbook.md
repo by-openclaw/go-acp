@@ -13,7 +13,35 @@
 | **Roles** | dhs as **consumer** (outbound) and **provider** (inbound); both exercised against the integration-test fixture set |
 | **Producer source** | `internal/emberplus/testdata/integration-test/` — manifest + 7 strict DMs (identity, oneToN, oneToOne, nToN, dynamic, functions, glow-types). Regen script: `scripts/emberplus/gen-emberplus-demo-dms.ps1` |
 | **OS** | Windows 11 (primary host); Linux LXCs (Debian/Ubuntu/Rocky) parity |
-| **Out of scope** | mDNS discovery (R18 #477); `health` verb (#300); export/import full round-trip (#461); `validate --lua` (R12 #473) — listed in [Pending R-items](#pending-r-items) |
+| **Out of scope** | (legacy gaps now covered locally — see "Recent additions" below) |
+
+## Recent additions (DOD branch `feat/emberplus-stream-idle-ttl-472`)
+
+The branch carries 16 atomic commits ahead of `main`, all pre-commit
+green, all unit tests passing on Windows 11 + go1.26.2. Per ADR-0027
+no PR is open yet — codeowner builds + tests the binary first, then
+the consolidated PR opens against `main`.
+
+| Issue | What landed | Status |
+| --- | --- | --- |
+| R9 #472 | stream idle-TTL eviction (`--stream-ttl` provider flag + compliance event) | ✅ |
+| R15 #476 | logger ladder `-v / -vv / -vvv / -vvvv` + Loki format + async non-blocking handler + DI audit | ✅ |
+| R22 #487 | `profile --format json + --since + --show-events + --by-session` | ✅ |
+| R23 #488 | `validate --report <md\|json>` markdown + JSON reports | ✅ |
+| R20 #485 | `docs/protocols/use-cases/emberplus.md` use-case matrix + README index | ✅ |
+| R19 #484 | `docs/protocols/audits/emberplus-audit-2026-05-18.md` parity audit | ✅ |
+| #62 | 5 Glow-type fixture dirs scaffolded (binary captures pending live Lawo/DHD/Riedel) | scaffolded |
+| #300 | `health` verb wired both sides (consumer + provider `PeerHealthSnapshot`) | ✅ |
+| R12 #473 | `validate --lua --pcap` (jsonl→pcap synthesis v2) | v1 |
+| R18 #477 | `discover` mDNS via OS dns-sd / avahi-browse (pure-Go mDNS v2) | v1 |
+| R14 #475 | `set --ensure {present\|absent\|dryrun}` Ansible idempotency | v1 (absent v1.5) |
+| R25 #490 | producer admin local socket + `sessions:list` verb | v1 |
+| R24 #489 | static HTML5 admin web page on `--admin-addr` | v1 |
+| R13 #474 | `bench --profile <rfc2544-throughput\|latency\|recovery>` named profiles | v1 |
+| R4 #461 | export/import round-trip Node + Parameter pinned; coverage matrix in tests | baseline |
+
+v1 / v2 split is documented inline in each commit message and in the
+relevant test files / package docs.
 
 Merged + live on `main`:
 
