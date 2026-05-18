@@ -20,7 +20,7 @@ how connectors are built lives here.
 ## Status flow
 
 | Status | Meaning |
-|---|---|
+| --- | --- |
 | `proposed` | under discussion |
 | `accepted` | binding, permanent |
 
@@ -29,7 +29,7 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 ## Index
 
 | ID | Title | Status |
-|---|---|---|
+| --- | --- | --- |
 | [0001](0001-per-connector-binary-and-repo.md) | Per-connector binary and own repo | accepted |
 | [0002](0002-canonical-cli-verbs-flags.md) | Canonical CLI verbs and flags per role | accepted |
 | [0003](0003-license-jwt-eddsa-vault-transit.md) | License JWT-EdDSA signed by Vault Transit | accepted |
@@ -54,7 +54,9 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0022](0022-card-data-model.md) | Card data model — Device/Frame/Slot/Card/DM | accepted |
 | [0023](0023-matrix-entity.md) | Matrix entity — matrix_id/level_id/size/behavior | accepted |
 | [0024](0024-federation-mirror-and-virtual-frame.md) | Federation — mirror frame vs virtual frame | accepted |
-| [0025](0025-per-connector-definition-of-done.md) | Per-connector definition of done (5 deliverables) | proposed |
+| [0025](0025-per-connector-definition-of-done.md) | Per-connector definition of done (six deliverables) | accepted |
+| [0026](0026-agent-communication-style.md) | Agent communication style | proposed |
+| [0027](0027-workflow-contract-dod-windows.md) | Workflow contract during DOD windows | proposed |
 
 ## ADR-0017 parking note
 

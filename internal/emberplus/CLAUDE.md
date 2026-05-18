@@ -57,6 +57,43 @@ TCP
         └── Glow trees: Node / Parameter / Matrix / Function
 ```
 
+## BER REAL — ecosystem reading
+
+X.690 §8.5.7 defines binary REAL as `N × 2^F × B^E` with `N` an
+unsigned integer. **No shipping Ember+ implementation reads it that
+way.** libember-cpp, libember-slim, EmberViewer, EmberPlusView, and
+every vendor controller verified to date read `N` as a normalised
+fraction with the binary point implicit after the leading 1:
+
+```
+value = sign × (N / 2^(bitlen(N)-1)) × B^E × 2^F
+```
+
+This is the "every shipping controller contradicts the spec" exception
+from the root `CLAUDE.md` "Spec-strict, no-workaround posture" — it
+qualifies (two-plus independent in-field implementations verified,
+X.690 §8.5.6 + §8.5.7.3 normalisation supports the fractional reading
+textually).
+
+Implementation:
+
+- Encoder `codec/ber/value.go::EncodeReal` — after IEEE-754
+  decompose + odd-mantissa normalisation, before emitting the wire
+  exponent, `exponent += bits.Len64(mantissa) - 1`.
+- Decoder `codec/ber/value.go::DecodeReal` — mirror:
+  `shift := bits.Len64(mant) - 1; v := sign * float64(mant) *
+  math.Pow(2, float64(exp*baseFactor + scale - shift))`.
+- Test pins: `codec/ber/ber_test.go::TestReal_EcosystemBytes` for
+  byte sequences 50 / 100 / 0.1 / 1 / 2 / 16;
+  `TestReal_RoundTrip` as secondary check.
+- Powers of two emit `mantissa=1, bitlen=1, shift=0` so 1.0 / 2.0 /
+  16.0 wire output is unchanged by the bias — only multi-bit
+  mantissas shift.
+
+No compliance event is fired — this is a wire-format choice
+documented inline, not a per-peer runtime deviation absorbed via
+`compliance.Profile`.
+
 ## GlowDTD tag numbers (APPLICATION class)
 
 ```

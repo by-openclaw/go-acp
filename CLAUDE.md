@@ -16,7 +16,7 @@ ADR wins.
 Foundational ADRs every agent reads first:
 
 | ADR | Topic |
-|---|---|
+| --- | --- |
 | [0001](docs/adr/0001-per-connector-binary-and-repo.md) | per-connector binary + own repo |
 | [0002](docs/adr/0002-canonical-cli-verbs-flags.md) | canonical CLI verbs + flags |
 | [0005](docs/adr/0005-dep-policy.md) | external dependency policy + manifest |
@@ -29,6 +29,16 @@ Foundational ADRs every agent reads first:
 | [0022](docs/adr/0022-card-data-model.md) | card data model — Device/Frame/Slot/Card/DM + manifest |
 | [0023](docs/adr/0023-matrix-entity.md) | matrix entity — matrix_id/level_id/size/behavior |
 | [0024](docs/adr/0024-federation-mirror-and-virtual-frame.md) | federation: mirror frame vs virtual frame |
+| [0025](docs/adr/0025-per-connector-definition-of-done.md) | per-connector definition of done (6 deliverables) |
+| [0026](docs/adr/0026-agent-communication-style.md) | agent communication style (brevity, progress markers, no menus) |
+| [0027](docs/adr/0027-workflow-contract-dod-windows.md) | workflow contract during DOD windows (PR timing override for ADR-0014) |
+
+Operational reference docs (not ADRs but binding repo-tracked sources):
+
+| Doc | Purpose |
+| --- | --- |
+| [`docs/user.md`](docs/user.md) | operator + agent role mapping, host preference |
+| [`docs/testbed.md`](docs/testbed.md) | DMZ VLAN fleet inventory + SSH access mesh |
 
 ---
 
@@ -176,8 +186,6 @@ Consequences:
 - Provider trees use `map[(matrix, level, dst)] → src`, not `[matrix][level][]src`.
 - Benchmarks include a worst-case 65535² tally-dump decode per protocol.
 
-See [project_scale_requirements] in memory.
-
 ---
 
 ## Performance + metrics (every protocol)
@@ -193,9 +201,6 @@ Producer surface: `dhs producer <proto> serve --metrics-addr :9100`
 serves `/metrics` (Prometheus + OpenMetrics) and `/snapshot.json`. CLI
 view: `dhs metrics show`. Full Grafana / Prometheus / Loki stack under
 `docs/deployment/grafana/`.
-
-See [`project_connector_metrics_v2`](.) and
-[`feedback_transport_metrics`](.) in memory for the full contract.
 
 ---
 
@@ -219,8 +224,6 @@ explicit sign-off.
 5. **No hidden state.** No package-level mutable vars outside the
    compile-time registries; cross-cutting concerns thread through
    constructors or `context.Context`.
-
-See [feedback_architecture_principles] in memory.
 
 ---
 
@@ -285,8 +288,6 @@ Install path (manual, one-time per dev machine):
 Install + filter guide in [docs/wireshark.md](docs/wireshark.md). A
 `make install-dissectors` target that copies every
 `internal/*/wireshark/*.lua` into the right place is on the backlog.
-
-See [feedback_wireshark_fully_implemented] in memory.
 
 ---
 
@@ -392,11 +393,7 @@ the salvo path. Neither Commie nor Lawo VSM implement that listener path;
 both update tally exclusively from §3.2.3 cmd 04 broadcasts. Our provider
 emits N × cmd 04 on salvo Set (§3.2.3 literal) and fires
 `probel_salvo_emitted_connected` per slot. Documented in
-`internal/probel-sw08p/CLAUDE.md` "Known deviations from spec" + memory
-entry `feedback_probel_salvo_connected`.
-
-See [feedback_no_workaround, feedback_spec_table_literal,
-feedback_probel_salvo_connected] in memory.
+`internal/probel-sw08p/CLAUDE.md` "Known deviations from spec".
 
 **AMWA NMOS — strict every published version.** For the AMWA NMOS suite
 specifically, no minor AMWA has published is ever "deferred", "out of
@@ -406,7 +403,6 @@ minor in that table is unimplemented today, it is *missing* and gets
 implemented, never reframed as a stable product decision. The only
 legitimate "land when stable" is for AMWA-WIP specs (IS-13, BCP-006-02,
 BCP-006-03, BCP-007-01) which carry no published stable release yet.
-See `feedback_amwa_strict_all_versions` in memory.
 
 ---
 
