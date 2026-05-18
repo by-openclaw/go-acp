@@ -317,18 +317,25 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 ### Happy
 
 ```powershell
+# Set the gain Parameter on nToN target-0 — by dotted path
 .\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.targetParams.0.gain --value -25
-# OID = 1.3.targetParams.0.gain  (numeric form varies by parametersLocation seed)
+# path = dhs-emberplus-integration.nToN.targetParams.0.gain
+# OID  = 1.3.4.0.0    (numeric form derived from parametersLocation seed)
 # confirmed value = -25
 
+# Set the mute Parameter on nToN target-0
 .\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.targetParams.0.mute --value true
+# path = dhs-emberplus-integration.nToN.targetParams.0.mute
+# OID  = 1.3.4.0.1
 # confirmed value = true
 
+# Set an enum Parameter by integer index
 .\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.types.vEnum --value 3
-# OID = 1.6.6
+# path = dhs-emberplus-integration.types.vEnum
+# OID  = 1.6.6
 # confirmed value = 3
 ```
 
@@ -376,7 +383,7 @@ Three independent subscription mechanisms, each kicked in differently:
 | --- | --- |
 | **stream params** | the consumer sends an explicit `Subscribe(30)` per stream OID. `watch` does this on its own as soon as it discovers any Parameter with `streamIdentifier` during its initial walk — no manual step needed. |
 | **glow params** | the provider fan-outs every value-change announce to every connected session, regardless of subscribe state (libember-cpp / Lawo legacy). Open the session → you receive these. |
-| **matrix tally** | the consumer is implicitly subscribed to a matrix as soon as the walker decodes its element (spec p.88 + connect-on-GetDir per `dhs_emberplus.lua` §Matrix). No explicit subscribe call needed; one walk is enough. |
+| **matrix tally** | the consumer is implicitly subscribed to a matrix as soon as the walker decodes its element (Ember+ Documentation v2.50 p.88: "As soon as a consumer issues a GetDirectory command on a matrix object, it implicitly subscribes to matrix connection changes"). No explicit `Subscribe` call needed; one walk is enough. |
 
 The `watch` verb runs a walk on connect (unless `--no-walk` is set)
 specifically so all three mechanisms light up before the first
@@ -404,17 +411,21 @@ until the R9 `--stream-ttl` sweeps it (default 30s); the fresh
 # Watch one stream Parameter
 .\bin\dhs.exe consumer emberplus watch 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.types.vu_zero --streams-only
-# OID = 1.6.10 — only vu_zero updates
+# path = dhs-emberplus-integration.types.vu_zero
+# OID  = 1.6.10   — only vu_zero updates
 
 # Watch a glow Parameter (non-stream) — change-of-value announces
 .\bin\dhs.exe consumer emberplus watch 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.targetParams.0.gain
+# path = dhs-emberplus-integration.nToN.targetParams.0.gain
+# OID  = 1.3.4.0.0
 # Emits whenever target-0 gain changes (set by us or another session)
 
 # Watch matrix tally — every crosspoint connect/disconnect on the matrix
 .\bin\dhs.exe consumer emberplus watch 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.oneToN.matrix
-# OID = 1.1 — tally announces fire on every Connect / Disconnect / Absolute
+# path = dhs-emberplus-integration.oneToN.matrix
+# OID  = 1.1   — tally announces fire on every Connect / Disconnect / Absolute
 ```
 
 ### Errors
@@ -531,13 +542,24 @@ was `false` (unlocked) before we flipped it on". Not "the call failed".
     --args "dhs-emberplus-integration.oneToN.matrix,4,true"
 # invocation 1: success=true · result: [false]
 
-# List locked targets — result is the LIST of locked TARGET indices
-# (not target/source routes; that's setRoute / storeSalvo territory).
+# List locked targets — result is the LIST of locked TARGET INDICES.
+# Locking is a target-only property in the integration-test schema;
+# the lock state does NOT carry "which source was routed when this
+# was locked". To see the source currently routed to each locked
+# target, follow up with the matrix walk (or `watch --path 1.1`).
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.listLocks `
     --args "1.1.3"
-# OID = 1.5.2 — result: [2,3,4]   (targets 2, 3, 4 are currently locked;
-#                                 target 2 was pre-locked from the seed)
+# path = dhs-emberplus-integration.functions.listLocks
+# OID  = 1.5.2
+# result: [2,3,4]
+#   meaning: oneToN targets 2, 3, 4 are currently locked
+#   (target 2 was pre-locked from the seed; targets 3 and 4 were
+#    locked earlier in this session by setLock)
+# To see what those targets are routed FROM, do:
+#   .\bin\dhs.exe consumer emberplus walk 127.0.0.1 --port 9100 `
+#       --path dhs-emberplus-integration.oneToN.matrix
+# and read each locked target's row from the connections list.
 
 # Store salvo — all current connections on oneToN
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
@@ -690,9 +712,10 @@ Full reference — `--format {json|yaml|csv}` matrix, partial-export header, `--
 ```powershell
 .\bin\dhs.exe consumer emberplus extract 127.0.0.1 --port 9100 `
     --manufacturer BY-Systems --product dhs-emberplus-integration `
-    --direction in --version 1.0.0 --out .audit/extract-demo
-# OID = 1 (root) — recursive walk
-# Writes meta.json + wire.pcapng + tree.json under the fixture layout
+    --direction consumer --version 1.0.0 --out .audit/extract-demo
+# path = 1 (root) — recursive walk
+# OID  = 1
+# Writes meta.json + wire.jsonl + tree.json under the fixture layout
 ```
 
 ### Flags
@@ -701,18 +724,24 @@ Full reference — `--format {json|yaml|csv}` matrix, partial-export header, `--
 |---|---|---|
 | `--manufacturer` | Manufacturer string baked into `meta.json` and the cache filename | `BY-Systems` |
 | `--product` | Product / Model name — drives `<Model@SwRev>.json` per ADR-0022 | `dhs-emberplus-integration` |
-| `--direction` | Capture direction from the **consumer's** perspective: `in` = device→consumer (announces, replies); `out` = consumer→device (commands). Stored in `meta.json` so replay tooling knows whether to feed frames forward or reverse | `in` |
-| `--version` | Software revision (SwRev) of the device being captured. Forms the cache filename `<Model@SwRev>.json` per ADR-0022. Multiple SwRev captures coexist side-by-side; the consumer hot-loads by exact match | `1.0.0` |
-| `--out` | Output directory; the triple `meta.json` + `wire.pcapng` + `tree.json` lands inside | `.audit/extract-demo` |
+| `--direction` | How the captured product speaks Ember+ — one of `consumer` (we read it), `provider` (we expose it), `both` (bidirectional), `io` (alias for `both`). Stored in `meta.json` so replay tooling knows the role. **`in` / `out` are NOT accepted** — the verb returns `validation:invalid-direction` (exit 2). | `consumer` |
+| `--version` | Software revision (SwRev) of the device being captured. Forms the cache filename `<Model@SwRev>.json` per ADR-0022. Multiple SwRev captures coexist side-by-side; the consumer hot-loads by exact match. **Required today**; the open follow-up "auto-derive from the device identity Node" is tracked separately — until that lands, the operator passes the version explicitly. | `1.0.0` |
+| `--out` | Output directory; the triple `meta.json` + `wire.jsonl` + `tree.json` lands inside | `.audit/extract-demo` |
+| `--slot` | Slot to walk (default `0`, matches the Ember+ "everything is slot 0" convention) | `0` |
 
 Layout written:
 
 ```
 .audit/extract-demo/
 ├── meta.json     manufacturer + product + version + direction + capturedAt + protocol
-├── wire.pcapng   S101 frames replay-ready in Wireshark with dhs_emberplus.lua loaded
+├── wire.jsonl    S101 frames in the canonical Trame JSONL form (per ADR-0021)
 └── tree.json     decoded Glow tree (same shape as .cache/dm/emberplus/<Model@SwRev>.json)
 ```
+
+`wire.jsonl` replays through `dhs consumer emberplus validate` for
+Go-codec verification or — when a real pcap is needed — through
+`tshark -X lua_script:internal/emberplus/wireshark/dhs_emberplus.lua`
+(R12 #473 `--lua --pcap` path).
 
 ### Errors
 
