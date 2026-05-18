@@ -45,6 +45,8 @@ func TestParseEnsureMode(t *testing.T) {
 }
 
 // TestEnsureReport_Schema verifies the JSON shape matches R14 spec.
+// Uses Decode-back so we don't have to deal with json.Marshal's HTML
+// escape of `>` to `>` — Ansible's json filter decodes either way.
 func TestEnsureReport_Schema(t *testing.T) {
 	r := ensureReport{
 		Verb: "set", Ensure: "present",
@@ -55,18 +57,19 @@ func TestEnsureReport_Schema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	for _, want := range []string{
-		`"verb":"set"`,
-		`"ensure":"present"`,
-		`"changed":true`,
-		`"before":"-25"`,
-		`"after":"-30"`,
-		`"diff":"value: -25 -> -30"`,
+	var got map[string]any
+	if err := json.Unmarshal(buf, &got); err != nil {
+		t.Fatalf("decode: %v\nbuf=%s", err, buf)
+	}
+	for k, want := range map[string]any{
+		"verb": "set", "ensure": "present", "changed": true,
+		"before": "-25", "after": "-30", "diff": "value: -25 -> -30",
 	} {
-		if !strings.Contains(string(buf), want) {
-			t.Errorf("missing %q in: %s", want, buf)
+		if got[k] != want {
+			t.Errorf("key %q = %v; want %v", k, got[k], want)
 		}
 	}
+	_ = strings.Builder{} // keep import live across edits
 }
 
 // TestEnsureFmtDiff verifies the diff string format + empty-on-equal.
