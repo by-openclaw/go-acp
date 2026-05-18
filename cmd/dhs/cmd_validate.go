@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -24,11 +25,13 @@ import (
 // strings follow the `<layer>:<name>: <msg>` shape from R1 #468.
 var _ = errcode.LayerValidation
 
-// R23 #488 validation codes raised by the validate verb.
+// R23 #488 / R12 #473 validation codes raised by the validate verb.
 var (
 	errReportInvalidFormat    = errcode.New(errcode.LayerValidation, "invalid-report-format", errcode.ClassUsage)
 	errReportTargetUnwritable = errcode.New(errcode.LayerTransport, "report-target-unwritable", errcode.ClassRuntime)
 	errInputNotFound          = errcode.New(errcode.LayerTransport, "input-not-found", errcode.ClassRuntime)
+	errTsharkNotFound         = errcode.New(errcode.LayerValidation, "tshark-not-found", errcode.ClassUsage)
+	errLuaPcapRequired        = errcode.New(errcode.LayerValidation, "lua-pcap-required", errcode.ClassUsage)
 )
 
 // validateReport is the machine-readable shape rendered by --report
@@ -79,6 +82,8 @@ func runValidate(ctx context.Context, args []string) error {
 	outParams := fs.String("out-params", "", "optional path: write canonical params dump (csv/json by extension)")
 	stopAt := fs.String("stop-at", "", "optional Trame.Note marker to halt decoding at")
 	report := fs.String("report", "", "R23 #488: write a structured validation report. Path ending in `.md` → Markdown; `.json` → JSON; `-` → stdout (suppresses per-frame stdout). Any other extension → validation:invalid-report-format.")
+	lua := fs.Bool("lua", false, "R12 #473: replay through the project's Wireshark dissector via `tshark -V -X lua_script:<dhs_<proto>.lua>` instead of the Go codec. Requires --pcap (jsonl→pcap synthesis is staged for v2).")
+	pcapPath := fs.String("pcap", "", "R12 #473: pcap/pcapng input for --lua mode (real wire capture). Mutually inclusive with --lua.")
 
 	tramesPath, rest, err := popHost(args)
 	if err != nil {
@@ -86,6 +91,16 @@ func runValidate(ctx context.Context, args []string) error {
 	}
 	if err := fs.Parse(rest); err != nil {
 		return err
+	}
+
+	// R12 #473: --lua short-circuits the Go-codec path. Per spec it
+	// requires tshark on PATH + a real pcap file (jsonl→pcap synthesis
+	// is the v2 enhancement; see help text).
+	if *lua {
+		if *pcapPath == "" {
+			return fmt.Errorf("%w: --lua requires --pcap <file>; jsonl→pcap synthesis pending v2", errLuaPcapRequired)
+		}
+		return runValidateLua(ctx, cf.protocol, *pcapPath)
 	}
 
 	// Resolve the report format before we touch the wire / disk so we
@@ -259,6 +274,39 @@ func renderValidateReport(path string, trames []wiretrace.Trame, r *consumer.Val
 		out.Failures = append(out.Failures, rec)
 	}
 	return out
+}
+
+// runValidateLua replays a pcap through tshark with the project's
+// per-protocol Lua dissector loaded. Pure shell-out — we don't post-
+// process tshark's output, so the operator gets exactly the
+// Wireshark-V text they would from running tshark themselves with
+// the same -X lua_script: invocation.
+//
+// Per R12 #473 spec: jsonl→pcap synthesis is the v2 enhancement;
+// today --lua requires a real --pcap input.
+func runValidateLua(ctx context.Context, protoName, pcapPath string) error {
+	tsharkBin, err := exec.LookPath("tshark")
+	if err != nil {
+		return fmt.Errorf("%w: install Wireshark (https://www.wireshark.org)", errTsharkNotFound)
+	}
+	dissectorPath := filepath.Join("internal", protoName, "wireshark", "dhs_"+protoName+".lua")
+	if _, err := os.Stat(dissectorPath); err != nil {
+		// Try emberplus naming variant for the ACP1 v1 dissector and
+		// equivalents — kept best-effort so unknown layouts surface a
+		// clear error rather than a tshark argv miss.
+		return fmt.Errorf("dissector not found at %s: %w", dissectorPath, err)
+	}
+	cmd := exec.CommandContext(ctx, tsharkBin,
+		"-r", pcapPath,
+		"-V",
+		"-X", "lua_script:"+dissectorPath,
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("tshark: %w", err)
+	}
+	return nil
 }
 
 // classifyFromMessage extracts the layer and `<layer>:<name>` code
