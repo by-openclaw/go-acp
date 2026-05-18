@@ -528,7 +528,12 @@ Function subtree at OID `1.5` carries six builtins:
 | `1.5.5` | `functions.listSalvos` | `(matrixRef)` | `[list of slot IDs]` |
 | `1.5.6` | `functions.getSalvo` | `(matrixRef, slot)` | `[serialized tgt=src list]` — human format pending **R11** |
 
-`matrixRef` accepts both OID (`1.1.3` → `oneToN.matrix`) and dotted path (`dhs-emberplus-integration.oneToN.matrix`) post #466.
+`matrixRef` accepts **both** addressing forms post #466 — pick whichever is easier to read in the playbook:
+
+- **Numeric OID** — e.g. `1.1.3` resolves to `oneToN.matrix`. Short, deterministic, survives label renames.
+- **Dotted path** — e.g. `dhs-emberplus-integration.oneToN.matrix`. Self-documenting; resolved against the walked tree.
+
+Both forms are accepted by `setLock`, `listLocks`, `storeSalvo`, `recallSalvo`, `getSalvo`, and `listSalvos`. The happy examples below show OID form on the first line of each verb and dotted form on the second — either is a valid copy-paste base.
 
 ### What `success` and `result` actually mean
 
@@ -568,8 +573,8 @@ was `false` (unlocked) before we flipped it on". Not "the call failed".
 # List locked targets — result is the LIST of locked TARGET INDICES.
 # Locking is a target-only property in the integration-test schema;
 # the lock state does NOT carry "which source was routed when this
-# was locked". To see the source currently routed to each locked
-# target, follow up with the matrix walk (or `watch --path 1.1`).
+# was locked". Pair listLocks with a matrix walk to get the full
+# target → source view per locked target — full recipe below.
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.listLocks `
     --args "1.1.3"
@@ -579,10 +584,28 @@ was `false` (unlocked) before we flipped it on". Not "the call failed".
 #   meaning: oneToN targets 2, 3, 4 are currently locked
 #   (target 2 was pre-locked from the seed; targets 3 and 4 were
 #    locked earlier in this session by setLock)
-# To see what those targets are routed FROM, do:
-#   .\bin\dhs.exe consumer emberplus walk 127.0.0.1 --port 9100 `
-#       --path dhs-emberplus-integration.oneToN.matrix
-# and read each locked target's row from the connections list.
+
+# Pair with a matrix walk to render the locked-target → source view:
+.\bin\dhs.exe consumer emberplus walk 127.0.0.1 --port 9100 `
+    --path dhs-emberplus-integration.oneToN.matrix
+# path = dhs-emberplus-integration.oneToN.matrix
+# OID  = 1.1
+# (walk output includes the matrix.connections array; for each locked
+#  target from listLocks above, the connection entry shows the
+#  current source)
+#
+# Expected output extract for our example state:
+#   matrix oneToN connections:
+#     tgt  2 ← src  2   [LOCKED]   (was pre-locked from seed)
+#     tgt  3 ← src  8   [LOCKED]   (locked this session via setLock 1.1.3,3,true)
+#     tgt  4 ← src  4   [LOCKED]   (locked this session via setLock 1.1.3,4,true)
+#     tgt  0 ← src  0
+#     tgt  1 ← src  1
+#     ... (unlocked targets follow)
+#
+# The [LOCKED] marker is emitted by the walk pretty-printer whenever
+# the target's index appears in the matrix's lockedTargets set —
+# same data the listLocks function returns, joined client-side.
 
 # Store salvo — captures the matrix's current connections under slot 99
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
@@ -647,23 +670,68 @@ Three streamIdentifier values declared by the integration-test provider:
 | `1001` | `1.6.11` | `types.vu_left` | live audio meter |
 | `1002` | `1.6.12` | `types.vu_right` | live audio meter |
 
+### Discovering the stream identifiers
+
+The table above lists the IDs hard-coded in the integration-test fixture.
+For ANY provider you don't already know, the discovery flow is one of:
+
+```powershell
+# 1. Walk the tree and grep Parameters carrying a streamIdentifier
+.\bin\dhs.exe consumer emberplus walk 127.0.0.1 --port 9100 `
+    --capture .audit\stream-discover.jsonl
+# path = 1 (root) — full walk
+# OID  = 1
+# The capture file has one Trame per frame; the canonical tree.json
+# alongside has every Parameter rendered with its streamIdentifier
+# field when set:
+#
+#     "vu_zero":  { "streamIdentifier": 0,    "OID": "1.6.10", ... }
+#     "vu_left":  { "streamIdentifier": 1001, "OID": "1.6.11", ... }
+#     "vu_right": { "streamIdentifier": 1002, "OID": "1.6.12", ... }
+
+# 2. Drop --capture and walk the tree printed to stdout — same data
+#    surfaces inline next to each Parameter rendered by the walker.
+
+# 3. Get one Parameter directly and read its streamIdentifier from
+#    the reply
+.\bin\dhs.exe consumer emberplus get 127.0.0.1 --port 9100 `
+    --path dhs-emberplus-integration.types.vu_zero
+# path = dhs-emberplus-integration.types.vu_zero
+# OID  = 1.6.10
+# value = -60.00
+# streamIdentifier = 0     ← printed when the Parameter carries one
+```
+
+Operator shortcut: `stream` with no `--id` flag implicitly subscribes
+to every stream the consumer discovered during its initial walk, then
+prints each incoming sample tagged with `id=<N> path=<dotted>` — so
+running `stream` alone is itself a discovery tool.
+
 ### Happy
 
 ```powershell
+# Subscribe to one streamIdentifier by ID
 .\bin\dhs.exe consumer emberplus stream 127.0.0.1 --port 9100 --id 0
-# Subscribes to streamIdentifier=0 only (vu_zero at OID 1.6.10)
+# path = dhs-emberplus-integration.types.vu_zero
+# OID  = 1.6.10
+# Subscribes to streamIdentifier=0 only
 
 .\bin\dhs.exe consumer emberplus stream 127.0.0.1 --port 9100 --id 1001
-# Subscribes to vu_left only (OID 1.6.11)
+# path = dhs-emberplus-integration.types.vu_left
+# OID  = 1.6.11
+# Subscribes to vu_left only
 
+# Multi-subscribe — R10 post #479
 .\bin\dhs.exe consumer emberplus stream 127.0.0.1 --port 9100 --id 0,1001
-# Subscribes to {vu_zero, vu_left} — R10 multi-subscribe post #479
+# Subscribes to {vu_zero (1.6.10), vu_left (1.6.11)}
 
 .\bin\dhs.exe consumer emberplus stream 127.0.0.1 --port 9100 --id 0,1001,1002
-# All three explicitly (equivalent to no flag)
+# Subscribes to all three explicitly (equivalent to omitting --id)
 
 .\bin\dhs.exe consumer emberplus stream 127.0.0.1 --port 9100
-# Subscribes to ALL streams (3 today)
+# No --id → subscribe to ALL stream Parameters the walk discovered
+# (3 today on the integration-test producer). Output is tagged
+# inline so this doubles as a discovery tool.
 ```
 
 ### Provider idle-eviction (pending R9 [#472](https://github.com/by-openclaw/go-acp/issues/472))
