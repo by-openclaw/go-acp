@@ -74,6 +74,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		streamTTL     = fs.Duration("stream-ttl", 30*time.Second, "emberplus only: per-session idle-TTL for stream subscriptions. If the provider has not received ANY frame (keep-alive included) from a peer for this long, the peer's subscription set is cleared while the TCP session stays open. 0 disables the soft sweep — only the hard idle-session sweep applies. R9 #472.")
 		adminEnable   = fs.Bool("admin", true, "R25 #490: enable the local admin socket (Unix socket on every supported OS — local-only, no network exposure). Default ON for emberplus; ignored on protocols that have not yet wired runtime admin verbs.")
 		adminTag      = fs.String("admin-tag", "", "R25 #490: connector tag for the admin socket path (disambiguates multi-instance hosts). Default: <protocol>.")
+		adminAddr     = fs.String("admin-addr", "", "R24 #489: when set (e.g. '127.0.0.1:9110'), serve a static read-only HTML5 admin page on this address. Reads peer health from the --admin socket. Local-only; never expose to the public internet.")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -177,20 +178,37 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	// other protocols see the flag but no handlers are registered yet,
 	// so admin verbs return admin:verb-not-implemented across the
 	// socket. ACP1 keeps its bespoke admin path (runACP1Admin).
+	adminTagResolved := *adminTag
+	if adminTagResolved == "" {
+		adminTagResolved = protoName
+	}
 	if *adminEnable && protoName == "emberplus" {
-		tag := *adminTag
-		if tag == "" {
-			tag = protoName
-		}
 		if es, ok := srv.(*emberprovider.Server); ok {
 			adminSrv := admin.NewServer(os.Stderr)
 			es.RegisterAdminHandlers(adminSrv)
 			go func() {
-				if err := adminSrv.Serve(srvCtx, admin.DefaultSocketPath(tag)); err != nil {
+				if err := adminSrv.Serve(srvCtx, admin.DefaultSocketPath(adminTagResolved)); err != nil {
 					logger.Warn("admin socket exited", slog.String("err", err.Error()))
 				}
 			}()
 		}
+	}
+
+	// R24 #489: static HTML5 admin page on a separate port. Reads the
+	// peer-health table via the local admin socket. Per
+	// feedback_admin_web_minimal: zero JS, zero third-party deps,
+	// read-only, CSP blocks scripts. Skip silently when --admin-addr
+	// is empty.
+	if *adminAddr != "" {
+		web := &admin.WebServer{ConnectorTag: adminTagResolved}
+		go func() {
+			logger.Info("admin web serving",
+				slog.String("addr", *adminAddr),
+				slog.String("socket", admin.DefaultSocketPath(adminTagResolved)))
+			if err := web.Serve(srvCtx, *adminAddr); err != nil && err.Error() != "http: Server closed" {
+				logger.Warn("admin web exited", slog.String("err", err.Error()))
+			}
+		}()
 	}
 
 	// --metrics-addr mounts Prometheus /metrics if the provider
