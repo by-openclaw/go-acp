@@ -302,7 +302,11 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.streamIndex = make(map[int64][]string)
 	p.templates = make(map[string]*glow.Template)
 	p.pendingSets = newPendingSetRegistry()
-	p.profile = &compliance.Profile{}
+	// R22 #487: ring-aware Profile so Observe() captures per-occurrence
+	// detail for `dhs consumer emberplus profile --show-events`. 1024
+	// entries buffers ~3 minutes of source-steal traffic on a busy
+	// router before wrapping.
+	p.profile = compliance.NewProfileWithRing(1024)
 	p.connIP = ip
 	p.connPort = port
 	p.unknownCTX = newUnknownCTXAudit()
@@ -1012,7 +1016,17 @@ func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target in
 		// profile`. Refs #465.
 		if stolen := entry.matrixState.DetectOneToOneSourceSteal(target, sources); len(stolen) > 0 {
 			for _, pair := range stolen {
-				p.profile.Note(OneToOneSourceStealAccepted)
+				// Observe (R22 #487) records per-occurrence attrs so
+				// `dhs consumer emberplus profile --show-events`
+				// renders matrix/target/source detail per fire, not
+				// just a counter. Falls back to Note semantics when
+				// the profile has no observation ring.
+				p.profile.Observe(OneToOneSourceStealAccepted,
+					slog.String("matrix_path", matrixPath),
+					slog.Int64("target", int64(target)),
+					slog.Int64("source", int64(pair.Source)),
+					slog.Int64("stolen_from_target", int64(pair.FromTarget)),
+				)
 				p.logger.Debug("emberplus: oneToOne source-steal accepted",
 					"matrix_path", matrixPath,
 					"target", target,
