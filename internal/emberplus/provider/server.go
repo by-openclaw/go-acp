@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 )
+
 
 // Server is the exported alias for the concrete Ember+ provider so
 // cmd/dhs/cmd_producer.go can reach protocol-specific setters (e.g.
@@ -102,6 +104,50 @@ type PeerHealth struct {
 	LastRx     time.Time     // most recent inbound frame
 	StaleAfter time.Duration // window used for Live
 	SubsOpen   int           // number of subscriptions currently held
+}
+
+// RegisterAdminHandlers wires the producer's runtime admin verbs onto
+// the supplied admin.Server (R25 #490). v1 registers `sessions:list`
+// returning the PeerHealth snapshot; other admin verbs roll in as
+// they land (health enable/disable, log-level set, etc.).
+//
+// The handler captures `s` by closure so the live server state is
+// always reflected — no stale snapshots.
+func (s *server) RegisterAdminHandlers(adm AdminRegistrar) {
+	adm.Register("sessions:list", func(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+		// Use the existing peer-health snapshot and re-encode as JSON.
+		// Anonymous struct gives JSON-friendly key casing without a
+		// dedicated DTO.
+		type peerOut struct {
+			Peer       string `json:"peer"`
+			Connected  bool   `json:"connected"`
+			Live       bool   `json:"live"`
+			LastRx     string `json:"last_rx,omitempty"`
+			StaleAfter string `json:"stale_after,omitempty"`
+			SubsOpen   int    `json:"subs_open"`
+		}
+		snap := s.PeerHealthSnapshot()
+		out := make([]peerOut, 0, len(snap))
+		for _, p := range snap {
+			po := peerOut{
+				Peer: p.Peer, Connected: p.Connected, Live: p.Live,
+				StaleAfter: p.StaleAfter.String(), SubsOpen: p.SubsOpen,
+			}
+			if !p.LastRx.IsZero() {
+				po.LastRx = p.LastRx.UTC().Format(time.RFC3339)
+			}
+			out = append(out, po)
+		}
+		return json.Marshal(out)
+	})
+}
+
+// AdminRegistrar is the minimal interface RegisterAdminHandlers
+// depends on. Matches admin.Server.Register so the producer plugin
+// stays decoupled from admin.Server — easier testing + avoids an
+// import cycle if admin ever needs to import a provider type.
+type AdminRegistrar interface {
+	Register(verb string, handler func(ctx context.Context, params json.RawMessage) (json.RawMessage, error))
 }
 
 // PeerHealthSnapshot returns one entry per active consumer session

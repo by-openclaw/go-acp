@@ -28,6 +28,7 @@ import (
 	acp1provider "dhs/internal/acp1/provider"
 	acp2provider "dhs/internal/acp2/provider"
 	emberprovider "dhs/internal/emberplus/provider"
+	"dhs/internal/provider/admin"
 )
 
 // metricsExposer is the optional interface provider servers implement
@@ -71,6 +72,8 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		play          = fs.String("play", "", "acp1 only: comma-separated object paths the producer should oscillate with random values. Each tick fires a spontaneous status announce. Format: 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7,1.1.3.10 oscillates Temp_Left + Temp_Right + Rx_Packet_Loss on slot 0")
 		playEvery     = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
 		streamTTL     = fs.Duration("stream-ttl", 30*time.Second, "emberplus only: per-session idle-TTL for stream subscriptions. If the provider has not received ANY frame (keep-alive included) from a peer for this long, the peer's subscription set is cleared while the TCP session stays open. 0 disables the soft sweep — only the hard idle-session sweep applies. R9 #472.")
+		adminEnable   = fs.Bool("admin", true, "R25 #490: enable the local admin socket (Unix socket on every supported OS — local-only, no network exposure). Default ON for emberplus; ignored on protocols that have not yet wired runtime admin verbs.")
+		adminTag      = fs.String("admin-tag", "", "R25 #490: connector tag for the admin socket path (disambiguates multi-instance hosts). Default: <protocol>.")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -169,6 +172,26 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 
 	srvCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	// R25 #490: local admin socket. Currently wired for emberplus only;
+	// other protocols see the flag but no handlers are registered yet,
+	// so admin verbs return admin:verb-not-implemented across the
+	// socket. ACP1 keeps its bespoke admin path (runACP1Admin).
+	if *adminEnable && protoName == "emberplus" {
+		tag := *adminTag
+		if tag == "" {
+			tag = protoName
+		}
+		if es, ok := srv.(*emberprovider.Server); ok {
+			adminSrv := admin.NewServer(os.Stderr)
+			es.RegisterAdminHandlers(adminSrv)
+			go func() {
+				if err := adminSrv.Serve(srvCtx, admin.DefaultSocketPath(tag)); err != nil {
+					logger.Warn("admin socket exited", slog.String("err", err.Error()))
+				}
+			}()
+		}
+	}
 
 	// --metrics-addr mounts Prometheus /metrics if the provider
 	// exposes a *metrics.Connector (optional interface). Plugins that

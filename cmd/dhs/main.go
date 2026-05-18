@@ -308,10 +308,16 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	case "serve":
 		return runProducer(ctx, proto, rest)
 	case "admin":
-		if proto != "acp1" {
-			return fmt.Errorf("producer %s: admin verb is acp1-only (advances #258)", proto)
+		// R25 #490: generic admin verb routes to runProducerAdmin
+		// for every protocol that exposes a local admin socket. ACP1
+		// keeps its bespoke runACP1Admin path (which predates R25
+		// and remains the source of truth for slot.load / slot.preset /
+		// etc.) until those verbs migrate to the generic admin
+		// dispatcher.
+		if proto == "acp1" {
+			return runACP1Admin(ctx, rest)
 		}
-		return runACP1Admin(ctx, rest)
+		return runProducerAdmin(ctx, proto, rest)
 	case "fuzz":
 		if proto != "acp1" {
 			return fmt.Errorf("producer %s: fuzz verb is acp1-only (advances #262)", proto)
