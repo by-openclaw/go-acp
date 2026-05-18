@@ -31,6 +31,39 @@ internal/probel-sw08p/
   sibling `.pdf` is corrupted.
 - ACK handling lives in §2 (Transmission Protocol), NOT §3.5.
 
+### Reference hierarchy (tie-breaker order)
+
+When the spec is ambiguous on a wire detail, resolve in this order. Do
+not skip ahead — secondary sources don't override clearer spec
+language.
+
+| Tier | Source | Use case |
+| --- | --- | --- |
+| 1 | SW-P-08 Issue 30 spec (DOC above) | always read first; literal |
+| 1b | SW-P-02 Issue 26 spec at `internal/probel-sw02p/assets/probel-sw02/SW-P-02_issue_26.txt` | SW-P-02 wire detail only |
+| 2 | Wireshark dissector `internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua` | framing tie-breaker when the spec leaves an edge case |
+| 3 | `Commie.exe` + saved `commie_SWP08.dat` / `commie_SWP02.dat` | cross-vendor sanity check only when both tiers above leave a gap |
+| 3b | Real codeowner device | live confirmation; occasional, never the primary source |
+
+Tools at `internal/probel-sw08p/assets/tools/` — `Commie.exe`,
+`commie_SWP02.dat`, `commie_SWP08.dat`.
+
+The historical in-tree TS emulator `assets/smh-probelsw08p/` was
+removed in PR #226. Do not reintroduce a secondary reference impl —
+spec is single source of truth.
+
+### Spec section bookmarks
+
+- §2 — transmission protocol (ACK / NAK, retry, 10 ms, 128-byte DATA;
+  **not** §3.5).
+- §3.1.2 — narrow matrix/level packing + multiplier (4-bit + 3-bit
+  DIV-128).
+- §3.1.6 — multiplier semantics for protect / tally.
+- §3.2.x — rx general.
+- §3.3.x — tx general.
+- §3.4.x — rx extended.
+- §3.5.x — tx extended.
+
 ## Transport — SW-P-08 §2
 
 - TCP connection to the matrix controller. Default port 2008.
