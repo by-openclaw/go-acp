@@ -808,7 +808,9 @@ Full reference — Wireshark `--lua` mode ([#473](https://github.com/by-openclaw
 .\bin\dhs.exe consumer emberplus bench 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.matrix `
     --n 1000 --op connect --targets 16 --sources 16
-# OID = 1.3 — total: 1000 ops in N ms, M ops/s
+# path = dhs-emberplus-integration.nToN.matrix
+# OID  = 1.3
+# total: 1000 ops in N ms, M ops/s
 ```
 
 Flags: `--path` (matrix path), `--n` (op count, default 100), `--op` (connect / absolute / disconnect, default connect), `--targets` / `--sources` (wrap modulo, default 4).
@@ -961,6 +963,8 @@ the JSON shape Ansible playbooks read with the `json` filter.
 .\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9000 `
   --path dhs-emberplus-integration.identity.value --value 99 `
   --ensure dryrun
+# path = dhs-emberplus-integration.identity.value
+# OID  = 1.0.5
 # {
 #   "verb": "set",
 #   "ensure": "dryrun",
@@ -979,12 +983,16 @@ Reads current via GetValue; sends Set only when different.
 .\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9000 `
   --path dhs-emberplus-integration.identity.value --value 99 `
   --ensure present
+# path = dhs-emberplus-integration.identity.value
+# OID  = 1.0.5
 # {"verb":"set","ensure":"present","changed":true,"before":"42","after":"99","diff":"value: 42 -> 99"}
 
 # Re-run: idempotent
 .\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9000 `
   --path dhs-emberplus-integration.identity.value --value 99 `
   --ensure present
+# path = dhs-emberplus-integration.identity.value
+# OID  = 1.0.5
 # {"verb":"set","ensure":"present","changed":false,"before":"99","after":"99","reason":"value already at target"}
 ```
 
@@ -1057,12 +1065,16 @@ ramp-up + tail-latency capture.
   --path dhs-emberplus-integration.nToN.matrix `
   --dm "dhs-emberplus-integration@1.0.0" `
   --profile rfc2544-throughput   # n=10000 op=connect
+# path = dhs-emberplus-integration.nToN.matrix
+# OID  = 1.3
 # elapsed: ...
 
 .\bin\dhs.exe consumer emberplus bench 127.0.0.1 --port 9000 `
   --path dhs-emberplus-integration.nToN.matrix `
   --dm "dhs-emberplus-integration@1.0.0" `
   --profile rfc2544-latency      # n=1000 op=absolute
+# path = dhs-emberplus-integration.nToN.matrix
+# OID  = 1.3
 ```
 
 Errors: `validation:bench-profile-unknown` (exit 2).
