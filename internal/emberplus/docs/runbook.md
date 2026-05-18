@@ -722,6 +722,262 @@ Today only `matrix` ops are benchable. R13 [#474](https://github.com/by-openclaw
 
 ---
 
+## 14. `health` — 3-layer session liveness
+
+`dhs consumer emberplus health <host>` prints the Reachable /
+Connected / Live snapshot the plugin tracks under [#300](https://github.com/by-openclaw/go-acp/issues/300). The provider side
+exposes the same data per-peer via the admin socket (see §17).
+
+### Happy
+
+```powershell
+.\bin\dhs.exe consumer emberplus health 127.0.0.1 --port 9000
+# host=127.0.0.1 proto=emberplus
+#   reachable=true
+#   connected=true
+#   live=true  (last rx 1.2s ago, threshold 30s)
+#   last_rx=2026-05-18T08:43:21Z
+#   last_tx=2026-05-18T08:43:20Z
+#   stale_after=30s
+```
+
+`--json` emits the same fields as machine-readable JSON. `--watch`
+polls on `--interval` (default 5s) and prints only when a bit flips.
+
+## 15. `discover` — mDNS browse (R18 #477 v1)
+
+`dhs consumer emberplus discover` browses the local subnet for
+`_ember._tcp.local.` responders via the OS native mDNS tool
+(`avahi-browse` on Linux; `dns-sd` on macOS / Windows with the
+Bonjour SDK). Pure-Go mDNS is the v2 enhancement.
+
+### Happy
+
+```powershell
+.\bin\dhs.exe consumer emberplus discover --duration 5s
+# browsing _ember._tcp.local for 5s ...
+#
+# NAME                            HOST                   PORT  HOSTNAME                       TXT
+# --------------------------------------------------------------------------------------------------
+# dhs-emberplus-integration       10.6.239.113           9000  dhs-debian.local.              dtdVersion=2.60
+# 1 responder(s) found
+```
+
+### Errors
+
+| Trigger | Code | Exit |
+| --- | --- | --- |
+| `avahi-browse` / `dns-sd` not on PATH | `validation:mdns-tool-not-found` | 2 |
+
+## 16. Logging ladder + Loki + `--log-only` (R15 #476)
+
+Every consumer + producer verb accepts the Ansible-aligned
+verbosity ladder:
+
+| Flag | Level | Notes |
+| --- | --- | --- |
+| (none) | `info` | warnings + errors + per-verb summary |
+| `-v` | `info` | explicit info |
+| `-vv` | `debug` | + plugin debug (connection state, walk progress) |
+| `-vvv` | `trace` | + per-frame decoded events |
+| `-vvvv` | `trace` (+ raw hex) | + raw S101 / AN2 hex (today via `--capture`) |
+
+`--log-level` and `-v…` are mutually exclusive — setting both returns
+`validation:log-level-conflict` (exit 2).
+
+```powershell
+# Loki ingestion: `ts` / lowercase level / `component` / `msg`
+.\bin\dhs.exe consumer emberplus walk 127.0.0.1 --port 9000 -vv `
+  --log-format loki --log-only 2>>.\dhs.loki.log
+
+# Promtail snippet + full Loki contract: docs/logging.md
+```
+
+Logging is non-blocking by default — every handler wraps an
+`internal/logging.AsyncHandler` so the hot path (S101 keepalive,
+matrix tally fan-out) never blocks on stderr. Drop counter via
+`DropCount()` for audit under load.
+
+## 17. Producer admin socket + web (R25 #490 + R24 #489)
+
+Local-only runtime admin control plane. Local socket on every
+supported OS (Go 1.17+ AF_UNIX); never exposed to the network.
+
+### Producer side — start the socket
+
+```powershell
+.\bin\dhs.exe producer emberplus serve `
+  --manifest internal\emberplus\testdata\integration-test\manifest\emberplus-integration.json `
+  --port 9000 `
+  --admin `
+  --admin-addr 127.0.0.1:9110     # R24 web page on a separate port
+```
+
+`--admin` (default `true` for emberplus) starts the socket at
+`%TEMP%\dhs-emberplus-admin.sock`. `--admin-addr` opts in the static
+HTML5 page; empty (default) leaves the page off.
+
+### Consumer side — call the admin verb
+
+```powershell
+# List connected peers + per-peer health
+.\bin\dhs.exe producer emberplus admin sessions list
+# [
+#   { "peer": "10.6.239.113:54321", "connected": true, "live": true,
+#     "last_rx": "2026-05-18T14:25:28Z", "stale_after": "30s",
+#     "subs_open": 3 }
+# ]
+
+# Browser visit http://127.0.0.1:9110/ shows the same table HTML-rendered
+```
+
+Unknown verbs surface `admin:verb-not-implemented: <verb>`. v1.5
+follow-ups: `health enable/disable`, `metrics enable/disable`,
+`log-level set`, `streamer-interval set`, `compliance reset/show`.
+
+## 18. `--ensure` Ansible idempotency (R14 #475 v1 on `set`)
+
+`dhs consumer emberplus set --ensure {present|absent|dryrun}` emits
+the JSON shape Ansible playbooks read with the `json` filter.
+
+### `--ensure dryrun` (no wire write)
+
+```powershell
+.\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9000 `
+  --path dhs-emberplus-integration.identity.value --value 99 `
+  --ensure dryrun
+# {
+#   "verb": "set",
+#   "ensure": "dryrun",
+#   "changed": false,
+#   "before": "42",
+#   "after": "99",
+#   "diff": "value: 42 -> 99"
+# }
+```
+
+### `--ensure present` (idempotent write)
+
+Reads current via GetValue; sends Set only when different.
+
+```powershell
+.\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9000 `
+  --path dhs-emberplus-integration.identity.value --value 99 `
+  --ensure present
+# {"verb":"set","ensure":"present","changed":true,"before":"42","after":"99","diff":"value: 42 -> 99"}
+
+# Re-run: idempotent
+.\bin\dhs.exe consumer emberplus set 127.0.0.1 --port 9000 `
+  --path dhs-emberplus-integration.identity.value --value 99 `
+  --ensure present
+# {"verb":"set","ensure":"present","changed":false,"before":"99","after":"99","reason":"value already at target"}
+```
+
+`--ensure absent` returns `validation:ensure-mode-pending` in v1 —
+resetting to `Parameter.Default` needs codec-side Default accessor
+not yet exposed through `consumer.Protocol`. Tracked inline.
+
+## 19. `profile` extensions (R22 #487)
+
+The legacy column form stays byte-compat default. New flags:
+
+```powershell
+# JSON output for CI ingestion
+.\bin\dhs.exe consumer emberplus profile 127.0.0.1 --port 9000 --format json
+
+# Time-window filter — counters limited to events whose last_seen
+# is within the last 5 minutes
+.\bin\dhs.exe consumer emberplus profile 127.0.0.1 --port 9000 --since 5m
+
+# Per-occurrence detail (matrix path / target / source) from the
+# observation ring buffer, not just counters
+.\bin\dhs.exe consumer emberplus profile 127.0.0.1 --port 9000 --show-events
+
+# --by-session is reserved for the R24 #489 admin endpoint; returns
+# plugin:by-session-unavailable today
+.\bin\dhs.exe consumer emberplus profile 127.0.0.1 --port 9000 --by-session
+```
+
+## 20. `validate` extensions (R23 #488 + R12 #473)
+
+### `--report <path>` (R23)
+
+```powershell
+# Markdown report alongside the legacy stdout summary
+.\bin\dhs.exe consumer emberplus validate captures\emberplus\runbook\walk-happy.jsonl `
+  --report walk-happy.md
+
+# JSON report for CI
+.\bin\dhs.exe consumer emberplus validate captures\emberplus\runbook\walk-happy.jsonl `
+  --report walk-happy.json
+
+# Stdout (suppresses per-frame text)
+.\bin\dhs.exe consumer emberplus validate captures\emberplus\runbook\walk-happy.jsonl `
+  --report -
+```
+
+Errors: `validation:invalid-report-format` (exit 2),
+`transport:report-target-unwritable`, `transport:input-not-found`.
+
+### `--lua` via tshark (R12 v1)
+
+```powershell
+# Requires a real pcap input (--pcap); jsonl->pcap synthesis = v2
+.\bin\dhs.exe consumer emberplus validate _ignored.jsonl `
+  --lua --pcap captures\emberplus\walk.pcapng
+# (tshark -V output with the dhs_emberplus Lua dissector loaded)
+```
+
+Errors: `validation:lua-pcap-required` (no `--pcap`),
+`validation:tshark-not-found` (install Wireshark).
+
+## 21. `bench --profile` (R13 #474 v1)
+
+Named profiles set sensible `--n` / `--op` defaults so the operator
+doesn't have to remember the magic numbers. v2 layers RFC 2544
+ramp-up + tail-latency capture.
+
+```powershell
+.\bin\dhs.exe consumer emberplus bench 127.0.0.1 --port 9000 `
+  --path dhs-emberplus-integration.nToN.matrix `
+  --dm "dhs-emberplus-integration@1.0.0" `
+  --profile rfc2544-throughput   # n=10000 op=connect
+# elapsed: ...
+
+.\bin\dhs.exe consumer emberplus bench 127.0.0.1 --port 9000 `
+  --path dhs-emberplus-integration.nToN.matrix `
+  --dm "dhs-emberplus-integration@1.0.0" `
+  --profile rfc2544-latency      # n=1000 op=absolute
+```
+
+Errors: `validation:bench-profile-unknown` (exit 2).
+
+## 22. Provider `--stream-ttl` (R9 #472)
+
+Per-session soft eviction of stream subscriptions when the peer
+falls silent. Default `30s`; `0` disables.
+
+```powershell
+.\bin\dhs.exe producer emberplus serve `
+  --manifest internal\emberplus\testdata\integration-test\manifest\emberplus-integration.json `
+  --port 9000 `
+  --stream-ttl 5s    # aggressive eviction for the integration test
+```
+
+Fires the producer-side compliance event `stream_idle_ttl_expired`
+per cleared session; the TCP session stays open in case keep-alives
+resume. Visible via the new `--show-events` flag on `profile`.
+
+## 23. Round-trip baseline (R4 #461 v1)
+
+Node + Parameter round-trip through canonical export → JSON →
+import is pinned by `internal/export/canonical/roundtrip_test.go`.
+Matrix / Function / StreamParameter / Template ride v2.
+
+Running `go test -v ./internal/export/canonical/ -run TestRoundTrip_CoverageMatrix`
+prints the audit checklist with each Glow type marked covered or
+Skipped → v2 issue ref.
+
 ## Use-case status — Ember+ (Consumer + Provider)
 
 Current state on `main`. ✅ working, 🟡 partial, ❌ not implemented.
