@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"dhs/internal/logging"
 	"dhs/internal/consumer"
 	"dhs/internal/acp1/consumer"
 	"dhs/internal/datastore"
@@ -37,8 +36,8 @@ type commonFlags struct {
 	timeout           time.Duration
 	keepalive         time.Duration
 	keepaliveTimeout  time.Duration
-	verbose           bool
-	logLevel          string
+	verbose           bool         // back-compat alias for -vv (debug). Prefer the ladder.
+	lf                *logFlagSet  // R15 #476: ladder + format + log-only.
 	capture           string
 
 	// captureDir is populated by connect() when --capture points at a
@@ -77,8 +76,8 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"keep-alive dead-man threshold (0 = 3× --keepalive; -1 = never "+
 			"declare session dead). Watch verb shows freshness=cache once "+
 			"this elapses without rx; values stay decoded against the cached schema.")
-	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
-	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
+	fs.BoolVar(&cf.verbose, "verbose", false, "DEPRECATED: back-compat alias for -vv (--log-level debug). Prefer the -v / -vv / -vvv / -vvvv ladder.")
+	cf.lf = addLogFlags(fs, "info")
 	fs.StringVar(&cf.capture, "capture", "",
 		"capture traffic. Path ending in .jsonl → single-file raw frame log "+
 			"(ACP1/ACP2/Ember+). Any other path → directory mode: writes "+
@@ -152,11 +151,16 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		return nil, nil, fmt.Errorf("host argument is required")
 	}
 
-	lvl := logging.ParseLevel(cf.logLevel)
-	if cf.verbose && lvl > logging.LevelDebug {
-		lvl = logging.LevelDebug // --verbose is shortcut for --log-level debug
+	// --verbose is the back-compat path; promote to -vv (debug) when
+	// neither the ladder nor an explicit --log-level is set. After this
+	// gate, lf.resolve owns level + format + log-only.
+	if cf.verbose && cf.lf.ladderLevel() == "" && cf.lf.level == "info" {
+		cf.lf.level = "debug"
 	}
-	logger := logging.NewTextLogger(lvl)
+	logger, err := cf.lf.resolve("info")
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Optional traffic capture for test data generation.
 	var recorder *transport.Recorder

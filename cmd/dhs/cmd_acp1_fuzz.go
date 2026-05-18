@@ -31,8 +31,8 @@ func runACP1Fuzz(ctx context.Context, args []string) error {
 		id           = fs.Int("id", -1, "filter: only this object id (-1 = all)")
 		includeEdges = fs.Bool("include-edges", false, "bias every 4th cycle to a min/max boundary")
 
-		logLevel  = fs.String("log-level", "info", "log level: debug / info / warn / error")
-		logFormat = fs.String("log-format", "text", "log format: text / json")
+		// R15 #476: ladder + format + log-only via the shared helper.
+		lf = addLogFlags(fs, "info")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -58,7 +58,10 @@ func runACP1Fuzz(ctx context.Context, args []string) error {
 		cfg.GroupSet = true
 	}
 
-	logger := newLogger(*logLevel, *logFormat)
+	logger, err := lf.resolve("info")
+	if err != nil {
+		return err
+	}
 
 	factory, ok := provider.Lookup("acp1")
 	if !ok {
