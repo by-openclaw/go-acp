@@ -509,7 +509,7 @@ Every invocation echo carries two distinct fields per Ember+ spec p.92:
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `success` | bool | `true` = the function ran cleanly; `false` = the provider rejected the call (bad matrixRef, out-of-range index, etc.). Spec p.92: omitted → defaults to true. |
-| `result`  | tuple | the function's **return** payload — typed per the function's `result[]` schema. For `setLock` it's `[previousLockState]`; for `listLocks` it's `[lockedTargetIndex, lockedTargetIndex, ...]`; for `storeSalvo` it's `[true]`; etc. |
+| `result` | tuple | the function's **return** payload — typed per the function's `result[]` schema. For `setLock` it's `[previousLockState]`; for `listLocks` it's `[lockedTargetIndex, lockedTargetIndex, ...]`; for `storeSalvo` it's `[true]`; etc. |
 
 So a line like `success=true · result: [false]` from `setLock` reads:
 "the call SUCCEEDED, and the function reports the PREVIOUS lock state
