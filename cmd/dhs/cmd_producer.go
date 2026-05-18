@@ -27,6 +27,7 @@ import (
 
 	acp1provider "dhs/internal/acp1/provider"
 	acp2provider "dhs/internal/acp2/provider"
+	emberprovider "dhs/internal/emberplus/provider"
 )
 
 // metricsExposer is the optional interface provider servers implement
@@ -66,6 +67,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		preload       = fs.String("preload", "", "acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1")
 		play          = fs.String("play", "", "acp1 only: comma-separated object paths the producer should oscillate with random values. Each tick fires a spontaneous status announce. Format: 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7,1.1.3.10 oscillates Temp_Left + Temp_Right + Rx_Packet_Loss on slot 0")
 		playEvery     = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
+		streamTTL     = fs.Duration("stream-ttl", 30*time.Second, "emberplus only: per-session idle-TTL for stream subscriptions. If the provider has not received ANY frame (keep-alive included) from a peer for this long, the peer's subscription set is cleared while the TCP session stays open. 0 disables the soft sweep — only the hard idle-session sweep applies. R9 #472.")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -145,6 +147,17 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 			}
 			logger.Info("acp1 manifest slots marked present",
 				slog.Int("count", len(manifestSlots)))
+		}
+	}
+	// emberplus: configure per-session stream idle-TTL before Serve so
+	// the soft-sweeper goroutine launches with the right budget. R9
+	// #472 spec: default 30s, 0 disables. Other protocols ignore the
+	// flag silently.
+	if protoName == "emberplus" {
+		if es, ok := srv.(*emberprovider.Server); ok {
+			es.SetStreamIdleTTL(*streamTTL)
+			logger.Info("emberplus stream idle-TTL",
+				slog.Duration("ttl", *streamTTL))
 		}
 	}
 

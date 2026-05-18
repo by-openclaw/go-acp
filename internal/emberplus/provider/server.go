@@ -9,8 +9,15 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 )
+
+// Server is the exported alias for the concrete Ember+ provider so
+// cmd/dhs/cmd_producer.go can reach protocol-specific setters (e.g.
+// SetStreamIdleTTL for R9 #472) via a type assertion without exposing
+// the rest of the package internals.
+type Server = server
 
 // server is the provider runtime. One listener, many sessions, a shared
 // tree, and a per-OID subscription table.
@@ -28,6 +35,18 @@ type server struct {
 	// subs: oid -> set of sessions watching it
 	subs map[string]map[*session]struct{}
 
+	// profile aggregates wire-tolerance + producer-side compliance
+	// events across every session since Serve started. See
+	// compliance_events.go.
+	profile *compliance.Profile
+
+	// streamIdleTTL is the per-session "no rx for this long → clear
+	// the session's subscriptions" budget. 0 disables (default before
+	// R9 #472). Set via SetStreamIdleTTL before Serve. The hard
+	// idle-session sweep (idleSessionTTL) still backstops dead TCP
+	// sockets independently.
+	streamIdleTTL time.Duration
+
 	stopOnce sync.Once
 	stopped  chan struct{}
 }
@@ -42,6 +61,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		funcs:    newFunctionRegistry(),
 		sessions: map[*session]struct{}{},
 		subs:     map[string]map[*session]struct{}{},
+		profile:  &compliance.Profile{},
 		stopped:  make(chan struct{}),
 	}
 	if err != nil {
@@ -53,6 +73,22 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		s.setupBuiltinFunctions()
 	}
 	return s
+}
+
+// SetStreamIdleTTL configures the per-session stream idle-TTL. Must be
+// called before Serve. 0 disables the soft sweep (subs cleared only by
+// the hard idle-session sweep). Negative values are clamped to 0.
+func (s *server) SetStreamIdleTTL(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	s.streamIdleTTL = d
+}
+
+// ComplianceProfile returns the provider-scoped compliance profile —
+// always non-nil after newServer. Safe to read from any goroutine.
+func (s *server) ComplianceProfile() *compliance.Profile {
+	return s.profile
 }
 
 // Serve implements provider.Provider. Blocks until ctx is cancelled or
@@ -86,6 +122,20 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	// Spec p.10 keepalive is short; healthy peers always re-stamp
 	// lastActive well within the TTL.
 	go s.runIdleSweeper(ctx, idleSweepInterval, idleSessionTTL)
+
+	// Stream idle-TTL sweeper (R9 #472) — soft variant of the above:
+	// clears the session's subscription set when lastActive is older
+	// than streamIdleTTL but KEEPS the TCP session open in case the
+	// peer resumes keep-alives. Subs cleared via the same path
+	// Unsubscribe uses (server.unsubscribe). Disabled when
+	// streamIdleTTL == 0.
+	if s.streamIdleTTL > 0 {
+		interval := s.streamIdleTTL / 3
+		if interval < time.Second {
+			interval = time.Second
+		}
+		go s.runStreamIdleSweeper(ctx, interval, s.streamIdleTTL)
+	}
 
 	// Close listener on ctx cancel to unblock Accept.
 	go func() {
@@ -258,6 +308,78 @@ func (s *server) sweepIdleSessions(ttl time.Duration) {
 			slog.Duration("ttl", ttl),
 		)
 		sess.close()
+	}
+}
+
+// runStreamIdleSweeper is the soft variant of runIdleSweeper (R9 #472):
+// fires sweepStreamIdleSubs at `interval` until ctx cancels or Stop()
+// closes s.stopped. interval should be ≤ ttl/2 so the worst-case
+// detection latency stays bounded; the caller in Serve picks ttl/3.
+func (s *server) runStreamIdleSweeper(ctx context.Context, interval, ttl time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.stopped:
+			return
+		case <-ticker.C:
+			s.sweepStreamIdleSubs(ttl)
+		}
+	}
+}
+
+// sweepStreamIdleSubs clears the subscription set on every session
+// whose lastActive is older than `now - ttl` AND which currently holds
+// at least one subscription. The TCP session stays open — only the
+// subs are released, mirroring an explicit per-OID Unsubscribe from
+// the peer. Each cleared session ticks one StreamIdleTTLExpired event
+// in the compliance profile and logs INFO with last_rx.
+//
+// Lock discipline: collect under s.mu, release the lock before calling
+// s.unsubscribe (which retakes it) to avoid re-entry on the same
+// goroutine. Sessions are pointer-identified so concurrent dropSession
+// during the gap is benign (unsubscribe handles already-unregistered
+// oids by no-op on the map delete).
+func (s *server) sweepStreamIdleSubs(ttl time.Duration) {
+	cutoff := time.Now().Add(-ttl).UnixNano()
+	type pending struct {
+		sess   *session
+		oids   []string
+		lastRx time.Duration
+	}
+	s.mu.Lock()
+	var todo []pending
+	for sess := range s.sessions {
+		if len(sess.subs) == 0 {
+			continue
+		}
+		last := sess.lastActive.Load()
+		if last >= cutoff {
+			continue
+		}
+		oids := make([]string, 0, len(sess.subs))
+		for oid := range sess.subs {
+			oids = append(oids, oid)
+		}
+		todo = append(todo, pending{
+			sess:   sess,
+			oids:   oids,
+			lastRx: time.Since(time.Unix(0, last)),
+		})
+	}
+	s.mu.Unlock()
+	for _, p := range todo {
+		for _, oid := range p.oids {
+			s.unsubscribe(p.sess, oid)
+		}
+		s.profile.Note(StreamIdleTTLExpired)
+		s.logger.Info("stream-ttl expired",
+			slog.String("session", p.sess.id),
+			slog.Duration("last_rx", p.lastRx),
+			slog.Int("subs_cleared", len(p.oids)),
+		)
 	}
 }
 
