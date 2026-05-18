@@ -35,6 +35,7 @@ func runSet(ctx context.Context, args []string) error {
 	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of walking the slot to resolve --path/--label")
 	round := fs.Bool("round", false, "R16 #483: snap an off-step numeric --value to the nearest legal step instead of erroring with validation:step-misaligned (Ember+ only — non-numeric Parameters return validation:round-not-applicable)")
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the walk is skipped — refs #438, ADR-0022.`)
+	ensureRaw := addEnsureFlag(fs)
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>)")
@@ -149,6 +150,19 @@ func runSet(ctx context.Context, args []string) error {
 		ID:    *id,
 		Round: *round,
 	}
+
+	// R14 #475: --ensure short-circuits the legacy "always write" path.
+	// dryrun reads current + emits a JSON diff without sending. present
+	// reads current + sends only when different. absent v1.5 (Parameter
+	// Default semantics require codec support not yet wired).
+	mode, err := parseEnsureMode(*ensureRaw)
+	if err != nil {
+		return err
+	}
+	if mode != ensureUnset {
+		return runSetEnsure(opCtx, plug, req, val, mode)
+	}
+
 	confirmed, err := plug.SetValue(opCtx, req, val)
 	if err != nil {
 		return err
@@ -162,4 +176,54 @@ func runSet(ctx context.Context, args []string) error {
 		fmt.Printf("raw       = %s\n", hex.EncodeToString(confirmed.Raw))
 	}
 	return nil
+}
+
+// runSetEnsure runs the R14 #475 idempotent path: read current,
+// compare with desired, set only if different (or never for dryrun
+// / absent), emit a JSON ensureReport.
+func runSetEnsure(ctx context.Context, plug consumer.Protocol, req consumer.ValueRequest, desired consumer.Value, mode ensureMode) error {
+	current, err := plug.GetValue(ctx, req)
+	if err != nil {
+		return fmt.Errorf("ensure %s: read current: %w", mode, err)
+	}
+	beforeStr := formatValue(current, nil)
+	desiredStr := formatValue(desired, nil)
+	report := ensureReport{
+		Verb:   "set",
+		Ensure: string(mode),
+		Before: beforeStr,
+		After:  desiredStr,
+	}
+	switch mode {
+	case ensureDryrun:
+		// Compare without sending. changed=false per spec.
+		if beforeStr != desiredStr {
+			report.Diff = ensureFmtDiff("value", beforeStr, desiredStr)
+		}
+		report.Changed = false
+		return emitEnsureReport(report)
+
+	case ensurePresent:
+		if beforeStr == desiredStr {
+			report.Changed = false
+			report.Reason = "value already at target"
+			return emitEnsureReport(report)
+		}
+		confirmed, serr := plug.SetValue(ctx, req, desired)
+		if serr != nil {
+			return fmt.Errorf("ensure present: set: %w", serr)
+		}
+		report.After = formatValue(confirmed, nil)
+		report.Diff = ensureFmtDiff("value", beforeStr, report.After)
+		report.Changed = true
+		return emitEnsureReport(report)
+
+	case ensureAbsent:
+		// v1.5: needs Parameter.Default lookup against the cached
+		// tree which requires per-protocol object metadata not exposed
+		// through consumer.Protocol today. Surfaced as a typed error
+		// so playbook authors get a stable signal.
+		return fmt.Errorf("%w: --ensure absent for set requires Parameter.Default codec support (R14 v1.5)", errEnsureModePending)
+	}
+	return fmt.Errorf("%w: --ensure=%q", errEnsureInvalidMode, mode)
 }
