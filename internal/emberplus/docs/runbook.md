@@ -289,12 +289,22 @@ Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files wri
 | `1.0.4` | `identity.dtdVersion` | `"2.60"` |
 
 ```powershell
+# By dotted path
 .\bin\dhs.exe consumer emberplus get 127.0.0.1 --port 9100 --path dhs-emberplus-integration.types.vInteger
-# OID = 1.6.1
+# path = dhs-emberplus-integration.types.vInteger
+# OID  = 1.6.1
 # value = 42
 
+# Same Parameter addressed by OID directly (R21 #486)
+.\bin\dhs.exe consumer emberplus get 127.0.0.1 --port 9100 --path 1.6.1
+# path = dhs-emberplus-integration.types.vInteger   (resolved from cache)
+# OID  = 1.6.1
+# value = 42
+
+# DTD version field (Ember+ identity p.84)
 .\bin\dhs.exe consumer emberplus get 127.0.0.1 --port 9100 --path dhs-emberplus-integration.identity.dtdVersion
-# OID = 1.0.4
+# path = dhs-emberplus-integration.identity.dtdVersion
+# OID  = 1.0.4
 # value = "2.60"
 ```
 
@@ -455,7 +465,8 @@ until the R9 `--stream-ttl` sweeps it (default 30s); the fresh
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.matrix `
     --target 10 --sources 3,4,5 --op absolute
-# OID = 1.3
+# path = dhs-emberplus-integration.nToN.matrix
+# OID  = 1.3
 # matrix connect: target 10 ← sources [3 4 5] (op=absolute)
 # Post-state: target 10 ← [3, 5, 4]  (set membership; order not significant)
 
@@ -463,6 +474,8 @@ until the R9 `--stream-ttl` sweeps it (default 30s); the fresh
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.matrix `
     --target 10 --sources 4 --op disconnect
+# path = dhs-emberplus-integration.nToN.matrix
+# OID  = 1.3
 # matrix connect: target 10 ← sources [4] (op=disconnect)
 # The `[4]` in the echo is the SET delta (what we asked to remove),
 # NOT the final route. Post-state: target 10 ← [3, 5] (source 4 removed
@@ -473,13 +486,17 @@ until the R9 `--stream-ttl` sweeps it (default 30s); the fresh
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.oneToN.matrix `
     --target 0 --sources 7 --op absolute
-# OID = 1.1 — target 0 now routed from src 7; prior src 0 dropped
+# path = dhs-emberplus-integration.oneToN.matrix
+# OID  = 1.1
+# Post-state: target 0 now routed from src 7; prior src 0 dropped
 
 # oneToOne — source steal (post #467)
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.oneToOne.matrix `
     --target 0 --sources 5 --op absolute
-# OID = 1.2 — matrix connect: target 0 ← sources [5] (op=absolute)
+# path = dhs-emberplus-integration.oneToOne.matrix
+# OID  = 1.2
+# matrix connect: target 0 ← sources [5] (op=absolute)
 # Source 5 was on target 5; now stolen to target 0 — target 5 implicitly disconnected.
 # Profile counter: onetoone_source_steal_accepted += 1
 ```
@@ -529,17 +546,23 @@ was `false` (unlocked) before we flipped it on". Not "the call failed".
 ### Happy
 
 ```powershell
-# Lock target 3 on oneToN — by matrix OID
+# Lock target 3 on oneToN — matrixRef passed as the matrix OID
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.setLock `
     --args "1.1.3,3,true"
-# OID = 1.5.1 — invocation 1: success=true
-# result: [false]       (function ran; PREVIOUS lock state was false / unlocked)
+# path = dhs-emberplus-integration.functions.setLock
+# OID  = 1.5.1
+# args interpreted as: matrixRef=oneToN.matrix (1.1.3) · target=3 · locked=true
+# invocation 1: success=true · result: [false]
+# meaning: function ran; PREVIOUS lock state on target 3 was false (unlocked)
 
-# Same via dotted matrixRef (post #466)
+# Same call — matrixRef passed as a dotted path (post #466)
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.setLock `
     --args "dhs-emberplus-integration.oneToN.matrix,4,true"
+# path = dhs-emberplus-integration.functions.setLock
+# OID  = 1.5.1
+# args interpreted as: matrixRef=oneToN.matrix · target=4 · locked=true
 # invocation 1: success=true · result: [false]
 
 # List locked targets — result is the LIST of locked TARGET INDICES.
@@ -561,34 +584,44 @@ was `false` (unlocked) before we flipped it on". Not "the call failed".
 #       --path dhs-emberplus-integration.oneToN.matrix
 # and read each locked target's row from the connections list.
 
-# Store salvo — all current connections on oneToN
+# Store salvo — captures the matrix's current connections under slot 99
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.storeSalvo `
     --args "1.1.3,99,"
-# OID = 1.5.3 — result: [true]    (function ran; nothing else to report)
+# path = dhs-emberplus-integration.functions.storeSalvo
+# OID  = 1.5.3
+# args interpreted as: matrixRef=oneToN.matrix · slot=99 · label=""
+# result: [true]    (function ran; nothing else to report)
 
 # Get salvo dump — wire form is a single semicolon-separated string
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.getSalvo `
     --args "1.1.3,99"
-# OID = 1.5.6 — result: ["0=0;1=1;3=3;..."]
+# path = dhs-emberplus-integration.functions.getSalvo
+# OID  = 1.5.6
+# args interpreted as: matrixRef=oneToN.matrix · slot=99
+# result: ["0=0;1=1;3=3;..."]
 # Each "T=S" pair means target T routed from source S at salvo-store time.
 
 # Same call with --format human (R5 #482) renders the matrix view
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.getSalvo `
     --args "1.1.3,99" --format human
-# OID = 1.5.6
+# path = dhs-emberplus-integration.functions.getSalvo
+# OID  = 1.5.6
 #   tgt  0 ← src  0
 #   tgt  1 ← src  1
 #   tgt  3 ← src  3
 #   ...
 
-# Recall salvo
+# Recall salvo — restore the captured snapshot
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.recallSalvo `
     --args "1.1.3,99"
-# OID = 1.5.4 — result: [N]    (N rows restored on the matrix)
+# path = dhs-emberplus-integration.functions.recallSalvo
+# OID  = 1.5.4
+# args interpreted as: matrixRef=oneToN.matrix · slot=99
+# result: [N]    (N rows restored on the matrix)
 ```
 
 ### Errors (post #455 / #457)
