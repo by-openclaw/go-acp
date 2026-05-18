@@ -2,29 +2,39 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"strings"
 	"time"
 
 	"dhs/internal/acp1/consumer"
+	"dhs/internal/errcode"
+	"dhs/internal/session/dnssd"
 )
 
-// runDiscover runs a one-shot LAN scan for ACP1 devices. Works only
-// when the host is on the same subnet as the devices — subnet
-// broadcasts do not cross routers. Documented in the help text.
+// R18 #477 validation code: native mDNS tool absent on PATH.
+var errMdnsToolNotFound = errcode.New(errcode.LayerValidation, "mdns-tool-not-found", errcode.ClassUsage)
+
+// runDiscover dispatches the discover verb. ACP1 uses UDP subnet
+// broadcast (existing behaviour); every other protocol uses mDNS /
+// DNS-SD via the dnssd package (R18 #477). The protocol comes from
+// the cf.protocol flag set by addCommonFlags.
 func runDiscover(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("discover", flag.ExitOnError)
 	cf := addCommonFlags(fs)
 	durationStr := fs.String("duration", "5s", "how long to listen (e.g. 5s, 30s)")
-	active := fs.Bool("active", true, "also send a broadcast probe (recommended)")
-	port := fs.Int("scan-port", 2071, "ACP port to scan")
+	active := fs.Bool("active", true, "acp1 only: also send a broadcast probe (recommended)")
+	port := fs.Int("scan-port", 2071, "acp1 only: UDP port to scan")
 	_ = fs.Parse(args)
-	_ = cf // global flags reserved for parity; discover ignores them
 
 	d, err := time.ParseDuration(*durationStr)
 	if err != nil {
 		return fmt.Errorf("--duration: %w", err)
+	}
+
+	if cf.protocol != "acp1" {
+		return runDiscoverMDNS(ctx, cf.protocol, d)
 	}
 
 	fmt.Printf("scanning for ACP1 devices on :%d for %s (active=%v)...\n",
@@ -55,4 +65,81 @@ func runDiscover(ctx context.Context, args []string) error {
 	}
 	fmt.Printf("\n%d device(s) found\n", len(results))
 	return nil
+}
+
+// runDiscoverMDNS browses for the protocol-specific DNS-SD service
+// type via the dnssd tooled backend (R18 #477 v1). Service type per
+// protocol:
+//
+//	emberplus  -> _ember._tcp
+//	nmos       -> _nmos-node._tcp
+//	others     -> validation:mdns-tool-not-found (no convention yet)
+func runDiscoverMDNS(ctx context.Context, proto string, duration time.Duration) error {
+	svcType := protocolMDNSService(proto)
+	if svcType == "" {
+		return fmt.Errorf("%w: protocol %q has no documented DNS-SD service type", errMdnsToolNotFound, proto)
+	}
+	browser := dnssd.NewToolBrowser()
+	fmt.Printf("browsing %s.local for %s ...\n", svcType, duration)
+	services, err := browser.Browse(ctx, dnssd.BrowseOptions{
+		ServiceType: svcType,
+		Duration:    duration,
+	})
+	if err != nil {
+		if errors.Is(err, dnssd.ErrUnsupported) {
+			return fmt.Errorf("%w: install Wireshark? no — install avahi-utils (Linux) or Bonjour SDK (macOS/Windows)", errMdnsToolNotFound)
+		}
+		return err
+	}
+	if len(services) == 0 {
+		fmt.Println("no responders found on this subnet")
+		return nil
+	}
+	fmt.Printf("\n%-30s %-22s %-5s %-30s %s\n", "NAME", "HOST", "PORT", "HOSTNAME", "TXT")
+	fmt.Println(strings.Repeat("-", 110))
+	for _, s := range services {
+		txt := formatTXT(s.TXT)
+		fmt.Printf("%-30s %-22s %-5d %-30s %s\n", s.Name, s.Host, s.Port, s.Hostname, txt)
+	}
+	fmt.Printf("\n%d responder(s) found\n", len(services))
+	return nil
+}
+
+// protocolMDNSService maps a dhs protocol name onto the conventional
+// DNS-SD service type advertised in the wild.
+func protocolMDNSService(proto string) string {
+	switch proto {
+	case "emberplus":
+		return "_ember._tcp"
+	case "nmos":
+		return "_nmos-node._tcp"
+	}
+	return ""
+}
+
+// formatTXT renders a TXT map in deterministic key order.
+func formatTXT(txt map[string]string) string {
+	if len(txt) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(txt))
+	for k := range txt {
+		keys = append(keys, k)
+	}
+	// Simple sort (avoid sort import bloat — verb already imports strings).
+	for i := 0; i < len(keys); i++ {
+		for j := i + 1; j < len(keys); j++ {
+			if keys[j] < keys[i] {
+				keys[i], keys[j] = keys[j], keys[i]
+			}
+		}
+	}
+	var b strings.Builder
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		fmt.Fprintf(&b, "%s=%s", k, txt[k])
+	}
+	return b.String()
 }
