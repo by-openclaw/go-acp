@@ -368,10 +368,32 @@ Three event sources, all delivered through the same `watch` feed:
 | **glow params** | Parameter value-change announces (non-stream) | per `internal/emberplus/CLAUDE.md` "Known deviations" — provider broadcasts plain-Parameter announces to every connected session (libember-cpp / Lawo parity); no explicit subscribe required |
 | **matrix tally** | `Matrix.Connection` change announces (crosspoint set / disconnect) | as soon as the walker discovers a `Matrix` element, the consumer is implicitly subscribed; you receive every tally change without an explicit `Subscribe`. Default is "subscribe to changes", not "stream + glow" — adjust with `--streams-only` or `--path` to scope |
 
+### Subscription model — how the merged feed actually fills
+
+Three independent subscription mechanisms, each kicked in differently:
+
+| Source | When the announce starts flowing |
+| --- | --- |
+| **stream params** | the consumer sends an explicit `Subscribe(30)` per stream OID. `watch` does this on its own as soon as it discovers any Parameter with `streamIdentifier` during its initial walk — no manual step needed. |
+| **glow params** | the provider fan-outs every value-change announce to every connected session, regardless of subscribe state (libember-cpp / Lawo legacy). Open the session → you receive these. |
+| **matrix tally** | the consumer is implicitly subscribed to a matrix as soon as the walker decodes its element (spec p.88 + connect-on-GetDir per `dhs_emberplus.lua` §Matrix). No explicit subscribe call needed; one walk is enough. |
+
+The `watch` verb runs a walk on connect (unless `--no-walk` is set)
+specifically so all three mechanisms light up before the first
+announce. Net effect: **`watch` on root OID = every change from
+every source**, no separate `subscribe` step required.
+
+If the producer keeps running but `watch` is restarted, the
+provider still has the stream subscription from the prior session
+until the R9 `--stream-ttl` sweeps it (default 30s); the fresh
+`watch` re-subscribes during its walk regardless.
+
 ### Happy
 
 ```powershell
 # All updates — stream + glow + matrix tally — one merged feed
+# (walk on connect implicitly subscribes streams + matrix; glow fans
+#  out unconditionally — see "Subscription model" above)
 .\bin\dhs.exe consumer emberplus watch 127.0.0.1 --port 9100
 # OID scope = 1 (root) — every announce flows through
 
@@ -418,18 +440,23 @@ Three event sources, all delivered through the same `watch` feed:
 ### Happy
 
 ```powershell
-# nToN — multi-source SET
+# nToN — multi-source SET (replaces target 10's prior connections)
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.matrix `
     --target 10 --sources 3,4,5 --op absolute
 # OID = 1.3
 # matrix connect: target 10 ← sources [3 4 5] (op=absolute)
+# Post-state: target 10 ← [3, 5, 4]  (set membership; order not significant)
 
-# nToN — disconnect one source
+# nToN — disconnect one source (subtractive against the existing set)
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.nToN.matrix `
     --target 10 --sources 4 --op disconnect
 # matrix connect: target 10 ← sources [4] (op=disconnect)
+# The `[4]` in the echo is the SET delta (what we asked to remove),
+# NOT the final route. Post-state: target 10 ← [3, 5] (source 4 removed
+# from the prior [3, 4, 5] set). Verify with `watch --path 1.3` —
+# the tally announce that follows carries the post-state target row.
 
 # oneToN — replace single source
 .\bin\dhs.exe consumer emberplus matrix 127.0.0.1 --port 9100 `
@@ -475,6 +502,19 @@ Function subtree at OID `1.5` carries six builtins:
 
 `matrixRef` accepts both OID (`1.1.3` → `oneToN.matrix`) and dotted path (`dhs-emberplus-integration.oneToN.matrix`) post #466.
 
+### What `success` and `result` actually mean
+
+Every invocation echo carries two distinct fields per Ember+ spec p.92:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `success` | bool | `true` = the function ran cleanly; `false` = the provider rejected the call (bad matrixRef, out-of-range index, etc.). Spec p.92: omitted → defaults to true. |
+| `result`  | tuple | the function's **return** payload — typed per the function's `result[]` schema. For `setLock` it's `[previousLockState]`; for `listLocks` it's `[lockedTargetIndex, lockedTargetIndex, ...]`; for `storeSalvo` it's `[true]`; etc. |
+
+So a line like `success=true · result: [false]` from `setLock` reads:
+"the call SUCCEEDED, and the function reports the PREVIOUS lock state
+was `false` (unlocked) before we flipped it on". Not "the call failed".
+
 ### Happy
 
 ```powershell
@@ -483,7 +523,7 @@ Function subtree at OID `1.5` carries six builtins:
     --path dhs-emberplus-integration.functions.setLock `
     --args "1.1.3,3,true"
 # OID = 1.5.1 — invocation 1: success=true
-# result: [false]       (previous lock state)
+# result: [false]       (function ran; PREVIOUS lock state was false / unlocked)
 
 # Same via dotted matrixRef (post #466)
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
@@ -491,29 +531,42 @@ Function subtree at OID `1.5` carries six builtins:
     --args "dhs-emberplus-integration.oneToN.matrix,4,true"
 # invocation 1: success=true · result: [false]
 
-# List locked targets
+# List locked targets — result is the LIST of locked TARGET indices
+# (not target/source routes; that's setRoute / storeSalvo territory).
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.listLocks `
     --args "1.1.3"
-# OID = 1.5.2 — result: [2,3,4]   (2 was pre-locked from seed)
+# OID = 1.5.2 — result: [2,3,4]   (targets 2, 3, 4 are currently locked;
+#                                 target 2 was pre-locked from the seed)
 
 # Store salvo — all current connections on oneToN
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.storeSalvo `
     --args "1.1.3,99,"
-# OID = 1.5.3 — result: [true]
+# OID = 1.5.3 — result: [true]    (function ran; nothing else to report)
 
-# Get salvo dump
+# Get salvo dump — wire form is a single semicolon-separated string
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.getSalvo `
     --args "1.1.3,99"
-# OID = 1.5.6 — result: ["0=0;1=1;3=3;..."]   (tgt=src semicolon-separated; human format pending R11)
+# OID = 1.5.6 — result: ["0=0;1=1;3=3;..."]
+# Each "T=S" pair means target T routed from source S at salvo-store time.
+
+# Same call with --format human (R5 #482) renders the matrix view
+.\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
+    --path dhs-emberplus-integration.functions.getSalvo `
+    --args "1.1.3,99" --format human
+# OID = 1.5.6
+#   tgt  0 ← src  0
+#   tgt  1 ← src  1
+#   tgt  3 ← src  3
+#   ...
 
 # Recall salvo
 .\bin\dhs.exe consumer emberplus invoke 127.0.0.1 --port 9100 `
     --path dhs-emberplus-integration.functions.recallSalvo `
     --args "1.1.3,99"
-# OID = 1.5.4 — result: [N]    (rows restored)
+# OID = 1.5.4 — result: [N]    (N rows restored on the matrix)
 ```
 
 ### Errors (post #455 / #457)
