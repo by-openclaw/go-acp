@@ -91,6 +91,46 @@ func (s *server) ComplianceProfile() *compliance.Profile {
 	return s.profile
 }
 
+// PeerHealth carries the per-peer health snapshot exposed by the
+// provider for #300 (provider-side health) and consumed by the R24
+// #489 admin endpoint. Mirrors consumer.SessionHealth shape so a
+// future cross-protocol UI can render both sides with one renderer.
+type PeerHealth struct {
+	Peer       string        // remote address ("10.6.239.113:54321")
+	Connected  bool          // socket established and S101 handshake done
+	Live       bool          // (now - LastRx) <= StaleAfter
+	LastRx     time.Time     // most recent inbound frame
+	StaleAfter time.Duration // window used for Live
+	SubsOpen   int           // number of subscriptions currently held
+}
+
+// PeerHealthSnapshot returns one entry per active consumer session
+// (#300 provider side). Safe to call from any goroutine; the slice
+// is a fresh allocation so the caller can sort / render freely.
+func (s *server) PeerHealthSnapshot() []PeerHealth {
+	s.mu.Lock()
+	out := make([]PeerHealth, 0, len(s.sessions))
+	now := time.Now()
+	for sess := range s.sessions {
+		lastNano := sess.lastActive.Load()
+		var lastRx time.Time
+		if lastNano > 0 {
+			lastRx = time.Unix(0, lastNano)
+		}
+		live := lastNano > 0 && now.Sub(lastRx) <= idleSessionTTL
+		out = append(out, PeerHealth{
+			Peer:       sess.id,
+			Connected:  true, // session in s.sessions = socket established + accepted
+			Live:       live,
+			LastRx:     lastRx,
+			StaleAfter: idleSessionTTL,
+			SubsOpen:   len(sess.subs),
+		})
+	}
+	s.mu.Unlock()
+	return out
+}
+
 // Serve implements provider.Provider. Blocks until ctx is cancelled or
 // the listener returns a fatal error.
 func (s *server) Serve(ctx context.Context, addr string) error {

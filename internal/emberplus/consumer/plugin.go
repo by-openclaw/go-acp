@@ -1146,6 +1146,44 @@ func (p *Plugin) currentSession() *Session {
 	return p.session
 }
 
+// emberplusStaleAfter is the rolling window after which the session
+// is judged not Live (#300). Matches the provider-side idleSessionTTL
+// default for symmetry; once R9 #472 --stream-ttl is in play the
+// soft sweep can clear subs before the hard staleness threshold.
+const emberplusStaleAfter = 30 * time.Second
+
+// SessionHealth implements consumer.HealthChecker (#300). Returns the
+// 3-layer snapshot:
+//
+//   - Reachable: true once Connect has captured an IP / port (the agent
+//     has a target it considers reachable; a hard probe would be a CPU
+//     hit we don't want on every poll).
+//   - Connected: mirrors the underlying Session's sessionConnected
+//     bool — set true after Ember+ S101 handshake completes.
+//   - Live: (now - LastRx) <= emberplusStaleAfter.
+//
+// The plugin holds p.mu briefly while reading state; the returned
+// snapshot is a value copy safe to log / serialise without lock concerns.
+func (p *Plugin) SessionHealth(ctx context.Context) consumer.SessionHealth {
+	_ = ctx // probing reachable / connected via context is reserved for a future enhancement
+	p.mu.Lock()
+	connected := p.sessionConnected
+	reachable := p.connIP != ""
+	sess := p.session
+	p.mu.Unlock()
+
+	snap := consumer.SessionHealth{
+		Reachable:  reachable,
+		Connected:  connected,
+		StaleAfter: emberplusStaleAfter,
+	}
+	if sess != nil {
+		snap.LastRx = sess.LastRx()
+	}
+	snap.Live = snap.IsLiveAt(time.Now())
+	return snap
+}
+
 // handleElements is the session callback for every decoded Glow message.
 func (p *Plugin) handleElements(elements []glow.Element) {
 	for _, el := range elements {

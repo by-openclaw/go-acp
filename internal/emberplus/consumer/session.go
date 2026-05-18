@@ -213,6 +213,16 @@ func (s *Session) rxAge() time.Duration {
 	return time.Since(s.lastRX)
 }
 
+// LastRx returns the timestamp of the most recent frame this session
+// received from the peer, or the zero time if nothing has arrived
+// yet. Used by Plugin.SessionHealth (#300) for the 3-layer liveness
+// snapshot.
+func (s *Session) LastRx() time.Time {
+	s.lastRXMu.RLock()
+	defer s.lastRXMu.RUnlock()
+	return s.lastRX
+}
+
 // fireStateChange dispatches to the registered callback if any.
 // Holds no lock across the user callback.
 func (s *Session) fireStateChange(connected bool, reason string) {
