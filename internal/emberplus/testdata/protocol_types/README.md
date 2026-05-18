@@ -24,18 +24,23 @@ test under `tests/unit/fixture_parity/` asserts that.
 | 13| 19 / 22 | Function + Invocation   | [`function_invoke/`](function_invoke/)             | 91     |
 | 14| 23      | InvocationResult        | [`invocation_result/`](invocation_result/)         | 92     |
 
-## Not covered (TinyEmber+ / TinyEmberPlusRouter gap)
+## Scaffolded — capture pending live device (#62)
 
-| APP tag | Type                   | Reason                                       |
-|---------|------------------------|----------------------------------------------|
-| 12      | StreamDescription      | TinyEmber+ does not publish streamDescriptor |
-| 20      | QualifiedFunction      | Only Function + QualifiedNode-wrapped Func   |
-| 21      | TupleItemDescription   | Function has no `arguments` metadata         |
-| 24      | Template               | TinyEmber+ does not expose templates         |
-| 25      | QualifiedTemplate      | As above                                     |
+| APP tag | Type                 | Fixture dir                                          | Reason TinyEmber+ doesn't cover              |
+|---------|----------------------|------------------------------------------------------|----------------------------------------------|
+| 12      | StreamDescription    | [`stream_description/`](stream_description/)         | TinyEmber+ does not publish streamDescriptor |
+| 20      | QualifiedFunction    | [`qualified_function/`](qualified_function/)         | Only Function + QualifiedNode-wrapped Func   |
+| 21      | TupleItemDescription | [`tuple_item_description/`](tuple_item_description/) | Function has no `arguments` metadata         |
+| 24      | Template             | [`template/`](template/)                             | TinyEmber+ does not expose templates         |
+| 25      | QualifiedTemplate    | [`qualified_template/`](qualified_template/)         | As above                                     |
 
-Re-capture required against a Lawo / DHD / Riedel provider that ships these
-elements. Tracked in a follow-up issue — see root `agents.md`.
+Each fixture dir ships a `README.md` documenting the per-type spec
+section, the gap explanation, and the capture recipe (which device
+class to use + the slim/tshark steps). Re-capture against a live
+Lawo / DHD / Riedel provider drops `capture.pcapng` + `tshark.tree`
+into the corresponding dir, closing the gap for that type.
+
+Tracking issue: [#62](https://github.com/by-openclaw/go-acp/issues/62).
 
 ## Using a fixture
 
