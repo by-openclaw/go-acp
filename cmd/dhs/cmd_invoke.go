@@ -19,6 +19,7 @@ func runInvoke(ctx context.Context, args []string) error {
 	funcPath := fs.String("path", "", "function path: dotted label OR numeric OID (e.g. router.functions.add or 1.5.1)")
 	argsStr := fs.String("args", "", "comma-separated arguments (e.g. 3,5)")
 	format := fs.String("format", "raw", `result presentation: "raw" (default — provider's wire form) or "human" (pretty-print for getSalvo)`)
+	ensureRaw := addEnsureFlag(fs)
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "dhs-emberplus-integration@1.0.0"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the per-call walk is skipped — refs #438, ADR-0022.`)
 	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of falling back to a wire walk")
 	host, rest, err := popHost(args)
@@ -34,6 +35,17 @@ func runInvoke(ctx context.Context, args []string) error {
 	}
 	if *format != "raw" && *format != "human" {
 		return fmt.Errorf("%w: --format must be \"raw\" or \"human\", got %q", consumer.ErrInvalidFormat, *format)
+	}
+
+	// R14 #475: parse --ensure now so any mode-specific reject (absent
+	// is a hard reject for invoke) fires before we burn a wire walk.
+	mode, err := parseEnsureMode(*ensureRaw)
+	if err != nil {
+		return err
+	}
+	if mode == ensureAbsent {
+		return fmt.Errorf("%w: --ensure absent does not apply to invoke (function calls have no spec'd inverse)",
+			errEnsureNotApplicable)
 	}
 
 	// Parse arguments — RFC 4180 CSV so a quoted field can carry a comma
@@ -90,6 +102,19 @@ func runInvoke(ctx context.Context, args []string) error {
 	// through --timeout before Invoke even sends its Command frame.
 	opCtx, cancel := withTimeout(ctx, cf.timeout)
 	defer cancel()
+
+	// R14 #475 dryrun: print the call shape that would be sent and
+	// return without invoking. changed=false. Lets playbook authors
+	// validate args + path resolution without provider-side effects.
+	if mode == ensureDryrun {
+		return emitEnsureReport(ensureReport{
+			Verb:   "invoke",
+			Ensure: string(mode),
+			Before: fmt.Sprintf("would invoke %s with args %v", *funcPath, funcArgs),
+			After:  fmt.Sprintf("would invoke %s with args %v", *funcPath, funcArgs),
+			Reason: "dryrun — no wire send",
+		})
+	}
 
 	result, err := ep.InvokeFunction(opCtx, *funcPath, funcArgs)
 	// emberplus.InvokeFunction returns (result, ErrInvocationFailed) when

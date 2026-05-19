@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"dhs/internal/consumer"
+	emberplus "dhs/internal/emberplus/consumer"
 )
 
 // orFirst returns the first non-empty argument, or "" if all are empty.
@@ -219,11 +220,38 @@ func runSetEnsure(ctx context.Context, plug consumer.Protocol, req consumer.Valu
 		return emitEnsureReport(report)
 
 	case ensureAbsent:
-		// v1.5: needs Parameter.Default lookup against the cached
-		// tree which requires per-protocol object metadata not exposed
-		// through consumer.Protocol today. Surfaced as a typed error
-		// so playbook authors get a stable signal.
-		return fmt.Errorf("%w: --ensure absent for set requires Parameter.Default codec support (R14 v1.5)", errEnsureModePending)
+		// R14 #475: reset Parameter to its declared Default. Today this
+		// is Ember+-specific because Default lives in glow.Parameter.
+		// Other protocols can implement the same shape (e.g. ACP1/ACP2
+		// gain ParameterDefault on their plugin types) and the dispatch
+		// extends naturally — the type-switch below stays exhaustive
+		// rather than falling back to a generic "not supported".
+		ep, ok := plug.(*emberplus.Plugin)
+		if !ok {
+			return fmt.Errorf("%w: --ensure absent on %T (only Ember+ exposes Parameter.Default today)",
+				errEnsureModePending, plug)
+		}
+		defaultVal, has, perr := ep.ParameterDefault(ctx, req)
+		if perr != nil {
+			return fmt.Errorf("ensure absent: %w", perr)
+		}
+		if !has {
+			return fmt.Errorf("%w: parameter has no Default declared on the wire", errEnsureNoDefault)
+		}
+		report.After = formatValue(defaultVal, nil)
+		if beforeStr == report.After.(string) {
+			report.Changed = false
+			report.Reason = "already at default"
+			return emitEnsureReport(report)
+		}
+		confirmed, serr := plug.SetValue(ctx, req, defaultVal)
+		if serr != nil {
+			return fmt.Errorf("ensure absent: set: %w", serr)
+		}
+		report.After = formatValue(confirmed, nil)
+		report.Diff = ensureFmtDiff("value", beforeStr, report.After)
+		report.Changed = true
+		return emitEnsureReport(report)
 	}
 	return fmt.Errorf("%w: --ensure=%q", errEnsureInvalidMode, mode)
 }

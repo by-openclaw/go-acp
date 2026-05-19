@@ -14,6 +14,12 @@ var (
 	errEnsureInvalidMode    = errcode.New(errcode.LayerValidation, "ensure-invalid-mode", errcode.ClassUsage)
 	errEnsureNoDefault      = errcode.New(errcode.LayerValidation, "no-default-declared", errcode.ClassUsage)
 	errEnsureModePending    = errcode.New(errcode.LayerValidation, "ensure-mode-pending", errcode.ClassUsage)
+	// errEnsureNotApplicable — the requested ensure mode has no
+	// well-defined inverse for this verb. e.g. `invoke --ensure absent`
+	// is rejected because function invocations have no spec'd
+	// "un-invocation" state. Distinct from errEnsureModePending which
+	// flags an unimplemented mode that could land later.
+	errEnsureNotApplicable = errcode.New(errcode.LayerValidation, "ensure-not-applicable", errcode.ClassUsage)
 )
 
 // ensureMode is the parsed --ensure flag value. Empty = flag not set
