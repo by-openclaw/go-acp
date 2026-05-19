@@ -82,8 +82,8 @@ func runValidate(ctx context.Context, args []string) error {
 	outParams := fs.String("out-params", "", "optional path: write canonical params dump (csv/json by extension)")
 	stopAt := fs.String("stop-at", "", "optional Trame.Note marker to halt decoding at")
 	report := fs.String("report", "", "R23 #488: write a structured validation report. Path ending in `.md` → Markdown; `.json` → JSON; `-` → stdout (suppresses per-frame stdout). Any other extension → validation:invalid-report-format.")
-	lua := fs.Bool("lua", false, "R12 #473: replay through the project's Wireshark dissector via `tshark -V -X lua_script:<dhs_<proto>.lua>` instead of the Go codec. Requires --pcap (jsonl→pcap synthesis is staged for v2).")
-	pcapPath := fs.String("pcap", "", "R12 #473: pcap/pcapng input for --lua mode (real wire capture). Mutually inclusive with --lua.")
+	lua := fs.Bool("lua", false, "R12 #473: replay through the project's Wireshark dissector via `tshark -V -X lua_script:<dhs_<proto>.lua>` instead of the Go codec. When --pcap is unset the jsonl fixture is synthesised into a temporary pcap on the fly so committed jsonl traces stay replayable without separate pcap files.")
+	pcapPath := fs.String("pcap", "", "R12 #473: pcap/pcapng input for --lua mode (real wire capture). When set, --lua dispatches to this file instead of synthesising one from the jsonl positional.")
 
 	tramesPath, rest, err := popHost(args)
 	if err != nil {
@@ -93,14 +93,21 @@ func runValidate(ctx context.Context, args []string) error {
 		return err
 	}
 
-	// R12 #473: --lua short-circuits the Go-codec path. Per spec it
-	// requires tshark on PATH + a real pcap file (jsonl→pcap synthesis
-	// is the v2 enhancement; see help text).
+	// R12 #473: --lua short-circuits the Go-codec path. When --pcap is
+	// supplied, dispatch to the real wire capture. Otherwise synthesise
+	// a pcap from the positional jsonl so the dissector check runs
+	// against committed fixtures with no extra files.
 	if *lua {
-		if *pcapPath == "" {
-			return fmt.Errorf("%w: --lua requires --pcap <file>; jsonl→pcap synthesis pending v2", errLuaPcapRequired)
+		pcap := *pcapPath
+		if pcap == "" {
+			synth, serr := synthesisePcapFromJSONL(tramesPath, cf.protocol)
+			if serr != nil {
+				return serr
+			}
+			pcap = synth
+			defer func() { _ = os.Remove(synth) }()
 		}
-		return runValidateLua(ctx, cf.protocol, *pcapPath)
+		return runValidateLua(ctx, cf.protocol, pcap)
 	}
 
 	// Resolve the report format before we touch the wire / disk so we
@@ -274,6 +281,57 @@ func renderValidateReport(path string, trames []wiretrace.Trame, r *consumer.Val
 		out.Failures = append(out.Failures, rec)
 	}
 	return out
+}
+
+// synthesisePcapFromJSONL reads the named jsonl fixture and writes a
+// synthesised libpcap into a host-OS temp file so `tshark -r` can
+// consume it. Returns the temp file path; caller is responsible for
+// deleting it once tshark exits. Per R12 #473 strict-spec — committed
+// jsonl fixtures stay replayable without operator-side pcap captures.
+//
+// providerPort defaults are per-protocol; the map mirrors the listener
+// ports each protocol's producer binds to. Unknown protocols fall back
+// to 9000 (the Ember+ default) — safe because the dissector identifies
+// frames by wire bytes, not port.
+func synthesisePcapFromJSONL(jsonlPath, protoName string) (string, error) {
+	f, err := os.Open(jsonlPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("%w: %s", errInputNotFound, jsonlPath)
+		}
+		return "", fmt.Errorf("open %s: %w", jsonlPath, err)
+	}
+	defer func() { _ = f.Close() }()
+
+	tmp, err := os.CreateTemp("", "dhs-validate-*.pcap")
+	if err != nil {
+		return "", fmt.Errorf("temp pcap: %w", err)
+	}
+	defer func() { _ = tmp.Close() }()
+
+	port := defaultProviderPort(protoName)
+	if err := wiretrace.SynthesisePcap(f, tmp, port); err != nil {
+		// Clean up the partial temp file so we don't leak.
+		_ = os.Remove(tmp.Name())
+		return "", fmt.Errorf("synthesise pcap from %s: %w", jsonlPath, err)
+	}
+	return tmp.Name(), nil
+}
+
+// defaultProviderPort returns the wire port the named protocol's
+// producer listens on by default. Used by the pcap synthesiser to
+// route synthesised TCP segments to a port the dissector recognises.
+func defaultProviderPort(protoName string) uint16 {
+	switch protoName {
+	case "emberplus":
+		return 9000
+	case "probel-sw08p":
+		return 2008
+	case "probel-sw02p":
+		return 2008
+	default:
+		return 9000
+	}
 }
 
 // runValidateLua replays a pcap through tshark with the project's
