@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -56,6 +57,8 @@ func runExtract(ctx context.Context, args []string) error {
 	outDir := fs.String("out", "",
 		"output directory (e.g. tests/fixtures/products/axon/DDB08/acp2/v2.3/). Required.")
 	slot := fs.Int("slot", 0, "slot to walk (default 0)")
+	pathFlag := fs.String("path", "",
+		"subtree root: dotted label OR numeric OID (e.g. types or 1.6). Empty = whole tree. Per R21 #486 every --path flag accepts both forms.")
 
 	host, rest, err := popHost(args)
 	if err != nil {
@@ -71,6 +74,18 @@ func runExtract(ctx context.Context, args []string) error {
 		return err
 	}
 	*direction = canonical
+
+	// R21 #486: --path accepts dotted label OR numeric OID; validate
+	// syntax-only here, resolver decides hit/miss at filter time.
+	if *pathFlag != "" {
+		if err := validatePathOrOID(*pathFlag); err != nil {
+			return err
+		}
+	}
+	var pathSegs []string
+	if *pathFlag != "" {
+		pathSegs = strings.Split(*pathFlag, ".")
+	}
 
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
 		return fmt.Errorf("create --out dir: %w", err)
@@ -92,7 +107,19 @@ func runExtract(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("walk slot %d: %w", *slot, err)
 	}
-	fmt.Printf("walked %d objects on slot %d\n", len(objs), *slot)
+	walkedTotal := len(objs)
+	// R21 #486: when --path is set, filter the walked objects to the
+	// requested subtree. Matches the existing `walk --path` behavior:
+	// the filter is applied to operator-visible state; raw wire frames
+	// were captured during the full walk and remain on disk in
+	// wire.jsonl so the fixture is replayable in either scope.
+	if len(pathSegs) > 0 {
+		objs = filterByPath(objs, pathSegs)
+		fmt.Printf("walked %d objects on slot %d (filtered to %d under --path %q)\n",
+			walkedTotal, *slot, len(objs), *pathFlag)
+	} else {
+		fmt.Printf("walked %d objects on slot %d\n", walkedTotal, *slot)
+	}
 
 	// writeCanonicalCapture (from cmd_walk.go) emits tree.json for
 	// every plugin type. Ember+ additionally writes glow.json; that's
