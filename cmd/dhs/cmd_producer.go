@@ -29,6 +29,7 @@ import (
 	acp2provider "dhs/internal/acp2/provider"
 	emberprovider "dhs/internal/emberplus/provider"
 	"dhs/internal/provider/admin"
+	"dhs/internal/session/dnssd"
 )
 
 // metricsExposer is the optional interface provider servers implement
@@ -75,6 +76,10 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		adminEnable   = fs.Bool("admin", true, "R25 #490: enable the local admin socket (Unix socket on every supported OS — local-only, no network exposure). Default ON for emberplus; ignored on protocols that have not yet wired runtime admin verbs.")
 		adminTag      = fs.String("admin-tag", "", "R25 #490: connector tag for the admin socket path (disambiguates multi-instance hosts). Default: <protocol>.")
 		adminAddr     = fs.String("admin-addr", "", "R24 #489: when set (e.g. '127.0.0.1:9110'), serve a static read-only HTML5 admin page on this address. Reads peer health from the --admin socket. Local-only; never expose to the public internet.")
+		mdnsEnable    = fs.Bool("mdns", false, "R18 #477: announce this producer on mDNS / DNS-SD so consumers find us on the LAN. Uses the protocol's conventional service type (_ember._tcp for Ember+). Pure-Go announcer — no avahi / Bonjour required.")
+		mdnsInstance  = fs.String("mdns-instance", "", "R18 #477: mDNS instance name. Defaults to --admin-tag (which defaults to <protocol>).")
+		mdnsHostname  = fs.String("mdns-hostname", "", "R18 #477: hostname for the A record (e.g. 'dhs.local'). Defaults to os.Hostname() with .local appended.")
+		mdnsHost      = fs.String("mdns-host", "", "R18 #477: explicit IPv4 to advertise in the A record. Defaults to the first non-loopback IPv4 the host owns.")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -209,6 +214,54 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 				logger.Warn("admin web exited", slog.String("err", err.Error()))
 			}
 		}()
+	}
+
+	// R18 #477: pure-Go mDNS announcement so the LAN finds us without
+	// requiring `dhs discover` to know our address. Only Ember+ is
+	// wired today; other protocols ignore the flag.
+	if *mdnsEnable {
+		svcType := protocolMDNSService(protoName)
+		if svcType == "" {
+			logger.Warn("mdns: protocol has no documented DNS-SD service type; skipping announcement",
+				slog.String("proto", protoName))
+		} else {
+			instance := *mdnsInstance
+			if instance == "" {
+				instance = adminTagResolved
+			}
+			hostname := *mdnsHostname
+			if hostname == "" {
+				h, herr := os.Hostname()
+				if herr != nil || h == "" {
+					h = "dhs"
+				}
+				hostname = h
+			}
+			advPort := *port
+			if advPort == 0 {
+				advPort = 9000 // emberplus default
+			}
+			ann := dnssd.NewPureAnnouncer(dnssd.Service{
+				Name: instance,
+				Host: *mdnsHost,
+				Port: advPort,
+				TXT:  map[string]string{"txtvers": "1", "path": "/"},
+			}, svcType, hostname)
+			stopAnn, aerr := ann.Announce(srvCtx, dnssd.Service{})
+			if aerr != nil {
+				logger.Warn("mdns: announce failed", slog.String("err", aerr.Error()))
+			} else {
+				logger.Info("mdns announcing",
+					slog.String("service", svcType+".local"),
+					slog.String("instance", instance),
+					slog.String("hostname", hostname),
+					slog.Int("port", advPort))
+				go func() {
+					<-srvCtx.Done()
+					stopAnn()
+				}()
+			}
+		}
 	}
 
 	// --metrics-addr mounts Prometheus /metrics if the provider
