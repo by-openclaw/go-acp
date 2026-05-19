@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"sort"
 	"sync"
 	"time"
 
@@ -107,39 +108,157 @@ type PeerHealth struct {
 }
 
 // RegisterAdminHandlers wires the producer's runtime admin verbs onto
-// the supplied admin.Server (R25 #490). v1 registers `sessions:list`
-// returning the PeerHealth snapshot; other admin verbs roll in as
-// they land (health enable/disable, log-level set, etc.).
+// the supplied admin.Server (R25 #490). The handlers capture `s` by
+// closure so the live server state is always reflected.
 //
-// The handler captures `s` by closure so the live server state is
-// always reflected — no stale snapshots.
+// `peers:list` is an alias for `sessions:list` — same data, different
+// idiom for operators who think in peer-state terms.
 func (s *server) RegisterAdminHandlers(adm AdminRegistrar) {
-	adm.Register("sessions:list", func(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
-		// Use the existing peer-health snapshot and re-encode as JSON.
-		// Anonymous struct gives JSON-friendly key casing without a
-		// dedicated DTO.
-		type peerOut struct {
-			Peer       string `json:"peer"`
-			Connected  bool   `json:"connected"`
-			Live       bool   `json:"live"`
-			LastRx     string `json:"last_rx,omitempty"`
-			StaleAfter string `json:"stale_after,omitempty"`
-			SubsOpen   int    `json:"subs_open"`
+	adm.Register("sessions:list", s.adminSessionsList)
+	adm.Register("sessions:disconnect", s.adminSessionsDisconnect)
+	adm.Register("subs:list", s.adminSubsList)
+	adm.Register("subs:close", s.adminSubsClose)
+	adm.Register("peers:list", s.adminSessionsList)
+}
+
+// adminSessionsList returns one entry per connected session with peer
+// addr + connected + live + last_rx + stale_after + subs_open.
+func (s *server) adminSessionsList(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	type peerOut struct {
+		Peer       string `json:"peer"`
+		Connected  bool   `json:"connected"`
+		Live       bool   `json:"live"`
+		LastRx     string `json:"last_rx,omitempty"`
+		StaleAfter string `json:"stale_after,omitempty"`
+		SubsOpen   int    `json:"subs_open"`
+	}
+	snap := s.PeerHealthSnapshot()
+	out := make([]peerOut, 0, len(snap))
+	for _, p := range snap {
+		po := peerOut{
+			Peer: p.Peer, Connected: p.Connected, Live: p.Live,
+			StaleAfter: p.StaleAfter.String(), SubsOpen: p.SubsOpen,
 		}
-		snap := s.PeerHealthSnapshot()
-		out := make([]peerOut, 0, len(snap))
-		for _, p := range snap {
-			po := peerOut{
-				Peer: p.Peer, Connected: p.Connected, Live: p.Live,
-				StaleAfter: p.StaleAfter.String(), SubsOpen: p.SubsOpen,
-			}
-			if !p.LastRx.IsZero() {
-				po.LastRx = p.LastRx.UTC().Format(time.RFC3339)
-			}
-			out = append(out, po)
+		if !p.LastRx.IsZero() {
+			po.LastRx = p.LastRx.UTC().Format(time.RFC3339)
 		}
-		return json.Marshal(out)
-	})
+		out = append(out, po)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Peer < out[j].Peer })
+	return json.Marshal(out)
+}
+
+// adminSessionsDisconnect closes a specific session by peer address.
+// Params: {"peer": "10.6.239.113:54321"}. The session's TCP socket is
+// closed and its subscription set is reclaimed via the standard
+// dropSession path so the live tree's broadcaster stops emitting to it
+// immediately. Returns {"disconnected": "<peer>"} on success;
+// admin:peer-not-found when no matching session.
+func (s *server) adminSessionsDisconnect(_ context.Context, params json.RawMessage) (json.RawMessage, error) {
+	var p struct {
+		Peer string `json:"peer"`
+	}
+	if len(params) > 0 {
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, fmt.Errorf("admin: sessions:disconnect: bad params: %w", err)
+		}
+	}
+	if p.Peer == "" {
+		return nil, fmt.Errorf("admin: sessions:disconnect: peer param required")
+	}
+	// Locate under lock, close after release — sess.close() calls
+	// dropSession which re-acquires s.mu and would deadlock.
+	s.mu.Lock()
+	var target *session
+	for sess := range s.sessions {
+		if sess.id == p.Peer {
+			target = sess
+			break
+		}
+	}
+	s.mu.Unlock()
+	if target == nil {
+		return nil, fmt.Errorf("admin: sessions:disconnect: peer %q not found", p.Peer)
+	}
+	target.close()
+	out := struct {
+		Disconnected string `json:"disconnected"`
+	}{Disconnected: p.Peer}
+	return json.Marshal(out)
+}
+
+// adminSubsList returns one entry per subscribed OID with the sorted
+// list of peer addresses currently subscribed to it.
+func (s *server) adminSubsList(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	type entry struct {
+		OID         string   `json:"oid"`
+		Subscribers []string `json:"subscribers"`
+	}
+	s.mu.Lock()
+	out := make([]entry, 0, len(s.subs))
+	for oid, set := range s.subs {
+		peers := make([]string, 0, len(set))
+		for sess := range set {
+			peers = append(peers, sess.id)
+		}
+		sort.Strings(peers)
+		out = append(out, entry{OID: oid, Subscribers: peers})
+	}
+	s.mu.Unlock()
+	sort.Slice(out, func(i, j int) bool { return out[i].OID < out[j].OID })
+	return json.Marshal(out)
+}
+
+// adminSubsClose unsubscribes one or more (peer, oid) tuples.
+//
+// Params:
+//
+//	{"oid":"1.2.3"}                  — close all subs for that OID
+//	{"peer":"10.6.239.113:54321"}    — close all subs for that peer
+//	{"oid":"1.2.3","peer":"..."}     — close that one tuple
+//
+// Returns {"closed": N} count of (peer, oid) tuples removed. Empty
+// params (neither oid nor peer) is rejected to prevent operator typos
+// from nuking every subscription on the server.
+func (s *server) adminSubsClose(_ context.Context, params json.RawMessage) (json.RawMessage, error) {
+	var p struct {
+		OID  string `json:"oid"`
+		Peer string `json:"peer"`
+	}
+	if len(params) > 0 {
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, fmt.Errorf("admin: subs:close: bad params: %w", err)
+		}
+	}
+	if p.OID == "" && p.Peer == "" {
+		return nil, fmt.Errorf("admin: subs:close: at least one of oid or peer param required")
+	}
+	type tuple struct {
+		sess *session
+		oid  string
+	}
+	var matches []tuple
+	s.mu.Lock()
+	for oid, set := range s.subs {
+		if p.OID != "" && oid != p.OID {
+			continue
+		}
+		for sess := range set {
+			if p.Peer != "" && sess.id != p.Peer {
+				continue
+			}
+			matches = append(matches, tuple{sess: sess, oid: oid})
+		}
+	}
+	s.mu.Unlock()
+	// unsubscribe re-acquires s.mu; safe outside the loop.
+	for _, t := range matches {
+		s.unsubscribe(t.sess, t.oid)
+	}
+	out := struct {
+		Closed int `json:"closed"`
+	}{Closed: len(matches)}
+	return json.Marshal(out)
 }
 
 // AdminRegistrar is the minimal interface RegisterAdminHandlers

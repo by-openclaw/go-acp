@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"strings"
 
 	"dhs/internal/errcode"
 	"dhs/internal/provider/admin"
@@ -48,16 +49,50 @@ func runProducerAdmin(ctx context.Context, protoName string, args []string) erro
 	}
 	verb := feature + ":" + action
 
-	// Params: rest of argv as a JSON array of strings for simple
-	// passthrough (the producer-side handler converts to typed args).
+	// Params: each remaining argv element is either `key=value` (parsed
+	// into a JSON object) or a bare positional value. If every extra is
+	// k=v form the payload is the merged object; if every extra is bare
+	// the payload is a JSON array (legacy shape); mixed forms are an
+	// operator typo and rejected.
 	var params json.RawMessage
 	if len(rest) > 2 {
 		extras := rest[2:]
-		buf, err := json.Marshal(extras)
-		if err != nil {
-			return fmt.Errorf("%w: --params: %v", errAdminVerbInvalid, err)
+		kvCount := 0
+		for _, e := range extras {
+			if strings.Contains(e, "=") {
+				kvCount++
+			}
 		}
-		params = buf
+		switch {
+		case kvCount == 0:
+			// All bare values — legacy array form, used by handlers
+			// that already parsed positional argv (none today).
+			buf, err := json.Marshal(extras)
+			if err != nil {
+				return fmt.Errorf("%w: marshal extras: %v", errAdminVerbInvalid, err)
+			}
+			params = buf
+		case kvCount == len(extras):
+			// All k=v — build the object the typed handlers expect.
+			obj := make(map[string]string, kvCount)
+			for _, e := range extras {
+				i := strings.Index(e, "=")
+				k := strings.TrimSpace(e[:i])
+				v := e[i+1:]
+				if k == "" {
+					return fmt.Errorf("%w: empty key in %q", errAdminVerbInvalid, e)
+				}
+				obj[k] = v
+			}
+			buf, err := json.Marshal(obj)
+			if err != nil {
+				return fmt.Errorf("%w: marshal params: %v", errAdminVerbInvalid, err)
+			}
+			params = buf
+		default:
+			return fmt.Errorf("%w: mixed bare + k=v extras: %v (use either all positional or all key=value)",
+				errAdminVerbInvalid, extras)
+		}
 	}
 
 	resp, err := admin.Call(ctx, sock, admin.Request{Verb: verb, Params: params})
