@@ -335,36 +335,82 @@ func defaultProviderPort(protoName string) uint16 {
 }
 
 // runValidateLua replays a pcap through tshark with the project's
-// per-protocol Lua dissector loaded. Pure shell-out — we don't post-
-// process tshark's output, so the operator gets exactly the
-// Wireshark-V text they would from running tshark themselves with
-// the same -X lua_script: invocation.
+// per-protocol Lua dissector. Tshark resolves the dissector in this
+// priority order:
 //
-// Per R12 #473 spec: jsonl→pcap synthesis is the v2 enhancement;
-// today --lua requires a real --pcap input.
+//  1. Already installed as a user plugin (the documented setup per
+//     `docs/wireshark.md`). When detected, this function does NOT
+//     pass `-X lua_script:` — that would double-load the file and
+//     trip a duplicate-Proto error since two Proto() calls would
+//     produce the same description string.
+//  2. Otherwise: passed via `-X lua_script:internal/<proto>/wireshark/
+//     dhs_<proto>.lua` so the dissector is loaded ad-hoc.
+//
+// Output is pure shell-out — the operator gets exactly the
+// Wireshark-V text they would from running tshark themselves.
 func runValidateLua(ctx context.Context, protoName, pcapPath string) error {
 	tsharkBin, err := exec.LookPath("tshark")
 	if err != nil {
-		return fmt.Errorf("%w: install Wireshark (https://www.wireshark.org)", errTsharkNotFound)
+		// Best-effort second look: Wireshark on Windows installs to
+		// Program Files and isn't on PATH by default.
+		for _, p := range []string{
+			`C:\Program Files\Wireshark\tshark.exe`,
+			`C:\Program Files (x86)\Wireshark\tshark.exe`,
+		} {
+			if _, sterr := os.Stat(p); sterr == nil {
+				tsharkBin = p
+				break
+			}
+		}
+		if tsharkBin == "" {
+			return fmt.Errorf("%w: install Wireshark (https://www.wireshark.org)", errTsharkNotFound)
+		}
 	}
 	dissectorPath := filepath.Join("internal", protoName, "wireshark", "dhs_"+protoName+".lua")
 	if _, err := os.Stat(dissectorPath); err != nil {
-		// Try emberplus naming variant for the ACP1 v1 dissector and
-		// equivalents — kept best-effort so unknown layouts surface a
-		// clear error rather than a tshark argv miss.
 		return fmt.Errorf("dissector not found at %s: %w", dissectorPath, err)
 	}
-	cmd := exec.CommandContext(ctx, tsharkBin,
-		"-r", pcapPath,
-		"-V",
-		"-X", "lua_script:"+dissectorPath,
-	)
+	args := []string{"-r", pcapPath, "-V"}
+	// Only pass -X lua_script: when the dissector is NOT already
+	// installed as a Wireshark user plugin. Otherwise tshark loads
+	// the lua twice and rejects the second Proto() registration.
+	if !dissectorAlreadyInstalled(protoName) {
+		args = append(args, "-X", "lua_script:"+dissectorPath)
+	}
+	cmd := exec.CommandContext(ctx, tsharkBin, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("tshark: %w", err)
 	}
 	return nil
+}
+
+// dissectorAlreadyInstalled returns true when `dhs_<proto>.lua` is
+// found in the OS-conventional Wireshark user-plugin directory:
+//
+//	Windows  %APPDATA%\Wireshark\plugins\
+//	macOS    ~/.local/lib/wireshark/plugins/
+//	Linux    ~/.local/lib/wireshark/plugins/
+//
+// Other locations (system-wide /usr/lib/wireshark/plugins, custom
+// --enable-plugins paths) are not auto-detected; operators with non-
+// default layouts can still run the bare tshark invocation manually.
+func dissectorAlreadyInstalled(protoName string) bool {
+	fname := "dhs_" + protoName + ".lua"
+	var candidates []string
+	if appData := os.Getenv("APPDATA"); appData != "" {
+		candidates = append(candidates, filepath.Join(appData, "Wireshark", "plugins", fname))
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		candidates = append(candidates, filepath.Join(home, ".local", "lib", "wireshark", "plugins", fname))
+	}
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // classifyFromMessage extracts the layer and `<layer>:<name>` code
