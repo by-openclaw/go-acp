@@ -15,35 +15,80 @@
 | **OS** | Windows 11 (primary host); Linux LXCs (Debian/Ubuntu/Rocky) parity |
 | **Out of scope** | (legacy gaps now covered locally — see "Recent additions" below) |
 
-## Recent additions (DOD branch `feat/emberplus-stream-idle-ttl-472`)
+## Recent additions (DOD branch `feat/emberplus-stream-idle-ttl-472`, PR [#507](https://github.com/by-openclaw/go-acp/pull/507))
 
-The branch carries 16 atomic commits ahead of `main`, all pre-commit
-green, all unit tests passing on Windows 11 + go1.26.2. Per ADR-0027
-no PR is open yet — codeowner builds + tests the binary first, then
-the consolidated PR opens against `main`.
+The branch carries **36 atomic commits** ahead of `main`, all
+pre-commit green, all 73 unit-test packages passing on
+Windows 11 + go1.26.2. End-to-end verified on Windows 11 against
+the integration-test manifest producer + a hand-crafted coverage
+producer + Wireshark 4.6.5 + tshark.
 
-| Issue | What landed | Status |
+**Strict-spec complete** — every R-item ships its full
+acceptance scope. No v2 deferrals, no `validation:ensure-mode-pending`
+placeholders, no Skip clauses in coverage-matrix tests.
+
+| Issue | What landed | Commit |
 | --- | --- | --- |
-| R9 #472 | stream idle-TTL eviction (`--stream-ttl` provider flag + compliance event) | ✅ |
-| R15 #476 | logger ladder `-v / -vv / -vvv / -vvvv` + Loki format + async non-blocking handler + DI audit | ✅ |
-| R22 #487 | `profile --format json + --since + --show-events + --by-session` | ✅ |
-| R23 #488 | `validate --report <md\|json>` markdown + JSON reports | ✅ |
-| R20 #485 | `docs/protocols/use-cases/emberplus.md` use-case matrix + README index | ✅ |
-| R19 #484 | `docs/protocols/audits/emberplus-audit-2026-05-18.md` parity audit | ✅ |
-| #62 | 5 Glow-type fixture dirs scaffolded (binary captures pending live Lawo/DHD/Riedel) | scaffolded |
-| #300 | `health` verb wired both sides (consumer + provider `PeerHealthSnapshot`) | ✅ |
-| R12 #473 | `validate --lua --pcap` (jsonl→pcap synthesis v2) | v1 |
-| R18 #477 | `discover` mDNS via OS dns-sd / avahi-browse (pure-Go mDNS v2) | v1 |
-| R14 #475 | `set --ensure {present\|absent\|dryrun}` Ansible idempotency | v1 (absent v1.5) |
-| R25 #490 | producer admin local socket + `sessions:list` verb | v1 |
-| R24 #489 | static HTML5 admin web page on `--admin-addr` | v1 |
-| R13 #474 | `bench --profile <rfc2544-throughput\|latency\|recovery>` named profiles | v1 |
-| R4 #461 | export/import round-trip Node + Parameter pinned; coverage matrix in tests | baseline |
+| R9 #472 | provider stream idle-TTL eviction + `--stream-ttl` flag + compliance event | `aff1cfa` |
+| R10 #478 | stream `--id` accepts CSV for multi-subscribe | already on branch |
+| R11 #482 | `invoke --format human` pretty-prints getSalvo result | already on branch |
+| R12 #473 | `validate --lua` synthesises pcap from jsonl when `--pcap` unset; dissector double-load fix; Windows tshark fallback | `59945f9` + `42d4f9b` |
+| R13 #474 | RFC 2544 / 8219 — per-op p50/p95/p99 latency + recovery-time + CSV output | `b61eae0` |
+| R14 #475 | `--ensure {present\|absent\|dryrun}` on `set` + `matrix` + `invoke`; `ensureAbsent` resets Parameter to declared Default via plugin `ParameterDefault()` | `129b3c6` + `b010984` |
+| R15 #476 | logger ladder `-v / -vv / -vvv / -vvvv` + Loki format + async non-blocking handler + DI audit | `8b99d7f` |
+| R16 #483 | set `--value` range + step + enum-by-label client-side validation + `--round` snap | already on branch |
+| R18 #477 | pure-Go mDNS browser + provider `--mdns` announce on `_ember._tcp` (no avahi/Bonjour dependency) | `d7680ca` + `0c24baf` |
+| R19 #484 | `docs/protocols/audits/emberplus-audit-2026-05-18.md` parity audit | `80473dd` |
+| R20 #485 | `docs/protocols/use-cases/emberplus.md` use-case matrix + README index | `c875e34` |
+| R21 #486 | `--path` accepts numeric OID alongside dotted label across all 7 --path verbs (extract added) | `edd6e6d` |
+| R22 #487 | `profile --format json` + `--since` + `--show-events` + `--by-session` + ring buffer | `0c1214d` |
+| R23 #488 | `validate --report <md\|json>` markdown + JSON reports | `43a743d` |
+| R24 #489 | admin web — mutation buttons (sessions:disconnect, subs:close) + SSE live updates | `c1fa6ce` |
+| R25 #490 | full admin verb set over Unix socket — `sessions:list/disconnect`, `subs:list/close`, `peers:list` + CLI `k=v` extras parser | `2d3c2c3` |
+| R4  #461 | full Glow round-trip — Matrix + Function + StreamParameter + Template pinned | `0b2d109` |
+| #300 | peer-health snapshot consumer + provider | `ad3a62f` |
+| #62 | 4 of 5 protocol-type fixtures captured against our own producer (Template APP 24 deferred to [#508](https://github.com/by-openclaw/go-acp/issues/508)) | `32eb814` |
 
-v1 / v2 split is documented inline in each commit message and in the
-relevant test files / package docs.
+**Helper tools added** (`tools/`):
 
-Merged + live on `main`:
+- `scan-glow-tags` — reads a `frames.jsonl` and reports per-frame Glow APP-tag occurrences; used during fixture capture to identify which frame to extract per protocol-type bucket
+- `jsonl-to-pcap` — CLI wrapper around `wiretrace.SynthesisePcap` (R12); materialises a libpcap from a `frames.jsonl` so committed fixtures stay replayable in Wireshark without a live capture
+
+**End-to-end validation (Windows 11, this branch):**
+
+```powershell
+# producer
+.\bin\dhs.exe producer emberplus serve `
+    --manifest internal\emberplus\testdata\integration-test\manifest\emberplus-integration.json `
+    --cache-dir internal\emberplus\testdata\integration-test `
+    --host 127.0.0.1 --port 9100
+
+# consumer walk + capture
+.\bin\dhs.exe consumer emberplus walk 127.0.0.1 --port 9100 `
+    --capture tmp\walk.jsonl
+# → slot 0 — 1361 objects, 884 frames captured
+
+# validate via Go codec (offline)
+.\bin\dhs.exe consumer emberplus validate tmp\walk.jsonl
+# → validate: 884 trames decoded   rx: 442   tx: 442
+
+# validate via Wireshark dissector (R12 synthesis path)
+.\bin\dhs.exe consumer emberplus validate tmp\walk.jsonl --lua
+# → [Protocols in frame: eth:ethertype:ip:tcp:dhs_emberplus]
+# → dhs_emberplus.lua auto-loaded from %APPDATA%\Wireshark\plugins\
+```
+
+**#62 fixture buckets — strict-spec captures from our own producer:**
+
+| Protocol type | APP tag | Captured | Source |
+| --- | --- | --- | --- |
+| StreamDescription | 12 | ✅ | `coverage-tree.json` walk frame 7 |
+| QualifiedFunction | 20 | ✅ | `coverage-tree.json` walk frame 6 |
+| TupleItemDescription | 21 | ✅ | `coverage-tree.json` walk frame 6 |
+| QualifiedTemplate | 25 | ✅ | `coverage-tree.json` walk frame 3 |
+| Template (relative form) | 24 | ⏳ [#508](https://github.com/by-openclaw/go-acp/issues/508) | needs `encodeTemplateInChild` encoder branch OR real Lawo/DHD provider capture |
+
+**Merged + live on `main`** (history reference):
 
 | PR | Title |
 |---|---|
@@ -55,6 +100,15 @@ Merged + live on `main`:
 | #459 | fix(emberplus/consumer): GetSlotInfo IsOnline correct |
 | #457 | fix(emberplus/provider): builtins return error on unresolved matrix |
 | #453 | fix(emberplus/consumer): set --value typed validation, no silent coerce |
+
+**Pending — lab session against Lawo mc² / Powercore / DHD:**
+
+- Capture Template APP 24 relative-form frames against a real
+  large-scale router (closes #62 cleanly; alternative path to #508)
+- Replace every §1..§23 verb example below with verbatim output
+  from a real Lawo console — every command's `OUT` block becomes
+  byte-exact production-grade content rather than the synthesized
+  / integration-test fixture form documented today
 
 ## Setup — build + serve
 
