@@ -79,7 +79,10 @@ func runDiscoverMDNS(ctx context.Context, proto string, duration time.Duration) 
 	if svcType == "" {
 		return fmt.Errorf("%w: protocol %q has no documented DNS-SD service type", errMdnsToolNotFound, proto)
 	}
-	browser := dnssd.NewToolBrowser()
+	// R18 #477 strict-spec: pure-Go browser is the primary path so
+	// dhs works on hosts without avahi-browse / dns-sd installed.
+	// NewToolBrowser remains exported as a compat fallback.
+	browser := dnssd.NewPureBrowser()
 	fmt.Printf("browsing %s.local for %s ...\n", svcType, duration)
 	services, err := browser.Browse(ctx, dnssd.BrowseOptions{
 		ServiceType: svcType,
