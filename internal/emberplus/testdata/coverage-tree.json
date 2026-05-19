@@ -1,0 +1,95 @@
+{
+  "root": {
+    "number": 1,
+    "identifier": "dhs-coverage",
+    "path": "dhs-coverage",
+    "oid": "1",
+    "isOnline": true,
+    "access": "read",
+    "children": [
+      {
+        "number": 1,
+        "identifier": "streams",
+        "path": "dhs-coverage.streams",
+        "oid": "1.1",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "vu_a",
+            "path": "dhs-coverage.streams.vu_a",
+            "oid": "1.1.1",
+            "isOnline": true,
+            "access": "read",
+            "type": "real",
+            "value": -60.0,
+            "minimum": -128,
+            "maximum": 15,
+            "format": "%.2f dB",
+            "streamIdentifier": 1001,
+            "streamDescriptor": {
+              "format": 13,
+              "offset": 0
+            }
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "identifier": "fn",
+        "path": "dhs-coverage.fn",
+        "oid": "1.2",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "calculator",
+            "path": "dhs-coverage.fn.calculator",
+            "oid": "1.2.1",
+            "isOnline": true,
+            "access": "read",
+            "arguments": [
+              {"name": "a", "type": "integer"},
+              {"name": "b", "type": "integer"}
+            ],
+            "result": [
+              {"name": "sum", "type": "integer"}
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "templates": [
+    {
+      "number": 1,
+      "oid": "0.1",
+      "identifier": "channelStrip",
+      "description": "Reusable channel strip template for fixture capture (#62)",
+      "template": {
+        "number": 1,
+        "identifier": "channelStrip",
+        "path": "tpl.channelStrip",
+        "oid": "0.1",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "gain",
+            "path": "tpl.channelStrip.gain",
+            "oid": "0.1.1",
+            "isOnline": true,
+            "access": "readWrite",
+            "type": "integer",
+            "value": 0,
+            "minimum": -120,
+            "maximum": 12
+          }
+        ]
+      }
+    }
+  ]
+}

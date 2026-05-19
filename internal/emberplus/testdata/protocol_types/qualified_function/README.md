@@ -1,30 +1,33 @@
 # `QualifiedFunction` fixture — APP tag 20
 
-Spec page 91 — Ember+ Documentation v2.50 §5 "The DTD".
+Spec page 92 — Ember+ Documentation v2.50.
 
-`QualifiedFunction` is the absolute-path variant of `Function` (APP
-19): a function declaration that carries its full `path[]` rather
-than relying on the consumer's walk position.
+`QualifiedFunction` is the qualified-OID form of a Function element.
+Its `arguments[]` and `result[]` tuples are encoded as
+`TupleItemDescription` (APP 21) records, captured separately in the
+sibling `tuple_item_description/` fixture from the same frame.
 
-## Status
+## Coverage
 
-**Scaffolded; capture pending live device (#62)**. TinyEmber+ /
-TinyEmberPlusRouter emit only `Function` wrapped in a `QualifiedNode`
-path — never the standalone `QualifiedFunction`. Recapture requires
-a Lawo / DHD / Riedel provider whose firmware ships functions at
-absolute paths.
+Captured 2026-05-19 from `bin/dhs.exe producer emberplus serve --tree
+internal/emberplus/testdata/coverage-tree.json --port 9101` against a
+local consumer walk. The crafted Function at
+`dhs-coverage.fn.calculator` takes
+`(a:integer, b:integer)` and returns `(sum:integer)`.
 
-## What to produce when capturing
+## Files
 
-- `capture.pcapng` — single S101 frame carrying a `QualifiedFunction`
-  with at least one path segment + a `description` + an `arguments`
-  array of `TupleItemDescription` (paired fixture, see
-  `tuple_item_description/`).
-- `tshark.tree` — frozen `tshark -V` output.
-- `README.md` — this file, updated with the device + slimming steps.
+- `frames.jsonl` — single S101/EmBER frame carrying the
+  `QualifiedFunction` declaration (same frame as
+  `tuple_item_description/frames.jsonl`).
+- `capture.pcap` — synthesised via the R12 #473 jsonl-to-pcap writer.
+  Dissector shows `[APPLICATION 20] QualifiedFunction { OID = 1.2.1,
+  Identifier = "calculator", Arguments[2], Result[1] }`.
 
-## Capture recipe
+## Replay
 
-See [`stream_description/README.md`](../stream_description/README.md)
-for the general capture flow. Filter the slim window to the GetDirectory
-reply that carries the QualifiedFunction element.
+```powershell
+dhs consumer emberplus validate `
+    internal/emberplus/testdata/protocol_types/qualified_function/frames.jsonl `
+    --lua
+```

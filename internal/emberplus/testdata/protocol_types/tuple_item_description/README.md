@@ -1,29 +1,33 @@
 # `TupleItemDescription` fixture — APP tag 21
 
-Spec page 91 — Ember+ Documentation v2.50 §5 "The DTD".
+Spec page 92 — Ember+ Documentation v2.50.
 
-`TupleItemDescription` declares one argument or one result of a
-`Function`/`QualifiedFunction`: name + type code (Integer / Real /
-String / Boolean / Octets). Every position in `Function.arguments[]`
-and `Function.result[]` is a `TupleItemDescription`.
+`TupleItemDescription` declares one element of a Function's
+`arguments[]` or `result[]` tuple. Each record carries a `name` +
+`type` pair so a controller can render the function signature
+without seeing the device's documentation.
 
-## Status
+## Coverage
 
-**Scaffolded; capture pending live device (#62)**. TinyEmber+
-exposes `Function` elements with no `arguments` metadata — the
-function ships as a bare invocation point, not a typed signature.
-Recapture requires a Lawo / DHD / Riedel provider whose functions
-publish typed arg lists.
+Captured 2026-05-19 from `bin/dhs.exe producer emberplus serve --tree
+internal/emberplus/testdata/coverage-tree.json --port 9101` against a
+local consumer walk. The crafted Function at
+`dhs-coverage.fn.calculator` declares 3 `TupleItemDescription` records:
+`a:integer`, `b:integer`, `sum:integer`.
 
-## What to produce when capturing
+## Files
 
-- `capture.pcapng` — single S101 frame carrying a `Function` (or
-  `QualifiedFunction`) whose `arguments[]` array contains at least
-  two `TupleItemDescription` entries (mix of types is preferable for
-  decoder coverage).
-- `tshark.tree` — frozen `tshark -V` output.
+- `frames.jsonl` — single S101/EmBER frame containing the
+  `QualifiedFunction` + 3 `TupleItemDescription` records (same frame
+  as the sibling `qualified_function/frames.jsonl`).
+- `capture.pcap` — synthesised via the R12 #473 jsonl-to-pcap writer.
+  Dissector shows each `[APPLICATION 21] TupleItemDescription {
+  Name, Type }` nested under the parent Function.
 
-## Capture recipe
+## Replay
 
-Same general flow as [`stream_description/README.md`](../stream_description/README.md).
-Slim to the GetDirectory reply containing the typed function.
+```powershell
+dhs consumer emberplus validate `
+    internal/emberplus/testdata/protocol_types/tuple_item_description/frames.jsonl `
+    --lua
+```

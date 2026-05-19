@@ -2,25 +2,35 @@
 
 Spec page 93 — Ember+ Documentation v2.50 §5 "The DTD".
 
-`QualifiedTemplate` is the absolute-path variant of `Template`
-(APP 24): a template declaration that carries its own `path[]` rather
-than relying on the consumer's walk position. Pairs with the
-[`template/`](../template/) fixture.
+`QualifiedTemplate` is the root-level form of a Template: it carries
+a full OID path and lives at the root of the served tree as part of
+the `RootElementCollection`. Concrete elements (Nodes, Parameters,
+Matrices) reference it via their `templateReference` field.
 
-## Status
+## Coverage
 
-**Scaffolded; capture pending live device (#62)**. Same TinyEmber+
-gap as `Template`: recapture requires a Lawo / DHD / Riedel provider
-that emits `QualifiedTemplate` elements at absolute paths.
+Captured 2026-05-19 from `bin/dhs.exe producer emberplus serve --tree
+internal/emberplus/testdata/coverage-tree.json --port 9101` against a
+local consumer walk. The crafted template declares
+`Export.Templates[0] = { OID:"0.1", Identifier:"channelStrip" }`
+wrapping a Node with a single readWrite Integer Parameter.
 
-## What to produce when capturing
+## Files
 
-- `capture.pcapng` — single S101 frame carrying a `QualifiedTemplate`
-  plus one referencing element (`Parameter` / `QualifiedParameter`
-  with `templateReference` resolved to the QualifiedTemplate's path).
-- `tshark.tree` — frozen `tshark -V` output.
+- `frames.jsonl` — single S101/EmBER frame carrying the
+  `QualifiedTemplate` at root.
+- `capture.pcap` — synthesised via the R12 #473 jsonl-to-pcap writer.
+  Dissector shows `[APPLICATION 25] QualifiedTemplate { ... }` with
+  the description string visible verbatim.
 
-## Capture recipe
+## Replay
 
-Same general flow as [`stream_description/README.md`](../stream_description/README.md).
-Slim to the GetDirectory reply that carries the QualifiedTemplate.
+```powershell
+dhs consumer emberplus validate `
+    internal/emberplus/testdata/protocol_types/qualified_template/frames.jsonl `
+    --lua
+```
+
+Verified 2026-05-19 via tshark 4.6.5: `[APPLICATION 25]
+QualifiedTemplate { ... UTF8String = "Reusable channel strip template
+for fixture capture (#62)" ... }`.
