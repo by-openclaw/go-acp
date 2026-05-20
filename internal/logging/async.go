@@ -22,11 +22,13 @@ import (
 // can audit overflow under load. Close() drains the queue and joins the
 // goroutine on shutdown.
 type AsyncHandler struct {
-	inner slog.Handler
-	ch    chan slog.Record
-	drops atomic.Uint64
-	wg    sync.WaitGroup
-	stop  chan struct{}
+	inner     slog.Handler
+	ch        chan slog.Record
+	drops     atomic.Uint64
+	submitted atomic.Uint64
+	processed atomic.Uint64
+	wg        sync.WaitGroup
+	stop      chan struct{}
 }
 
 // DefaultBufferSize is the channel capacity of a fresh AsyncHandler.
@@ -70,6 +72,7 @@ func (h *AsyncHandler) Handle(_ context.Context, rec slog.Record) error {
 	clone := rec.Clone()
 	select {
 	case h.ch <- clone:
+		h.submitted.Add(1)
 	default:
 		h.drops.Add(1)
 	}
@@ -126,21 +129,27 @@ func (h *AsyncHandler) run() {
 		// (write failures on stderr indicate the process is going down
 		// anyway).
 		_ = h.inner.Handle(ctx, rec)
+		h.processed.Add(1)
 	}
 }
 
-// FlushTimeout drains up to timeout and returns whether the queue went
-// empty in time. Used by tests + cmd_producer to give pending records
-// a moment to flush at shutdown without hanging forever.
+// FlushTimeout drains up to timeout and returns whether every record
+// submitted so far has been delivered to the inner handler. Used by
+// tests + cmd_producer to give pending records a moment to flush at
+// shutdown without hanging forever.
+//
+// Comparing submitted/processed rather than channel length closes the
+// race where the drain goroutine has received a record (len(ch)==0)
+// but not yet returned from inner.Handle.
 func (h *AsyncHandler) FlushTimeout(timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if len(h.ch) == 0 {
+		if h.processed.Load() >= h.submitted.Load() {
 			return true
 		}
 		time.Sleep(2 * time.Millisecond)
 	}
-	return len(h.ch) == 0
+	return h.processed.Load() >= h.submitted.Load()
 }
 
 // asyncChild is the handler returned by WithAttrs / WithGroup. It
@@ -159,6 +168,7 @@ func (c *asyncChild) Handle(_ context.Context, rec slog.Record) error {
 	clone := rec.Clone()
 	select {
 	case c.parent.ch <- clone:
+		c.parent.submitted.Add(1)
 	default:
 		c.parent.drops.Add(1)
 	}
