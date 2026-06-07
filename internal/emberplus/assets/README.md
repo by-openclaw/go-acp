@@ -58,7 +58,7 @@ for the full spec.
 - Spec: [Ember+ Documentation.pdf](Ember%2B%20Documentation.pdf)
 - Formulas reference: [Ember+ Formulas.pdf](Ember%2B%20Formulas.pdf)
 - Wireshark dissector: [dhs_emberplus.lua](../wireshark/dhs_emberplus.lua) — install per [docs/wireshark.md](../../../docs/wireshark.md)
-- Canonical schema: [internal/emberplus/docs/consumer.md](../../internal/emberplus/docs/consumer.md)
+- Canonical schema: [internal/emberplus/docs/consumer.md](../docs/consumer.md)
 
 ---
 
