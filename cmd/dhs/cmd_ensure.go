@@ -122,6 +122,22 @@ func runEnsure(ctx context.Context, args []string) error {
 	}
 
 	desired := strings.TrimSpace(*valueStr)
+
+	// Coerce --value to the object's kind so numeric range / type checks see
+	// a typed value (not a bare string), then pre-flight it through the
+	// plugin's client-side validator. Bad input is a validation error
+	// (exit 2 per error-codes.md) caught before any wire write — and before
+	// --check reports, so a dry-run rejects bad values too.
+	want, cerr := coerceDesired(current.Kind, desired)
+	if cerr != nil {
+		return cerr
+	}
+	if v, ok := plug.(consumer.ValueValidator); ok {
+		if verr := v.ValidateValue(opCtx, req, want); verr != nil {
+			return verr
+		}
+	}
+
 	curStr := canonicalValueStr(current)
 	changed := !valuesEqual(current, desired)
 
@@ -131,7 +147,7 @@ func runEnsure(ctx context.Context, args []string) error {
 	if !changed {
 		return emitEnsure(*asJSON, ensureResult{Changed: &changed, Previous: curStr, Current: curStr})
 	}
-	confirmed, err := plug.SetValue(opCtx, req, consumer.Value{Str: desired})
+	confirmed, err := plug.SetValue(opCtx, req, want)
 	if err != nil {
 		return err
 	}
@@ -203,6 +219,43 @@ func valuesEqual(cur consumer.Value, desired string) bool {
 		return e1 == nil && e2 == nil && cf == df
 	}
 	return false
+}
+
+// coerceDesired converts the --value string into a typed Value of the object's
+// kind so the client-side validator can range/type-check it. Str is always
+// retained so SetValue's encoder still sees the original text. Unparseable
+// input is a validation error (exit 2).
+func coerceDesired(kind consumer.ValueKind, s string) (consumer.Value, error) {
+	v := consumer.Value{Kind: kind, Str: s}
+	switch kind {
+	case consumer.KindInt:
+		n, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return v, ensureValErr(fmt.Sprintf("invalid integer %q", s))
+		}
+		v.Int = n
+	case consumer.KindUint:
+		n, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return v, ensureValErr(fmt.Sprintf("invalid unsigned integer %q", s))
+		}
+		v.Uint = n
+	case consumer.KindFloat:
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return v, ensureValErr(fmt.Sprintf("invalid number %q", s))
+		}
+		v.Float = f
+	case consumer.KindBool:
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			return v, ensureValErr(fmt.Sprintf("invalid boolean %q", s))
+		}
+		v.Bool = b
+	}
+	// enum / string / ipaddr / alarm: Str carries the value; the validator
+	// checks it directly (enum membership, dotted-quad parse).
+	return v, nil
 }
 
 func helpEnsure() {

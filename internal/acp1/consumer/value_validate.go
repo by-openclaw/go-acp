@@ -219,30 +219,15 @@ func validateValueAgainstType(t codec.ObjectType, obj consumer.Object, val consu
 		return nil
 
 	case codec.TypeEnum:
-		// Accept Str that matches an EnumItem.
-		if val.Str != "" {
-			for _, item := range obj.EnumItems {
-				if item == val.Str {
-					return nil
-				}
-			}
-		}
-		// Accept numeric index within range.
-		var idx int
-		switch val.Kind {
-		case consumer.KindEnum, consumer.KindUint:
-			idx = int(val.Uint)
-			if val.Kind == consumer.KindEnum && val.Uint == 0 {
-				idx = int(val.Enum)
-			}
-		case consumer.KindInt:
-			idx = int(val.Int)
-		default:
-			return fmt.Errorf("%w: enum object got non-enum kind %v", consumer.ErrValidationFailed, val.Kind)
-		}
-		if idx < 0 || idx >= len(obj.EnumItems) {
-			return fmt.Errorf("%w: enum index %d (label %q) not in %d options",
-				consumer.ErrValidationFailed, idx, val.Str, len(obj.EnumItems))
+		// Delegate to the same resolver the encoder uses (coerceEnum) so the
+		// pre-flight check accepts EXACTLY what SetValue would accept: a known
+		// label OR a numeric index in range. A non-empty value that is neither
+		// (e.g. a mistyped option name) is rejected here as a client-side
+		// validation error (exit 2) instead of failing later at encode time
+		// (exit 1). Previously this branch treated an unmatched non-numeric
+		// label as index 0 and wrongly accepted it.
+		if _, err := coerceEnum(obj.EnumItems, val); err != nil {
+			return fmt.Errorf("%w: %v", consumer.ErrValidationFailed, err)
 		}
 		return nil
 

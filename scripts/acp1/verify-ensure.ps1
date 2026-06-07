@@ -43,6 +43,16 @@ Check 'apply Off changes the value (changed=true)' ($r -match '"changed":true') 
 $r = & $dhs consumer acp1 ensure $target @sel --value Off --json 2>$null
 Check 'apply Off twice is idempotent (changed=false)' ($r -match '"changed":false') $r
 
+# 5. bad enum value -> client-side validation rejects it with exit 2 (NOT a wire
+#    write, NOT exit 1). This is what Ansible's failed_when keys on.
+& $dhs consumer acp1 ensure $target @sel --value Bogus 2>$null | Out-Null
+Check 'bad enum value rejected with exit 2' ($LASTEXITCODE -eq 2) "exit=$LASTEXITCODE"
+
+# 6. --check with a bad value also rejects (validation runs before the dry-run
+#    report, so a dry-run cannot mask bad input).
+& $dhs consumer acp1 ensure $target @sel --value Bogus --check 2>$null | Out-Null
+Check 'bad value rejected even under --check (exit 2)' ($LASTEXITCODE -eq 2) "exit=$LASTEXITCODE"
+
 # restore to On (leave the device as we found it)
 & $dhs consumer acp1 ensure $target @sel --value On 2>$null | Out-Null
 
