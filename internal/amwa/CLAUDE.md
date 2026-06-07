@@ -256,9 +256,9 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
     no Registration API, no Query API, no WebSocket, no MQTT, no IS-07,
     no IS-12, no mDNS. Implement the full spec, then fire compliance
     events on each peer-side gap. Track per-vendor in
-    [`docs/matrix-compliance.md`](docs/matrix-compliance.md). Mirror of
-    the Probel salvo deviation pattern (top-level `CLAUDE.md`
-    "Spec-strict, no-workaround posture" → exception clause).
+    [`docs/matrix-compliance.md`](docs/matrix-compliance.md). Follows
+    the repo-wide pattern in top-level `CLAUDE.md`
+    "Spec-strict, no-workaround posture" → exception clause.
 12. **No scheduled activations against Lawo.** Lawo VSM rejects
     `activate_scheduled_relative` / `_absolute` and silently coerces
     to immediate. Detect, fire `nmos_scheduled_activation_unsupported`,
