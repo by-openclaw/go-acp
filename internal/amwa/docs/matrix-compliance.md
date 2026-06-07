@@ -9,9 +9,10 @@ event naming what we saw**, and document the vendor here.
 This file is the audit trail. Add a row whenever a new vendor is
 verified live; never silently work around a deviation.
 
-> Mirror of `internal/probel-sw08p/CLAUDE.md` "Known deviations from
-> spec" + the salvo-emit pattern documented in
-> `feedback_probel_salvo_connected.md`.
+> Same audit-trail pattern as every other dhs protocol: absorb peer
+> deviations into the codec, fire a named compliance event, never
+> silently work around. See root `CLAUDE.md` "Spec-strict,
+> no-workaround posture".
 
 ---
 

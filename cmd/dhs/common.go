@@ -53,7 +53,7 @@ type commonFlags struct {
 
 	// canonical-export mode flags (Ember+ only). Each controls one
 	// piece of the resolver contract — see docs/protocols/schema.md §4
-	// and internal/consumer/emberplus/resolver.go. Default "pointer"
+	// and internal/emberplus/consumer/resolver.go. Default "pointer"
 	// emits the wire-faithful shape; "inline" absorbs the referenced
 	// subtree into the referring element; "both" keeps both.
 	canonTemplates string

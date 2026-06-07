@@ -8,8 +8,10 @@ from the EVS spec text and cross-referenced against live captures.
 
 1. **Primary.** EVS *Cerebrum Northbound API 0.13* — full text extracted
    from [../assets/cerebrum_northbound_api_full_v0_13.docx](../assets/cerebrum_northbound_api_full_v0_13.docx).
-   Also present: image-heavy PDF/DOCX originals at
-   [../assets/Cerebrum Northbound API 0v13.pdf](../assets/Cerebrum%20Northbound%20API%200v13.pdf) and [../assets/Cerebrum Northbound API 0v13.docx](../assets/Cerebrum%20Northbound%20API%200v13.docx).
+   Also present: image-heavy DOCX original at
+   [../assets/Cerebrum Northbound API 0v13.docx](../assets/Cerebrum%20Northbound%20API%200v13.docx)
+   and the newer 0v16 PDF at
+   [../assets/Cerebrum Northbound API 0v16.pdf](../assets/Cerebrum%20Northbound%20API%200v16.pdf).
 2. **Live wire captures.** pcaps from real Cerebrum servers — these
    override spec text where the two disagree (see "Wire-actual vs
    spec" below).

@@ -1,6 +1,6 @@
 // Command gen-probel-tree emits a canonical JSON tree suitable for the
 // Probel SW-P-08 producer (--tree flag). Intended for scale benchmarking
-// (see memory/project_scale_bench_2mtx_65535.md).
+// at 2 matrices × 65535 × 1 level (worst-case tally-dump path).
 //
 // Usage:
 //

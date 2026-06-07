@@ -441,7 +441,7 @@ fan-in). This is not a separate feature — it is what falls out when
 all three roles are implemented to spec and pointed at each other via
 their normal `--registry` / `--peer-list` flags.
 
-Cross-protocol bridging — exposing an NMOS Node as a Probel matrix or
-exposing an Ember+ tree as an NMOS Node — is **out of scope for this
+Cross-protocol bridging — exposing an NMOS Node as another
+protocol's surface, or vice versa — is **out of scope for this
 plugin**. That belongs to a separate cross-protocol architecture and
 is not designed here.

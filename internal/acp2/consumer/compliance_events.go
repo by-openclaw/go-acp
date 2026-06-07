@@ -5,7 +5,7 @@ import "dhs/internal/acp2/codec"
 // Compliance event labels — per-spec named deviations the ACP2
 // consumer absorbs on the wire. Every constant here maps to one code
 // path that tolerated a device defect without failing the operation
-// (per memory/feedback_no_workaround.md §7–9: absorb silently = never;
+// (per root CLAUDE.md Spec-strict, no-workaround posture: absorb silently = never;
 // absorb + fire event = always; spec-page cited in the comment).
 //
 // Authoritative specs:

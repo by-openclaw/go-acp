@@ -192,7 +192,7 @@ records deviate (priority collisions, missing keys, malformed `pri`)
 are catalogued in
 [`../codec/dnssd/types.go`](../codec/dnssd/types.go) and surface via
 the `compliance.Event` channel — see
-[`internal/consumer/compliance/`](../../protocol/compliance/).
+[`internal/consumer/compliance/`](../../consumer/compliance/).
 
 ---
 
@@ -204,7 +204,5 @@ the `compliance.Event` channel — see
   (Windows / Linux / macOS) for the ports advertised by these records.
 - [`matrix-compliance.md`](matrix-compliance.md) — per-vendor compliance
   tracker; Cerebrum row references this recipe.
-- [`sequenced-tasks.md`](sequenced-tasks.md) §Phase 1 #1 — DNS-SD
-  client + server + unicast fallback (PR #149).
 - [`internal/amwa/CLAUDE.md`](../CLAUDE.md) Quirks #1 — four deployment
   modes + when to choose unicast over mDNS.

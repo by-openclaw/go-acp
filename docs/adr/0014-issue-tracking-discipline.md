@@ -58,7 +58,7 @@ Before closing any issue, post a final comment with:
 | 3. Code | one coherent unit per ADR-0013; always `go build` to `bin/` before committing |
 | 4. Unit tests | table-driven, byte-exact against the spec |
 | 5. Integration tests | real peer / live device — pass on the rig before opening PR (symmetric self-tests don't count) |
-| 6. PR | opened against `main` (or the long-running protocol branch per `feedback_pr_per_protocol`) with results table + `Closes #N` |
+| 6. PR | opened against `main` (or the long-running protocol branch per ADR-0014) with results table + `Closes #N` |
 | 7. CI green | all checks pass; never merge a red PR |
 | 8. Codeowner approval | **`@yboujraf` codeowner approval required** — `.github/CODEOWNERS` enforces |
 | 9. Merge | only after green + approval |

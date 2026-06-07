@@ -12,7 +12,7 @@ import (
 )
 
 // groupName -> ObjGroup constant. Mirrors buildSlotNode in
-// internal/consumer/acp1/canonicalize.go. Canonical uses lowercase group
+// internal/acp1/consumer/canonicalize.go. Canonical uses lowercase group
 // identifiers; ACP1 wire uses the numeric group code.
 var groupByName = map[string]codec.ObjGroup{
 	"root":     codec.GroupRoot,

@@ -19,10 +19,18 @@ as replacements or aliases of canonical verbs.
 
 | Role | Verbs |
 | --- | --- |
-| consumer | `discover` · `connect` · `disconnect` · `info` · `walk` · `get <path>` · `set <path> <value>` · `subscribe <path>` · `unsubscribe <path>` · `status` · `ensure` · `validate <frames.jsonl>` · `replay <frames.jsonl>` |
+| consumer (live, per-device) | `discover` · `connect` · `disconnect` · `info` · `walk` · `tree` · `get <path>` · `set <path> <value>` · `watch <path>` (or `subscribe`/`unsubscribe`) · `export` · `import` · `extract` · `status` · `health` · `ensure` · `validate <frames.jsonl>` · `replay <frames.jsonl>` |
+| consumer (offline / cross-protocol) | `diff <a.json> <b.json>` · `convert <in> <out>` · `profile <captures/>` |
+| consumer (protocol-specific extensions) | `matrix` (Ember+) · `invoke` (Ember+) · `stream` (Ember+) · `diag` (ACP2) · `bench` (Ember+ perf) |
 | producer | `serve` · `stop` · `status` · `peers` · `tree` · `ensure` · `validate <frames.jsonl>` · `replay <frames.jsonl>` |
 | registry | `serve` · `stop` · `status` · `peers` · `dump` · `ensure` |
 | admin (every binary) | `version` · `--help` · `license install` · `license show` · `license verify` · `license features` · `completion <shell>` |
+
+The protocol-specific extensions follow the "additions only, never
+replacements" rule in §Decision: a protocol-specific verb that is
+literally inapplicable to other protocols is allowed (it doesn't
+get stubbed everywhere). The CLI surface is in
+[cmd/dhs/main.go](../../cmd/dhs/main.go) `var commands`.
 
 ### Canonical flags (same semantics every connector)
 

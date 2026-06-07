@@ -93,7 +93,7 @@ type IS04NodeServer struct {
 	// (interfaces, attached_network_device, controls, caps.constraint_sets,
 	// etc.) that the older minor's schema rejects — AMWA NMOS Testing
 	// auto_node_11/12 fail "Response schema validation error" without it.
-	// See `feedback_amwa_strict_all_versions` and #192.
+	// See root CLAUDE.md "AMWA NMOS strict" and #192.
 	codec is04.Codec
 
 	mu        sync.Mutex

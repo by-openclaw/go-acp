@@ -3,7 +3,7 @@ package emberplus
 // Compliance event labels — per-spec named deviations the Ember+
 // consumer absorbs on the wire. Every `*` constant here maps to one
 // code path that tolerated a provider defect without failing the
-// operation (per memory/feedback_no_workaround.md §7–8: absorb silently
+// operation (per root CLAUDE.md Spec-strict, no-workaround posture: absorb silently
 // = never; absorb + fire event = always).
 //
 // Keep this list short and stable — documented in
@@ -154,6 +154,6 @@ const (
 	// disconnected from its prior target. The consumer accepts the
 	// SET (does NOT block via CanConnect) and fires this event so
 	// operators see the deviation in the profile counter. Refs #465,
-	// same precedent as feedback_probel_salvo_connected.
+	// same precedent as internal/probel-sw08p/CLAUDE.md.
 	OneToOneSourceStealAccepted = "onetoone_source_steal_accepted"
 )

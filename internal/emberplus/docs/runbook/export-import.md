@@ -126,7 +126,7 @@ Use cases:
 
 - [ADR-0022 — Card data model](../../../../docs/adr/0022-card-data-model.md)
 - [ADR-0024 — Federation mirror vs virtual frame](../../../../docs/adr/0024-federation-mirror-and-virtual-frame.md)
-- [ADR-0025 — Per-connector definition of done](../../../../docs/adr/0025-connector-definition-of-done.md)
+- [ADR-0025 — Per-connector definition of done](../../../../docs/adr/0025-per-connector-definition-of-done.md)
 - [#461](https://github.com/by-openclaw/go-acp/issues/461) — round-trip + dry-run + scope
 - [#475](https://github.com/by-openclaw/go-acp/issues/475) — R14 `--ensure` (shared diff format)
 - [#442](https://github.com/by-openclaw/go-acp/issues/442) — multi-sheet XLSX matrix export (separate)

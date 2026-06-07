@@ -150,7 +150,7 @@ func (b *stdlibBrowser) Close() error {
 // name. Sharing one read loop is critical: spinning a separate
 // ReadFromUDP goroutine per Browse call would race on the same socket
 // (each packet lands in only one reader, the wrong one would filter
-// it out and lose it). See `feedback_amwa_strict_all_versions`.
+// it out and lose it). See root CLAUDE.md "AMWA NMOS strict".
 func (b *stdlibBrowser) Browse(ctx context.Context, service string) (<-chan dnssd.Instance, error) {
 	if service == "" {
 		return nil, errors.New("dnssd: empty service in Browse")

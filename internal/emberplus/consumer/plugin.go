@@ -1114,7 +1114,7 @@ func (p *Plugin) InvokeFunction(ctx context.Context, funcPath string, args []any
 		// Wire-level Success=false → typed error so the CLI exit
 		// dispatcher returns 1. The result pointer is still returned so
 		// callers can print the (possibly-empty) Result tuple alongside
-		// the error. Per memory feedback_error_contract_cross_os: the
+		// the error. Per docs/protocols/error-codes.md: the
 		// error string carries the diagnostic, exit code carries the
 		// pass/fail signal.
 		if result != nil && !result.Success {

@@ -4,8 +4,8 @@
 // to the code that fires them — this package provides only the
 // generic counter machinery.
 //
-// Rationale — see memory/feedback_no_workaround.md §7–8: when a
-// provider deviates from spec we NEVER silently work around it. We
+// Rationale — root CLAUDE.md "Spec-strict, no-workaround posture":
+// when a provider deviates from spec we NEVER silently work around it. We
 // absorb the deviation, fire a named event, and surface the profile
 // so the operator can audit which providers are strict vs lax.
 //

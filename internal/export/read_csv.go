@@ -64,7 +64,7 @@ func ReadCSV(r io.Reader) (*Snapshot, error) {
 		}
 		// Split path back into segments for ACP2 hierarchical import
 		// (e.g. "ROOT_NODE_V2.PSU.1.Present"). Primary separator is "."
-		// (matches Ember+ OID + memory rule feedback_path_separator);
+		// (matches Ember+ OID + memory rule the canonical path-separator rule);
 		// "/" is accepted as a fallback so CSVs from earlier exports
 		// (pre-#419) still import.
 		var pathSegs []string

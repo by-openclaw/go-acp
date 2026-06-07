@@ -18,7 +18,7 @@
 // constants mirror that catalogue 1:1.
 //
 // Library independence: stdlib-only, no acp/* imports. Lift-ready per
-// `feedback_codec_isolation`.
+// ADR-0006.
 //
 // WebSocket transport lives in the sibling `codec/ws` package; this
 // package emits / consumes only the XML payload bytes.

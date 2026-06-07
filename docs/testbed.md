@@ -1,9 +1,7 @@
 # docs/testbed.md — Test fleet inventory and SSH access mesh
 
 Tracked, repo-local source of truth for the test fleet on the DMZ VLAN
-(`10.100.0.0/24`, routed via pfSense). Replaces the legacy
-`memory/project_lxc_test_rig`, `memory/project_test_device`, and
-`memory/reference_lxc_ssh_access` entries.
+(`10.100.0.0/24`, routed via pfSense).
 
 ## Fleet
 

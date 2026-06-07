@@ -12,10 +12,10 @@ Consumer connector for ACP v2 (Axon Neuron protocol) over AN2 transport.
 | AN2 spec (authoritative) | [internal/acp2/assets/an2_protocol.pdf](../../../internal/acp2/assets/an2_protocol.pdf) | AN2 transport specification |
 | Wireshark dissector | [internal/acp2/wireshark/dhs_acpv2.lua](../../../internal/acp2/wireshark/dhs_acpv2.lua) | AN2 + ACP2 byte-exact reference |
 | Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "ACP2" | Wire format, functions, properties |
-| Testdata captures | [tests/fixtures/acp2/](../../../tests/fixtures/acp2/) | Raw JSONL captures from real device |
-| Export fixtures | [tests/fixtures/exports/acp2/](../../../tests/fixtures/exports/acp2/) | JSON/YAML/CSV per slot |
-| Source code | [internal/consumer/acp2/](../../../internal/consumer/acp2/) | Plugin implementation |
-| Unit tests | [tests/unit/acp2/](../../../tests/unit/acp2/) | Replay + spec tests |
+| Testdata captures | [internal/acp2/testdata/](../testdata/) | Raw JSONL captures |
+| Export fixtures | [internal/acp2/testdata/](../testdata/) | JSON/YAML/CSV fixtures |
+| Source code | [internal/acp2/consumer/](../../../internal/acp2/consumer/) | Plugin implementation |
+| Unit tests | [internal/acp2/](../) | In-package *_test.go (replay + spec) |
 
 ---
 
@@ -75,7 +75,7 @@ TCP 2072  outbound    (AN2/TCP — single connection, multiplexes all slots)
 | Value freshness (live / updated / stale / cache) | — (our extension) | ⚠ partial | Walk cache has TTL; per-object freshness tags pending — covered in follow-up |
 | Cascade on disconnect (root `isOnline y→n`) | — (our extension) | ⏳ pending | Same scope as ACP1 — pattern to lift from Ember+ |
 | Auto-reconnect goroutine | — (our extension) | ⏳ pending | Session reader exits on socket close; reconnect + re-walk + re-subscribe pending |
-| Compliance profile + `acp profile` CLI | — | ✅ fully compliant | Event catalog in `internal/consumer/acp2/compliance_events.go`; stat-code events wired today, framing / property events ship as the decoder paths get audited |
+| Compliance profile + `acp profile` CLI | — | ✅ fully compliant | Event catalog in `internal/acp2/consumer/compliance_events.go`; stat-code events wired today, framing / property events ship as the decoder paths get audited |
 | Canonical JSON export + `--capture <dir>` → `tree.json` | — (our schema) | ✅ fully compliant | Device→Slot→Node→Parameter hierarchy rebuilt from walker's DFS path |
 | Canonical export mode flags `--templates` / `--labels` / `--gain` | — | ⛔ not applicable | ACP2 has no `templateReference`, no matrix labels SEQUENCE, no `parametersLocation`; flags pass through as no-ops |
 | Matrix element | — | ⛔ not applicable | ACP2 has no matrix type (Ember+ only) |
@@ -104,7 +104,7 @@ All timeouts are deterministic, user-overridable via `--timeout`. No silent hang
 
 ## Canonical Export Modes
 
-`acp walk --protocol acp2 --capture <dir>` writes `tree.json` in the canonical shape documented at [docs/protocols/schema.md](../schema.md). Device → Slot → hierarchical Nodes reconstructed from the walker's DFS path → Parameter leaves:
+`acp walk --protocol acp2 --capture <dir>` writes `tree.json` in the canonical shape documented at [docs/protocols/schema.md](../../../docs/protocols/schema.md). Device → Slot → hierarchical Nodes reconstructed from the walker's DFS path → Parameter leaves:
 
 ```
 {

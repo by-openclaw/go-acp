@@ -26,7 +26,7 @@ Closes #
 
 ## Wire evidence (protocol changes only)
 
-<!-- Per feedback_real_peer_closes_self_test: own-encoder ↔ own-decoder is NOT compliance.
+<!-- own-encoder ↔ own-decoder is NOT compliance.
      Paste tshark / dissector output or a reference-controller capture. -->
 
 ## Reference controller

@@ -67,7 +67,7 @@ project owner:
 2. corporate identity values (legal name, address, phone, email, URL)
 
 The template structure, per-file-type variants, and tooling skeletons
-are pre-staged in agent memory (`project_dhs_file_headers`); the ADR
+are pre-staged as the ADR-0017 template skeleton; the ADR
 file lands when the two inputs are supplied.
 
 ## Adding a new ADR

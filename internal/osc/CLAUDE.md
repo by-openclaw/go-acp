@@ -36,8 +36,8 @@ Symmetric plugin — OSC has no client/server model; any peer can send
 to any peer. dhs exposes both **consumer** and **provider** on the same
 codec, with version-specific wire behaviour.
 
-Per `memory/feedback_protocol_versioning.md` **Pattern A** (separate
-registry entries per version):
+Follows **Pattern A** — separate registry entries per
+wire-incompatible version:
 
 | Registry name | Wire version | Transport surface |
 |---|---|---|

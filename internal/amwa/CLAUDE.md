@@ -93,7 +93,7 @@ IS-04 v1.2 renamed the registration service from
 v1.0 / v1.1 Registries advertise on the legacy name only; v1.2+ on the
 modern one. The watcher MUST browse BOTH concurrently — a Node that
 browsed only the modern name would miss every legacy Registry on the
-link. See `feedback_amwa_strict_all_versions` and the
+link. See the
 `internal/amwa/codec/dnssd/types.go` constants `ServiceRegister` +
 `ServiceRegisterLegacy`.
 
@@ -120,7 +120,7 @@ runs dhs — degraded conformance, never broken.
 Tracking: epic #194 (full daemon delegation), Phase A landed on
 `feat/nmos-is04-amwa-conformance` for Linux Avahi; Phases B-windows
 (#195) + B-macos (#196) + C (LXC multi-distro #197) follow on the same
-protocol branch per `feedback_pr_per_protocol`.
+protocol branch.
 
 ---
 
@@ -168,7 +168,7 @@ every minor AMWA has published is in scope. There is **no "deferred",
 no "out of scope by design", no "we don't see it in the wild"** for
 any minor in this table. If a minor is not implemented today, it is
 a *missing* implementation to be added — never framed as a stable
-product decision. See memory `feedback_amwa_strict_all_versions.md`.
+product decision.
 
 Convention: every listed version is a selectable parameter on the
 plugin (mirroring `proto:tsl` v3.1/v4.0/v5.0). DNS-SD `api_ver` TXT
@@ -256,9 +256,9 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
     no Registration API, no Query API, no WebSocket, no MQTT, no IS-07,
     no IS-12, no mDNS. Implement the full spec, then fire compliance
     events on each peer-side gap. Track per-vendor in
-    [`docs/matrix-compliance.md`](docs/matrix-compliance.md). Mirror of
-    the Probel salvo deviation pattern (top-level `CLAUDE.md`
-    "Spec-strict, no-workaround posture" → exception clause).
+    [`docs/matrix-compliance.md`](docs/matrix-compliance.md). Follows
+    the repo-wide pattern in top-level `CLAUDE.md`
+    "Spec-strict, no-workaround posture" → exception clause.
 12. **No scheduled activations against Lawo.** Lawo VSM rejects
     `activate_scheduled_relative` / `_absolute` and silently coerces
     to immediate. Detect, fire `nmos_scheduled_activation_unsupported`,

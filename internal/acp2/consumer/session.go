@@ -536,7 +536,7 @@ func (s *Session) handleACP2Frame(f *codec.AN2Frame) {
 	}
 
 	if msg.Type == codec.ACP2TypeAnnounce {
-		// Announces fan out silently — per `feedback_logging` they're
+		// Announces fan out silently — per docs/logging.md they're
 		// the high-volume hot path and the watch verb already prints
 		// every dispatched event with full decoding. Logging here
 		// would double-print and truncate the wire bytes besides.

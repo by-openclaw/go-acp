@@ -12,7 +12,7 @@ fixtures are captured, contain:
 
 These fixtures are consumed by `internal/tsl/codec/*_test.go` (byte-
 level round-trip) and by the dissector cross-check pipeline
-(`tshark -X lua_script:wireshark/dissector_tsl.lua` on the
+(`tshark -X lua_script:wireshark/dhs_tsl.lua` on the
 `.pcapng`).
 
 ## Initial folders

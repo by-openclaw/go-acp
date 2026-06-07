@@ -6,8 +6,8 @@ package acp2
 // consumer side (internal/acp2/consumer/compliance_events.go) and
 // the Probel provider (internal/probel-sw08p/provider/compliance_events.go):
 // absorb + fire event; never silently work around the spec. See
-// memory/feedback_no_workaround.md "Exception — when every shipping
-// controller contradicts the spec".
+// root CLAUDE.md Spec-strict, no-workaround posture — Exception
+// clause for when every shipping controller contradicts the spec.
 //
 // Authoritative spec: internal/acp2/assets/acp2_protocol.docx.
 //

@@ -60,7 +60,7 @@ type matrixState struct {
 	// protect holds the current protect state keyed by destination.
 	// Sparse: destinations with no entry are implicitly ProtectNone.
 	// Updated by rx 102 / rx 104 handlers (enforcing the owner-only
-	// authority rule per memory/project_probel_extensions.md) and
+	// authority rule per CLAUDE.md "Protect + Lock authority model") and
 	// read by rx 101 / rx 105 handlers that surface the state back
 	// to controllers. OwnerName is populated lazily via the rx 103 /
 	// tx 099 name handshake — until that round-trip completes the
@@ -312,7 +312,7 @@ const (
 )
 
 // protectApply implements the rx 102 state machine per
-// memory/project_probel_extensions.md and §3.2.60:
+// CLAUDE.md "Protect + Lock authority model" and §3.2.60:
 //   - current=ProbelOverride → reject (protectApplyRejectedOverride)
 //   - current=None → accept, owner=device, state=ProtectProBel (on newState)
 //   - current=Probel|OEM & device==owner → accept, update state

@@ -188,7 +188,7 @@ func (c *slotTreeCache) removeElement(el *list.Element) {
 // processes. Defaults are sized for the ACP1 tool: 32 slots is enough
 // for a fully-loaded Synapse rack with room for retries, and a 10-minute
 // CacheConfig holds the sizing and lifetime for the per-slot tree
-// cache. Per the DHS 2016 watch model (project_canonical_schema): the
+// cache. Per the DHS 2016 watch model (docs/protocols/schema.md): the
 // schema is the long-lived part — type / kind / min / max / step /
 // label / unit don't change while a session is connected to the same
 // firmware revision. Only the *values* age, and that's tracked by a

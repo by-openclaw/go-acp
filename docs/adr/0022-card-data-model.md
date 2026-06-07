@@ -99,7 +99,7 @@ only knows: each entry resolves to one DM file via `Model@SwRev`.
   slots and DMs. Never modelled as N separate Frames.
 - The connector drives **exactly one session at any time**; the others
   are standby. Election is lease-based for stateful protocols (per
-  `project_ha_architecture` memory).
+  internal/amwa/docs/ha.md).
 - LACP / bonded NICs are below the connector's view (OS exposes one
   IP). Modelled in the manifest as a single endpoint.
 
@@ -193,7 +193,6 @@ protocol) feeding the federation layer.
   shape, or Frame entity → block until this ADR is updated".
 - CI check: DM JSON files MUST NOT contain top-level `device`,
   `slots`, `created_at`, `generator`, `host`, `ip`, or `port`.
-- Memory `project_dhs_data_model.md` is a 3-line bookmark to this ADR.
 
 ## Revisions
 

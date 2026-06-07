@@ -11,9 +11,9 @@ Consumer connector for the Ember+ protocol (Lawo Glow DTD over S101/TCP).
 | Spec (authoritative) | [internal/emberplus/assets/Ember+ Documentation.pdf](../../../internal/emberplus/assets/Ember+%20Documentation.pdf) | Ember+ Protocol Specification v2.50 rev.15 (2017-11-09), Lawo GmbH |
 | Formulas | [internal/emberplus/assets/Ember+ Formulas.pdf](../../../internal/emberplus/assets/Ember+%20Formulas.pdf) | Parameter formula syntax reference |
 | Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "Ember+" | Wire format, methods, object types |
-| Source code | [internal/consumer/emberplus/](../../../internal/consumer/emberplus/) | Plugin implementation |
-| Unit tests | [internal/consumer/emberplus/glow/glow_test.go](../../../internal/consumer/emberplus/glow/glow_test.go) | BER + element decode tests |
-| Matrix tests | [internal/consumer/emberplus/matrix/state_test.go](../../../internal/consumer/emberplus/matrix/state_test.go) | canConnect rule coverage |
+| Source code | [internal/emberplus/consumer/](../../../internal/emberplus/consumer/) | Plugin implementation |
+| Unit tests | [internal/emberplus/codec/glow/glow_test.go](../../../internal/emberplus/codec/glow/glow_test.go) | BER + element decode tests |
+| Matrix tests | [internal/emberplus/codec/matrix/state_test.go](../../../internal/emberplus/codec/matrix/state_test.go) | canConnect rule coverage |
 
 ### Spec page index (for debugging — Ctrl+F in PDF)
 
@@ -96,8 +96,8 @@ no slot concept). Pass `--protocol emberplus` on every call; it is
 | Auto-reconnect with tree clear + re-walk + re-subscribe | — (our extension) | ✅ fully compliant | 2 s → 30 s back-off |
 | Canonical JSON export (pointer mode) | — (our schema) | ✅ fully compliant | Wire-faithful |
 | Canonical JSON export (inline / both modes — absorb references) | — (our schema) | ✅ fully compliant | `--templates` / `--labels` / `--gain` |
-| Probel `parkSource`, `protect`, `Salvo` element | — (other protocols) | 🕐 parked | Not applicable to Ember+; documented in `project_probel_extensions.md` |
-| TSL v5 positional tally | — (other protocols) | 🕐 parked | Not applicable to Ember+; documented in `project_tsl_extensions.md` |
+| Probel `parkSource`, `protect`, `Salvo` element | — (other protocols) | 🕐 parked | Not applicable to Ember+; see `internal/probel-sw02p/CLAUDE.md` |
+| TSL v5 positional tally | — (other protocols) | 🕐 parked | Not applicable to Ember+; see `internal/tsl/CLAUDE.md` |
 | Bus bridge (NATS / Redis Stream / ES) | — (orchestrator) | 🕐 parked | Plugin stays bus-free by design |
 
 Legend: ✅ fully compliant · ⚠ partial · ⛔ not implemented · 🕐 parked (scope extension) · ⏳ pending (in progress).
@@ -999,7 +999,7 @@ touching their code.
 
 Every event is a named counter — atomic int64, zero allocations on the
 hot path. The full catalog lives in
-`internal/consumer/emberplus/compliance/profile.go`. Grouped by
+`internal/emberplus/consumer/compliance_events.go`. Grouped by
 source:
 
 **Wire-level deviations (decoder tolerance)**

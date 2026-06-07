@@ -35,8 +35,8 @@ another. See `internal/consumer/_template/` for a starting point.
 - Integration tests are tagged `//go:build integration` and skip unless
   the relevant `<PROTO>_TEST_HOST` env var is set
 - Every codec test must include expected byte sequences from the
-  protocol spec (no round-tripping your own encoder; see
-  `feedback_real_peer_closes_self_test`)
+  protocol spec (no round-tripping your own encoder —
+  own-encoder ↔ own-decoder is not compliance)
 
 ## Dependencies
 

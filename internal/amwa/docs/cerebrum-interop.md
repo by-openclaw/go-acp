@@ -256,8 +256,6 @@ touching this file.
   exists.
 - [`architecture.md`](architecture.md) — IS-04 / IS-05 role topology
   diagrams.
-- [`conformance.md`](conformance.md) — AMWA NMOS Testing tool gating
-  per spec.
 - [`dns-sd-unbound.md`](dns-sd-unbound.md) — Mode B unicast DNS-SD
   recipe for pfSense Unbound, including the `cerebrum` instance live-
   verified 2026-04-30.
@@ -300,9 +298,8 @@ ASCII when testing.
 ### Verification status
 
 dhs codec is byte-exact-correct against the AMWA IS-04 v1.3 schemas
-on every wire field listed above. Per
-[`integration-plan.md`](integration-plan.md) "How yellow rows turn
-green" we require third-party evidence to attribute the mismatches —
+on every wire field listed above. To attribute the remaining
+mismatches we require third-party evidence —
 running the AMWA NMOS Testing tool's Mock Registry locally and
 comparing the same 3 fields is the next step. If AMWA Mock Registry
 also blanks `sender.version` etc., the bug is on dhs's side and we

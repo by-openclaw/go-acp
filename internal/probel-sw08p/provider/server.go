@@ -219,7 +219,7 @@ func (s *server) fanOutTally(origin *session, f codec.Frame) {
 		sessions = append(sessions, sess)
 	}
 	s.mu.Unlock()
-	// Per feedback_logging.md: skip announce logs entirely. Tally
+	// Per docs/logging.md: skip announce logs entirely. Tally
 	// fan-out runs on every connect and fires N-1 times per session,
 	// so an Info+HexDump here is ~N² work per connect at scale. Keep
 	// a Debug breadcrumb for diagnostics.

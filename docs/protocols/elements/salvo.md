@@ -2,8 +2,7 @@
 
 > **Status:** planned extension. Schema documented here; Go struct
 > (`canonical.Salvo`) not yet added to `internal/export/canonical/`.
-> Lands with the Probel SW-P-08+ plugin work. See
-> `memory/project_probel_extensions.md`.
+> Lands with the Probel SW-P-08+ plugin work.
 
 A **Salvo** is a named, stateful group of staged crosspoint
 connections that can be committed (fired) atomically. Salvos are
@@ -204,9 +203,8 @@ Stages members across TWO matrices (video + audio). `matrixRef` is
 ```
 
 Cross-matrix salvos only work within a single device instance (one
-TCP session). Per `memory/project_deployment_strategy.md`, when a
-device is sharded across multiple ports/pods, cross-matrix salvos
-must live in the same pod.
+TCP session). When a device is sharded across multiple ports/pods,
+cross-matrix salvos must live in the same pod.
 
 ## Provider variations
 
@@ -235,4 +233,3 @@ must live in the same pod.
 - [`../schema.md`](../schema.md) — common header, `--templates` flag (salvos support templateReference in principle).
 - [`matrix.md`](matrix.md) — what salvos operate on.
 - [`function.md`](function.md) — the companion verbs.
-- `memory/project_probel_extensions.md` — when this lands in Go.

@@ -278,6 +278,5 @@ Surfaced via the standard dhs metrics counter
 ## Cross-reference
 
 - Cross-protocol HA epic: [#127](https://github.com/by-openclaw/go-acp/issues/127)
-- Memory: `project_ha_architecture.md`
 - Matrix-vendor compliance (per-vendor failover quirks):
   [`matrix-compliance.md`](matrix-compliance.md)

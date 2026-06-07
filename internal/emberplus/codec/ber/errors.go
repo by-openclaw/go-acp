@@ -27,7 +27,7 @@ var (
 
 	// ErrInvalidReal is returned when REAL bytes fail to decode per
 	// X.690 §8.5 + the Ember+ ecosystem normalised-fraction convention
-	// (see memory reference_emberplus_ber_real and TestReal_EcosystemBytes
+	// (see internal/emberplus/CLAUDE.md (BER REAL) and TestReal_EcosystemBytes
 	// in codec/ber/value_test.go).
 	ErrInvalidReal = errcode.New(errcode.LayerBER, "invalid-real", errcode.ClassRuntime)
 

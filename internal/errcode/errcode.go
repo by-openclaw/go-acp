@@ -4,7 +4,7 @@
 // scripts, Ansible) can dispatch on a stable <layer>:<code> string without
 // parsing free-text messages. The contract is uniform across every connector
 // (Ember+, ACP1, ACP2, Probel, AMWA, ...) per memory
-// feedback_error_contract_cross_os.
+// docs/protocols/error-codes.md.
 //
 // Wire shape on stderr:
 //
@@ -62,7 +62,7 @@ const (
 )
 
 // Class is the exit-code class for the CLI. Per
-// feedback_error_contract_cross_os the contract is Unix-standard 0/1/2 only.
+// docs/protocols/error-codes.md the contract is Unix-standard 0/1/2 only.
 // Never 3+.
 type Class int
 

@@ -173,7 +173,7 @@ func (s *State) Snapshot() []TargetState {
 //	          provider (Lawo VSM, EmberPlusView-as-provider, TinyEmber+)
 //	          implements source-steal: setting src=A on tgt=B implicitly
 //	          disconnects A from its prior target. Same precedent as
-//	          feedback_probel_salvo_connected — when every shipping
+//	          internal/probel-sw08p/CLAUDE.md — when every shipping
 //	          controller contradicts a literal spec clause, the connector
 //	          aligns with the controllers. The provider's
 //	          applyMatrixConnections handles the actual steal on receive.
