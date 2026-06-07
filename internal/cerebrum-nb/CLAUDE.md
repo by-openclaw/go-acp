@@ -7,8 +7,10 @@ Atomic per-protocol context. Read the root `CLAUDE.md` first.
 ## Authoritative spec
 
 - **EVS Cerebrum Northbound API v0.13** — at
-  [assets/Cerebrum Northbound API 0v13.pdf](assets/Cerebrum%20Northbound%20API%200v13.pdf) /
   [assets/Cerebrum Northbound API 0v13.docx](assets/Cerebrum%20Northbound%20API%200v13.docx).
+  The newer 0v16 PDF is also archived at
+  [assets/Cerebrum Northbound API 0v16.pdf](assets/Cerebrum%20Northbound%20API%200v16.pdf)
+  for cross-version reference.
 - Text-only export (cleaner than the PDF for searching) at
   [assets/cerebrum_northbound_api_full_v0_13.docx](assets/cerebrum_northbound_api_full_v0_13.docx).
 - The wire-key catalogue derived from the spec lives at
@@ -17,7 +19,9 @@ Atomic per-protocol context. Read the root `CLAUDE.md` first.
 
 The spec is the source of truth. Do not document deviations as truths
 in this file; deviations are absorbed by the codec and surfaced as
-named compliance events (see `consumer/compliance_events.go`).
+named compliance events emitted from the codec/consumer paths
+(catalogue + descriptions in [docs/consumer.md](docs/consumer.md)
+"Compliance events").
 
 ---
 
@@ -26,9 +30,8 @@ named compliance events (see `consumer/compliance_events.go`).
 ```
 internal/cerebrum-nb/
 ├── CLAUDE.md             ← this file (spec entry-point only)
-├── codec/
-│   ├── ws/               stdlib-only RFC 6455 WebSocket client
-│   └── xml/              stdlib-only XML codec for §2/§4/§5 elements
+├── codec/                stdlib-only XML codec for §2/§4/§5 elements
+│   └── ws/               stdlib-only RFC 6455 WebSocket client
 ├── consumer/             package cerebrum_nb — implements consumer.Protocol
 ├── wireshark/            dhs_cerebrum_nb.lua — full WS-frame + XML
 │                         payload dissector
@@ -61,7 +64,8 @@ Provider deferred. Consumer-first.
 ### WebSocket (RFC 6455) — hand-rolled
 
 Implemented in [codec/ws/](codec/ws/). Stdlib-only, no `dhs/*` imports —
-lift-ready per `feedback_codec_isolation`.
+lift-ready per root CLAUDE.md "Architecture principles" (Library
+independence).
 
 ### XML
 
@@ -79,9 +83,8 @@ Unsigned 32-bit, decimal-as-string on the wire. Allocated via
 
 Every spec deviation absorbed by the decoder fires a named event via
 `compliance.Profile`. Catalogue + descriptions in
-[`consumer/compliance_events.go`](consumer/compliance_events.go) (single
-source of truth). NACK codes from §6 each become a
-`cerebrum_nack_<code>` event.
+[docs/consumer.md](docs/consumer.md) "Compliance events". NACK codes
+from §6 each become a `cerebrum_nack_<code>` event.
 
 ---
 
