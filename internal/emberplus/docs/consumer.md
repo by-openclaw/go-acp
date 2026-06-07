@@ -96,8 +96,8 @@ no slot concept). Pass `--protocol emberplus` on every call; it is
 | Auto-reconnect with tree clear + re-walk + re-subscribe | — (our extension) | ✅ fully compliant | 2 s → 30 s back-off |
 | Canonical JSON export (pointer mode) | — (our schema) | ✅ fully compliant | Wire-faithful |
 | Canonical JSON export (inline / both modes — absorb references) | — (our schema) | ✅ fully compliant | `--templates` / `--labels` / `--gain` |
-| Probel `parkSource`, `protect`, `Salvo` element | — (other protocols) | 🕐 parked | Not applicable to Ember+; documented in `project_probel_extensions.md` |
-| TSL v5 positional tally | — (other protocols) | 🕐 parked | Not applicable to Ember+; documented in `project_tsl_extensions.md` |
+| Probel `parkSource`, `protect`, `Salvo` element | — (other protocols) | 🕐 parked | Not applicable to Ember+; see `internal/probel-sw02p/CLAUDE.md` |
+| TSL v5 positional tally | — (other protocols) | 🕐 parked | Not applicable to Ember+; see `internal/tsl/CLAUDE.md` |
 | Bus bridge (NATS / Redis Stream / ES) | — (orchestrator) | 🕐 parked | Plugin stays bus-free by design |
 
 Legend: ✅ fully compliant · ⚠ partial · ⛔ not implemented · 🕐 parked (scope extension) · ⏳ pending (in progress).

@@ -45,7 +45,7 @@ Both layers must be true for a consumer to see announces. The provider drops ann
 
 ## DM cache contract
 
-ACP2 uses **identity-keyed** caching exclusively (DHS 2016 MasterView model — see memory `project_acp2_dm_cache`):
+ACP2 uses **identity-keyed** caching exclusively (DHS 2016 MasterView model — see internal/acp2/CLAUDE.md):
 
 ```
 .cache/dm/<CardName>@<HardwareVersion>.json   ← single file per device, multi-slot

@@ -374,7 +374,7 @@ func hasHelpFlag(args []string) bool {
 }
 
 // exitCode maps an error to the CLI exit code per the locked contract
-// (memory feedback_error_contract_cross_os):
+// (docs/protocols/error-codes.md):
 //
 //	0 success
 //	1 runtime / wire / protocol error (any transport:*, s101:*, glow:*,

@@ -239,7 +239,7 @@ func isDisabledParameter(p *canonical.Parameter) bool {
 //
 // Real EVS Neuron firmware emits labels like "ROOT_NODE_V2" with an
 // underscore — non-compliant per spec. Sanitising here keeps OUR
-// wire spec-clean (per `feedback_acp2_spec_pdfs_only`); the
+// wire spec-clean (per internal/acp2/CLAUDE.md); the
 // canonical element is unchanged so other consumers see the
 // original.
 //

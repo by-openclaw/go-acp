@@ -7,7 +7,7 @@ Every error returned by dhs follows the contract:
 
 Implementation: `internal/errcode/` defines `Code` + `Layer` + `Class`. Each layer declares typed sentinels (e.g. `transport.ErrRefused`). Call sites wrap with `fmt.Errorf("%w: %s", ErrCode, dynamic)`. Callers dispatch with `errors.Is(err, transport.ErrRefused)` or `errcode.From(err)`. The CLI binary exits via `os.Exit(errcode.Exit(err))`.
 
-Memory: `feedback_error_contract_cross_os` locks the rule across every connector.
+This file locks the error contract across every connector.
 
 ---
 
@@ -77,7 +77,7 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 | `ber:truncated` | defined (R1d) | input buffer ends mid-element (insufficient bytes for declared tag / length / content) | X.690 §8.1 |
 | `ber:tag-too-long` | defined (R1d) | high-tag-number form exceeds 4-byte cap (X.690 §8.1.2.4 permits unbounded; dhs caps for safety) | X.690 §8.1.2.4 |
 | `ber:length-too-long` | defined (R1d) | long-form length exceeds 4-byte cap (X.690 §8.1.3.5 permits unbounded; dhs caps for safety) | X.690 §8.1.3.5 |
-| `ber:invalid-real` | defined (R1d) | REAL bytes fail to decode per X.690 §8.5 + the Ember+ ecosystem normalised-fraction convention | X.690 §8.5 + memory `reference_emberplus_ber_real` |
+| `ber:invalid-real` | defined (R1d) | REAL bytes fail to decode per X.690 §8.5 + the Ember+ ecosystem normalised-fraction convention | X.690 §8.5 + internal/emberplus/CLAUDE.md (BER REAL) |
 | `ber:integer-overflow` | defined (R1d) | INTEGER content bytes encode a value outside int64 range | X.690 §8.3 |
 | `glow:bad-tag` | pending (future) | unknown APPLICATION tag at glow-schema level — currently surfaces as `ber:tag-too-long` or cascades to `glow:decode-failed` | Ember+ Doc §p.84-91 |
 | `glow:bad-length` | pending (future) | alias for `ber:length-too-long` in glow-schema context | X.690 §8.1.3 |
@@ -125,7 +125,7 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 | `validation:invalid-id-token` | pending (R1g formalizes existing `--id` CSV errors from R10) | bad / empty token in CSV `--id` | dhs PR #479 (R10) |
 | `validation:invalid-direction` | pending (R1g) | `--direction` not `in` / `out` | dhs |
 | `validation:device-identifier-mismatch` | pending (R4 [#461](https://github.com/by-openclaw/go-acp/issues/461)) | import file's `device.identifier` ≠ target's | ADR-0022 |
-| `validation:admin-port-collides-with-wire` | pending (R24 [#489](https://github.com/by-openclaw/go-acp/issues/489)) | `--admin-addr` resolves to same `host:port` as wire `--port` | memory `feedback_admin_web_minimal` |
+| `validation:admin-port-collides-with-wire` | pending (R24 [#489](https://github.com/by-openclaw/go-acp/issues/489)) | `--admin-addr` resolves to same `host:port` as wire `--port` | dhs (R24 admin design) |
 | `validation:admin-feature-unknown` | pending (R25 [#490](https://github.com/by-openclaw/go-acp/issues/490)) | unknown admin feature name | dhs |
 | `validation:admin-action-invalid` | pending (R25) | admin action invalid for the named feature | dhs |
 | `validation:admin-restart-required` | pending (R25) | admin feature can only change at restart | dhs |
@@ -152,7 +152,7 @@ Memory: `feedback_error_contract_cross_os` locks the rule across every connector
 | `session:write-timeout` | defined (R1g) | write transmitted, no confirm within window | dhs `internal/consumer/errors.go` |
 | `session:write-coerced` | defined (R1g) | provider echoed a different value (clamp/round/enum-remap); callers may tolerate via `errors.Is(err, ErrWriteCoerced)` | dhs `internal/consumer/errors.go` |
 | `session:write-rejected` | defined (R1g) | provider's echo refuses the write | dhs `internal/consumer/errors.go` |
-| `session:dead` | pending (R1g) | session liveness layer reports dead | memory `project_session_health` |
+| `session:dead` | pending (R1g) | session liveness layer reports dead | dhs session-health layer |
 
 ---
 
@@ -212,7 +212,5 @@ Pattern: `make lint-error-codes` (alias for the CI step).
 ## Refs
 
 - R1 [#468](https://github.com/by-openclaw/go-acp/issues/468) — the parent epic
-- Memory `feedback_error_contract_cross_os` — locked contract
-- Memory `reference_emberplus_ber_real` — BER REAL convention anchor (referenced by `glow:bad-real`)
-- Memory `feedback_admin_web_minimal` — admin-port collision rule (referenced by `validation:admin-port-collides-with-wire`)
+- `internal/emberplus/CLAUDE.md` — BER REAL convention anchor (referenced by `glow:bad-real`)
 - [`internal/emberplus/docs/runbook.md`](../../internal/emberplus/docs/runbook.md) — operator-facing summary

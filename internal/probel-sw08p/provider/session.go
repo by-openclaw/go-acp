@@ -134,8 +134,8 @@ func (s *session) run(ctx context.Context) {
 			}
 			// Per-frame trace goes at Debug — 4 M Info calls with
 			// HexDump formatting was shown to be the dominant cost in
-			// the 10× scale bench (see project_scale_bench_results).
-			// feedback_logging.md: skip announce logs entirely.
+			// the 10× scale bench. Per docs/logging.md: skip announce
+			// logs entirely.
 			if s.srv.logger.Enabled(context.Background(), slog.LevelDebug) {
 				s.srv.logger.Debug("probel session rx",
 					slog.String("remote", s.remoteAddr()),

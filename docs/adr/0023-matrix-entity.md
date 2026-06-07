@@ -36,7 +36,7 @@ A single Device can carry:
 |---|---|
 | `matrix_id` | integer per device |
 | `level_id` | level index (audio L/R/embed/multi-format/etc) |
-| `size` | `(destinations, sources)` tuple — scale rules per `project_scale_requirements` |
+| `size` | `(destinations, sources)` tuple — scale rules per root CLAUDE.md "Scale targets" |
 | `behavior` | `1to1` / `1toN` / `NtoM` / `dynamic` |
 
 ### Behavior values
@@ -96,7 +96,7 @@ matrices:
 ### Scale floor
 
 Every plugin must cope with the minimums in
-`project_scale_requirements`:
+root CLAUDE.md "Scale targets":
 
 - 65 535 × 65 535 destinations × sources per matrix
 - 20 – 100 matrices per plant
@@ -109,7 +109,7 @@ A matrix can be fronted by two controllers (redundancy). The model:
 
 | Aspect | Rule |
 | --- | --- |
-| Identifying the active controller | Protocol-native if available — for Probel SW-P-08 that is cmd 8 (Rx Dual Controller Status Request) → cmd 9 (Tx Dual Controller Status Response). For protocols without a native indicator, external lease (per `project_ha_architecture`). |
+| Identifying the active controller | Protocol-native if available — for Probel SW-P-08 that is cmd 8 (Rx Dual Controller Status Request) → cmd 9 (Tx Dual Controller Status Response). For protocols without a native indicator, external lease (per internal/amwa/docs/ha.md). |
 | Writes (route change / SetValue) | Go to **active controller only**. The offline controller drops / no-ops — does NOT relay, does NOT act. |
 | Reads (GetStatus, tally, mnemonics) | Either controller serves; DB is mirrored. Read symmetry. |
 | Failover | Active indicator changes → consumer flips writes to the new active immediately; existing read sessions stay open on both. |
@@ -150,8 +150,6 @@ endpoint it currently advertises as active.
 - PR review checklist line: "any change to matrix entity, manifest
   matrices block, or behavior values → block until this ADR is
   updated".
-- Memory `project_dhs_data_model.md` is a 3-line bookmark to this ADR
-  (alongside the ADR-0022 pointer).
 
 ## Revisions
 

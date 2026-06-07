@@ -113,7 +113,7 @@ Top-level OID map (current integration-test provider):
 | `1.5` | `functions` | builtins |
 | `1.6` | `types` | every ParameterType + 3 streams |
 
-> `--path` accepts **both** forms — `--path 1.6.1` and `--path types.vInteger` resolve to the same Parameter. Detection: a string composed entirely of digits and dots routes through the numeric OID index; otherwise it goes through the dotted-label index. Malformed numeric forms (`1..2`, `1.`, `.1`) fail fast with `validation:invalid-oid` (exit `2`). Refs **R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)** (per memory `project_path_by_id`).
+> `--path` accepts **both** forms — `--path 1.6.1` and `--path types.vInteger` resolve to the same Parameter. Detection: a string composed entirely of digits and dots routes through the numeric OID index; otherwise it goes through the dotted-label index. Malformed numeric forms (`1..2`, `1.`, `.1`) fail fast with `validation:invalid-oid` (exit `2`). Refs **R21 [#486](https://github.com/by-openclaw/go-acp/issues/486)**.
 
 ---
 
@@ -225,7 +225,7 @@ per-slot status:
 
 Expected: ≈548 lines of tree dump, `tree_size ≈ 1361` objects. Two files written:
 
-- `--capture` target: [.audit/walks/demo.jsonl](../../../.audit/walks/demo.jsonl) — raw S101 frames (hex + dir + ts per line, one frame per line) — per ADR-0021
+- `--capture` target: `.audit/walks/demo.jsonl` — raw S101 frames (hex + dir + ts per line, one frame per line) — per ADR-0021
 - DM auto-extract: [.cache/dm/emberplus/dhs-emberplus-integration@1.0.0.json](../../../.cache/dm/emberplus/) — feeds the `--dm` hot-load on subsequent verbs (per ADR-0022 card data model)
 
 > The DM file is the same byte-for-byte shape as the source-of-truth fixture at [`internal/emberplus/testdata/integration-test/dm/emberplus/`](../testdata/integration-test/dm/emberplus/). Captured walk → cached DM → hot-load saves the per-call wire walk on subsequent verbs.
@@ -713,7 +713,7 @@ Current state on `main`. ✅ working, 🟡 partial, ❌ not implemented.
 | UC-11 | `extract` — per-product DM triple | ✅ | n/a | writes meta.json + wire.pcapng + tree.json |
 | UC-12 | `validate` — offline jsonl decode | ✅ | n/a | Go-codec PASS/FAIL per frame; Wireshark `--lua` mode pending **R12 #473** |
 | UC-13 | `bench` — matrix latency | 🟡 | ✅ | total + ops/s only today; no p50/p95/p99, no cold-start, no recovery — **R13 #474** |
-| UC-14 | `health` — 3-layer liveness | ❌ [#300](https://github.com/by-openclaw/go-acp/issues/300) | ❌ [#300](https://github.com/by-openclaw/go-acp/issues/300) | TODO both: consumer-side verb returns `does not implement HealthChecker yet`; provider-side `IsOnline` aggregation per `project_session_health` exists but is not exposed through a control-plane endpoint |
+| UC-14 | `health` — 3-layer liveness | ❌ [#300](https://github.com/by-openclaw/go-acp/issues/300) | ❌ [#300](https://github.com/by-openclaw/go-acp/issues/300) | TODO both: consumer-side verb returns `does not implement HealthChecker yet`; provider-side `IsOnline` aggregation exists but is not exposed through a control-plane endpoint |
 | UC-15 | `discover` — mDNS | ❌ R18 [#477](https://github.com/by-openclaw/go-acp/issues/477) | ❌ R18 [#477](https://github.com/by-openclaw/go-acp/issues/477) | TODO both: producer announce + consumer scan on `_ember._tcp.local.` |
 | UC-16 | `diff` / `convert` | ✅ | n/a | tree-vs-tree diff + format conversion both work offline |
 
@@ -743,7 +743,7 @@ Current state on `main`. ✅ working, 🟡 partial, ❌ not implemented.
 | R18 | [#477](https://github.com/by-openclaw/go-acp/issues/477) | open | bidirectional mDNS on `_ember._tcp.local.` (consumer + provider) |
 | R19 | [#484](https://github.com/by-openclaw/go-acp/issues/484) | open | audit pass — consumer ↔ provider parity per use case + error-code surface |
 | R20 | [#485](https://github.com/by-openclaw/go-acp/issues/485) | open | per-protocol use-case matrix at `docs/protocols/use-cases/<proto>.md` |
-| R21 | [#486](https://github.com/by-openclaw/go-acp/issues/486) | open | `--path` accepts numeric OID alongside dotted label (per memory `project_path_by_id`) |
+| R21 | [#486](https://github.com/by-openclaw/go-acp/issues/486) | open | `--path` accepts numeric OID alongside dotted label |
 | R22 | [#487](https://github.com/by-openclaw/go-acp/issues/487) | open | `profile` enhancements: per-event-kind + JSON + `--since` + `--by-session` + `--show-events` |
 | R23 | [#488](https://github.com/by-openclaw/go-acp/issues/488) | open | `validate --report <path.md\|path.json>` structured report |
 | R24 | [#489](https://github.com/by-openclaw/go-acp/issues/489) | open | provider session inventory — local-socket CLI + minimal HTML5 admin page on separate port |
@@ -764,6 +764,5 @@ Stop-Process -Id $pid -Force
 
 > ⚠ **Do NOT** broad-`Stop-Process dhs` while a Cerebrum control session
 > is live — sessions get torn mid-frame and the NB driver can hang
-> reconnect logic (memory: `feedback_no_multilayer_bundle`,
-> `feedback_dhs_process_discipline`). Track the PID at producer start
+> reconnect logic. Track the PID at producer start
 > and use targeted shutdown.

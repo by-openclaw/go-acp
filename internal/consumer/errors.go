@@ -10,7 +10,7 @@ import (
 // names for caller compatibility; type changes from *errors.errorString
 // to *errcode.Code so the CLI exit dispatcher recognises them.
 //
-// Per memory feedback_error_contract_cross_os — wire shape on stderr:
+// Per docs/protocols/error-codes.md — wire shape on stderr:
 //   "<layer>:<code>: <human message>".
 //
 // Class mapping (per R1 #468):

@@ -10,7 +10,7 @@
 // three minors are siblings, sharing only the canonical types in
 // is04/.
 //
-// Lift-to-own-repo rule (per `feedback_codec_isolation.md`): stdlib +
+// Lift-to-own-repo rule (per ADR-0006, codec stdlib-only): stdlib +
 // is04/ + spec/ only.
 package v13
 

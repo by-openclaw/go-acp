@@ -13,9 +13,9 @@ Consumer connector for ACP v1.4 (Axon Synapse protocol).
 | C# reference driver | external (ByResearch.DHS.AxonACP.DeviceDriver) | ACP1 only, not ACP2 |
 | Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "ACP1" | Wire format, methods, object types |
 | Testdata captures | [tests/fixtures/acp1/](../../../tests/fixtures/acp1/) | Raw JSONL captures from emulator |
-| Export fixtures | [tests/fixtures/exports/acp1/](../../../tests/fixtures/exports/acp1/) | JSON/YAML/CSV per slot |
+| Export fixtures | [internal/acp1/testdata/](../testdata/) | JSON/YAML/CSV fixtures |
 | Source code | [internal/acp1/consumer/](../../../internal/acp1/consumer/) | Plugin implementation |
-| Unit tests | [tests/unit/acp1/](../../../tests/unit/acp1/) | Replay + spec tests |
+| Unit tests | [internal/acp1/](../) | In-package *_test.go (replay + spec) |
 
 ---
 
@@ -88,7 +88,7 @@ All timeouts are deterministic, user-overridable via `--timeout`. No silent hang
 
 ## Canonical Export Modes
 
-The `acp walk --capture <dir>` command writes `tree.json` in the canonical shape documented at [docs/protocols/schema.md](../schema.md). Device → Slot → Group → Parameter, four levels deep:
+The `acp walk --capture <dir>` command writes `tree.json` in the canonical shape documented at [docs/protocols/schema.md](../../../docs/protocols/schema.md). Device → Slot → Group → Parameter, four levels deep:
 
 ```
 {

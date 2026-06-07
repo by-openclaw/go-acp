@@ -12,10 +12,10 @@ Consumer connector for ACP v2 (Axon Neuron protocol) over AN2 transport.
 | AN2 spec (authoritative) | [internal/acp2/assets/an2_protocol.pdf](../../../internal/acp2/assets/an2_protocol.pdf) | AN2 transport specification |
 | Wireshark dissector | [internal/acp2/wireshark/dhs_acpv2.lua](../../../internal/acp2/wireshark/dhs_acpv2.lua) | AN2 + ACP2 byte-exact reference |
 | Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "ACP2" | Wire format, functions, properties |
-| Testdata captures | [tests/fixtures/acp2/](../../../tests/fixtures/acp2/) | Raw JSONL captures from real device |
-| Export fixtures | [tests/fixtures/exports/acp2/](../../../tests/fixtures/exports/acp2/) | JSON/YAML/CSV per slot |
+| Testdata captures | [internal/acp2/testdata/](../testdata/) | Raw JSONL captures |
+| Export fixtures | [internal/acp2/testdata/](../testdata/) | JSON/YAML/CSV fixtures |
 | Source code | [internal/acp2/consumer/](../../../internal/acp2/consumer/) | Plugin implementation |
-| Unit tests | [tests/unit/acp2/](../../../tests/unit/acp2/) | Replay + spec tests |
+| Unit tests | [internal/acp2/](../) | In-package *_test.go (replay + spec) |
 
 ---
 
@@ -104,7 +104,7 @@ All timeouts are deterministic, user-overridable via `--timeout`. No silent hang
 
 ## Canonical Export Modes
 
-`acp walk --protocol acp2 --capture <dir>` writes `tree.json` in the canonical shape documented at [docs/protocols/schema.md](../schema.md). Device → Slot → hierarchical Nodes reconstructed from the walker's DFS path → Parameter leaves:
+`acp walk --protocol acp2 --capture <dir>` writes `tree.json` in the canonical shape documented at [docs/protocols/schema.md](../../../docs/protocols/schema.md). Device → Slot → hierarchical Nodes reconstructed from the walker's DFS path → Parameter leaves:
 
 ```
 {

@@ -6,8 +6,7 @@ test rig (#197) gating the Avahi/Bonjour DNS-SD backends (#194/#195/#196).
 
 > **Service-per-device rule.** Every dhs connector runs as one managed
 > service per one physical device — never multiplexed. See
-> `internal/amwa/docs/ha.md` and memory `project_ha_architecture` for
-> the lease/handover protocol.
+> `internal/amwa/docs/ha.md` for the lease/handover protocol.
 
 ## Per-OS package matrix
 

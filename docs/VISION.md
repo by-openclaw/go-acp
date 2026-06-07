@@ -425,7 +425,7 @@ Parts that do not yet exist and are this vision's new scope:
 - Cross-device `ConsumerTree` composer
 - `CuratedTree` overlay resolver (access + limits + enum mask + matrix remap)
 
-Roadmap ordering stays as documented in the memory `project_scope_sequencing`:
+Roadmap ordering:
 
 1. Part A (done)
 2. Part B — Ember+ provider (outbound)
@@ -441,7 +441,7 @@ Fabric-level features (Catalog / Templates / Alarms / Schedule / MOS / Diff / PT
 
 ## 14. Naming parking lot
 
-**Do not reopen** (parked per memory `project_naming`): Manifold · Patchbay · Conduit · Atrium · Nexus · Pivot · Axon · Sinew · Keel · Strata · Prism · Fulcrum · DHS.
+**Do not reopen** (parked): Manifold · Patchbay · Conduit · Atrium · Nexus · Pivot · Axon · Sinew · Keel · Strata · Prism · Fulcrum · DHS.
 
 Current working labels (all placeholders):
 

@@ -154,6 +154,6 @@ const (
 	// disconnected from its prior target. The consumer accepts the
 	// SET (does NOT block via CanConnect) and fires this event so
 	// operators see the deviation in the profile counter. Refs #465,
-	// same precedent as feedback_probel_salvo_connected.
+	// same precedent as internal/probel-sw08p/CLAUDE.md.
 	OneToOneSourceStealAccepted = "onetoone_source_steal_accepted"
 )

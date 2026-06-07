@@ -398,9 +398,6 @@ without breaking the layering:
 
 - Top-level `CLAUDE.md` "Architecture principles" — encapsulation, DI,
   SoC, library independence, no hidden state.
-- `feedback_codec_isolation.md` — codec stdlib-only rule applied to
-  every protocol (Probel, Ember+, OSC, TSL, etc.).
-- `feedback_architecture_principles.md` — OOP encapsulation, DI via
-  ctor, SoC.
+- ADR-0006 — codec stdlib-only rule applied to every protocol.
 - This NMOS-specific layering extends those rules with explicit
   layer numbering, an inter-codec graph, and CI enforcement.

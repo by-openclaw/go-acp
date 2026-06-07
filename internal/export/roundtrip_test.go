@@ -117,7 +117,7 @@ func TestCSV_RoundTrip(t *testing.T) {
 }
 
 // Writer emits "." as the path separator (matches Ember+ OID and the
-// importer's req.Path resolver — see feedback_path_separator).
+// importer's req.Path resolver — see the canonical path-separator rule).
 func TestCSV_Writer_UsesDotSeparator(t *testing.T) {
 	snap := &export.Snapshot{
 		Device: export.DeviceInfo{Protocol: "acp2"},

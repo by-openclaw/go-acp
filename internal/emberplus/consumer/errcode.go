@@ -9,7 +9,7 @@
 // Success (boolean) + Disposition (4-value enum) + offlineElement marker.
 // These dhs sentinels are this project's invention layered on top of
 // those signals; operators won't find them in the Ember+ Documentation
-// PDF. Per memory feedback_error_contract_cross_os.
+// PDF. Per docs/protocols/error-codes.md.
 //
 // Wire form: "emberplus:<code>: <human message>".
 package emberplus

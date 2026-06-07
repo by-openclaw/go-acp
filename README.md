@@ -38,7 +38,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing or stub
 | **OSC 1.0 / 1.1** | ✅ | ✅ | ✅ 6 files / 23 funcs under `internal/osc/integration/` — closest thing to a reference shape | ✅ pcap replay fixture + osc.js byte oracle | ✅ `dhs_osc.lua` | Reference for what a complete connector looks like under this ADR. |
 | **TSL UMD v3.1/v4/v5** | ✅ | ✅ | 🟡 4 files / 10 funcs — partial CLI coverage | ✅ testdata fixtures | ✅ `dhs_tsl.lua` | |
 | **EVS Cerebrum NB** | ✅ 12 verbs (UPPERCASE wire-form live-verified on production fleet) | ❌ deferred | ❌ 2 consumer unit tests, no CLI integration | ❌ | ✅ `dhs_cerebrum_nb.lua` | Provider intentionally deferred per scope. |
-| **AMWA NMOS** | 🟡 IS-04 walk + IS-04 Controller; IS-05/07/08/12/MS-05 plugins in-flight | 🟡 Node + Registry + Events serve | 🟡 AMWA Testing tool harness (external Python) — full conformance on IS-04-01/02 v1.0–v1.3 | 🟡 AMWA fixtures | 🟡 HTTP/WS layer in dissector | Spec-strict every published minor per `feedback_amwa_strict_all_versions` |
+| **AMWA NMOS** | 🟡 IS-04 walk + IS-04 Controller; IS-05/07/08/12/MS-05 plugins in-flight | 🟡 Node + Registry + Events serve | 🟡 AMWA Testing tool harness (external Python) — full conformance on IS-04-01/02 v1.0–v1.3 | 🟡 AMWA fixtures | 🟡 HTTP/WS layer in dissector | Spec-strict every published minor per root CLAUDE.md "AMWA NMOS strict" |
 
 ### What's NOT YET tested (and why)
 

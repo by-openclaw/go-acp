@@ -282,7 +282,7 @@ See root `CLAUDE.md` "Performance + metrics (every protocol)" section.
   on handler. Prereq for multi-consumer scaling.
 - **S2 (commit `ea42ca4`)** — per-frame `rx` / `tx` / `tally fan-out`
   slog calls moved to Debug, gated by `Logger.Enabled`. Follows
-  `feedback_logging.md` "skip announce logs". Connect p50 dropped
+  `docs/logging.md` "skip announce logs". Connect p50 dropped
   2.8 ms → 1.0 ms in 10× bench.
 - **W1a (commit `3fb7d85`)** — per-level name encoding: `NameSize`,
   `MultiLine`, `PadChar` (pointer `*uint8`), `KeepPadding` on

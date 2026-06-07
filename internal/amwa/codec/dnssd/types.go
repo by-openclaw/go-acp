@@ -13,7 +13,7 @@ import (
 // `_nmos-registration._tcp` to `_nmos-register._tcp`. v1.0 and v1.1
 // Registries advertise on the legacy name; v1.2+ on the modern one.
 // A spec-strict watcher MUST browse both to find Registries across
-// every supported minor — see `feedback_amwa_strict_all_versions`.
+// every supported minor — see root CLAUDE.md "AMWA NMOS strict".
 const (
 	ServiceRegister       = "_nmos-register._tcp"      // IS-04 v1.2+ Registration API (Registry left face)
 	ServiceRegisterLegacy = "_nmos-registration._tcp"  // IS-04 v1.0 / v1.1 Registration API (legacy name)

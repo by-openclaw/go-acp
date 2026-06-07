@@ -323,7 +323,7 @@ type optionEntry struct {
 // 2026-05-09 against 10.41.40.4: 2-option enum has plen=24 not
 // 4+144=148) is variable-length, and Cerebrum + VSM Studio decode the
 // variable-length form. Following the wire per
-// `feedback_no_workaround` "every shipping controller contradicts the
+// root CLAUDE.md Spec-strict posture "every shipping controller contradicts the
 // spec" exception. Compliance event documents the deviation.
 //
 //	| Offset      | Field   | Width  | Notes                                |

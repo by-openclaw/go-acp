@@ -13,7 +13,7 @@ import (
 )
 
 // TestExitCode_LockedContract pins the cross-OS 0/1/2 contract per memory
-// feedback_error_contract_cross_os. Every category resolves through the
+// docs/protocols/error-codes.md. Every category resolves through the
 // errcode.Code chain (or the ValidationError struct fallback) to the
 // right small-integer exit code.
 func TestExitCode_LockedContract(t *testing.T) {

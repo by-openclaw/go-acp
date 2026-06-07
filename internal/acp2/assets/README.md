@@ -14,17 +14,16 @@ over AN2/TCP transport.
 
 ## Status
 
-**Not yet implemented.** ACP2 support is planned for a future release.
-
-The codec, session management, and walker are designed but not yet built.
-See [CLAUDE.md](../../../CLAUDE.md) for the full ACP2 wire reference.
+Implemented — consumer (info/walk/get/set/watch) and provider (serve)
+build and pass unit tests; real-device integration still pending.
+See [CLAUDE.md](../CLAUDE.md) for the full ACP2 wire reference.
 
 ## Reference
 
 - Spec: [acp2_protocol.pdf](acp2_protocol.pdf)
 - AN2 spec: [an2_protocol.pdf](an2_protocol.pdf)
 - Wireshark dissector: [dhs_acpv2.lua](../wireshark/dhs_acpv2.lua) — install per [docs/wireshark.md](../../../docs/wireshark.md)
-- Full wire reference: [CLAUDE.md](../../CLAUDE.md) (ACP2 section)
+- Full wire reference: [CLAUDE.md](../CLAUDE.md)
 
 ---
 

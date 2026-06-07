@@ -60,7 +60,7 @@ func (h *Header) Common() *Header { return h }
 //   - otherwise                  → Node
 //
 // Unknown shapes return an error rather than being silently coerced —
-// per feedback_no_workaround.md, divergences must become compliance
+// per root CLAUDE.md "Spec-strict, no-workaround posture", divergences must become compliance
 // events, not invisible data loss.
 func unmarshalChildren(raws []json.RawMessage) ([]Element, error) {
 	out := make([]Element, 0, len(raws))

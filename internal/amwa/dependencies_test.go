@@ -166,7 +166,7 @@ func isOtherPlugin(self, importPath string) bool {
 }
 
 // isCrossProtocol reports whether importPath points into another
-// per-protocol tree — e.g. acp/internal/probel-sw08p/*.
+// per-protocol tree — e.g. another internal/<proto>/* package.
 func isCrossProtocol(importPath string) bool {
 	if !strings.HasPrefix(importPath, moduleRoot+"/internal/") {
 		return false

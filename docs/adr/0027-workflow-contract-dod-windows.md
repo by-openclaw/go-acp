@@ -77,7 +77,7 @@ No `gh pr create` against `main` while a DOD deliverable on the
 target connector remains `missing` or `partial`. Atomic commits
 accumulate on the feature branches; the operator can pull / inspect
 at any time. A single connector-wide PR opens at the end of the DOD
-window per `feedback_pr_per_protocol`.
+window per ADR-0014.
 
 Override: explicit operator instruction in chat — e.g. "open the PR
 for R9 right now" — opens the PR for that one item only.

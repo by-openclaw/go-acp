@@ -36,7 +36,7 @@ type RegistryCandidate struct {
 // would miss every legacy Registry — and the AMWA NMOS Testing tool
 // runs its mock Registries on the legacy name when the suite is
 // invoked at `version=v1.0` or `v1.1`. See
-// `feedback_amwa_strict_all_versions` and tests/integration/nmos/amwa/
+// root CLAUDE.md "AMWA NMOS strict" and tests/integration/nmos/amwa/
 // NOTES.md for the conformance evidence.
 //
 // Compliance with IS-04 v1.3.3 §3.1:

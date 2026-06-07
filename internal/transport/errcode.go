@@ -5,7 +5,7 @@
 // errors.Is(err, transport.ErrXxx) instead of grepping free-text.
 // Stable wire form on stderr: "<layer>:<code>: <human message>".
 //
-// Per memory feedback_error_contract_cross_os the contract is
+// Per docs/protocols/error-codes.md the contract is
 // Unix-standard 0/1/2 exit codes; transport:* maps to exit 1, except
 // validation:* (caller-input failures) which maps to exit 2.
 package transport

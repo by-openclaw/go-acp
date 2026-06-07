@@ -22,7 +22,7 @@ import (
 // So a registry that supports v1.0/v1.1/v1.2 alongside v1.3 MUST
 // advertise on both register service-type names. Mirror of the
 // consumer-side `RegistryWatcher` browse fix (#193). See
-// `feedback_amwa_strict_all_versions`.
+// root CLAUDE.md "AMWA NMOS strict".
 func pickRegistryServices(apiVers []string) []string {
 	out := []string{codec.ServiceRegister, codec.ServiceQuery}
 	for _, v := range apiVers {
