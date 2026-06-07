@@ -62,6 +62,27 @@ func TestValidateValueAgainstType_Enum_OutOfOptionsRejects(t *testing.T) {
 	}
 }
 
+// Regression: a mistyped option name with no numeric index (Str set, Enum 0)
+// must be rejected, not silently treated as index 0. This is the input shape
+// `ensure --value Bogus` produces, and it must fail pre-flight (exit 2) the
+// same way the encoder's coerceEnum rejects it (was wrongly accepted before).
+func TestValidateValueAgainstType_Enum_UnknownLabelNoIndexRejects(t *testing.T) {
+	obj := consumer.Object{Access: rw, Kind: consumer.KindEnum, EnumItems: []string{"Off", "On", "Auto"}}
+	val := consumer.Value{Kind: consumer.KindEnum, Str: "Bogus"}
+	if err := validateValueAgainstType(codec.TypeEnum, obj, val); !errors.Is(err, consumer.ErrValidationFailed) {
+		t.Fatalf("want ErrValidationFailed for unknown label, got %v", err)
+	}
+}
+
+// A numeric index supplied as a string ("--value 2") is accepted when in range.
+func TestValidateValueAgainstType_Enum_NumericStringIndexAccepted(t *testing.T) {
+	obj := consumer.Object{Access: rw, Kind: consumer.KindEnum, EnumItems: []string{"Off", "On", "Auto"}}
+	val := consumer.Value{Kind: consumer.KindEnum, Str: "2"}
+	if err := validateValueAgainstType(codec.TypeEnum, obj, val); err != nil {
+		t.Fatalf("want nil for in-range numeric index, got %v", err)
+	}
+}
+
 func TestValidateValueAgainstType_Enum_KnownLabelAccepted(t *testing.T) {
 	obj := consumer.Object{Access: rw, Kind: consumer.KindEnum, EnumItems: []string{"Off", "On", "Auto"}}
 	val := consumer.Value{Kind: consumer.KindEnum, Str: "Auto"}

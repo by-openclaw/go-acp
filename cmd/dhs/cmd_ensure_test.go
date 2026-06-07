@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"testing"
 
 	"dhs/internal/consumer"
@@ -62,4 +63,69 @@ func TestValuesEqual(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestCoerceDesired pins the --value typing that feeds the client-side
+// validator: parseable input yields a typed Value of the object's kind (so
+// range/type checks see a number, not a bare string); unparseable input is a
+// *consumer.ValidationError (exit 2 per error-codes.md), never a runtime error.
+// Str is always retained so the SetValue encoder still sees the original text.
+func TestCoerceDesired(t *testing.T) {
+	t.Run("parseable", func(t *testing.T) {
+		cases := []struct {
+			name string
+			kind consumer.ValueKind
+			in   string
+			chk  func(consumer.Value) bool
+		}{
+			{"int", consumer.KindInt, "-3", func(v consumer.Value) bool { return v.Int == -3 }},
+			{"uint", consumer.KindUint, "10", func(v consumer.Value) bool { return v.Uint == 10 }},
+			{"float", consumer.KindFloat, "3.5", func(v consumer.Value) bool { return v.Float == 3.5 }},
+			{"bool", consumer.KindBool, "true", func(v consumer.Value) bool { return v.Bool }},
+			{"enum keeps str", consumer.KindEnum, "On", func(v consumer.Value) bool { return v.Str == "On" }},
+			{"string keeps str", consumer.KindString, "hi", func(v consumer.Value) bool { return v.Str == "hi" }},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				v, err := coerceDesired(tc.kind, tc.in)
+				if err != nil {
+					t.Fatalf("coerceDesired(%v, %q) err = %v, want nil", tc.kind, tc.in, err)
+				}
+				if v.Kind != tc.kind {
+					t.Errorf("Kind = %v, want %v", v.Kind, tc.kind)
+				}
+				if v.Str != tc.in {
+					t.Errorf("Str = %q, want %q (original text must be retained)", v.Str, tc.in)
+				}
+				if !tc.chk(v) {
+					t.Errorf("typed field not populated for %v from %q: %+v", tc.kind, tc.in, v)
+				}
+			})
+		}
+	})
+
+	t.Run("unparseable is exit-2 validation error", func(t *testing.T) {
+		cases := []struct {
+			name string
+			kind consumer.ValueKind
+			in   string
+		}{
+			{"int", consumer.KindInt, "abc"},
+			{"uint", consumer.KindUint, "-1"},
+			{"float", consumer.KindFloat, "x"},
+			{"bool", consumer.KindBool, "maybe"},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				_, err := coerceDesired(tc.kind, tc.in)
+				if err == nil {
+					t.Fatalf("coerceDesired(%v, %q) err = nil, want validation error", tc.kind, tc.in)
+				}
+				var verr *consumer.ValidationError
+				if !errors.As(err, &verr) {
+					t.Errorf("err = %T, want *consumer.ValidationError (exit 2)", err)
+				}
+			})
+		}
+	})
 }
