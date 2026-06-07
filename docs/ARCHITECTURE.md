@@ -13,16 +13,17 @@
 │  internal/consumer/types.go                      │
 ├──────────────────────────────────────────────────┤
 │  Wire layer (per-protocol)                       │
-│  internal/consumer/acp1/   acp2/   {future}/    │
+│  internal/<proto>/{codec,consumer,provider}/     │
 │  internal/transport/                             │
 └──────────────────────────────────────────────────┘
 ```
 
 - **Wire layer**: protocol-specific encode/decode. Each protocol lives in
-  `internal/consumer/{name}/` and speaks its own binary format.
+  `internal/<name>/{codec,consumer,provider}/` and speaks its own
+  binary format.
 - **Normalized layer**: `consumer.Object` is the single shared type that
-  CLI, REST API, storage, and export all consume. Both ACP1 and ACP2
-  plugins fill it with their superset of metadata.
+  CLI, REST API, storage, and export all consume. Every per-protocol
+  plugin fills it with its superset of metadata.
 - **Serialization layer**: converts `consumer.Object` to JSON, YAML, or CSV
   for export/import.
 
@@ -33,8 +34,10 @@ Compile-time registration via `init()`. Each protocol package calls
 main files import the protocol packages as blank imports:
 
 ```go
-import _ "dhs/internal/consumer/acp1"
-import _ "dhs/internal/consumer/acp2"
+import _ "dhs/internal/acp1/consumer"
+import _ "dhs/internal/acp2/consumer"
+import _ "dhs/internal/acp1/provider"
+import _ "dhs/internal/acp2/provider"
 ```
 
 No runtime plugin loading. No external config. Adding a protocol means
@@ -66,22 +69,20 @@ every connector imports. They have no spec PDF, no `consumer/`, no
 `// Package …` header (Go-idiomatic). The table indexes them so a
 reader knows at a glance what each is for and whether it can be moved.
 
-| Folder | Purpose | Linked from | ADR / memory |
+| Folder | Purpose | Linked from | ADR |
 |---|---|---|---|
-| `internal/protocol/` | neutral consumer-plugin registry + `Protocol` interface + compliance event hooks + canonical validator | every consumer plugin (`init()` calls `protocol.Register`), `cmd/dhs/*` | ADR-0001, ADR-0015 |
+| `internal/consumer/` | neutral consumer-plugin registry + `Protocol` interface + compliance event hooks + canonical validator | every consumer plugin (`init()` calls `consumer.Register`), `cmd/dhs/*` | ADR-0001, ADR-0015 |
 | `internal/provider/` | neutral provider-plugin registry + `Provider` interface | every provider plugin, `cmd/dhs/cmd_producer.go` | ADR-0001 |
 | `internal/transport/` | UDP / TCP / AN2 framer + `--capture` JSONL recorder | every connector that talks IP; `cmd_validate.go` | ADR-0020 (capture layout), ADR-0021 (JSONL contract) |
 | `internal/wiretrace/` | wire-trace JSONL reader/writer | `cmd/dhs/cmd_validate.go`, every connector's `replay_test.go` | ADR-0021 |
 | `internal/manifest/` | Card / Frame / Slot / Card / DM manifest loader + canonical export | every per-product DM lookup; `cmd_producer.go`; consumers when seeding tree from cache | ADR-0022 (Card data model) |
-| `internal/dmlib/` | Device Model runtime resolver: looks up the right DM file for `<Model@SwRev>` and serves it through a typed accessor | `cmd_validate.go`, `cmd_producer.go`, every consumer plugin during walk | ADR-0022 |
 | `internal/diff/` | semantic diff of two canonical trees (`Object` / `Frame` / `Slot`) used by the `diff` CLI verb | `cmd/dhs/cmd_diff.go` | — |
-| `internal/export/` | JSON / YAML / CSV exporter + importer over `protocol.Object` | `cmd/dhs/cmd_export.go`, `cmd_import.go` | — |
+| `internal/export/` | JSON / YAML / CSV exporter + importer over `consumer.Object` | `cmd/dhs/cmd_export.go`, `cmd_import.go` | — |
 | `internal/scenario/` | scenario-driven test runner — replays a JSONL scenario against a live or mock connector | every connector's `replay_test.go` under `-tags integration` | ADR-0021 |
-| `internal/storage/` | file-backed persistence (per-OS datadir) for provider state, identity caches, salvo storage | provider state, identity orchestrator, salvo persistence | ADR-0020 (storage buckets) |
-| `internal/metrics/` | neutral `ConnectorMetrics` surface (rx/tx/bytes/latency p50/p95/p99/errors/mem/cpu) every plugin exposes through `Metrics()` | every plugin's session, `cmd/dhs/cmd_metrics.go`, `--metrics-addr` flag | project_connector_metrics_v2 |
-| `internal/identity/` | sanitiser helpers for vendor-supplied identity strings (vendor / product / serial / mac) | identity orchestrator across all connectors | project_identity_orchestrator |
-| `internal/logging/` | `log/slog` structured logging primitives — OPNsense-style direction + source-path + severity tiers, Loki JSON output | every plugin and transport layer | project_logging |
-| `internal/registry/` | cross-protocol session catalog — what device is online on which connector, last-seen, health | `cmd/dhs/common.go` keep-alive supervisor | project_keepalive_contract, project_session_health |
+| `internal/metrics/` | neutral `ConnectorMetrics` surface (rx/tx/bytes/latency p50/p95/p99/errors/mem/cpu) every plugin exposes through `Metrics()` | every plugin's session, `cmd/dhs/cmd_metrics.go`, `--metrics-addr` flag | — |
+| `internal/identity/` | sanitiser helpers for vendor-supplied identity strings (vendor / product / serial / mac) | identity orchestrator across all connectors | — |
+| `internal/logging/` | `log/slog` structured logging primitives — direction + source-path + severity tiers, Loki JSON output | every plugin and transport layer | — |
+| `internal/registry/` | cross-protocol session catalog — what device is online on which connector, last-seen, health | `cmd/dhs/common.go` keep-alive supervisor | — |
 
 **Moving any of these requires a new ADR.** Doing so silently would
 break every connector's import graph; they exist *because* the
@@ -93,7 +94,7 @@ concerns here.
 | Folder | State |
 |---|---|
 | `internal/snell-rollcall/` | **future protocol**, gated on every current connector first satisfying the ADR-0025 six-deliverable bar. Today the directory only holds `assets/` with a gitignored local vendor SDK dump (1656 files of `.tpl` / `.mib` / `.zip` / `.exe` / `.doc`) — already laid out per ADR-0001 so when work begins the scaffolded `consumer/` / `provider/` / `codec/` / `wireshark/` / `CLAUDE.md` land alongside it. No Go code, no registry entry yet. |
-| `internal/cerebrum-nb/provider/` | **consumer-only by design at this stage** — only the consumer + codec + wireshark layers are shipped. The provider side is not absent by oversight; it is intentionally not in scope at the current stage per `internal/cerebrum-nb/CLAUDE.md`. |
+| `internal/cerebrum-nb/provider/` | **consumer-only by design at this stage** — only the consumer + codec + wireshark layers are shipped; no `provider/` folder exists yet on disk. Intentionally not in scope at the current stage per `internal/cerebrum-nb/CLAUDE.md`. |
 
 ---
 
