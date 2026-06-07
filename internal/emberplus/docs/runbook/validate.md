@@ -108,7 +108,7 @@ Generate a structured report file alongside the PASS/FAIL stdout:
 
 ## Refs
 
-- [ADR-0021 — capture conventions + validate verb](../../../../docs/adr/0021-capture-conventions.md)
+- [ADR-0021 — wire-trace JSONL contract + validate verb](../../../../docs/adr/0021-wire-trace-jsonl-contract.md)
 - [`internal/emberplus/wireshark/dhs_emberplus.lua`](../../wireshark/dhs_emberplus.lua) — byte-exact dissector
 - [#473](https://github.com/by-openclaw/go-acp/issues/473) — R12 `--lua` mode
 - R23 (not yet filed) — `--report <md|json>`
