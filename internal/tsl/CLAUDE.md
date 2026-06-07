@@ -16,7 +16,7 @@ internal/tsl/
 │                    v50_packet.go, v50_dmsg.go, v50_dle_stx.go.
 ├── consumer/        package tsl — implements consumer.Protocol
 ├── provider/        package tsl — implements provider.Provider
-├── wireshark/       dissector_tsl.lua (covers all three versions)
+├── wireshark/       dhs_tsl.lua (covers all three versions)
 └── assets/          tsl-umd-protocol.pdf + extracted .txt + Miranda JARs
 ```
 
