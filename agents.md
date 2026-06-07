@@ -377,13 +377,12 @@ Integration tests (real device or emulator):
   Skip if env var not set
 
 Protocol captures:
-  Use internal/<proto>/wireshark/dissector_<proto>.lua in Wireshark
+  Use internal/<proto>/wireshark/dhs_<proto>.lua in Wireshark
   Verify byte sequences match test expectations
 ```
 
 Rule: build always — `go build ./...` before running tests, always into
-`bin/`. Never ask the user to build for you. See
-[feedback_build](C:\Users\BY-SYSTEMSSRLBoujraf\.claude\projects\c--Users-BY-SYSTEMSSRLBoujraf-Downloads-acp\memory\feedback_build.md).
+`bin/`. Never ask the user to build for you.
 
 ---
 
@@ -393,8 +392,7 @@ Rule: build always — `go build ./...` before running tests, always into
 - Never merge untested: integration-test on VM/real device before PR.
 - PR title under 70 chars.
 - Put `Closes #N` in the **PR body**, not only the commit body — squash
-  drops per-commit lines. See
-  [feedback_pr_issue_close](C:\Users\BY-SYSTEMSSRLBoujraf\.claude\projects\c--Users-BY-SYSTEMSSRLBoujraf-Downloads-acp\memory\feedback_pr_issue_close.md).
+  drops per-commit lines.
 - Prefer creating new commits over `git commit --amend`.
 - Never `--no-verify`; fix the hook failure instead.
 
