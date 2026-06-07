@@ -119,6 +119,7 @@ var commands = []command{
 	{"tree", "render the device object tree as ASCII or PlantUML mindmap (R5b)", helpTree, runTree},
 	{"get", "read one object value", helpGet, runGet},
 	{"set", "write one object value", helpSet, runSet},
+	{"ensure", "converge an object to --value, idempotently (--check dry-run; ADR-0007)", helpEnsure, runEnsure},
 	{"watch", "subscribe to live announcements", helpWatch, runWatch},
 	{"export", "dump a walked device to json / yaml / csv", helpExport, runExport},
 	{"import", "apply values from a json snapshot file", helpImport, runImport},
