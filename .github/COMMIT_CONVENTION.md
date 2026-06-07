@@ -23,8 +23,8 @@
 
 | Scope | Package |
 |-------|---------|
-| `acp1` | `internal/consumer/acp1/` |
-| `acp2` | `internal/consumer/acp2/` |
+| `acp1` | `internal/acp1/consumer/` (and `internal/acp1/provider/`) |
+| `acp2` | `internal/acp2/consumer/` (and `internal/acp2/provider/`) |
 | `transport` | `internal/transport/` |
 | `export` | `internal/export/` |
 | `cli` | `cmd/acp/` |

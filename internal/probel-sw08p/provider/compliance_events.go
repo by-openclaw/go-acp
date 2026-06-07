@@ -2,7 +2,7 @@ package probelsw08p
 
 // Compliance event labels — per-spec named deviations the Probel
 // provider observes on inbound traffic. Same philosophy as the
-// consumer side (internal/consumer/probel/compliance_events.go):
+// consumer side (internal/probel-sw08p/consumer/compliance_events.go):
 // absorb + fire event; never silently work around. See
 // memory/feedback_no_workaround.md §7–9.
 //

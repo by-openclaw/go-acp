@@ -14,7 +14,7 @@ Consumer connector for ACP v1.4 (Axon Synapse protocol).
 | Protocol reference | [CLAUDE.md](../../../CLAUDE.md) — section "ACP1" | Wire format, methods, object types |
 | Testdata captures | [tests/fixtures/acp1/](../../../tests/fixtures/acp1/) | Raw JSONL captures from emulator |
 | Export fixtures | [tests/fixtures/exports/acp1/](../../../tests/fixtures/exports/acp1/) | JSON/YAML/CSV per slot |
-| Source code | [internal/consumer/acp1/](../../../internal/consumer/acp1/) | Plugin implementation |
+| Source code | [internal/acp1/consumer/](../../../internal/acp1/consumer/) | Plugin implementation |
 | Unit tests | [tests/unit/acp1/](../../../tests/unit/acp1/) | Replay + spec tests |
 
 ---
@@ -60,7 +60,7 @@ acp info 10.6.239.113 --transport tcp              # TCP direct
 | Value freshness (live / updated / stale / cache) | — (our extension) | ⚠ partial | Walk cache has TTL; per-object freshness tags pending — covered in follow-up |
 | Cascade on disconnect (root `isOnline y→n`) | — (our extension) | ⏳ pending | TCP disconnect detection exists; synthetic cascade event pending |
 | Auto-reconnect goroutine | — (our extension) | ⏳ pending | TCP-only (UDP has no persistent session); pattern to lift from Ember+ |
-| Compliance profile + `acp profile` CLI | — | ✅ fully compliant | Event catalogue in `internal/consumer/acp1/compliance_events.go`. Transport + object-error events wired; remainder fire in follow-up work |
+| Compliance profile + `acp profile` CLI | — | ✅ fully compliant | Event catalogue in `internal/acp1/consumer/compliance_events.go`. Transport + object-error events wired; remainder fire in follow-up work |
 | Canonical JSON export + `--capture <dir>` → `tree.json` | — (our schema) | ✅ fully compliant | Device→Slot→Group→Parameter mapping; no `glow.json` (ACP1 has no Glow layer) |
 | Canonical export mode flags `--templates` / `--labels` / `--gain` | — | ⛔ not applicable | ACP1 has no `templateReference`, no `labels[]` SEQUENCE, no `parametersLocation`; flags pass through as no-ops |
 

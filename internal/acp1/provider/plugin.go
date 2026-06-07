@@ -1,7 +1,7 @@
 // Package acp1 is the ACP1 provider plugin — it serves a canonical
 // tree.json as an AxonNet ACP1 device over UDP (Mode A per CLAUDE.md).
 //
-// Symmetric to the consumer plugin at internal/consumer/acp1. Reuses
+// Symmetric to the consumer plugin at internal/acp1/consumer. Reuses
 // that package's Message codec, value codec, and type constants; adds
 // a property encoder (reverse of property.go's DecodeObject) and a
 // session dispatcher.

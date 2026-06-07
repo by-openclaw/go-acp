@@ -18,7 +18,7 @@ Per the original scope document:
   Invoke / SetValue / Matrix SetConnection)
 - B4 — Announce engine (parameter value change, matrix tally, stream
   tick)
-- B5 — Error taxonomy (reuses `internal/consumer/emberplus/errors.go`)
+- B5 — Error taxonomy (reuses `internal/emberplus/consumer/errors.go`)
 - B6 — Embedded test provider (router matrix + gain params + labels +
   one function) for CI end-to-end testing
 

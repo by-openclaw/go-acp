@@ -14,8 +14,8 @@
 // This package is consumer-agnostic and provider-agnostic: it only knows
 // bytes. It has ZERO dependencies outside the Go standard library so it
 // can be lifted into a separate repo without modification. Consumer
-// wrapper lives at internal/consumer/probel/; provider wrapper lives at
-// internal/provider/probel/.
+// wrapper lives at internal/probel-sw08p/consumer/; provider wrapper lives at
+// internal/probel-sw08p/provider/.
 package codec
 
 // Control symbols from ASCII control set (SW-P-88 §3.2).
