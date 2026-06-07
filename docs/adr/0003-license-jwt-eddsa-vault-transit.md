@@ -76,8 +76,8 @@ and a clear error. There is no grace period, no degraded mode.
 ### Key rotation
 
 Annual rotation by default; immediate rotation on incident. Per
-ADR-0009 / ADR-0014 the rotation is performed via Vault Transit's
-`rotate` operation. Connector binaries embed the current public key
+ADR-0010 (Vault internal-only) the rotation is performed via Vault
+Transit's `rotate` operation. Connector binaries embed the current public key
 plus one previous version (grace period). The JWT header `kid`
 identifies which key version signed it.
 
@@ -98,3 +98,10 @@ identifies which key version signed it.
   binaries.
 - Auto-downgrade or grace-period extension on expiry.
 - Skipping signature verification under any flag.
+
+## Revisions
+
+- 2026-06-07 — errata: fixed the key-rotation citation (was
+  "Per ADR-0009 / ADR-0014" — neither covers rotation) to ADR-0010
+  (Vault internal-only). Per ADR-0015 Amendment policy; resolves
+  coherence-review C4. — by-rune

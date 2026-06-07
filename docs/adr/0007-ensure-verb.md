@@ -62,11 +62,15 @@ Every connector exposes an `ensure` verb across all three roles
 
 ### Exit codes
 
+Per `docs/protocols/error-codes.md` (the error contract): the exit code reflects
+**outcome, not change**. Change is signalled only by the `changed` / `would_change`
+JSON field — never by the exit code.
+
 | Exit | Meaning |
 |---|---|
-| 0 | success — applied (or dry-run reported) |
-| 1 | error — failed to apply or to inspect |
-| 2 | success but `changed: true` (optional convention; some pipelines use this) |
+| 0 | success — applied, or dry-run reported (parse `changed` / `would_change` from JSON) |
+| 1 | runtime / wire error — failed to apply or to inspect |
+| 2 | usage / validation error (bad `--state`, invalid config) |
 
 ### Idempotency rules
 
@@ -92,3 +96,12 @@ Every connector exposes an `ensure` verb across all three roles
 - `ensure` mutating state when `--check` is passed.
 - Returning `changed: true` when nothing actually changed.
 - Skipping `diff` output (always emit, even if empty `[]`).
+
+## Revisions
+
+- 2026-06-07 — Exit-code table corrected (errata per ADR-0015 Amendment
+  policy): removed the "exit 2 = changed" convention, which collided with the
+  error contract in `docs/protocols/error-codes.md` (exit 2 = usage/validation).
+  `ensure` signals change only via the `changed` / `would_change` JSON field;
+  exit code reflects outcome (0 ok / 1 runtime / 2 validation). Resolves
+  coherence-review C1. — by-rune

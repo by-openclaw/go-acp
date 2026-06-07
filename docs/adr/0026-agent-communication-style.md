@@ -1,6 +1,6 @@
 # ADR-0026 — Agent communication style
 
-Status: proposed
+Status: accepted
 
 This ADR is a living document (per ADR-0025 precedent). Add new facts in
 the Revisions trailer.
@@ -99,3 +99,6 @@ operator's redirection materially changes the work. "Go", "approuved",
 ## Revisions
 
 - 2026-05-18 — initial proposal.
+- 2026-06-07 — accepted. Was proposed-but-enforced (cited as binding in
+  root CLAUDE.md "Foundational ADRs" + docs/user.md). Formalized per
+  ADR-0015 Amendment policy; resolves coherence-review F7. — by-rune
