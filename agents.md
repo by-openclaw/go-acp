@@ -39,6 +39,8 @@ Accepted ADRs (full list, in numeric order — 0017 is parked, omitted):
 | [0023](docs/adr/0023-matrix-entity.md) | matrix entity — matrix_id / level_id / size / behavior |
 | [0024](docs/adr/0024-federation-mirror-and-virtual-frame.md) | federation — mirror frame vs virtual frame |
 | [0025](docs/adr/0025-per-connector-definition-of-done.md) | per-connector definition of done (6 deliverables) |
+| [0026](docs/adr/0026-agent-communication-style.md) | agent communication style (terse, tables, no menus) |
+| [0027](docs/adr/0027-workflow-contract-dod-windows.md) | workflow contract during DOD windows (PR timing override for ADR-0014) |
 
 Read alongside:
 
