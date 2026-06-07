@@ -9,9 +9,8 @@
 //	osc-v10  — UDP + TCP length-prefix (OSC 1.0)
 //	osc-v11  — UDP + TCP SLIP (OSC 1.1, adds T/F/N/I + arrays)
 //
-// Each version is a distinct registry entry per
-// memory/feedback_protocol_versioning.md (Pattern A — wire framing
-// differs materially on TCP).
+// Each version is a distinct registry entry (Pattern A — wire
+// framing differs materially on TCP).
 package osc
 
 import (

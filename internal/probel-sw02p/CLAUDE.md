@@ -60,8 +60,8 @@ SOM  COMMAND  MESSAGE  CHECKSUM
 The SW-P-02 plugin ships the VSM driver's supported command set
 bilaterally (codec + consumer rx + provider tx). Every command
 outside the VSM set needs explicit per-command approval from the
-user before code lands, referenced by sequence number from
-`memory/project_probel_sw02p_cmd_queue.md`.
+user before code lands, referenced by sequence number from the
+non-VSM queue (tracked in GitHub issues).
 
 Authoritative VSM driver page:
 https://docs.lawo.com/vsm-ip-broadcast-control-system/vsm-interface-driver-and-application-details/driver-supported-protocol-driver/driver-pro-bel-sw-p-02-generic
@@ -126,16 +126,14 @@ https://docs.lawo.com/vsm-ip-broadcast-control-system/vsm-interface-driver-and-a
 
 ### Non-VSM queue (per-command approval required)
 
-33 numbered commands still pending per-cmd approval. See
-`memory/project_probel_sw02p_cmd_queue.md`. Never write code for any
-of these without explicit `approve seq N` from the user.
+33 numbered commands still pending per-cmd approval. Never write code
+for any of these without explicit `approve seq N` from the user.
 
 ## Protect + Lock authority model (owner-only)
 
-Per `memory/project_probel_extensions.md`, the canonical schema
-treats source **lock** (HD-router input signal health, §3.2.16/17)
-and **protect** (destination write-protection, §3.2.60+) as two
-orthogonal fields. The provider enforces:
+The canonical schema treats source **lock** (HD-router input signal
+health, §3.2.16/17) and **protect** (destination write-protection,
+§3.2.60+) as two orthogonal fields. The provider enforces:
 
 ### Source Lock (rx 014 / tx 015)
 - Read-only. No Rx command sets/clears the bit — it reflects
@@ -193,7 +191,8 @@ route. Never echo a fabricated fulfillment. Verified live
 → tx 04 dst=0 src=0 within 1.6 ms).
 
 Sibling deviation pattern to the salvo-emits-cmd-04 deviation in
-SW-P-08 (`memory/feedback_probel_salvo_connected.md`).
+SW-P-08 (see `internal/probel-sw08p/CLAUDE.md` "Known deviations
+from spec").
 
 Implementation:
 
@@ -223,7 +222,7 @@ Implementation:
   `SalvoEmittedConnected`, `ProtectUnauthorized`,
   `ProtectOverrideImmutable`.
 
-### Gaps (tracked in `memory/project_probel_sw02p_client_hardening.md`)
+### Gaps (client hardening backlog)
 
 - ❌ No auto-retry on Send timeout (§3.1 has no framing ACK, so
   retry has to be app-layer / per-command).
@@ -241,9 +240,9 @@ Next-session priority: app-layer retry policy + reconnect + keepalive.
   SW-P-02 command set definition. Use the same Commie build that
   drives SW-P-08 testing — switch its loaded .dat file to SW-P-02
   via its UI.
-- Real VSM SW-P-02 driver — see
-  `memory/project_probel_vsm_validation.md` for the SW-P-08 testbed
-  pattern; same shape expected once SW-P-02 hits live validation.
+- Real VSM SW-P-02 driver — pending live validation; same shape as
+  the SW-P-08 testbed flow documented in
+  `internal/probel-sw08p/CLAUDE.md` "Testbed".
 
 ## Quirks to remember
 

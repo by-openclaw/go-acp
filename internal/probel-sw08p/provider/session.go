@@ -23,7 +23,7 @@ import (
 // freeing the read loop to keep pulling bytes off the socket. Without
 // this split the read loop would block on tree-mutex contention during
 // the connect-phase of the scale bench, producing multi-second tail
-// latency (see memory/project_scale_bench_results_2026_04_22.md).
+// latency.
 type session struct {
 	srv  *server
 	conn net.Conn

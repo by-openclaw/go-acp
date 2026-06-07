@@ -8,8 +8,8 @@ import (
 // CONNECT (§3.2.66). Controller / remote device asks the matrix to
 // protect a destination on behalf of a given Device Number.
 //
-// Owner-only authority rule (memory/project_probel_extensions.md +
-// §3.2.60 table):
+// Owner-only authority rule (per CLAUDE.md "Protect + Lock authority
+// model" + §3.2.60 table):
 //   - current=ProbelOverride → reject (spec: "Cannot be altered
 //     remotely"). Fire ProtectOverrideImmutable.
 //   - current=None → accept, owner = Device, state = ProtectProBel.

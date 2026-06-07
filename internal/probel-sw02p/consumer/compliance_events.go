@@ -3,7 +3,7 @@ package probelsw02p
 // Compliance event labels — per-spec named deviations the SW-P-02
 // consumer absorbs on the wire. Every constant here maps to one code
 // path that tolerated a spec deviation without failing the operation
-// (per memory/feedback_no_workaround.md §7-9: absorb silently = never;
+// (per root CLAUDE.md Spec-strict, no-workaround posture: absorb silently = never;
 // absorb + fire event = always; spec-section cited in the comment).
 //
 // Authoritative spec:

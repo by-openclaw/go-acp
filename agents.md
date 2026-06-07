@@ -93,12 +93,11 @@ NMOS Phase 2 Steps 1-14 all merged on main 2026-05-01:
   006/008 validators (closed #168/#169/#170/#171), #182 Wireshark
   dissector HTTP/WS layer (closed #172), #186 integration-plan v2.
 - **OPEN, awaits user manual approval:** #183 AMWA NMOS Testing
-  harness (Step 15, closes #173) — only NMOS PR with manual gate per
-  `feedback_nmos_auto_merge.md`.
+  harness (Step 15, closes #173) — only NMOS PR with manual gate.
 - **OPEN, real-peer-discovered bug fix:** #187 is04 Subscription
   split — sender/receiver subscription was missing required
   receiver_id/sender_id field on the wire (omitempty + nil-pointer).
-  Held OPEN per "no PR if not tested" + `feedback_real_peer_closes_self_test.md`.
+  Held OPEN per "no PR if not tested" — real-peer validation gates close.
 - **Reopened:** #165 IS-08 plugin layer (codec landed; Node endpoints
   + Controller mapping diff still pending).
 - **New tracker:** #185 IS-07 MQTT bridge (no skip without user approval
@@ -132,8 +131,7 @@ running at 10.6.239.113:18080. Bundle file:
 >   deviations (see `internal/amwa/docs/matrix-compliance.md` —
 >   Lawo VSM verified). NEVER mix with cross-protocol mux concepts.
 > - **Strict every AMWA-published version. No deferral, no out-of-scope.**
->   (per `internal/amwa/CLAUDE.md` "Versioning" +
->   `feedback_amwa_strict_all_versions.md` + `feedback_nmos_multi_version.md`):
+>   (per `internal/amwa/CLAUDE.md` "Versioning" — strict-spec rule):
 >   IS-04 v1.0.3 + v1.1.3 + v1.2.2 + v1.3.3, IS-05 v1.0.2 + v1.1.2,
 >   IS-07/08/12 v1.0.1, IS-09 v1.0.0, MS-05-01/02 v1.0.0,
 >   BCP-002/004/006/008 v1.0.0. DNS-SD `api_ver` TXT advertises every
@@ -147,11 +145,12 @@ running at 10.6.239.113:18080. Bundle file:
 > - **Cross-protocol mux is parked.** The ingress→canonical→egress
 >   matrix (Ember+ ingress fan-out to glow+router egresses) is real
 >   architecture but tied to a planned CLI refactor. NO epic, NO PR
->   without explicit user ask. See `memory/project_cross_protocol_mux.md`.
+>   without explicit user ask.
 > - **Plugin lift-ability.** Each `internal/<proto>/` subtree must
->   stay extractable to its own Go module repo. Codec rule already in
->   `feedback_codec_isolation.md`; extend to consumer + provider +
->   future registry plugin. Only neutral interfaces cross the seam.
+>   stay extractable to its own Go module repo. Codec stdlib-only rule
+>   in root `CLAUDE.md` "Architecture principles" extends to consumer +
+>   provider + future registry plugin. Only neutral interfaces cross
+>   the seam.
 > - **Reference impl: sony/nmos-cpp** (Apache-2.0, JT-NM Tested) — use
 >   as cross-impl byte oracle + interop peer. Same role as `osc.js` for
 >   OSC and Commie for Probel.
@@ -180,11 +179,11 @@ running at 10.6.239.113:18080. Bundle file:
 >   to copy).
 > - **Approval rule:** when an agent asks the user a question, NEVER
 >   act in the same turn — wait for explicit approval before any
->   write/commit/PR/issue/memory action. See
->   `memory/feedback_approval_before_action.md`.
+>   write/commit/PR/issue action. See
+>   [`docs/user.md`](docs/user.md) "Approval discipline".
 
 The **TSL UMD plugin** registers three wire versions as separate
-entries per the `feedback_protocol_versioning.md` Pattern A rule:
+entries (Pattern A — one registry slot per wire-incompatible version):
 
 - `tsl-v31` — UDP-only (spec §3.0); 18-byte frame; 4 binary tallies + 2-bit brightness; **no colour**
 - `tsl-v40` — UDP-only; v3.1 frame + CHKSUM + VBC + XDATA (3-position 2-bit colour for L/R display)
@@ -211,8 +210,8 @@ Validated live 2026-04-26 against:
 - **Miranda TSL over IP Emulator v1.02** (v5.0 UDP + TCP, single +
   group-display-messages 5-DMSG)
 
-The **OSC plugin** registers two wire versions as separate entries per
-the `feedback_protocol_versioning.md` Pattern A rule:
+The **OSC plugin** registers two wire versions as separate entries
+(same Pattern A — one registry slot per wire-incompatible version):
 
 - `osc-v10` — UDP + TCP/int32-length-prefix; core types i/f/s/b
 - `osc-v11` — UDP + TCP/SLIP (RFC 1055 double-END); adds T/F/N/I + arrays
@@ -229,9 +228,8 @@ The **probel-sw02p** plugin merged on main 2026-04-25 via PR #106
 family (10 bytes), the VSM-supported bulk set (14 bytes), and
 non-VSM seqs 5, 6, 30-33, 36-38, 39-44 (17 bytes). Every command
 OUTSIDE the VSM set needs explicit per-command user approval from
-the numbered queue in `memory/project_probel_sw02p_cmd_queue.md`.
-Never write code for any non-VSM SW-P-02 command without an
-`approve seq N` from the user. See
+the numbered SW-P-02 command queue. Never write code for any
+non-VSM SW-P-02 command without an `approve seq N` from the user. See
 `internal/probel-sw02p/CLAUDE.md` for the full landed tables +
 owner-only protect authority rule + protect-blocks-connect
 state-echo deviation. Consumer matrix-config flags
@@ -241,8 +239,7 @@ mirrors VSM observed behaviour since SW-P-02 has no in-protocol
 keep-alive command). PR #132 also added default TCP
 `SO_KEEPALIVE` across sw02p / sw08p / osc TCP codecs (#129) and
 mirrored matrix-config flags onto sw08p (#130). HA / multi-
-instance parked under epic #127 (see
-`memory/project_ha_architecture.md`).
+instance parked under epic #127.
 
 ---
 
@@ -279,7 +276,7 @@ Cerebrum NB (feature branch): see `dhs consumer cerebrum-nb -h` and
 `$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`. Workflow rule
 (2026-04-30): every new verb is described as text first (name + wire
 frame + flags + RX + output); implement only after explicit user
-approval — see `feedback_design_first_no_code.md`.
+approval — see [`docs/user.md`](docs/user.md) "Approval discipline".
 
 Producer verb is `serve` for the slot-based protocols.
 

@@ -126,8 +126,7 @@ SUBCOMMANDS
   protect-dump              dump every protect on (matrix, level)
   master-protect            master-override protect connect
   bench                     scale benchmark: interrogate-all + connect-all
-                            on a persistent TCP connection (see
-                            memory/project_scale_bench_2mtx_65535.md)
+                            on a persistent TCP connection
 
 EXAMPLES
   dhs consumer probel-sw08p interrogate         127.0.0.1:2008 --matrix 0 --level 0 --dst 5

@@ -1,8 +1,7 @@
 # docs/user.md — Roles, profile, and host preference
 
 Tracked, repo-local source of truth for who is the codeowner and what
-role the agent occupies. Replaces the legacy `memory/user_preferences.md`
-entry.
+role the agent occupies.
 
 ## Roles
 

@@ -13,6 +13,6 @@
 //   - https://opensoundcontrol.stanford.edu/spec-1_0.html
 //   - https://opensoundcontrol.stanford.edu/spec-1_1.html
 //
-// Versioning follows Pattern A (separate registry entries per version)
-// per memory/feedback_protocol_versioning.md.
+// Versioning follows Pattern A (separate registry entries per
+// wire-incompatible version): osc-v10 and osc-v11 register separately.
 package codec

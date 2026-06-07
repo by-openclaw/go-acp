@@ -37,7 +37,7 @@ const (
 	// protection — it is a read-only indicator of carrier presence
 	// on each input module, distinct from the Extended PROTECT
 	// family (§3.2.60+) which guards write access. Both are
-	// orthogonal per memory/project_probel_extensions.md.
+	// orthogonal per CLAUDE.md "Protect + Lock authority model".
 	RxSourceLockStatusRequest CommandID = 0x0E // 14 dec
 
 	// TxSourceLockStatusResponse — §3.2.17. Variable-length reply: 2

@@ -102,8 +102,7 @@ truth):
 - ADR-0014 — issue → branch → tests → PR → green → approval → merge.
 - ADR-0015 — every architectural rule has one ADR. ADR-0025 is the
   single source for "connector definition of done" and is referenced
-  from `README.md`, `CLAUDE.md`, per-protocol `CLAUDE.md`, and
-  `memory/project_connector_definition_of_done.md`.
+  from `README.md`, `CLAUDE.md`, and per-protocol `CLAUDE.md`.
 
 ## Revisions
 

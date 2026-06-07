@@ -25,8 +25,8 @@ import (
 // connect/disconnect cost), so measured latency is framing + handler +
 // ACK RTT per op.
 //
-// See memory/project_scale_bench_2mtx_65535.md for scope + expected
-// numbers and the broader `project_scale_requirements.md` baseline.
+// Scope: 2 matrices × 65535 × 1 level worst-case (matches the scale
+// targets in root CLAUDE.md "Scale targets").
 func runProbelBench(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-bench", flag.ContinueOnError)
 	var (

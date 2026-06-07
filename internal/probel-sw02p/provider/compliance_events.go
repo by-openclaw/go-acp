@@ -2,8 +2,8 @@ package probelsw02p
 
 // Compliance event labels — per-spec named deviations the SW-P-02
 // provider observes on inbound traffic. Same philosophy as the
-// consumer side: absorb + fire event; never silently work around. See
-// memory/feedback_no_workaround.md §7-9.
+// consumer side: absorb + fire event; never silently work around.
+// See root CLAUDE.md Spec-strict, no-workaround posture.
 //
 // Authoritative spec:
 //
@@ -48,9 +48,9 @@ const (
 	// An rx 102 PROTECT CONNECT or rx 104 PROTECT DIS-CONNECT was
 	// rejected because the requesting Device Number did not match
 	// the stored owner of the destination. Owner-only authority is
-	// defined in memory/project_probel_extensions.md: a destination
-	// protected by Device N can only be modified or cleared by
-	// Device N. The reject path still emits tx 097 / tx 098 with
+	// defined in CLAUDE.md "Protect + Lock authority model": a
+	// destination protected by Device N can only be modified or
+	// cleared by Device N. The reject path still emits tx 097 / tx 098 with
 	// the unchanged state per §3.2.61 / §3.2.62 (which say the
 	// broadcast fires on both successful and unsuccessful attempts).
 	ProtectUnauthorized = "probel_sw02p_protect_unauthorized"

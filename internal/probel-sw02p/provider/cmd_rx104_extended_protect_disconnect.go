@@ -8,8 +8,8 @@ import (
 // DIS-CONNECT (§3.2.68). Controller asks the matrix to clear
 // protection from a destination.
 //
-// Authority ladder (owner-only per memory/project_probel_extensions.md
-// and §3.2.60):
+// Authority ladder (owner-only per CLAUDE.md "Protect + Lock
+// authority model" and §3.2.60):
 //   - current=None → accept (no-op), emit tx 098 with State=None.
 //   - current=ProbelOverride → reject (§3.2.60 "Cannot be altered
 //     remotely"). Fire ProtectOverrideImmutable.

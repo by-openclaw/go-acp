@@ -118,8 +118,7 @@ deployment runs 1–8 levels.
 > **Status:** `matrixId`, `level`, `supportedLabelVariants`,
 > `Connection.protect`, and `Connection.valid` are documented here
 > but not yet in `internal/export/canonical/*.go`. They are added
-> when the Probel plugin phase starts. See
-> `memory/project_probel_extensions.md`.
+> when the Probel plugin phase starts.
 
 ## Sample 1 — oneToN, linear, textbook basePath labels (5×5)
 

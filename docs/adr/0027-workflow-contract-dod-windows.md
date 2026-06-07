@@ -128,6 +128,5 @@ criterion: clearest scope + smallest effort.
 
 ## Revisions
 
-- 2026-05-18 — initial proposal, derived from the
-  `memory/feedback_workflow_contract` entry produced by the
-  2026-05-17 Ember+ session.
+- 2026-05-18 — initial proposal, derived from the workflow-contract
+  feedback produced by the 2026-05-17 Ember+ session.

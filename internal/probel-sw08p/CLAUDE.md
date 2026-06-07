@@ -164,8 +164,7 @@ Four peers in the testbed:
    - Server mode: exposes its own 8×8 matrix at user-configurable
      port (validated at `10.6.239.153:7800`). **Read-only** — rejects
      `cmd 2` writes. Doesn't reply to `cmd 8` dual-status (only
-     sends as keepalive probe). Labels returned space-padded. See
-     `memory/project_probel_vsm_validation.md`.
+     sends as keepalive probe). Labels returned space-padded.
 
 A DLE ACK (`10 06`) from any peer is §2 frame-level only — it does NOT
 imply the peer's application layer processed the command. VSM ACKs
@@ -211,8 +210,7 @@ UI change.
 - Producer CLI exposes `--metrics-addr :9100 --log-format json` to
   mount Prom `/metrics` + `/snapshot.json` and emit JSON logs.
 
-See root `CLAUDE.md` "Metrics surface on the producer" section +
-`memory/project_connector_metrics_v2.md` for the full plan.
+See root `CLAUDE.md` "Performance + metrics (every protocol)" section.
 
 ### Scale bench (2 mtx × 65535 × 1 level)
 
@@ -223,7 +221,8 @@ See root `CLAUDE.md` "Metrics surface on the producer" section +
   one long-lived TCP connection, runs interrogate-all + connect-all with
   `src = 1 + (dst / 16)` across both matrices. Captures per-cmd latency
   to CSV/MD.
-- Rationale + expected numbers in `memory/project_scale_bench_2mtx_65535.md`.
+- Rationale: matches the worst-case targets in root `CLAUDE.md`
+  "Scale targets".
 
 ### Session 2026-04-23 late — salvo flip-flop investigation (issue #92)
 
