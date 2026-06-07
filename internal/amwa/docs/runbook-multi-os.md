@@ -140,8 +140,6 @@ server (Unbound on pfSense in this fleet — see `dns-sd-unbound.md`).
 | Doc | What |
 |---|---|
 | [architecture.md](architecture.md) | Top-level NMOS Node + Registry layout |
-| [conformance.md](conformance.md) | AMWA Testing tool conformance status per IS-04 minor |
-| [scope-of-work.md](scope-of-work.md) | Universal Registry product spec |
 | [ha.md](ha.md) | One-service-per-device rule + lease/handover |
 | [dns-sd-unbound.md](dns-sd-unbound.md) | Unicast DNS-SD records for pfSense Unbound |
 | [cerebrum-interop.md](cerebrum-interop.md) | Cerebrum v1.1/v1.2/v1.3 advertising shape (matches what we observe live on `10.100.0.5`) |
