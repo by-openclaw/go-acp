@@ -4,7 +4,7 @@
 |---|---|---|
 | Operator runbook | [runbook.md](runbook.md) | ✓ shipping |
 | Consumer | [consumer.md](consumer.md) | ✓ shipping |
-| Provider | [provider.md](provider.md) | TODO |
+| Provider | [provider.md](provider.md) | ✓ shipping — serves canonical tree as ACP2 device over AN2/TCP (port 2072) |
 
 ## Spec documents
 
