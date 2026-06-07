@@ -95,8 +95,9 @@ internal/
     codec/                    stdlib-only wire codec (lift-ready)
     consumer/   provider/
     assets/probel-sw02/       SW-P-02 Issue 26 spec (.doc + antiword .txt)
-  tsl/                        placeholder for future TSL UMD plugin
-    assets/                   TSL UMD spec
+  tsl/                        TSL UMD v3.1 / v4.0 / v5.0 plugin (codec + consumer + provider + dhs_tsl.lua)
+    CLAUDE.md
+    codec/   consumer/   provider/   wireshark/   assets/
   transport/                  UDP + TCP + AN2 framer + JSONL capture
   export/                     json/yaml/csv exporter + importer
   scenario/                   scenario-driven test runner
