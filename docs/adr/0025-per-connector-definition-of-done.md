@@ -44,7 +44,7 @@ forward progress on the connector.
 
 A binding definition of done closes the gate at the connector boundary:
 no per-connector PR is approved for merge unless the connector has all
-five deliverables below.
+six deliverables below.
 
 ## Decision
 
@@ -63,6 +63,30 @@ later" framing.
 | 5 | **Wireshark dissector** `internal/<proto>/wireshark/dhs_<proto>.lua` | Covers every transport, every wire version, every command / type-tag the connector implements. Per-frame Info column carries the discriminating arguments (matrix/level/dst/src for SW-P-08; slot/type/pid/stat for ACP2; address+typetag+argcount for OSC; etc.). | See `internal/<proto>/wireshark/` + root CLAUDE.md "Wireshark dissectors". |
 | 6 | **Replay fixture set** under `internal/<proto>/testdata/` | Layout: `testdata/protocol_types/<typename>/` (one folder per spec type / command / message kind, each containing the raw wire capture + canonical tree + per-type doc), `testdata/fixtures/` (multi-frame golden scenarios), `testdata/exports/` (canonical exports for round-trip checks). Reference shape: `internal/acp1/testdata/` (`.pcapng` raw + `.tree` canonical + per-type `.md`). | Lets every connector replay raw / pcap at any time, in CI, without needing live device access. Promotion rules from local `captures/<proto>/<ip>/<scenario>/` to committed `testdata/` live in `captures/README.md` (size cap, edge-case justification, byte-stability). |
 
+### Test taxonomy (expands deliverable 3)
+
+Deliverable 3's integration test is the top tier of a three-tier model; the
+per-verb specification lives in [`docs/protocols/verb-tests.md`](../protocols/verb-tests.md):
+
+| Tier | Proves | Oracle |
+|---|---|---|
+| **Unit** | codec + per-verb logic | the spec (expected bytes) + injected mock transport/clock (DI); no real sockets |
+| **Smoke** | verb is wired; flags parse; output + exit code correct | built binary, loopback / trivial target |
+| **Integration** | wire behaviour | **vendor emulator + real device — never our own provider**; idempotent verbs proven by Ansible run-twice = 0 changes |
+
+### Connector compliance principles (cross-cutting)
+
+Every deliverable is built to these; each references its owning source (ADR-0015):
+
+| Principle | Source |
+|---|---|
+| Dependency injection (transport / logger / clock as constructor params) | root CLAUDE.md "Architecture principles" |
+| OOP / encapsulation / separation of concerns (consumer never imports provider) | root CLAUDE.md; ADR-0006 |
+| Idempotency (`ensure`) | ADR-0007 |
+| Structured logs (`slog`, levels, `--log-format`) | docs/logging.md; ADR-0002 |
+| Discovery (protocol-native + optional mDNS for our producer) | ADR-0012 |
+| Error contract (exit 0/1/2, `<layer>:<code>`) | docs/protocols/error-codes.md |
+
 Documentation deliverables travel alongside but are not gated by the
 ADR — they are required at PR time per ADR-0015 (single source of
 truth):
@@ -72,7 +96,7 @@ truth):
 
 ## How to apply
 
-1. **Before starting work on any connector**, audit the connector against the five-deliverable checklist. Flag missing pieces explicitly.
+1. **Before starting work on any connector**, audit the connector against the six-deliverable checklist. Flag missing pieces explicitly.
 2. **Each PR must cite which deliverable it advances** for which connector, plus the state of the other four (`done` / `partial` / `missing`).
 3. **One PR advances one deliverable for one connector**. No PR can combine "connector A integration test" with "connector B fix" — that's the bundle pattern ADR-0013 already forbids, restated here for the avoidance of doubt.
 4. **No connector PR is approved for merge until all six exist** for that connector. The integration test in (3) is the truth source: green there = real green; failing there = the wire is broken, fix the wire, never the test.
@@ -114,3 +138,9 @@ truth):
   device. Reference shape: `internal/acp1/testdata/`. Promotion rules
   from `captures/` to `testdata/` already documented in
   `captures/README.md`.
+- 2026-06-07 — errata: corrected two stale "five-deliverable" mentions to
+  "six" (Context + How-to-apply lagged the 2026-05-17 #6 addition). Added
+  the three-tier **Test taxonomy** (→ `docs/protocols/verb-tests.md`)
+  expanding deliverable 3, and the cross-cutting **Connector compliance
+  principles** (DI, OOP/SoC, idempotency, structured logs, discovery, error
+  contract). Living-document additions per ADR-0015 Amendment policy. — by-rune

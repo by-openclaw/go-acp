@@ -37,6 +37,16 @@ Other docs reference it by path/number; they never restate it.
 | Multi-OS support | ADR-0016 |
 | File-header template | ADR-0017 (parked) |
 | `info` verb build identity | ADR-0018 |
+| Documentation structure | ADR-0019 |
+| Capture + fixture layout | ADR-0020 |
+| Wire-trace JSONL contract | ADR-0021 |
+| Card data model | ADR-0022 |
+| Matrix entity | ADR-0023 |
+| Federation (mirror / virtual frame) | ADR-0024 |
+| Per-connector definition of done | ADR-0025 |
+| Agent communication style | ADR-0026 |
+| Workflow contract (DOD windows) | ADR-0027 |
+| ADR amendment / lifecycle | ADR-0015 (this one, §Amendment policy) |
 | Per-protocol wire facts | `internal/<proto>/CLAUDE.md` |
 | Per-protocol audit answers | `internal/<proto>/COMPLIANCE.md` |
 | Customer + license + asset records | Odoo (per ADR-0011) |
@@ -54,11 +64,22 @@ Other docs reference it by path/number; they never restate it.
 | `internal/<proto>/COMPLIANCE.md` | audit answers (per ADR-0008); never restates architectural rules |
 | `README.md` | one-line public summary; never restates |
 
-### No superseding
+### Amendment policy
 
-Once an ADR is `accepted`, it is permanent. If a new concern arises,
-write a new ADR for the new concern. Never overwrite or supersede.
-This prevents the slow drift that "supersede" patterns enable.
+Once an ADR is `accepted`, its **decision** is stable — but the file is
+**amendable in place** via a dated entry in a `## Revisions` trailer, for:
+
+- **errata** — typos, stale indexes, broken cross-references, wrong citations;
+- **clarifications** that do not change the decision;
+- **living-document additions** that extend (never reverse) the decision.
+
+A **substantive reversal** of an accepted decision still requires a **new ADR**
+documenting the new concern. ADRs are never deleted; there is no `superseded`
+status. Every amendment requires `@yboujraf` approval per ADR-0014.
+
+This legitimizes the existing living-document ADRs (0023 / 0025 / 0026) and lets
+defects be corrected without spawning a clarifying ADR per typo. (Replaces the
+former "accepted = permanent, never modify" rule — see Revisions.)
 
 ### Enforcement
 
@@ -84,8 +105,20 @@ When reviewing any change:
 ## Forbidden
 
 - Restating an ADR's content in another doc.
-- Modifying an ADR after it is `accepted` (status flip is forbidden;
-  the rule itself can be amended only via a new ADR documenting a
-  new concern).
+- **Reversing** an accepted ADR's decision by in-place edit — a reversal
+  requires a new ADR. (Errata / clarifications / living-document additions
+  via a dated `## Revisions` entry are permitted; see Amendment policy.)
+- Flipping an ADR's status backwards (e.g. `accepted` → `proposed`).
 - Introducing `superseded` / `deprecated` / `rejected-after-acceptance`
   status — the only valid states are `proposed` and `accepted`.
+
+## Revisions
+
+- 2026-06-07 — Amendment policy added: accepted ADRs may be amended in
+  place via a dated Revisions entry for errata / clarification /
+  living-document additions; decision reversals still require a new ADR.
+  Replaces the former absolute "accepted = permanent, never modify" rule,
+  which blocked even typo/stale-index/cross-reference fixes and contradicted
+  the living-document pattern already used by ADR-0023/0025/0026. Also
+  completed this ADR's stale "Where rules live" index (was 0001–0018; now
+  0001–0027). Authorized by `@yboujraf`. — by-rune

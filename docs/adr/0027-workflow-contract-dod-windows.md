@@ -1,6 +1,6 @@
 # ADR-0027 — Workflow contract during DOD windows
 
-Status: proposed
+Status: accepted
 
 This ADR is a living document. Add new facts in the Revisions trailer.
 
@@ -130,3 +130,6 @@ criterion: clearest scope + smallest effort.
 
 - 2026-05-18 — initial proposal, derived from the workflow-contract
   feedback produced by the 2026-05-17 Ember+ session.
+- 2026-06-07 — accepted. Was proposed-but-enforced (governs the active
+  DOD-window workflow; cited in root CLAUDE.md). Formalized per ADR-0015
+  Amendment policy; resolves coherence-review F7. — by-rune
