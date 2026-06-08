@@ -61,11 +61,33 @@ GOOS=windows GOARCH=amd64 go build -o bin/dhs-windows-amd64.exe ./cmd/dhs
 
 ## Configure
 
-- `inventory/hosts.ini` — set `ansible_host` for each LXC + the Win11 VM.
+- `inventory/hosts.ini` — set `ansible_host` for each LXC + each Windows host.
 - `group_vars/all.yml` — `dhs_device` (the ACP1 emulator / real rack — the oracle,
   never our own provider) and `dhs_objects` (the desired state to converge).
 - `group_vars/linux.yml` / `windows.yml` — connection user, binary paths. Put the
   WinRM password in `ansible-vault`, never plaintext.
+
+## Windows hosts (WinRM) — one-time setup
+
+Any Windows host (Windows 11 **or** Windows Server) is driven over WinRM the
+standard way. Run the bootstrap once per host, in an **elevated** PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File windows\configure-winrm.ps1
+```
+
+It enables the WinRM listener + Negotiate/NTLM auth and — the part that's easy
+to miss — sets `LocalAccountTokenFilterPolicy=1`. Without that, a **local**
+admin's token is filtered on network logon and WinRM rejects auth (HTTP 401 /
+SSPI `0x8009030d`) even with a correct password and a working interactive
+login. After it runs, verify from the control node:
+
+```bash
+ansible <host> -i inventory/hosts.ini -m ansible.windows.win_ping   # -> pong
+```
+
+Supply the password with `ansible-vault` (or `--ask-pass`), never plaintext.
+Verified: `dhs-win11` converges over WinRM with run-twice = 0 changed.
 
 ## Run
 
