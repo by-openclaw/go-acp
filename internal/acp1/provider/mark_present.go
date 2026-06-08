@@ -2,10 +2,32 @@ package acp1
 
 import (
 	"fmt"
+	"sort"
 
 	"dhs/internal/acp1/codec"
 	"dhs/internal/export/canonical"
 )
+
+// MarkTreeSlotsPresent marks every slot that carries card objects in the
+// served tree as "present" in the rack-controller frame-status object,
+// synthesising that object if absent. It derives the populated slots from the
+// tree itself rather than an explicit list, so a multi-card frame served via
+// --tree (a hand-authored tree.json with several slots) reports a correct
+// frame-status without a manifest — fixing the case where consumers saw an
+// empty rack despite per-slot identities being served. Slots with no card
+// objects stay no_card. Idempotent: a no-card frame leaves frame-status alone.
+func (s *server) MarkTreeSlotsPresent() error {
+	s.tree.mu.RLock()
+	slots := make([]uint8, 0, len(s.tree.slots))
+	for sl, counts := range s.tree.slots {
+		if counts.hasCard() {
+			slots = append(slots, sl)
+		}
+	}
+	s.tree.mu.RUnlock()
+	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	return s.MarkSlotsPresent(slots)
+}
 
 // MarkSlotsPresent synthesises (if absent) the rack-controller's
 // frame-status object and marks each named slot as "present" (state=2).
