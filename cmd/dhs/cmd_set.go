@@ -149,13 +149,28 @@ func runSet(ctx context.Context, args []string) error {
 		ID:    *id,
 		Round: *round,
 	}
+	// Client-side pre-flight for typed values: coerce --value to the object's
+	// kind and validate it before the wire write, so a bad enum / wrong type /
+	// read-only target fails as exit 2 (validation) instead of exit 1 (wire) —
+	// matching `ensure`. Out-of-range numerics are intentionally NOT rejected
+	// (the device clamps them). --raw bypasses this; the caller owns the bytes.
+	meta := findObjectMeta(plug, *slot, *group, *label, *id)
+	if *valueHex == "" && meta != nil {
+		want, cerr := coerceDesired(meta.Kind, *valueStr)
+		if cerr != nil {
+			return cerr
+		}
+		if v, ok := plug.(consumer.ValueValidator); ok {
+			if verr := v.ValidateValue(opCtx, req, want); verr != nil {
+				return verr
+			}
+		}
+		val = want
+	}
+
 	confirmed, err := plug.SetValue(opCtx, req, val)
 	if err != nil {
 		return err
-	}
-	var meta *consumer.Object
-	if *label != "" {
-		meta = findObjectByLabel(plug, *slot, *group, *label)
 	}
 	fmt.Println("confirmed " + formatValue(confirmed, meta))
 	if len(confirmed.Raw) > 0 {
