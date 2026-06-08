@@ -2,6 +2,7 @@
 
 | Role | Doc | Status |
 |---|---|---|
+| **Feature & ADR status** | [status.md](status.md) | numbered matrix: every feature, state, evidence, ADR |
 | Operator runbook | [runbook.md](runbook.md) | ✓ shipping |
 | Consumer | [consumer.md](consumer.md) | ✓ shipping |
 | Provider | [provider.md](provider.md) | ✓ shipping — serves canonical tree as ACP1 device over UDP (Mode A) |
