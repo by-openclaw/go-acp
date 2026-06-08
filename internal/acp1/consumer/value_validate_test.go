@@ -22,19 +22,23 @@ func TestValidateValueAgainstType_Integer_BadKindRejects(t *testing.T) {
 	}
 }
 
-func TestValidateValueAgainstType_Integer_BelowMinRejects(t *testing.T) {
+// Out-of-range numerics are NOT a validation error: ACP1 devices clamp a
+// setValue to [min,max] (spec p.28; emulator-verified). The validator must not
+// be stricter than the device — the consumer predicts the clamped value
+// client-side (cmd/dhs predictStored) to stay idempotent. Was a reject before.
+func TestValidateValueAgainstType_Integer_BelowMinAccepted(t *testing.T) {
 	obj := consumer.Object{Access: rw, Kind: consumer.KindInt, Min: int64(0), Max: int64(65535)}
 	val := consumer.Value{Kind: consumer.KindInt, Int: -1}
-	if err := validateValueAgainstType(codec.TypeInteger, obj, val); !errors.Is(err, consumer.ErrValidationFailed) {
-		t.Fatalf("want ErrValidationFailed, got %v", err)
+	if err := validateValueAgainstType(codec.TypeInteger, obj, val); err != nil {
+		t.Fatalf("want nil (device clamps to min), got %v", err)
 	}
 }
 
-func TestValidateValueAgainstType_Integer_AboveMaxRejects(t *testing.T) {
+func TestValidateValueAgainstType_Integer_AboveMaxAccepted(t *testing.T) {
 	obj := consumer.Object{Access: rw, Kind: consumer.KindInt, Min: int64(0), Max: int64(65535)}
 	val := consumer.Value{Kind: consumer.KindInt, Int: 999999}
-	if err := validateValueAgainstType(codec.TypeInteger, obj, val); !errors.Is(err, consumer.ErrValidationFailed) {
-		t.Fatalf("want ErrValidationFailed, got %v", err)
+	if err := validateValueAgainstType(codec.TypeInteger, obj, val); err != nil {
+		t.Fatalf("want nil (device clamps to max), got %v", err)
 	}
 }
 
