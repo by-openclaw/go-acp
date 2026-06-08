@@ -28,11 +28,11 @@ Legend: ✅ verified live · 🟢 code + unit test · 🟡 partial · ⬜ not st
 | 8 | `export` | ✅ | `verify-export.ps1` (json/yaml/csv) | 0002 |
 | 9 | `import` | ✅ | `verify-import.ps1` (`--dry-run`, non-destructive) | 0002 |
 | 10 | `profile` | ✅ | `verify-profile.ps1` (objects walked + compliance classification) | 0002 |
-| 11 | `extract` | 🟢 | `cmd/dhs/cmd_extract.go` (DM triple capture) — not in live matrix | 0022 |
-| 12 | `diff` | 🟢 | `cmd/dhs/cmd_diff.go` (compare canonical trees) | 0002 |
-| 13 | `convert` | 🟢 | `cmd/dhs/cmd_convert.go` (offline json/yaml/csv) | 0002 |
-| 14 | `validate` | 🟢 | `cmd/dhs/cmd_validate.go` (offline codec validate) | 0006 |
-| 15 | `discover` | 🟡 | `cmd/dhs/cmd_discover.go` — native subnet scan present; **mDNS/SD-DNS not done** | 0012 |
+| 11 | `extract` | ✅ | `verify-extract.ps1` (DM triple: meta+wire+tree) | 0022 |
+| 12 | `diff` | ✅ | `verify-diff.ps1` (schema diff: no-change + mutated) | 0002 |
+| 13 | `convert` | ✅ | `verify-convert.ps1` (json→yaml; fixed `--protocol` dispatch) | 0002 |
+| 14 | `validate` | ✅ | `verify-validate.ps1` (offline frame decode) | 0006 · 0021 |
+| 15 | `discover` | 🟡 | `verify-discover.ps1` (native subnet scan ✅); **mDNS/SD-DNS still missing** | 0012 |
 
 `matrix` / `invoke` / `stream` are Ember+-only; `diag` is ACP2-only — N/A here.
 
@@ -68,7 +68,7 @@ Legend: ✅ verified live · 🟢 code + unit test · 🟡 partial · ⬜ not st
 | # | Tier | State | Evidence | ADR |
 |---:|---|:--:|---|---|
 | 33 | Unit (codec/consumer/provider) | 🟢 | ~25 `*_test.go`; CI green 7 OS matrices | 0025 #1/#2 |
-| 34 | Per-verb integration (PowerShell, vs emulator) | ✅ | `scripts/acp1/verify-*.ps1` + `verify-all.ps1` (10/10 PASS); skips clean when host unset (PR #526) | 0025 #3 |
+| 34 | Per-verb integration (PowerShell, vs emulator) | ✅ | `scripts/acp1/verify-*.ps1` + `verify-all.ps1` (15/15 PASS — incl extract/diff/convert/validate/discover); skips clean when host unset | 0025 #3 |
 | 35 | Idempotency (Ansible, run-twice = 0 changed) | ✅ | `ansible/` role+playbook (PR #528); proven on debian/ubuntu/rocky | 0007 · 0016 |
 | 36 | Multi-OS (one binary, every OS) | ✅ | cross-compile linux/win; live Debian·Ubuntu·Rocky·Win11 | 0016 |
 | 37 | WinRM bootstrap for Windows hosts (win11 + Server) | ✅ | `ansible/windows/configure-winrm.ps1` (PR #532); win11 `win_ping` pong + role run-twice=0 | 0016 |
@@ -117,8 +117,8 @@ Legend: ✅ verified live · 🟢 code + unit test · 🟡 partial · ⬜ not st
 
 ## 8. Known gaps / caveats (honest)
 
-1. **Discovery (#15)** — native subnet scan only; **mDNS / SD-DNS for the consumer is not implemented** (consumer-side discovery of dhs producers). Tracked separately.
-2. **Unit coverage** — consumer ~33% / codec ~64%; many consumer paths are only exercised by the integration tier, not unit tests. The PowerShell matrix + Ansible cover the runtime behaviour, but raising unit coverage is open.
-3. **`extract`/`diff`/`convert`/`validate`/`discover` (#11-15)** — implemented + unit-tested, but **not** in the live `verify-*.ps1` matrix yet.
-4. **Go `-tags integration` tier** — the repeatable integration is PowerShell + Ansible (driving the CLI vs the emulator); there is no in-tree Go integration test gated on `ACP1_TEST_HOST`. Optional, since the CLI-level matrix already proves behaviour against the oracle.
+1. **Discovery (#15)** — native subnet scan works (`verify-discover.ps1`), but **mDNS / SD-DNS for the consumer is not implemented** (consumer-side discovery of dhs producers). The remaining open feature.
+2. **Unit coverage** — consumer ~41% (raised from 33.7%, socket-method tests) / codec ~64%; some consumer paths are still only exercised by the integration tier. Further raising is open but no longer a headline gap.
+3. ~~`extract`/`diff`/`convert`/`validate`/`discover` not in the live matrix~~ — **RESOLVED**: all 15 consumer verbs now have `verify-*.ps1` scripts (the matrix is 15/15). `discover` covers the native scan only (see #1).
+4. **Go `-tags integration` tier** — the repeatable integration is PowerShell + Ansible (driving the CLI vs the emulator); there is no in-tree Go integration test gated on `ACP1_TEST_HOST`. Optional, since the CLI-level matrix already proves behaviour against the oracle (clarify with the team whether to add one).
 5. **win11 WinRM** requires the per-host bootstrap (`LocalAccountTokenFilterPolicy=1`); see `ansible/windows/configure-winrm.ps1`. SSH is an alternative transport that needs no NTLM.
