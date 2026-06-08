@@ -138,11 +138,23 @@ func runEnsure(ctx context.Context, args []string) error {
 		}
 	}
 
+	// Predict the value the device will actually store. ACP1 clamps an
+	// out-of-range numeric setValue to [min,max] (spec p.28; emulator-verified:
+	// NetwPrefix max=32 stores 32 for a requested 100) rather than rejecting
+	// it. Comparing the raw --value would make `ensure --value 100` on a 0..32
+	// object report changed on every run (100 != stored 32). Clamping to the
+	// object's range client-side keeps the idempotency decision — and the
+	// --check dry-run — consistent with what the device will do.
+	target := desired
+	if meta := findObjectMeta(plug, *slot, *group, *label, *id); meta != nil {
+		target = predictStored(meta, current.Kind, desired)
+	}
+
 	curStr := canonicalValueStr(current)
-	changed := !valuesEqual(current, desired)
+	changed := !valuesEqual(current, target)
 
 	if *check {
-		return emitEnsure(*asJSON, ensureResult{WouldChange: &changed, Current: curStr, Target: desired})
+		return emitEnsure(*asJSON, ensureResult{WouldChange: &changed, Current: curStr, Target: target})
 	}
 	if !changed {
 		return emitEnsure(*asJSON, ensureResult{Changed: &changed, Previous: curStr, Current: curStr})
@@ -152,7 +164,11 @@ func runEnsure(ctx context.Context, args []string) error {
 		return err
 	}
 	newStr := canonicalValueStr(confirmed)
-	return emitEnsure(*asJSON, ensureResult{Changed: &changed, Previous: curStr, Current: newStr})
+	// Report the change actually observed (current -> confirmed), not the
+	// pre-set prediction, so a write that the device clamps back onto the
+	// current value still reports changed=false.
+	applied := !valuesEqual(current, newStr)
+	return emitEnsure(*asJSON, ensureResult{Changed: &applied, Previous: curStr, Current: newStr})
 }
 
 // ensureResult is the structured outcome (ADR-0007 shape, simplified for the
@@ -256,6 +272,111 @@ func coerceDesired(kind consumer.ValueKind, s string) (consumer.Value, error) {
 	// enum / string / ipaddr / alarm: Str carries the value; the validator
 	// checks it directly (enum membership, dotted-quad parse).
 	return v, nil
+}
+
+// findObjectMeta returns the cached walker Object for the resolved target so
+// ensure can read its numeric range. Matches by (group, id) first — ensure has
+// already resolved --path/--label to an id — then falls back to label. The
+// plugin's Walk is cached per slot, so this is a lookup, not a device hit.
+// Returns nil on miss (e.g. Ember+, where ensure doesn't pre-clamp).
+func findObjectMeta(plug consumer.Protocol, slot int, group, label string, id int) *consumer.Object {
+	objs, err := plug.Walk(context.Background(), slot)
+	if err != nil {
+		return nil
+	}
+	if id >= 0 {
+		for i := range objs {
+			if objs[i].ID == id && (group == "" || strings.EqualFold(objs[i].Group, group)) {
+				return &objs[i]
+			}
+		}
+	}
+	if label != "" {
+		for i := range objs {
+			if objs[i].Label == label && (group == "" || strings.EqualFold(objs[i].Group, group)) {
+				return &objs[i]
+			}
+		}
+	}
+	return nil
+}
+
+// predictStored returns the canonical string the device will store for a
+// setValue of `desired` on meta — clamped to the object's [min,max]. ACP1
+// clamps out-of-range numerics rather than rejecting them (spec p.28), so
+// mirroring that here keeps `ensure` idempotent and `--check` accurate. Only
+// numeric kinds are clamped; enum/string/ipaddr pass through unchanged (enums
+// are validated by membership, strings are length-checked client-side, and the
+// device echoes them verbatim).
+func predictStored(meta *consumer.Object, kind consumer.ValueKind, desired string) string {
+	s := strings.TrimSpace(desired)
+	if meta == nil {
+		return s
+	}
+	switch kind {
+	case consumer.KindInt, consumer.KindUint:
+		iv, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			f, ferr := strconv.ParseFloat(s, 64)
+			if ferr != nil {
+				return s
+			}
+			iv = int64(f)
+		}
+		if lo, ok := anyToFloat(meta.Min); ok && float64(iv) < lo {
+			iv = int64(lo)
+		}
+		if hi, ok := anyToFloat(meta.Max); ok && float64(iv) > hi {
+			iv = int64(hi)
+		}
+		return strconv.FormatInt(iv, 10)
+	case consumer.KindFloat:
+		fv, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return s
+		}
+		if lo, ok := anyToFloat(meta.Min); ok && fv < lo {
+			fv = lo
+		}
+		if hi, ok := anyToFloat(meta.Max); ok && fv > hi {
+			fv = hi
+		}
+		return strconv.FormatFloat(fv, 'g', -1, 64)
+	}
+	return s
+}
+
+// anyToFloat coerces a numeric `any` (consumer.Object.Min/Max are int64 /
+// uint64 / float64 depending on the object's ACP1 wire type) to float64 for
+// range comparison. Returns false for non-numeric or nil.
+func anyToFloat(v any) (float64, bool) {
+	switch n := v.(type) {
+	case int:
+		return float64(n), true
+	case int8:
+		return float64(n), true
+	case int16:
+		return float64(n), true
+	case int32:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case uint:
+		return float64(n), true
+	case uint8:
+		return float64(n), true
+	case uint16:
+		return float64(n), true
+	case uint32:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
+	case float32:
+		return float64(n), true
+	case float64:
+		return n, true
+	}
+	return 0, false
 }
 
 func helpEnsure() {

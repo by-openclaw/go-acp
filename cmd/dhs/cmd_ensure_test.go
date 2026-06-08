@@ -129,3 +129,39 @@ func TestCoerceDesired(t *testing.T) {
 		}
 	})
 }
+
+// TestPredictStored pins the client-side clamp that keeps ensure idempotent
+// against ACP1's device-side clamping: an out-of-range numeric --value is
+// predicted as the [min,max]-clamped value the device will actually store, so
+// the second run sees no change. Non-numeric kinds and nil meta pass through.
+func TestPredictStored(t *testing.T) {
+	uintMeta := &consumer.Object{Kind: consumer.KindUint, Min: uint64(0), Max: uint64(32)}
+	intMeta := &consumer.Object{Kind: consumer.KindInt, Min: int64(-50), Max: int64(150)}
+	floatMeta := &consumer.Object{Kind: consumer.KindFloat, Min: float64(0), Max: float64(10)}
+	cases := []struct {
+		name    string
+		meta    *consumer.Object
+		kind    consumer.ValueKind
+		desired string
+		want    string
+	}{
+		{"uint above max clamps", uintMeta, consumer.KindUint, "100", "32"},
+		{"uint in range passes", uintMeta, consumer.KindUint, "20", "20"},
+		{"uint at max passes", uintMeta, consumer.KindUint, "32", "32"},
+		{"int below min clamps", intMeta, consumer.KindInt, "-999", "-50"},
+		{"int above max clamps", intMeta, consumer.KindInt, "999", "150"},
+		{"int in range passes", intMeta, consumer.KindInt, "0", "0"},
+		{"float above max clamps", floatMeta, consumer.KindFloat, "12.5", "10"},
+		{"float in range passes", floatMeta, consumer.KindFloat, "3.5", "3.5"},
+		{"nil meta passes through", nil, consumer.KindUint, "100", "100"},
+		{"enum passes through", uintMeta, consumer.KindEnum, "On", "On"},
+		{"whitespace trimmed", uintMeta, consumer.KindUint, "  20 ", "20"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := predictStored(tc.meta, tc.kind, tc.desired); got != tc.want {
+				t.Errorf("predictStored = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

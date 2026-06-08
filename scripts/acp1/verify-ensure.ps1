@@ -53,6 +53,27 @@ Check 'bad enum value rejected with exit 2' ($LASTEXITCODE -eq 2) "exit=$LASTEXI
 & $dhs consumer acp1 ensure $target @sel --value Bogus --check 2>$null | Out-Null
 Check 'bad value rejected even under --check (exit 2)' ($LASTEXITCODE -eq 2) "exit=$LASTEXITCODE"
 
+# --- numeric clamp idempotency (NetwPrefix: uint, range 0..32) -------------
+# ACP1 devices clamp an out-of-range setValue to [min,max] (spec p.28) instead
+# of rejecting it. ensure predicts that clamp client-side so it stays
+# idempotent and --check stays accurate.
+$nsel = @('--slot', '0', '--group', 'control', '--label', 'NetwPrefix')
+& $dhs consumer acp1 ensure $target @nsel --value 0 2>$null | Out-Null   # baseline
+
+# 7. out-of-range value converges to the clamped max (0 -> 32)
+$r = & $dhs consumer acp1 ensure $target @nsel --value 100 --json 2>$null
+Check 'out-of-range converges to clamped max (changed=true)' ($r -match '"changed":true') $r
+
+# 8. same out-of-range value again is a no-op: device already sits at clamp 32
+$r = & $dhs consumer acp1 ensure $target @nsel --value 100 --json 2>$null
+Check 'out-of-range is idempotent at clamp (changed=false)' ($r -match '"changed":false') $r
+
+# 9. --check predicts the clamp: would_change=false while sitting at 32
+$r = & $dhs consumer acp1 ensure $target @nsel --value 100 --check --json 2>$null
+Check 'check predicts clamp (would_change=false)' ($r -match '"would_change":false') $r
+
+& $dhs consumer acp1 ensure $target @nsel --value 0 2>$null | Out-Null   # restore
+
 # restore to On (leave the device as we found it)
 & $dhs consumer acp1 ensure $target @sel --value On 2>$null | Out-Null
 

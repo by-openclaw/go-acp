@@ -135,21 +135,13 @@ func validateValueAgainstType(t codec.ObjectType, obj consumer.Object, val consu
 		if val.Kind == consumer.KindString && val.Str != "" {
 			return fmt.Errorf("%w: integer object got string value %q", consumer.ErrValidationFailed, val.Str)
 		}
-		v := val.Int
-		// Cross-kind tolerance: KindUint / KindFloat callers can still
-		// resolve to a valid int. Float gets truncated.
-		if val.Kind == consumer.KindUint {
-			v = int64(val.Uint)
-		}
-		if val.Kind == consumer.KindFloat {
-			v = int64(val.Float)
-		}
-		if mn, ok := obj.Min.(int64); ok && v < mn {
-			return fmt.Errorf("%w: value %d below Min %d", consumer.ErrValidationFailed, v, mn)
-		}
-		if mx, ok := obj.Max.(int64); ok && v > mx {
-			return fmt.Errorf("%w: value %d above Max %d", consumer.ErrValidationFailed, v, mx)
-		}
+		// Out-of-range is intentionally NOT rejected. ACP1 devices clamp a
+		// setValue to [min,max] (spec p.28 "clamp to [min,max]"; verified on
+		// the Synapse emulator: NetwPrefix max=32 accepts 100 and stores 32).
+		// Rejecting here would make the consumer stricter than the device and
+		// break `ensure` idempotency — the consumer predicts the clamped value
+		// client-side instead (cmd/dhs predictStored). Type mismatch above is
+		// still a real client-side error the device cannot coerce away.
 		return nil
 
 	case codec.TypeByte:
@@ -177,24 +169,14 @@ func validateValueAgainstType(t codec.ObjectType, obj consumer.Object, val consu
 		if val.Kind == consumer.KindUnknown {
 			return fmt.Errorf("%w: float object got unparseable value", consumer.ErrValidationFailed)
 		}
-		f := val.Float
-		switch val.Kind {
-		case consumer.KindInt:
-			f = float64(val.Int)
-		case consumer.KindUint:
-			f = float64(val.Uint)
-		case consumer.KindString:
+		if val.Kind == consumer.KindString {
 			if val.Str == "" {
 				return fmt.Errorf("%w: float object got empty value", consumer.ErrValidationFailed)
 			}
 			return fmt.Errorf("%w: float object got string value %q", consumer.ErrValidationFailed, val.Str)
 		}
-		if mn, ok := obj.Min.(float64); ok && f < mn {
-			return fmt.Errorf("%w: value %v below Min %v", consumer.ErrValidationFailed, f, mn)
-		}
-		if mx, ok := obj.Max.(float64); ok && f > mx {
-			return fmt.Errorf("%w: value %v above Max %v", consumer.ErrValidationFailed, f, mx)
-		}
+		// Out-of-range is NOT rejected — the device clamps to [min,max], same
+		// as the Integer case above. The consumer predicts the clamped result.
 		return nil
 
 	case codec.TypeIPAddr:
