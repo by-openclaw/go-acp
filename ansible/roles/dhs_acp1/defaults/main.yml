@@ -1,0 +1,10 @@
+---
+# Safe defaults; real values come from inventory group_vars.
+dhs_device: "127.0.0.1"
+dhs_port: 2071
+dhs_objects: []
+
+# Overridden per-OS in group_vars (linux.yml / windows.yml).
+dhs_dir: /usr/local/bin
+dhs_bin: /usr/local/bin/dhs
+dhs_local_binary: "{{ playbook_dir }}/../../bin/dhs-linux-amd64"

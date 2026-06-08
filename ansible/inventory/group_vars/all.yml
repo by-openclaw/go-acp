@@ -1,0 +1,12 @@
+---
+# The ACP1 device every client converges. The Synapse emulator or a real Axon
+# rack - the vendor oracle, never our own provider.
+dhs_device: "10.6.239.113"
+dhs_port: 2071
+
+# Desired object state. Each item becomes one `dhs ... ensure` call, idempotent:
+# a second playbook run reports changed=0. Out-of-range numerics are clamped to
+# [min,max] by the device and predicted client-side, so they stay idempotent too.
+dhs_objects:
+  - { slot: 0, group: control, label: Broadcasts, value: "On" }
+  - { slot: 0, group: control, label: NetwPrefix, value: "0" }

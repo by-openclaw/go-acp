@@ -1,0 +1,51 @@
+---
+- name: Create the dhs install directory
+  ansible.builtin.file:
+    path: "{{ dhs_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy the linux dhs binary
+  ansible.builtin.copy:
+    src: "{{ dhs_local_binary }}"
+    dest: "{{ dhs_bin }}"
+    mode: "0755"
+
+- name: Converge each ACP1 object (idempotent via ensure)
+  ansible.builtin.command:
+    argv: "{{ _dhs_argv + (['--check'] if ansible_check_mode else []) }}"
+  vars:
+    _dhs_argv:
+      - "{{ dhs_bin }}"
+      - consumer
+      - acp1
+      - ensure
+      - "{{ dhs_device }}"
+      - --port
+      - "{{ dhs_port | string }}"
+      - --slot
+      - "{{ item.slot | default(0) | string }}"
+      - --group
+      - "{{ item.group }}"
+      - --label
+      - "{{ item.label }}"
+      - --value
+      - "{{ item.value | string }}"
+      - --json
+  loop: "{{ dhs_objects }}"
+  loop_control:
+    label: "{{ item.group }}/{{ item.label }}={{ item.value }}"
+  register: dhs_ensure
+  # Run our own command even under --check; we map Ansible check mode onto the
+  # CLI's --check above rather than letting Ansible skip the task.
+  check_mode: false
+  # changed reflects the DEVICE, not "the command ran": parse the ensure JSON
+  # (changed on apply, would_change under --check). Guarded on rc==0 so a
+  # failure's non-JSON stderr is never fed to from_json.
+  changed_when: >-
+    dhs_ensure.rc == 0 and
+    ((dhs_ensure.stdout | from_json).would_change | bool
+       if ansible_check_mode
+       else (dhs_ensure.stdout | from_json).changed | bool)
+  # exit 1 (runtime/wire) and exit 2 (client-side validation) both fail the play.
+  failed_when: dhs_ensure.rc != 0

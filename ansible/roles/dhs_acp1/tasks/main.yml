@@ -1,0 +1,10 @@
+---
+# Dispatch by OS family so the same role drives Linux (SSH) and Windows (WinRM)
+# clients with the OS-appropriate modules and binary.
+- name: Converge ACP1 state on a POSIX client (SSH)
+  ansible.builtin.include_tasks: linux.yml
+  when: ansible_os_family != "Windows"
+
+- name: Converge ACP1 state on a Windows client (WinRM)
+  ansible.builtin.include_tasks: windows.yml
+  when: ansible_os_family == "Windows"
