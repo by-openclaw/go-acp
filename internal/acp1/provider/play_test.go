@@ -1,8 +1,11 @@
 package acp1
 
 import (
+	"bytes"
 	"io"
 	"log/slog"
+	"math/rand"
+	"strings"
 	"testing"
 
 	"dhs/internal/acp1/codec"
@@ -137,5 +140,106 @@ func TestOscillatableTargets_SpansAllSlotsInclSlot0(t *testing.T) {
 	}
 	if !sawSlot0 {
 		t.Error("slot 0 objects were not included — --play all must cover slot 0")
+	}
+}
+
+func TestUniformInt(t *testing.T) {
+	r := rand.New(rand.NewSource(1))
+	if got := uniformInt(r, 5, 5); got != 5 {
+		t.Errorf("uniformInt(5,5) = %d, want 5 (degenerate range)", got)
+	}
+	for i := 0; i < 1000; i++ { // inverted bounds are swapped, not panicked
+		if v := uniformInt(r, 10, 0); v < 0 || v > 10 {
+			t.Fatalf("uniformInt(10,0) = %d, out of [0,10]", v)
+		}
+	}
+	sawMin, sawMax := false, false
+	for i := 0; i < 5000; i++ {
+		v := uniformInt(r, 0, 4)
+		if v < 0 || v > 4 {
+			t.Fatalf("uniformInt out of range: %d", v)
+		}
+		if v == 0 {
+			sawMin = true
+		}
+		if v == 4 {
+			sawMax = true
+		}
+	}
+	if !sawMin || !sawMax {
+		t.Errorf("uniformInt did not cover the full span (sawMin=%v sawMax=%v)", sawMin, sawMax)
+	}
+}
+
+// TestRandomBytesFor_FullRangeSpansBounds proves the "force random from min-max"
+// mode actually swings across the whole range — unlike the walk mode, which
+// only drifts ±1 from nominal and would never reach the far end quickly.
+func TestRandomBytesFor_FullRangeSpansBounds(t *testing.T) {
+	s := &server{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	e := &entry{acpType: codec.TypeByte, param: &canonical.Parameter{
+		Minimum: int64(0), Maximum: int64(32), Value: int64(10),
+	}}
+	r := rand.New(rand.NewSource(2))
+	sawFar := false
+	for i := 0; i < 2000; i++ {
+		raw, ok := s.randomBytesFor(e, r, 10, true) // fullRange=true
+		if !ok || len(raw) != 1 {
+			t.Fatalf("byte randomBytesFor: ok=%v len=%d", ok, len(raw))
+		}
+		v := int64(raw[0])
+		if v < 0 || v > 32 {
+			t.Fatalf("byte value %d out of [0,32]", v)
+		}
+		if v > 25 { // far from nominal 10 — walk mode would not get here fast
+			sawFar = true
+		}
+	}
+	if !sawFar {
+		t.Error("full-range mode never produced a far value — it is not spanning the range")
+	}
+}
+
+// TestFrameStatusTick_SetsValidState: one tick flips a slot to a valid state
+// (0..5) and the change is visible in the frame-status array — the dynamic a
+// consumer detects on slot 0.
+func TestFrameStatusTick_SetsValidState(t *testing.T) {
+	s := newTestServer(t) // frame-status [2,2,0,0]
+	r := rand.New(rand.NewSource(7))
+	slot, state, ok := s.frameStatusTick(r)
+	if !ok {
+		t.Fatal("frameStatusTick returned ok=false on a server with frame-status")
+	}
+	if state > 5 {
+		t.Errorf("state %d out of 0..5", state)
+	}
+	if got := readSlotStatus(t, s, slot); got != state {
+		t.Errorf("after tick slot %d status = %d, want %d", slot, got, state)
+	}
+}
+
+func TestFrameStatusTick_NoFrameStatusNoOp(t *testing.T) {
+	s := newServerFromSlots(t, cardSlot(1, "slot-1", "GIO-12")) // no frame-status
+	if _, _, ok := s.frameStatusTick(rand.New(rand.NewSource(1))); ok {
+		t.Error("frameStatusTick should be a no-op when no frame-status object exists")
+	}
+}
+
+// TestBroadcastAnnounce_SilentDuringShutdown pins the clean-Ctrl+C behaviour:
+// once the server is shutting down (closed=true, as the ctx-cancel path sets),
+// a racing --play announce must NOT spray a Warn. Without the guard every
+// in-flight play tick logged "acp1 announce send" on the closed socket.
+func TestBroadcastAnnounce_SilentDuringShutdown(t *testing.T) {
+	s := newTestServer(t)
+	var buf bytes.Buffer
+	s.logger = slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	s.closed = true // simulate the shutdown window
+
+	s.broadcastAnnounce(&codec.Message{
+		MTID: 0, MType: codec.MTypeAnnounce,
+		ObjGroup: codec.GroupFrame, ObjID: 0, Value: []byte{2, 2},
+	})
+
+	if strings.Contains(buf.String(), "announce send") {
+		t.Errorf("announce Warn leaked during shutdown:\n%s", buf.String())
 	}
 }

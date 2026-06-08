@@ -31,10 +31,11 @@ import (
 // with the same tick interval.
 //
 // Stops cleanly on ctx cancellation.
-func (s *server) RunStatusPlay(ctx context.Context, paths []string, interval time.Duration) {
+func (s *server) RunStatusPlay(ctx context.Context, paths []string, interval time.Duration, fullRange bool) {
 	if interval <= 0 {
 		interval = 2 * time.Second
 	}
+	started := 0
 	for _, p := range paths {
 		path := strings.TrimSpace(p)
 		if path == "" {
@@ -53,8 +54,13 @@ func (s *server) RunStatusPlay(ctx context.Context, paths []string, interval tim
 				slog.String("path", path))
 			continue
 		}
-		go s.playLoop(ctx, key, e, interval)
+		go s.playLoop(ctx, key, e, interval, fullRange)
+		started++
 	}
+	s.logger.Info("acp1 play started",
+		slog.Int("objects", started),
+		slog.Bool("full_range", fullRange),
+		slog.Duration("interval", interval))
 }
 
 // RunStatusPlayAll is the auto-discovery form of RunStatusPlay: instead of
@@ -68,21 +74,90 @@ func (s *server) RunStatusPlay(ctx context.Context, paths []string, interval tim
 // announce handling must cope with.
 //
 // Stops cleanly on ctx cancellation.
-func (s *server) RunStatusPlayAll(ctx context.Context, interval time.Duration) {
+func (s *server) RunStatusPlayAll(ctx context.Context, interval time.Duration, fullRange bool) {
 	if interval <= 0 {
 		interval = 2 * time.Second
 	}
 	keys := s.oscillatableTargets()
 	s.logger.Info("acp1 play all started",
 		slog.Int("objects", len(keys)),
+		slog.Bool("full_range", fullRange),
 		slog.Duration("interval", interval))
 	for _, k := range keys {
 		e, ok := s.tree.lookup(k)
 		if !ok {
 			continue
 		}
-		go s.playLoop(ctx, k, e, interval)
+		go s.playLoop(ctx, k, e, interval, fullRange)
 	}
+}
+
+// RunFrameStatusPlay oscillates the rack-controller frame-status object on
+// slot 0: each tick one random slot in the array is flipped to a random state
+// (no_card/powerup/boot/present/error/removed) and a frame-status announce is
+// broadcast. A consumer subscribed to slot 0 frame-status therefore sees a
+// stream of card insert / remove / error events to detect — the dynamic the
+// rack controller exposes. No-op if the served tree has no frame-status object.
+//
+// Stops cleanly on ctx cancellation.
+func (s *server) RunFrameStatusPlay(ctx context.Context, interval time.Duration) {
+	if interval <= 0 {
+		interval = 2 * time.Second
+	}
+	if !s.hasFrameStatus() {
+		s.logger.Debug("acp1 play frame-status: no frame-status object, skipping")
+		return
+	}
+	s.logger.Info("acp1 play frame-status started", slog.Duration("interval", interval))
+	go func() {
+		r := rand.New(rand.NewSource(time.Now().UnixNano() ^ 0x5f1a))
+		t := time.NewTicker(interval)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+			}
+			s.frameStatusTick(r)
+		}
+	}()
+}
+
+// hasFrameStatus reports whether the served tree carries the rack-controller
+// frame-status object.
+func (s *server) hasFrameStatus() bool {
+	s.tree.mu.RLock()
+	defer s.tree.mu.RUnlock()
+	e, ok := s.tree.entries[objectKey{slot: 0, group: codec.GroupFrame, id: 0}]
+	return ok && e != nil && e.param != nil
+}
+
+// frameStatusTick flips one random slot in the frame-status array to a random
+// state (0..5) and broadcasts the change via setSlotStatus. Returns the slot
+// and state it set, or ok=false when no frame-status object exists. Extracted
+// from RunFrameStatusPlay so it is unit-testable without goroutines/timers.
+func (s *server) frameStatusTick(r *rand.Rand) (uint8, uint8, bool) {
+	s.tree.mu.RLock()
+	e, ok := s.tree.entries[objectKey{slot: 0, group: codec.GroupFrame, id: 0}]
+	n := 0
+	if ok && e != nil && e.param != nil {
+		if statuses, ok2 := e.param.Value.([]any); ok2 {
+			n = len(statuses)
+		}
+	}
+	s.tree.mu.RUnlock()
+	if n == 0 {
+		return 0, 0, false
+	}
+	slot := uint8(r.Intn(n))
+	state := uint8(r.Intn(6)) // 0=no_card .. 5=boot
+	if err := s.setSlotStatus(slot, state); err != nil {
+		s.logger.Debug("acp1 play frame-status: set failed",
+			slog.Int("slot", int(slot)), slog.String("err", err.Error()))
+		return slot, state, false
+	}
+	return slot, state, true
 }
 
 // oscillatableTargets returns every object key in the served tree whose type
@@ -128,18 +203,22 @@ func oscillatable(t codec.ObjectType) bool {
 // the realistic operating band of the object — temperatures hover
 // near 24°C, packet counters near 0, etc. — instead of drifting to
 // the int16 extremes the schema's wide min/max would otherwise allow.
-func (s *server) playLoop(ctx context.Context, key objectKey, e *entry, interval time.Duration) {
+func (s *server) playLoop(ctx context.Context, key objectKey, e *entry, interval time.Duration, fullRange bool) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano() ^ int64(key.slot)<<16 ^ int64(key.id)))
 	nominal, _ := readIntBound(e.param.Value)
 	t := time.NewTicker(interval)
 	defer t.Stop()
-	s.logger.Info("acp1 play started",
+	// Per-object start is Debug, not Info: --play all spins up one loop per
+	// object across every slot, so an Info line each would bury the single
+	// "play all started" summary under hundreds of lines.
+	s.logger.Debug("acp1 play object started",
 		slog.String("path", e.param.Path),
 		slog.Int("slot", int(key.slot)),
 		slog.Int("group", int(key.group)),
 		slog.Int("id", int(key.id)),
 		slog.Int("acp_type", int(e.acpType)),
 		slog.Int64("nominal", nominal),
+		slog.Bool("full_range", fullRange),
 		slog.Duration("interval", interval),
 	)
 	for {
@@ -148,7 +227,7 @@ func (s *server) playLoop(ctx context.Context, key objectKey, e *entry, interval
 			return
 		case <-t.C:
 		}
-		raw, ok := s.randomBytesFor(e, r, nominal)
+		raw, ok := s.randomBytesFor(e, r, nominal, fullRange)
 		if !ok {
 			continue
 		}
@@ -185,22 +264,31 @@ func (s *server) playLoop(ctx context.Context, key objectKey, e *entry, interval
 //
 // Returns ok=false for types that don't oscillate naturally (Strings,
 // Floats — dedicated per-type oscillators TBD if needed).
-func (s *server) randomBytesFor(e *entry, r *rand.Rand, nominal int64) ([]byte, bool) {
+func (s *server) randomBytesFor(e *entry, r *rand.Rand, nominal int64, fullRange bool) ([]byte, bool) {
+	// nextInt picks the next value: a full-span uniform draw across [min,max]
+	// in random mode (the "force a swing" behaviour), or the mean-reverting
+	// walk in the default realistic mode.
+	nextInt := func(cur, minV, maxV int64) int64 {
+		if fullRange {
+			return uniformInt(r, minV, maxV)
+		}
+		return walkInt(r, cur, nominal, minV, maxV)
+	}
 	switch e.acpType {
 	case codec.TypeInteger:
 		minV, maxV := intBounds(e.param.Minimum, int64(-32768)), intBounds(e.param.Maximum, int64(32767))
 		cur, _ := readIntBound(e.param.Value)
-		v := walkInt(r, cur, nominal, minV, maxV)
+		v := nextInt(cur, minV, maxV)
 		return []byte{byte(v >> 8), byte(v)}, true
 	case codec.TypeLong:
 		minV, maxV := intBounds(e.param.Minimum, int64(-2147483648)), intBounds(e.param.Maximum, int64(2147483647))
 		cur, _ := readIntBound(e.param.Value)
-		v := walkInt(r, cur, nominal, minV, maxV)
+		v := nextInt(cur, minV, maxV)
 		return []byte{byte(v >> 24), byte(v >> 16), byte(v >> 8), byte(v)}, true
 	case codec.TypeByte:
 		minV, maxV := intBounds(e.param.Minimum, int64(0)), intBounds(e.param.Maximum, int64(255))
 		cur, _ := readIntBound(e.param.Value)
-		v := walkInt(r, cur, nominal, minV, maxV)
+		v := nextInt(cur, minV, maxV)
 		return []byte{byte(v)}, true
 	case codec.TypeEnum:
 		n := len(e.param.EnumMap)
@@ -248,6 +336,22 @@ func walkInt(r *rand.Rand, cur, nominal, minV, maxV int64) int64 {
 		v = maxV
 	}
 	return v
+}
+
+// uniformInt picks a uniform random value across the full [min, max] range —
+// the "force random from min-max" behaviour, in contrast to walkInt's gentle
+// mean-reverting drift. Bounds are swapped if inverted; an empty range returns
+// the single value. ACP1 numeric spans (int16 / int32 / uint8) never overflow
+// span+1 in int64, so Int63n is safe.
+func uniformInt(r *rand.Rand, minV, maxV int64) int64 {
+	if maxV < minV {
+		minV, maxV = maxV, minV
+	}
+	span := maxV - minV
+	if span <= 0 {
+		return minV
+	}
+	return minV + r.Int63n(span+1)
 }
 
 // readIntBound coerces a canonical numeric bound (any) to int64.

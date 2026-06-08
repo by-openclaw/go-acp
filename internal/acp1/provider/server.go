@@ -276,12 +276,21 @@ func (s *server) broadcastAnnounceSkip(ann *codec.Message, skipTCPSessionID uint
 
 	s.mu.Lock()
 	bc := s.bcast
+	closed := s.closed
 	s.mu.Unlock()
-	if bc == nil {
-		// No UDP listener — TCP / AN2 fan-out already done above.
+	if bc == nil || closed {
+		// No UDP listener, or we're shutting down. Skipping a broadcast on a
+		// closing socket keeps Ctrl-C output clean — without this, every
+		// in-flight --play tick would spray a Warn as its write races the
+		// socket close.
 		return
 	}
 	if _, err := bc.Write(out); err != nil {
+		// A closed socket during shutdown is expected, not a fault.
+		if errors.Is(err, net.ErrClosed) {
+			s.logger.Debug("acp1 announce skipped: socket closed during shutdown")
+			return
+		}
 		s.logger.Warn("acp1 announce send",
 			slog.String("err", err.Error()),
 			slog.String("dst", bc.RemoteAddr().String()),
