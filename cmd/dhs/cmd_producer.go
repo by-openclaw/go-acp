@@ -66,6 +66,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		preload       = fs.String("preload", "", "acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1")
 		play          = fs.String("play", "", "acp1 only: oscillate objects with random values; each tick fires a spontaneous status announce. Pass `all` to oscillate every oscillatable object on every slot (slot 0 included), or a comma-separated path list 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7 oscillates Temp_Left + Temp_Right on slot 0")
 		playEvery     = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
+		playMode      = fs.String("play-mode", "walk", "acp1 only: --play value strategy — `walk` (mean-reverting drift, realistic) or `random` (force a uniform value across the object's full [min,max] each tick)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -293,10 +294,22 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		// publishes spontaneous status announces on its own without
 		// any external trigger.
 		if *play != "" {
+			var fullRange bool
+			switch strings.ToLower(strings.TrimSpace(*playMode)) {
+			case "", "walk":
+				fullRange = false
+			case "random", "force":
+				fullRange = true
+			default:
+				return fmt.Errorf("--play-mode %q invalid (use walk | random)", *playMode)
+			}
 			if strings.EqualFold(strings.TrimSpace(*play), "all") {
-				acp1Srv.RunStatusPlayAll(srvCtx, *playEvery)
+				acp1Srv.RunStatusPlayAll(srvCtx, *playEvery, fullRange)
+				// "all" also drives the rack frame-status so consumers can
+				// detect slot insert/remove/error events on slot 0.
+				acp1Srv.RunFrameStatusPlay(srvCtx, *playEvery)
 			} else {
-				acp1Srv.RunStatusPlay(srvCtx, strings.Split(*play, ","), *playEvery)
+				acp1Srv.RunStatusPlay(srvCtx, strings.Split(*play, ","), *playEvery, fullRange)
 			}
 		}
 
