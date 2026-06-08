@@ -64,7 +64,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		insertTiming  = fs.String("insert-timing", "real", "acp1 only: cascade timing for slot insert (real / fast)")
 		dmLibraryRoot = fs.String("dm-library", "", "acp1 only: DM library root for admin slot.load (#260)")
 		preload       = fs.String("preload", "", "acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1")
-		play          = fs.String("play", "", "acp1 only: comma-separated object paths the producer should oscillate with random values. Each tick fires a spontaneous status announce. Format: 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7,1.1.3.10 oscillates Temp_Left + Temp_Right + Rx_Packet_Loss on slot 0")
+		play          = fs.String("play", "", "acp1 only: oscillate objects with random values; each tick fires a spontaneous status announce. Pass `all` to oscillate every oscillatable object on every slot (slot 0 included), or a comma-separated path list 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7 oscillates Temp_Left + Temp_Right on slot 0")
 		playEvery     = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
 	)
 	if err := fs.Parse(args); err != nil {
@@ -293,8 +293,11 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		// publishes spontaneous status announces on its own without
 		// any external trigger.
 		if *play != "" {
-			paths := strings.Split(*play, ",")
-			acp1Srv.RunStatusPlay(srvCtx, paths, *playEvery)
+			if strings.EqualFold(strings.TrimSpace(*play), "all") {
+				acp1Srv.RunStatusPlayAll(srvCtx, *playEvery)
+			} else {
+				acp1Srv.RunStatusPlay(srvCtx, strings.Split(*play, ","), *playEvery)
+			}
 		}
 
 		// Admin RPC always runs alongside the wire transports so the
