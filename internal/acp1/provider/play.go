@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -54,6 +55,68 @@ func (s *server) RunStatusPlay(ctx context.Context, paths []string, interval tim
 		}
 		go s.playLoop(ctx, key, e, interval)
 	}
+}
+
+// RunStatusPlayAll is the auto-discovery form of RunStatusPlay: instead of
+// naming each object path, it walks the served tree and oscillates EVERY
+// oscillatable object on EVERY slot — including slot 0, the rack controller —
+// with a spontaneous status announce per change. Read-only status objects and
+// writable control objects alike are driven (the provider owns the tree);
+// String / Float / File / Frame / Alarm objects have no natural random form
+// and are skipped. Models a fully live rack where every sensor, counter, and
+// enum on every card drifts on its own — the wire-traffic load a consumer's
+// announce handling must cope with.
+//
+// Stops cleanly on ctx cancellation.
+func (s *server) RunStatusPlayAll(ctx context.Context, interval time.Duration) {
+	if interval <= 0 {
+		interval = 2 * time.Second
+	}
+	keys := s.oscillatableTargets()
+	s.logger.Info("acp1 play all started",
+		slog.Int("objects", len(keys)),
+		slog.Duration("interval", interval))
+	for _, k := range keys {
+		e, ok := s.tree.lookup(k)
+		if !ok {
+			continue
+		}
+		go s.playLoop(ctx, k, e, interval)
+	}
+}
+
+// oscillatableTargets returns every object key in the served tree whose type
+// can be driven by the oscillator (mirrors randomBytesFor), sorted by
+// slot/group/id for deterministic startup. Spans all slots, slot 0 included.
+func (s *server) oscillatableTargets() []objectKey {
+	s.tree.mu.RLock()
+	defer s.tree.mu.RUnlock()
+	keys := make([]objectKey, 0, len(s.tree.entries))
+	for k, e := range s.tree.entries {
+		if e != nil && oscillatable(e.acpType) {
+			keys = append(keys, k)
+		}
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].slot != keys[j].slot {
+			return keys[i].slot < keys[j].slot
+		}
+		if keys[i].group != keys[j].group {
+			return keys[i].group < keys[j].group
+		}
+		return keys[i].id < keys[j].id
+	})
+	return keys
+}
+
+// oscillatable reports whether an object type has a random form the oscillator
+// can produce. Mirrors the type switch in randomBytesFor exactly.
+func oscillatable(t codec.ObjectType) bool {
+	switch t {
+	case codec.TypeInteger, codec.TypeLong, codec.TypeByte, codec.TypeEnum, codec.TypeIPAddr:
+		return true
+	}
+	return false
 }
 
 // playLoop oscillates one entry. A separate goroutine per path so each
