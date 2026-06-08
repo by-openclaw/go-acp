@@ -1,0 +1,19 @@
+---
+# Windows client, reached over WinRM. Requires the ansible.windows collection
+# on the control node + pywinrm (pip install pywinrm).
+ansible_connection: winrm
+ansible_user: Administrator
+# Do NOT store the password in plaintext. Use ansible-vault:
+#   ansible-vault encrypt_string '<pw>' --name ansible_password
+# then paste the vaulted block here, or pass --ask-vault-pass at runtime.
+# ansible_password: !vault | ...
+ansible_winrm_transport: ntlm
+ansible_winrm_server_cert_validation: ignore
+ansible_port: 5985
+
+# Where the dhs binary is installed on the target and which local artifact to
+# deploy. Build it from the repo root before running:
+#   GOOS=windows GOARCH=amd64 go build -o bin/dhs-windows-amd64.exe ./cmd/dhs
+dhs_dir: 'C:\dhs'
+dhs_bin: 'C:\dhs\dhs.exe'
+dhs_local_binary: "{{ playbook_dir }}/../../bin/dhs-windows-amd64.exe"

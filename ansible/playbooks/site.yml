@@ -1,0 +1,14 @@
+---
+# Converge the ACP1 device from every OS client in the lab.
+#
+#   ansible-playbook playbooks/site.yml                 # apply
+#   ansible-playbook playbooks/site.yml --check         # dry-run (maps to ensure --check)
+#   ansible-playbook playbooks/site.yml                 # run again -> changed=0 (idempotent)
+#
+# The second apply run must report 0 changed for every host on every OS - that
+# is the idempotency proof the `ensure` verb was built for.
+- name: Converge ACP1 device state from every OS client
+  hosts: dhs_clients
+  gather_facts: true
+  roles:
+    - dhs_acp1

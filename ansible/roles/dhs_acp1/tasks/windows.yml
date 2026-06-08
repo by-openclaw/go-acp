@@ -1,0 +1,43 @@
+---
+- name: Create the dhs install directory
+  ansible.windows.win_file:
+    path: "{{ dhs_dir }}"
+    state: directory
+
+- name: Deploy the windows dhs binary
+  ansible.windows.win_copy:
+    src: "{{ dhs_local_binary }}"
+    dest: "{{ dhs_bin }}"
+
+- name: Converge each ACP1 object (idempotent via ensure)
+  ansible.windows.win_command:
+    argv: "{{ _dhs_argv + (['--check'] if ansible_check_mode else []) }}"
+  vars:
+    _dhs_argv:
+      - "{{ dhs_bin }}"
+      - consumer
+      - acp1
+      - ensure
+      - "{{ dhs_device }}"
+      - --port
+      - "{{ dhs_port | string }}"
+      - --slot
+      - "{{ item.slot | default(0) | string }}"
+      - --group
+      - "{{ item.group }}"
+      - --label
+      - "{{ item.label }}"
+      - --value
+      - "{{ item.value | string }}"
+      - --json
+  loop: "{{ dhs_objects }}"
+  loop_control:
+    label: "{{ item.group }}/{{ item.label }}={{ item.value }}"
+  register: dhs_ensure
+  check_mode: false
+  changed_when: >-
+    dhs_ensure.rc == 0 and
+    ((dhs_ensure.stdout | from_json).would_change | bool
+       if ansible_check_mode
+       else (dhs_ensure.stdout | from_json).changed | bool)
+  failed_when: dhs_ensure.rc != 0

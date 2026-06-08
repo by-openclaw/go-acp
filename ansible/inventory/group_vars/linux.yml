@@ -1,0 +1,11 @@
+---
+# Linux LXC clients, reached over SSH.
+ansible_connection: ssh
+ansible_user: root            # set to your LXC user; key-based auth recommended
+
+# Where the dhs binary is installed on the target and which local artifact to
+# deploy. Build it from the repo root before running:
+#   GOOS=linux GOARCH=amd64 go build -o bin/dhs-linux-amd64 ./cmd/dhs
+dhs_dir: /usr/local/bin
+dhs_bin: /usr/local/bin/dhs
+dhs_local_binary: "{{ playbook_dir }}/../../bin/dhs-linux-amd64"

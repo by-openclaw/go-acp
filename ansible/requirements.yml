@@ -1,0 +1,4 @@
+---
+# Install on the control node:  ansible-galaxy collection install -r requirements.yml
+collections:
+  - name: ansible.windows   # win_command / win_copy / win_file for the Windows client
