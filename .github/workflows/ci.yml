@@ -59,7 +59,7 @@ jobs:
           }
           check ./internal/acp1/codec 90
           check ./internal/acp1/consumer 41
-          check ./internal/acp1/provider 59
+          check ./internal/acp1/provider 64
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
