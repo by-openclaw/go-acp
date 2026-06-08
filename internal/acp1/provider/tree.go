@@ -140,6 +140,17 @@ type slotCounts struct {
 	numFile     uint8
 }
 
+// hasCard reports whether the slot carries any addressable card object
+// (any non-frame group). A slot synthesised only to host the rack
+// frame-status object has all-zero counts and is not itself a card.
+func (c *slotCounts) hasCard() bool {
+	if c == nil {
+		return false
+	}
+	return c.numIdentity > 0 || c.numControl > 0 || c.numStatus > 0 ||
+		c.numAlarm > 0 || c.numFile > 0
+}
+
 // newTree flattens a canonical.Export into the (slot, group, id) index.
 // Shape expected (mirror of acp1.Canonicalize output):
 //
