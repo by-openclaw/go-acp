@@ -45,6 +45,22 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: go test -count=1 -coverprofile=coverage.out ./...
 
+      # Per-package coverage floor for the acp1 gold-template connector. Fails
+      # the build if a package drops below its locked-in level (no-regression).
+      # Raise these as the tiered coverage push lands (see issue #539).
+      - name: Coverage floor (acp1)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          set -e
+          check() {
+            pct=$(go test -count=1 -cover "$1" | sed -n 's/.*coverage: \([0-9.]*\)%.*/\1/p')
+            printf '%s: %s%% (floor %s%%)\n' "$1" "$pct" "$2"
+            awk "BEGIN{exit !(${pct:-0}+0 >= $2)}" || { echo "::error::$1 coverage ${pct}% below floor $2%"; exit 1; }
+          }
+          check ./internal/acp1/codec 90
+          check ./internal/acp1/consumer 41
+          check ./internal/acp1/provider 59
+
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
