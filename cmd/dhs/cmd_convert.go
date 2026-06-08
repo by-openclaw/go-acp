@@ -22,6 +22,10 @@ func runConvert(_ context.Context, args []string) error {
 	in := fs.String("in", "", "input snapshot file (.json, .yaml, .csv)")
 	out := fs.String("out", "", "output file path (format derived from extension)")
 	format := fs.String("format", "", "output format override: json | yaml | csv")
+	// `dhs consumer <proto> convert` injects --protocol; convert is offline
+	// and ignores it (mirrors diff). Lets convert be reached via the consumer
+	// dispatcher without "flag provided but not defined: -protocol".
+	_ = fs.String("protocol", "", "(ignored; convert is offline)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
