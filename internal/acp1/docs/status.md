@@ -82,7 +82,7 @@ The per-verb matrix is **18/18** under `scripts/acp1/verify-all.ps1` (auto-globb
 | 38 | Provider **fidelity replay** (re-serve real objects) | 🟢 | `provider.TestReplayFidelity_GetObject` — 244 objects | 0025 #3 |
 | 39 | Per-verb integration (PowerShell, vs emulator) | ✅ | `scripts/acp1/verify-*.ps1` 18/18 PASS; skips clean when host unset | 0025 #3 |
 | 40 | Go `//go:build integration` tier (gated `ACP1_TEST_HOST`) | ✅ | `internal/acp1/smoke` — info/walk/get + set/inc/dec/reset; AN2 skips on UDP-only host | 0025 #3 |
-| 41 | Idempotency (Ansible, run-twice = 0 changed) + multi-OS + WinRM bootstrap | ✅ | `ansible/`; debian/ubuntu/rocky/win11 | 0007 · 0016 |
+| 41 | Idempotency — **Ansible test tier** (run-twice = 0 changed, asserted) + multi-OS + WinRM | ✅ | `ansible/playbooks/test-idempotency.yml` (`make test-ansible`) asserts the 2nd `ensure` is 0-changed; `site.yml` converges debian/ubuntu/rocky/win11 | 0007 · 0016 |
 
 ## 6. Error contract
 
