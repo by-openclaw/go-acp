@@ -249,13 +249,8 @@ func decodeInteger(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	if o.Label, err = r.cstr(); err != nil {
 		return nil, wrap(err, "integer label")
 	}
-	if o.Unit, err = r.cstr(); err != nil {
-		// Some firmware omits the unit string on the wire. Tolerate EOF
-		// here — a missing unit is not a decode failure.
-		if !errors.Is(err, errEOF) {
-			return nil, wrap(err, "integer unit")
-		}
-	}
+	// Unit is an optional trailing field — some firmware omits it.
+	o.Unit = r.optCstr()
 	return o, nil
 }
 
@@ -299,9 +294,7 @@ func decodeIPAddr(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	if o.Label, err = r.cstr(); err != nil {
 		return nil, wrap(err, "ipaddr label")
 	}
-	if o.Unit, err = r.cstr(); err != nil && !errors.Is(err, errEOF) {
-		return nil, wrap(err, "ipaddr unit")
-	}
+	o.Unit = r.optCstr() // optional trailing field
 	return o, nil
 }
 
@@ -344,9 +337,7 @@ func decodeFloat(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	if o.Label, err = r.cstr(); err != nil {
 		return nil, wrap(err, "float label")
 	}
-	if o.Unit, err = r.cstr(); err != nil && !errors.Is(err, errEOF) {
-		return nil, wrap(err, "float unit")
-	}
+	o.Unit = r.optCstr() // optional trailing field
 	return o, nil
 }
 
@@ -384,13 +375,9 @@ func decodeEnum(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	if o.Label, err = r.cstr(); err != nil {
 		return nil, wrap(err, "enum label")
 	}
-	// Item list is a single NUL-terminated string of comma-delimited items.
-	// Spec p. 23 example: "Off,On,Auto\0".
-	raw, err := r.cstr()
-	if err != nil && !errors.Is(err, errEOF) {
-		return nil, wrap(err, "enum item_list")
-	}
-	o.EnumItems = splitEnumItems(raw, int(o.NumItems))
+	// Item list is a single NUL-terminated string of comma-delimited items
+	// (spec p. 23 example "Off,On,Auto\0") and is an optional trailing field.
+	o.EnumItems = splitEnumItems(r.optCstr(), int(o.NumItems))
 	return o, nil
 }
 
@@ -449,9 +436,7 @@ func decodeString(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	if o.MaxLen, err = r.u8(); err != nil {
 		return nil, wrap(err, "string max_len")
 	}
-	if o.Label, err = r.cstr(); err != nil && !errors.Is(err, errEOF) {
-		return nil, wrap(err, "string label")
-	}
+	o.Label = r.optCstr() // optional trailing field
 	return o, nil
 }
 
@@ -519,12 +504,9 @@ func decodeAlarm(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	if o.Label, err = r.cstr(); err != nil {
 		return nil, wrap(err, "alarm label")
 	}
-	if o.EventOnMsg, err = r.cstr(); err != nil && !errors.Is(err, errEOF) {
-		return nil, wrap(err, "alarm event_on")
-	}
-	if o.EventOffMsg, err = r.cstr(); err != nil && !errors.Is(err, errEOF) {
-		return nil, wrap(err, "alarm event_off")
-	}
+	// Event on/off messages are optional trailing fields.
+	o.EventOnMsg = r.optCstr()
+	o.EventOffMsg = r.optCstr()
 	return o, nil
 }
 
@@ -553,9 +535,7 @@ func decodeFile(o *DecodedObject, r *reader) (*DecodedObject, error) {
 		return nil, wrap(err, "file num_fragments")
 	}
 	o.NumFragments = int16(frags)
-	if o.FileName, err = r.cstr(); err != nil && !errors.Is(err, errEOF) {
-		return nil, wrap(err, "file name")
-	}
+	o.FileName = r.optCstr() // optional trailing field
 	return o, nil
 }
 
@@ -598,9 +578,7 @@ func decodeLong(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	if o.Label, err = r.cstr(); err != nil {
 		return nil, wrap(err, "long label")
 	}
-	if o.Unit, err = r.cstr(); err != nil && !errors.Is(err, errEOF) {
-		return nil, wrap(err, "long unit")
-	}
+	o.Unit = r.optCstr() // optional trailing field
 	return o, nil
 }
 
@@ -643,9 +621,7 @@ func decodeByte(o *DecodedObject, r *reader) (*DecodedObject, error) {
 	if o.Label, err = r.cstr(); err != nil {
 		return nil, wrap(err, "byte label")
 	}
-	if o.Unit, err = r.cstr(); err != nil && !errors.Is(err, errEOF) {
-		return nil, wrap(err, "byte unit")
-	}
+	o.Unit = r.optCstr() // optional trailing field
 	return o, nil
 }
 
@@ -756,6 +732,19 @@ func (r *reader) cstr() (string, error) {
 		r.pos++
 	}
 	return "", fmt.Errorf("%w: unterminated string starting at pos=%d", errEOF, start)
+}
+
+// optCstr reads a trailing OPTIONAL NUL-terminated string. Per the spec,
+// trailing string fields (unit, label on some types, alarm event messages,
+// file name, enum item list) may be omitted on the wire by some firmware —
+// a missing or unterminated trailing string is not a decode failure. cstr()
+// only ever fails with errEOF (no NUL before end-of-buffer), so swallowing
+// the error here is exact, not lossy: on EOF cstr returns "" which is the
+// correct "field absent" value. Centralising the EOF tolerance in one place
+// keeps every per-type decoder free of an untestable error branch.
+func (r *reader) optCstr() string {
+	s, _ := r.cstr()
+	return s
 }
 
 func wrap(err error, ctx string) error {
