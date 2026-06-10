@@ -103,6 +103,45 @@ var (
 	gitTag  = ""
 )
 
+// Vendor / product identity. Compile-time constants so every build — on
+// every OS — carries the same provenance, surfaced via `dhs version` and
+// (on Windows) the .exe Properties dialog via the go-winres resource whose
+// fields mirror these. Keep in sync with versioninfo.json, LICENSE.md, and
+// the COPYRIGHT file.
+const (
+	productName   = "Device Hub Systems"
+	vendorName    = "BY-SYSTEMS SRL"
+	vendorURL     = "https://www.by-systems.be"
+	repositoryURL = "https://github.com/by-openclaw/go-acp"
+	supportURL    = "https://github.com/by-openclaw/go-acp/issues"
+	copyrightLine = "Copyright (c) 2026 BY-SYSTEMS SRL"
+	licenseName   = "MIT License"
+)
+
+// printVersion writes the full identity + build provenance block. Shared by
+// the `version` verb and the top-level help footer so the binary always
+// states who built it, what it is, and how to reach support — on every OS.
+func printVersion() {
+	fmt.Printf("dhs %s — %s\n", version, productName)
+	fmt.Printf("vendor     %s (%s)\n", vendorName, vendorURL)
+	fmt.Printf("%s — %s\n", copyrightLine, licenseName)
+	fmt.Println()
+	fmt.Printf("commit     %s\n", orUnknown(commit))
+	fmt.Printf("built      %s\n", date)
+	if gitTag != "" {
+		fmt.Printf("git tag    %s\n", gitTag)
+	}
+	fmt.Printf("repository %s\n", repositoryURL)
+	fmt.Printf("support    %s\n", supportURL)
+}
+
+func orUnknown(s string) string {
+	if s == "" {
+		return "unknown"
+	}
+	return s
+}
+
 // command is one consumer-verb dispatch entry.
 type command struct {
 	name  string
@@ -166,9 +205,7 @@ func main() {
 		printTopHelp()
 		return
 	case "version", "--version":
-		fmt.Printf("dhs %s (commit %s, built %s)\n", version, commit, date)
-		fmt.Println("Copyright (c) 2026 BY-SYSTEMS SRL — https://www.by-systems.be")
-		fmt.Println("MIT License")
+		printVersion()
 		return
 	case "list-protocols":
 		if err := runListProtocols(); err != nil {
