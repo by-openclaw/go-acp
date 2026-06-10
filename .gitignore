@@ -65,6 +65,7 @@ desktop.ini
 !internal/**/testdata/fixtures/*.jsonl
 !internal/**/testdata/protocol_types/**/*.jsonl
 !internal/**/testdata/scenarios/**/*.jsonl
+!internal/**/testdata/replay/**/*.jsonl
 !tests/fixtures/**/*.jsonl
 
 # ADR-0020 Bucket 4: cache + manual capture archive at repo root.
