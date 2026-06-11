@@ -3,6 +3,7 @@ package acp1
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -119,10 +120,17 @@ func buildSlotNode(slot int, tree *SlotTree) *canonical.Node {
 	}
 }
 
-// buildGroupNode collects every Object in the tree belonging to the
-// named group into a Node whose children are the group's Parameters.
-// Returns nil when no objects fall into this group (keeps the slot's
-// children[] clean of empty placeholders).
+// buildGroupNode collects every Object in the tree belonging to the named
+// group into a Node. Sub-group markers (Synapse section headers like
+// "DOWN CONV" / "TRANSPARENT" / "INSERTER" / "VIDEO PROC", flagged by
+// codec.IsSubGroupMarker during the walk) become PARENT nodes: the objects
+// that follow a marker — up to the next marker — nest as its children, so the
+// canonical tree mirrors what a real controller (Cerebrum) shows. Objects
+// before the first marker stay direct children of the group.
+//
+// This nesting is structural (export / API / UI) only. get/set/ensure resolve
+// against the flat SlotTree by (group,id) or label, so control is unaffected
+// by the hierarchy. Returns nil when no objects fall into this group.
 func buildGroupNode(slot int, slotOID, slotPath string, groupNumber int, groupName string, tree *SlotTree) *canonical.Node {
 	if tree == nil {
 		return nil
@@ -131,7 +139,13 @@ func buildGroupNode(slot int, slotOID, slotPath string, groupNumber int, groupNa
 	groupOID := slotOID + "." + strconv.Itoa(groupNumber)
 	groupPath := slotPath + "." + groupName
 
-	children := make([]canonical.Element, 0)
+	// Collect this group's objects (+ their wire type) in object-id order so
+	// markers precede the children that belong under them, deterministically.
+	type groupObj struct {
+		obj consumer.Object
+		acp codec.ObjectType
+	}
+	items := make([]groupObj, 0)
 	for i, obj := range tree.Objects {
 		if obj.Group != groupName {
 			continue
@@ -140,21 +154,65 @@ func buildGroupNode(slot int, slotOID, slotPath string, groupNumber int, groupNa
 		if i < len(tree.ACPTypes) {
 			acpType = tree.ACPTypes[i]
 		}
-		param := buildParameter(obj, acpType, groupOID, groupPath)
-		if param != nil {
-			children = append(children, param)
+		items = append(items, groupObj{obj, acpType})
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	sort.SliceStable(items, func(a, b int) bool { return items[a].obj.ID < items[b].obj.ID })
+
+	children := make([]canonical.Element, 0)
+	var current *canonical.Node // active sub-group parent, nil = top of group
+	curOID, curPath := groupOID, groupPath
+	for _, it := range items {
+		if it.obj.SubGroupMarker {
+			name := strings.TrimSpace(it.obj.Label)
+			if name == "" {
+				// NO_SUB_GROUP terminator (single-space enum marker): close
+				// any open section back to group top-level and keep the marker
+				// itself as a plain leaf rather than an empty parent.
+				current = nil
+				curOID, curPath = groupOID, groupPath
+				if p := buildParameter(it.obj, it.acp, groupOID, groupPath); p != nil {
+					children = append(children, p)
+				}
+				continue
+			}
+			mOID := groupOID + "." + strconv.Itoa(it.obj.ID)
+			mPath := groupPath + "." + name
+			current = &canonical.Node{
+				Header: canonical.Header{
+					Number:     it.obj.ID,
+					Identifier: name,
+					Path:       mPath,
+					OID:        mOID,
+					IsOnline:   true,
+					Access:     canonical.AccessRead,
+					Children:   make([]canonical.Element, 0),
+				},
+			}
+			children = append(children, current)
+			curOID, curPath = mOID, mPath
+			continue
+		}
+		if current != nil {
+			if p := buildParameter(it.obj, it.acp, curOID, curPath); p != nil {
+				current.Children = append(current.Children, p)
+			}
+			continue
+		}
+		if p := buildParameter(it.obj, it.acp, groupOID, groupPath); p != nil {
+			children = append(children, p)
 		}
 	}
 
-	if len(children) == 0 {
-		return nil
+	// A marker with no following children still needs a non-nil Children
+	// slice so the JSON shows `"children": []` not `null`.
+	for _, el := range children {
+		if n, ok := el.(*canonical.Node); ok && len(n.Children) == 0 {
+			n.Children = canonical.EmptyChildren()
+		}
 	}
-
-	// Deterministic output: sort by object ID ascending within each
-	// group so the same walk produces byte-identical tree.json across
-	// runs (important for doc-conformance / golden tests and diff
-	// readability).
-	sortByNumber(children)
 
 	return &canonical.Node{
 		Header: canonical.Header{
