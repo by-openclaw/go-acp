@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -789,18 +788,11 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 			ev.Label = obj.Label
 			ev.Unit = obj.Unit
 			ev.Access = obj.Access
-			// Build the path the same way ACP2 does: dot-joined hierarchy
-			// ending in the leaf label. ACP1's walked object stores
-			// Path=[<group>] only (flat model); append the label so the
-			// watch column shows e.g. "control.AUDIO PROC AMP" instead
-			// of just "control".
-			pathParts := append([]string(nil), obj.Path...)
-			if obj.Label != "" {
-				pathParts = append(pathParts, obj.Label)
-			}
-			if len(pathParts) > 0 {
-				ev.Path = strings.Join(pathParts, ".")
-			}
+			// browser.go builds obj.Path as [group, (sub-group,) label], so
+			// eventPath joins it as-is and only appends the label for an older
+			// flat Path=[group] shape — never duplicating the trailing element
+			// (avoids the "control.Out-Mode.Out-Mode" watcher bug).
+			ev.Path = eventPath(obj.Path, obj.Label)
 			if val, derr := DecodeValueBytes(obj, acpType, msg.Value); derr == nil {
 				ev.Value = val
 				// Keep the cached tree in sync with live events so
