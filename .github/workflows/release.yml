@@ -34,6 +34,25 @@ jobs:
         with:
           go-version: "1.22"
 
+      # Embed the Windows .exe version resource (CompanyName / ProductName /
+      # FileVersion / LegalCopyright shown in the Properties dialog) from
+      # cmd/dhs/winres/winres.json. go-winres writes a GOOS=windows .syso that
+      # `go build` links automatically for windows targets only; other GOOS
+      # builds ignore it. Best-effort — a tooling hiccup must never block a
+      # release, the .exe just ships without the resource.
+      - name: Embed Windows version resource
+        run: |
+          VERSION=${{ needs.release-please.outputs.tag_name }}
+          NUMVER=${VERSION#v}
+          go install github.com/tc-hib/go-winres@v0.3.3 || true
+          if command -v go-winres >/dev/null 2>&1; then
+            go-winres make --in cmd/dhs/winres/winres.json \
+              --product-version "${NUMVER}" --file-version "${NUMVER}" \
+              --out cmd/dhs/rsrc || echo "go-winres failed — windows .exe will lack the version resource"
+          else
+            echo "go-winres not installed — windows .exe will lack the version resource"
+          fi
+
       - name: Build all targets
         run: |
           VERSION=${{ needs.release-please.outputs.tag_name }}
@@ -52,6 +71,29 @@ jobs:
             done
           done
 
+      # Authenticode-sign the Windows binaries. Gated on the WINDOWS_CERT_PFX_B64
+      # secret (base64-encoded .pfx) + WINDOWS_CERT_PASSWORD — skipped cleanly
+      # when unset so releases work without a cert, and switch on the moment the
+      # secrets are added. Uses osslsigncode (Linux-runnable).
+      - name: Sign Windows binaries
+        env:
+          PFX_B64: ${{ secrets.WINDOWS_CERT_PFX_B64 }}
+          PFX_PASS: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          if [ -z "${PFX_B64}" ]; then
+            echo "WINDOWS_CERT_PFX_B64 not set — skipping Authenticode signing"
+            exit 0
+          fi
+          sudo apt-get update && sudo apt-get install -y osslsigncode
+          echo "${PFX_B64}" | base64 -d > /tmp/cert.pfx
+          for exe in dist/dhs_windows_*/dhs.exe; do
+            osslsigncode sign -pkcs12 /tmp/cert.pfx -pass "${PFX_PASS}" \
+              -n "Device Hub Systems" -i https://www.by-systems.be \
+              -t http://timestamp.digicert.com -in "$exe" -out "${exe}.signed"
+            mv "${exe}.signed" "$exe"
+          done
+          rm -f /tmp/cert.pfx
+
       - name: Package archives
         run: |
           cd dist
@@ -62,6 +104,14 @@ jobs:
             zip -qr "${d}.zip" "$d"
           done
 
+      # Provenance: a SHA-256 manifest of every artifact so downloaders can
+      # verify integrity (and a basis for future SLSA attestation).
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -69,3 +119,4 @@ jobs:
           files: |
             dist/*.tar.gz
             dist/*.zip
+            dist/SHA256SUMS.txt

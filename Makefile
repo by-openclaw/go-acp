@@ -47,6 +47,17 @@ build:
 	@mkdir -p $(BIN_DIR)
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS_FULL)" -o $(BIN_DIR)/dhs$(EXE) $(CMD_DHS)
 
+# Generate the Windows .exe version resource (CompanyName / ProductName /
+# FileVersion / LegalCopyright in the Properties dialog) from
+# cmd/dhs/winres/winres.json. Writes a GOOS=windows .syso that `go build`
+# links automatically for windows targets; non-windows builds ignore it.
+# Requires go-winres: go install github.com/tc-hib/go-winres@latest
+.PHONY: winres
+winres:
+	go-winres make --in cmd/dhs/winres/winres.json \
+		--product-version "$(VERSION)" --file-version "$(VERSION)" \
+		--out cmd/dhs/rsrc
+
 # ---------------------------------------------------------------- Cross-compile
 
 .PHONY: build-all build-linux-amd64 build-linux-arm64 \

@@ -21,7 +21,7 @@ type captureToolInfo struct {
 // captures are easy to refuse committing.
 func buildCaptureToolInfo() captureToolInfo {
 	info := captureToolInfo{
-		Name:    "acp",
+		Name:    "dhs",
 		Version: version,
 		GitTag:  gitTag,
 	}

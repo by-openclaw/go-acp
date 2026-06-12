@@ -1,0 +1,36 @@
+{
+  "RT_MANIFEST": {
+    "#1": {
+      "0409": {
+        "identity": {
+          "name": "BY-SYSTEMS.DeviceHubSystems.dhs",
+          "version": "1.0.0.0"
+        },
+        "description": "Device Hub Systems (dhs) — multi-protocol broadcast device control",
+        "execution-level": "as invoker"
+      }
+    }
+  },
+  "RT_VERSION": {
+    "#1": {
+      "0000": {
+        "fixed": {
+          "file_version": "0.0.0.0",
+          "product_version": "0.0.0.0"
+        },
+        "info": {
+          "0409": {
+            "CompanyName": "BY-SYSTEMS SRL",
+            "ProductName": "Device Hub Systems",
+            "FileDescription": "dhs — multi-protocol broadcast device control (ACP1 / ACP2 / Ember+ / Probel / TSL)",
+            "InternalName": "dhs",
+            "OriginalFilename": "dhs.exe",
+            "LegalCopyright": "Copyright (c) 2026 BY-SYSTEMS SRL — https://www.by-systems.be — MIT License",
+            "ProductVersion": "0.0.0",
+            "FileVersion": "0.0.0"
+          }
+        }
+      }
+    }
+  }
+}

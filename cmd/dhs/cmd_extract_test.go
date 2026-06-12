@@ -109,13 +109,13 @@ func TestMetaJSONRoundTrip(t *testing.T) {
 	}
 }
 
-// TestBuildCaptureToolInfo — always returns name=acp and populates
+// TestBuildCaptureToolInfo — always returns name=dhs and populates
 // GitTag / GitCommit with non-empty fallbacks even when no ldflags
 // are set. Guarantees meta.json never emits blank provenance fields.
 func TestBuildCaptureToolInfo(t *testing.T) {
 	info := buildCaptureToolInfo()
-	if info.Name != "acp" {
-		t.Errorf("Name got %q, want %q", info.Name, "acp")
+	if info.Name != "dhs" {
+		t.Errorf("Name got %q, want %q", info.Name, "dhs")
 	}
 	if info.Version == "" {
 		t.Errorf("Version must not be empty")
