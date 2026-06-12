@@ -70,20 +70,23 @@ The canonical generic set (dispatched in `cmd/dhs/main.go`):
 |---|---|---|---|
 | `info` | device info: slot count + per-slot card status | read-only, no walk | ✅ |
 | `walk` | enumerate every object on a slot | full DFS of one slot | ✅ |
-| `tree` | render object tree as ASCII or PlantUML mindmap | view only | ⚠️ renders group level only (shallow) |
-| `get` | read one object value by slot/group/label (or path) | single object | ✅ |
-| `set` | write one object value | single object; validates type/range/enum | ⚠️ rejects bad input but exit 1 (should be 2) |
-| `watch` | subscribe to live announcements | until Ctrl-C | ○ |
+| `tree` | render object tree as ASCII or PlantUML mindmap | view only | ✅ nests sub-group sections (DOWN CONV/…) as parents |
+| `get` | read one object value by slot/group/label (or path) | single object | ✅ walks on cache-miss to resolve `--label`/`--path` |
+| `set` | write one object value | single object; validates type/range/enum | ✅ |
+| `inc` | step an object up by its step (ACP1 setIncValue) | single RW numeric/enum | ✅ |
+| `dec` | step an object down by its step (ACP1 setDecValue) | single RW numeric/enum | ✅ |
+| `reset` | reset an object to its default (ACP1 setDefValue) | single object with setDef access | ✅ |
+| `watch` | subscribe to live announcements | until Ctrl-C | ✅ UDP bcast same-VLAN; TCP/AN2 session-announce cross-VLAN |
 | `export` | dump a walked slot/device → json / yaml / csv | snapshot out | ✅ |
-| `import` | apply values from a snapshot (`--dry-run` first) | RW objects only; mismatches skipped non-blocking | ○ |
+| `import` | apply values from a snapshot (`--check` dry-run first) | RW objects only; mismatches skipped non-blocking | ○ |
 | `extract` | capture a per-product DM triple (meta+wire+tree) | fixture-layout capture | ○ |
 | `diff` | compare two canonical `tree.json` (text or CHANGELOG) | offline | ○ |
 | `convert` | translate a snapshot json↔yaml↔csv | offline | ○ |
-| `discover` | passive+active subnet scan for devices | same broadcast domain | ○ |
+| `discover` | passive+active subnet scan for devices | same broadcast domain | ⚠️ native scan only; mDNS deferred to AMWA |
 | `profile` | classify provider compliance strict / partial | read-only | ✅ STRICT |
-| `validate` | decode a captured `frames.jsonl` offline (ADR-0021) | offline | ○ |
+| `validate` | replay a captured `frames.jsonl` offline; `--out-tree`/`--out-params` write the snapshot (ADR-0021) | offline | ✅ |
 | `health` | 3-layer session health: reachable / connected / live | read-only | ○ |
-| **`ensure`** | declarative converge: read→compare→set-if-diff (`--state`/`--check`) | **idempotent — the Ansible primitive (ADR-0007)** | ❌ **NOT IMPLEMENTED** |
+| **`ensure`** | declarative converge: read→compare→set-if-diff (`--check` dry-run) | **idempotent — the Ansible primitive (ADR-0007)** | ✅ |
 | `status` | session/service state | — | ❌ not in CLI |
 | `replay` | re-emit a captured `frames.jsonl` on the wire | — | (deferred, ADR-0021) |
 
@@ -166,10 +169,77 @@ Global flags: `--mtx-id --level --dsts --srcs` (`--dsts` enables bootstrap rx01 
 
 ## 8. Gaps this matrix surfaces (for "released + compliant")
 
-1. **`ensure` missing everywhere** — ADR-0002 + ADR-0007 mandate it; not implemented. Blocks Ansible idempotency.
+1. **`ensure`** — implemented + verified on **acp1** (the idempotency primitive, ADR-0007); still missing on the other connectors.
 2. **`status`, `replay` missing** — in ADR-0002 canonical list, not in CLI (`replay` deferred per ADR-0021).
 3. **`set` validation exit code** — returns 1, should be 2 (error-codes.md); no client-side ValueValidator on acp1 (emberplus has it).
-4. **`tree` shallow render** — collapses groups; doesn't expand objects (ASCII + PlantUML).
+4. **`tree`** — acp1 now nests sub-group sections (DOWN CONV / TRANSPARENT / …) as parents (2026-06-12); other Tree/DM connectors still render shallow.
 5. **tsl + probel-sw02p producers not CLI-wired** — provider code may exist but no `dhs producer` path.
 6. **`-h` help stale** — `consumer -h` omits tsl + probel-sw02p; `producer -h` omits tsl. `list-protocols` is authoritative.
 7. **ADR-0002 uniformity vs reality** — only Tree/DM implements the canonical set; Matrix/Push/Bridge diverge (see §1 open decision).
+
+---
+
+## 9. Per-verb — definition + worked example
+
+One clear invocation per verb, from a protocol that implements it. Hosts/ports are
+lab examples — swap for your device. Consumer form is
+`dhs consumer <proto> <verb> <host> [flags]`; producer is
+`dhs producer <proto> serve [flags]`. Flags beyond the example are listed by
+`dhs consumer <proto> <verb> --help`.
+
+### 9.1 Tree/DM (acp1 — identical shape for acp2 / emberplus)
+
+| Verb | What it does | Example |
+|---|---|---|
+| `info` | device + per-slot card status (no walk) | `dhs consumer acp1 info 10.100.0.102 --port 2071 --transport tcp` |
+| `walk` | enumerate every object on a slot | `dhs consumer acp1 walk 10.100.0.102 --port 2071 --transport tcp --slot 1` |
+| `tree` | render the tree; sub-groups nest as parents | `dhs consumer acp1 tree 10.100.0.102 --port 2071 --transport tcp --slot 1 --path "control.DOWN CONV"` |
+| `get` | read one value by label (walks on cache-miss) | `dhs consumer acp1 get 10.100.0.102 --port 2071 --transport tcp --slot 1 --group control --label Out-Mode` |
+| `set` | write one value | `dhs consumer acp1 set 10.100.0.102 --port 2071 --transport tcp --slot 1 --group control --label Out-Mode --value Crossed` |
+| `inc` | step up by the object's step (setIncValue) | `dhs consumer acp1 inc 10.100.0.102 --port 2071 --transport tcp --slot 1 --group control --id 9` |
+| `dec` | step down by the object's step (setDecValue) | `dhs consumer acp1 dec 10.100.0.102 --port 2071 --transport tcp --slot 1 --group control --id 9` |
+| `reset` | restore the object default (setDefValue) | `dhs consumer acp1 reset 10.100.0.102 --port 2071 --transport tcp --slot 1 --group control --id 9` |
+| `watch` | live announcements (TCP/AN2 cross-VLAN; UDP bcast same-VLAN) | `dhs consumer acp1 watch 10.100.0.102 --port 2071 --transport tcp --slot 1` |
+| `export` | snapshot a slot to a file (format by extension) | `dhs consumer acp1 export 10.100.0.102 --port 2071 --transport tcp --slot 1 --out slot1.json` |
+| `import` | apply a snapshot (dry-run first with `--check`) | `dhs consumer acp1 import 10.100.0.102 --port 2071 --transport tcp --file slot1.json --check` |
+| `extract` | capture a per-product DM triple into testdata layout | `dhs consumer acp1 extract 10.100.0.102 --port 2071 --transport tcp --slot 1` |
+| `diff` | compare two canonical trees offline | `dhs consumer acp1 diff before.json after.json` |
+| `convert` | translate a snapshot between formats offline | `dhs consumer acp1 convert slot1.json slot1.csv` |
+| `discover` | scan the subnet for devices | `dhs consumer acp1 discover --port 2071` |
+| `profile` | classify provider compliance (strict/partial) | `dhs consumer acp1 profile 10.100.0.102 --port 2071 --transport tcp` |
+| `validate` | replay a capture offline; write the decoded snapshot | `dhs consumer acp1 validate frames.jsonl --out-tree tree.json` &nbsp;·&nbsp; `… --out-params params.csv` |
+| `ensure` | idempotently converge one object (Ansible primitive) | `dhs consumer acp1 ensure 10.100.0.102 --port 2071 --transport tcp --slot 1 --group control --label Out-Mode --value Crossed --check` |
+| producer `serve` | serve a frame AS the device | `dhs producer acp1 serve --manifest synapse-test.json --cache-dir .cache --host 0.0.0.0 --transport all --port 2071` |
+
+acp2 adds **`diag`** (AN2 probe): `dhs consumer acp2 diag <host> --port 2072`.
+emberplus adds **`matrix` / `invoke` / `stream` / `bench`** (see §2).
+
+### 9.2 Matrix (probel-sw08p)
+
+| Verb | What it does | Example |
+|---|---|---|
+| `interrogate` | read the source on one crosspoint | `dhs consumer probel-sw08p interrogate <host> --port 2008 --matrix 0 --level 0 --dst 5` |
+| `connect` | route source → destination | `dhs consumer probel-sw08p connect <host> --port 2008 --matrix 0 --level 0 --dst 5 --src 12` |
+| `tally-dump` | stream every crosspoint on a level | `dhs consumer probel-sw08p tally-dump <host> --port 2008 --matrix 0 --level 0` |
+| `protect-connect` | owner-locked route | `dhs consumer probel-sw08p protect-connect <host> --port 2008 --matrix 0 --level 0 --dst 5 --src 12` |
+
+### 9.3 Push / stream
+
+| Verb | What it does | Example |
+|---|---|---|
+| osc `watch` | bind a port, print received OSC | `dhs consumer osc-v11 watch --listen udp:8000 --pattern "/ch/*/fader"` |
+| tsl `listen` | bind a tally listener | `dhs consumer tsl-v50 listen --port 8900 --tcp` |
+| osc producer `send` | emit one OSC message | `dhs producer osc-v11 send --target udp:9000 --address /ch/1/fader --args 0.75` |
+
+### 9.4 Bridge (cerebrum-nb, consumer-only)
+
+| Verb | What it does | Example |
+|---|---|---|
+| `connect` | POLL with login | `dhs consumer cerebrum-nb connect <host> --user admin --pass ***` |
+| `route` | single ROUTE action | `dhs consumer cerebrum-nb route <host> --dest 10 --srce 4 --level 1` |
+| `listen` | subscribe to routing/category/salvo events | `dhs consumer cerebrum-nb listen <host>` |
+
+> **Idempotency (ADR-0025).** Every state-changing verb (`set`/`inc`/`dec`/`reset`/
+> `connect`/`route`/`ensure`) must be drivable from an **Ansible** play and prove
+> idempotency (run-twice = 0 changes). Integration validates these against the
+> vendor emulator + real device — **never our own provider** (oracle-per-tier).
