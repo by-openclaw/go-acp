@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"dhs/internal/export"
@@ -28,15 +30,18 @@ import (
 // to the snapshot a live Walk would produce against the same device,
 // so capture / replay round-trips can be asserted in CI.
 //
-// --out-params remains a follow-up.
+// --out-params renders the same captured snapshot as a flat params dump,
+// choosing CSV / JSON / YAML from the output file extension.
 func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts consumer.ValidateOpts) (*consumer.ValidateReport, error) {
 	report := &consumer.ValidateReport{
 		PerDirection: map[wiretrace.Direction]int{},
 	}
 
-	if opts.OutParams != "" {
-		return report, fmt.Errorf("acp1.Validate: --out-params not implemented yet (follow-up PR)")
-	}
+	// Collect decoded getObject replies into the per-slot map whenever
+	// either output is requested: --out-tree renders the canonical
+	// tree.json, --out-params renders the same snapshot as a flat params
+	// dump (format chosen by the file extension).
+	collect := opts.OutTree != "" || opts.OutParams != ""
 
 	// Per-(slot, group, id) latest decoded object — getObject replies
 	// can repeat (e.g. the consumer re-walked); the latest wins.
@@ -104,7 +109,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 			// when --out-tree is requested. We can decode every reply
 			// regardless and just discard the result if --out-tree is
 			// off, but the decode is non-trivial — gate it.
-			if opts.OutTree != "" && msg.MCode == byte(codec.MethodGetObject) {
+			if collect && msg.MCode == byte(codec.MethodGetObject) {
 				// Skip root probes: the live walker reads root only for
 				// per-group counts (browser.go) and never emits it as
 				// an Object. The replay tree must match.
@@ -119,7 +124,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 			// Capture frame-status getValue replies so the replay tree
 			// can stamp each SlotDump.Status. Format per spec p.24:
 			// MDATA = [num_slots, status_0, status_1, ...].
-			if opts.OutTree != "" &&
+			if collect &&
 				msg.MCode == byte(codec.MethodGetValue) &&
 				msg.ObjGroup == codec.GroupFrame && msg.ObjID == 0 &&
 				len(msg.Value) >= 1 {
@@ -144,6 +149,11 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 			return report, fmt.Errorf("write out-tree: %w", err)
 		}
 	}
+	if opts.OutParams != "" {
+		if err := writeReplayParams(opts.OutParams, objects, frameStatuses); err != nil {
+			return report, fmt.Errorf("write out-params: %w", err)
+		}
+	}
 
 	return report, nil
 }
@@ -157,6 +167,48 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 // getValue(slot=0, group=frame, id=0) reply, used to stamp each
 // SlotDump.Status (matches what live GetSlotInfo populates).
 func writeReplayTree[K comparable](path string, objects map[K]consumer.Object, frameStatuses []consumer.SlotStatus) error {
+	snap := buildReplaySnapshot("dhs validate --out-tree (acp1)", objects, frameStatuses)
+	return writeSnapshotFile(path, snap, true)
+}
+
+// writeReplayParams emits the captured snapshot as a flat params dump,
+// choosing the format from the file extension (.csv → CSV, .yaml/.yml →
+// YAML, anything else → JSON) — matching the `export` verb. It carries the
+// same per-object rows as --out-tree; only the serialisation differs, so a
+// captured replay can be diffed as params (csv) or compared structurally
+// (json).
+func writeReplayParams[K comparable](path string, objects map[K]consumer.Object, frameStatuses []consumer.SlotStatus) error {
+	snap := buildReplaySnapshot("dhs validate --out-params (acp1)", objects, frameStatuses)
+	return writeSnapshotFile(path, snap, false)
+}
+
+// writeSnapshotFile writes a Snapshot to path. forceJSON pins JSON (the
+// canonical tree.json for --out-tree); otherwise the format is chosen from
+// the file extension, mirroring the export verb.
+func writeSnapshotFile(path string, snap *export.Snapshot, forceJSON bool) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	if forceJSON {
+		return export.WriteJSON(f, snap)
+	}
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".csv":
+		return export.WriteCSV(f, snap)
+	case ".yaml", ".yml":
+		return export.WriteYAML(f, snap)
+	default:
+		return export.WriteJSON(f, snap)
+	}
+}
+
+// buildReplaySnapshot turns the captured-getObject map into an
+// export.Snapshot, sorted by slot then group/id, with each slot's status
+// stamped from the captured frame-status reply. Shared by the --out-tree
+// and --out-params writers.
+func buildReplaySnapshot[K comparable](generator string, objects map[K]consumer.Object, frameStatuses []consumer.SlotStatus) *export.Snapshot {
 	bySlot := map[int][]consumer.Object{}
 	for _, o := range objects {
 		bySlot[o.Slot] = append(bySlot[o.Slot], o)
@@ -168,7 +220,7 @@ func writeReplayTree[K comparable](path string, objects map[K]consumer.Object, f
 	sort.Ints(slots)
 	now := time.Now().UTC()
 	snap := &export.Snapshot{
-		Generator: "dhs validate --out-tree (acp1)",
+		Generator: generator,
 		CreatedAt: now,
 		Device: export.DeviceInfo{
 			Protocol: "acp1",
@@ -193,12 +245,7 @@ func writeReplayTree[K comparable](path string, objects map[K]consumer.Object, f
 		}
 		snap.Slots = append(snap.Slots, dump)
 	}
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
-	return export.WriteJSON(f, snap)
+	return snap
 }
 
 func shortHex(b []byte) string {

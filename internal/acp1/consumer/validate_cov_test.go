@@ -79,10 +79,11 @@ func TestValidate_StopAt(t *testing.T) {
 	}
 }
 
-func TestValidate_OutParamsUnsupported(t *testing.T) {
+func TestValidate_OutParamsNowWrites(t *testing.T) {
 	p := &Plugin{}
-	if _, err := p.Validate(context.Background(), nil, consumer.ValidateOpts{OutParams: "x.csv"}); err == nil {
-		t.Error("OutParams should be unsupported")
+	out := filepath.Join(t.TempDir(), "params.json")
+	if _, err := p.Validate(context.Background(), nil, consumer.ValidateOpts{OutParams: out}); err != nil {
+		t.Errorf("OutParams should be supported now (empty dump on no input), got: %v", err)
 	}
 }
 
