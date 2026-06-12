@@ -1,0 +1,49 @@
+---
+# Deploy the ACP1 tshark/Wireshark dissector (dhs_acpv1.lua) to every lab host
+# so `tshark` decodes ACP1 (udp/tcp 2071) on any host — the standard way to
+# track ACP1 on the wire. Idempotent.
+#
+#   ansible-playbook -i inventory/fleet.ini playbooks/deploy-dissector.yml
+#
+# NOTE: RHEL / Rocky 9 ship Wireshark built WITHOUT Lua, so tshark there
+# cannot load the dissector (verify shows NOT_LOADED). On those hosts capture
+# with dumpcap and decode on a Lua-enabled controller — see acp1-capture.yml.
+- name: Deploy ACP1 tshark dissector to the fleet
+  hosts: linux
+  gather_facts: false
+  vars:
+    lua_src: "{{ playbook_dir }}/../../internal/acp1/wireshark/dhs_acpv1.lua"
+  tasks:
+    - name: Locate the global wireshark plugins dir
+      ansible.builtin.shell: ls -d /usr/lib*/wireshark/plugins/*/ 2>/dev/null | head -1
+      register: plugdir
+      changed_when: false
+      failed_when: false
+
+    - name: Copy dissector to the global plugins dir
+      ansible.builtin.copy:
+        src: "{{ lua_src }}"
+        dest: "{{ plugdir.stdout }}dhs_acpv1.lua"
+        mode: "0644"
+      when: plugdir.stdout | length > 0
+
+    - name: Ensure personal plugins dir exists
+      ansible.builtin.file:
+        path: /root/.local/lib/wireshark/plugins
+        state: directory
+        mode: "0755"
+
+    - name: Copy dissector to the personal plugins dir
+      ansible.builtin.copy:
+        src: "{{ lua_src }}"
+        dest: /root/.local/lib/wireshark/plugins/dhs_acpv1.lua
+        mode: "0644"
+
+    - name: Verify tshark registers the dissector (NOT_LOADED where tshark lacks Lua)
+      ansible.builtin.shell: tshark -G protocols 2>/dev/null | grep -i acpv1 || echo NOT_LOADED
+      register: verify
+      changed_when: false
+
+    - name: Show dissector registration per host
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: {{ verify.stdout }}"

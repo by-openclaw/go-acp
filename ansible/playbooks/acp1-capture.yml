@@ -1,0 +1,42 @@
+---
+# ACP1 pcap-relay: capture ACP1 (udp/tcp 2071) on a host whose tshark lacks
+# Lua (e.g. RHEL / Rocky 9 — Wireshark is built without Lua there), then
+# decode the pcap on the controller, which HAS the dhs_acpv1 dissector
+# (run deploy-dissector.yml on the controller first). Capturing needs no
+# Lua; only decoding does.
+#
+#   ansible-playbook -i inventory/fleet.ini playbooks/acp1-capture.yml -e target=dhs-rocky -e secs=12
+#
+# Capture is passive — drive ACP1 traffic (a set, or the producer's
+# announces) during the `secs` window so there is something to decode.
+- name: ACP1 pcap-relay (capture on target, decode on controller)
+  hosts: "{{ target | default('dhs-rocky') }}"
+  gather_facts: false
+  vars:
+    iface: any
+    secs: 12
+    pcap_remote: /tmp/acp1.pcap
+    pcap_local: "/tmp/acp1-{{ inventory_hostname }}.pcap"
+  tasks:
+    - name: Capture ACP1 traffic to a pcap (no Lua needed to capture)
+      ansible.builtin.shell: 'timeout {{ secs }} dumpcap -i {{ iface }} -f "udp port 2071 or tcp port 2071" -w {{ pcap_remote }}'
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Fetch the pcap to the controller
+      ansible.builtin.fetch:
+        src: "{{ pcap_remote }}"
+        dest: "{{ pcap_local }}"
+        flat: true
+
+    - name: Decode with the ACP1 dissector on the controller (has Lua)
+      delegate_to: localhost
+      ansible.builtin.command: "tshark -nr {{ pcap_local }}"
+      register: decoded
+      changed_when: false
+
+    - name: Show decoded ACP1
+      delegate_to: localhost
+      ansible.builtin.debug:
+        var: decoded.stdout_lines
