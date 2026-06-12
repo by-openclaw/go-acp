@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -157,9 +158,10 @@ func (t *TCPConn) Close() error {
 	if t == nil || t.conn == nil {
 		return nil
 	}
-	err := t.conn.Close()
-	t.conn = nil
-	if err != nil {
+	// Don't nil t.conn: the reader goroutine may be in Receive()
+	// concurrently; writing the field here would race that read
+	// (go test -race). Tolerate the already-closed error for idempotency.
+	if err := t.conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 		return fmt.Errorf("%w: tcp close: %v", ErrCloseFailed, err)
 	}
 	return nil

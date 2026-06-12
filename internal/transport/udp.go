@@ -10,6 +10,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"syscall"
@@ -135,9 +136,12 @@ func (c *UDPConn) Close() error {
 	if c == nil || c.conn == nil {
 		return nil
 	}
-	err := c.conn.Close()
-	c.conn = nil
-	if err != nil {
+	// Don't nil c.conn: the reader goroutine may be in Receive()
+	// concurrently (closing the socket is how Stop unblocks it), so
+	// writing the field here would race that read (go test -race). The
+	// underlying net.Conn.Close is safe alongside Read; tolerate the
+	// already-closed error so a repeat Close stays a no-op.
+	if err := c.conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 		return fmt.Errorf("%w: udp close: %v", ErrCloseFailed, err)
 	}
 	return nil
@@ -249,9 +253,8 @@ func (l *UDPListener) Close() error {
 	if l == nil || l.conn == nil {
 		return nil
 	}
-	err := l.conn.Close()
-	l.conn = nil
-	if err != nil {
+	// See UDPConn.Close: don't nil the field — it races the receive loop.
+	if err := l.conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 		return fmt.Errorf("%w: udp listener close: %v", ErrCloseFailed, err)
 	}
 	return nil
