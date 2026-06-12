@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"dhs/internal/export"
@@ -210,10 +211,64 @@ func TestValidateOutTree_NoGetObjectInputProducesEmptySnapshot(t *testing.T) {
 	}
 }
 
-func TestValidateOutTree_OutParamsStillRejected(t *testing.T) {
+// TestValidateOutParams_WritesCSVandJSON verifies --out-params is now
+// implemented: it writes the captured snapshot as a flat params dump,
+// choosing the format from the file extension (.csv vs .json).
+func TestValidateOutParams_WritesCSVandJSON(t *testing.T) {
 	p := newPluginForOutTree(t)
-	_, err := p.Validate(context.Background(), nil, consumer.ValidateOpts{OutParams: "x.csv"})
-	if err == nil {
-		t.Fatal("--out-params should still error")
+
+	// Identity[0]: String "DEMO" with label "Card".
+	idValue := []byte{
+		0x05, 0x06, 0x01,
+		'D', 'E', 'M', 'O', 0x00,
+		0x10,
+		'C', 'a', 'r', 'd', 0x00,
+	}
+	requestFor := func(mtid uint32, slot uint8, group codec.ObjGroup, id uint8) wiretrace.Trame {
+		req := &codec.Message{
+			MTID: mtid, MType: codec.MTypeRequest, MAddr: slot,
+			MCode: byte(codec.MethodGetObject), ObjGroup: group, ObjID: id,
+		}
+		raw, _ := req.Encode()
+		return wiretrace.Trame{Direction: wiretrace.DirectionTx, Hex: hex.EncodeToString(raw)}
+	}
+	trames := []wiretrace.Trame{
+		requestFor(1, 1, codec.GroupIdentity, 0),
+		buildGetObjectTrame(t, 1, 1, codec.GroupIdentity, 0, idValue),
+	}
+	dir := t.TempDir()
+
+	// CSV by extension.
+	csvOut := filepath.Join(dir, "params.csv")
+	if _, err := p.Validate(context.Background(), trames, consumer.ValidateOpts{OutParams: csvOut}); err != nil {
+		t.Fatalf("Validate --out-params csv: %v", err)
+	}
+	csvData, err := os.ReadFile(csvOut)
+	if err != nil {
+		t.Fatalf("read csv: %v", err)
+	}
+	if !strings.Contains(string(csvData), "Card") {
+		t.Errorf("csv params dump missing captured label 'Card'; got:\n%s", csvData)
+	}
+
+	// JSON by extension (default).
+	jsonOut := filepath.Join(dir, "params.json")
+	if _, err := p.Validate(context.Background(), trames, consumer.ValidateOpts{OutParams: jsonOut}); err != nil {
+		t.Fatalf("Validate --out-params json: %v", err)
+	}
+	f, err := os.Open(jsonOut)
+	if err != nil {
+		t.Fatalf("open json: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+	snap, err := export.ReadJSON(f)
+	if err != nil {
+		t.Fatalf("ReadJSON: %v", err)
+	}
+	if len(snap.Slots) != 1 || len(snap.Slots[0].Objects) != 1 {
+		t.Fatalf("json params dump shape: %d slots", len(snap.Slots))
+	}
+	if got := snap.Slots[0].Objects[0].Label; got != "Card" {
+		t.Errorf("json params label = %q, want Card", got)
 	}
 }
