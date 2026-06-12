@@ -26,6 +26,9 @@ The consumer auto-detects the transport with `--transport tcp` / `--transport ud
 | `dhs consumer acp1 walk <ip>` | Discover one slot's full DM | `--slot N` or `--all`, `--path BOARD`, `--filter foo` | writes `.cache/devices/<ip>/slot_<n>.json` (IP-keyed; ACP1 has no identity probe) |
 | `dhs consumer acp1 get <ip>` | Read one property | `--slot N --group control --id 4` (or `--label`) | reads cached labels for resolution |
 | `dhs consumer acp1 set <ip>` | Write one property | same as `get` plus `--value …` | none (live device only) |
+| `dhs consumer acp1 inc <ip>` | Increment by step (setIncValue) | same as `get` (no `--value`) | none (live device only) |
+| `dhs consumer acp1 dec <ip>` | Decrement by step (setDecValue) | same as `get` (no `--value`) | none (live device only) |
+| `dhs consumer acp1 reset <ip>` | Reset to default (setDefValue) | same as `get` (no `--value`) | none (live device only) |
 | `dhs consumer acp1 watch <ip>` | Subscribe to announces | `--slot N`, `--group G`, `--label L`, `--id I`, `--no-walk`, `--auto-walk-on-plug` | reads `slot_<n>.json` for label resolution while live tree fills |
 | `dhs consumer acp1 export <ip> --format json|yaml|csv` | Dump tree to a file | `--out path.json` | none |
 | `dhs consumer acp1 import <file>` | Replay a captured tree | offline | none |

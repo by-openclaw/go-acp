@@ -1,0 +1,81 @@
+---
+# Automated idempotency CONTRACT TEST for the ACP1 `ensure` verb (ADR-0007).
+#
+# Unlike site.yml (which converges the fleet and leaves the run-twice check to
+# the operator's eye), this playbook runs `ensure` against the device TWICE in
+# one play and ASSERTS the second pass reports changed=false for every object —
+# a real pass/fail test, not a deploy. This is the Ansible test tier for ACP1.
+#
+# Self-contained: drives the LOCAL dhs binary from the controller against the
+# device (connection: local), so it needs no client fleet. Skips cleanly when
+# no device is configured, so it is safe to invoke unconditionally (CI/agent).
+#
+#   ACP1_TEST_HOST=10.6.239.113 DHS_BIN=bin/dhs-linux-amd64 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/test-idempotency.yml
+#
+# dhs_objects / dhs_port default from inventory/group_vars/all.yml; the device
+# host and binary path are env-overridable so the same play runs in the lab or
+# against the local emulator.
+- name: ACP1 ensure idempotency contract
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dhs_bin: "{{ lookup('ansible.builtin.env', 'DHS_BIN') | default(playbook_dir + '/../../bin/dhs', true) }}"
+    dhs_test_device: "{{ lookup('ansible.builtin.env', 'ACP1_TEST_HOST') | default(dhs_device, true) }}"
+  tasks:
+    - name: Skip when no ACP1 device is configured
+      ansible.builtin.meta: end_play
+      when: (dhs_test_device | default('') | length) == 0
+
+    - name: "Pass 1 — converge to desired state (may change)"
+      ansible.builtin.command:
+        argv: &ensure_argv
+          - "{{ dhs_bin }}"
+          - consumer
+          - acp1
+          - ensure
+          - "{{ dhs_test_device }}"
+          - --port
+          - "{{ dhs_port | string }}"
+          - --slot
+          - "{{ item.slot | default(0) | string }}"
+          - --group
+          - "{{ item.group }}"
+          - --label
+          - "{{ item.label }}"
+          - --value
+          - "{{ item.value | string }}"
+          - --json
+      loop: "{{ dhs_objects }}"
+      loop_control:
+        label: "{{ item.group }}/{{ item.label }}={{ item.value }}"
+      register: pass1
+      changed_when: pass1.rc == 0 and (pass1.stdout | from_json).changed | bool
+      failed_when: pass1.rc != 0
+
+    - name: "Pass 2 — re-run ensure (the idempotency probe)"
+      ansible.builtin.command:
+        argv: *ensure_argv
+      loop: "{{ dhs_objects }}"
+      loop_control:
+        label: "{{ item.group }}/{{ item.label }}"
+      register: pass2
+      changed_when: false
+      failed_when: pass2.rc != 0
+
+    - name: "ASSERT — second ensure changed nothing (idempotent)"
+      ansible.builtin.assert:
+        that:
+          - (item.stdout | from_json).changed | bool == false
+        fail_msg: >-
+          NON-IDEMPOTENT: {{ item.item.group }}/{{ item.item.label }} reported
+          changed=true on the second ensure — the verb is not converging.
+        quiet: true
+      loop: "{{ pass2.results }}"
+      loop_control:
+        label: "{{ item.item.group }}/{{ item.item.label }}"
+
+    - name: Idempotency result
+      ansible.builtin.debug:
+        msg: "ACP1 ensure idempotency: PASS — {{ dhs_objects | length }} objects, second run = 0 changed"

@@ -129,6 +129,8 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*SlotTree, error) {
 		{codec.GroupAlarm, root.NumAlarm},
 	}
 	for _, g := range walks {
+		gname := g.group.String()
+		curSub := "" // active sub-group section within this group
 		for id := uint8(0); id < g.count; id++ {
 			dec, err := w.getObject(ctx, slot, g.group, id)
 			if err != nil {
@@ -136,6 +138,27 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*SlotTree, error) {
 					slot, g.group, id, err)
 			}
 			obj := toProtocolObject(dec, slot, g.group, id)
+			// Build the hierarchical Path so the tree view + canonical export
+			// nest Synapse sub-group section headers (DOWN CONV / TRANSPARENT /
+			// INSERTER / VIDEO PROC) as parents of the objects that follow.
+			// A named marker opens a section; the single-space NO_SUB_GROUP
+			// marker (C# ACPCard.NO_SUB_GROUP) closes it to group top-level.
+			leaf := obj.Label
+			if leaf == "" {
+				leaf = fmt.Sprintf("#%d", id)
+			}
+			switch {
+			case obj.SubGroupMarker && strings.TrimSpace(obj.Label) != "":
+				curSub = strings.TrimSpace(obj.Label)
+				obj.Path = []string{gname, curSub}
+			case obj.SubGroupMarker:
+				curSub = ""
+				obj.Path = []string{gname, leaf}
+			case curSub != "":
+				obj.Path = []string{gname, curSub, leaf}
+			default:
+				obj.Path = []string{gname, leaf}
+			}
 			idx := len(tree.Objects)
 			tree.Objects = append(tree.Objects, obj)
 			tree.ACPTypes = append(tree.ACPTypes, dec.Type)
@@ -143,7 +166,6 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*SlotTree, error) {
 			// within a group; we still tolerate duplicates (last one wins)
 			// so a device firmware bug cannot crash the walker.
 			if obj.Label != "" {
-				gname := g.group.String()
 				if tree.Labels[gname] == nil {
 					tree.Labels[gname] = map[string]int{}
 				}

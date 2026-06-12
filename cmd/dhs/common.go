@@ -200,10 +200,12 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 			tcfg.SetTransport(acp1.TransportTCPDirect)
 		case "udp":
 			tcfg.SetTransport(acp1.TransportUDP)
+		case "an2", "an2-tcp", "mode-c":
+			tcfg.SetTransport(acp1.TransportAN2)
 		case "auto", "":
 			tcfg.SetTransport(acp1.TransportAuto)
 		default:
-			return nil, nil, fmt.Errorf("unknown --transport %q (use auto / udp / tcp)", cf.transport)
+			return nil, nil, fmt.Errorf("unknown --transport %q (use auto / udp / tcp / an2)", cf.transport)
 		}
 	}
 

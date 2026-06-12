@@ -1,6 +1,7 @@
 package acp1
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -158,6 +159,7 @@ func (c *Client) Do(ctx context.Context, req *codec.Message) (*codec.Message, er
 		return nil, fmt.Errorf("acp1: encode: %w", err)
 	}
 
+	mutating := isMutatingMethod(codec.Method(req.MCode))
 	var lastErr error
 	backoff := c.cfg.InitialBackoff
 
@@ -181,19 +183,45 @@ func (c *Client) Do(ctx context.Context, req *codec.Message) (*codec.Message, er
 		if err == nil {
 			return reply, nil
 		}
-
-		// Timeout → retry with the SAME MTID (payload bytes unchanged).
-		if errors.Is(err, context.DeadlineExceeded) {
-			lastErr = err
-			c.logger.Debug("acp1 attempt timed out",
-				"attempt", attempt+1,
-				"max", c.cfg.MaxRetries,
-				"mtid", req.MTID)
-			continue
+		if !errors.Is(err, context.DeadlineExceeded) {
+			// Any non-timeout error is fatal — don't retry a permanently-
+			// broken socket or a malformed reply from the client encoder.
+			return nil, err
 		}
-		// Any other error is fatal — don't retry a permanently-broken
-		// socket or a malformed reply from the client-side encoder.
-		return nil, err
+		lastErr = err
+		c.logger.Debug("acp1 attempt timed out",
+			"attempt", attempt+1, "max", c.cfg.MaxRetries, "mtid", req.MTID)
+
+		// Spec p.12: on a SET-family timeout, GET-confirm before retrying.
+		// A lost reply must NOT trigger a blind retransmit that re-applies a
+		// write — critically for the relative methods (setInc/setDec), where
+		// a double-apply would corrupt the value (5→6 then 5→6 again = 7).
+		if mutating {
+			conf, cerr := c.getConfirm(ctx, req)
+			if cerr == nil && conf != nil && !conf.IsError() {
+				if codec.Method(req.MCode) == codec.MethodSetValue {
+					if bytes.Equal(conf.Value, req.Value) {
+						// The absolute write landed; only its reply was lost.
+						return conf, nil
+					}
+					// Not applied (or device clamped) — the idempotent
+					// absolute write is safe to retransmit next attempt.
+					continue
+				}
+				// Relative / default methods can't be diffed against a desired
+				// value and must never be re-sent. Return the device's
+				// authoritative current value instead of risking a re-apply.
+				return conf, nil
+			}
+			// GET-confirm itself failed. A relative op still must not be
+			// blind-retransmitted — give up rather than risk a double-apply.
+			if codec.Method(req.MCode) != codec.MethodSetValue {
+				return nil, fmt.Errorf("acp1: %w (set%s reply lost and GET-confirm failed; "+
+					"not retransmitting a relative op)", ErrMaxRetries, relMethodSuffix(codec.Method(req.MCode)))
+			}
+		}
+		// getValue / getObject, or an unconfirmed absolute setValue:
+		// retransmit with the SAME MTID (payload bytes unchanged).
 	}
 
 	return nil, fmt.Errorf("acp1: %w after %d attempts: %v",
@@ -254,4 +282,50 @@ func (c *Client) allocMTID() uint32 {
 		c.nextMTID = 1
 	}
 	return c.nextMTID
+}
+
+// isMutatingMethod reports whether m writes device state (and therefore
+// must not be blind-retransmitted on a lost reply — see Do's GET-confirm).
+func isMutatingMethod(m codec.Method) bool {
+	switch m {
+	case codec.MethodSetValue, codec.MethodSetIncValue,
+		codec.MethodSetDecValue, codec.MethodSetDefValue:
+		return true
+	}
+	return false
+}
+
+// relMethodSuffix is a tiny label helper for the relative-op error message.
+func relMethodSuffix(m codec.Method) string {
+	switch m {
+	case codec.MethodSetIncValue:
+		return "Inc"
+	case codec.MethodSetDecValue:
+		return "Dec"
+	case codec.MethodSetDefValue:
+		return "Def"
+	}
+	return "Value"
+}
+
+// getConfirm issues a getValue for the same object as req, to confirm a
+// timed-out SET's outcome without re-sending the write (spec p.12). Must be
+// called with c.mu held (it allocates an MTID and reuses doOneAttempt). The
+// confirm runs in a single ReceiveTimeout window.
+func (c *Client) getConfirm(ctx context.Context, req *codec.Message) (*codec.Message, error) {
+	get := &codec.Message{
+		MType:    codec.MTypeRequest,
+		MAddr:    req.MAddr,
+		MCode:    byte(codec.MethodGetValue),
+		ObjGroup: req.ObjGroup,
+		ObjID:    req.ObjID,
+	}
+	get.MTID = c.allocMTID()
+	payload, err := get.Encode()
+	if err != nil {
+		return nil, err
+	}
+	c.logger.Debug("acp1 SET timed out — GET-confirm before retry",
+		"confirm_mtid", get.MTID, "group", req.ObjGroup, "id", req.ObjID)
+	return c.doOneAttempt(ctx, payload, get.MTID)
 }

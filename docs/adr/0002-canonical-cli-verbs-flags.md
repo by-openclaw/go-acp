@@ -21,7 +21,7 @@ as replacements or aliases of canonical verbs.
 | --- | --- |
 | consumer (live, per-device) | `discover` · `connect` · `disconnect` · `info` · `walk` · `tree` · `get <path>` · `set <path> <value>` · `watch <path>` (or `subscribe`/`unsubscribe`) · `export` · `import` · `extract` · `status` · `health` · `ensure` · `validate <frames.jsonl>` · `replay <frames.jsonl>` |
 | consumer (offline / cross-protocol) | `diff <a.json> <b.json>` · `convert <in> <out>` · `profile <captures/>` |
-| consumer (protocol-specific extensions) | `matrix` (Ember+) · `invoke` (Ember+) · `stream` (Ember+) · `diag` (ACP2) · `bench` (Ember+ perf) |
+| consumer (protocol-specific extensions) | `matrix` (Ember+) · `invoke` (Ember+) · `stream` (Ember+) · `diag` (ACP2) · `bench` (Ember+ perf) · `inc` / `dec` / `reset` (ACP1 — relative setIncValue / setDecValue / setDefValue methods) |
 | producer | `serve` · `stop` · `status` · `peers` · `tree` · `ensure` · `validate <frames.jsonl>` · `replay <frames.jsonl>` |
 | registry | `serve` · `stop` · `status` · `peers` · `dump` · `ensure` |
 | admin (every binary) | `version` · `--help` · `license install` · `license show` · `license verify` · `license features` · `completion <shell>` |

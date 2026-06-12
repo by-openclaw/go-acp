@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
+	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -60,6 +61,13 @@ const (
 	// transport via Transport() — call sites that care (e.g. session
 	// health) can read it.
 	TransportAuto
+
+	// TransportAN2 is the spec Mode C: ACP1 PDUs wrapped in AN2 frames over
+	// a long-lived TCP connection on port 2072. Like TCP direct, requests /
+	// replies / announcements multiplex on one unicast socket (routes across
+	// VLANs); the client sends AN2 EnableProtocolEvents([ACP1]) at startup so
+	// the device pushes announces back.
+	TransportAN2
 )
 
 // autoTCPProbeTimeout is the per-attempt dial budget when TransportAuto
@@ -74,6 +82,16 @@ const autoTCPProbeTimeout = 500 * time.Millisecond
 type clientIface interface {
 	Do(ctx context.Context, req *codec.Message) (*codec.Message, error)
 	Close() error
+}
+
+// announceFanout is implemented by the multiplexing clients (TCPClient,
+// AN2Client) that carry announcements on the same socket as replies and
+// therefore expose per-listener registration. The UDP path uses the
+// separate Listener instead. Subscribe/Unsubscribe route through whichever
+// is active.
+type announceFanout interface {
+	AddListener(fn RawEventFunc) int
+	RemoveListener(h int)
 }
 
 // Plugin is the ACP1 Protocol implementation. One instance handles one
@@ -194,6 +212,19 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		if err := p.connectTCP(ctx, ip, port); err != nil {
 			return err
 		}
+	case TransportAN2:
+		// Mode C uses its own default port (2072), distinct from UDP/TCP
+		// direct (2071). A caller that passed port 0 above already had it
+		// defaulted to 2071; override to the AN2 port when it wasn't set
+		// explicitly to the TCP-direct port.
+		an2Port := port
+		if port == codec.DefaultPort {
+			an2Port = AN2DefaultPort
+		}
+		if err := p.connectAN2(ctx, ip, an2Port); err != nil {
+			return err
+		}
+		port = an2Port
 	case TransportAuto:
 		// Try TCP first with a short budget. Only fall back on
 		// transport-level errors (refused/RST/timeout) — a TCP
@@ -309,6 +340,30 @@ func (p *Plugin) connectTCP(ctx context.Context, ip string, port int) error {
 	return nil
 }
 
+// connectAN2 opens the ACP1 Mode C connection: a raw TCP socket on port
+// 2072 wrapped in an AN2Client that frames every ACP1 PDU in an AN2 data
+// frame. Like the TCP-direct path, the multiplexing reader inside AN2Client
+// handles replies and announcements on the one socket — no separate
+// listener needed.
+func (p *Plugin) connectAN2(ctx context.Context, ip string, port int) error {
+	var d net.Dialer
+	conn, err := d.DialContext(ctx, "tcp4", net.JoinHostPort(ip, strconv.Itoa(port)))
+	if err != nil {
+		return &consumer.TransportError{Op: "connect", Err: err}
+	}
+	tcpConn, ok := conn.(*net.TCPConn)
+	if !ok {
+		_ = conn.Close()
+		return &consumer.TransportError{Op: "connect", Err: fmt.Errorf("acp1 an2: not a *net.TCPConn (%T)", conn)}
+	}
+	_ = tcpConn.SetNoDelay(true)
+	if p.tsSink == nil {
+		p.tsSink = &timestampSink{}
+	}
+	p.client = NewAN2Client(tcpConn, p.logger, ClientConfig{OnRx: p.tsSink.recordRx})
+	return nil
+}
+
 // Disconnect tears down whichever transport is active and clears all
 // cached state. Safe to call more than once.
 func (p *Plugin) Disconnect() error {
@@ -350,6 +405,8 @@ func (k TransportKind) String() string {
 	switch k {
 	case TransportTCPDirect:
 		return "tcp"
+	case TransportAN2:
+		return "an2"
 	case TransportAuto:
 		return "auto"
 	default:
@@ -679,9 +736,9 @@ func findObject(tree *SlotTree, group codec.ObjGroup, id byte) (consumer.Object,
 func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
 	p.mu.Lock()
 	l := p.listener
-	tcpClient, tcpOK := p.client.(*TCPClient)
+	fanout, fanOK := p.client.(announceFanout)
 	p.mu.Unlock()
-	if l == nil && !tcpOK {
+	if l == nil && !fanOK {
 		return consumer.ErrNotConnected
 	}
 
@@ -731,18 +788,11 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 			ev.Label = obj.Label
 			ev.Unit = obj.Unit
 			ev.Access = obj.Access
-			// Build the path the same way ACP2 does: dot-joined hierarchy
-			// ending in the leaf label. ACP1's walked object stores
-			// Path=[<group>] only (flat model); append the label so the
-			// watch column shows e.g. "control.AUDIO PROC AMP" instead
-			// of just "control".
-			pathParts := append([]string(nil), obj.Path...)
-			if obj.Label != "" {
-				pathParts = append(pathParts, obj.Label)
-			}
-			if len(pathParts) > 0 {
-				ev.Path = strings.Join(pathParts, ".")
-			}
+			// browser.go builds obj.Path as [group, (sub-group,) label], so
+			// eventPath joins it as-is and only appends the label for an older
+			// flat Path=[group] shape — never duplicating the trailing element
+			// (avoids the "control.Out-Mode.Out-Mode" watcher bug).
+			ev.Path = eventPath(obj.Path, obj.Label)
 			if val, derr := DecodeValueBytes(obj, acpType, msg.Value); derr == nil {
 				ev.Value = val
 				// Keep the cached tree in sync with live events so
@@ -771,10 +821,10 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 	}
 
 	// Route registration to whichever event source is active. The UDP
-	// Listener filters inside its own Subscribe call. The TCPClient
-	// fans out every announcement to every registered listener, so
-	// filtering is applied inside the wrapper for the TCP path.
-	if tcpOK {
+	// Listener filters inside its own Subscribe call. The TCP / AN2
+	// clients fan out every announcement to every registered listener,
+	// so filtering is applied inside the wrapper for those paths.
+	if fanOK {
 		base := wrapper
 		filtered := func(msg *codec.Message) {
 			if slot >= 0 && int(msg.MAddr) != slot {
@@ -788,7 +838,7 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 			}
 			base(msg)
 		}
-		h := tcpClient.AddListener(filtered)
+		h := fanout.AddListener(filtered)
 		p.mu.Lock()
 		p.tcpListenerHandles = append(p.tcpListenerHandles, h)
 		p.subHandles[reqKey(req)] = SubHandle(h)
@@ -809,7 +859,7 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	p.mu.Lock()
 	l := p.listener
-	tcpClient, tcpOK := p.client.(*TCPClient)
+	fanout, fanOK := p.client.(announceFanout)
 	h, ok := p.subHandles[reqKey(req)]
 	if ok {
 		delete(p.subHandles, reqKey(req))
@@ -818,8 +868,8 @@ func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	if !ok {
 		return nil
 	}
-	if tcpOK {
-		tcpClient.RemoveListener(int(h))
+	if fanOK {
+		fanout.RemoveListener(int(h))
 		return nil
 	}
 	if l != nil {

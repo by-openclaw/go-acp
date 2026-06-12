@@ -103,6 +103,29 @@ An out-of-range numeric (e.g. a `NetwPrefix` above its max) converges to the
 device's clamped value and stays idempotent — the CLI predicts the clamp
 client-side. A bad value (unknown enum, wrong type) fails the play with exit 2.
 
+## Test (automated idempotency assertion)
+
+`playbooks/site.yml` *converges* and leaves the run-twice check to your eye.
+`playbooks/test-idempotency.yml` is the **automated test**: it runs `ensure`
+twice against the device in one play and **asserts** the second pass reports
+`changed=false` for every object — a real pass/fail, the Ansible test tier for
+ACP1 (ADR-0007). It drives the local binary (`connection: local`), so it needs
+no client fleet, and **skips cleanly** when no device is set.
+
+```bash
+# From the repo root — builds the linux binary, then runs the assertion:
+make test-ansible ACP1_TEST_HOST=10.6.239.113
+
+# Or directly:
+cd ansible
+ACP1_TEST_HOST=10.6.239.113 DHS_BIN=../bin/dhs-linux-amd64 \
+  ansible-playbook -i inventory/hosts.ini playbooks/test-idempotency.yml
+```
+
+A non-idempotent object fails the `assert` task with the exact
+`group/label` that changed on the second run. `dhs_objects` / `dhs_port`
+come from `group_vars/all.yml`; the device host is `ACP1_TEST_HOST`-overridable.
+
 ## Status
 
 Authored against the verified CLI contract (`--json` `changed`, `--check`,

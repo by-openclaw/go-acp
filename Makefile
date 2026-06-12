@@ -113,6 +113,15 @@ test-integration-acp1:
 test-integration-acp2:
 	$(GO) test -tags integration ./internal/acp2/integration/...
 
+# Ansible test tier: the ACP1 `ensure` idempotency contract (ADR-0007) — runs
+# ensure twice against the device and ASSERTS the second pass is 0-changed.
+# Builds the linux binary first; gate the device via ACP1_TEST_HOST (the play
+# skips cleanly when unset). Requires ansible-playbook on the controller.
+.PHONY: test-ansible
+test-ansible: build-linux-amd64
+	cd ansible && DHS_BIN=$(CURDIR)/$(DIST_DIR)/dhs_linux_amd64/dhs \
+		ansible-playbook -i inventory/hosts.ini playbooks/test-idempotency.yml
+
 # ---------------------------------------------------------------- Fixtures
 
 .PHONY: fixtures-emberplus fixtures-acp1 fixtures-acp2 fixtures

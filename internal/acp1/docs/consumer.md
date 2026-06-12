@@ -39,8 +39,10 @@ UDP 2071  inbound broadcast     (announcements + discovery)
 ### CLI transport selection
 
 ```
-acp info 10.6.239.113                              # UDP (default)
-acp info 10.6.239.113 --transport tcp              # TCP direct
+acp info 10.6.239.113                              # auto (TCP-probe then UDP)
+acp info 10.6.239.113 --transport udp              # Mode A — UDP direct
+acp info 10.6.239.113 --transport tcp              # Mode B — TCP direct (MLEN)
+acp info 10.6.239.113 --transport an2              # Mode C — AN2/TCP :2072
 ```
 
 ---
@@ -51,12 +53,12 @@ acp info 10.6.239.113 --transport tcp              # TCP direct
 |---|---|---|---|
 | UDP direct (port 2071) | p.7 "ACP Port Number" | ✅ fully compliant | Subnet broadcast announcements via Listener |
 | TCP direct with MLEN prefix (v1.4 addition) | p.7 | ✅ fully compliant | Multiplexes request/reply + announces; routes across VLANs |
-| AN2 transport | — | ⛔ not applicable | AN2 is ACP2 only |
+| AN2 transport (Mode C, port 2072) | p.10 | ✅ fully compliant | `--transport an2`: ACP1 PDUs wrapped in AN2 data frames over one TCP socket; EnableProtocolEvents([ACP1]) at startup for announces |
 | ACP header decode (MTID/PVER/MTYPE/MADDR) | p.11 | ✅ fully compliant | Byte-exact per spec |
 | Six method IDs (getValue/setValue/setInc/setDec/setDef/getObject) | p.28 | ✅ fully compliant | Unknown method IDs surface via `acp1_unknown_method` event |
 | Eleven object types (Root/Integer/IPAddr/Float/Enum/String/Frame/Alarm/File/Long/Byte) | p.19–27 | ✅ fully compliant | All 11 types decoded; type `11` is reserved per v1.4 |
 | Announcements (value-change + frame-status + card-event) | p.16 | ✅ fully compliant | UDP: dedicated Listener on port 2071. TCP: multiplexed with transactions |
-| Retry / MTID rules | p.30 | ✅ fully compliant | Keep MTID on retransmit, increment on new request, never zero |
+| Retry / MTID rules | p.12, p.30 | ✅ fully compliant | Keep MTID on retransmit (never zero); on a **SET-family timeout the client GET-confirms before retrying** so a lost reply never double-applies a write — critical for the relative `inc`/`dec` methods (a blind retransmit would step twice) |
 | Value freshness (live / updated / stale / cache) | — (our extension) | ⚠ partial | Walk cache has TTL; per-object freshness tags pending — covered in follow-up |
 | Cascade on disconnect (root `isOnline y→n`) | — (our extension) | ⏳ pending | TCP disconnect detection exists; synthetic cascade event pending |
 | Auto-reconnect goroutine | — (our extension) | ⏳ pending | TCP-only (UDP has no persistent session); pattern to lift from Ember+ |
@@ -83,6 +85,8 @@ All timeouts are deterministic, user-overridable via `--timeout`. No silent hang
 | Slot tree cache max entries | 32 | `cacheConfig.MaxSize` | constant |
 
 **Rule:** retries use the same MTID per spec p.30 to let the device de-duplicate; new MTIDs are allocated only for brand-new requests. MTID never zero — wrap from 0xFFFFFFFF skips to 1.
+
+**SET-timeout confirm (spec p.12):** a mutating method (`set`/`inc`/`dec`/`reset`) that times out is **not** blindly retransmitted. The client issues a `getValue` to confirm: an absolute `set` whose value already landed returns success (else the idempotent write is retried), while the relative `inc`/`dec`/`reset` return the device's authoritative current value and are never re-sent — so a lost reply cannot double-apply a step.
 
 ---
 
@@ -294,11 +298,20 @@ values stripped). Used for instant label resolution on next startup.
 ### CLI examples
 
 ```
-acp get 10.6.239.113 --slot 0 --id 4 --group control       # by ID
-acp get 10.6.239.113 --slot 0 --label "Broadcasts"          # by label
-acp set 10.6.239.113 --slot 0 --label "Broadcasts" --value "On"
-acp set 10.6.239.113 --slot 0 --id 4 --group control --value "Off"
+acp get   10.6.239.113 --slot 0 --id 4 --group control       # by ID
+acp get   10.6.239.113 --slot 0 --label "Broadcasts"          # by label
+acp set   10.6.239.113 --slot 0 --label "Broadcasts" --value "On"
+acp set   10.6.239.113 --slot 0 --id 4 --group control --value "Off"
+acp inc   10.6.239.113 --slot 0 --label "NetwPrefix"          # setIncValue → value+step
+acp dec   10.6.239.113 --slot 0 --label "NetwPrefix"          # setDecValue → value−step
+acp reset 10.6.239.113 --slot 0 --label "NetwPrefix"          # setDefValue → declared default
 ```
+
+`inc` / `dec` / `reset` are the ACP1-specific relative methods (setIncValue /
+setDecValue / setDefValue). They take no `--value`; the device computes
+value±step or the default and echoes the confirmed result. Per the spec method
+matrix they apply to numeric types (`inc`/`dec`: Integer/Long/Byte/Float/IPAddr;
+`reset`: those + Enum); the device returns "illegal method for type" otherwise.
 
 ---
 

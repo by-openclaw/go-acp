@@ -1,0 +1,103 @@
+---
+# Deploy + run the ACP1 PRODUCER on a lab host, serving a full frame
+# (slot 0 rack controller + cards on the other slots), over all three
+# transports — the inbound side of the connector, for Tier-3 verification
+# against a real external controller (e.g. EVS Cerebrum / Lawo VSM).
+#
+# Same spirit as test-idempotency.yml: Ansible deploys the binary the way the
+# multi-OS client matrix already does, then starts + ASSERTS the producer is
+# serving, so "stand up the device" is repeatable, not a hand-run ssh session.
+#
+#   # from a full repo checkout (binary cross-built into bin/):
+#   GOOS=linux GOARCH=amd64 go build -o bin/dhs-linux-amd64 ./cmd/dhs
+#   ansible-playbook -i inventory/producer.ini playbooks/producer-frame.yml
+#
+#   # or override the staged paths (e.g. on the controller):
+#   ansible-playbook -i inventory/producer.ini playbooks/producer-frame.yml \
+#     -e dhs_bin_src=/root/bin/dhs-linux-amd64 \
+#     -e dhs_frame_src=/root/ansible/files/demo_frame.json
+#
+# Inventory: put the serving host in a [producer] group, e.g.
+#   [producer]
+#   dhs-debian ansible_host=10.100.0.102 ansible_user=root
+- name: Serve the ACP1 frame (slot 0 + cards) from a lab host
+  hosts: producer
+  gather_facts: false
+  vars:
+    dhs_bin_src: "{{ playbook_dir }}/../../bin/dhs-linux-amd64"
+    dhs_frame_src: "{{ playbook_dir }}/../../internal/acp1/assets/demo_frame.json"
+    dhs_bin: /usr/local/bin/dhs
+    dhs_frame: /var/lib/dhs/demo_frame.json
+    serve_port: 2071
+    an2_port: 2072
+  tasks:
+    - name: Create install + log dirs
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /var/lib/dhs
+        - /var/log/dhs
+
+    - name: Deploy the dhs binary
+      ansible.builtin.copy:
+        src: "{{ dhs_bin_src }}"
+        dest: "{{ dhs_bin }}"
+        mode: "0755"
+
+    - name: Deploy the frame fixture (slot 0 controller + cards)
+      ansible.builtin.copy:
+        src: "{{ dhs_frame_src }}"
+        dest: "{{ dhs_frame }}"
+        mode: "0644"
+
+    - name: Stop any running ACP1 producer
+      # The [d] bracket trick stops pkill -f matching its OWN command line
+      # (which would SIGTERM the task itself, rc -15). failed_when:false so a
+      # "no process matched" (rc 1) on first run is not an error.
+      ansible.builtin.shell: "pkill -f '[d]hs producer acp1' || true"
+      changed_when: false
+      failed_when: false
+
+    - name: Start the producer (UDP + TCP + AN2)
+      ansible.builtin.shell:
+        cmd: >-
+          nohup {{ dhs_bin }} producer acp1 serve
+          --tree {{ dhs_frame }}
+          --host 0.0.0.0 --transport all
+          --port {{ serve_port }} --an2-port {{ an2_port }}
+          --log-level info > /var/log/dhs/acp1.log 2>&1 &
+      changed_when: true
+
+    - name: Wait for the UDP/TCP listener
+      ansible.builtin.wait_for:
+        port: "{{ serve_port }}"
+        host: 127.0.0.1
+        timeout: 10
+
+    - name: Read the served object count from the log
+      ansible.builtin.command: "grep -o 'objects=[0-9]*' /var/log/dhs/acp1.log"
+      register: objline
+      changed_when: false
+
+    - name: ASSERT the frame is non-empty (slot 0 + cards loaded)
+      ansible.builtin.assert:
+        that:
+          - (objline.stdout | regex_replace('objects=', '') | int) > 0
+        fail_msg: "producer loaded an EMPTY tree (objects=0) — frame fixture rejected"
+        success_msg: "frame served: {{ objline.stdout }}"
+
+    - name: ASSERT all three transports are listening
+      ansible.builtin.shell: "ss -tunl | grep -E ':{{ serve_port }}\\b|:{{ an2_port }}\\b' | wc -l"
+      register: lcount
+      changed_when: false
+      failed_when: (lcount.stdout | int) < 2
+
+    - name: Producer ready
+      ansible.builtin.debug:
+        msg: >-
+          ACP1 producer serving the frame on
+          {{ ansible_host | default(inventory_hostname) }}:{{ serve_port }}
+          (UDP Mode A / TCP Mode B) + :{{ an2_port }} (AN2 Mode C) —
+          point the external controller here.
