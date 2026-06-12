@@ -57,9 +57,9 @@ jobs:
             printf '%s: %s%% (floor %s%%)\n' "$1" "$pct" "$2"
             awk "BEGIN{exit !(${pct:-0}+0 >= $2)}" || { echo "::error::$1 coverage ${pct}% below floor $2%"; exit 1; }
           }
-          check ./internal/acp1/codec 90
+          check ./internal/acp1/codec 100
           check ./internal/acp1/consumer 90
-          check ./internal/acp1/provider 59
+          check ./internal/acp1/provider 90
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
