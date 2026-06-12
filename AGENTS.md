@@ -1,6 +1,9 @@
-# agents.md — dhs (Device Hub Systems)
+# AGENTS.md — dhs (Device Hub Systems)
 
-Shared session rules for AI agents working on this project.
+Shared session rules for AI agents working on this project. Filename is
+**uppercase `AGENTS.md`** — the conventional name agent tooling auto-discovers.
+The auto-loaded root `CLAUDE.md` links here so this file is always read; a
+lowercase `agents.md` would be missed on case-sensitive filesystems.
 
 ## ⚠️ ADRs are the binding source of truth
 

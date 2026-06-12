@@ -1,8 +1,9 @@
 # CLAUDE.md — dhs (Device Hub Systems)
 
-Read this file completely before touching any code, then read the atomic
-per-protocol context under `internal/<proto>/CLAUDE.md` for whichever
-protocol you're working on.
+Read this file completely before touching any code, then read
+[`AGENTS.md`](AGENTS.md) (cross-tool session rules — task patterns, testing,
+git workflow) and the atomic per-protocol context under
+`internal/<proto>/CLAUDE.md` for whichever protocol you're working on.
 
 ## ⚠️ ADRs are the binding source of truth
 
@@ -37,6 +38,7 @@ Operational reference docs (not ADRs but binding repo-tracked sources):
 
 | Doc | Purpose |
 | --- | --- |
+| [`AGENTS.md`](AGENTS.md) | cross-tool session bootstrap — task patterns, testing rules, git workflow |
 | [`docs/user.md`](docs/user.md) | operator + agent role mapping, host preference |
 | [`docs/testbed.md`](docs/testbed.md) | DMZ VLAN fleet inventory + SSH access mesh |
 
