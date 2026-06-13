@@ -238,16 +238,18 @@ func (c *AN2Client) readerLoop() {
 		}
 
 		if msg.MTID != 0 {
+			// Non-blocking send under pendingMu so it can't race Close()'s
+			// close(ch) on the same channel (close-vs-send data race +
+			// send-on-closed panic). Send is non-blocking (buffered cap 1 +
+			// default), so holding the lock never blocks the reader.
 			c.pendingMu.Lock()
-			ch, ok := c.pending[msg.MTID]
+			if ch, ok := c.pending[msg.MTID]; ok {
+				select {
+				case ch <- msg:
+				default:
+				}
+			}
 			c.pendingMu.Unlock()
-			if !ok {
-				continue
-			}
-			select {
-			case ch <- msg:
-			default:
-			}
 			continue
 		}
 
