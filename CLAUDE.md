@@ -1,8 +1,9 @@
 # CLAUDE.md — dhs (Device Hub Systems)
 
-Read this file completely before touching any code, then read the atomic
-per-protocol context under `internal/<proto>/CLAUDE.md` for whichever
-protocol you're working on.
+Read this file completely before touching any code, then read
+[`AGENTS.md`](AGENTS.md) (cross-tool session rules — task patterns, testing,
+git workflow) and the atomic per-protocol context under
+`internal/<proto>/CLAUDE.md` for whichever protocol you're working on.
 
 ## ⚠️ ADRs are the binding source of truth
 
@@ -37,6 +38,7 @@ Operational reference docs (not ADRs but binding repo-tracked sources):
 
 | Doc | Purpose |
 | --- | --- |
+| [`AGENTS.md`](AGENTS.md) | cross-tool session bootstrap — task patterns, testing rules, git workflow |
 | [`docs/user.md`](docs/user.md) | operator + agent role mapping, host preference |
 | [`docs/testbed.md`](docs/testbed.md) | DMZ VLAN fleet inventory + SSH access mesh |
 
@@ -453,3 +455,27 @@ BCP-006-03, BCP-007-01) which carry no published stable release yet.
 7. Unit tests live inside the package (`internal/<name>/*/*_test.go`).
 8. Done — `dhs consumer <name> <verb>` and `dhs producer <name> serve`
    pick it up automatically via the registries.
+
+---
+
+## Bringing a connector to DONE (the repeatable playbook)
+
+`acp1` is the gold-template. To bring any connector to the same standard,
+follow this ordered playbook. The binding gate is **ADR-0025** (definition of
+done); the per-verb spec is [`docs/protocols/verb-tests.md`](docs/protocols/verb-tests.md)
+and the per-verb reference + examples are [`docs/protocols/verbs.md`](docs/protocols/verbs.md).
+This is the same process for every connector — not a one-off.
+
+1. **Audit** the connector against ADR-0025's six deliverables — record each as `done` / `partial` / `missing`. The audit is a fixed checklist, run the same way each time.
+2. **Codec → spec**: table-driven unit tests, expected bytes from the spec (not from working code). Drive coverage up and lock a per-package floor in `.github/workflows/ci.yml` (no-regression gate).
+3. **Consumer**: every spec verb + every wire-form variant; `--label`/`--path` resolve cold (walk-on-miss). Unit + smoke tests.
+4. **Producer**: serve every transport the spec defines; unit + loopback tests.
+5. **Integration — oracle-per-tier**: drive the CLI against the **vendor emulator + a real device — never our own provider** (Tier 2/3). Loopback regression only after 2+3 pass (Tier 4). All tiers driven by **Ansible — no PowerShell `.ps1`**.
+6. **Idempotency**: every Ansible play (deploy / test / verify / converge) proves run-twice = 0 changes.
+7. **Wireshark dissector** `internal/<proto>/wireshark/dhs_<proto>.lua` — every transport + wire version + command/type-tag; deploy to the fleet via `ansible/playbooks/deploy-dissector.yml` (capture-and-relay where a host's tshark lacks Lua — `ansible/playbooks/acp1-capture.yml`).
+8. **Replay fixtures** under `internal/<proto>/testdata/` (`protocol_types/` + `fixtures/` + `exports/`) plus a DM + manifest generator.
+9. **Docs set** `internal/<proto>/docs/{README,consumer,provider,runbook}.md` + the per-protocol `CLAUDE.md` wire-format context.
+10. **CI gates green before merge** (ADR-0014): unit `-race`, `-tags integration`, per-package coverage floors.
+
+A connector is **DONE** only when all six ADR-0025 deliverables exist together —
+no "ship now, finish later."

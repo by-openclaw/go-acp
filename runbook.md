@@ -263,7 +263,7 @@ Each protocol has its own atomic context and (where applicable) docs:
 ## 10. What to read next
 
 - [CLAUDE.md](CLAUDE.md) — Go conventions, error hierarchy, scale targets
-- [agents.md](agents.md) — cross-repo task patterns, testing rules, invariants
+- [AGENTS.md](AGENTS.md) — cross-repo task patterns, testing rules, invariants
 - [docs/adr/](docs/adr/README.md) — Architecture Decision Records (binding)
 - [docs/CONNECTOR.md](docs/CONNECTOR.md) — connector contract (collated ADRs)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — three-layer architecture overview

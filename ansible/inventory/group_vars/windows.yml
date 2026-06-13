@@ -1,12 +1,14 @@
 ---
-# Windows client, reached over WinRM. Requires the ansible.windows collection
-# on the control node + pywinrm (pip install pywinrm).
+# Windows clients (win11, winsrv) — reached over WinRM (Linux/macOS use SSH).
+# Requires the ansible.windows collection + pywinrm on the control node
+# (Debian/Ubuntu: `apt-get install python3-winrm`).
 ansible_connection: winrm
-ansible_user: Administrator
-# Do NOT store the password in plaintext. Use ansible-vault:
-#   ansible-vault encrypt_string '<pw>' --name ansible_password
-# then paste the vaulted block here, or pass --ask-vault-pass at runtime.
-# ansible_password: !vault | ...
+# Auth (user `by-rune`, NOT Administrator) comes from the gitignored secrets
+# file, loaded at runtime so nothing secret hits git or shell history:
+#   ansible-playbook -i inventory/win.ini playbooks/site.yml -e @secrets/credentials.json
+# Same JSON structure migrates into ansible-vault later (see secrets/README.md).
+ansible_user: "{{ creds[inventory_hostname].ansible_user | default('by-rune') }}"
+ansible_password: "{{ creds[inventory_hostname].ansible_password | default('') }}"
 ansible_winrm_transport: ntlm
 ansible_winrm_server_cert_validation: ignore
 ansible_port: 5985

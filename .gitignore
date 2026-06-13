@@ -43,6 +43,10 @@ desktop.ini
 *.key
 .env
 .env.*
+# Interim ansible credential store (pre-vault). Only the .example is committed.
+ansible/secrets/*.json
+!ansible/secrets/*.example.json
+ansible/secrets/*.vault
 
 # Temp
 /tmp/

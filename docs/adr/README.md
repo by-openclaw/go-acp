@@ -7,7 +7,7 @@ how connectors are built lives here.
 ## Rules
 
 1. **Single source of truth** — every architectural rule has exactly one
-   ADR. Other docs (`CLAUDE.md`, `agents.md`, `docs/CONNECTOR.md`,
+   ADR. Other docs (`CLAUDE.md`, `AGENTS.md`, `docs/CONNECTOR.md`,
    per-protocol `CLAUDE.md`) reference an ADR by number; they never
    restate it. See ADR-0015.
 2. **Permanent acceptance** — once an ADR is `accepted`, it is binding

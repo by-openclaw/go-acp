@@ -1,6 +1,6 @@
 # Per-verb test specification
 
-**Status: proposed** (pending fold into ADR-0025). **Scope:** the Tree/DM generic
+**Status: accepted** — the test taxonomy of record, expanding ADR-0025 §Test taxonomy. Integration / verify / deploy are **Ansible-driven (no PowerShell `.ps1`)**. **Scope:** the Tree/DM generic
 verb set (acp1 / acp2 / emberplus) — the template; Matrix/Push/Bridge verbs follow
 the same three-tier shape (§4).
 
@@ -53,7 +53,7 @@ Definitions: see `verbs.md` §2. Below is **how each is tested**.
 - **Exit codes** per `docs/protocols/error-codes.md`: `0` ok · `1` runtime/wire · `2` usage/validation. Every smoke/integration assertion checks the exit code, not just stdout. (`set`/`ensure` bad-input MUST be exit 2 — current acp1 gap: exit 1.)
 - **DI requirement:** unit tests substitute `MockTransport` (+ a mock clock for timeout/keep-alive verbs) — no real sockets, no real time.
 - **Oracle rule:** consumer integration runs against the **vendor emulator + real device**, never our own provider. Provider integration is verified by our *trusted* consumer (after the consumer passes) and finally by the manufacturer's controller (manual).
-- **Idempotency:** `ensure` (and any state-changing verb driven through Ansible) proves idempotency by the **run-twice = 0 changes** rule.
+- **Idempotency:** **every Ansible play** — deploy, test, verify, and converge (`ensure` + any state-changing verb) — proves idempotency by the **run-twice = 0 changes** rule (ADR-0025).
 
 ## 4. Protocol-specific verbs (same three tiers)
 
