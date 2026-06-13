@@ -45,10 +45,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: go test -count=1 -coverprofile=coverage.out ./...
 
-      # Per-package coverage floor for the acp1 gold-template connector. Fails
+      # Per-package coverage floor for the gold-template connectors. Fails
       # the build if a package drops below its locked-in level (no-regression).
-      # Raise these as the tiered coverage push lands (see issue #539).
-      - name: Coverage floor (acp1)
+      # Raise these as the tiered coverage push lands (see issues #539, #550).
+      - name: Coverage floor (acp1 + acp2)
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -e
@@ -60,6 +60,9 @@ jobs:
           check ./internal/acp1/codec 100
           check ./internal/acp1/consumer 90
           check ./internal/acp1/provider 90
+          check ./internal/acp2/codec 98
+          check ./internal/acp2/consumer 84
+          check ./internal/acp2/provider 90
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
