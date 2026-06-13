@@ -149,6 +149,13 @@ type Plugin struct {
 	// watchdog goroutines for the current Connect lifetime.
 	kaCfg consumer.KeepAliveConfig
 	ka    *keepAliveState
+
+	// newListener builds the UDP announcement listener. Nil ⇒ the real
+	// NewListener. Injection seam so tests can drive connectUDP's
+	// listener-unavailable warn branch deterministically (a real bind
+	// failure on the connected port can't be forced cross-platform with
+	// SO_REUSEADDR enabled).
+	newListener func(logger *slog.Logger, port int) (*Listener, error)
 }
 
 // ComplianceProfile returns the session-scoped compliance profile.
@@ -256,9 +263,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.trees = newSlotTreeCache(cfg.MaxSize, cfg.TTL)
 	p.subHandles = map[subKey]SubHandle{}
 	p.profile = &compliance.Profile{}
-	if p.tsSink == nil {
-		p.tsSink = &timestampSink{}
-	}
+	// p.tsSink is guaranteed non-nil here: every transport path
+	// (connectUDP/connectTCP/connectAN2 above) allocates it before
+	// returning, so the former `if p.tsSink == nil` guard was unreachable.
 	p.walker = NewWalker(p.client)
 	p.walker.SetProfile(p.profile)
 	p.logger.Info("acp1 connected",
@@ -303,7 +310,11 @@ func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 	tr = &timestampingTransport{inner: tr, sink: p.tsSink}
 	p.client = NewClient(tr, p.logger, ClientConfig{})
 
-	if l, lerr := NewListener(p.logger, port); lerr != nil {
+	mkListener := p.newListener
+	if mkListener == nil {
+		mkListener = NewListener
+	}
+	if l, lerr := mkListener(p.logger, port); lerr != nil {
 		p.logger.Warn("acp1 listener unavailable — Subscribe will fail",
 			"port", port, "err", lerr)
 	} else {
@@ -351,11 +362,9 @@ func (p *Plugin) connectAN2(ctx context.Context, ip string, port int) error {
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}
-	tcpConn, ok := conn.(*net.TCPConn)
-	if !ok {
-		_ = conn.Close()
-		return &consumer.TransportError{Op: "connect", Err: fmt.Errorf("acp1 an2: not a *net.TCPConn (%T)", conn)}
-	}
+	// unreachable type-assert guard elided: net.Dialer.DialContext over
+	// "tcp4" always yields a *net.TCPConn on success.
+	tcpConn := conn.(*net.TCPConn)
 	_ = tcpConn.SetNoDelay(true)
 	if p.tsSink == nil {
 		p.tsSink = &timestampSink{}

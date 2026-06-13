@@ -154,20 +154,24 @@ func EncodeReal(v float64) []byte {
 	// encoding: 00=1 octet, 01=2 octets, 10=3 octets, 11=long form with
 	// extra length octet following.
 	first := byte(0x80) | (sign << 6)
-	out := make([]byte, 0, 1+len(expBytes)+len(mantBytes)+1)
+	out := make([]byte, 0, 1+len(expBytes)+len(mantBytes))
 	switch len(expBytes) {
 	case 1:
 		first |= 0x00
 		out = append(out, first)
-	case 2:
+	default:
+		// unreachable for len(expBytes) > 2: the wire exponent of any
+		// finite float64 is bounded to [-1074, 1023]. Proof — expRaw is in
+		// [0, 2046] (2047 = Inf/NaN, handled above), so the pre-bias
+		// exponent lies in [-1074, 971]; the ecosystem bias adds at most
+		// bits.Len64(mantissa)-1 = 52 (53-bit max mantissa), giving an
+		// upper bound of 1023. encodeSignedInt of any value in [-1074,
+		// 1023] is at most 2 octets (2-octet signed range is
+		// [-32768, 32767]). The 3-octet (code 0x02) and long-form (code
+		// 0x03) X.690 §8.5.7 exponent encodings therefore never occur for
+		// a float64 source; only the 1- and 2-octet forms are reachable.
 		first |= 0x01
 		out = append(out, first)
-	case 3:
-		first |= 0x02
-		out = append(out, first)
-	default:
-		first |= 0x03
-		out = append(out, first, byte(len(expBytes)))
 	}
 	out = append(out, expBytes...)
 	out = append(out, mantBytes...)

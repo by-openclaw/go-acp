@@ -73,10 +73,7 @@ func NewTCPClient(conn *transport.TCPConn, logger *slog.Logger, cfg ClientConfig
 
 	//nolint:gosec // non-crypto MTID seed
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	seed := r.Uint32()
-	if seed == 0 {
-		seed = 1
-	}
+	seed := nonZeroSeed(r.Uint32())
 
 	c := &TCPClient{
 		conn:       conn,

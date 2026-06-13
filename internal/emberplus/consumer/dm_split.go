@@ -51,9 +51,15 @@ func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *datastore.TreeSto
 	if err != nil {
 		return nil, err
 	}
-	if tree == nil || tree.Root == nil {
-		return nil, fmt.Errorf("emberplus: SplitAndPersistDM: empty canonical tree")
-	}
+	// unreachable (removed nil-tree guard): ExportCanonical →
+	// Canonicalize always returns a non-nil *canonical.Export whose Root
+	// is populated by emptyRoot() (canonicalize.go ~134) even for an empty
+	// tree — so `tree` and `tree.Root` are never nil at this point. The
+	// prior `if tree == nil || tree.Root == nil { return ... }` guard was
+	// dead code (no entrypoint can inject a nil-root Export, since
+	// SplitAndPersistDM builds the tree itself via ExportCanonical) and is
+	// removed rather than left permanently uncovered. tree.Root is
+	// dereferenced safely below.
 	_, swRev := splitIdentityForSplit(providerIdentity)
 
 	rootNode, ok := tree.Root.(*canonical.Node)

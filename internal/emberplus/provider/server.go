@@ -96,6 +96,15 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 		_ = ln.Close()
 	}()
 
+	return s.acceptLoop(ctx, ln)
+}
+
+// acceptLoop runs the listener accept loop until the listener is closed
+// or the context is cancelled. Split out of Serve as a testability seam:
+// a test can drive it with a fake net.Listener that injects a transient
+// (non-ErrClosed) accept error to exercise the accept-error-continue
+// branch, which a real OS listener will not produce on demand.
+func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {

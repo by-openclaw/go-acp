@@ -78,8 +78,12 @@ func (s *server) ServeTCP(ctx context.Context, addr string) error {
 		_ = ln.Close()
 	}()
 
+	accept := ln.AcceptTCP
+	if s.acceptTCPHook != nil {
+		accept = func() (*net.TCPConn, error) { return s.acceptTCPHook(ln) }
+	}
 	for {
-		conn, err := ln.AcceptTCP()
+		conn, err := accept()
 		if err != nil {
 			if isClosed(err) || errors.Is(ctx.Err(), context.Canceled) {
 				return nil
@@ -116,22 +120,7 @@ func (s *server) serveTCPSession(ctx context.Context, conn *net.TCPConn, ip stri
 	writerDone := make(chan struct{})
 	go func() {
 		defer close(writerDone)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case payload, ok := <-send:
-				if !ok {
-					return
-				}
-				if err := writeMLENFrame(conn, payload); err != nil {
-					if !isClosed(err) {
-						s.logger.Warn("acp1 tcp write", slog.String("err", err.Error()))
-					}
-					return
-				}
-			}
-		}
+		s.runTCPWriter(ctx, conn, send)
 	}()
 
 	// Reader
@@ -169,6 +158,29 @@ func (s *server) serveTCPSession(ctx context.Context, conn *net.TCPConn, ip stri
 
 	close(send)
 	<-writerDone
+}
+
+// runTCPWriter pumps the per-session send channel onto the socket. Extracted
+// from serveTCPSession so the writer's ctx-exit, channel-close, and
+// write-error arms are directly testable. Returns when ctx is cancelled, the
+// channel closes, or a write fails.
+func (s *server) runTCPWriter(ctx context.Context, conn *net.TCPConn, send chan []byte) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case payload, ok := <-send:
+			if !ok {
+				return
+			}
+			if err := writeMLENFrame(conn, payload); err != nil {
+				if !isClosed(err) {
+					s.logger.Warn("acp1 tcp write", slog.String("err", err.Error()))
+				}
+				return
+			}
+		}
+	}
 }
 
 // broadcastTCPAnnounce sends an already-encoded announce to every TCP

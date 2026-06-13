@@ -138,7 +138,7 @@ func (s *server) CascadeInsert(parent context.Context, slot uint8) {
 		defer machine.clearCascade(slot)
 
 		// Phase 1: no_card -> powerup (immediate).
-		if err := s.setSlotStatus(slot, 1 /* powerup */); err != nil {
+		if err := s.setStatus(slot, 1 /* powerup */); err != nil {
 			s.logger.Warn("cascade powerup failed", "slot", slot, "err", err)
 			return
 		}
@@ -150,7 +150,7 @@ func (s *server) CascadeInsert(parent context.Context, slot uint8) {
 		}
 
 		// Phase 2: powerup -> boot.
-		if err := s.setSlotStatus(slot, 5 /* boot */); err != nil {
+		if err := s.setStatus(slot, 5 /* boot */); err != nil {
 			s.logger.Warn("cascade boot failed", "slot", slot, "err", err)
 			return
 		}
@@ -162,7 +162,7 @@ func (s *server) CascadeInsert(parent context.Context, slot uint8) {
 		}
 
 		// Phase 3: boot -> present.
-		if err := s.setSlotStatus(slot, 2 /* present */); err != nil {
+		if err := s.setStatus(slot, 2 /* present */); err != nil {
 			s.logger.Warn("cascade present failed", "slot", slot, "err", err)
 			return
 		}
@@ -180,11 +180,11 @@ func (s *server) CascadeExtract(slot uint8) {
 	if machine != nil {
 		machine.cancelPending(slot)
 	}
-	if err := s.setSlotStatus(slot, 4 /* removed */); err != nil {
+	if err := s.setStatus(slot, 4 /* removed */); err != nil {
 		s.logger.Warn("cascade removed failed", "slot", slot, "err", err)
 		return
 	}
-	if err := s.setSlotStatus(slot, 0 /* no_card */); err != nil {
+	if err := s.setStatus(slot, 0 /* no_card */); err != nil {
 		s.logger.Warn("cascade no_card failed", "slot", slot, "err", err)
 	}
 }

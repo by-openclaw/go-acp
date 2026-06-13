@@ -107,6 +107,9 @@ func (c *reconnectCtrl) stop() {
 // entry that actually comes back.
 func (p *Plugin) reconnectLoop(ctx context.Context) {
 	policy := defaultReconnectPolicy()
+	if p.reconnectPolicyOverride != nil {
+		policy = *p.reconnectPolicyOverride
+	}
 	backoff := policy.InitialBackoff
 	attempts := 0
 

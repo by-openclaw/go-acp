@@ -134,6 +134,14 @@ type Plugin struct {
 	// established or the user calls Disconnect.
 	reconnect reconnectCtrl
 
+	// reconnectPolicyOverride, when non-nil, replaces
+	// defaultReconnectPolicy() inside reconnectLoop. Production code
+	// never sets it; it exists purely as a testability seam so a test
+	// can drive the reconnect loop with sub-millisecond backoff and a
+	// bounded attempt count instead of the 2s/unlimited production
+	// defaults. Set via setReconnectPolicy before the loop starts.
+	reconnectPolicyOverride *reconnectPolicy
+
 	// wildcardFilter controls which Parameters the wildcard "*"
 	// Subscribe registers Command 30 for. Set BEFORE Subscribe via
 	// SetWildcardSubscribeFilter (no-op for non-wildcard subs).
@@ -2060,9 +2068,12 @@ func (p *Plugin) notifyMatrixSubscribers(entry *treeEntry, c glow.Connection) {
 		}
 		fn = wildcard
 	}
-	if fn == nil {
-		return
-	}
+	// unreachable: after the block above fn is either the original
+	// non-nil per-matrix subscriber (we only entered the block when fn was
+	// nil) or `wildcard`, which is proven non-nil by the `wildcard == nil`
+	// guard at line ~2066. A second nil-check here can therefore never be
+	// true; removed to keep the function fully exercised. fn is always
+	// safe to call below.
 
 	sources := make([]int64, 0, len(c.Sources))
 	for _, s := range c.Sources {

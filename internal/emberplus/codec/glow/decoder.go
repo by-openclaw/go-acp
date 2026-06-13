@@ -36,11 +36,7 @@ func DecodeRoot(data []byte) ([]Element, error) {
 	}
 	var out []Element
 	for _, tlv := range tlvs {
-		els, err := decodeElements(tlv)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, els...)
+		out = append(out, decodeElements(tlv)...)
 	}
 	return out, nil
 }
@@ -53,17 +49,17 @@ func DecodeRoot(data []byte) ([]Element, error) {
 //   - APPLICATION[6]  StreamCollection      (spec p.93)
 //
 // and delegates to decodeElement for each leaf.
-func decodeElements(tlv ber.TLV) ([]Element, error) {
+//
+// Infallible: the Glow decoder is tolerant (unknown tags skipped, optional
+// fields left zero) so neither this function nor decodeElement ever
+// returns an error. Only DecodeRoot can fail, and only at the BER layer.
+func decodeElements(tlv ber.TLV) []Element {
 	if tlv.Tag.Class == ber.ClassContext {
 		var out []Element
 		for _, child := range tlv.Children {
-			els, err := decodeElements(child)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, els...)
+			out = append(out, decodeElements(child)...)
 		}
-		return out, nil
+		return out
 	}
 
 	if tlv.Tag.Class == ber.ClassApplication {
@@ -71,48 +67,37 @@ func decodeElements(tlv ber.TLV) ([]Element, error) {
 		case TagRoot, TagRootElementCollection, TagElementCollection:
 			var out []Element
 			for _, child := range tlv.Children {
-				els, err := decodeElements(child)
-				if err != nil {
-					return nil, err
-				}
-				out = append(out, els...)
+				out = append(out, decodeElements(child)...)
 			}
-			return out, nil
+			return out
 		case TagStreamCollection:
 			entries := decodeStreamCollection(tlv)
-			return []Element{{Streams: entries}}, nil
+			return []Element{{Streams: entries}}
 		}
 	}
 
-	el, err := decodeElement(tlv)
-	if err != nil {
-		return nil, err
+	if el := decodeElement(tlv); el != nil {
+		return []Element{*el}
 	}
-	if el != nil {
-		return []Element{*el}, nil
-	}
-	return nil, nil
+	return nil
 }
 
 // decodeElement dispatches a single leaf TLV to the matching type decoder.
-// Returns nil (no error) for tags we do not recognise — a tolerant decoder
-// keeps working when providers emit vendor-private extensions.
-func decodeElement(tlv ber.TLV) (*Element, error) {
+// Returns nil for tags we do not recognise — a tolerant decoder keeps
+// working when providers emit vendor-private extensions. Infallible by
+// design (see decodeElements).
+func decodeElement(tlv ber.TLV) *Element {
 	if tlv.Tag.Class == ber.ClassContext {
 		for _, child := range tlv.Children {
-			el, err := decodeElement(child)
-			if err != nil {
-				return nil, err
-			}
-			if el != nil {
-				return el, nil
+			if el := decodeElement(child); el != nil {
+				return el
 			}
 		}
-		return nil, nil
+		return nil
 	}
 
 	if tlv.Tag.Class != ber.ClassApplication {
-		return nil, nil
+		return nil
 	}
 	switch tlv.Tag.Number {
 	case TagNode:
@@ -140,7 +125,7 @@ func decodeElement(tlv ber.TLV) (*Element, error) {
 	case TagInvocationResult:
 		return decodeInvocationResult(tlv)
 	}
-	return nil, nil
+	return nil
 }
 
 // --- Node / QualifiedNode (spec p.87) ---
@@ -154,7 +139,7 @@ func decodeElement(tlv ber.TLV) (*Element, error) {
 //	|   [2]       | children  | ElementColl. | nested Elements         |
 //
 // Spec reference: Ember+ Documentation.pdf §Node p. 87.
-func decodeNode(tlv ber.TLV) (*Element, error) {
+func decodeNode(tlv ber.TLV) *Element {
 	n := &Node{}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -169,7 +154,7 @@ func decodeNode(tlv ber.TLV) (*Element, error) {
 			n.Children = decodeElementCollection(child)
 		}
 	}
-	return &Element{Node: n}, nil
+	return &Element{Node: n}
 }
 
 // decodeQualifiedNode parses a QualifiedNode APPLICATION[10].
@@ -181,7 +166,7 @@ func decodeNode(tlv ber.TLV) (*Element, error) {
 //	|   [2]       | children  | ElementColl. | nested Elements         |
 //
 // Spec reference: Ember+ Documentation.pdf §QualifiedNode p. 87.
-func decodeQualifiedNode(tlv ber.TLV) (*Element, error) {
+func decodeQualifiedNode(tlv ber.TLV) *Element {
 	n := &Node{}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -199,7 +184,7 @@ func decodeQualifiedNode(tlv ber.TLV) (*Element, error) {
 	if len(n.Path) > 0 {
 		n.Number = n.Path[len(n.Path)-1]
 	}
-	return &Element{Node: n}, nil
+	return &Element{Node: n}
 }
 
 // appendUniqueInt32 appends v to s only when v is not already present.
@@ -254,7 +239,7 @@ func decodeNodeContents(n *Node, tlv ber.TLV) {
 //	|   [2]       | children | ElementColl.     | nested Elements      |
 //
 // Spec reference: Ember+ Documentation.pdf §Parameter p. 85.
-func decodeParameter(tlv ber.TLV) (*Element, error) {
+func decodeParameter(tlv ber.TLV) *Element {
 	p := &Parameter{}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -269,7 +254,7 @@ func decodeParameter(tlv ber.TLV) (*Element, error) {
 			p.Children = decodeElementCollection(child)
 		}
 	}
-	return &Element{Parameter: p}, nil
+	return &Element{Parameter: p}
 }
 
 // decodeQualifiedParameter parses a QualifiedParameter APPLICATION[9].
@@ -281,7 +266,7 @@ func decodeParameter(tlv ber.TLV) (*Element, error) {
 //	|   [2]       | children | ElementColl.     | nested Elements      |
 //
 // Spec reference: Ember+ Documentation.pdf §QualifiedParameter p. 85.
-func decodeQualifiedParameter(tlv ber.TLV) (*Element, error) {
+func decodeQualifiedParameter(tlv ber.TLV) *Element {
 	p := &Parameter{}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -299,7 +284,7 @@ func decodeQualifiedParameter(tlv ber.TLV) (*Element, error) {
 	if len(p.Path) > 0 {
 		p.Number = p.Path[len(p.Path)-1]
 	}
-	return &Element{Parameter: p}, nil
+	return &Element{Parameter: p}
 }
 
 // decodeParamContents covers all 18 optional ParameterContents fields.
@@ -392,7 +377,7 @@ func decodeParamContents(p *Parameter, tlv ber.TLV) {
 //	|   [5]       | connections | ConnectionColl. | SEQUENCE OF Connection|
 //
 // Spec reference: Ember+ Documentation.pdf §Matrix p. 88.
-func decodeMatrix(tlv ber.TLV) (*Element, error) {
+func decodeMatrix(tlv ber.TLV) *Element {
 	m := &Matrix{}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -413,7 +398,7 @@ func decodeMatrix(tlv ber.TLV) (*Element, error) {
 			m.Connections = decodeConnectionCollection(child)
 		}
 	}
-	return &Element{Matrix: m}, nil
+	return &Element{Matrix: m}
 }
 
 // decodeQualifiedMatrix parses a QualifiedMatrix APPLICATION[17].
@@ -428,7 +413,7 @@ func decodeMatrix(tlv ber.TLV) (*Element, error) {
 //	|   [5]       | connections | ConnectionColl. | SEQUENCE OF Connection|
 //
 // Spec reference: Ember+ Documentation.pdf §QualifiedMatrix p. 88.
-func decodeQualifiedMatrix(tlv ber.TLV) (*Element, error) {
+func decodeQualifiedMatrix(tlv ber.TLV) *Element {
 	m := &Matrix{}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -452,7 +437,7 @@ func decodeQualifiedMatrix(tlv ber.TLV) (*Element, error) {
 	if len(m.Path) > 0 {
 		m.Number = m.Path[len(m.Path)-1]
 	}
-	return &Element{Matrix: m}, nil
+	return &Element{Matrix: m}
 }
 
 // decodeMatrixContents covers all 12 MatrixContents CTX fields.
@@ -653,7 +638,7 @@ func decodeConnectionCollection(tlv ber.TLV) []Connection {
 //	|   [2]       | children | ElementColl.    | nested Elements |
 //
 // Spec reference: Ember+ Documentation.pdf §Function p. 91.
-func decodeFunction(tlv ber.TLV) (*Element, error) {
+func decodeFunction(tlv ber.TLV) *Element {
 	f := &Function{}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -668,7 +653,7 @@ func decodeFunction(tlv ber.TLV) (*Element, error) {
 			f.Children = decodeElementCollection(child)
 		}
 	}
-	return &Element{Function: f}, nil
+	return &Element{Function: f}
 }
 
 // decodeQualifiedFunction parses a QualifiedFunction APPLICATION[20].
@@ -680,7 +665,7 @@ func decodeFunction(tlv ber.TLV) (*Element, error) {
 //	|   [2]       | children | ElementColl.    | nested Elements |
 //
 // Spec reference: Ember+ Documentation.pdf §QualifiedFunction p. 91.
-func decodeQualifiedFunction(tlv ber.TLV) (*Element, error) {
+func decodeQualifiedFunction(tlv ber.TLV) *Element {
 	f := &Function{}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -698,7 +683,7 @@ func decodeQualifiedFunction(tlv ber.TLV) (*Element, error) {
 	if len(f.Path) > 0 {
 		f.Number = f.Path[len(f.Path)-1]
 	}
-	return &Element{Function: f}, nil
+	return &Element{Function: f}
 }
 
 // decodeFuncContents fills Function contents fields per spec p.91.
@@ -746,7 +731,7 @@ func decodeFuncContents(f *Function, tlv ber.TLV) {
 //	|   [2]       | invocation   | Invocation | Invoke only (APP[22])      |
 //
 // Spec reference: Ember+ Documentation.pdf §Command p. 86.
-func decodeCommand(tlv ber.TLV) (*Element, error) {
+func decodeCommand(tlv ber.TLV) *Element {
 	c := &Command{}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -761,7 +746,7 @@ func decodeCommand(tlv ber.TLV) (*Element, error) {
 			c.Invocation = decodeInvocation(child)
 		}
 	}
-	return &Element{Command: c}, nil
+	return &Element{Command: c}
 }
 
 // decodeInvocation handles Invocation APPLICATION[22] (spec p.91). The CTX[2]
@@ -806,7 +791,7 @@ func decodeInvocation(tlv ber.TLV) *Invocation {
 //	|   [2]       | result       | Tuple   | SEQUENCE OF [0] Value       |
 //
 // Spec reference: Ember+ Documentation.pdf §InvocationResult p. 92.
-func decodeInvocationResult(tlv ber.TLV) (*Element, error) {
+func decodeInvocationResult(tlv ber.TLV) *Element {
 	r := &InvocationResult{Success: true}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -821,7 +806,7 @@ func decodeInvocationResult(tlv ber.TLV) (*Element, error) {
 			r.Result = decodeTuple(child)
 		}
 	}
-	return &Element{InvocationResult: r}, nil
+	return &Element{InvocationResult: r}
 }
 
 // decodeTuple handles Tuple ::= SEQUENCE OF [0] Value (spec p.92).
@@ -940,7 +925,7 @@ func decodeStreamDescription(tlv ber.TLV) *StreamDescription {
 //	|   [2]       | description | EmberString      | optional              |
 //
 // Spec reference: Ember+ Documentation.pdf §Template p. 84.
-func decodeTemplate(tlv ber.TLV, qualified bool) (*Element, error) {
+func decodeTemplate(tlv ber.TLV, qualified bool) *Element {
 	t := &Template{Qualified: qualified}
 	for _, child := range tlv.Children {
 		if child.Tag.Class != ber.ClassContext {
@@ -962,7 +947,7 @@ func decodeTemplate(tlv ber.TLV, qualified bool) (*Element, error) {
 			t.Description = decodeStringValue(child)
 		}
 	}
-	return &Element{Template: t}, nil
+	return &Element{Template: t}
 }
 
 // decodeTemplateElement realises the CHOICE over Parameter/Node/Matrix/Function
@@ -975,19 +960,19 @@ func decodeTemplateElement(tlv ber.TLV) *TemplateElement {
 		}
 		switch child.Tag.Number {
 		case TagParameter:
-			if el, err := decodeParameter(child); err == nil && el != nil {
+			if el := decodeParameter(child); el != nil {
 				te.Parameter = el.Parameter
 			}
 		case TagNode:
-			if el, err := decodeNode(child); err == nil && el != nil {
+			if el := decodeNode(child); el != nil {
 				te.Node = el.Node
 			}
 		case TagMatrix:
-			if el, err := decodeMatrix(child); err == nil && el != nil {
+			if el := decodeMatrix(child); el != nil {
 				te.Matrix = el.Matrix
 			}
 		case TagFunction:
-			if el, err := decodeFunction(child); err == nil && el != nil {
+			if el := decodeFunction(child); el != nil {
 				te.Function = el.Function
 			}
 		}
@@ -1010,8 +995,7 @@ func decodeElementCollection(tlv ber.TLV) []Element {
 	}
 	for _, container := range containers {
 		for _, child := range container.Children {
-			el, err := decodeElement(child)
-			if err == nil && el != nil {
+			if el := decodeElement(child); el != nil {
 				out = append(out, *el)
 			}
 		}

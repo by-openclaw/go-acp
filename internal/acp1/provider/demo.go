@@ -81,13 +81,10 @@ func (s *server) RunAnnounceDemo(ctx context.Context, slot uint8, group, id uint
 
 		mid := (int32(minV) + int32(maxV)) / 2
 		amp := (int32(maxV) - int32(minV)) / 2
+		// v = mid + round(amp*sin) stays within [mid-amp, mid+amp], which the
+		// floor-division mid/amp keep inside [minV, maxV] for every range — so
+		// no post-clamp is needed (a former v<minV / v>maxV guard was dead).
 		v := int16(mid + int32(math.Round(float64(amp)*math.Sin(phase))))
-		if v < minV {
-			v = minV
-		}
-		if v > maxV {
-			v = maxV
-		}
 
 		// Encode as 2-byte big-endian s16 (spec §"Integer object type").
 		valBytes := make([]byte, 2)

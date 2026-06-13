@@ -123,10 +123,7 @@ func TestDecodeNode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BER decode: %v", err)
 	}
-	el, err := decodeElement(tlv)
-	if err != nil {
-		t.Fatalf("Glow decode: %v", err)
-	}
+	el := decodeElement(tlv)
 	if el == nil || el.Node == nil {
 		t.Fatal("expected Node")
 	}
@@ -166,10 +163,7 @@ func TestDecodeParameter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BER decode: %v", err)
 	}
-	el, err := decodeElement(tlv)
-	if err != nil {
-		t.Fatalf("Glow decode: %v", err)
-	}
+	el := decodeElement(tlv)
 	if el == nil || el.Parameter == nil {
 		t.Fatal("expected Parameter")
 	}
@@ -207,10 +201,7 @@ func TestDecodeCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BER decode: %v", err)
 	}
-	el, err := decodeElement(tlv)
-	if err != nil {
-		t.Fatalf("Glow decode: %v", err)
-	}
+	el := decodeElement(tlv)
 	if el == nil || el.Command == nil {
 		t.Fatal("expected Command")
 	}
@@ -236,10 +227,7 @@ func TestDecodeInvocationResult_SuccessDefaultsTrue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BER decode: %v", err)
 	}
-	el, err := decodeInvocationResult(tlv)
-	if err != nil {
-		t.Fatalf("glow decode: %v", err)
-	}
+	el := decodeInvocationResult(tlv)
 	r := el.InvocationResult
 	if r.InvocationID != 7 {
 		t.Errorf("id: got %d, want 7", r.InvocationID)
@@ -263,10 +251,7 @@ func TestDecodeInvocationResult_SuccessFalseExplicit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BER decode: %v", err)
 	}
-	el, err := decodeInvocationResult(tlv)
-	if err != nil {
-		t.Fatalf("glow decode: %v", err)
-	}
+	el := decodeInvocationResult(tlv)
 	if el.InvocationResult.Success {
 		t.Error("explicit success=false should decode as false")
 	}
@@ -290,10 +275,7 @@ func TestDecodeInvocationResult_MultiValueTuple(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BER decode: %v", err)
 	}
-	el, err := decodeInvocationResult(tlv)
-	if err != nil {
-		t.Fatalf("glow decode: %v", err)
-	}
+	el := decodeInvocationResult(tlv)
 	got := el.InvocationResult.Result
 	if len(got) != 3 {
 		t.Fatalf("expected 3 tuple values, got %d: %v", len(got), got)
@@ -408,10 +390,7 @@ func TestDecodeStreamDescriptorOnParameter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BER decode: %v", err)
 	}
-	el, err := decodeElement(tlv)
-	if err != nil {
-		t.Fatalf("glow decode: %v", err)
-	}
+	el := decodeElement(tlv)
 	p := el.Parameter
 	if p.StreamIdentifier != 99 {
 		t.Errorf("streamIdentifier: got %d", p.StreamIdentifier)
@@ -507,10 +486,7 @@ func TestDecodeParameter_TemplateReference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BER decode: %v", err)
 	}
-	el, err := decodeElement(tlv)
-	if err != nil {
-		t.Fatalf("glow decode: %v", err)
-	}
+	el := decodeElement(tlv)
 	p := el.Parameter
 	if len(p.TemplateReference) != 3 || p.TemplateReference[2] != 2 {
 		t.Errorf("templateReference: got %v", p.TemplateReference)
