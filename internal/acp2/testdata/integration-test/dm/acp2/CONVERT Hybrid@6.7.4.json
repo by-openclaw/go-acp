@@ -1,0 +1,1256 @@
+{
+    "model":  "CONVERT Hybrid",
+    "sw_rev":  "6.7.4",
+    "protocol":  "acp2",
+    "objects":  [
+                    {
+                        "slot":  1,
+                        "path":  [
+                                     "ROOT-NODE-V2"
+                                 ],
+                        "id":  1,
+                        "meta":  {
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  0
+                                 },
+                        "label":  "ROOT-NODE-V2",
+                        "kind":  "raw",
+                        "access":  0,
+                        "value":  null
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "IDENTITY",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "IDENTITY"
+                                 ],
+                        "id":  10000,
+                        "meta":  {
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  0
+                                 },
+                        "label":  "IDENTITY",
+                        "kind":  "raw",
+                        "access":  0,
+                        "value":  null
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "IDENTITY",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "IDENTITY",
+                                     "Card Name"
+                                 ],
+                        "id":  2,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "Card Name",
+                        "kind":  "string",
+                        "access":  1,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "Q09OVkVSVCBIeWJyaWQA",
+                                      "str":  "CONVERT Hybrid"
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "IDENTITY",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "IDENTITY",
+                                     "User Label 1"
+                                 ],
+                        "id":  3,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "User Label 1",
+                        "kind":  "string",
+                        "access":  3,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "AA==",
+                                      "str":  ""
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "IDENTITY",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "IDENTITY",
+                                     "Card Description"
+                                 ],
+                        "id":  4,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "Card Description",
+                        "kind":  "string",
+                        "access":  1,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "TmV1cm9uIFByb2Nlc3NpbmcgTW9kdWxlAA==",
+                                      "str":  "Neuron Processing Module"
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "IDENTITY",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "IDENTITY",
+                                     "User Label 2"
+                                 ],
+                        "id":  10005,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "User Label 2",
+                        "kind":  "string",
+                        "access":  3,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "AA==",
+                                      "str":  ""
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "IDENTITY",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "IDENTITY",
+                                     "Product Version"
+                                 ],
+                        "id":  13673,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "Product Version",
+                        "kind":  "string",
+                        "access":  1,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "Ni43LjQA",
+                                      "str":  "6.7.4"
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "IDENTITY",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "IDENTITY",
+                                     "User Label 3"
+                                 ],
+                        "id":  15383,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "User Label 3",
+                        "kind":  "string",
+                        "access":  3,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "AA==",
+                                      "str":  ""
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "IDENTITY",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "IDENTITY",
+                                     "User Label 4"
+                                 ],
+                        "id":  15384,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "User Label 4",
+                        "kind":  "string",
+                        "access":  3,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "AA==",
+                                      "str":  ""
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL"
+                                 ],
+                        "id":  10009,
+                        "meta":  {
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  0
+                                 },
+                        "label":  "GENERAL",
+                        "kind":  "raw",
+                        "access":  0,
+                        "value":  null
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH"
+                                 ],
+                        "id":  16959,
+                        "meta":  {
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  0
+                                 },
+                        "label":  "BANDWIDTH",
+                        "kind":  "raw",
+                        "access":  0,
+                        "value":  null
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 1"
+                                 ],
+                        "id":  16960,
+                        "meta":  {
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  0
+                                 },
+                        "label":  "MAC 1",
+                        "kind":  "raw",
+                        "access":  0,
+                        "value":  null
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 1",
+                                     "Actual Rx"
+                                 ],
+                        "id":  16962,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  8,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Actual Rx",
+                        "unit":  "Gb/s",
+                        "kind":  "float",
+                        "access":  1,
+                        "min":  0,
+                        "max":  100,
+                        "step":  0.10000000149011612,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "float",
+                                      "raw":  "N3VZmg==",
+                                      "float":  0.00001462399995943997
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 1",
+                                     "Actual Tx"
+                                 ],
+                        "id":  16963,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  8,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Actual Tx",
+                        "unit":  "Gb/s",
+                        "kind":  "float",
+                        "access":  1,
+                        "min":  0,
+                        "max":  100,
+                        "step":  0.10000000149011612,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "float",
+                                      "raw":  "PlQI9w==",
+                                      "float":  0.20706544816493988
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 1",
+                                     "Expected Rx"
+                                 ],
+                        "id":  16964,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  8,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Expected Rx",
+                        "unit":  "Gb/s",
+                        "kind":  "float",
+                        "access":  1,
+                        "min":  0,
+                        "max":  100,
+                        "step":  0.10000000149011612,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "float",
+                                      "raw":  "AAAAAA==",
+                                      "float":  0
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 1",
+                                     "Expected Tx"
+                                 ],
+                        "id":  16965,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  8,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Expected Tx",
+                        "unit":  "Gb/s",
+                        "kind":  "float",
+                        "access":  1,
+                        "min":  0,
+                        "max":  100,
+                        "step":  0.10000000149011612,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "float",
+                                      "raw":  "Pk+eOA==",
+                                      "float":  0.2027519941329956
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 2"
+                                 ],
+                        "id":  16961,
+                        "meta":  {
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  0
+                                 },
+                        "label":  "MAC 2",
+                        "kind":  "raw",
+                        "access":  0,
+                        "value":  null
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 2",
+                                     "Actual Rx"
+                                 ],
+                        "id":  16967,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  8,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Actual Rx",
+                        "unit":  "Gb/s",
+                        "kind":  "float",
+                        "access":  1,
+                        "min":  0,
+                        "max":  100,
+                        "step":  0.10000000149011612,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "float",
+                                      "raw":  "N0f8Aw==",
+                                      "float":  0.000011920000360987615
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 2",
+                                     "Actual Tx"
+                                 ],
+                        "id":  16968,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  8,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Actual Tx",
+                        "unit":  "Gb/s",
+                        "kind":  "float",
+                        "access":  1,
+                        "min":  0,
+                        "max":  100,
+                        "step":  0.10000000149011612,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "float",
+                                      "raw":  "PlQIHw==",
+                                      "float":  0.207062229514122
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 2",
+                                     "Expected Rx"
+                                 ],
+                        "id":  16969,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  8,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Expected Rx",
+                        "unit":  "Gb/s",
+                        "kind":  "float",
+                        "access":  1,
+                        "min":  0,
+                        "max":  100,
+                        "step":  0.10000000149011612,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "float",
+                                      "raw":  "AAAAAA==",
+                                      "float":  0
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "MAC 2",
+                                     "Expected Tx"
+                                 ],
+                        "id":  16970,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  8,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Expected Tx",
+                        "unit":  "Gb/s",
+                        "kind":  "float",
+                        "access":  1,
+                        "min":  0,
+                        "max":  100,
+                        "step":  0.10000000149011612,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "float",
+                                      "raw":  "Pk+eOA==",
+                                      "float":  0.2027519941329956
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "BANDWIDTH",
+                                     "Monitoring"
+                                 ],
+                        "id":  16966,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "Monitoring",
+                        "kind":  "enum",
+                        "access":  3,
+                        "default":  8,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAACA==",
+                                      "enum":  8
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS"
+                                 ],
+                        "id":  23713,
+                        "meta":  {
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  0
+                                 },
+                        "label":  "NMOS",
+                        "kind":  "raw",
+                        "access":  0,
+                        "value":  null
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Registry Discovery Mode"
+                                 ],
+                        "id":  1053,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "Registry Discovery Mode",
+                        "kind":  "enum",
+                        "access":  3,
+                        "default":  247,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAA9w==",
+                                      "enum":  247
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Registry Discovery Status"
+                                 ],
+                        "id":  1054,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "Registry Discovery Status",
+                        "kind":  "enum",
+                        "access":  1,
+                        "default":  247,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAA9w==",
+                                      "enum":  247
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Registry Adress Override"
+                                 ],
+                        "id":  1055,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "Registry Adress Override",
+                        "kind":  "string",
+                        "access":  3,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "MTAuNDEuNjMuMTMxAA==",
+                                      "str":  "10.41.63.131"
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Registry Port Override"
+                                 ],
+                        "id":  1056,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  2,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Registry Port Override",
+                        "kind":  "int",
+                        "access":  3,
+                        "min":  1,
+                        "max":  65535,
+                        "step":  1,
+                        "default":  8080,
+                        "value":  {
+                                      "kind":  "int",
+                                      "raw":  "AAAfkA==",
+                                      "int":  8080
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Registry URL Status"
+                                 ],
+                        "id":  1057,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "Registry URL Status",
+                        "kind":  "string",
+                        "access":  1,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "aHR0cDovLzEwLjQxLjYzLjEzMTo4MDgwL3gtbm1vcy9yZWdpc3RyYXRpb24vdjEuMy8A",
+                                      "str":  "http://10.41.63.131:8080/x-nmos/registration/v1.3/"
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Label"
+                                 ],
+                        "id":  11811,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "Label",
+                        "kind":  "string",
+                        "access":  3,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "Ym0tbi1ubmJyZy10MDIA",
+                                      "str":  "bm-n-nnbrg-t02"
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Mode"
+                                 ],
+                        "id":  18692,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "Mode",
+                        "kind":  "enum",
+                        "access":  3,
+                        "default":  8,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAACA==",
+                                      "enum":  8
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "System URI"
+                                 ],
+                        "id":  23747,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "System URI",
+                        "kind":  "string",
+                        "access":  1,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "AA==",
+                                      "str":  ""
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "System UUID"
+                                 ],
+                        "id":  23748,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "System UUID",
+                        "kind":  "string",
+                        "access":  1,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "AA==",
+                                      "str":  ""
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Syslog V2 Hostname"
+                                 ],
+                        "id":  23749,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "Syslog V2 Hostname",
+                        "kind":  "string",
+                        "access":  1,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "AA==",
+                                      "str":  ""
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Syslog Hostname"
+                                 ],
+                        "id":  23750,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "Syslog Hostname",
+                        "kind":  "string",
+                        "access":  1,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "AA==",
+                                      "str":  ""
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "IS04 Heartbeat Interval"
+                                 ],
+                        "id":  23751,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  2,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "IS04 Heartbeat Interval",
+                        "kind":  "int",
+                        "access":  1,
+                        "min":  -2147483648,
+                        "max":  2147483647,
+                        "step":  1,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "int",
+                                      "raw":  "AAAAAA==",
+                                      "int":  0
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "PTP Announce RCPT Timeout"
+                                 ],
+                        "id":  23752,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  2,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "PTP Announce RCPT Timeout",
+                        "kind":  "int",
+                        "access":  1,
+                        "min":  -2147483648,
+                        "max":  2147483647,
+                        "step":  1,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "int",
+                                      "raw":  "AAAAAA==",
+                                      "int":  0
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "PTP Domain Number"
+                                 ],
+                        "id":  23753,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  2,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "PTP Domain Number",
+                        "kind":  "int",
+                        "access":  1,
+                        "min":  0,
+                        "max":  255,
+                        "step":  1,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "int",
+                                      "raw":  "AAAAAA==",
+                                      "int":  0
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Syslog V2 Port"
+                                 ],
+                        "id":  23754,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  2,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Syslog V2 Port",
+                        "kind":  "int",
+                        "access":  1,
+                        "min":  0,
+                        "max":  65535,
+                        "step":  1,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "int",
+                                      "raw":  "AAAAAA==",
+                                      "int":  0
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Syslog Port"
+                                 ],
+                        "id":  23755,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  2,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Syslog Port",
+                        "kind":  "int",
+                        "access":  1,
+                        "min":  0,
+                        "max":  65535,
+                        "step":  1,
+                        "default":  0,
+                        "value":  {
+                                      "kind":  "int",
+                                      "raw":  "AAAAAA==",
+                                      "int":  0
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Apply System API -IS-09-"
+                                 ],
+                        "id":  23756,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "Apply System API -IS-09-",
+                        "kind":  "enum",
+                        "access":  3,
+                        "default":  7,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAABw==",
+                                      "enum":  7
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "System API -IS-09- Discovered"
+                                 ],
+                        "id":  24015,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "System API -IS-09- Discovered",
+                        "kind":  "enum",
+                        "access":  1,
+                        "default":  16,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAAEA==",
+                                      "enum":  16
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "SDP Path"
+                                 ],
+                        "id":  25848,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "SDP Path",
+                        "kind":  "enum",
+                        "access":  3,
+                        "default":  136,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAAiA==",
+                                      "enum":  136
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "NMOS",
+                                     "Description"
+                                 ],
+                        "id":  35760,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  5
+                                 },
+                        "label":  "Description",
+                        "kind":  "string",
+                        "access":  3,
+                        "max_len":  256,
+                        "value":  {
+                                      "kind":  "string",
+                                      "raw":  "AA==",
+                                      "str":  ""
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "PATTERN GENERATOR"
+                                 ],
+                        "id":  41898,
+                        "meta":  {
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  0
+                                 },
+                        "label":  "PATTERN GENERATOR",
+                        "kind":  "raw",
+                        "access":  0,
+                        "value":  null
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "PATTERN GENERATOR",
+                                     "Pattern Generator"
+                                 ],
+                        "id":  11523,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "Pattern Generator",
+                        "kind":  "enum",
+                        "access":  3,
+                        "default":  142,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAAjg==",
+                                      "enum":  142
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "PATTERN GENERATOR",
+                                     "Border Size"
+                                 ],
+                        "id":  15610,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  2,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Border Size",
+                        "unit":  "px",
+                        "kind":  "int",
+                        "access":  3,
+                        "min":  2,
+                        "max":  10,
+                        "step":  1,
+                        "default":  5,
+                        "value":  {
+                                      "kind":  "int",
+                                      "raw":  "AAAABQ==",
+                                      "int":  5
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "PATTERN GENERATOR",
+                                     "Border Enable"
+                                 ],
+                        "id":  16477,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "Border Enable",
+                        "kind":  "enum",
+                        "access":  3,
+                        "default":  7,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAABw==",
+                                      "enum":  7
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "PATTERN GENERATOR",
+                                     "Video Format"
+                                 ],
+                        "id":  23688,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "Video Format",
+                        "kind":  "enum",
+                        "access":  3,
+                        "default":  31,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAAHw==",
+                                      "enum":  31
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "PATTERN GENERATOR",
+                                     "Border Color"
+                                 ],
+                        "id":  41899,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  0,
+                                     "acp2.objType":  2
+                                 },
+                        "label":  "Border Color",
+                        "kind":  "enum",
+                        "access":  3,
+                        "default":  75,
+                        "value":  {
+                                      "kind":  "enum",
+                                      "raw":  "AAAASw==",
+                                      "enum":  75
+                                  }
+                    },
+                    {
+                        "slot":  1,
+                        "group":  "GENERAL",
+                        "path":  [
+                                     "ROOT-NODE-V2",
+                                     "GENERAL",
+                                     "PATTERN GENERATOR",
+                                     "Zoneplate Speed"
+                                 ],
+                        "id":  41900,
+                        "meta":  {
+                                     "acp2.announceDelay":  0,
+                                     "acp2.numType":  2,
+                                     "acp2.objType":  3
+                                 },
+                        "label":  "Zoneplate Speed",
+                        "kind":  "int",
+                        "access":  3,
+                        "min":  0,
+                        "max":  15,
+                        "step":  1,
+                        "default":  5,
+                        "value":  {
+                                      "kind":  "int",
+                                      "raw":  "AAAABQ==",
+                                      "int":  5
+                                  }
+                    }
+                ]
+}

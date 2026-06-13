@@ -1,0 +1,1141 @@
+{
+  "model": "RRS18",
+  "sw_rev": "1601",
+  "protocol": "acp1",
+  "objects": [
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Card name",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "RRS18"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "User label",
+      "kind": "string",
+      "access": 7,
+      "value": {
+        "kind": "string",
+        "str": "Synapse Simulator"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Card description",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "Virtual Rack Controller"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Software rev",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "1601"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Hardware rev",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "0100"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Product code",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "9410070001"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 6,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Serial number",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "001633"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 7,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Card ID",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "71ef060a00000000"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "IP_Conf",
+      "kind": "enum",
+      "access": 7,
+      "default": 1,
+      "enum_items": [
+        "Manual",
+        "DHCP"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "DHCP",
+        "enum": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "mIP",
+      "kind": "ipaddr",
+      "access": 7,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "mNM",
+      "kind": "ipaddr",
+      "access": 7,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "mGW",
+      "kind": "ipaddr",
+      "access": 7,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Broadcasts",
+      "kind": "enum",
+      "access": 7,
+      "default": 1,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "On",
+        "enum": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Forwarding",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 6,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "FW",
+      "kind": "ipaddr",
+      "access": 7,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 7,
+      "meta": {
+        "acp1_type": 10
+      },
+      "label": "NetwPrefix",
+      "unit": "bits",
+      "kind": "uint",
+      "access": 7,
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "uint": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 8,
+      "meta": {
+        "acp1_type": 10
+      },
+      "label": "ErrorThreshold",
+      "kind": "uint",
+      "access": 7,
+      "min": 0,
+      "max": 255,
+      "step": 1,
+      "default": 10,
+      "value": {
+        "kind": "uint",
+        "uint": 10
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 9,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Redund_Pwr_Test",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 10,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Trap-Dest_0",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 11,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "TD_0",
+      "kind": "ipaddr",
+      "access": 7,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 12,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Trap-Dest_1",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 13,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "TD_1",
+      "kind": "ipaddr",
+      "access": 7,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "IP_Addr",
+      "kind": "enum",
+      "access": 1,
+      "default": 1,
+      "enum_items": [
+        "Manual",
+        "DHCP-Asking",
+        "DHCP-Leased",
+        "DHCP-Infin."
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "DHCP-Asking",
+        "enum": 1
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "IP",
+      "kind": "ipaddr",
+      "access": 1,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "NM",
+      "kind": "ipaddr",
+      "access": 1,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "GW",
+      "kind": "ipaddr",
+      "access": 1,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "PSU_Top",
+      "kind": "enum",
+      "access": 1,
+      "default": 1,
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "OK",
+        "enum": 1
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "PSU_Bottom",
+      "kind": "enum",
+      "access": 1,
+      "default": 1,
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "OK",
+        "enum": 1
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 6,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "Temp_Left",
+      "unit": "deg.",
+      "kind": "int",
+      "access": 1,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 24,
+      "value": {
+        "kind": "int",
+        "int": 24
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 7,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "Temp_Right",
+      "unit": "deg.",
+      "kind": "int",
+      "access": 1,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 27,
+      "value": {
+        "kind": "int",
+        "int": 27
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 8,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "SPF_Progress",
+      "unit": "%",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 9,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "SPF_Status",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "Idle",
+        "Busy",
+        "Done",
+        "Error"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Idle",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 10,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "Rx_Packet_Loss",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 32767,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 11,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Redund_Ref_Pwr",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 12,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S0",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "RRS18v16   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 13,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S1",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "CDV08v06   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 14,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S2",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "ASV10v12   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 15,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S3",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "ADC24v07   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 16,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S4",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "ADC24v07   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 17,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S5",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "ASM10v03   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 18,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S6",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "ADC24v07   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 19,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S7",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "ADC24v07   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 20,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S8",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "SDR08v05   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 21,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S9",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "SIM21v04   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 22,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S10",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "SAM08v07   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 23,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S11",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "DAC24v04   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 24,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S12",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "AAD08v02   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 25,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S13",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "AAD08v04   "
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 26,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S14",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "empty"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 27,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S15",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "empty"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 28,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S16",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "empty"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 29,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S17",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "empty"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 30,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MIB_S18",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "HQW09v22   "
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Announcements",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "PSU_T",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "PSU_B",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Temperature",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Ref_Backup",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Card-Presence",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    }
+  ]
+}

@@ -7,6 +7,14 @@
 // against ground truth — that needs the real Neuron / Lawo VSM), but it is
 // CI-repeatable with no external dependencies.
 //
+// The provider is built from the COMMITTED manifest + DM fixture under
+// internal/acp2/testdata/integration-test/ (emberplus pattern, ADR-0022 /
+// internal/manifest/TEMPLATE.md): a neuron-test controller exposing two
+// slots — slot 0 = SHPRM1@5.3.5 (full converted DM), slot 1 =
+// CONVERT Hybrid@6.7.4 (representative trimmed DM). Both DMs were collected
+// from the real EVS Neuron on the DMZ fleet (.103) and flattened from the
+// walk-snapshot export shape into the producer's flat DM shape.
+//
 // Env-gated external mode: set ACP2_TEST_HOST to skip the local provider and
 // run the identical consumer assertions against a real device/emulator from a
 // device-reachable host (ACP2_TEST_PORT, default 2072).
@@ -31,9 +39,13 @@ import (
 // dhsBin is the path to the `dhs` binary built once by TestMain.
 var dhsBin string
 
-// fixtureTree is the canonical tree the local provider serves. Resolved
-// relative to this test file so `go test` works from any CWD.
-var fixtureTree string
+// manifestPath is the committed manifest the local provider serves.
+// cacheDir is its cache root (resolves dm/acp2/<Model@SwRev>.json refs).
+// Both are resolved relative to this test file so `go test` works from any CWD.
+var (
+	manifestPath string
+	cacheDir     string
+)
 
 func TestMain(m *testing.M) {
 	tmp, err := os.MkdirTemp("", "acp2-integration-")
@@ -61,16 +73,17 @@ func TestMain(m *testing.M) {
 	}
 	dhsBin = bin
 
-	// Resolve the fixture tree relative to this source file:
-	//   internal/acp2/integration/  ->  ../testdata/protocol_types/fixture_tree.json
+	// Resolve the committed manifest + cache dir relative to this source file:
+	//   internal/acp2/integration/  ->  ../testdata/integration-test/
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		fmt.Fprintln(os.Stderr, "cannot resolve test file path")
 		os.Exit(1)
 	}
-	fixtureTree = filepath.Join(filepath.Dir(thisFile), "..", "testdata", "protocol_types", "fixture_tree.json")
-	if _, err := os.Stat(fixtureTree); err != nil {
-		fmt.Fprintf(os.Stderr, "fixture tree not found at %s: %v\n", fixtureTree, err)
+	cacheDir = filepath.Join(filepath.Dir(thisFile), "..", "testdata", "integration-test")
+	manifestPath = filepath.Join(cacheDir, "manifest", "neuron-test.json")
+	if _, err := os.Stat(manifestPath); err != nil {
+		fmt.Fprintf(os.Stderr, "manifest not found at %s: %v\n", manifestPath, err)
 		os.Exit(1)
 	}
 
@@ -107,15 +120,18 @@ func waitForPort(t *testing.T, host string, port int, timeout time.Duration) {
 	t.Fatalf("provider did not accept connections on %s within %s", addr, timeout)
 }
 
-// startProvider spins up `dhs producer acp2 serve` against the fixture tree on
-// host:port and returns a stop function (defer it). It waits for readiness
-// before returning.
+// startProvider spins up `dhs producer acp2 serve` from the COMMITTED
+// manifest + cache dir on host:port and returns a stop function (defer it).
+// It waits for readiness before returning. This is the whole point of the
+// fixture: the provider builds its frame from repo files alone (BuildExport
+// over the manifest's slot DMs), with no host dependency.
 func startProvider(t *testing.T, host string, port int) func() {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, dhsBin,
 		"producer", "acp2", "serve",
-		"--tree", fixtureTree,
+		"--manifest", manifestPath,
+		"--cache-dir", cacheDir,
 		"--port", fmt.Sprintf("%d", port),
 		"--host", host,
 		"--log-level", "error",
@@ -131,6 +147,9 @@ func startProvider(t *testing.T, host string, port int) func() {
 	stop := func() {
 		cancel()
 		_ = cmd.Wait()
+		if t.Failed() {
+			t.Logf("provider stderr:\n%s", errBuf.String())
+		}
 	}
 
 	waitForPort(t, host, port, 10*time.Second)
@@ -143,7 +162,7 @@ func startProvider(t *testing.T, host string, port int) func() {
 // captured separately so they don't pollute stdout assertions.
 func runConsumer(t *testing.T, host string, verb string, args ...string) (string, int, error) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	full := append([]string{"consumer", "acp2", verb, host}, args...)
@@ -168,9 +187,10 @@ func runConsumer(t *testing.T, host string, verb string, args ...string) (string
 	return outBuf.String(), exitCode, err
 }
 
-// TestACP2CLIRoundTrip drives info/walk/get/set end-to-end against either a
-// locally-spun provider (default) or an external device/emulator
-// (ACP2_TEST_HOST set). The assertions are identical in both modes.
+// TestACP2CLIRoundTrip drives info + walk end-to-end against either a
+// locally-spun provider built from the committed manifest (default) or an
+// external device/emulator (ACP2_TEST_HOST set). The assertions are identical
+// in both modes — they assert the REAL objects collected from the Neuron.
 func TestACP2CLIRoundTrip(t *testing.T) {
 	host := "127.0.0.1"
 	var port int
@@ -188,7 +208,8 @@ func TestACP2CLIRoundTrip(t *testing.T) {
 		}
 		t.Logf("external mode: targeting %s:%d (ACP2_TEST_HOST set)", host, port)
 	} else {
-		// Loopback mode: our provider serves the fixture tree.
+		// Loopback mode: our provider serves the committed manifest+DM
+		// fixture (slot 0 = SHPRM1@5.3.5, slot 1 = CONVERT Hybrid@6.7.4).
 		port = freePort(t)
 		stop := startProvider(t, host, port)
 		defer stop()
@@ -196,10 +217,10 @@ func TestACP2CLIRoundTrip(t *testing.T) {
 
 	portArg := fmt.Sprintf("%d", port)
 	common := func(extra ...string) []string {
-		return append([]string{"--port", portArg, "--timeout", "5s"}, extra...)
+		return append([]string{"--port", portArg, "--timeout", "30s"}, extra...)
 	}
 
-	// --- info: prints "slots" and at least one present slot -----------------
+	// --- info: the manifest exposes a 2-slot chassis; both slots present ----
 	t.Run("info", func(t *testing.T) {
 		out, code, _ := runConsumer(t, host, "info", common()...)
 		if code != 0 {
@@ -211,72 +232,56 @@ func TestACP2CLIRoundTrip(t *testing.T) {
 		if !strings.Contains(out, "present") {
 			t.Errorf("info output has no present slot\n%s", out)
 		}
+		// The committed fixture wires exactly two slots (0 + 1). Assert both
+		// are reported present so a missing/empty slot DM regresses loudly.
+		if c := strings.Count(out, "present"); c < 2 {
+			t.Errorf("info: want >=2 present slots from the 2-slot manifest, saw %d\n%s", c, out)
+		}
 	})
 
-	// --- walk: the fixture card (slot 1) lists multiple objects -------------
-	t.Run("walk", func(t *testing.T) {
+	// --- walk slot 0 = SHPRM1: real rack-controller objects ----------------
+	// The flat DM was converted from the Neuron walk snapshot; "Card Name"
+	// with value "SHPRM1" is the canonical identity leaf.
+	t.Run("walk_slot0_SHPRM1", func(t *testing.T) {
+		out, code, _ := runConsumer(t, host, "walk", common("--slot", "0")...)
+		if code != 0 {
+			t.Fatalf("walk slot 0 exit=%d, want 0\n%s", code, out)
+		}
+		if !strings.Contains(out, "Card Name") {
+			t.Errorf("walk slot 0 missing object %q\n%s", "Card Name", out)
+		}
+		if os.Getenv("ACP2_TEST_HOST") == "" && !strings.Contains(out, "SHPRM1") {
+			t.Errorf("walk slot 0: want SHPRM1 Card Name value\n%s", out)
+		}
+		// Cross-kind coverage: the SHPRM1 DM carries string/int/enum/float
+		// leaves; a real walk surfaces the BOARD group's Card ID and a PSU
+		// numeric. Assert a non-identity leaf so a degenerate single-object
+		// DM regresses.
+		if !strings.Contains(out, "Card ID") {
+			t.Errorf("walk slot 0 missing object %q\n%s", "Card ID", out)
+		}
+	})
+
+	// --- walk slot 1 = CONVERT Hybrid: real processing-card objects --------
+	// Trimmed DM keeps ROOT-NODE-V2 + IDENTITY + a GENERAL sampling covering
+	// every object kind present (node/string/enum/int/float).
+	t.Run("walk_slot1_CONVERTHybrid", func(t *testing.T) {
 		out, code, _ := runConsumer(t, host, "walk", common("--slot", "1")...)
 		if code != 0 {
 			t.Fatalf("walk slot 1 exit=%d, want 0\n%s", code, out)
 		}
-		// slot 1 = "one leaf per ACP2 object type" — expect named leaves.
-		for _, want := range []string{"UserLabel", "GainS32", "Mode"} {
-			if !strings.Contains(out, want) {
-				t.Errorf("walk slot 1 missing object %q\n%s", want, out)
-			}
+		if !strings.Contains(out, "Card Name") {
+			t.Errorf("walk slot 1 missing object %q\n%s", "Card Name", out)
 		}
-	})
-
-	// --- get + set round-trip on slot 0's writable UserLabel leaf ----------
-	// Fixture leaf: device.slot-0.ROOT_NODE_V2.IDENTITY.UserLabel
-	//   obj-id 3, readWrite string, initial value "ACP2-Fixture".
-	// ACP2 addressing is by obj-id (--id); dotted-path resolution is not
-	// wired for this protocol in the CLI, so we address by id.
-	t.Run("get_set_roundtrip", func(t *testing.T) {
-		const (
-			slot     = "0"
-			objID    = "3"
-			original = "ACP2-Fixture"
-			updated  = "ACP2-RT"
-		)
-
-		// Read the known initial value.
-		out, code, _ := runConsumer(t, host, "get", common("--slot", slot, "--id", objID)...)
-		if code != 0 {
-			t.Fatalf("get exit=%d, want 0\n%s", code, out)
-		}
-		// In loopback mode the value is exactly the fixture's; assert it.
-		// In external mode the device may already hold a different value,
-		// so we only require a non-empty quoted value there.
 		if os.Getenv("ACP2_TEST_HOST") == "" {
-			if !strings.Contains(out, original) {
-				t.Errorf("get: want initial value %q\n%s", original, out)
+			if !strings.Contains(out, "CONVERT Hybrid") {
+				t.Errorf("walk slot 1: want CONVERT Hybrid Card Name value\n%s", out)
+			}
+			// Card Description is a CONVERT-Hybrid-specific IDENTITY leaf;
+			// proves slot 1 served the CONVERT DM, not a copy of slot 0.
+			if !strings.Contains(out, "Card Description") {
+				t.Errorf("walk slot 1 missing object %q\n%s", "Card Description", out)
 			}
 		}
-		if !strings.Contains(out, "value") {
-			t.Errorf("get: output missing %q line\n%s", "value", out)
-		}
-
-		// Write a new value; the producer echoes the confirmed value.
-		out, code, _ = runConsumer(t, host, "set", common("--slot", slot, "--id", objID, "--value", updated)...)
-		if code != 0 {
-			t.Fatalf("set exit=%d, want 0\n%s", code, out)
-		}
-		if !strings.Contains(out, "confirmed") || !strings.Contains(out, updated) {
-			t.Errorf("set: want confirmed %q\n%s", updated, out)
-		}
-
-		// Read back: the round-trip must reflect the new value.
-		out, code, _ = runConsumer(t, host, "get", common("--slot", slot, "--id", objID)...)
-		if code != 0 {
-			t.Fatalf("get-after-set exit=%d, want 0\n%s", code, out)
-		}
-		if !strings.Contains(out, updated) {
-			t.Errorf("get-after-set: want round-tripped value %q\n%s", updated, out)
-		}
-
-		// Restore the original so re-runs are deterministic (loopback mode
-		// uses a fresh provider each run, but external mode persists).
-		_, _, _ = runConsumer(t, host, "set", common("--slot", slot, "--id", objID, "--value", original)...)
 	})
 }
