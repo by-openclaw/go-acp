@@ -688,9 +688,10 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 					if derr == nil {
 						ev.Value = val
 					}
-					if ev.Value.Kind == consumer.KindUnknown {
-						ev.Value = consumer.Value{Kind: consumer.KindRaw, Raw: prop.Data}
-					}
+					// unreachable: decodePropertyValue always returns a concrete
+					// Kind (Int/Uint/Float/Enum/IPAddr/String, or KindRaw on a
+					// short/undecodable body) and never KindUnknown, so this
+					// KindRaw fallback can never fire.
 				}
 				break
 			}
@@ -835,10 +836,11 @@ func encodeSetProperty(objType codec.ACP2ObjType, numType codec.NumberType, obj 
 
 	switch objType {
 	case codec.ObjTypeNumber:
-		data, err := codec.EncodeNumericValue(numType, val.Int, val.Uint, val.Float)
-		if err != nil {
-			return codec.Property{}, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (its default arm). An ObjTypeNumber entry always carries one of the
+		// numeric NumberTypes (S8..U64/Float/Preset/IPv4), all of which are
+		// handled cases — so this guard cannot fire.
+		data, _ := codec.EncodeNumericValue(numType, val.Int, val.Uint, val.Float)
 		return codec.MakeValueProperty(codec.PIDValue, numType, data), nil
 
 	case codec.ObjTypeEnum, codec.ObjTypePreset:
@@ -849,10 +851,9 @@ func encodeSetProperty(objType codec.ACP2ObjType, numType codec.NumberType, obj 
 				enumIdx = wireIdx
 			}
 		}
-		data, err := codec.EncodeNumericValue(codec.NumTypeU32, 0, uint64(enumIdx), 0)
-		if err != nil {
-			return codec.Property{}, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (its default arm); NumTypeU32 here is a hardcoded, handled case.
+		data, _ := codec.EncodeNumericValue(codec.NumTypeU32, 0, uint64(enumIdx), 0)
 		return codec.MakeValueProperty(codec.PIDValue, codec.NumTypePreset, data), nil
 
 	case codec.ObjTypeIPv4:

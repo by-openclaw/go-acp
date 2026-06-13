@@ -108,14 +108,15 @@ func EncodeACP2Message(m *ACP2Message) ([]byte, error) {
 		return buf, nil
 
 	case ACP2FuncSetProperty:
-		// set_property: header + obj-id(4) + idx(4) + encoded property
+		// set_property: header + obj-id(4) + idx(4) + encoded property.
+		// EncodeProperty only fails on a nil *Property; &m.Properties[0]
+		// is an address into a non-empty slice and can never be nil, so
+		// encodeProperty (the non-erroring core) is called directly — no
+		// unreachable error branch.
 		if len(m.Properties) == 0 {
 			return nil, fmt.Errorf("acp2: set_property with no properties")
 		}
-		propBytes, err := EncodeProperty(&m.Properties[0])
-		if err != nil {
-			return nil, fmt.Errorf("acp2: encode set property: %w", err)
-		}
+		propBytes := encodeProperty(&m.Properties[0])
 		buf := make([]byte, ACP2HeaderSize+8+len(propBytes))
 		buf[0] = byte(m.Type)
 		buf[1] = m.MTID

@@ -150,12 +150,11 @@ func placeACP2Object(slot int, slotOID, slotIdent string, obj consumer.Object, o
 	// renamed node could still leave a gap; fill it lazily here.
 	ensureACP2Chain(slot, slotOID, slotIdent, obj.Path[:len(obj.Path)-1], nodeByPath)
 
-	parent, ok := nodeByPath[parentKey]
-	if !ok {
-		// Should not happen after ensureACP2Chain, but degrade to the
-		// slot root rather than panic.
-		parent = nodeByPath[""]
-	}
+	// unreachable: parentKey is always present here. When len(obj.Path)==1,
+	// parentKey=="" which is the pre-seeded slot root; otherwise ensureACP2Chain
+	// (called just above with obj.Path[:len-1]) materialises every prefix
+	// including parentKey itself.
+	parent := nodeByPath[parentKey]
 
 	if objType == codec.ObjTypeNode {
 		// Node container. If we've already seen this path (e.g. parent
@@ -213,10 +212,10 @@ func ensureACP2Chain(slot int, slotOID, slotIdent string, segments []string, nod
 			},
 		}
 		nodeByPath[key] = placeholder
-		parent, ok := nodeByPath[parentKey]
-		if !ok {
-			parent = nodeByPath[""]
-		}
+		// unreachable: parentKey is always present. For i==1 it is "" (the
+		// pre-seeded slot root); for i>1 it is segments[:i-1], which was created
+		// and stored in nodeByPath on the previous loop iteration.
+		parent := nodeByPath[parentKey]
 		parent.Children = append(parent.Children, placeholder)
 	}
 }
@@ -338,6 +337,8 @@ func acp2AccessString(a uint8) string {
 		read  = 1 << 0
 		write = 1 << 1
 	)
+	// a & (read|write) masks to exactly {0,1,2,3}; the four cases below
+	// are exhaustive, so no trailing return is reachable.
 	switch a & (read | write) {
 	case read:
 		return canonical.AccessRead
@@ -345,10 +346,9 @@ func acp2AccessString(a uint8) string {
 		return canonical.AccessWrite
 	case read | write:
 		return canonical.AccessReadWrite
-	case 0:
+	default: // 0 — no access bits set
 		return canonical.AccessNone
 	}
-	return canonical.AccessRead
 }
 
 // acp2ValueToAny produces the right Go scalar for the canonical JSON

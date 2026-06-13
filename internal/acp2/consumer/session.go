@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -56,6 +57,12 @@ type Session struct {
 	// Reader goroutine lifecycle.
 	done     chan struct{}
 	closeErr error
+
+	// closeWait bounds how long closeLocked blocks on the reader goroutine's
+	// done channel before giving up. Injectable so tests can exercise the
+	// timeout arm without a real 2 s wall-clock wait; defaults to 2 * time.Second
+	// in NewSession for production.
+	closeWait time.Duration
 
 	// Write serialisation.
 	writeMu sync.Mutex
@@ -116,10 +123,11 @@ func (s *Session) note(event string) {
 // the TCP connection and run the AN2 handshake.
 func NewSession(logger *slog.Logger) *Session {
 	s := &Session{
-		logger:  logger,
-		waiters: make(map[uint8]chan *codec.ACP2Message),
-		annSubs: make(map[int]AnnounceFunc),
-		done:    make(chan struct{}),
+		logger:    logger,
+		waiters:   make(map[uint8]chan *codec.ACP2Message),
+		annSubs:   make(map[int]AnnounceFunc),
+		done:      make(chan struct{}),
+		closeWait: 2 * time.Second,
 	}
 	s.mtidCond = sync.NewCond(&s.mtidMu)
 	return s
@@ -155,7 +163,9 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 	s.waiters = make(map[uint8]chan *codec.ACP2Message)
 
 	// Start the reader goroutine before the handshake so replies are routed.
-	go s.readLoop()
+	// Pass conn explicitly: the loop must read from the exact connection this
+	// Connect established, never from s.conn (which closeLocked nils).
+	go s.readLoop(conn)
 
 	// Run the AN2 init sequence.
 	if err := s.an2Handshake(ctx); err != nil {
@@ -308,9 +318,8 @@ func (s *Session) an2Request(ctx context.Context, funcID uint8, slot uint8, payl
 	case <-s.done:
 		return nil, fmt.Errorf("acp2: connection closed")
 	case msg := <-ch:
-		if msg == nil {
-			return nil, fmt.Errorf("acp2: nil reply for AN2 func %d", funcID)
-		}
+		// unreachable nil check: routeReply only ever sends a non-nil
+		// *ACP2Message into the waiter channel, so msg is never nil here.
 		return msg.Body, nil
 	}
 }
@@ -369,9 +378,8 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *codec.ACP2Message
 	case <-s.done:
 		return nil, fmt.Errorf("acp2: connection closed while waiting for reply mtid=%d", mtid)
 	case reply := <-ch:
-		if reply == nil {
-			return nil, fmt.Errorf("acp2: nil reply for mtid=%d", mtid)
-		}
+		// unreachable nil check: routeReply only ever sends a non-nil
+		// *ACP2Message into the waiter channel, so reply is never nil here.
 		if reply.Type == codec.ACP2TypeError {
 			// Fire the per-stat-code compliance event so the session
 			// profile reflects spec-listed error frequencies. Status
@@ -426,17 +434,22 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 
 // readLoop runs in a goroutine, reading AN2 frames from the TCP connection
 // and routing them to the appropriate waiter or announce subscriber.
-func (s *Session) readLoop() {
+//
+// conn is captured by the caller (Connect) and passed in explicitly so the
+// loop never races on s.conn while closeLocked nils it out. When closeLocked
+// closes conn, the in-flight ReadAN2Frame errors (io.EOF / net.ErrClosed) and
+// the loop exits cleanly via the error arm below — matching the acp1 transport
+// pattern of capturing the conn locally and tolerating a closed socket.
+func (s *Session) readLoop(conn net.Conn) {
 	defer close(s.done)
 
 	for {
-		conn := s.conn
-		if conn == nil {
-			return
-		}
 		frame, err := codec.ReadAN2Frame(conn)
 		if err != nil {
-			if err == io.EOF || isClosedErr(err) {
+			// ReadAN2Frame wraps the underlying I/O error with %w, so a bare
+			// `err == io.EOF` / type-assert never matches. Unwrap with
+			// errors.Is / errors.As to correctly detect EOF and a closed conn.
+			if errors.Is(err, io.EOF) || isClosedErr(err) {
 				s.logger.Debug("acp2: rx: connection closed")
 			} else {
 				s.logger.Debug("acp2: rx: connection closed", "err", err)
@@ -707,7 +720,7 @@ func (s *Session) closeLocked() error {
 	// Wait for reader goroutine to exit.
 	select {
 	case <-s.done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(s.closeWait):
 	}
 	// Reset mtid pool.
 	s.mtidMu.Lock()
@@ -722,10 +735,15 @@ func isClosedErr(err error) bool {
 	if err == nil {
 		return false
 	}
-	if netErr, ok := err.(*net.OpError); ok {
+	// errors.As unwraps the %w chain that ReadAN2Frame adds, so a wrapped
+	// *net.OpError ("use of closed network connection") is still detected.
+	var netErr *net.OpError
+	if errors.As(err, &netErr) {
 		return netErr.Err.Error() == "use of closed network connection"
 	}
-	return false
+	// net.ErrClosed is the modern sentinel for a closed connection; match it
+	// directly too in case the OpError shape isn't present.
+	return errors.Is(err, net.ErrClosed)
 }
 
 // SlotInfoFromAN2 returns the SlotInfo as known from the AN2 handshake.

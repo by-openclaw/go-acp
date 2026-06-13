@@ -178,9 +178,23 @@ func TestEncodeNumericProp_AllTypes(t *testing.T) {
 	if _, err := encodeNumericProp(codec.PIDValue, codec.NumberType(99), 0); err == nil {
 		t.Error("encodeNumericProp(bad nt) expected error")
 	}
-	// wrong value type for a signed slot → error
-	if _, err := encodeNumericProp(codec.PIDValue, codec.NumTypeS32, "not-num"); err == nil {
-		t.Error("encodeNumericProp(s32,bad) expected error")
+	// wrong value type for each numeric class → coercion error path
+	// (asInt64 / asUint64 / asFloat64 failure return inside encodeNumericProp).
+	badValueCases := []codec.NumberType{
+		codec.NumTypeS32,   // asInt64 fail (signed 32-bit case)
+		codec.NumTypeS64,   // asInt64 fail (signed 64-bit case)
+		codec.NumTypeU32,   // asUint64 fail (unsigned/preset case)
+		codec.NumTypeU64,   // asUint64 fail (u64 case)
+		codec.NumTypeFloat, // asFloat64 fail (float case)
+	}
+	for _, nt := range badValueCases {
+		if _, err := encodeNumericProp(codec.PIDValue, nt, "not-num"); err == nil {
+			t.Errorf("encodeNumericProp(%d,bad) expected error", nt)
+		}
+	}
+	// invalid dotted-quad for an ipv4 slot → ipv4Uint32 error path.
+	if _, err := encodeNumericProp(codec.PIDValue, codec.NumTypeIPv4, "not-an-ip"); err == nil {
+		t.Error("encodeNumericProp(ipv4,bad) expected error")
 	}
 }
 

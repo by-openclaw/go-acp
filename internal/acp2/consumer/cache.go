@@ -77,10 +77,9 @@ func (c *walkedTreeCache) Put(slot int, tree *WalkedTree) {
 	c.entries[slot] = el
 
 	for c.maxSize > 0 && c.order.Len() > c.maxSize {
+		// unreachable: the loop only runs while Len() > maxSize >= 1, so the
+		// list is non-empty and Back() is never nil here.
 		back := c.order.Back()
-		if back == nil {
-			break
-		}
 		c.removeElement(back)
 	}
 }

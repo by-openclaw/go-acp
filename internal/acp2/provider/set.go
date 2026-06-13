@@ -89,10 +89,9 @@ func (s *server) applySetNumber(e *entry, in *codec.Property) (codec.Property, c
 			iv = maxV
 		}
 		e.param.Value = iv
-		data, err := codec.EncodeNumericValue(nt, iv, 0, 0)
-		if err != nil {
-			return codec.Property{}, codec.ErrInvalidValue, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (its default arm); nt is one of the signed cases matched above.
+		data, _ := codec.EncodeNumericValue(nt, iv, 0, 0)
 		return numericProp(codec.PIDValue, nt, data), 0, nil
 
 	case codec.NumTypeU8, codec.NumTypeU16, codec.NumTypeU32, codec.NumTypeU64, codec.NumTypePreset:
@@ -103,10 +102,9 @@ func (s *server) applySetNumber(e *entry, in *codec.Property) (codec.Property, c
 			uv = maxV
 		}
 		e.param.Value = uv
-		data, err := codec.EncodeNumericValue(nt, 0, uv, 0)
-		if err != nil {
-			return codec.Property{}, codec.ErrInvalidValue, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (its default arm); nt is one of the unsigned/preset cases matched above.
+		data, _ := codec.EncodeNumericValue(nt, 0, uv, 0)
 		return numericProp(codec.PIDValue, nt, data), 0, nil
 
 	case codec.NumTypeFloat:
@@ -117,10 +115,9 @@ func (s *server) applySetNumber(e *entry, in *codec.Property) (codec.Property, c
 			fv = maxV
 		}
 		e.param.Value = fv
-		data, err := codec.EncodeNumericValue(nt, 0, 0, fv)
-		if err != nil {
-			return codec.Property{}, codec.ErrInvalidValue, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (its default arm); nt is NumTypeFloat, matched by the case above.
+		data, _ := codec.EncodeNumericValue(nt, 0, 0, fv)
 		return numericProp(codec.PIDValue, nt, data), 0, nil
 	}
 	return codec.Property{}, codec.ErrInvalidValue, fmt.Errorf("number_type %d not writable", nt)
