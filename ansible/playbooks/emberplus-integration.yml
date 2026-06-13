@@ -1,0 +1,82 @@
+---
+# Ember+ tier-3 integration CONTRACT TEST against a live VENDOR oracle (Lawo
+# TinyEmberPlus / TinyEmberPlusRouter, or a real Lawo box — never our own
+# provider), per ADR-0025 deliverable 3: "Ansible is the exclusive integration
+# / verify / deploy driver — no PowerShell .ps1 scripts." Live-rig parity
+# driver complementing the Go -tags integration body in
+# internal/emberplus/integration/external_test.go.
+#
+# Read-only verbs (info + walk) → changed_when:false → idempotent BY
+# CONSTRUCTION (run-twice = 0 changes). Skips cleanly when no oracle is set.
+#
+#   EMBERPLUS_TEST_HOST=10.6.239.113 DHS_BIN=bin/dhs \
+#     ansible-playbook -i inventory/hosts.ini playbooks/emberplus-integration.yml
+#   # router / matrix surface:
+#   EMBERPLUS_TEST_HOST=10.6.239.113 EMBERPLUS_TEST_PORT=9092 ansible-playbook ...
+#
+# TinyEmber+ speaks S101/TCP — 9000 (plain provider) / 9092 (router/matrix).
+- name: Ember+ tier-3 integration vs live TinyEmber+ oracle
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dhs_bin: "{{ lookup('ansible.builtin.env', 'DHS_BIN') | default(playbook_dir + '/../../bin/dhs', true) }}"
+    ember_host: "{{ lookup('ansible.builtin.env', 'EMBERPLUS_TEST_HOST') | default('', true) }}"
+    ember_port: "{{ lookup('ansible.builtin.env', 'EMBERPLUS_TEST_PORT') | default('9000', true) }}"
+  tasks:
+    - name: Skip when no Ember+ oracle is configured
+      ansible.builtin.meta: end_play
+      when: (ember_host | length) == 0
+
+    - name: "info — read the device"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - emberplus
+          - info
+          - "{{ ember_host }}"
+          - --port
+          - "{{ ember_port | string }}"
+          - --timeout
+          - 15s
+      register: ember_info
+      changed_when: false
+      failed_when: ember_info.rc != 0
+
+    - name: "ASSERT info reports a present device"
+      ansible.builtin.assert:
+        that:
+          - "'status=present' in ember_info.stdout"
+        fail_msg: "Ember+ info reported no present device from the live vendor oracle"
+        quiet: true
+
+    - name: "walk — full tree"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - emberplus
+          - walk
+          - "{{ ember_host }}"
+          - --port
+          - "{{ ember_port | string }}"
+          - --timeout
+          - 45s
+      register: ember_walk
+      changed_when: false
+      failed_when: ember_walk.rc != 0
+
+    - name: "ASSERT walk exposes objects + at least one scalar parameter"
+      ansible.builtin.assert:
+        that:
+          - "'objects' in ember_walk.stdout"
+          - "('string' in ember_walk.stdout) or ('bool' in ember_walk.stdout) or ('int' in ember_walk.stdout) or ('real' in ember_walk.stdout)"
+        fail_msg: >-
+          Ember+ walk returned no objects / no scalar-typed parameter from the
+          live oracle — S101+BER+glow decode suspect.
+        quiet: true
+
+    - name: Ember+ integration result
+      ansible.builtin.debug:
+        msg: "Ember+ tier-3 integration: PASS vs {{ ember_host }}:{{ ember_port }} (vendor oracle, read-only / idempotent)"
