@@ -1,0 +1,86 @@
+---
+# ACP1 tier-3 integration CONTRACT TEST against a live VENDOR oracle (the Axon
+# Synapse Simulator, or a real Axon rack — never our own provider), per
+# ADR-0025 deliverable 3: "Ansible is the exclusive integration / verify /
+# deploy driver — no PowerShell .ps1 scripts." This is the live-rig parity
+# driver that complements the Go -tags integration body in
+# internal/acp1/integration/synapse_external_test.go.
+#
+# Read-only verbs (info + walk) → changed_when:false → idempotent BY
+# CONSTRUCTION (run-twice = 0 changes). Skips cleanly when no oracle is
+# configured, so it is safe to invoke unconditionally (CI / agent).
+#
+#   ACP1_TEST_HOST=10.6.239.113 DHS_BIN=bin/dhs \
+#     ansible-playbook -i inventory/hosts.ini playbooks/acp1-integration.yml
+#
+# Synapse speaks ACP1 Mode A (UDP) on 2071. ACP1_TEST_PORT overrides.
+- name: ACP1 tier-3 integration vs live Synapse oracle
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dhs_bin: "{{ lookup('ansible.builtin.env', 'DHS_BIN') | default(playbook_dir + '/../../bin/dhs', true) }}"
+    acp1_host: "{{ lookup('ansible.builtin.env', 'ACP1_TEST_HOST') | default('', true) }}"
+    acp1_port: "{{ lookup('ansible.builtin.env', 'ACP1_TEST_PORT') | default('2071', true) }}"
+  tasks:
+    - name: Skip when no ACP1 oracle is configured
+      ansible.builtin.meta: end_play
+      when: (acp1_host | length) == 0
+
+    - name: "info — read the rack"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - acp1
+          - info
+          - "{{ acp1_host }}"
+          - --transport
+          - udp
+          - --port
+          - "{{ acp1_port | string }}"
+          - --timeout
+          - 15s
+      register: acp1_info
+      changed_when: false
+      failed_when: acp1_info.rc != 0
+
+    - name: "ASSERT info reports a populated rack"
+      ansible.builtin.assert:
+        that:
+          - "'slots' in acp1_info.stdout"
+          - "'status=present' in acp1_info.stdout"
+        fail_msg: "ACP1 info reported no present slot from the live vendor oracle"
+        quiet: true
+
+    - name: "walk slot 0 — rack controller"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - acp1
+          - walk
+          - "{{ acp1_host }}"
+          - --transport
+          - udp
+          - --port
+          - "{{ acp1_port | string }}"
+          - --slot
+          - "0"
+          - --timeout
+          - 20s
+      register: acp1_walk
+      changed_when: false
+      failed_when: acp1_walk.rc != 0
+
+    - name: "ASSERT walk exposes objects + the Control group"
+      ansible.builtin.assert:
+        that:
+          - "'objects' in acp1_walk.stdout"
+          - "'[control]' in acp1_walk.stdout"
+        fail_msg: "ACP1 walk slot 0 returned no objects / no Control group from the live oracle"
+        quiet: true
+
+    - name: ACP1 integration result
+      ansible.builtin.debug:
+        msg: "ACP1 tier-3 integration: PASS vs {{ acp1_host }}:{{ acp1_port }} (vendor oracle, read-only / idempotent)"
