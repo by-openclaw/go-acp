@@ -58,7 +58,7 @@ later" framing.
 |---|---|---|---|
 | 1 | **Consumer** strict-to-spec, every CLI verb the spec defines | `internal/<proto>/consumer/` + `cmd/dhs/cmd_*.go` | Every spec command + every wire-form variant. Probel general/extended form selection is a tested boundary decision per command. Ember+ is DTD 2.60 only — no time spent on older DTDs. |
 | 2 | **Producer** strict-to-spec, every CLI verb the spec defines | `internal/<proto>/provider/` + `cmd/dhs/cmd_producer.go` | Same coverage rule as deliverable 1, inbound. |
-| 3 | **Integration test** driving the actual `dhs consumer/producer <proto> <verb>` CLI binary | `internal/<proto>/integration/` (Go, `-tags integration`) and/or `scripts/<proto>/verify-*.ps1` for live-rig parity | Per-test classification: `PASS` / `FAIL-real` (a real bug) / `FAIL-expected` (an error-handling reject path correctly rejected) / `TIMEOUT` (consumer sent CLI against a dead producer). Output must say *why* on every non-pass so the operator acts without reading source. |
+| 3 | **Integration test** driving the actual `dhs consumer/producer <proto> <verb>` CLI binary | `internal/<proto>/integration/` (Go, `-tags integration`) **and Ansible plays under `ansible/playbooks/`** for live-rig parity. **Ansible is the exclusive integration / verify / deploy driver — no PowerShell `.ps1` scripts.** | Per-test classification: `PASS` / `FAIL-real` (a real bug) / `FAIL-expected` (an error-handling reject path correctly rejected) / `TIMEOUT` (consumer sent CLI against a dead producer). Output must say *why* on every non-pass so the operator acts without reading source. |
 | 4 | **DM + manifest generator** | Go function under `internal/<proto>/integration/` that writes a local `.cache/dm/<proto>/...` + `.cache/manifest/...` next to the test files (NOT the codeowner's repo-root `.cache/`) | Tests invoke the generator in `setUp`. Tests **MUST NOT** `t.Skip` when the cache is empty — they must generate. The generator's Go source is the durable artefact. |
 | 5 | **Wireshark dissector** `internal/<proto>/wireshark/dhs_<proto>.lua` | Covers every transport, every wire version, every command / type-tag the connector implements. Per-frame Info column carries the discriminating arguments (matrix/level/dst/src for SW-P-08; slot/type/pid/stat for ACP2; address+typetag+argcount for OSC; etc.). | See `internal/<proto>/wireshark/` + root CLAUDE.md "Wireshark dissectors". |
 | 6 | **Replay fixture set** under `internal/<proto>/testdata/` | Layout: `testdata/protocol_types/<typename>/` (one folder per spec type / command / message kind, each containing the raw wire capture + canonical tree + per-type doc), `testdata/fixtures/` (multi-frame golden scenarios), `testdata/exports/` (canonical exports for round-trip checks). Reference shape: `internal/acp1/testdata/` (`.pcapng` raw + `.tree` canonical + per-type `.md`). | Lets every connector replay raw / pcap at any time, in CI, without needing live device access. Promotion rules from local `captures/<proto>/<ip>/<scenario>/` to committed `testdata/` live in `captures/README.md` (size cap, edge-case justification, byte-stability). |
@@ -72,7 +72,7 @@ per-verb specification lives in [`docs/protocols/verb-tests.md`](../protocols/ve
 |---|---|---|
 | **Unit** | codec + per-verb logic | the spec (expected bytes) + injected mock transport/clock (DI); no real sockets |
 | **Smoke** | verb is wired; flags parse; output + exit code correct | built binary, loopback / trivial target |
-| **Integration** | wire behaviour | **vendor emulator + real device — never our own provider**; idempotent verbs proven by Ansible run-twice = 0 changes |
+| **Integration** | wire behaviour | **vendor emulator + real device — never our own provider**. **Every Ansible play — deploy, test, verify, converge — is idempotent (run-twice = 0 changes)**, not just the `ensure` verb. |
 
 ### Connector compliance principles (cross-cutting)
 
@@ -82,7 +82,8 @@ Every deliverable is built to these; each references its owning source (ADR-0015
 |---|---|
 | Dependency injection (transport / logger / clock as constructor params) | root CLAUDE.md "Architecture principles" |
 | OOP / encapsulation / separation of concerns (consumer never imports provider) | root CLAUDE.md; ADR-0006 |
-| Idempotency (`ensure`) | ADR-0007 |
+| Idempotency — **every** deploy / test / verify / converge play is idempotent (run-twice = 0 changes), driven by Ansible (no `.ps1`) | ADR-0007; this ADR How-to-apply |
+| Per-package coverage floors + `-race` data-race gate in CI | `.github/workflows/ci.yml`; this ADR How-to-apply |
 | Structured logs (`slog`, levels, `--log-format`) | docs/logging.md; ADR-0002 |
 | Discovery (protocol-native + optional mDNS for our producer) | ADR-0012 |
 | Error contract (exit 0/1/2, `<layer>:<code>`) | docs/protocols/error-codes.md |
@@ -100,7 +101,7 @@ truth):
 2. **Each PR must cite which deliverable it advances** for which connector, plus the state of the other four (`done` / `partial` / `missing`).
 3. **One PR advances one deliverable for one connector**. No PR can combine "connector A integration test" with "connector B fix" — that's the bundle pattern ADR-0013 already forbids, restated here for the avoidance of doubt.
 4. **No connector PR is approved for merge until all six exist** for that connector. The integration test in (3) is the truth source: green there = real green; failing there = the wire is broken, fix the wire, never the test.
-5. **CI gates** must run the integration tests (Go `-tags integration` plus the PowerShell verify scripts where applicable). If CI does not run them, CI is not vouching for the connector.
+5. **CI gates** must run: unit tests with **`-race`** (data-race detector); the Go `-tags integration` suite; **per-package coverage floors** (codec / consumer / provider locked at the connector's achieved levels — a no-regression gate, e.g. acp1 = codec 100 / consumer 90 / provider 90 in `.github/workflows/ci.yml`); and the **Ansible** integration plays where a live rig is available. Integration, verify, and deploy are **Ansible-driven — no PowerShell `.ps1`**. If CI does not run these, CI is not vouching for the connector.
 6. **Cross-protocol regressions are blockers** — any PR that touches shared layers (transport, manifest, storage, `cmd/dhs/*`) re-verifies every connector's integration test before merge per `ADR-0025`.
 
 ## Per-protocol scope reminders

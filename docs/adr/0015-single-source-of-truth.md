@@ -5,7 +5,7 @@ Status: accepted
 ## Context
 
 When the same architectural rule lives in multiple files (root
-`CLAUDE.md`, `agents.md`, per-protocol `CLAUDE.md`, ad-hoc docs),
+`CLAUDE.md`, `AGENTS.md`, per-protocol `CLAUDE.md`, ad-hoc docs),
 they drift over time and start contradicting each other. Agents
 (human or AI) reading one file get one rule; reading another get a
 different rule; and the ground truth becomes unrecoverable.
@@ -59,7 +59,7 @@ Other docs reference it by path/number; they never restate it.
 | `docs/adr/NNNN-*.md` | the **only** place the decision is written |
 | `docs/CONNECTOR.md` | summary table + links to ADRs; never restates ADR content |
 | `CLAUDE.md` (root) | links to ADRs; never restates |
-| `agents.md` | session bootstrap; links to ADRs; never restates |
+| `AGENTS.md` | session bootstrap; links to ADRs; never restates |
 | `internal/<proto>/CLAUDE.md` | wire facts only (codec, frame format, device quirks); never restates architectural rules |
 | `internal/<proto>/COMPLIANCE.md` | audit answers (per ADR-0008); never restates architectural rules |
 | `README.md` | one-line public summary; never restates |

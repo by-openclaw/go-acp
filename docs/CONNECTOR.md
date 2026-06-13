@@ -29,6 +29,24 @@ See **ADR-0002**.
 For declarative orchestration (Ansible / Puppet / Terraform), every
 connector exposes `ensure --state present|absent --check`.
 
+Per-verb reference with a worked example for each verb:
+**`docs/protocols/verbs.md`**.
+
+## Definition of done + test tiers
+
+A connector is **DONE** only when all six **ADR-0025** deliverables exist
+together (consumer, producer, integration test, DM + manifest generator,
+Wireshark dissector, replay fixtures). Validation is three-tier with the
+**oracle-per-tier** rule — Unit (spec bytes), Smoke (built binary), Integration
+(**vendor emulator + a real device — never our own provider**). Every Ansible
+play (deploy / test / verify / converge) is idempotent (run-twice = 0 changes);
+there are no PowerShell `.ps1` drivers. CI gates: `-race`, per-package coverage
+floors (no-regression), and `-tags integration`.
+
+See **ADR-0025** (definition of done), **ADR-0007** (`ensure`),
+`docs/protocols/verb-tests.md` (test taxonomy + oracle rule), and
+`docs/protocols/verbs.md` (per-verb reference + examples).
+
 See **ADR-0007**.
 
 ## Discovery

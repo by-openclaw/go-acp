@@ -116,7 +116,7 @@ specific to one connector lives under `internal/<proto>/docs/`.
 
 ## Forbidden
 
-- Restating ADR rules in `CLAUDE.md`, `agents.md`, `README.md`, or any
+- Restating ADR rules in `CLAUDE.md`, `AGENTS.md`, `README.md`, or any
   per-protocol doc (ADR-0015).
 - Putting per-connector content (wire facts, command catalogue,
   per-OS install) under `docs/`. It must live under `internal/<proto>/`.
