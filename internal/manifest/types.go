@@ -20,11 +20,14 @@ type Device struct {
 }
 
 // Endpoint is one IP/port/transport tuple. A device with two endpoints
-// in the same Frame is the redundant-controller case (ADR-0023).
+// is the redundant-controller case (ADR-0023) and MUST be tcp on every
+// endpoint: UDP announces are subnet broadcast (single NIC / single
+// link) and cannot serve a second controller, so udp is only valid as
+// the sole endpoint. Enforced in (*Manifest).validate.
 type Endpoint struct {
 	IP        string `json:"ip"`
 	Port      int    `json:"port"`
-	Transport string `json:"transport"` // tcp | udp
+	Transport string `json:"transport"` // tcp | udp (udp ⇒ single endpoint only)
 }
 
 // Frame is one chassis instance under the Device.
