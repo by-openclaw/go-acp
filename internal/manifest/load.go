@@ -16,6 +16,9 @@ import (
 //   - device.name and device.protocol non-empty
 //   - at least one endpoint
 //   - each endpoint has ip + port>0 + transport ∈ {tcp,udp}
+//   - a udp endpoint is only valid as the SOLE endpoint — 2+ endpoints
+//     (redundant controller, ADR-0023) require tcp on every endpoint,
+//     because UDP announces are subnet broadcast (one NIC, one link)
 //   - at least one frame; each frame has at least one slot; each slot
 //     has a non-empty DM reference of the form Model@SwRev
 func Load(path string) (*Manifest, error) {
@@ -52,6 +55,17 @@ func (m *Manifest) validate() error {
 		}
 		if ep.Transport != "tcp" && ep.Transport != "udp" {
 			return fmt.Errorf("manifest: device.endpoints[%d].transport %q (want tcp|udp)", i, ep.Transport)
+		}
+		// Redundant-controller transport rule (ADR-0023). UDP announces
+		// are subnet broadcast — single link, single NIC, single
+		// controller. They do not transit a second NIC/VLAN, so a
+		// redundant pair cannot be served over UDP. Two or more
+		// endpoints (the redundant controller) therefore require a
+		// routable unicast transport: every endpoint must be tcp.
+		if ep.Transport == "udp" && len(m.Device.Endpoints) > 1 {
+			return fmt.Errorf("manifest: device.endpoints[%d].transport udp invalid with %d endpoints — "+
+				"UDP broadcast serves a single controller (one NIC); redundant controllers require tcp on every endpoint (ADR-0023)",
+				i, len(m.Device.Endpoints))
 		}
 	}
 	if len(m.Frames) == 0 {

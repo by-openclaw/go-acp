@@ -19,6 +19,16 @@ import (
 // Frames and slots are replaced wholesale by the new write (the
 // schema authority is the most recent walk).
 //
+// Test seams for the two I/O arms that cannot be provoked through the
+// filesystem: a Manifest is always JSON-encodable so enc.Encode never
+// fails naturally, and a freshly-created file rarely fails Close. Tests
+// override these to exercise the error paths (cf. the bcastDialErrHook
+// pattern in the acp1 provider). Production behaviour is the default.
+var (
+	encodeManifest = func(enc *json.Encoder, m *Manifest) error { return enc.Encode(m) }
+	closeFile      = func(f *os.File) error { return f.Close() }
+)
+
 // Returns the full path written (for logging).
 func Write(cacheDir string, m *Manifest) (string, error) {
 	if m == nil || m.Device.Name == "" {
@@ -43,12 +53,12 @@ func Write(cacheDir string, m *Manifest) (string, error) {
 	}
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(m); err != nil {
-		_ = f.Close()
+	if err := encodeManifest(enc, m); err != nil {
+		_ = closeFile(f)
 		_ = os.Remove(tmp)
 		return "", fmt.Errorf("manifest: encode: %w", err)
 	}
-	if err := f.Close(); err != nil {
+	if err := closeFile(f); err != nil {
 		_ = os.Remove(tmp)
 		return "", fmt.Errorf("manifest: close: %w", err)
 	}

@@ -3,7 +3,8 @@
     "name": "neuron-test",
     "protocol": "acp2",
     "endpoints": [
-      { "ip": "0.0.0.0", "port": 2072, "transport": "tcp" }
+      { "ip": "10.100.0.103", "port": 2072, "transport": "tcp" },
+      { "ip": "10.100.0.109", "port": 2072, "transport": "tcp" }
     ]
   },
   "frames": [
