@@ -3,9 +3,87 @@ package matrix
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"dhs/internal/emberplus/codec/glow"
 )
+
+// TestNewStateFromGlow pins the wholesale build from a decoded Glow Matrix:
+// every static Contents field is mirrored and every Connection becomes a
+// TargetState attributed to ChangeWalk. Spec p.88-89.
+func TestNewStateFromGlow(t *testing.T) {
+	before := time.Now()
+	m := &glow.Matrix{
+		MatrixType:           glow.MatrixTypeNToN,
+		AddressingMode:       1,
+		TargetCount:          8,
+		SourceCount:          16,
+		MaxTotalConnects:     32,
+		MaxConnectsPerTarget: 4,
+		Connections: []glow.Connection{
+			{Target: 0, Sources: []int32{1, 2}, Operation: glow.ConnOpAbsolute, Disposition: glow.ConnDispTally},
+			{Target: 3, Sources: []int32{5}, Operation: glow.ConnOpConnect, Disposition: glow.ConnDispModified},
+		},
+	}
+	s := NewStateFromGlow(m)
+	if s.Type != glow.MatrixTypeNToN || s.AddressingMode != 1 ||
+		s.TargetCount != 8 || s.SourceCount != 16 ||
+		s.MaxTotalConnects != 32 || s.MaxConnectsPerTarget != 4 {
+		t.Fatalf("static fields not mirrored: %+v", s)
+	}
+	if len(s.Targets) != 2 {
+		t.Fatalf("expected 2 targets, got %d", len(s.Targets))
+	}
+	t0 := s.Targets[0]
+	if t0 == nil || len(t0.Sources) != 2 || t0.Sources[0] != 1 || t0.Sources[1] != 2 {
+		t.Fatalf("target 0 sources wrong: %+v", t0)
+	}
+	if t0.ChangedBy != ChangeWalk {
+		t.Errorf("target 0 ChangedBy = %v, want ChangeWalk", t0.ChangedBy)
+	}
+	if t0.LastChanged.Before(before) {
+		t.Errorf("target 0 LastChanged not set")
+	}
+	// Mutating the source slice in the decoded matrix must not alias state.
+	m.Connections[0].Sources[0] = 99
+	if s.Targets[0].Sources[0] != 1 {
+		t.Errorf("NewStateFromGlow aliased the wire source slice")
+	}
+}
+
+// TestSnapshot_LabelsAndGain covers the deep-copy branches for the
+// UI-only LabelSources slice and ResolvedGainDb map.
+func TestSnapshot_LabelsAndGain(t *testing.T) {
+	s := &State{
+		Type: glow.MatrixTypeNToN,
+		Targets: map[int32]*TargetState{
+			1: {
+				Target:         1,
+				Sources:        []int32{2, 3},
+				LabelTarget:    "MV-1",
+				LabelSources:   []string{"CAM-2", "CAM-3"},
+				ResolvedGainDb: map[int32]float64{2: -3.0, 3: 0.0},
+			},
+		},
+	}
+	snap := s.Snapshot()
+	if len(snap) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(snap))
+	}
+	got := snap[0]
+	if len(got.LabelSources) != 2 || got.LabelSources[0] != "CAM-2" {
+		t.Fatalf("LabelSources not copied: %+v", got.LabelSources)
+	}
+	if got.ResolvedGainDb[2] != -3.0 {
+		t.Fatalf("ResolvedGainDb not copied: %+v", got.ResolvedGainDb)
+	}
+	// Deep-copy: mutating the snapshot must not touch source state.
+	got.LabelSources[0] = "X"
+	got.ResolvedGainDb[2] = 99
+	if s.Targets[1].LabelSources[0] != "CAM-2" || s.Targets[1].ResolvedGainDb[2] != -3.0 {
+		t.Errorf("Snapshot did not deep-copy label/gain")
+	}
+}
 
 func TestCanConnect_OneToN(t *testing.T) {
 	s := &State{
@@ -105,6 +183,33 @@ func TestCanConnect_NToN_Caps(t *testing.T) {
 	}
 	if err := s.CanConnect(2, []int32{1}, glow.ConnOpAbsolute); err != nil {
 		t.Fatalf("nToN should accept within caps: %v", err)
+	}
+}
+
+// TestCanConnect_NToN_TotalAcrossTargets exercises the MaxTotalConnects
+// sum loop over OTHER targets (skips the target under test) and the
+// projectSources Disconnect branch.
+func TestCanConnect_NToN_TotalAcrossTargets(t *testing.T) {
+	s := &State{
+		Type:                 glow.MatrixTypeNToN,
+		TargetCount:          4,
+		SourceCount:          4,
+		MaxConnectsPerTarget: 4,
+		MaxTotalConnects:     4,
+		Targets: map[int32]*TargetState{
+			1: {Target: 1, Sources: []int32{1, 2}},
+			2: {Target: 2, Sources: []int32{3}},
+		},
+	}
+	// Targets 1+2 already hold 3 connects. Adding 2 to target 3 (absolute)
+	// would total 5 > 4 — must be rejected via the cross-target sum loop.
+	if err := s.CanConnect(3, []int32{1, 4}, glow.ConnOpAbsolute); err == nil {
+		t.Fatal("nToN should reject when cross-target total exceeds MaxTotalConnects")
+	}
+	// Disconnect on target 1 projects to fewer sources (projectSources
+	// Disconnect branch); result stays within caps.
+	if err := s.CanConnect(1, []int32{2}, glow.ConnOpDisconnect); err != nil {
+		t.Fatalf("nToN disconnect within caps should accept: %v", err)
 	}
 }
 

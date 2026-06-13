@@ -54,10 +54,7 @@ func snapshotToEntries(slot uint8, snap *export.Snapshot) ([]*entry, *slotCounts
 		}
 
 		acpType := acpTypeFromObject(obj)
-		param, err := objectToParameter(obj, acpType)
-		if err != nil {
-			return nil, nil, fmt.Errorf("acp1 provider: snapshotToEntries: %s/%s: %w", obj.Group, obj.Label, err)
-		}
+		param := objectToParameter(obj, acpType)
 		e := &entry{
 			key:     objectKey{slot: slot, group: grp, id: uint8(obj.ID)},
 			param:   param,
@@ -205,7 +202,7 @@ func anyAsInt64(v any) (int64, bool) {
 // + session can read identically to a tree.json-loaded one. The pair
 // (Type, Format) MUST round-trip through deriveACPType to acpType so
 // the provider's encoder picks the right wire width.
-func objectToParameter(o consumer.Object, acpType codec.ObjectType) (*canonical.Parameter, error) {
+func objectToParameter(o consumer.Object, acpType codec.ObjectType) *canonical.Parameter {
 	ident := o.Label
 	if ident == "" {
 		ident = "#" + strconv.Itoa(o.ID)
@@ -277,7 +274,7 @@ func objectToParameter(o consumer.Object, acpType codec.ObjectType) (*canonical.
 		}
 	}
 
-	return p, nil
+	return p
 }
 
 // accessByteToString converts the ACP1 access byte (bit 0=R, bit 1=W,

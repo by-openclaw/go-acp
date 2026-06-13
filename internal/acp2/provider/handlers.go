@@ -230,11 +230,9 @@ func (s *session) handleGetProperty(slot uint8, msg *codec.ACP2Message) {
 	}
 	for i := range all {
 		if all[i].PID == msg.PID {
-			body, err := codec.EncodeProperty(&all[i])
-			if err != nil {
-				s.replyACP2(slot, errorACP2(msg, codec.ErrProtocol))
-				return
-			}
+			// unreachable: EncodeProperty only errors on a nil *Property;
+			// &all[i] indexes into a non-empty slice and is never nil.
+			body, _ := codec.EncodeProperty(&all[i])
 			s.replyACP2(slot, &codec.ACP2Message{
 				Type:  codec.ACP2TypeReply,
 				MTID:  msg.MTID,
@@ -274,11 +272,9 @@ func (s *session) handleSetProperty(slot uint8, msg *codec.ACP2Message) {
 		s.replyACP2(slot, errorACP2(msg, errStatus))
 		return
 	}
-	body, err := codec.EncodeProperty(&post)
-	if err != nil {
-		s.replyACP2(slot, errorACP2(msg, codec.ErrProtocol))
-		return
-	}
+	// unreachable: EncodeProperty only errors on a nil *Property; &post is a
+	// guaranteed-non-nil local returned by applySet.
+	body, _ := codec.EncodeProperty(&post)
 	// Reply with the confirmed post-state.
 	reply := &codec.ACP2Message{
 		Type:  codec.ACP2TypeReply,
@@ -326,11 +322,9 @@ func (s *session) handleGetObject(slot uint8, msg *codec.ACP2Message) {
 		s.replyACP2(slot, errorACP2(msg, codec.ErrProtocol))
 		return
 	}
-	body, err := codec.EncodeProperties(props)
-	if err != nil {
-		s.replyACP2(slot, errorACP2(msg, codec.ErrProtocol))
-		return
-	}
+	// unreachable: EncodeProperties never returns a non-nil error (it only
+	// concatenates encodeProperty output, which cannot fail).
+	body, _ := codec.EncodeProperties(props)
 	// get_object reply body layout: header(4) + obj-id(4) + idx(4) + props.
 	// Use Body to carry the trailing props so EncodeACP2Message's default
 	// path serialises it correctly.

@@ -1,0 +1,22 @@
+{
+  "device": {
+    "name": "synapse-test",
+    "protocol": "acp1",
+    "endpoints": [
+      { "ip": "0.0.0.0", "port": 2071, "transport": "udp" }
+    ]
+  },
+  "frames": [
+    {
+      "name": "SFR18",
+      "slots": [
+        { "addr": { "slot": 0 }, "dm": "RRS18@1601" },
+        { "addr": { "slot": 1 }, "dm": "2GS110@2728" },
+        { "addr": { "slot": 2 }, "dm": "2HF110@4326" },
+        { "addr": { "slot": 3 }, "dm": "GED130@2522" },
+        { "addr": { "slot": 4 }, "dm": "SDB20@0806" },
+        { "addr": { "slot": 5 }, "dm": "2GS110@2929" }
+      ]
+    }
+  ]
+}

@@ -62,7 +62,59 @@ type server struct {
 	// dmLibrary, when non-nil, drives slot.load via the DM-library
 	// resolver. Set via SetDMLibrary at startup.
 	dmLibrary devicemodel.Resolver
+
+	// adminListenHook / adminWriteDiscoveryHook are test-only injection
+	// seams for ServeAdmin so its listen-failure, discovery-write-failure,
+	// and accept-failure arms (all OS-syscall failures unreachable on a
+	// healthy loopback) are deterministically testable. Nil in production.
+	adminListenHook         func() (net.Listener, error)
+	adminWriteDiscoveryHook func(path string, d *AdminDiscovery) error
+
+	// preReadHook runs just before Serve enters readLoop. Test-only: a test
+	// sets a past read deadline on conn so readLoop's first ReadFromUDP
+	// returns a non-closed i/o-timeout error, exercising Serve's hard-error
+	// return arm. Nil in production.
+	preReadHook func(*net.UDPConn)
+
+	// bcastDialErrHook, when it returns true, forces Serve's broadcast dial
+	// to be treated as failed (driving the broadcast-disabled warn arm).
+	// Test-only: a real broadcast dial almost never fails on a healthy host.
+	bcastDialErrHook func() bool
+
+	// acceptTCPHook, when non-nil, replaces ln.AcceptTCP in the ServeTCP /
+	// ServeAN2 accept loops. Test-only injection seam: the accept-error warn
+	// arm (a non-closed Accept failure while the context is live) is
+	// otherwise only reachable under OS resource exhaustion. Production
+	// leaves it nil.
+	acceptTCPHook func(*net.TCPListener) (*net.TCPConn, error)
+
+	// oscillatableTargetsHook, when non-nil, overrides the target list in
+	// RunStatusPlayAll. Test-only injection seam (see play.go) — production
+	// leaves it nil.
+	oscillatableTargetsHook func() []objectKey
+
+	// setStatusHook, when non-nil, replaces setSlotStatus in the cascade /
+	// play paths. Test-only injection seam: the multi-phase cascade and
+	// frame-status play guards (a setSlotStatus failure on the 2nd/3rd
+	// phase) can only otherwise be hit by a concurrent frame mutation
+	// race. Production leaves this nil → setStatus calls setSlotStatus.
+	setStatusHook func(slot, state uint8) error
 }
+
+// setStatus dispatches to the injected hook (tests) or the real
+// setSlotStatus (production). The cascade and frame-status-play paths route
+// through here so their later-phase failure guards are deterministically
+// reachable.
+func (s *server) setStatus(slot, state uint8) error {
+	if s.setStatusHook != nil {
+		return s.setStatusHook(slot, state)
+	}
+	return s.setSlotStatus(slot, state)
+}
+
+// errBroadcastDialForced is the synthetic error the bcastDialErrHook injects
+// (test-only) to drive Serve's broadcast-disabled warn path.
+var errBroadcastDialForced = errors.New("acp1 provider: broadcast dial forced-failed (test)")
 
 // SetInsertTiming switches the cascade timing for new transitions.
 // Existing in-flight cascades keep their starting timing.
@@ -110,11 +162,11 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	lc := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
 			var opErr error
-			if err := c.Control(func(fd uintptr) {
+			// c.Control only errors on an invalid RawConn (impossible during
+			// listen setup); the real failure flows through opErr.
+			_ = c.Control(func(fd uintptr) {
 				opErr = transport.SetSocketReuseAddr(fd)
-			}); err != nil {
-				return err
-			}
+			})
 			return opErr
 		},
 	}
@@ -122,11 +174,9 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	if err != nil {
 		return fmt.Errorf("acp1 provider: listen %q: %w", addr, err)
 	}
-	conn, ok := pc.(*net.UDPConn)
-	if !ok {
-		_ = pc.Close()
-		return fmt.Errorf("acp1 provider: listen %q: unexpected conn type %T", addr, pc)
-	}
+	// unreachable type-assert guard elided: ListenConfig.ListenPacket over
+	// "udp4" always yields a *net.UDPConn on success.
+	conn := pc.(*net.UDPConn)
 
 	// Dial a second socket to the limited broadcast address. Go stdlib
 	// auto-sets SO_BROADCAST on dialed sockets with broadcast peers,
@@ -144,6 +194,12 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 		localAddr = &net.UDPAddr{IP: udpAddr.IP, Port: 0}
 	}
 	bconn, bErr := net.DialUDP("udp4", localAddr, bcastAddr)
+	if s.bcastDialErrHook != nil && s.bcastDialErrHook() {
+		if bconn != nil {
+			_ = bconn.Close()
+		}
+		bconn, bErr = nil, errBroadcastDialForced
+	}
 	// Best-effort: if the OS rejects the broadcast dial (no route, no
 	// iface up) we log and continue without announcements.
 	if bErr != nil {
@@ -178,6 +234,9 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 		s.mu.Unlock()
 	}()
 
+	if s.preReadHook != nil {
+		s.preReadHook(conn)
+	}
 	err = s.readLoop(ctx, conn)
 	close(s.stopped)
 	if errors.Is(err, net.ErrClosed) || errors.Is(err, context.Canceled) {

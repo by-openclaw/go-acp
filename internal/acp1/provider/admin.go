@@ -55,7 +55,11 @@ func (s *server) ServeAdmin(ctx context.Context, name string) error {
 	if name == "" {
 		name = "dhs-acp1"
 	}
-	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	listen := func() (net.Listener, error) { return net.Listen("tcp4", "127.0.0.1:0") }
+	if s.adminListenHook != nil {
+		listen = s.adminListenHook
+	}
+	ln, err := listen()
 	if err != nil {
 		return fmt.Errorf("acp1 admin: listen: %w", err)
 	}
@@ -68,7 +72,11 @@ func (s *server) ServeAdmin(ctx context.Context, name string) error {
 		PID:       os.Getpid(),
 	}
 	discPath := AdminDiscoveryPath(name)
-	if err := writeAdminDiscovery(discPath, &disc); err != nil {
+	writeDisc := writeAdminDiscovery
+	if s.adminWriteDiscoveryHook != nil {
+		writeDisc = s.adminWriteDiscoveryHook
+	}
+	if err := writeDisc(discPath, &disc); err != nil {
 		_ = ln.Close()
 		return fmt.Errorf("acp1 admin: discovery file: %w", err)
 	}
@@ -105,10 +113,9 @@ func AdminDiscoveryPath(name string) string {
 }
 
 func writeAdminDiscovery(path string, d *AdminDiscovery) error {
-	raw, err := json.MarshalIndent(d, "", "  ")
-	if err != nil {
-		return err
-	}
+	// unreachable error: AdminDiscovery is all primitive/string/time fields,
+	// which json.MarshalIndent never fails to encode.
+	raw, _ := json.MarshalIndent(d, "", "  ")
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, raw, 0o600); err != nil {
 		return err
@@ -185,6 +192,12 @@ func (s *server) writeAdminErr(conn net.Conn, err error) {
 // this; tests use it too. One round-trip per call.
 type AdminClient struct {
 	addr string
+
+	// dial overrides the transport dial. Nil ⇒ net.DialTimeout. Test-only
+	// injection seam so the request write-error and reply read-error arms of
+	// Call are deterministically reachable with a scripted net.Conn (a real
+	// loopback peer almost never fails a write synchronously).
+	dial func() (net.Conn, error)
 }
 
 // NewAdminClient resolves a discovery file and returns a client.
@@ -200,7 +213,11 @@ func NewAdminClient(name string) (*AdminClient, error) {
 // transport failures; AdminResponse.Status carries application-level
 // outcome.
 func (c *AdminClient) Call(ctx context.Context, req *AdminRequest) (*AdminResponse, error) {
-	conn, err := net.DialTimeout("tcp4", c.addr, 5*time.Second)
+	dial := c.dial
+	if dial == nil {
+		dial = func() (net.Conn, error) { return net.DialTimeout("tcp4", c.addr, 5*time.Second) }
+	}
+	conn, err := dial()
 	if err != nil {
 		return nil, fmt.Errorf("admin dial: %w", err)
 	}

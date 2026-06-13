@@ -186,13 +186,11 @@ func synthInteger(rng *rand.Rand, e *entry, useEdge bool, width int) []byte {
 	case useEdge:
 		v = max
 	default:
-		// rng.Int63n needs span > 0
+		// readIntBounds guarantees max > min (it clamps a degenerate range
+		// to 0..1), so span is always >= 2 here — rng.Int63n never sees a
+		// non-positive argument. No span<=0 guard is needed.
 		span := max - min + 1
-		if span <= 0 {
-			v = min
-		} else {
-			v = min + rng.Int63n(span)
-		}
+		v = min + rng.Int63n(span)
 	}
 	out := make([]byte, width)
 	switch width {

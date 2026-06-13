@@ -3,6 +3,7 @@ package acp1
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"sort"
 	"sync"
@@ -40,6 +41,11 @@ type DiscoverConfig struct {
 
 	// Port is the ACP1 port (default 2071).
 	Port int
+
+	// probe overrides the active-broadcast probe. Unset ⇒ the real
+	// probeActive. Injection seam for tests to drive the probe-failed
+	// log path without depending on the host's broadcast routing.
+	probe func(port int) error
 }
 
 // Discover runs a one-shot LAN scan for ACP1 devices. Works only when
@@ -99,10 +105,10 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error)
 				// Timeout or ctx cancel → exit loop.
 				return
 			}
-			udpAddr, ok := addr.(*net.UDPAddr)
-			if !ok {
-				continue
-			}
+			// unreachable type-assert guard elided: transport.UDPListener.
+			// Receive reads via ReadFromUDP, which always yields a
+			// *net.UDPAddr on success.
+			udpAddr := addr.(*net.UDPAddr)
 			// Decode to confirm it's valid ACP1. Malformed datagrams
 			// from unrelated services on the same port are skipped.
 			msg, derr := codec.Decode(raw)
@@ -138,7 +144,11 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error)
 
 	// Active probe: send one limited-broadcast getValue(FrameStatus).
 	if cfg.Active {
-		if perr := probeActive(cfg.Port); perr != nil {
+		probe := cfg.probe
+		if probe == nil {
+			probe = probeActive
+		}
+		if perr := probe(cfg.Port); perr != nil {
 			// Non-fatal: passive scan may still find devices.
 			_, _ = fmt.Fprintf(nullWriter{}, "active probe failed: %v\n", perr)
 		}
@@ -163,28 +173,40 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error)
 // receives it and replies with a directed unicast reply that the
 // listener picks up.
 func probeActive(port int) error {
+	return probeActiveAddr(fmt.Sprintf("255.255.255.255:%d", port))
+}
+
+// probeActiveAddr is the address-parameterised core of probeActive, split
+// out so tests can drive the dial-failure path with a bogus address.
+func probeActiveAddr(addr string) error {
 	// net.Dialer with Control hook to set SO_BROADCAST on the socket
 	// before bind. The "connect" semantics of UDP don't apply here —
 	// we want to send to an unspecified peer.
 	d := net.Dialer{
 		Control: func(network, address string, c syscall.RawConn) error {
 			var opErr error
-			if err := c.Control(func(fd uintptr) {
+			// c.Control only errors on an invalid/closed RawConn, which can't
+			// happen during dial setup — so its error is unreachable here and
+			// the real failure surfaces via opErr (SetSocketBroadcast).
+			_ = c.Control(func(fd uintptr) {
 				opErr = transport.SetSocketBroadcast(fd)
-			}); err != nil {
-				return err
-			}
+			})
 			return opErr
 		},
 	}
-	conn, err := d.Dial("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+	conn, err := d.Dial("udp4", addr)
 	if err != nil {
 		return fmt.Errorf("dial broadcast: %w", err)
 	}
 	defer func() { _ = conn.Close() }()
+	return sendProbe(conn)
+}
 
-	// Build a getValue(FrameStatus, 0) request. Per spec p. 8 this is
-	// "the only broadcast message clients are allowed to invoke".
+// sendProbe writes one getValue(FrameStatus, 0) request to w. Per spec p. 8
+// this is "the only broadcast message clients are allowed to invoke". Split
+// from probeActiveAddr so the write-failure path is testable with a failing
+// io.Writer (a UDP Write to a valid peer almost never fails synchronously).
+func sendProbe(w io.Writer) error {
 	req := &codec.Message{
 		MTID:     0, // broadcast marker
 		PVER:     codec.PVER,
@@ -194,11 +216,10 @@ func probeActive(port int) error {
 		ObjGroup: codec.GroupFrame,
 		ObjID:    0,
 	}
-	payload, err := req.Encode()
-	if err != nil {
-		return fmt.Errorf("encode: %w", err)
-	}
-	if _, err := conn.Write(payload); err != nil {
+	// unreachable error: this getValue(FrameStatus,0) request is fixed and
+	// valid (MAddr=0, no Value), so req.Encode never fails here.
+	payload, _ := req.Encode()
+	if _, err := w.Write(payload); err != nil {
 		return fmt.Errorf("send: %w", err)
 	}
 	return nil

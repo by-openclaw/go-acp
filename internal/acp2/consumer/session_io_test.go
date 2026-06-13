@@ -117,6 +117,37 @@ func TestSessionHealth_LoopbackNoSession(t *testing.T) {
 	}
 }
 
+// TestReadLoop_NonEOFError covers readLoop's else arm: a read error that
+// is neither io.EOF nor a closed-conn error. After the handshake we write
+// raw bytes with a bad AN2 magic to the client; codec.ReadAN2Frame returns
+// a wrapped ErrBadMagic, so errors.Is(err, io.EOF) and isClosedErr both
+// fail and readLoop logs via the "with err" branch before returning.
+func TestReadLoop_NonEOFError(t *testing.T) {
+	srv, host, port := newFakeServer(t)
+	p := connectPlugin(t, srv, host, port)
+
+	p.mu.Lock()
+	s := p.session
+	p.mu.Unlock()
+
+	// Inject a frame with an invalid magic (0x0000 instead of 0xC635).
+	// 8-byte AN2 header; ReadAN2Frame validates magic right after reading it.
+	bad := []byte{0x00, 0x00, byte(codec.AN2ProtoACP2), 0x00, 0x00, byte(codec.AN2TypeData), 0x00, 0x00}
+	srv.mu.Lock()
+	conns := append([]net.Conn(nil), srv.conns...)
+	srv.mu.Unlock()
+	for _, c := range conns {
+		_, _ = c.Write(bad)
+	}
+
+	select {
+	case <-s.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("readLoop did not return after bad-magic frame")
+	}
+	srv.stop()
+}
+
 // TestGetValue_RawBodyFallback exercises the branch where the reply does
 // not carry the requested pid at all — GetValue returns the raw body.
 func TestGetValue_RawBodyFallback(t *testing.T) {

@@ -90,7 +90,14 @@ func EncodeProperty(p *Property) ([]byte, error) {
 	if p == nil {
 		return nil, fmt.Errorf("acp2: encode nil property")
 	}
+	return encodeProperty(p), nil
+}
 
+// encodeProperty is the non-erroring core of EncodeProperty. The only
+// failure EncodeProperty can report is a nil *Property; callers holding a
+// guaranteed-non-nil property (e.g. &slice[i] into a non-empty slice) call
+// this directly so there is no unreachable error branch to cover.
+func encodeProperty(p *Property) []byte {
 	dataLen := len(p.Data)
 	plen := uint16(4 + dataLen)
 	pad := propertyPadding(plen)
@@ -103,7 +110,7 @@ func EncodeProperty(p *Property) ([]byte, error) {
 		copy(buf[4:], p.Data)
 	}
 	// Padding bytes are zero (already zeroed by make).
-	return buf, nil
+	return buf
 }
 
 // EncodeProperties serialises multiple properties into a single buffer.
@@ -116,15 +123,16 @@ func EncodeProperty(p *Property) ([]byte, error) {
 //	| 0..     | property[0] | varies | pid/data/plen + value + padding    |
 //	| ...     | property[n] | varies | repeated per spec §Property IDs    |
 //
+// The (currently always-nil) error in the signature is retained for API
+// stability and forward compatibility; &props[i] is never nil, so each
+// element is encoded via the non-erroring encodeProperty core and no
+// unreachable error branch remains.
+//
 // Spec reference: acp2_protocol.pdf §Property Header
 func EncodeProperties(props []Property) ([]byte, error) {
 	var out []byte
 	for i := range props {
-		b, err := EncodeProperty(&props[i])
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, b...)
+		out = append(out, encodeProperty(&props[i])...)
 	}
 	return out, nil
 }

@@ -232,6 +232,12 @@ func (s *Session) fireStateChange(connected bool, reason string) {
 // Owned by the Session; terminates when deadManDone closes
 // (Disconnect path) or the threshold fires.
 func (s *Session) deadManLoop() {
+	// Capture the done channel once under the lock — Disconnect closes then
+	// nils s.deadManDone, so reading the field directly in the select would
+	// race that nil-write (go test -race).
+	s.mu.Lock()
+	done := s.deadManDone
+	s.mu.Unlock()
 	tick := s.deadManThreshold / 3
 	if tick < time.Second {
 		tick = time.Second
@@ -240,7 +246,7 @@ func (s *Session) deadManLoop() {
 	defer ticker.Stop()
 	for {
 		select {
-		case <-s.deadManDone:
+		case <-done:
 			return
 		case <-ticker.C:
 			age := s.rxAge()
@@ -592,12 +598,18 @@ func (s *Session) readLoop() {
 }
 
 func (s *Session) keepAliveLoop() {
+	// Capture the done channel once under the lock. Disconnect closes it
+	// (then nils the field) to stop us; reading s.keepAliveDone directly in
+	// the select each iteration would race that nil-write (go test -race).
+	s.mu.Lock()
+	done := s.keepAliveDone
+	s.mu.Unlock()
 	ticker := time.NewTicker(s.keepAliveInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-s.keepAliveDone:
+		case <-done:
 			return
 		case <-ticker.C:
 			s.mu.Lock()

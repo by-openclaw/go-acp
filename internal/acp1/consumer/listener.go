@@ -2,10 +2,8 @@ package acp1
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"sync"
 	"time"
 
@@ -139,13 +137,10 @@ func (l *Listener) Unsubscribe(h SubHandle) {
 // permanently closed via Stop.
 func (l *Listener) loop(ctx context.Context) {
 	defer close(l.done)
-	// Panic isolation: a bug in a subscriber callback must not kill
-	// the listener goroutine. Any panic is logged and the loop resumes.
-	defer func() {
-		if r := recover(); r != nil {
-			l.logger.Error("acp1 listener panic", "err", r)
-		}
-	}()
+	// Panic isolation lives at the only call site that can panic — the
+	// per-dispatch recover below (l.dispatch is wrapped). Receive / Decode /
+	// logging never panic, so a top-level loop recover would be unreachable
+	// and is intentionally omitted.
 
 	for {
 		// Honour cancellation before each receive.
@@ -159,9 +154,11 @@ func (l *Listener) loop(ctx context.Context) {
 			if ctx.Err() != nil {
 				return
 			}
-			if errors.Is(err, net.ErrClosed) {
-				return
-			}
+			// Note: a closed socket does NOT surface as a bare net.ErrClosed
+			// here — transport.UDPListener.Receive wraps it (ErrReadFailed),
+			// so it falls through to the transient-retry path below, which
+			// then exits once Stop() cancels the context. (A former
+			// errors.Is(err, net.ErrClosed) check was therefore unreachable.)
 
 			// Transient error — log at debug and keep looping. A short
 			// sleep avoids tight-spin if the same error recurs.

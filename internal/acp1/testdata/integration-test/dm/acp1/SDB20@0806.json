@@ -1,0 +1,1330 @@
+{
+  "model": "SDB20",
+  "sw_rev": "0806",
+  "protocol": "acp1",
+  "objects": [
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Card name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 8,
+      "value": {
+        "kind": "string",
+        "str": "SDB20"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "User label",
+      "kind": "string",
+      "access": 3,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "str": "Audio De-embedder"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Card description",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "str": "SDB20-0806.html"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Software rev",
+      "kind": "string",
+      "access": 1,
+      "max_len": 4,
+      "value": {
+        "kind": "string",
+        "str": "0806"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Hardware rev",
+      "kind": "string",
+      "access": 1,
+      "max_len": 4,
+      "value": {
+        "kind": "string",
+        "str": "0101"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Product code",
+      "kind": "string",
+      "access": 1,
+      "max_len": 10,
+      "value": {
+        "kind": "string",
+        "str": "9460020001"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 6,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Serial number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 6,
+      "value": {
+        "kind": "string",
+        "str": "000604"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 7,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Card ID",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "str": "71ef060a00000009"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Out_1",
+      "kind": "enum",
+      "access": 3,
+      "default": 0,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Out_2",
+      "kind": "enum",
+      "access": 3,
+      "default": 1,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_2",
+        "enum": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Out_3",
+      "kind": "enum",
+      "access": 3,
+      "default": 2,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_3",
+        "enum": 2
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Out_4",
+      "kind": "enum",
+      "access": 3,
+      "default": 3,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_4",
+        "enum": 3
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "AddOn_A1",
+      "kind": "enum",
+      "access": 3,
+      "default": 4,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_5",
+        "enum": 4
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "AddOn_A2",
+      "kind": "enum",
+      "access": 3,
+      "default": 5,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_6",
+        "enum": 5
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 6,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "AddOn_A3",
+      "kind": "enum",
+      "access": 3,
+      "default": 6,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_7",
+        "enum": 6
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 7,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "AddOn_A4",
+      "kind": "enum",
+      "access": 3,
+      "default": 7,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_8",
+        "enum": 7
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 8,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "AddOn_B1",
+      "kind": "enum",
+      "access": 3,
+      "default": 8,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_9",
+        "enum": 8
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 9,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "AddOn_B2",
+      "kind": "enum",
+      "access": 3,
+      "default": 9,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_10",
+        "enum": 9
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 10,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "AddOn_B3",
+      "kind": "enum",
+      "access": 3,
+      "default": 10,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_11",
+        "enum": 10
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 11,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "AddOn_B4",
+      "kind": "enum",
+      "access": 3,
+      "default": 11,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_12",
+        "enum": 11
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 12,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "Gain-Ch_1",
+      "unit": "dB",
+      "kind": "float",
+      "access": 3,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 13,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "Gain-Ch_2",
+      "unit": "dB",
+      "kind": "float",
+      "access": 3,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 14,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "Gain-Ch_3",
+      "unit": "dB",
+      "kind": "float",
+      "access": 3,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 15,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "Gain-Ch_4",
+      "unit": "dB",
+      "kind": "float",
+      "access": 3,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 16,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Phase-Ch_1",
+      "kind": "enum",
+      "access": 3,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 17,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Phase-Ch_2",
+      "kind": "enum",
+      "access": 3,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 18,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Phase-Ch_3",
+      "kind": "enum",
+      "access": 3,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 19,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Phase-Ch_4",
+      "kind": "enum",
+      "access": 3,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 20,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Out_1/2",
+      "kind": "enum",
+      "access": 3,
+      "default": 0,
+      "enum_items": [
+        "Stereo",
+        "Mono"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Stereo",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 21,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Out_3/4",
+      "kind": "enum",
+      "access": 3,
+      "default": 0,
+      "enum_items": [
+        "Stereo",
+        "Mono"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Stereo",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 22,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "EDH-Det",
+      "kind": "enum",
+      "access": 3,
+      "default": 0,
+      "enum_items": [
+        "Active-P",
+        "Full-F"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Active-P",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "SDI-Input",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Present"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "GrpInUse",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "____",
+        "1___",
+        "_2__",
+        "12__",
+        "__3_",
+        "1_3_",
+        "_23_",
+        "123_",
+        "___4",
+        "1__4",
+        "_2_4",
+        "12_4",
+        "__34",
+        "1_34",
+        "_234",
+        "1234"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "____",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio-Ch_1",
+      "kind": "enum",
+      "access": 1,
+      "default": 1,
+      "enum_items": [
+        "NA",
+        "NA",
+        "Ok",
+        "Clipped"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 1
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio-Ch_2",
+      "kind": "enum",
+      "access": 1,
+      "default": 1,
+      "enum_items": [
+        "NA",
+        "NA",
+        "Ok",
+        "Clipped"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 1
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio-Ch_3",
+      "kind": "enum",
+      "access": 1,
+      "default": 1,
+      "enum_items": [
+        "NA",
+        "NA",
+        "Ok",
+        "Clipped"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 1
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio-Ch_4",
+      "kind": "enum",
+      "access": 1,
+      "default": 1,
+      "enum_items": [
+        "NA",
+        "NA",
+        "Ok",
+        "Clipped"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 1
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 6,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_A1",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 7,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_A2",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 8,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_A3",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 9,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_A4",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 10,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_B1",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 11,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_B2",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 12,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_B3",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 13,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_B4",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 14,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "ANC-Stat",
+      "kind": "enum",
+      "access": 1,
+      "default": 1,
+      "enum_items": [
+        "NA",
+        "NA",
+        "Ok",
+        "Error"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 1
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 15,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "EDH-Stat",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "Ok",
+        "UES",
+        "EDA",
+        "EDH"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ok",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 16,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "FPGA-Stat",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "Ok",
+        "Error"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ok",
+        "enum": 0
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Announcements",
+      "kind": "alarm",
+      "access": 3,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Input",
+      "kind": "alarm",
+      "access": 3,
+      "value": {
+        "kind": "uint",
+        "uint": 0
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "EDH-Status",
+      "kind": "alarm",
+      "access": 3,
+      "value": {
+        "kind": "uint",
+        "uint": 0
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "ANC-Status",
+      "kind": "alarm",
+      "access": 3,
+      "value": {
+        "kind": "uint",
+        "uint": 0
+      }
+    }
+  ]
+}

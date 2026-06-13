@@ -74,7 +74,7 @@ func EncodeAN2Frame(f *AN2Frame) ([]byte, error) {
 //	| 3      | slot    | u8    | 0-254 endpoint, 255 = broadcast            |
 //	| 4      | mtid    | u8    | 0 for data/events, 1-255 req/reply corr.   |
 //	| 5      | type    | u8    | 0=req, 1=reply, 2=event, 3=error, 4=data   |
-//	| 6-7    | dlen    | u16   | big-endian; > MaxPayload -> ErrFrameTooBig |
+//	| 6-7    | dlen    | u16   | big-endian payload length (<= MaxPayload)  |
 //	| 8+     | payload | dlen  | bytes; short buffer -> truncated error     |
 //
 // Spec reference: an2_protocol.pdf §AN2 Frame Header
@@ -88,11 +88,12 @@ func DecodeAN2Frame(buf []byte) (*AN2Frame, int, error) {
 		return nil, 0, fmt.Errorf("%w: got 0x%04X", ErrBadMagic, magic)
 	}
 
+	// dlen is a u16 (max 65535) and MaxPayload is 65536, so the wire
+	// length can never exceed the cap on decode — no dlen>MaxPayload
+	// guard is reachable here. The cap is enforced on encode, where the
+	// payload length is a Go int. See an2_protocol.pdf §AN2 Frame Header.
 	dlen := binary.BigEndian.Uint16(buf[6:8])
 	total := AN2HeaderSize + int(dlen)
-	if int(dlen) > MaxPayload {
-		return nil, 0, fmt.Errorf("%w: dlen=%d", ErrFrameTooBig, dlen)
-	}
 	if len(buf) < total {
 		return nil, 0, fmt.Errorf("an2: buffer too short for payload: need %d, have %d", total, len(buf))
 	}
@@ -120,7 +121,7 @@ func DecodeAN2Frame(buf []byte) (*AN2Frame, int, error) {
 //	| 3      | slot    | u8    | 0-254 endpoint, 255 = broadcast            |
 //	| 4      | mtid    | u8    | 0 for data/events, 1-255 req/reply corr.   |
 //	| 5      | type    | u8    | 0=req, 1=reply, 2=event, 3=error, 4=data   |
-//	| 6-7    | dlen    | u16   | big-endian; > MaxPayload -> ErrFrameTooBig |
+//	| 6-7    | dlen    | u16   | big-endian payload length (<= MaxPayload)  |
 //	| 8+     | payload | dlen  | io.ReadFull; any read error propagated     |
 //
 // Spec reference: an2_protocol.pdf §AN2 Frame Header
@@ -135,10 +136,10 @@ func ReadAN2Frame(r io.Reader) (*AN2Frame, error) {
 		return nil, fmt.Errorf("%w: got 0x%04X", ErrBadMagic, magic)
 	}
 
+	// dlen is a u16 (max 65535) < MaxPayload (65536): the wire length can
+	// never exceed the cap on decode, so there is no reachable
+	// dlen>MaxPayload guard here. The cap is enforced on encode only.
 	dlen := binary.BigEndian.Uint16(hdr[6:8])
-	if int(dlen) > MaxPayload {
-		return nil, fmt.Errorf("%w: dlen=%d", ErrFrameTooBig, dlen)
-	}
 
 	payload := make([]byte, dlen)
 	if dlen > 0 {

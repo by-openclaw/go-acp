@@ -73,10 +73,7 @@ func NewTCPClient(conn *transport.TCPConn, logger *slog.Logger, cfg ClientConfig
 
 	//nolint:gosec // non-crypto MTID seed
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	seed := r.Uint32()
-	if seed == 0 {
-		seed = 1
-	}
+	seed := nonZeroSeed(r.Uint32())
 
 	c := &TCPClient{
 		conn:       conn,
@@ -249,19 +246,26 @@ func (c *TCPClient) readerLoop() {
 		// Route by MTID. Non-zero → look up pending transaction.
 		// Zero → announcement fan-out.
 		if msg.MTID != 0 {
+			// Deliver the reply while still holding pendingMu so the
+			// non-blocking send can't race Close()'s close(ch) on the same
+			// channel (close-vs-send is a data race + a send-on-closed-channel
+			// panic). The send is non-blocking (reply chan is buffered cap 1
+			// with a default arm), so holding the lock here never blocks the
+			// reader goroutine.
 			c.pendingMu.Lock()
 			ch, ok := c.pending[msg.MTID]
+			if ok {
+				select {
+				case ch <- msg:
+				default:
+					c.logger.Debug("acp1 tcp reader: reply channel full, dropping",
+						"mtid", msg.MTID)
+				}
+			}
 			c.pendingMu.Unlock()
 			if !ok {
 				c.logger.Debug("acp1 tcp reader: no pending for MTID",
 					"mtid", msg.MTID, "mtype", msg.MType)
-				continue
-			}
-			select {
-			case ch <- msg:
-			default:
-				c.logger.Debug("acp1 tcp reader: reply channel full, dropping",
-					"mtid", msg.MTID)
 			}
 			continue
 		}

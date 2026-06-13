@@ -61,10 +61,7 @@ func NewAN2Client(conn *net.TCPConn, logger *slog.Logger, cfg ClientConfig) *AN2
 
 	//nolint:gosec // non-crypto MTID seed
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	seed := r.Uint32()
-	if seed == 0 {
-		seed = 1
-	}
+	seed := nonZeroSeed(r.Uint32())
 
 	c := &AN2Client{
 		conn:       conn,
@@ -90,10 +87,9 @@ func (c *AN2Client) enableProtocolEvents() {
 		Type:    an2.AN2TypeRequest,
 		Payload: []byte{an2.AN2FuncEnableProtocolEvents, byte(an2.AN2ProtoACP1)},
 	}
-	b, err := an2.EncodeAN2Frame(frame)
-	if err != nil {
-		return
-	}
+	// unreachable error: EncodeAN2Frame only fails on a nil frame or a
+	// payload > MaxPayload (65536); this 2-byte control frame is neither.
+	b, _ := an2.EncodeAN2Frame(frame)
 	_ = c.conn.SetWriteDeadline(time.Now().Add(c.cfg.ReceiveTimeout))
 	_, _ = c.conn.Write(b)
 }
@@ -133,10 +129,10 @@ func (c *AN2Client) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 		Type:    an2.AN2TypeData,
 		Payload: payload,
 	}
-	wire, err := an2.EncodeAN2Frame(frame)
-	if err != nil {
-		return nil, fmt.Errorf("acp1 an2: frame encode: %w", err)
-	}
+	// unreachable error: payload came from req.Encode() which caps MDATA at
+	// 134 bytes (≤141 total) — far below AN2 MaxPayload (65536) — and the
+	// frame is non-nil, the only two EncodeAN2Frame failure modes.
+	wire, _ := an2.EncodeAN2Frame(frame)
 
 	_ = c.conn.SetWriteDeadline(time.Now().Add(c.cfg.ReceiveTimeout))
 	if _, err := c.conn.Write(wire); err != nil {
@@ -242,16 +238,18 @@ func (c *AN2Client) readerLoop() {
 		}
 
 		if msg.MTID != 0 {
+			// Non-blocking send under pendingMu so it can't race Close()'s
+			// close(ch) on the same channel (close-vs-send data race +
+			// send-on-closed panic). Send is non-blocking (buffered cap 1 +
+			// default), so holding the lock never blocks the reader.
 			c.pendingMu.Lock()
-			ch, ok := c.pending[msg.MTID]
+			if ch, ok := c.pending[msg.MTID]; ok {
+				select {
+				case ch <- msg:
+				default:
+				}
+			}
 			c.pendingMu.Unlock()
-			if !ok {
-				continue
-			}
-			select {
-			case ch <- msg:
-			default:
-			}
 			continue
 		}
 

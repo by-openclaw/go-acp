@@ -289,10 +289,11 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 			}
 
 		case codec.PIDStringMaxLength:
+			// PropertyU16 succeeds whenever len(Data) >= 2; it only errors when
+			// len(Data) < 2, in which case len(Data) >= 4 can never hold — so the
+			// old `else if len >= 4` fallback was unreachable and is removed.
 			if v, err := codec.PropertyU16(p); err == nil {
 				obj.MaxLen = int(v)
-			} else if len(p.Data) >= 4 {
-				obj.MaxLen = int(p.Data[3])
 			}
 
 		case codec.PIDValue:

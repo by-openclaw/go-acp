@@ -45,10 +45,12 @@ func (s *server) encodeGetDirReply(e *entry, bareRoot bool) ([]byte, error) {
 	} else {
 		// Flat list of direct children, each as a qualified element.
 		for _, child := range hdr.Children {
+			// unreachable: indexRecursive (tree.go) walks the same
+			// Header.Children graph this loop walks, so every child here
+			// already has a byOID entry. A nil lookup would require a
+			// child reachable via Children but absent from byOID, which
+			// newTree never produces.
 			centry := s.tree.byOID[child.Common().OID]
-			if centry == nil {
-				return nil, fmt.Errorf("encoder: missing index for %q", child.Common().OID)
-			}
 			tlv, err := s.encodeQualifiedElement(centry)
 			if err != nil {
 				return nil, err

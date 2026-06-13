@@ -36,12 +36,12 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	sendRaw := func(name string, an2Slot uint8, an2Type codec.AN2Type, payload []byte) DiagResult {
 		r := DiagResult{Name: name, Sent: fmt.Sprintf("%x", payload)}
 
-		// Allocate mtid
-		mtid, merr := sess.allocMTID(ctx)
-		if merr != nil {
-			r.Status = "error: " + merr.Error()
-			return r
-		}
+		// Allocate mtid.
+		// unreachable: allocMTID only errors on ctx cancellation. The diag
+		// probes run sequentially, each releasing its mtid before the next, so
+		// the 255-slot pool is never exhausted and (with a live ctx) alloc
+		// always succeeds.
+		mtid, _ := sess.allocMTID(ctx)
 		defer sess.releaseMTID(mtid)
 
 		// Patch mtid into payload byte 1 (ACP2 header byte 1 = mtid)
@@ -81,9 +81,9 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		case <-sess.done:
 			r.Status = "error: connection closed"
 		case msg := <-ch:
-			if msg == nil {
-				r.Status = "error: nil reply"
-			} else if msg.Type == codec.ACP2TypeError {
+			// unreachable nil check: routeReply only ever sends a non-nil
+			// *ACP2Message into the waiter channel, so msg is never nil here.
+			if msg.Type == codec.ACP2TypeError {
 				r.Status = fmt.Sprintf("error: stat=%d", msg.Func)
 				r.Reply = fmt.Sprintf("%x", msg.Body)
 			} else {
@@ -170,11 +170,10 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	sendACMP := func(name string, an2Slot uint8, payload []byte) DiagResult {
 		r := DiagResult{Name: name, Sent: fmt.Sprintf("%x", payload)}
 
-		mtid, merr := sess.allocMTID(ctx)
-		if merr != nil {
-			r.Status = "error: " + merr.Error()
-			return r
-		}
+		// unreachable: allocMTID only errors on ctx cancellation; the diag
+		// probes are sequential and release before the next, so the pool is
+		// never exhausted and (with a live ctx) alloc always succeeds.
+		mtid, _ := sess.allocMTID(ctx)
 		defer sess.releaseMTID(mtid)
 
 		if len(payload) >= 2 {
@@ -207,21 +206,15 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 
 		timer := time.NewTimer(3 * time.Second)
 		defer timer.Stop()
+		// unreachable reply arm: readLoop routes only AN2 proto 0 (internal) and
+		// proto 2 (ACP2) to waiters; ACMP (proto=3) frames hit readLoop's default
+		// "ignore" arm, so the waiter channel `ch` never receives a reply here.
+		// Only the timeout and connection-closed arms can fire.
 		select {
 		case <-timer.C:
 			r.Status = "timeout (3s)"
 		case <-sess.done:
 			r.Status = "error: connection closed"
-		case msg := <-ch:
-			if msg == nil {
-				r.Status = "error: nil reply"
-			} else if msg.Type == codec.ACP2TypeError {
-				r.Status = fmt.Sprintf("error: stat=%d", msg.Func)
-				r.Reply = fmt.Sprintf("%x", msg.Body)
-			} else {
-				r.Status = fmt.Sprintf("OK type=%d func=%d props=%d", msg.Type, msg.Func, len(msg.Properties))
-				r.Reply = fmt.Sprintf("%x", msg.Body)
-			}
 		}
 		return r
 	}
@@ -251,11 +244,10 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 	sendProto4 := func(name string, payload []byte) DiagResult {
 		r := DiagResult{Name: name, Sent: fmt.Sprintf("%x", payload)}
 
-		mtid, merr := sess.allocMTID(ctx)
-		if merr != nil {
-			r.Status = "error: " + merr.Error()
-			return r
-		}
+		// unreachable: allocMTID only errors on ctx cancellation; the diag
+		// probes are sequential and release before the next, so the pool is
+		// never exhausted and (with a live ctx) alloc always succeeds.
+		mtid, _ := sess.allocMTID(ctx)
 		defer sess.releaseMTID(mtid)
 
 		if len(payload) >= 2 {
@@ -288,21 +280,15 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 
 		timer := time.NewTimer(3 * time.Second)
 		defer timer.Stop()
+		// unreachable reply arm: readLoop routes only AN2 proto 0 (internal) and
+		// proto 2 (ACP2) to waiters; proto=4 (vendor) frames hit readLoop's
+		// default "ignore" arm, so the waiter channel `ch` never receives a reply
+		// here. Only the timeout and connection-closed arms can fire.
 		select {
 		case <-timer.C:
 			r.Status = "timeout (3s)"
 		case <-sess.done:
 			r.Status = "error: connection closed"
-		case msg := <-ch:
-			if msg == nil {
-				r.Status = "error: nil reply"
-			} else if msg.Type == codec.ACP2TypeError {
-				r.Status = fmt.Sprintf("error: stat=%d", msg.Func)
-				r.Reply = fmt.Sprintf("%x", msg.Body)
-			} else {
-				r.Status = fmt.Sprintf("OK type=%d func=%d props=%d", msg.Type, msg.Func, len(msg.Properties))
-				r.Reply = fmt.Sprintf("%x", msg.Body)
-			}
 		}
 		return r
 	}

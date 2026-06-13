@@ -87,6 +87,15 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 		s.mu.Unlock()
 	}()
 
+	return s.acceptLoop(ln)
+}
+
+// acceptLoop runs the blocking accept/spawn loop against ln. Split out of
+// Serve so the accept-error arms can be exercised with an injected
+// listener; Serve's only caller path is unchanged. A clean shutdown
+// (listener closed via ctx or Stop) returns nil; any other Accept error
+// is surfaced to the caller.
+func (s *server) acceptLoop(ln net.Listener) error {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {

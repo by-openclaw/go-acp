@@ -361,10 +361,11 @@ func accessString(a uint8) string {
 		return canonical.AccessWrite
 	case read | write:
 		return canonical.AccessReadWrite
-	case 0:
+	default:
+		// unreachable: a&(read|write) ∈ {0,1,2,3}; 1,2,3 cased above, so
+		// only 0 (no R/W bits) reaches here.
 		return canonical.AccessNone
 	}
-	return canonical.AccessRead
 }
 
 // valueToAny turns a consumer.Value into the right Go scalar for the

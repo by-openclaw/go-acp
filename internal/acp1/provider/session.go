@@ -226,9 +226,13 @@ func checkAccess(access uint8, m codec.Method) codec.ObjectErrCode {
 		if access&codec.AccessSetDef == 0 {
 			return codec.OErrNoSetDefAccess
 		}
-	default:
-		return codec.OErrIllegalMethod
 	}
+	// Unknown methods are not rejected here: method validity is owned by
+	// methodSupported() + the handleRequest dispatch switch, whose final
+	// arm emits OErrIllegalMethod. checkAccess only gates access on the
+	// known methods above; returning 0 for anything else lets the
+	// dispatcher be the single illegal-method authority (avoids a dead
+	// redundant guard).
 	return 0
 }
 

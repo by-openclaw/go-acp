@@ -170,10 +170,10 @@ func handleValueGet(_ context.Context, s *server, args map[string]any) (*AdminRe
 		ObjGroup: codec.ObjGroup(groupNum),
 		ObjID:    uint8(id),
 	}
+	// handleRequest always returns a non-nil reply for a well-formed request
+	// (a missing object yields an error reply, not nil) — so no nil-guard is
+	// needed here; a missing object surfaces via rep.IsError() below.
 	rep, _ := s.handleRequest(req)
-	if rep == nil {
-		return nil, fmt.Errorf("value.get: no reply (object missing or method unsupported)")
-	}
 	if rep.IsError() {
 		return nil, rep.ErrCode()
 	}

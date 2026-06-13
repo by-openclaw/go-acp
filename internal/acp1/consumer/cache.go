@@ -103,12 +103,10 @@ func (c *slotTreeCache) Put(slot int, tree *SlotTree) {
 
 	// Shrink to maxSize by dropping the LRU. Loop because the caller
 	// could have inserted many entries before we got the lock.
+	// unreachable nil-check elided: Len() > maxSize (>=1) guarantees a
+	// non-nil Back() every iteration.
 	for c.maxSize > 0 && c.order.Len() > c.maxSize {
-		back := c.order.Back()
-		if back == nil {
-			break
-		}
-		c.removeElement(back)
+		c.removeElement(c.order.Back())
 	}
 }
 

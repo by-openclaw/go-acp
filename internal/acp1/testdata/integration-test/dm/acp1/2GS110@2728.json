@@ -1,0 +1,6674 @@
+{
+  "model": "2GS110",
+  "sw_rev": "2728",
+  "protocol": "acp1",
+  "objects": [
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Card name",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "2GS110"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "User label",
+      "kind": "string",
+      "access": 7,
+      "value": {
+        "kind": "string",
+        "str": "Full HD format c"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Card description",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "2GS110-2728.html"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Software rev",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "2728"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Hardware rev",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "0100"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Product code",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "9490590010"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 6,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Serial number",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "PR000158"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 7,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Card ID",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "71ef060a00000001"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 8,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Key",
+      "kind": "string",
+      "access": 7,
+      "value": {
+        "kind": "string",
+        "str": "ZH43-ZXQFG-64JK"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 9,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "Features",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "400F3CB7"
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 10,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "HD",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 11,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "3G",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 12,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio Shuffler",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 13,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "ARC",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 14,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Up",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 15,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Down",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 16,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Cross",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 17,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Side Curtains",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 18,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Frame Delay",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 19,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "CVBS In",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 20,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "SDI In 2",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "identity",
+      "path": [
+        "identity"
+      ],
+      "id": 21,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "TWINS",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Option",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Option",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "IO-Ctrl",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Manual",
+        "GPI",
+        "GPI-A",
+        "GPI-B",
+        "GPI-C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Manual",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "IO-Prst_Act",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "IO-Prst_Edit",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Inp_SelA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "SDI-1",
+        "SDI-2",
+        "Analog",
+        "Zoneplate",
+        "Colorbar"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "SDI-1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Inp_SelB",
+      "kind": "enum",
+      "access": 7,
+      "default": 1,
+      "enum_items": [
+        "SDI-1",
+        "SDI-2",
+        "Analog",
+        "Zoneplate",
+        "Colorbar"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "SDI-2",
+        "enum": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#CVBS-Frmt",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Auto",
+        "PAL-M",
+        "PAL-N",
+        "NTSC-M",
+        "NTSC-4.43",
+        "NTSC-J",
+        "SECAM",
+        "PAL-60",
+        "PAL-BGHID"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Auto",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 6,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Out-Frmt",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1080i60",
+        "1080i50",
+        "1080p30",
+        "1080p25",
+        "1080p24",
+        "1080p24sf",
+        "720p60",
+        "720p50",
+        "720p24",
+        "SD525",
+        "SD625",
+        "1080p60",
+        "1080p50"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1080i60",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 7,
+      "meta": {
+        "acp1_type": 10
+      },
+      "label": "#F_delay",
+      "unit": "F",
+      "kind": "uint",
+      "access": 7,
+      "min": 0,
+      "max": 250,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "uint": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 8,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#V_delay",
+      "unit": "ln",
+      "kind": "int",
+      "access": 7,
+      "min": 0,
+      "max": 1125,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 9,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#H_delay",
+      "unit": "px",
+      "kind": "int",
+      "access": 7,
+      "min": 0,
+      "max": 5124,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 10,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Out-Mode",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Straight",
+        "Crossed",
+        "A Only",
+        "B Only",
+        "Sum"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Straight",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 11,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Freeze_A",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 12,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Freeze_B",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 13,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#LowPassFilt_A",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "H_Only",
+        "V_Only",
+        "H_And_V",
+        "H2_Only",
+        "H2_And_V"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 14,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#LowPassFilt_B",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "H_Only",
+        "V_Only",
+        "H_And_V",
+        "H2_Only",
+        "H2_And_V"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 15,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#VANC_Trans",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 16,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#VANC_Trans_Ln0",
+      "unit": "ln",
+      "kind": "int",
+      "access": 7,
+      "min": 7,
+      "max": 41,
+      "step": 1,
+      "default": 7,
+      "value": {
+        "kind": "int",
+        "int": 7
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 17,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#VANC_Trans_Ln1",
+      "unit": "ln",
+      "kind": "int",
+      "access": 7,
+      "min": 7,
+      "max": 41,
+      "step": 1,
+      "default": 7,
+      "value": {
+        "kind": "int",
+        "int": 7
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 18,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#VANC_Trans_Ln2",
+      "unit": "ln",
+      "kind": "int",
+      "access": 7,
+      "min": 7,
+      "max": 41,
+      "step": 1,
+      "default": 7,
+      "value": {
+        "kind": "int",
+        "int": 7
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 19,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#VANC_Trans_Ln3",
+      "unit": "ln",
+      "kind": "int",
+      "access": 7,
+      "min": 7,
+      "max": 41,
+      "step": 1,
+      "default": 7,
+      "value": {
+        "kind": "int",
+        "int": 7
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 20,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#VANC_Trans_Ln4",
+      "unit": "ln",
+      "kind": "int",
+      "access": 7,
+      "min": 7,
+      "max": 41,
+      "step": 1,
+      "default": 7,
+      "value": {
+        "kind": "int",
+        "int": 7
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 21,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#VANC_Trans_Ln5",
+      "unit": "ln",
+      "kind": "int",
+      "access": 7,
+      "min": 7,
+      "max": 41,
+      "step": 1,
+      "default": 7,
+      "value": {
+        "kind": "int",
+        "int": 7
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 22,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Delay-Status",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 23,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Lock-Mode",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Ref1",
+        "Ref2",
+        "Input",
+        "Freerun",
+        "RefAuto"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ref1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 24,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Ref-Type",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Bi-Level",
+        "Tri-Level"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Bi-Level",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 25,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "PrstEditView",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Follow Active",
+        "Independent"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Follow Active",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 26,
+      "meta": {
+        "acp1_type": 10
+      },
+      "label": "PatternSpeed",
+      "kind": "uint",
+      "access": 7,
+      "min": 0,
+      "max": 15,
+      "step": 1,
+      "default": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 27,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Input_Loss_A",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Freeze",
+        "Colorbar",
+        "Zoneplate",
+        "Black",
+        "Grey",
+        "Green"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Freeze",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 28,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Input_Loss_B",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Freeze",
+        "Colorbar",
+        "Zoneplate",
+        "Black",
+        "Grey",
+        "Green"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Freeze",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 29,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "  DOWN CONV",
+      "kind": "string",
+      "access": 7,
+      "sub_group_marker": true,
+      "value": {
+        "kind": "string",
+        "str": ""
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 30,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Dn_CtrlA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Manual",
+        "GPI",
+        "S2016",
+        "GPI-A",
+        "GPI-B",
+        "GPI-C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Manual",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 31,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Dn_Prst_ActA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 32,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Dn_Prst_EditA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 33,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Dn_ArcA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Anamorphic",
+        "CenterCut",
+        "LBox-16:9",
+        "LBox-14:9",
+        "Variable",
+        "Anam-702"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Anamorphic",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 34,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#Dn_H-ScaleA",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 50,
+      "max": 200,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 35,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#Dn_V-ScaleA",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 50,
+      "max": 200,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 36,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#Dn_H-EnhA",
+      "kind": "int",
+      "access": 7,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 37,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Dn_ColorConvA",
+      "kind": "enum",
+      "access": 7,
+      "default": 1,
+      "enum_items": [
+        "Off",
+        "709to601"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "709to601",
+        "enum": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 38,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Dn_CtrlB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Manual",
+        "GPI",
+        "S2016",
+        "GPI-A",
+        "GPI-B",
+        "GPI-C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Manual",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 39,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Dn_Prst_ActB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 40,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Dn_Prst_EditB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 41,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Dn_ArcB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Anamorphic",
+        "CenterCut",
+        "LBox-16:9",
+        "LBox-14:9",
+        "Variable",
+        "Anam-702"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Anamorphic",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 42,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#Dn_H-ScaleB",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 50,
+      "max": 200,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 43,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#Dn_V-ScaleB",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 50,
+      "max": 200,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 44,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#Dn_H-EnhB",
+      "kind": "int",
+      "access": 7,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 45,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Dn_ColorConvB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "709to601"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 46,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "  TRANSPARENT",
+      "kind": "string",
+      "access": 7,
+      "sub_group_marker": true,
+      "value": {
+        "kind": "string",
+        "str": ""
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 47,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Tr_CtrlA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Manual",
+        "GPI",
+        "S2016",
+        "SD-AR",
+        "GPI-A",
+        "GPI-B",
+        "GPI-C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Manual",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 48,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Tr_Prst_ActA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 49,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Tr_Prst_EditA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 50,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Tr_ArcA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Anamorphic",
+        "Variable"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Anamorphic",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 51,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#Tr_H-ScaleA",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 50,
+      "max": 200,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 52,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#Tr_V-ScaleA",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 50,
+      "max": 200,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 53,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#Tr_H-EnhA",
+      "kind": "int",
+      "access": 7,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 54,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Tr_CtrlB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Manual",
+        "GPI",
+        "S2016",
+        "SD-AR",
+        "GPI-A",
+        "GPI-B",
+        "GPI-C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Manual",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 55,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Tr_Prst_ActB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 56,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Tr_Prst_EditB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 57,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#Tr_ArcB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Anamorphic",
+        "Variable"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Anamorphic",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 58,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#Tr_H-ScaleB",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 50,
+      "max": 200,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 59,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#Tr_V-ScaleB",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 50,
+      "max": 200,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 60,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "#Tr_H-EnhB",
+      "kind": "int",
+      "access": 7,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 61,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "  INSERTER",
+      "kind": "string",
+      "access": 7,
+      "sub_group_marker": true,
+      "value": {
+        "kind": "string",
+        "str": ""
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 62,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Timecode_ins",
+      "kind": "enum",
+      "access": 7,
+      "default": 1,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "On",
+        "enum": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 63,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "VITC_Ln_In",
+      "unit": "ln",
+      "kind": "int",
+      "access": 7,
+      "min": 7,
+      "max": 22,
+      "step": 1,
+      "default": 19,
+      "value": {
+        "kind": "int",
+        "int": 19
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 64,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "VITC_Ln_Ctrl",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Manual",
+        "ATC_DBB"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Manual",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 65,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "VITC_Ln_625",
+      "kind": "int",
+      "access": 7,
+      "min": 7,
+      "max": 22,
+      "step": 1,
+      "default": 19,
+      "value": {
+        "kind": "int",
+        "int": 19
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 66,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "VITC_Ln_525",
+      "kind": "int",
+      "access": 7,
+      "min": 10,
+      "max": 20,
+      "step": 1,
+      "default": 10,
+      "value": {
+        "kind": "int",
+        "int": 10
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 67,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "VITC_Ln_Dup",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 68,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Ins_CtrlA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Manual",
+        "GPI",
+        "S2016",
+        "SD-AR",
+        "GPI-A",
+        "GPI-B",
+        "GPI-C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Manual",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 69,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Ins_Prst_ActA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 70,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Ins_Prst_EditA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 71,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#VI-InsertA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 72,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#VI-DataA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "4:3_0",
+        "4:3_1",
+        "4:3_2",
+        "4:3_3",
+        "4:3_4",
+        "4:3_5",
+        "4:3_6",
+        "4:3_7",
+        "16:9_0",
+        "16:9_1",
+        "16:9_2",
+        "16:9_3",
+        "16:9_4",
+        "16:9_5",
+        "16:9_6",
+        "16:9_7"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "4:3_0",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 73,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#WSS-InsertA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Standard",
+        "Extended"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 74,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#WSS-StndA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1_vid",
+        "2_vid",
+        "3_vid",
+        "4_vid",
+        "5_vid",
+        "6_vid",
+        "7_vid",
+        "8_vid",
+        "1_flm",
+        "2_flm",
+        "3_flm",
+        "4_flm",
+        "5_flm",
+        "6_flm",
+        "7_flm",
+        "8_flm"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1_vid",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 75,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#WSS-ExtndA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "4:3_0",
+        "4:3_1",
+        "4:3_2",
+        "4:3_3",
+        "4:3_4",
+        "4:3_5",
+        "4:3_6",
+        "4:3_7",
+        "16:9_0",
+        "16:9_1",
+        "16:9_2",
+        "16:9_3",
+        "16:9_4",
+        "16:9_5",
+        "16:9_6",
+        "16:9_7"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "4:3_0",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 76,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#S2016-InsertA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 77,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#S2016-DataA",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "AFD0",
+        "AFD1",
+        "AFD2",
+        "AFD3",
+        "AFD4",
+        "AFD5",
+        "AFD6",
+        "AFD7",
+        "AFD8",
+        "AFD9",
+        "AFD10",
+        "AFD11",
+        "AFD12",
+        "AFD13",
+        "AFD14",
+        "AFD15"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "AFD0",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 78,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#CC_Ena_A",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 79,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Ins_CtrlB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Manual",
+        "GPI",
+        "S2016",
+        "SD-AR",
+        "GPI-A",
+        "GPI-B",
+        "GPI-C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Manual",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 80,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Ins_Prst_ActB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 81,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Ins_Prst_EditB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 82,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#VI-InsertB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 83,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#VI-DataB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "4:3_0",
+        "4:3_1",
+        "4:3_2",
+        "4:3_3",
+        "4:3_4",
+        "4:3_5",
+        "4:3_6",
+        "4:3_7",
+        "16:9_0",
+        "16:9_1",
+        "16:9_2",
+        "16:9_3",
+        "16:9_4",
+        "16:9_5",
+        "16:9_6",
+        "16:9_7"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "4:3_0",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 84,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#WSS-InsertB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Standard",
+        "Extended"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 85,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#WSS-StndB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1_vid",
+        "2_vid",
+        "3_vid",
+        "4_vid",
+        "5_vid",
+        "6_vid",
+        "7_vid",
+        "8_vid",
+        "1_flm",
+        "2_flm",
+        "3_flm",
+        "4_flm",
+        "5_flm",
+        "6_flm",
+        "7_flm",
+        "8_flm"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1_vid",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 86,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#WSS-ExtndB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "4:3_0",
+        "4:3_1",
+        "4:3_2",
+        "4:3_3",
+        "4:3_4",
+        "4:3_5",
+        "4:3_6",
+        "4:3_7",
+        "16:9_0",
+        "16:9_1",
+        "16:9_2",
+        "16:9_3",
+        "16:9_4",
+        "16:9_5",
+        "16:9_6",
+        "16:9_7"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "4:3_0",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 87,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#S2016-InsertB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 88,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#S2016-DataB",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "AFD0",
+        "AFD1",
+        "AFD2",
+        "AFD3",
+        "AFD4",
+        "AFD5",
+        "AFD6",
+        "AFD7",
+        "AFD8",
+        "AFD9",
+        "AFD10",
+        "AFD11",
+        "AFD12",
+        "AFD13",
+        "AFD14",
+        "AFD15"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "AFD0",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 89,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#CC_Ena_B",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 90,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "  VIDEO PROC",
+      "kind": "string",
+      "access": 7,
+      "sub_group_marker": true,
+      "value": {
+        "kind": "string",
+        "str": ""
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 91,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "GainA",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 0,
+      "max": 150,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 92,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "R-GainA",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 0,
+      "max": 150,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 93,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "G-GainA",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 0,
+      "max": 150,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 94,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "B-GainA",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 0,
+      "max": 150,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 95,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "GainB",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 0,
+      "max": 150,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 96,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "R-GainB",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 0,
+      "max": 150,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 97,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "G-GainB",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 0,
+      "max": 150,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 98,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "B-GainB",
+      "unit": "%",
+      "kind": "float",
+      "access": 7,
+      "min": 0,
+      "max": 150,
+      "step": 1,
+      "default": 100,
+      "value": {
+        "kind": "float",
+        "float": 100
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 99,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "BlackA",
+      "unit": "bit",
+      "kind": "int",
+      "access": 7,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 100,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "R-BlackA",
+      "unit": "bit",
+      "kind": "int",
+      "access": 7,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 101,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "G-BlackA",
+      "unit": "bit",
+      "kind": "int",
+      "access": 7,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 102,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "B-BlackA",
+      "unit": "bit",
+      "kind": "int",
+      "access": 7,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 103,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "BlackB",
+      "unit": "bit",
+      "kind": "int",
+      "access": 7,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 104,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "R-BlackB",
+      "unit": "bit",
+      "kind": "int",
+      "access": 7,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 105,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "G-BlackB",
+      "unit": "bit",
+      "kind": "int",
+      "access": 7,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 106,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Output_Map_A",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Level A",
+        "Level B"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Level A",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 107,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "B-BlackB",
+      "unit": "bit",
+      "kind": "int",
+      "access": 7,
+      "min": -128,
+      "max": 127,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 108,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "CVBS-Hue",
+      "kind": "int",
+      "access": 7,
+      "min": -90,
+      "max": 90,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 109,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "  AUDIO PROC AMP",
+      "kind": "string",
+      "access": 7,
+      "sub_group_marker": true,
+      "value": {
+        "kind": "string",
+        "str": ""
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 110,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_Ctrl",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Manual",
+        "GPI",
+        "GPI-A",
+        "GPI-B",
+        "GPI-C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Manual",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 111,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_Prst_Act",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 112,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio_Prst_Edit",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 113,
+      "meta": {
+        "acp1_type": 9
+      },
+      "label": "#Audio_Delay",
+      "unit": "ms",
+      "kind": "int",
+      "access": 7,
+      "min": 0,
+      "max": 10000,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 114,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Audio-Bus-IO",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "1234",
+        "1324"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "1234",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 115,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "  EMBEDDER",
+      "kind": "string",
+      "access": 7,
+      "sub_group_marker": true,
+      "value": {
+        "kind": "string",
+        "str": ""
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 116,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA_Grp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Group1",
+        "Group2",
+        "Group3",
+        "Group4",
+        "Off"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Group1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 117,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA1_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 118,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA1_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_1",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 119,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA2_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 120,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA2_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 1,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_2",
+        "enum": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 121,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA3_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 122,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA3_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 2,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_3",
+        "enum": 2
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 123,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA4_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 124,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA4_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 3,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_4",
+        "enum": 3
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 125,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB_Grp",
+      "kind": "enum",
+      "access": 7,
+      "default": 1,
+      "enum_items": [
+        "Group1",
+        "Group2",
+        "Group3",
+        "Group4",
+        "Off"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Group2",
+        "enum": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 126,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB1_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 127,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB1_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 4,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_5",
+        "enum": 4
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 128,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB2_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 129,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB2_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 5,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_6",
+        "enum": 5
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 130,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB3_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 131,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB3_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 6,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_7",
+        "enum": 6
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 132,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB4_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 133,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB4_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 7,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_8",
+        "enum": 7
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 134,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC_Grp",
+      "kind": "enum",
+      "access": 7,
+      "default": 2,
+      "enum_items": [
+        "Group1",
+        "Group2",
+        "Group3",
+        "Group4",
+        "Off"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Group3",
+        "enum": 2
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 135,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC1_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 136,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC1_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 8,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_9",
+        "enum": 8
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 137,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC2_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 138,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC2_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 9,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_10",
+        "enum": 9
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 139,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC3_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 140,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC3_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 10,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_11",
+        "enum": 10
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 141,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC4_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 142,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC4_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 11,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_12",
+        "enum": 11
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 143,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD_Grp",
+      "kind": "enum",
+      "access": 7,
+      "default": 3,
+      "enum_items": [
+        "Group1",
+        "Group2",
+        "Group3",
+        "Group4",
+        "Off"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Group4",
+        "enum": 3
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 144,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD1_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 145,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD1_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 12,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_13",
+        "enum": 12
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 146,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD2_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 147,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD2_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 13,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_14",
+        "enum": 13
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 148,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD3_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 149,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD3_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 14,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_15",
+        "enum": 14
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 150,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD4_Inp",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "Demb-SDI1",
+        "Demb-SDI2",
+        "Demb-Input",
+        "ADD-ON"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 151,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD4_Inp_Ch",
+      "kind": "enum",
+      "access": 7,
+      "default": 15,
+      "enum_items": [
+        "Ch_1",
+        "Ch_2",
+        "Ch_3",
+        "Ch_4",
+        "Ch_5",
+        "Ch_6",
+        "Ch_7",
+        "Ch_8",
+        "Ch_9",
+        "Ch_10",
+        "Ch_11",
+        "Ch_12",
+        "Ch_13",
+        "Ch_14",
+        "Ch_15",
+        "Ch_16"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Ch_16",
+        "enum": 15
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 152,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbA1_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 153,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA1_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 154,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbA2_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 155,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA2_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 156,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbA3_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 157,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA3_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 158,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbA4_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 159,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbA4_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 160,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbB1_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 161,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB1_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 162,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbB2_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 163,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB2_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 164,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbB3_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 165,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB3_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 166,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbB4_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 167,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbB4_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 168,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbC1_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 169,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC1_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 170,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbC2_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 171,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC2_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 172,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbC3_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 173,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC3_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 174,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbC4_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 175,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbC4_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 176,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbD1_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 177,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD1_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 178,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbD2_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 179,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD2_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 180,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbD3_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 181,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD3_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 182,
+      "meta": {
+        "acp1_type": 3
+      },
+      "label": "#EmbD4_Gain",
+      "unit": "dB",
+      "kind": "float",
+      "access": 7,
+      "min": -999,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "float": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 183,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "#EmbD4_Phase",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "0 deg",
+        "180 deg"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "0 deg",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 184,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "  GPI MODE",
+      "kind": "string",
+      "access": 7,
+      "sub_group_marker": true,
+      "value": {
+        "kind": "string",
+        "str": ""
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 185,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "GPI-Ctrl",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Latch",
+        "nonLatch"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Latch",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 186,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "GPI_1",
+      "kind": "enum",
+      "access": 7,
+      "default": 5,
+      "enum_items": [
+        "Off",
+        "GPI A",
+        "GPI B",
+        "GPI C",
+        "Take A",
+        "Take B",
+        "Take C",
+        "GPI Prio A",
+        "GPI Prio B",
+        "GPI Prio C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Take B",
+        "enum": 5
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 187,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "GPI_2",
+      "kind": "enum",
+      "access": 7,
+      "default": 5,
+      "enum_items": [
+        "Off",
+        "GPI A",
+        "GPI B",
+        "GPI C",
+        "Take A",
+        "Take B",
+        "Take C",
+        "GPI Prio A",
+        "GPI Prio B",
+        "GPI Prio C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Take B",
+        "enum": 5
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 188,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "GPI_3",
+      "kind": "enum",
+      "access": 7,
+      "default": 5,
+      "enum_items": [
+        "Off",
+        "GPI A",
+        "GPI B",
+        "GPI C",
+        "Take A",
+        "Take B",
+        "Take C",
+        "GPI Prio A",
+        "GPI Prio B",
+        "GPI Prio C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Take B",
+        "enum": 5
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 189,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "GPI_4",
+      "kind": "enum",
+      "access": 7,
+      "default": 5,
+      "enum_items": [
+        "Off",
+        "GPI A",
+        "GPI B",
+        "GPI C",
+        "Take A",
+        "Take B",
+        "Take C",
+        "GPI Prio A",
+        "GPI Prio B",
+        "GPI Prio C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Take B",
+        "enum": 5
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 190,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "GPI_5",
+      "kind": "enum",
+      "access": 7,
+      "default": 0,
+      "enum_items": [
+        "Off",
+        "GPI A",
+        "GPI B",
+        "GPI C",
+        "Take A",
+        "Take B",
+        "Take C",
+        "GPI Prio A",
+        "GPI Prio B",
+        "GPI Prio C"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Off",
+        "enum": 0
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 191,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": " NETWORK",
+      "kind": "string",
+      "access": 7,
+      "sub_group_marker": true,
+      "value": {
+        "kind": "string",
+        "str": ""
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 192,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "IP_Conf0",
+      "kind": "enum",
+      "access": 7,
+      "default": 1,
+      "enum_items": [
+        "Manual",
+        "DHCP"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "DHCP",
+        "enum": 1
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 193,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "mIP0",
+      "kind": "ipaddr",
+      "access": 7,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 194,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "mNM0",
+      "kind": "ipaddr",
+      "access": 7,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 195,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "mGW0",
+      "kind": "ipaddr",
+      "access": 7,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "control",
+      "path": [
+        "control"
+      ],
+      "id": 196,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "NetwPrefix0",
+      "unit": "bit",
+      "kind": "int",
+      "access": 7,
+      "min": 0,
+      "max": 30,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp1",
+      "kind": "enum",
+      "access": 1,
+      "default": 15,
+      "enum_items": [
+        "1080i60",
+        "1080i50",
+        "1080p30",
+        "1080p25",
+        "1080p24",
+        "1080p24sf",
+        "720p60",
+        "720p50",
+        "720p30",
+        "720p25",
+        "720p24",
+        "SD525",
+        "SD625",
+        "1080p60",
+        "1080p50",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 15
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp1_VI",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "4:3_0",
+        "4:3_1",
+        "4:3_2",
+        "4:3_3",
+        "4:3_4",
+        "4:3_5",
+        "4:3_6",
+        "4:3_7",
+        "16:9_0",
+        "16:9_1",
+        "16:9_2",
+        "16:9_3",
+        "16:9_4",
+        "16:9_5",
+        "16:9_6",
+        "16:9_7",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp1_WSS-Stnd",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "1_vid",
+        "2_vid",
+        "3_vid",
+        "4_vid",
+        "5_vid",
+        "6_vid",
+        "7_vid",
+        "8_vid",
+        "1_flm",
+        "2_flm",
+        "3_flm",
+        "4_flm",
+        "5_flm",
+        "6_flm",
+        "7_flm",
+        "8_flm",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp1_WSS-Extd",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "4:3_0",
+        "4:3_1",
+        "4:3_2",
+        "4:3_3",
+        "4:3_4",
+        "4:3_5",
+        "4:3_6",
+        "4:3_7",
+        "16:9_0",
+        "16:9_1",
+        "16:9_2",
+        "16:9_3",
+        "16:9_4",
+        "16:9_5",
+        "16:9_6",
+        "16:9_7",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 4,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp1_s2016",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "AFD0",
+        "AFD1",
+        "AFD2",
+        "AFD3",
+        "AFD4",
+        "AFD5",
+        "AFD6",
+        "AFD7",
+        "AFD8",
+        "AFD9",
+        "AFD10",
+        "AFD11",
+        "AFD12",
+        "AFD13",
+        "AFD14",
+        "AFD15",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 5,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp2",
+      "kind": "enum",
+      "access": 1,
+      "default": 15,
+      "enum_items": [
+        "1080i60",
+        "1080i50",
+        "1080p30",
+        "1080p25",
+        "1080p24",
+        "1080p24sf",
+        "720p60",
+        "720p50",
+        "720p30",
+        "720p25",
+        "720p24",
+        "SD525",
+        "SD625",
+        "1080p60",
+        "1080p50",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 15
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 6,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp2_VI",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "4:3_0",
+        "4:3_1",
+        "4:3_2",
+        "4:3_3",
+        "4:3_4",
+        "4:3_5",
+        "4:3_6",
+        "4:3_7",
+        "16:9_0",
+        "16:9_1",
+        "16:9_2",
+        "16:9_3",
+        "16:9_4",
+        "16:9_5",
+        "16:9_6",
+        "16:9_7",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 7,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp2_WSS-Stnd",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "1_vid",
+        "2_vid",
+        "3_vid",
+        "4_vid",
+        "5_vid",
+        "6_vid",
+        "7_vid",
+        "8_vid",
+        "1_flm",
+        "2_flm",
+        "3_flm",
+        "4_flm",
+        "5_flm",
+        "6_flm",
+        "7_flm",
+        "8_flm",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 8,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp2_WSS-Extd",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "4:3_0",
+        "4:3_1",
+        "4:3_2",
+        "4:3_3",
+        "4:3_4",
+        "4:3_5",
+        "4:3_6",
+        "4:3_7",
+        "16:9_0",
+        "16:9_1",
+        "16:9_2",
+        "16:9_3",
+        "16:9_4",
+        "16:9_5",
+        "16:9_6",
+        "16:9_7",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 9,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp2_s2016",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "AFD0",
+        "AFD1",
+        "AFD2",
+        "AFD3",
+        "AFD4",
+        "AFD5",
+        "AFD6",
+        "AFD7",
+        "AFD8",
+        "AFD9",
+        "AFD10",
+        "AFD11",
+        "AFD12",
+        "AFD13",
+        "AFD14",
+        "AFD15",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 10,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp3",
+      "kind": "enum",
+      "access": 1,
+      "default": 15,
+      "enum_items": [
+        "1080i60",
+        "1080i50",
+        "1080p30",
+        "1080p25",
+        "1080p24",
+        "1080p24sf",
+        "720p60",
+        "720p50",
+        "720p30",
+        "720p25",
+        "720p24",
+        "SD525",
+        "SD625",
+        "1080p60",
+        "1080p50",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 15
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 11,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp3_WSS-Stnd",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "1_vid",
+        "2_vid",
+        "3_vid",
+        "4_vid",
+        "5_vid",
+        "6_vid",
+        "7_vid",
+        "8_vid",
+        "1_flm",
+        "2_flm",
+        "3_flm",
+        "4_flm",
+        "5_flm",
+        "6_flm",
+        "7_flm",
+        "8_flm",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 12,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInp3_WSS-Extd",
+      "kind": "enum",
+      "access": 1,
+      "default": 16,
+      "enum_items": [
+        "4:3_0",
+        "4:3_1",
+        "4:3_2",
+        "4:3_3",
+        "4:3_4",
+        "4:3_5",
+        "4:3_6",
+        "4:3_7",
+        "16:9_0",
+        "16:9_1",
+        "16:9_2",
+        "16:9_3",
+        "16:9_4",
+        "16:9_5",
+        "16:9_6",
+        "16:9_7",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 13,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "sInpCVBS",
+      "kind": "enum",
+      "access": 1,
+      "default": 9,
+      "enum_items": [
+        "NTSC-J",
+        "NTSC-M",
+        "NTSC-4.43",
+        "PAL-BGHID",
+        "PAL-N",
+        "PAL-M",
+        "PAL-60",
+        "SECAM",
+        "SECAM-525",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 9
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 14,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "IODelayA",
+      "unit": "ms",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 15000,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 15,
+      "meta": {
+        "acp1_type": 1
+      },
+      "label": "IODelayB",
+      "unit": "ms",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 15000,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "int": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 16,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "FunctionA",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "Up",
+        "Down",
+        "Cross",
+        "Trans",
+        "NA",
+        "TestPattern"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Up",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 17,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "FunctionB",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "Up",
+        "Down",
+        "Cross",
+        "Trans",
+        "NA",
+        "TestPattern"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "Up",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 18,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "Ref",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Present"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 19,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "GPI",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "____",
+        "1___",
+        "_2__",
+        "12__",
+        "__3_",
+        "1_3_",
+        "_23_",
+        "123_",
+        "___4",
+        "1__4",
+        "_2_4",
+        "12_4",
+        "__34",
+        "1_34",
+        "_234",
+        "1234"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "____",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 20,
+      "meta": {
+        "acp1_type": 10
+      },
+      "label": "GPIA",
+      "kind": "uint",
+      "access": 1,
+      "min": 0,
+      "max": 255,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "uint": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 21,
+      "meta": {
+        "acp1_type": 10
+      },
+      "label": "GPIB",
+      "kind": "uint",
+      "access": 1,
+      "min": 0,
+      "max": 255,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "uint": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 22,
+      "meta": {
+        "acp1_type": 10
+      },
+      "label": "GPIC",
+      "kind": "uint",
+      "access": 1,
+      "min": 0,
+      "max": 255,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "uint": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 23,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "OP47-Det-A",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 24,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "OP47-Det-B",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 25,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "WST-Det-A",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 26,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "WST-Det-B",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 27,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "CC_Det_A",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 28,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "CC_Det_B",
+      "kind": "enum",
+      "access": 1,
+      "default": 0,
+      "enum_items": [
+        "NA",
+        "Ok"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "NA",
+        "enum": 0
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 29,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "  NET STATUS",
+      "kind": "string",
+      "access": 1,
+      "sub_group_marker": true,
+      "value": {
+        "kind": "string",
+        "str": ""
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 30,
+      "meta": {
+        "acp1_type": 4
+      },
+      "label": "IP_Addr0",
+      "kind": "enum",
+      "access": 1,
+      "default": 1,
+      "enum_items": [
+        "Manual",
+        "DHCP Asking",
+        "DHCP Leased",
+        "DHCP Infin"
+      ],
+      "value": {
+        "kind": "enum",
+        "str": "DHCP Asking",
+        "enum": 1
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 31,
+      "meta": {
+        "acp1_type": 5
+      },
+      "label": "MAC0",
+      "kind": "string",
+      "access": 1,
+      "value": {
+        "kind": "string",
+        "str": "00:03:41:10:00:31"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 32,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "IP0",
+      "kind": "ipaddr",
+      "access": 1,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 33,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "NM0",
+      "kind": "ipaddr",
+      "access": 1,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "status",
+      "path": [
+        "status"
+      ],
+      "id": 34,
+      "meta": {
+        "acp1_type": 2
+      },
+      "label": "GW0",
+      "kind": "ipaddr",
+      "access": 1,
+      "min": 0,
+      "max": 4294967295,
+      "default": 0,
+      "value": {
+        "kind": "ipaddr",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 0,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Announcements",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 1,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Input_A",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 2,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Input_B",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    },
+    {
+      "group": "alarm",
+      "path": [
+        "alarm"
+      ],
+      "id": 3,
+      "meta": {
+        "acp1_type": 7
+      },
+      "label": "Ref-Status",
+      "kind": "alarm",
+      "access": 7,
+      "alarm_priority": 1,
+      "value": {
+        "kind": "uint",
+        "uint": 1
+      }
+    }
+  ]
+}

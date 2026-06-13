@@ -96,16 +96,23 @@ func NewClient(tr Transport, logger *slog.Logger, cfg ClientConfig) *Client {
 	// power-up" — not cryptographic randomness.
 	//nolint:gosec // not a security boundary
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	seed := r.Uint32()
-	if seed == 0 {
-		seed = 1
-	}
+	seed := nonZeroSeed(r.Uint32())
 	return &Client{
 		tr:       tr,
 		logger:   logger,
 		cfg:      cfg,
 		nextMTID: seed,
 	}
+}
+
+// nonZeroSeed maps a random u32 to a valid initial MTID: the spec forbids
+// MTID 0, so a 0 draw is bumped to 1. Extracted so the (rare) zero-draw
+// branch is deterministically testable without controlling math/rand.
+func nonZeroSeed(s uint32) uint32 {
+	if s == 0 {
+		return 1
+	}
+	return s
 }
 
 // Close releases the transport. Safe to call multiple times.

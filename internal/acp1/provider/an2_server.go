@@ -50,8 +50,12 @@ func (s *server) ServeAN2(ctx context.Context, addr string) error {
 		_ = ln.Close()
 	}()
 
+	accept := ln.AcceptTCP
+	if s.acceptTCPHook != nil {
+		accept = func() (*net.TCPConn, error) { return s.acceptTCPHook(ln) }
+	}
 	for {
-		conn, err := ln.AcceptTCP()
+		conn, err := accept()
 		if err != nil {
 			if isClosed(err) || errors.Is(ctx.Err(), context.Canceled) {
 				return nil
@@ -87,23 +91,7 @@ func (s *server) serveAN2Session(ctx context.Context, conn *net.TCPConn, ip stri
 	writerDone := make(chan struct{})
 	go func() {
 		defer close(writerDone)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case payload, ok := <-send:
-				if !ok {
-					return
-				}
-				_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-				if _, err := conn.Write(payload); err != nil {
-					if !isClosed(err) {
-						s.logger.Warn("acp1 an2 write", slog.String("err", err.Error()))
-					}
-					return
-				}
-			}
-		}
+		s.runAN2Writer(ctx, conn, send)
 	}()
 
 	for {
@@ -135,6 +123,29 @@ func (s *server) serveAN2Session(ctx context.Context, conn *net.TCPConn, ip stri
 
 	close(send)
 	<-writerDone
+}
+
+// runAN2Writer pumps the per-session send channel onto the socket. Extracted
+// from serveAN2Session so the writer's ctx-exit, channel-close, and
+// write-error arms are directly testable.
+func (s *server) runAN2Writer(ctx context.Context, conn *net.TCPConn, send chan []byte) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case payload, ok := <-send:
+			if !ok {
+				return
+			}
+			_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			if _, err := conn.Write(payload); err != nil {
+				if !isClosed(err) {
+					s.logger.Warn("acp1 an2 write", slog.String("err", err.Error()))
+				}
+				return
+			}
+		}
+	}
 }
 
 // handleAN2Internal answers AN2 control messages. Minimal subset: we
@@ -239,10 +250,10 @@ func (s *server) broadcastAN2Announce(acp1Body []byte) {
 		Type:    an2.AN2TypeData,
 		Payload: acp1Body,
 	}
-	b, err := an2.EncodeAN2Frame(out)
-	if err != nil {
-		return
-	}
+	// unreachable error: acp1Body is a single ACP1 PDU (≤141 bytes), far
+	// below AN2 MaxPayload (65536), and out is non-nil — the only two
+	// EncodeAN2Frame failure modes.
+	b, _ := an2.EncodeAN2Frame(out)
 	s.an2Registry.broadcastACP1(b)
 }
 
@@ -256,10 +267,10 @@ func readAN2Frame(conn *net.TCPConn) (*an2.AN2Frame, error) {
 	if binary.BigEndian.Uint16(hdr[0:2]) != an2.AN2Magic {
 		return nil, an2.ErrBadMagic
 	}
+	// dlen is a u16 (≤65535) and AN2 MaxPayload is 65536, so the wire can
+	// never advertise an over-max frame here — the bound check the codec's
+	// own decoder performs would be unreachable in this reader.
 	dlen := int(binary.BigEndian.Uint16(hdr[6:8]))
-	if dlen > an2.MaxPayload {
-		return nil, an2.ErrFrameTooBig
-	}
 	body := make([]byte, dlen)
 	if dlen > 0 {
 		if _, err := io.ReadFull(conn, body); err != nil {

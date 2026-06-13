@@ -90,16 +90,13 @@ func (s *server) emitFloatAnnounce(slot uint8, objID uint32, phase float64) {
 		slog.Float64("value", v),
 	)
 
-	prop, err := encodeNumericProp(codec.PIDValue, codec.NumTypeFloat, v)
-	if err != nil {
-		s.logger.Debug("acp2 demo: encode failed", slog.String("err", err.Error()))
-		return
-	}
-	body, err := codec.EncodeProperty(&prop)
-	if err != nil {
-		s.logger.Debug("acp2 demo: property encode failed", slog.String("err", err.Error()))
-		return
-	}
+	// unreachable: encodeNumericProp(NumTypeFloat, float64) only errors on an
+	// unknown NumberType or a non-numeric value; nt is fixed NumTypeFloat and v
+	// is a computed float64, so neither failure mode applies.
+	prop, _ := encodeNumericProp(codec.PIDValue, codec.NumTypeFloat, v)
+	// unreachable: EncodeProperty only errors on a nil *Property; &prop is a
+	// guaranteed-non-nil local.
+	body, _ := codec.EncodeProperty(&prop)
 	// Spec §3.2 ACP2 Announce header: [type=2, mtid=0, stat=0, pid].
 	// Byte 2 is stat (always 0) — see handlers.go handleSetProperty for the
 	// same constraint on the client-set path.

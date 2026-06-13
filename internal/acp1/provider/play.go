@@ -78,7 +78,14 @@ func (s *server) RunStatusPlayAll(ctx context.Context, interval time.Duration, f
 	if interval <= 0 {
 		interval = 2 * time.Second
 	}
+	// oscillatableTargetsHook is a test-only seam: it lets a test supply a
+	// key list containing an entry that no longer exists, so the per-key
+	// lookup-miss guard below (otherwise only hit by a collect-vs-delete
+	// race) is deterministically reachable. Nil in production.
 	keys := s.oscillatableTargets()
+	if s.oscillatableTargetsHook != nil {
+		keys = s.oscillatableTargetsHook()
+	}
 	s.logger.Info("acp1 play all started",
 		slog.Int("objects", len(keys)),
 		slog.Bool("full_range", fullRange),
@@ -152,7 +159,7 @@ func (s *server) frameStatusTick(r *rand.Rand) (uint8, uint8, bool) {
 	}
 	slot := uint8(r.Intn(n))
 	state := uint8(r.Intn(6)) // 0=no_card .. 5=boot
-	if err := s.setSlotStatus(slot, state); err != nil {
+	if err := s.setStatus(slot, state); err != nil {
 		s.logger.Debug("acp1 play frame-status: set failed",
 			slog.Int("slot", int(slot)), slog.String("err", err.Error()))
 		return slot, state, false

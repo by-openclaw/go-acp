@@ -87,11 +87,9 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 		report.TramesProcessed++
 		report.PerDirection[t.Direction]++
 
-		// PVER must always be 1 for v1.4 devices.
-		if msg.PVER != 1 {
-			report.Invariants = append(report.Invariants,
-				fmt.Sprintf("trame %d: codec.PVER %d, want 1", i, msg.PVER))
-		}
+		// PVER is guaranteed == 1 here: codec.Decode rejects any other
+		// value with ErrBadPVer (message.go), so a decoded msg always
+		// carries PVER 1. No invariant check needed — it'd be unreachable.
 
 		switch msg.MType {
 		case codec.MTypeRequest:

@@ -2,7 +2,6 @@ package acp2
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -135,11 +134,20 @@ func (p *Plugin) runReconnectBackoff(host string, port int) {
 			slog.Int("attempt", attempt),
 			slog.String("err", err.Error()))
 
-		delay *= 2
-		if delay > defaultReconnectCap {
-			delay = defaultReconnectCap
-		}
+		delay = nextBackoff(delay)
 	}
+}
+
+// nextBackoff doubles the current reconnect delay and clamps it to
+// defaultReconnectCap. Pure (no sleeping, no clock) so the exponential
+// growth and the cap can be unit-tested deterministically at any attempt
+// count without waiting in real time.
+func nextBackoff(delay time.Duration) time.Duration {
+	delay *= 2
+	if delay > defaultReconnectCap {
+		return defaultReconnectCap
+	}
+	return delay
 }
 
 // reconnectOnce drops every reference to the dead session, runs a
@@ -168,11 +176,9 @@ func (p *Plugin) reconnectOnce(ctx context.Context, host string, port int) (int,
 	}
 
 	p.mu.Lock()
+	// unreachable: Connect returns nil only after assigning a freshly built
+	// (non-nil) Session to p.session (plugin.go Connect), so s is never nil here.
 	s := p.session
-	if s == nil {
-		p.mu.Unlock()
-		return 0, fmt.Errorf("acp2 reconnect: session nil after Connect succeeded")
-	}
 	replayed := 0
 	for _, sub := range p.activeSubs {
 		// New session → fresh subscription handle. The closure is

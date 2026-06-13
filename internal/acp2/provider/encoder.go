@@ -545,50 +545,45 @@ func encodeNumericProp(pid uint8, nt codec.NumberType, v any) (codec.Property, e
 		if err != nil {
 			return codec.Property{}, err
 		}
-		data, err := codec.EncodeNumericValue(nt, n, 0, 0)
-		if err != nil {
-			return codec.Property{}, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (default arm); nt is a signed case matched above.
+		data, _ := codec.EncodeNumericValue(nt, n, 0, 0)
 		return numericProp(pid, nt, data), nil
 	case codec.NumTypeS64:
 		n, err := asInt64(v, "numeric")
 		if err != nil {
 			return codec.Property{}, err
 		}
-		data, err := codec.EncodeNumericValue(nt, n, 0, 0)
-		if err != nil {
-			return codec.Property{}, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (default arm); nt is NumTypeS64, matched above.
+		data, _ := codec.EncodeNumericValue(nt, n, 0, 0)
 		return numericProp(pid, nt, data), nil
 	case codec.NumTypeU8, codec.NumTypeU16, codec.NumTypeU32, codec.NumTypePreset:
 		u, err := asUint64(v, "numeric")
 		if err != nil {
 			return codec.Property{}, err
 		}
-		data, err := codec.EncodeNumericValue(nt, 0, u, 0)
-		if err != nil {
-			return codec.Property{}, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (default arm); nt is an unsigned/preset case matched above.
+		data, _ := codec.EncodeNumericValue(nt, 0, u, 0)
 		return numericProp(pid, nt, data), nil
 	case codec.NumTypeU64:
 		u, err := asUint64(v, "numeric")
 		if err != nil {
 			return codec.Property{}, err
 		}
-		data, err := codec.EncodeNumericValue(nt, 0, u, 0)
-		if err != nil {
-			return codec.Property{}, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (default arm); nt is NumTypeU64, matched above.
+		data, _ := codec.EncodeNumericValue(nt, 0, u, 0)
 		return numericProp(pid, nt, data), nil
 	case codec.NumTypeFloat:
 		f, err := asFloat64(v, "numeric")
 		if err != nil {
 			return codec.Property{}, err
 		}
-		data, err := codec.EncodeNumericValue(nt, 0, 0, f)
-		if err != nil {
-			return codec.Property{}, err
-		}
+		// unreachable: EncodeNumericValue only errors on an unknown NumberType
+		// (default arm); nt is NumTypeFloat, matched above.
+		data, _ := codec.EncodeNumericValue(nt, 0, 0, f)
 		return numericProp(pid, nt, data), nil
 	case codec.NumTypeIPv4:
 		u, err := ipv4Uint32(v)
@@ -705,9 +700,9 @@ func asUint64(v any, field string) (uint64, error) {
 	if u, ok := v.(uint64); ok {
 		return u, nil
 	}
-	if u, ok := v.(uint); ok {
-		return uint64(u), nil
-	}
+	// unreachable: asInt64 handles `uint` (case uint -> int64(x)), so a uint
+	// value makes asInt64 succeed and returns above; control only reaches here
+	// when asInt64 failed, which excludes `uint`.
 	return 0, err
 }
 

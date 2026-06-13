@@ -1,0 +1,18 @@
+{
+  "device": {
+    "name": "neuron-test",
+    "protocol": "acp2",
+    "endpoints": [
+      { "ip": "0.0.0.0", "port": 2072, "transport": "tcp" }
+    ]
+  },
+  "frames": [
+    {
+      "name": "neuron-chassis",
+      "slots": [
+        { "addr": { "slot": 0 }, "dm": "SHPRM1@5.3.5" },
+        { "addr": { "slot": 1 }, "dm": "CONVERT Hybrid@6.7.4" }
+      ]
+    }
+  ]
+}
