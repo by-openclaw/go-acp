@@ -1,0 +1,115 @@
+---
+# ACP2 integration CONTRACT TEST, per ADR-0025 deliverable 3: "Ansible is the
+# exclusive integration / verify / deploy driver — no PowerShell .ps1 scripts."
+# Live-rig parity driver complementing the Go -tags integration body in
+# internal/acp2/integration/placeholder_test.go.
+#
+# ACP2 has NO vendor emulator (the Neuron is our own emulator), so this tier is
+# necessarily a LOOPBACK regression net: the play STARTS our acp2 producer from
+# the committed manifest+DM fixture, drives the consumer against it, asserts the
+# fixture's slots/objects, then stops the producer. Self-contained — no external
+# dependency, the producer builds its frame from the committed fixture alone.
+#
+# Net effect is zero persistent change (producer torn down in `always`), so
+# run-twice = same result (ADR-0025 idempotency). Linux target (nohup/pkill),
+# mirroring producer-frame.yml.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/acp2-integration.yml
+#   # or override fixture/binary paths when not run from a repo checkout:
+#   ansible-playbook playbooks/acp2-integration.yml -i localhost, \
+#     -e dhs_bin=/usr/local/bin/dhs \
+#     -e acp2_manifest=/tmp/acp2fix/manifest/neuron-test.json \
+#     -e acp2_cache_dir=/tmp/acp2fix
+- name: ACP2 integration (loopback ceiling) — serve fixture, walk, assert
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dhs_bin: "{{ lookup('ansible.builtin.env', 'DHS_BIN') | default(playbook_dir + '/../../bin/dhs', true) }}"
+    acp2_manifest: "{{ playbook_dir }}/../../internal/acp2/testdata/integration-test/manifest/neuron-test.json"
+    acp2_cache_dir: "{{ playbook_dir }}/../../internal/acp2/testdata/integration-test"
+    acp2_port: 12072
+    acp2_log: /tmp/dhs-acp2-integration.log
+  tasks:
+    - name: Skip when the committed manifest fixture is absent
+      ansible.builtin.meta: end_play
+      when: not (acp2_manifest is exists)
+
+    - name: Stop any stale integration producer on the test port
+      ansible.builtin.shell: "pkill -f '[d]hs producer acp2 serve --manifest {{ acp2_manifest }}' || true"
+      changed_when: false
+
+    - name: Run the producer/consumer contract
+      block:
+        - name: Start the acp2 producer from the committed fixture
+          ansible.builtin.shell:
+            cmd: >-
+              nohup {{ dhs_bin }} producer acp2 serve
+              --manifest {{ acp2_manifest }}
+              --cache-dir {{ acp2_cache_dir }}
+              --port {{ acp2_port }} --host 127.0.0.1
+              --log-level error > {{ acp2_log }} 2>&1 &
+          changed_when: false
+
+        - name: Wait for the producer to accept connections
+          ansible.builtin.wait_for:
+            host: 127.0.0.1
+            port: "{{ acp2_port }}"
+            timeout: 20
+
+        - name: "info — both fixture slots present"
+          ansible.builtin.command:
+            argv:
+              - "{{ dhs_bin }}"
+              - consumer
+              - acp2
+              - info
+              - 127.0.0.1
+              - --port
+              - "{{ acp2_port | string }}"
+              - --timeout
+              - 20s
+          register: acp2_info
+          changed_when: false
+          failed_when: acp2_info.rc != 0
+
+        - name: "ASSERT info reports present slots from the fixture"
+          ansible.builtin.assert:
+            that:
+              - "'status=present' in acp2_info.stdout"
+            fail_msg: "ACP2 info reported no present slot from the fixture producer"
+            quiet: true
+
+        - name: "walk slot 0 — SHPRM1 rack controller"
+          ansible.builtin.command:
+            argv:
+              - "{{ dhs_bin }}"
+              - consumer
+              - acp2
+              - walk
+              - 127.0.0.1
+              - --port
+              - "{{ acp2_port | string }}"
+              - --slot
+              - "0"
+              - --timeout
+              - 25s
+          register: acp2_walk
+          changed_when: false
+          failed_when: acp2_walk.rc != 0
+
+        - name: "ASSERT walk exposes the fixture's objects"
+          ansible.builtin.assert:
+            that:
+              - "'objects' in acp2_walk.stdout"
+              - "'Card Name' in acp2_walk.stdout"
+            fail_msg: "ACP2 walk slot 0 did not expose the fixture objects (Card Name)"
+            quiet: true
+
+        - name: ACP2 integration result
+          ansible.builtin.debug:
+            msg: "ACP2 integration: PASS (loopback ceiling — fixture served + walked, read-only / idempotent)"
+      always:
+        - name: Stop the integration producer
+          ansible.builtin.shell: "pkill -f '[d]hs producer acp2 serve --manifest {{ acp2_manifest }}' || true"
+          changed_when: false
