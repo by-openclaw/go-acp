@@ -47,7 +47,26 @@ dhs producer acp1 serve --tree tree.json --transport tcp --bind 10.100.0.103 --p
 dhs producer acp1 serve --tree tree.json --transport tcp --bind 10.100.0.109 --port 2071
 ```
 
-## 3. info / walk
+## 3. Logging & severity
+
+Severity is set per invocation; **logs go to stderr, data to stdout** (so
+`2>` captures logs, `1>` captures the result).
+
+| Side | Flag | Values |
+|---|---|---|
+| consumer | `--log-level` | `trace \| debug \| info \| warn \| error \| critical` (default `info`) |
+| consumer | `--verbose` | shortcut for `--log-level debug` |
+| producer | `--log-level` | `debug \| info \| warn \| error` (default `info`) |
+| producer | `--log-format` | `text` (default) \| `json` (Loki/Promtail) |
+
+```
+dhs consumer acp1 walk 10.6.239.113 --transport udp --port 2071 --verbose      # = --log-level debug
+dhs consumer acp1 walk 10.6.239.113 ... --log-level warn
+dhs producer acp1 serve --tree tree.json --log-level debug --log-format json
+dhs consumer acp1 walk 10.6.239.113 ... --log-level debug 2>run.log            # logs→file, tree→stdout
+```
+
+## 4. info / walk
 
 ```
 $ dhs consumer acp1 info 10.6.239.113 --transport udp --port 2071
@@ -66,7 +85,7 @@ slot 0 — 59 objects
       0  IP_Conf               enum    RWD  "DHCP"              [Manual, DHCP]
 ```
 
-## 4. get / set / inc / dec / reset
+## 5. get / set / inc / dec / reset
 
 ACP1 addresses an object by **slot + group + label** (the spec's stable
 identifier — "use the Label, not ObjId"; ObjIds shift across firmware). The
@@ -93,10 +112,10 @@ confirmed value = 10      raw = 0a       # back to default
 `ErrorThreshold uint 0..255 step 1`); `set` is validated client-side against
 them before sending.
 
-## 5. export / import
+## 6. export / import
 
 `export` dumps a walked tree to **json / yaml / csv** (`jsonl` is *not* an export
-format — it is the raw-frame capture log, see §7). `import` applies a snapshot
+format — it is the raw-frame capture log, see §8). `import` applies a snapshot
 back, with `--dry-run`.
 
 ```
@@ -120,7 +139,7 @@ skipped rows (dry-run detail):
   read_only (38): slot=0 id=0 kind=string access=R-- path="identity.Card name"
 ```
 
-## 6. reports — tree ASCII & PlantUML mindmap
+## 7. reports — tree ASCII & PlantUML mindmap
 
 The `tree` verb renders the walked device as an ASCII tree or a PlantUML
 mindmap (`--format ascii|plantuml`).
@@ -141,7 +160,7 @@ $ dhs consumer acp1 tree 127.0.0.1 ... --slot 0 --format plantuml
 @endmindmap
 ```
 
-## 7. play / watch
+## 8. play / watch
 
 `watch` subscribes to spontaneous announcements (MTID=0). The producer can
 self-drive value drift with `--play` so there is something to watch without an
@@ -155,7 +174,7 @@ dhs producer acp1 serve --tree tree.json --transport all --play all --play-inter
 dhs consumer acp1 watch 10.6.239.113 --transport udp --port 2071 --capture run.jsonl
 ```
 
-## 8. ensure() — idempotent converge (ADR-0007)
+## 9. ensure() — idempotent converge (ADR-0007)
 
 `ensure` converges an object to `--value` and reports whether it changed; `--check`
 is a dry-run. Run twice ⇒ second run is a no-op (idempotent).
@@ -169,7 +188,7 @@ $ dhs consumer acp1 ensure ... --label ErrorThreshold --value 99 --check
 would_change=true  current="20"  target="99"
 ```
 
-## 9. Wireshark
+## 10. Wireshark
 
 Dissector: [`../wireshark/dhs_acpv1.lua`](../wireshark/dhs_acpv1.lua) — decodes
 Mode A/B/C, every method + object group, with a per-frame Info column.
@@ -186,7 +205,7 @@ Mode A/B/C, every method + object group, with a per-frame Info column.
 tshark -r capture.pcapng -O dhs_acpv1 -Y dhs_acpv1
 ```
 
-## 10. Ansible (the exclusive integration / deploy driver — no .ps1)
+## 11. Ansible (the exclusive integration / deploy driver — no .ps1)
 
 Inventory (`ansible/inventory/hosts.ini`), role (`ansible/roles/dhs_acp1/`), and
 playbooks (`ansible/playbooks/`). Integration is driven by Ansible on a control
@@ -207,16 +226,20 @@ dhs-ubuntu ansible_host=10.100.0.103 ansible_user=root
   tasks:
     - command:
         argv: ["{{ dhs_bin }}", consumer, acp1, walk, "{{ acp1_host }}",
-               --transport, udp, --port, "2071", --timeout, 20s]
+               --transport, udp, --port, "2071", --log-level, debug, --timeout, 20s]
       register: walk
       changed_when: false
     - assert: { that: ["'[control]' in walk.stdout"] }
+    - debug: { var: walk.stderr_lines }   # surface dhs logs (stderr) in the play
 ```
 
-Idempotency contract test: `ansible/playbooks/test-idempotency.yml` runs `ensure`
-twice and asserts the second pass reports `changed=false`.
+dhs logs go to **stderr** → `register` the task and `debug: var=<r>.stderr_lines`
+to show them; `<r>.stdout_lines` is the data. Run `ansible-playbook -v` (`-vv`/`-vvv`)
+for Ansible's own echo of task stdout/stderr. The idempotency contract test
+`ansible/playbooks/test-idempotency.yml` runs `ensure` twice and asserts the
+second pass reports `changed=false`.
 
-## 11. See also
+## 12. See also
 
 - [`../CLAUDE.md`](../CLAUDE.md) — wire format, methods, object groups
 - [`./README.md`](./README.md) · [`./consumer.md`](./consumer.md) · [`./provider.md`](./provider.md) · [`./runbook.md`](./runbook.md)
