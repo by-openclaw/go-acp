@@ -2,6 +2,7 @@
 
 | Role | Doc | Status |
 |---|---|---|
+| **Verbs & config reference** | [verbs.md](verbs.md) | every verb + transport/redundancy/logging/export/import/tree/ensure/wireshark/ansible, with real samples |
 | Operator runbook | [runbook.md](runbook.md) | ✓ shipping |
 | Consumer | [consumer.md](consumer.md) | ✓ shipping |
 | Provider | [provider.md](provider.md) | ✓ shipping — serves canonical tree as ACP2 device over AN2/TCP (port 2072) |
