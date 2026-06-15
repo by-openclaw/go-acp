@@ -151,6 +151,16 @@ func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Cl
 // applyTCPKeepalive enables SO_KEEPALIVE on a dialed TCP connection.
 // period == 0 → DefaultTCPKeepalivePeriod; period < 0 → disable.
 // Logs at Debug if the conn isn't a *net.TCPConn (e.g. test pipe).
+// Test seams for the two keep-alive setsockopt calls. On a live *net.TCPConn
+// the SetKeepAlivePeriod failure arm can't be provoked in isolation (any fd
+// state that fails the second call also fails the first, which returns early),
+// so tests override these to exercise that branch. Production behaviour is the
+// default (cf. the bcastDialErrHook idiom in the acp1 provider).
+var (
+	tcpSetKeepAlive       = func(tc *net.TCPConn, on bool) error { return tc.SetKeepAlive(on) }
+	tcpSetKeepAlivePeriod = func(tc *net.TCPConn, d time.Duration) error { return tc.SetKeepAlivePeriod(d) }
+)
+
 func applyTCPKeepalive(conn net.Conn, period time.Duration, logger *slog.Logger) {
 	if period < 0 {
 		return
@@ -162,11 +172,11 @@ func applyTCPKeepalive(conn net.Conn, period time.Duration, logger *slog.Logger)
 	if !ok {
 		return
 	}
-	if err := tc.SetKeepAlive(true); err != nil {
+	if err := tcpSetKeepAlive(tc, true); err != nil {
 		logger.Debug("probel-sw02p SetKeepAlive failed", slog.String("err", err.Error()))
 		return
 	}
-	if err := tc.SetKeepAlivePeriod(period); err != nil {
+	if err := tcpSetKeepAlivePeriod(tc, period); err != nil {
 		logger.Debug("probel-sw02p SetKeepAlivePeriod failed", slog.String("err", err.Error()))
 	}
 }

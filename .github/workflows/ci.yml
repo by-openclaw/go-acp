@@ -81,6 +81,7 @@ jobs:
           check ./internal/emberplus/codec/s101 100
           check ./internal/emberplus/consumer 100
           check ./internal/emberplus/provider 100
+          check ./internal/probel-sw02p/codec 100
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
