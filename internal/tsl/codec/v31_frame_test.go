@@ -24,8 +24,8 @@ func TestV31Encode(t *testing.T) {
 		{
 			name: "addr 1, all tallies, full brightness, 'CAM 1' padded",
 			in: V31Frame{
-				Address:    1,
-				Tally1:     true, Tally2: true, Tally3: true, Tally4: true,
+				Address: 1,
+				Tally1:  true, Tally2: true, Tally3: true, Tally4: true,
 				Brightness: BrightnessFull,
 				Text:       "CAM 1",
 			},
@@ -184,6 +184,57 @@ func TestV31Decode_NullPadNote(t *testing.T) {
 	}
 }
 
+func TestV31Decode_CtrlBit7Set_FiresNote(t *testing.T) {
+	frame := make([]byte, V31FrameSize)
+	frame[0] = 0x80
+	frame[1] = V31CtrlBit7 // CTRL bit 7 set (spec requires it cleared)
+	for i := 2; i < V31FrameSize; i++ {
+		frame[i] = 0x20
+	}
+	f, err := DecodeV31(frame)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	found := false
+	for _, n := range f.Notes {
+		if n.Kind == "tsl_reserved_bit_set" && strings.Contains(n.Detail, "bit 7") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want tsl_reserved_bit_set (bit 7) note, got %+v", f.Notes)
+	}
+}
+
+func TestV31Decode_NonPrintableLabelByte_FiresCharsetNote(t *testing.T) {
+	// A DATA byte that is neither 0x00 (null-pad path) nor in 0x20..0x7E
+	// must fire tsl_label_charset, keeping the raw bytes.
+	frame := make([]byte, V31FrameSize)
+	frame[0] = 0x80
+	frame[1] = 0x00
+	for i := 2; i < V31FrameSize; i++ {
+		frame[i] = 0x20
+	}
+	frame[V31DataIdx+3] = 0x7F // DEL — outside printable ASCII, non-null
+	f, err := DecodeV31(frame)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	found := false
+	for _, n := range f.Notes {
+		if n.Kind == "tsl_label_charset" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want tsl_label_charset note, got %+v", f.Notes)
+	}
+	// Raw byte must be preserved verbatim in Text.
+	if f.Text[3] != 0x7F {
+		t.Errorf("raw DATA byte not preserved: Text[3]=0x%02x, want 0x7F", f.Text[3])
+	}
+}
+
 func TestV31Decode_AllAddressesRoundTrip(t *testing.T) {
 	for addr := uint8(0); addr <= V31AddressMax; addr++ {
 		frame := V31Frame{Address: addr, Text: "X"}
@@ -191,7 +242,7 @@ func TestV31Decode_AllAddressesRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatalf("addr=%d encode: %v", addr, err)
 		}
-		if wire[0] != (addr|V31HeaderMSB) {
+		if wire[0] != (addr | V31HeaderMSB) {
 			t.Fatalf("addr=%d: wire[0]=0x%02x want 0x%02x", addr, wire[0], addr|V31HeaderMSB)
 		}
 		got, err := DecodeV31(wire)

@@ -57,8 +57,8 @@ func TestV40Encode_SpecShape(t *testing.T) {
 func TestV40RoundTrip_NoNotes(t *testing.T) {
 	in := V40Frame{
 		V31: V31Frame{
-			Address:    10,
-			Tally2:     true, Tally4: true,
+			Address: 10,
+			Tally2:  true, Tally4: true,
 			Brightness: BrightnessHalf,
 			Text:       "PGM",
 		},
@@ -160,8 +160,8 @@ func TestV40Decode_VBCBit7Set_FiresNote(t *testing.T) {
 func TestV40Decode_CtrlBit6_CommandData_FiresNote(t *testing.T) {
 	// Build a raw v4.0 frame with CTRL.6 set (command data flag).
 	wire := make([]byte, V40FrameSize)
-	wire[0] = 0x80         // addr 0
-	wire[1] = 1 << 6       // CTRL bit 6 set
+	wire[0] = 0x80   // addr 0
+	wire[1] = 1 << 6 // CTRL bit 6 set
 	for i := 2; i < V31FrameSize; i++ {
 		wire[i] = 0x20
 	}
@@ -187,6 +187,71 @@ func TestV40Decode_TooShort(t *testing.T) {
 	_, err := DecodeV40(make([]byte, 19))
 	if !errors.Is(err, ErrV40FrameSize) {
 		t.Errorf("size=19 should hit ErrV40FrameSize, got %v", err)
+	}
+}
+
+func TestXByte_Encode_ReservedBit(t *testing.T) {
+	// Reserved (bit 6) must round-trip through Encode/Decode.
+	x := XByte{LH: TallyRed, Text: TallyGreen, RH: TallyAmber, Reserved: true}
+	b := x.Encode()
+	if b&v40XDataBit6Mask == 0 {
+		t.Fatalf("Reserved bit not set in encoded byte 0x%02x", b)
+	}
+	got := DecodeXByte(b)
+	if !got.Reserved {
+		t.Errorf("Reserved did not round-trip: %+v", got)
+	}
+	if got.LH != TallyRed || got.Text != TallyGreen || got.RH != TallyAmber {
+		t.Errorf("colour fields corrupted with Reserved set: %+v", got)
+	}
+}
+
+func TestComputeV40Chksum_ShortBody(t *testing.T) {
+	// A body shorter than the 18-byte v3.1 block returns 0 (guard arm).
+	if got := computeV40Chksum(make([]byte, V31FrameSize-1)); got != 0 {
+		t.Errorf("short body checksum = 0x%02x, want 0x00", got)
+	}
+}
+
+func TestV40Encode_PropagatesV31Error(t *testing.T) {
+	// V31.Encode rejects an out-of-range address; V40.Encode must surface it.
+	f := V40Frame{V31: V31Frame{Address: 200}}
+	if _, err := f.Encode(); !errors.Is(err, ErrV31AddressRng) {
+		t.Errorf("want ErrV31AddressRng propagated, got %v", err)
+	}
+}
+
+func TestV40Decode_PropagatesV31Error(t *testing.T) {
+	// v3.1 section with HEADER bit 7 clear is structurally unparseable.
+	wire := make([]byte, V40FrameSize)
+	wire[0] = 0x00 // HEADER MSB clear
+	if _, err := DecodeV40(wire); !errors.Is(err, ErrV31HeaderMSB) {
+		t.Errorf("want ErrV31HeaderMSB propagated, got %v", err)
+	}
+}
+
+func TestV40Decode_XDataCountExceedsAvailable_FiresNote(t *testing.T) {
+	// Minimum-size frame (20 bytes: v3.1 + CHKSUM + VBC, no XDATA) but VBC
+	// claims a non-zero XDATA count. available = len-20 = 0, count > 0.
+	wire := make([]byte, V31FrameSize+2)
+	wire[0] = 0x80
+	for i := 2; i < V31FrameSize; i++ {
+		wire[i] = 0x20
+	}
+	wire[V40ChksumIdx] = computeV40Chksum(wire[:V31FrameSize])
+	wire[V40VBCIdx] = 2 // minor=0, xdata count=2 but no XDATA bytes present
+	got, err := DecodeV40(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	found := false
+	for _, n := range got.Notes {
+		if n.Kind == "tsl_v40_xdata_truncated" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want tsl_v40_xdata_truncated note, got %+v", got.Notes)
 	}
 }
 

@@ -48,7 +48,7 @@ func TestDLEFrame_ByteStuffing_SingleDLEInBody(t *testing.T) {
 
 func TestDLEFrame_ByteStuffing_MultipleFrames(t *testing.T) {
 	// Two successive frames in one stream.
-	a := []byte{0x02, 0x00, 0xAA, 0xBB}  // PBC=2, two data bytes
+	a := []byte{0x02, 0x00, 0xAA, 0xBB}     // PBC=2, two data bytes
 	b := []byte{0x03, 0x00, DLE, 0xCC, DLE} // PBC=3, includes 2 DLEs that get stuffed
 	stream := append(EncodeDLEFrame(a), EncodeDLEFrame(b)...)
 
@@ -104,6 +104,115 @@ func TestDLEFrame_TruncatedMidFrame(t *testing.T) {
 	_, err := NewDLEStreamDecoder(bytes.NewReader(stream), 0).ReadFrame()
 	if err == nil || err == io.EOF {
 		t.Errorf("want unexpected-EOF, got %v", err)
+	}
+}
+
+// errReader returns data once, then a fixed non-EOF error — used to drive
+// the ensureBytes reader-error arm that io.EOF can't reach.
+type errReader struct {
+	data []byte
+	err  error
+	done bool
+}
+
+func (r *errReader) Read(p []byte) (int, error) {
+	if !r.done && len(r.data) > 0 {
+		n := copy(p, r.data)
+		r.data = r.data[n:]
+		if len(r.data) == 0 {
+			r.done = true
+		}
+		return n, nil
+	}
+	return 0, r.err
+}
+
+// dataEOFReader returns its whole buffer plus io.EOF in a SINGLE Read call
+// (legal per io.Reader), then io.EOF forever after — exercising the
+// ensureBytes arm where k>0 and err==io.EOF arrive together with bytes
+// still buffered beyond what was requested.
+type dataEOFReader struct {
+	data []byte
+	done bool
+}
+
+func (r *dataEOFReader) Read(p []byte) (int, error) {
+	if r.done {
+		return 0, io.EOF
+	}
+	n := copy(p, r.data)
+	r.done = true
+	return n, io.EOF
+}
+
+func TestDLEFrame_DataPlusEOFSameRead_UnexpectedEOF(t *testing.T) {
+	// A Read that returns body bytes together with io.EOF (legal per the
+	// io.Reader contract) and leaves bytes still buffered exercises the
+	// ensureBytes "EOF with leftover" arm, which yields ErrUnexpectedEOF
+	// rather than a clean io.EOF.
+	r := &dataEOFReader{data: []byte{DLE, STX, 0x05}}
+	_, err := NewDLEStreamDecoder(r, 0).ReadFrame()
+	if err != io.ErrUnexpectedEOF {
+		t.Errorf("want ErrUnexpectedEOF, got %v", err)
+	}
+}
+
+func TestDLEFrame_ReaderError_Propagated(t *testing.T) {
+	// A non-EOF reader error mid-frame must propagate verbatim (not be
+	// remapped to ErrUnexpectedEOF).
+	sentinel := errors.New("network down")
+	r := &errReader{data: []byte{DLE, STX}, err: sentinel}
+	_, err := NewDLEStreamDecoder(r, 0).ReadFrame()
+	if !errors.Is(err, sentinel) {
+		t.Errorf("want sentinel reader error, got %v", err)
+	}
+}
+
+func TestDLEFrame_EOFAfterStartByte_UnexpectedEOF(t *testing.T) {
+	// Stream is exactly one DLE then EOF. The first byte (DLE) succeeds,
+	// the strict read of STX hits EOF → ErrUnexpectedEOF.
+	r := &errReader{data: []byte{DLE}, err: io.EOF}
+	_, err := NewDLEStreamDecoder(r, 0).ReadFrame()
+	if err != io.ErrUnexpectedEOF {
+		t.Errorf("want ErrUnexpectedEOF, got %v", err)
+	}
+}
+
+func TestDLEFrame_DLENotFollowedBySTX(t *testing.T) {
+	// DLE followed by a non-STX byte at start is a missing-start error.
+	stream := []byte{DLE, 0x03, 0x00, 0x00}
+	_, err := NewDLEStreamDecoder(bytes.NewReader(stream), 0).ReadFrame()
+	if !errors.Is(err, ErrDLEMissingStart) {
+		t.Errorf("want ErrDLEMissingStart, got %v", err)
+	}
+}
+
+func TestDLEFrame_TruncatedBeforePBC(t *testing.T) {
+	// DLE/STX then immediate EOF — can't read the 2-byte PBC.
+	stream := []byte{DLE, STX}
+	_, err := NewDLEStreamDecoder(bytes.NewReader(stream), 0).ReadFrame()
+	if err != io.ErrUnexpectedEOF {
+		t.Errorf("want ErrUnexpectedEOF reading PBC, got %v", err)
+	}
+}
+
+func TestDLEFrame_PBCExceedsMax(t *testing.T) {
+	// PBC larger than maxPktSize-2 must reject with ErrV50PacketTooLarge.
+	// maxPktSize=8 → max body PBC = 6; PBC=10 overflows.
+	stream := []byte{DLE, STX, 0x0A, 0x00} // PBC=10 LE
+	_, err := NewDLEStreamDecoder(bytes.NewReader(stream), 8).ReadFrame()
+	if !errors.Is(err, ErrV50PacketTooLarge) {
+		t.Errorf("want ErrV50PacketTooLarge, got %v", err)
+	}
+}
+
+func TestDLEFrame_TruncatedInsideEscape(t *testing.T) {
+	// A DLE in the body followed by EOF (no second escape byte) is a
+	// mid-frame truncation.
+	stream := []byte{DLE, STX, 0x02, 0x00, DLE} // PBC=2, then lone DLE, EOF
+	_, err := NewDLEStreamDecoder(bytes.NewReader(stream), 0).ReadFrame()
+	if err != io.ErrUnexpectedEOF {
+		t.Errorf("want ErrUnexpectedEOF inside escape, got %v", err)
 	}
 }
 
