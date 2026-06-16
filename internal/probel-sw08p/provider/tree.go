@@ -100,11 +100,26 @@ type salvoSlot struct {
 //
 // MatrixID is derived from the element's Number (1-based canonical) minus 1
 // so SW-P-08 IDs start at 0 per spec.
+// treeBuildErrHook is a test-only seam. In production it is nil and
+// newTree never returns an error — the canonical Export is reduced by
+// pure map population that cannot fail. The newServer fallback that
+// builds an empty tree on a build error is therefore unreachable
+// through ordinary code paths, so a test installs this hook to force
+// the error arm and prove the fallback keeps the provider live.
+// Kept transparent (nil in prod) per the probel-sw02p idiom; the
+// guard in newServer is NOT weakened.
+var treeBuildErrHook func() error
+
 func newTree(exp *canonical.Export) (*tree, error) {
 	t := &tree{
 		matrices:    map[matrixKey]*matrixState{},
 		deviceNames: map[uint16]string{},
 		salvos:      map[uint8][]salvoSlot{},
+	}
+	if treeBuildErrHook != nil {
+		if err := treeBuildErrHook(); err != nil {
+			return nil, err
+		}
 	}
 	if exp == nil || exp.Root == nil {
 		return t, nil

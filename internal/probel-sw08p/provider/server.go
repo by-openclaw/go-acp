@@ -82,10 +82,26 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 	}
 }
 
+// listenHook is a test-only seam. In production it is nil and Serve
+// binds a real TCP listener via net.ListenConfig. A test installs it to
+// supply a fake listener whose Accept returns a non-ErrClosed,
+// non-Canceled error so Serve's final `return err` arm (otherwise
+// unreachable, since a real listener only ever yields net.ErrClosed on
+// shutdown or ctx.Err() on cancel) is exercised. Kept transparent (nil
+// in prod) per the probel-sw02p fake-listener idiom; no Serve logic is
+// weakened.
+var listenHook func(ctx context.Context, addr string) (net.Listener, error)
+
 // Serve binds addr and accepts client sessions until ctx is cancelled.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	lc := &net.ListenConfig{}
-	ln, err := lc.Listen(ctx, "tcp", addr)
+	listen := func(ctx context.Context, addr string) (net.Listener, error) {
+		lc := &net.ListenConfig{}
+		return lc.Listen(ctx, "tcp", addr)
+	}
+	if listenHook != nil {
+		listen = listenHook
+	}
+	ln, err := listen(ctx, addr)
 	if err != nil {
 		return fmt.Errorf("probel provider: listen %q: %w", addr, err)
 	}
