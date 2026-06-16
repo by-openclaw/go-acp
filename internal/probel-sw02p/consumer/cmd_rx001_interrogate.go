@@ -26,7 +26,7 @@ func (p *Plugin) SendInterrogate(ctx context.Context, dst uint16) (codec.TallyPa
 		if f.ID != codec.TxTally {
 			return false
 		}
-		tally, derr := codec.DecodeTally(f)
+		tally, derr := decoded(codec.DecodeTally(f))
 		if derr != nil {
 			return false
 		}
@@ -35,7 +35,7 @@ func (p *Plugin) SendInterrogate(ctx context.Context, dst uint16) (codec.TallyPa
 	if err != nil {
 		return codec.TallyParams{}, fmt.Errorf("probel-sw02p: SendInterrogate: %w", err)
 	}
-	tally, err := codec.DecodeTally(reply)
+	tally, err := decoded(codec.DecodeTally(reply))
 	if err != nil {
 		return codec.TallyParams{}, fmt.Errorf("probel-sw02p: decode tx 03: %w", err)
 	}

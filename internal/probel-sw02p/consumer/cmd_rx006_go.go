@@ -29,7 +29,7 @@ func (p *Plugin) SendGo(ctx context.Context, op codec.GoOperation) (codec.GoDone
 	if err != nil {
 		return codec.GoDoneAckParams{}, fmt.Errorf("probel-sw02p: SendGo: %w", err)
 	}
-	ack, err := codec.DecodeGoDoneAck(reply)
+	ack, err := decoded(codec.DecodeGoDoneAck(reply))
 	if err != nil {
 		return codec.GoDoneAckParams{}, fmt.Errorf("probel-sw02p: decode tx 13: %w", err)
 	}

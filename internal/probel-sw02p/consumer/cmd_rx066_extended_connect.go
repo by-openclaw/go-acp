@@ -24,7 +24,7 @@ func (p *Plugin) SendExtendedConnect(ctx context.Context, dst, src uint16) (code
 		if f.ID != codec.TxExtendedConnected {
 			return false
 		}
-		cp, derr := codec.DecodeExtendedConnected(f)
+		cp, derr := decoded(codec.DecodeExtendedConnected(f))
 		if derr != nil {
 			return false
 		}
@@ -33,7 +33,7 @@ func (p *Plugin) SendExtendedConnect(ctx context.Context, dst, src uint16) (code
 	if err != nil {
 		return codec.ExtendedConnectedParams{}, fmt.Errorf("probel-sw02p: SendExtendedConnect: %w", err)
 	}
-	cp, err := codec.DecodeExtendedConnected(reply)
+	cp, err := decoded(codec.DecodeExtendedConnected(reply))
 	if err != nil {
 		return codec.ExtendedConnectedParams{}, fmt.Errorf("probel-sw02p: decode tx 68: %w", err)
 	}

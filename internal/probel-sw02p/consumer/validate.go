@@ -71,7 +71,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 		report.TramesProcessed++
 		report.PerDirection[t.Direction]++
 
-		if name := codec.CommandName(frame.ID); name == "" {
+		if name := commandName(frame.ID); name == "" {
 			report.Invariants = append(report.Invariants,
 				fmt.Sprintf("trame %d: unknown SW-P-02 command id 0x%02x (%d) — not in codec catalogue", i, byte(frame.ID), byte(frame.ID)))
 		}

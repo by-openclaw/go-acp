@@ -24,7 +24,7 @@ func (p *Plugin) SendSourceLockStatusRequest(ctx context.Context, controller cod
 	if err != nil {
 		return codec.SourceLockStatusResponseParams{}, fmt.Errorf("probel-sw02p: SendSourceLockStatusRequest: %w", err)
 	}
-	resp, err := codec.DecodeSourceLockStatusResponse(reply)
+	resp, err := decoded(codec.DecodeSourceLockStatusResponse(reply))
 	if err != nil {
 		return codec.SourceLockStatusResponseParams{}, fmt.Errorf("probel-sw02p: decode tx 015: %w", err)
 	}

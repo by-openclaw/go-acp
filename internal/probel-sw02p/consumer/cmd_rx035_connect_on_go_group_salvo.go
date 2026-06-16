@@ -28,7 +28,7 @@ func (p *Plugin) SendConnectOnGoGroupSalvo(ctx context.Context, dst, src uint16,
 	if err != nil {
 		return codec.ConnectOnGoGroupSalvoAckParams{}, fmt.Errorf("probel-sw02p: SendConnectOnGoGroupSalvo: %w", err)
 	}
-	ack, err := codec.DecodeConnectOnGoGroupSalvoAck(reply)
+	ack, err := decoded(codec.DecodeConnectOnGoGroupSalvoAck(reply))
 	if err != nil {
 		return codec.ConnectOnGoGroupSalvoAckParams{}, fmt.Errorf("probel-sw02p: decode tx 37: %w", err)
 	}

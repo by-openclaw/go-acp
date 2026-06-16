@@ -230,20 +230,8 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
 	cfg := codec.ClientConfig{
-		OnTx: func(b []byte) {
-			if id, ok := probelCmdFromBytes(b); ok {
-				met.ObserveCmdTx(id, len(b), 0)
-			} else {
-				met.ObserveTx(len(b), 0)
-			}
-		},
-		OnRx: func(b []byte) {
-			if id, ok := probelCmdFromBytes(b); ok {
-				met.ObserveCmdRx(id, len(b))
-			} else {
-				met.ObserveRx(len(b))
-			}
-		},
+		OnTx: func(b []byte) { observeTxBytes(met, b) },
+		OnRx: func(b []byte) { observeRxBytes(met, b) },
 	}
 	if p.recorder != nil {
 		rec := p.recorder

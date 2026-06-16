@@ -27,7 +27,7 @@ func (p *Plugin) SendExtendedProtectConnect(ctx context.Context, dst, device uin
 		if f.ID != codec.TxExtendedProtectConnected {
 			return false
 		}
-		c, derr := codec.DecodeExtendedProtectConnected(f)
+		c, derr := decoded(codec.DecodeExtendedProtectConnected(f))
 		if derr != nil {
 			return false
 		}
@@ -36,7 +36,7 @@ func (p *Plugin) SendExtendedProtectConnect(ctx context.Context, dst, device uin
 	if err != nil {
 		return codec.ExtendedProtectConnectedParams{}, fmt.Errorf("probel-sw02p: SendExtendedProtectConnect: %w", err)
 	}
-	resp, err := codec.DecodeExtendedProtectConnected(reply)
+	resp, err := decoded(codec.DecodeExtendedProtectConnected(reply))
 	if err != nil {
 		return codec.ExtendedProtectConnectedParams{}, fmt.Errorf("probel-sw02p: decode tx 097: %w", err)
 	}

@@ -36,7 +36,7 @@ func (p *Plugin) SendGoGroupSalvo(ctx context.Context, op codec.GoOperation, sal
 	if err != nil {
 		return codec.GoDoneGroupSalvoAckParams{}, fmt.Errorf("probel-sw02p: SendGoGroupSalvo: %w", err)
 	}
-	ack, err := codec.DecodeGoDoneGroupSalvoAck(reply)
+	ack, err := decoded(codec.DecodeGoDoneGroupSalvoAck(reply))
 	if err != nil {
 		return codec.GoDoneGroupSalvoAckParams{}, fmt.Errorf("probel-sw02p: decode tx 38: %w", err)
 	}

@@ -26,7 +26,7 @@ func (p *Plugin) SendProtectDeviceNameRequest(ctx context.Context, device uint16
 		if f.ID != codec.TxProtectDeviceNameResponse {
 			return false
 		}
-		r, derr := codec.DecodeProtectDeviceNameResponse(f)
+		r, derr := decoded(codec.DecodeProtectDeviceNameResponse(f))
 		if derr != nil {
 			return false
 		}
@@ -35,7 +35,7 @@ func (p *Plugin) SendProtectDeviceNameRequest(ctx context.Context, device uint16
 	if err != nil {
 		return codec.ProtectDeviceNameResponseParams{}, fmt.Errorf("probel-sw02p: SendProtectDeviceNameRequest: %w", err)
 	}
-	resp, err := codec.DecodeProtectDeviceNameResponse(reply)
+	resp, err := decoded(codec.DecodeProtectDeviceNameResponse(reply))
 	if err != nil {
 		return codec.ProtectDeviceNameResponseParams{}, fmt.Errorf("probel-sw02p: decode tx 099: %w", err)
 	}
@@ -60,7 +60,7 @@ func (p *Plugin) SubscribeProtectDeviceNameRequest(fn func(codec.ProtectDeviceNa
 		if f.ID != codec.RxProtectDeviceNameRequest {
 			return
 		}
-		params, derr := codec.DecodeProtectDeviceNameRequest(f)
+		params, derr := decoded(codec.DecodeProtectDeviceNameRequest(f))
 		if derr != nil {
 			return
 		}
