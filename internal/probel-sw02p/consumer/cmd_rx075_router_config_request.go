@@ -29,20 +29,29 @@ func (p *Plugin) SendRouterConfigRequest(ctx context.Context) (RouterConfigRespo
 	}
 	req := codec.EncodeRouterConfigRequest(codec.RouterConfigRequestParams{})
 	reply, err := cli.Send(ctx, req, func(f codec.Frame) bool {
-		return f.ID == codec.TxRouterConfigResponse1 || f.ID == codec.TxRouterConfigResponse2
+		if f.ID == codec.TxRouterConfigResponse1 || f.ID == codec.TxRouterConfigResponse2 {
+			return true
+		}
+		// routerConfigExtraMatch is a test-only seam (nil in production).
+		// It lets a test make the matcher accept a frame whose ID the
+		// post-Send switch below does NOT handle, so the §3.2.57
+		// "unexpected reply ID" invariant guard is reachable. The matcher
+		// and switch otherwise key off the identical two IDs, leaving that
+		// guard structurally unreachable through the public API.
+		return routerConfigExtraMatch != nil && routerConfigExtraMatch(f)
 	})
 	if err != nil {
 		return RouterConfigResponse{}, fmt.Errorf("probel-sw02p: SendRouterConfigRequest: %w", err)
 	}
 	switch reply.ID {
 	case codec.TxRouterConfigResponse1:
-		r1, derr := codec.DecodeRouterConfigResponse1(reply)
+		r1, derr := decoded(codec.DecodeRouterConfigResponse1(reply))
 		if derr != nil {
 			return RouterConfigResponse{}, fmt.Errorf("probel-sw02p: decode tx 076: %w", derr)
 		}
 		return RouterConfigResponse{Response1: &r1}, nil
 	case codec.TxRouterConfigResponse2:
-		r2, derr := codec.DecodeRouterConfigResponse2(reply)
+		r2, derr := decoded(codec.DecodeRouterConfigResponse2(reply))
 		if derr != nil {
 			return RouterConfigResponse{}, fmt.Errorf("probel-sw02p: decode tx 077: %w", derr)
 		}

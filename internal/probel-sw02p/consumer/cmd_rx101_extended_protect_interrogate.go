@@ -22,7 +22,7 @@ func (p *Plugin) SendExtendedProtectInterrogate(ctx context.Context, dst uint16)
 		if f.ID != codec.TxExtendedProtectTally {
 			return false
 		}
-		t, derr := codec.DecodeExtendedProtectTally(f)
+		t, derr := decoded(codec.DecodeExtendedProtectTally(f))
 		if derr != nil {
 			return false
 		}
@@ -31,7 +31,7 @@ func (p *Plugin) SendExtendedProtectInterrogate(ctx context.Context, dst uint16)
 	if err != nil {
 		return codec.ExtendedProtectTallyParams{}, fmt.Errorf("probel-sw02p: SendExtendedProtectInterrogate: %w", err)
 	}
-	t, err := codec.DecodeExtendedProtectTally(reply)
+	t, err := decoded(codec.DecodeExtendedProtectTally(reply))
 	if err != nil {
 		return codec.ExtendedProtectTallyParams{}, fmt.Errorf("probel-sw02p: decode tx 096: %w", err)
 	}

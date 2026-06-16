@@ -27,7 +27,7 @@ func (p *Plugin) SendConnect(ctx context.Context, dst, src uint16, badSource boo
 		if f.ID != codec.TxCrosspointConnected {
 			return false
 		}
-		cp, derr := codec.DecodeConnected(f)
+		cp, derr := decoded(codec.DecodeConnected(f))
 		if derr != nil {
 			return false
 		}
@@ -36,7 +36,7 @@ func (p *Plugin) SendConnect(ctx context.Context, dst, src uint16, badSource boo
 	if err != nil {
 		return codec.ConnectedParams{}, fmt.Errorf("probel-sw02p: SendConnect: %w", err)
 	}
-	cp, err := codec.DecodeConnected(reply)
+	cp, err := decoded(codec.DecodeConnected(reply))
 	if err != nil {
 		return codec.ConnectedParams{}, fmt.Errorf("probel-sw02p: decode tx 04: %w", err)
 	}

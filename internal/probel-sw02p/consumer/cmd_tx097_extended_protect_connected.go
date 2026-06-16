@@ -19,7 +19,7 @@ func (p *Plugin) SubscribeExtendedProtectConnected(fn func(codec.ExtendedProtect
 		if f.ID != codec.TxExtendedProtectConnected {
 			return
 		}
-		params, derr := codec.DecodeExtendedProtectConnected(f)
+		params, derr := decoded(codec.DecodeExtendedProtectConnected(f))
 		if derr != nil {
 			return
 		}

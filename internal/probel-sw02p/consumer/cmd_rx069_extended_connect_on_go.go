@@ -30,7 +30,7 @@ func (p *Plugin) SendExtendedConnectOnGo(ctx context.Context, dst, src uint16) (
 	if err != nil {
 		return codec.ExtendedConnectOnGoAckParams{}, fmt.Errorf("probel-sw02p: SendExtendedConnectOnGo: %w", err)
 	}
-	ack, err := codec.DecodeExtendedConnectOnGoAck(reply)
+	ack, err := decoded(codec.DecodeExtendedConnectOnGoAck(reply))
 	if err != nil {
 		return codec.ExtendedConnectOnGoAckParams{}, fmt.Errorf("probel-sw02p: decode tx 070: %w", err)
 	}

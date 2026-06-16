@@ -23,7 +23,7 @@ func (p *Plugin) SendDualControllerStatusRequest(ctx context.Context) (codec.Dua
 	if err != nil {
 		return codec.DualControllerStatusResponseParams{}, fmt.Errorf("probel-sw02p: SendDualControllerStatusRequest: %w", err)
 	}
-	resp, err := codec.DecodeDualControllerStatusResponse(reply)
+	resp, err := decoded(codec.DecodeDualControllerStatusResponse(reply))
 	if err != nil {
 		return codec.DualControllerStatusResponseParams{}, fmt.Errorf("probel-sw02p: decode tx 051: %w", err)
 	}

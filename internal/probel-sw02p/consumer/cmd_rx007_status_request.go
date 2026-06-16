@@ -24,7 +24,7 @@ func (p *Plugin) SendStatusRequest(ctx context.Context, controller codec.Control
 	if err != nil {
 		return codec.StatusResponse2Params{}, fmt.Errorf("probel-sw02p: SendStatusRequest: %w", err)
 	}
-	s, err := codec.DecodeStatusResponse2(reply)
+	s, err := decoded(codec.DecodeStatusResponse2(reply))
 	if err != nil {
 		return codec.StatusResponse2Params{}, fmt.Errorf("probel-sw02p: decode tx 09: %w", err)
 	}

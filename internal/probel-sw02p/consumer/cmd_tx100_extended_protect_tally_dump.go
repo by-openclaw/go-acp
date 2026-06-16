@@ -21,7 +21,7 @@ func (p *Plugin) SubscribeExtendedProtectTallyDump(fn func(codec.ExtendedProtect
 		if f.ID != codec.TxExtendedProtectTallyDump {
 			return
 		}
-		params, derr := codec.DecodeExtendedProtectTallyDump(f)
+		params, derr := decoded(codec.DecodeExtendedProtectTallyDump(f))
 		if derr != nil {
 			return
 		}

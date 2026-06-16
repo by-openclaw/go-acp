@@ -33,7 +33,7 @@ func (p *Plugin) SendConnectOnGo(ctx context.Context, dst, src uint16, badSource
 	if err != nil {
 		return codec.ConnectOnGoAckParams{}, fmt.Errorf("probel-sw02p: SendConnectOnGo: %w", err)
 	}
-	ack, err := codec.DecodeConnectOnGoAck(reply)
+	ack, err := decoded(codec.DecodeConnectOnGoAck(reply))
 	if err != nil {
 		return codec.ConnectOnGoAckParams{}, fmt.Errorf("probel-sw02p: decode tx 12: %w", err)
 	}

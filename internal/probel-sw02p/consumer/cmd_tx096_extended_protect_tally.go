@@ -22,7 +22,7 @@ func (p *Plugin) SubscribeExtendedProtectTally(fn func(codec.ExtendedProtectTall
 		if f.ID != codec.TxExtendedProtectTally {
 			return
 		}
-		params, derr := codec.DecodeExtendedProtectTally(f)
+		params, derr := decoded(codec.DecodeExtendedProtectTally(f))
 		if derr != nil {
 			return
 		}
