@@ -16,7 +16,7 @@ import (
 // clear — per-device bad-source tracking is out of scope for this
 // plugin until a real router reports it.
 func (s *server) handleInterrogate(f codec.Frame) (handlerResult, error) {
-	p, err := codec.DecodeInterrogate(f)
+	p, err := decoded(codec.DecodeInterrogate(f))
 	if err != nil {
 		return handlerResult{}, err
 	}
