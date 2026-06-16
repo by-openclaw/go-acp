@@ -87,6 +87,9 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		logger = slog.Default()
 	}
 	t, err := newTree(exp)
+	if treeBuildErrHook != nil {
+		err = treeBuildErrHook()
+	}
 	if err != nil {
 		logger.Error("probel-sw02p provider: tree build failed", slog.String("err", err.Error()))
 		t = &tree{matrices: map[matrixKey]*matrixState{}}
