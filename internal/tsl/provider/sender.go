@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"syscall"
 
-	"dhs/internal/transport"
 	"dhs/internal/tsl/codec"
 )
 
@@ -41,26 +39,12 @@ func (s *udpSender) bind(addr string) error {
 	if addr == "" {
 		addr = ":0"
 	}
-	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			if err := c.Control(func(fd uintptr) {
-				if e := transport.SetSocketReuseAddr(fd); e != nil {
-					opErr = e
-					return
-				}
-				opErr = transport.SetSocketBroadcast(fd)
-			}); err != nil {
-				return err
-			}
-			return opErr
-		},
-	}
+	lc := net.ListenConfig{Control: rawControlSeam()}
 	pc, err := lc.ListenPacket(context.Background(), "udp", addr)
 	if err != nil {
 		return fmt.Errorf("tsl provider: bind %q: %w", addr, err)
 	}
-	conn, ok := pc.(*net.UDPConn)
+	conn, ok := assertUDPConn(pc)
 	if !ok {
 		_ = pc.Close()
 		return fmt.Errorf("tsl provider: bind %q: unexpected conn type %T", addr, pc)
