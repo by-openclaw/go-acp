@@ -276,6 +276,19 @@ func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Cl
 	return c
 }
 
+// setKeepAlive / setKeepAlivePeriod are indirection seams over the
+// *net.TCPConn setsockopt calls. In production they are nil and the
+// real methods run (see applyTCPKeepalive). Tests override them to
+// exercise the OS-level error arms, which cannot be provoked on a
+// live, open *net.TCPConn (SetKeepAlive succeeds whenever the socket
+// is healthy, and once it errors applyTCPKeepalive returns before
+// SetKeepAlivePeriod is ever reached). Mirrors the transparent-seam
+// idiom used by sibling probel codecs. Guard logic is unchanged.
+var (
+	setKeepAlive       func(*net.TCPConn, bool) error          = nil
+	setKeepAlivePeriod func(*net.TCPConn, time.Duration) error = nil
+)
+
 // applyTCPKeepalive enables SO_KEEPALIVE on a dialed TCP connection.
 // period == 0 → DefaultTCPKeepalivePeriod; period < 0 → disable.
 // No-op when conn isn't a *net.TCPConn (e.g. test pipe).
@@ -290,11 +303,19 @@ func applyTCPKeepalive(conn net.Conn, period time.Duration, logger *slog.Logger)
 	if !ok {
 		return
 	}
-	if err := tc.SetKeepAlive(true); err != nil {
+	enable := tc.SetKeepAlive
+	if setKeepAlive != nil {
+		enable = func(v bool) error { return setKeepAlive(tc, v) }
+	}
+	setPeriod := tc.SetKeepAlivePeriod
+	if setKeepAlivePeriod != nil {
+		setPeriod = func(d time.Duration) error { return setKeepAlivePeriod(tc, d) }
+	}
+	if err := enable(true); err != nil {
 		logger.Debug("probel SetKeepAlive failed", slog.String("err", err.Error()))
 		return
 	}
-	if err := tc.SetKeepAlivePeriod(period); err != nil {
+	if err := setPeriod(period); err != nil {
 		logger.Debug("probel SetKeepAlivePeriod failed", slog.String("err", err.Error()))
 	}
 }

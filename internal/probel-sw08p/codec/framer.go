@@ -21,6 +21,12 @@ var (
 	ErrEmptyFrame  = errors.New("probel: frame has no command byte")
 )
 
+// unpackDataHook is a transparent test seam over the decoded DATA slice
+// inside Unpack. It is nil in production — see the comment at its call
+// site in Unpack for why it exists (exercising the otherwise-shadowed
+// len(data)==0 defensive guard) and why it cannot affect real decoding.
+var unpackDataHook func([]byte) []byte = nil
+
 // Checksum8 returns the 8-bit two's-complement checksum over b, i.e.
 // (~sum + 1) & 0xFF. Applied by SW-P-08 over (DATA || BTC) pre-escape.
 //
@@ -168,6 +174,18 @@ func Unpack(buf []byte) (Frame, int, error) {
 	data := body[:len(body)-2]
 	btc := body[len(body)-2]
 	chk := body[len(body)-1]
+	// unpackDataHook is a transparent test seam: nil in production (data
+	// flows straight through). It exists only so the defensive
+	// len(data)==0 guard below stays exercisable — that arm is otherwise
+	// shadowed by the len(body)<3 check above, because the single body
+	// shape yielding zero DATA (length 2: BTC+CHK, no ID) is already
+	// rejected there. The guard is kept (not removed) to preserve the
+	// spec's "frame has no command byte" contract; the BTC/checksum
+	// checks below still run against the real data so they cannot be
+	// fooled in production.
+	if unpackDataHook != nil {
+		data = unpackDataHook(data)
+	}
 
 	if int(btc) != len(data) {
 		return Frame{}, 0, ErrBadBTC
