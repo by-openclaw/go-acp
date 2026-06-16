@@ -74,7 +74,10 @@ func (s *udpSession) listen(ctx context.Context, addr string, decode func(*net.U
 	lc := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
 			var opErr error
-			if err := c.Control(func(fd uintptr) {
+			// rawControl is c.Control in production; a test swaps it to
+			// force the (otherwise unreachable) error return arm — the OS
+			// never makes c.Control fail for a freshly-bound UDP socket.
+			if err := rawControl(c, func(fd uintptr) {
 				opErr = transport.SetSocketReuseAddr(fd)
 			}); err != nil {
 				return err
@@ -86,7 +89,7 @@ func (s *udpSession) listen(ctx context.Context, addr string, decode func(*net.U
 	if err != nil {
 		return fmt.Errorf("tsl: listen %q: %w", addr, err)
 	}
-	conn, ok := pc.(*net.UDPConn)
+	conn, ok := listenConnAssert(pc)
 	if !ok {
 		_ = pc.Close()
 		return fmt.Errorf("tsl: listen %q: unexpected conn type %T", addr, pc)
