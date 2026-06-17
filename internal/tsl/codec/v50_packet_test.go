@@ -1,8 +1,10 @@
 package codec
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -204,6 +206,212 @@ func TestV50Decode_PacketTooSmall(t *testing.T) {
 	_, err := DecodeV50(make([]byte, 4))
 	if !errors.Is(err, ErrV50PacketTooSmall) {
 		t.Errorf("want ErrV50PacketTooSmall, got %v", err)
+	}
+}
+
+func TestV50_SControl_RoundTrip(t *testing.T) {
+	// SControl body is opaque: Encode appends SControlRaw verbatim, Decode
+	// returns it in SControlRaw and fires the undefined-control note.
+	raw := []byte{0xDE, 0xAD, 0xBE, 0xEF}
+	in := V50Packet{SControl: true, Screen: 9, SControlRaw: raw}
+	wire, err := in.Encode()
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if wire[V50FLAGSIdx]&(1<<1) == 0 {
+		t.Errorf("SCONTROL flag bit not set: FLAGS=0x%02x", wire[V50FLAGSIdx])
+	}
+	got, err := DecodeV50(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !got.SControl {
+		t.Errorf("SControl flag lost on decode")
+	}
+	if !bytes.Equal(got.SControlRaw, raw) {
+		t.Errorf("SControlRaw=% x, want % x", got.SControlRaw, raw)
+	}
+	found := false
+	for _, n := range got.Notes {
+		if n.Kind == "tsl_control_data_undefined" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want tsl_control_data_undefined note, got %+v", got.Notes)
+	}
+}
+
+func TestV50Encode_TextTooLong(t *testing.T) {
+	// A single DMSG TEXT longer than 0xFFFF bytes hits the per-DMSG length
+	// guard before the packet-size guard. 0x10000 printable ASCII bytes.
+	long := strings.Repeat("A", 0x10000)
+	p := V50Packet{DMSGs: []DMSG{{Index: 0, Text: long}}}
+	_, err := p.Encode()
+	if err == nil || !strings.Contains(err.Error(), "TEXT too long") {
+		t.Errorf("want TEXT-too-long error, got %v", err)
+	}
+}
+
+func TestV50Encode_PacketTooLarge(t *testing.T) {
+	// Body just over the 2048-byte cap (after the 2-byte PBC) must reject.
+	// A ~2050-byte ASCII label keeps each DMSG length under 0xFFFF so the
+	// packet-size guard (not the TEXT guard) fires.
+	p := V50Packet{DMSGs: []DMSG{{Index: 0, Text: strings.Repeat("A", 2050)}}}
+	_, err := p.Encode()
+	if !errors.Is(err, ErrV50PacketTooLarge) {
+		t.Errorf("want ErrV50PacketTooLarge, got %v", err)
+	}
+}
+
+func TestV50Decode_PacketTooLarge(t *testing.T) {
+	// A buffer larger than the 2048 maximum is rejected before parsing.
+	big := make([]byte, V50MaxPacketSize+1)
+	if _, err := DecodeV50(big); !errors.Is(err, ErrV50PacketTooLarge) {
+		t.Errorf("want ErrV50PacketTooLarge, got %v", err)
+	}
+}
+
+func TestV50Decode_UnknownVersion_FiresNote(t *testing.T) {
+	in := V50Packet{DMSGs: []DMSG{{Index: 1, Text: "X"}}}
+	wire, err := in.Encode()
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	wire[V50VERIdx] = 1 // non-zero minor version
+	got, err := DecodeV50(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	found := false
+	for _, n := range got.Notes {
+		if n.Kind == "tsl_version_mismatch" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want tsl_version_mismatch note, got %+v", got.Notes)
+	}
+}
+
+func TestV50Decode_BroadcastIndex_FiresNote(t *testing.T) {
+	in := V50Packet{Screen: 0, DMSGs: []DMSG{{Index: V50BroadcastIdx, Text: "X"}}}
+	wire, err := in.Encode()
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	got, err := DecodeV50(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	found := false
+	for _, n := range got.Notes {
+		if n.Kind == "tsl_broadcast_received" && strings.Contains(n.Detail, "INDEX") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want broadcast INDEX note, got %+v", got.Notes)
+	}
+}
+
+func TestV50Decode_ReservedControlBits_FiresNote(t *testing.T) {
+	in := V50Packet{DMSGs: []DMSG{{Index: 1, ReservedBits: 0x05, Text: "X"}}}
+	wire, err := in.Encode()
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	got, err := DecodeV50(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	found := false
+	for _, n := range got.Notes {
+		if n.Kind == "tsl_reserved_bit_set" && strings.Contains(n.Detail, "CONTROL") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want CONTROL reserved-bit note, got %+v", got.Notes)
+	}
+	if got.DMSGs[0].ReservedBits != 0x05 {
+		t.Errorf("ReservedBits round-trip: got 0x%02x, want 0x05", got.DMSGs[0].ReservedBits)
+	}
+}
+
+func TestV50Decode_DMSGHeaderTruncated(t *testing.T) {
+	// Body has the 6-byte envelope plus 2 stray bytes — not enough for a
+	// 4-byte DMSG header (INDEX+CONTROL needs 4).
+	body := []byte{0x00 /*VER*/, 0x00 /*FLAGS*/, 0x00, 0x00 /*SCREEN*/, 0xAA, 0xBB}
+	pkt := make([]byte, 2+len(body))
+	binary.LittleEndian.PutUint16(pkt[V50PBCIdx:], uint16(len(body)))
+	copy(pkt[2:], body)
+	_, err := DecodeV50(pkt)
+	if !errors.Is(err, ErrV50DMSGTruncated) {
+		t.Errorf("want ErrV50DMSGTruncated (header), got %v", err)
+	}
+}
+
+func TestV50Decode_DMSGLengthTruncated(t *testing.T) {
+	// DMSG header present (INDEX+CONTROL, bit15=0) but no room for the
+	// 2-byte LENGTH field.
+	body := []byte{
+		0x00, 0x00, 0x00, 0x00, // VER, FLAGS, SCREEN
+		0x01, 0x00, // INDEX=1
+		0x00, 0x00, // CONTROL=0 (bit15 clear → LENGTH expected)
+	}
+	pkt := make([]byte, 2+len(body))
+	binary.LittleEndian.PutUint16(pkt[V50PBCIdx:], uint16(len(body)))
+	copy(pkt[2:], body)
+	_, err := DecodeV50(pkt)
+	if !errors.Is(err, ErrV50DMSGTruncated) {
+		t.Errorf("want ErrV50DMSGTruncated (LENGTH), got %v", err)
+	}
+}
+
+func TestV50Decode_DMSGTextExceedsBody(t *testing.T) {
+	// LENGTH claims more TEXT bytes than the body actually holds.
+	body := []byte{
+		0x00, 0x00, 0x00, 0x00, // VER, FLAGS, SCREEN
+		0x01, 0x00, // INDEX=1
+		0x00, 0x00, // CONTROL=0
+		0x10, 0x00, // LENGTH=16
+		'A', 'B', // only 2 TEXT bytes present
+	}
+	pkt := make([]byte, 2+len(body))
+	binary.LittleEndian.PutUint16(pkt[V50PBCIdx:], uint16(len(body)))
+	copy(pkt[2:], body)
+	_, err := DecodeV50(pkt)
+	if !errors.Is(err, ErrV50DMSGTruncated) {
+		t.Errorf("want ErrV50DMSGTruncated (TEXT), got %v", err)
+	}
+}
+
+func TestV50Decode_OddUTF16Length(t *testing.T) {
+	// UTF-16LE flag set but TEXT length is odd → decodeV50Text error,
+	// surfaced by DecodeV50.
+	body := []byte{
+		0x00,       // VER
+		0x01,       // FLAGS: UTF16LE
+		0x00, 0x00, // SCREEN
+		0x01, 0x00, // INDEX=1
+		0x00, 0x00, // CONTROL=0
+		0x03, 0x00, // LENGTH=3 (odd for UTF-16LE)
+		0x41, 0x00, 0x42, // 3 bytes
+	}
+	pkt := make([]byte, 2+len(body))
+	binary.LittleEndian.PutUint16(pkt[V50PBCIdx:], uint16(len(body)))
+	copy(pkt[2:], body)
+	_, err := DecodeV50(pkt)
+	if !errors.Is(err, ErrV50TextDecode) {
+		t.Errorf("want ErrV50TextDecode, got %v", err)
+	}
+}
+
+func TestDecodeV50Text_OddLengthDirect(t *testing.T) {
+	// Direct unit on the helper's odd-length guard.
+	if _, err := decodeV50Text([]byte{0x41}, true); !errors.Is(err, ErrV50TextDecode) {
+		t.Errorf("want ErrV50TextDecode for odd UTF-16LE input, got %v", err)
 	}
 }
 
