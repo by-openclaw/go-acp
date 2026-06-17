@@ -85,6 +85,8 @@ func runProbelsw08p(ctx context.Context, args []string) error {
 		return runProbelAllSourceAssocNames(ctx, rest)
 	case "single-source-assoc-name":
 		return runProbelSingleSourceAssocName(ctx, rest)
+	case "update-name":
+		return runProbelUpdateName(ctx, rest)
 	case "bench":
 		return runProbelBench(ctx, rest)
 	case "salvo-connect":
@@ -119,6 +121,8 @@ SUBCOMMANDS
   single-dest-name          fetch one destination label
   all-source-assoc-names    fetch every source association (device) label
   single-source-assoc-name  fetch one source association label
+  update-name               write labels (source/source-assoc/dest-assoc/umd)
+                            starting at --first-id (rx 117; fire-and-forget)
   protect-interrogate       read protect state on one (matrix, level, dst)
   protect-connect           set a protect on (matrix, level, dst) for a device
   protect-disconnect        clear a protect
