@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"sync"
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/provider"
@@ -106,8 +107,53 @@ type Server struct {
 	logger  *slog.Logger
 	tree    *canonical.Export
 
+	// mu guards the lazy-init pointers below. It is held only to read or
+	// create a pointer; it is NEVER held across a blocking call (serveBlock)
+	// or any network I/O. Callers capture the pointer to a local under the
+	// lock, unlock, then invoke the method on the local.
+	mu        sync.Mutex
 	sender    *udpSender
 	tcpDialer *tcpDialer
+}
+
+// ensureSender returns the lazily-created UDP sender, creating it under mu
+// on first use. The returned pointer is safe to use after the lock is
+// released (it is immutable once set).
+func (s *Server) ensureSender() *udpSender {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.sender == nil {
+		s.sender = newUDPSender()
+	}
+	return s.sender
+}
+
+// senderRef returns the current UDP sender (possibly nil) under mu, without
+// creating one. Used by read paths (BoundAddr / Send / Stop) that must
+// preserve the not-bound behaviour when no sender exists yet.
+func (s *Server) senderRef() *udpSender {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sender
+}
+
+// ensureTCPDialer returns the lazily-created TCP dialer, creating it under
+// mu on first use.
+func (s *Server) ensureTCPDialer() *tcpDialer {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.tcpDialer == nil {
+		s.tcpDialer = newTCPDialer()
+	}
+	return s.tcpDialer
+}
+
+// tcpDialerRef returns the current TCP dialer (possibly nil) under mu,
+// without creating one. Used by Stop.
+func (s *Server) tcpDialerRef() *tcpDialer {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.tcpDialer
 }
 
 // errNotImplemented is the scaffolding sentinel for operations that are
@@ -121,22 +167,26 @@ var errNotImplemented = errors.New("tsl: provider operation not implemented in t
 // For v5.0 TCP mode, Serve is a no-op (the TCP dialer dials out on
 // demand via SendV50TCP); callers who only use TCP can skip Serve.
 func (s *Server) Serve(ctx context.Context, addr string) error {
-	if s.sender == nil {
-		s.sender = newUDPSender()
-	}
-	return s.sender.serveBlock(ctx, addr)
+	// Capture the sender pointer under mu, then release mu BEFORE the
+	// blocking serveBlock call — the lock never spans network I/O.
+	sender := s.ensureSender()
+	return sender.serveBlock(ctx, addr)
 }
 
 // Stop closes the UDP socket and any pending TCP connections.
 func (s *Server) Stop() error {
 	var first error
-	if s.sender != nil {
-		if err := s.sender.close(); err != nil {
+	// Capture pointers under mu, then close on the locals (close may do
+	// network I/O / block, so it must not run under Server.mu).
+	sender := s.senderRef()
+	if sender != nil {
+		if err := sender.close(); err != nil {
 			first = err
 		}
 	}
-	if s.tcpDialer != nil {
-		if err := s.tcpDialer.close(); err != nil && first == nil {
+	dialer := s.tcpDialerRef()
+	if dialer != nil {
+		if err := dialer.close(); err != nil && first == nil {
 			first = err
 		}
 	}
@@ -153,27 +203,24 @@ func (s *Server) SetValue(ctx context.Context, path string, val any) (any, error
 // Bind binds the egress socket without blocking. Useful for tests that
 // want to configure destinations before Serve starts.
 func (s *Server) Bind(addr string) error {
-	if s.sender == nil {
-		s.sender = newUDPSender()
-	}
-	return s.sender.bind(addr)
+	sender := s.ensureSender()
+	return sender.bind(addr)
 }
 
 // BoundAddr returns the local UDP address (ephemeral resolution).
 func (s *Server) BoundAddr() *net.UDPAddr {
-	if s.sender == nil {
+	sender := s.senderRef()
+	if sender == nil {
 		return nil
 	}
-	return s.sender.boundAddr()
+	return sender.boundAddr()
 }
 
 // AddDestination registers an MV to push frames to. Multiple destinations
 // fan out the same frame.
 func (s *Server) AddDestination(host string, port int) error {
-	if s.sender == nil {
-		s.sender = newUDPSender()
-	}
-	return s.sender.addDest(host, port)
+	sender := s.ensureSender()
+	return sender.addDest(host, port)
 }
 
 // SendV31 encodes and sends a v3.1 frame to all configured destinations.
@@ -181,10 +228,11 @@ func (s *Server) SendV31(frame codec.V31Frame) error {
 	if s.version != V31 {
 		return fmt.Errorf("tsl %s: SendV31 only valid for v3.1 plugin", s.version.name())
 	}
-	if s.sender == nil {
+	sender := s.senderRef()
+	if sender == nil {
 		return errors.New("tsl v3.1: not bound (call Bind or Serve first)")
 	}
-	return s.sender.encodeAndSendV31(frame)
+	return sender.encodeAndSendV31(frame)
 }
 
 // SendV40 encodes and sends a v4.0 frame to all configured destinations.
@@ -192,10 +240,11 @@ func (s *Server) SendV40(frame codec.V40Frame) error {
 	if s.version != V40 {
 		return fmt.Errorf("tsl %s: SendV40 only valid for v4.0 plugin", s.version.name())
 	}
-	if s.sender == nil {
+	sender := s.senderRef()
+	if sender == nil {
 		return errors.New("tsl v4.0: not bound (call Bind or Serve first)")
 	}
-	return s.sender.encodeAndSendV40(frame)
+	return sender.encodeAndSendV40(frame)
 }
 
 // SendV50 encodes and sends a v5.0 packet via UDP to all configured
@@ -204,10 +253,11 @@ func (s *Server) SendV50(pkt codec.V50Packet) error {
 	if s.version != V50 {
 		return fmt.Errorf("tsl %s: SendV50 only valid for v5.0 plugin", s.version.name())
 	}
-	if s.sender == nil {
+	sender := s.senderRef()
+	if sender == nil {
 		return errors.New("tsl v5.0: not bound (call Bind or Serve first)")
 	}
-	return s.sender.encodeAndSendV50UDP(pkt)
+	return sender.encodeAndSendV50UDP(pkt)
 }
 
 // SendV50TCP dials (or reuses) a TCP connection to (host, port) and
@@ -217,8 +267,6 @@ func (s *Server) SendV50TCP(host string, port int, pkt codec.V50Packet) error {
 	if s.version != V50 {
 		return fmt.Errorf("tsl %s: SendV50TCP only valid for v5.0 plugin", s.version.name())
 	}
-	if s.tcpDialer == nil {
-		s.tcpDialer = newTCPDialer()
-	}
-	return s.tcpDialer.sendV50TCP(host, port, pkt)
+	dialer := s.ensureTCPDialer()
+	return dialer.sendV50TCP(host, port, pkt)
 }
