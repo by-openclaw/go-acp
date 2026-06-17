@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"sync"
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/osc/codec"
@@ -87,8 +88,56 @@ type Server struct {
 	logger  *slog.Logger
 	tree    *canonical.Export
 
+	// mu guards the lazy-init pointers below. It is held only to read or
+	// create a pointer; it is NEVER held across a blocking call (serveBlock)
+	// or any network I/O. Callers capture the pointer to a local under the
+	// lock, unlock, then invoke the method on the local. This mirrors the
+	// tsl provider fix (ensureSender/senderRef) that closed a -race failure
+	// where Serve/bind lazily created a sender read concurrently by
+	// BoundAddr/Send/Stop.
+	mu     sync.Mutex
 	sender *udpSender
 	tcp    *tcpDialer
+}
+
+// ensureSender returns the lazily-created UDP sender, creating it under mu
+// on first use. The returned pointer is safe to use after the lock is
+// released (the pointer itself is immutable once set).
+func (s *Server) ensureSender() *udpSender {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.sender == nil {
+		s.sender = newUDPSender()
+	}
+	return s.sender
+}
+
+// senderRef returns the current UDP sender (possibly nil) under mu, without
+// creating one. Used by read paths (BoundAddr / Send / Stop) that must
+// preserve the not-bound behaviour when no sender exists yet.
+func (s *Server) senderRef() *udpSender {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sender
+}
+
+// ensureTCPDialer returns the lazily-created TCP dialer, creating it under
+// mu on first use.
+func (s *Server) ensureTCPDialer() *tcpDialer {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.tcp == nil {
+		s.tcp = newTCPDialer(s.framerForVersion())
+	}
+	return s.tcp
+}
+
+// tcpDialerRef returns the current TCP dialer (possibly nil) under mu,
+// without creating one. Used by Stop.
+func (s *Server) tcpDialerRef() *tcpDialer {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.tcp
 }
 
 // framerForVersion returns the TCP framing kind for this Server's version.
@@ -107,22 +156,26 @@ var errNotImplemented = errors.New("osc: provider operation not implemented in t
 // local bind (empty / ":0" → ephemeral). Destinations are added via
 // AddDestination before or after Serve starts.
 func (s *Server) Serve(ctx context.Context, addr string) error {
-	if s.sender == nil {
-		s.sender = newUDPSender()
-	}
-	return s.sender.serveBlock(ctx, addr)
+	// Capture the sender pointer under mu, then release mu BEFORE the
+	// blocking serveBlock call — the lock never spans network I/O.
+	sender := s.ensureSender()
+	return sender.serveBlock(ctx, addr)
 }
 
 // Stop closes the UDP socket and any pending TCP connections.
 func (s *Server) Stop() error {
 	var first error
-	if s.sender != nil {
-		if err := s.sender.close(); err != nil {
+	// Capture pointers under mu, then close on the locals (close may do
+	// network I/O / block, so it must not run under Server.mu).
+	sender := s.senderRef()
+	if sender != nil {
+		if err := sender.close(); err != nil {
 			first = err
 		}
 	}
-	if s.tcp != nil {
-		if err := s.tcp.close(); err != nil && first == nil {
+	dialer := s.tcpDialerRef()
+	if dialer != nil {
+		if err := dialer.close(); err != nil && first == nil {
 			first = err
 		}
 	}
@@ -140,63 +193,58 @@ func (s *Server) SetValue(ctx context.Context, path string, val any) (any, error
 // Bind binds the egress socket without blocking. Useful for tests that
 // want to configure destinations before Serve starts.
 func (s *Server) Bind(addr string) error {
-	if s.sender == nil {
-		s.sender = newUDPSender()
-	}
-	return s.sender.bind(addr)
+	sender := s.ensureSender()
+	return sender.bind(addr)
 }
 
 // BoundAddr returns the local UDP address (ephemeral-port resolution).
 func (s *Server) BoundAddr() *net.UDPAddr {
-	if s.sender == nil {
+	sender := s.senderRef()
+	if sender == nil {
 		return nil
 	}
-	return s.sender.boundAddr()
+	return sender.boundAddr()
 }
 
 // AddDestination registers a remote peer to push OSC packets to.
 // Broadcast addresses like 255.255.255.255 or subnet broadcasts are
 // accepted — SO_BROADCAST is set on the socket.
 func (s *Server) AddDestination(host string, port int) error {
-	if s.sender == nil {
-		s.sender = newUDPSender()
-	}
-	return s.sender.addDest(host, port)
+	sender := s.ensureSender()
+	return sender.addDest(host, port)
 }
 
 // SendMessage encodes + fans out a single OSC Message to all configured
 // destinations.
 func (s *Server) SendMessage(m codec.Message) error {
-	if s.sender == nil {
+	sender := s.senderRef()
+	if sender == nil {
 		return fmt.Errorf("osc %s: not bound (call Bind or Serve first)", s.version.name())
 	}
-	return s.sender.sendMessage(m)
+	return sender.sendMessage(m)
 }
 
 // SendBundle encodes + fans out an OSC Bundle (grouped messages under
 // one timetag).
 func (s *Server) SendBundle(b codec.Bundle) error {
-	if s.sender == nil {
+	sender := s.senderRef()
+	if sender == nil {
 		return fmt.Errorf("osc %s: not bound (call Bind or Serve first)", s.version.name())
 	}
-	return s.sender.sendBundle(b)
+	return sender.sendBundle(b)
 }
 
 // SendMessageTCP dials (or reuses) a TCP connection to (host, port) and
 // writes the Message framed per this version (length-prefix for v1.0,
 // SLIP double-END for v1.1).
 func (s *Server) SendMessageTCP(host string, port int, m codec.Message) error {
-	if s.tcp == nil {
-		s.tcp = newTCPDialer(s.framerForVersion())
-	}
-	return s.tcp.sendMessage(host, port, m)
+	dialer := s.ensureTCPDialer()
+	return dialer.sendMessage(host, port, m)
 }
 
 // SendBundleTCP dials (or reuses) a TCP connection and writes a framed
 // Bundle.
 func (s *Server) SendBundleTCP(host string, port int, b codec.Bundle) error {
-	if s.tcp == nil {
-		s.tcp = newTCPDialer(s.framerForVersion())
-	}
-	return s.tcp.sendBundle(host, port, b)
+	dialer := s.ensureTCPDialer()
+	return dialer.sendBundle(host, port, b)
 }

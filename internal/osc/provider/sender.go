@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"syscall"
 
 	"dhs/internal/osc/codec"
-	"dhs/internal/transport"
 )
 
 // udpSender owns the outbound UDP socket for OSC. SO_REUSEADDR lets
@@ -31,32 +29,24 @@ func newUDPSender() *udpSender {
 // bind opens a UDP socket for outbound sends. addr may be ":0" or ""
 // for an ephemeral local port.
 func (s *udpSender) bind(addr string) error {
+	// One-time bind: hold the write lock across the nil-check + ListenPacket
+	// + assignment so two concurrent binds cannot both open a socket. This is
+	// the only place s.mu is held across I/O, and bind is not on any hot
+	// path. Mirrors the tsl provider conn-locking fix.
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.conn != nil {
 		return errors.New("osc provider: already bound")
 	}
 	if addr == "" {
 		addr = ":0"
 	}
-	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			if err := c.Control(func(fd uintptr) {
-				if e := transport.SetSocketReuseAddr(fd); e != nil {
-					opErr = e
-					return
-				}
-				opErr = transport.SetSocketBroadcast(fd)
-			}); err != nil {
-				return err
-			}
-			return opErr
-		},
-	}
+	lc := net.ListenConfig{Control: rawControlSeam()}
 	pc, err := lc.ListenPacket(context.Background(), "udp", addr)
 	if err != nil {
 		return fmt.Errorf("osc provider: bind %q: %w", addr, err)
 	}
-	conn, ok := pc.(*net.UDPConn)
+	conn, ok := assertUDPConn(pc)
 	if !ok {
 		_ = pc.Close()
 		return fmt.Errorf("osc provider: bind %q: unexpected conn type %T", addr, pc)
@@ -66,10 +56,13 @@ func (s *udpSender) bind(addr string) error {
 }
 
 func (s *udpSender) boundAddr() *net.UDPAddr {
-	if s.conn == nil {
+	s.mu.RLock()
+	conn := s.conn
+	s.mu.RUnlock()
+	if conn == nil {
 		return nil
 	}
-	return s.conn.LocalAddr().(*net.UDPAddr)
+	return conn.LocalAddr().(*net.UDPAddr)
 }
 
 func (s *udpSender) addDest(host string, port int) error {
@@ -93,7 +86,13 @@ func (s *udpSender) destsSnapshot() []*net.UDPAddr {
 }
 
 func (s *udpSender) sendBytes(payload []byte) error {
-	if s.conn == nil {
+	// Capture the conn pointer under the read lock, then release it before
+	// the network writes — the lock never spans I/O. destsSnapshot takes its
+	// own lock separately.
+	s.mu.RLock()
+	conn := s.conn
+	s.mu.RUnlock()
+	if conn == nil {
 		return errors.New("osc provider: not bound")
 	}
 	dests := s.destsSnapshot()
@@ -102,7 +101,7 @@ func (s *udpSender) sendBytes(payload []byte) error {
 	}
 	var firstErr error
 	for _, d := range dests {
-		if _, err := s.conn.WriteToUDP(payload, d); err != nil && firstErr == nil {
+		if _, err := conn.WriteToUDP(payload, d); err != nil && firstErr == nil {
 			firstErr = fmt.Errorf("write to %s: %w", d.String(), err)
 		}
 	}
@@ -112,15 +111,26 @@ func (s *udpSender) sendBytes(payload []byte) error {
 func (s *udpSender) close() error {
 	var err error
 	s.closeOnce.Do(func() {
-		if s.conn != nil {
-			err = s.conn.Close()
+		s.mu.RLock()
+		conn := s.conn
+		s.mu.RUnlock()
+		if conn != nil {
+			err = conn.Close()
 		}
 	})
 	return err
 }
 
 func (s *udpSender) serveBlock(ctx context.Context, addr string) error {
-	if s.conn == nil {
+	// Read the bound state under the lock, then RELEASE it before calling
+	// bind (which acquires s.mu itself — avoids RWMutex re-entrancy) and
+	// before the blocking ctx wait. bind re-checks s.conn==nil under the
+	// write lock, so the read here is purely an optimization that preserves
+	// the "already bound -> don't rebind" behaviour.
+	s.mu.RLock()
+	bound := s.conn != nil
+	s.mu.RUnlock()
+	if !bound {
 		if err := s.bind(addr); err != nil {
 			return err
 		}
