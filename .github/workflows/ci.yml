@@ -90,6 +90,9 @@ jobs:
           check ./internal/tsl/codec 100
           check ./internal/tsl/consumer 100
           check ./internal/tsl/provider 100
+          check ./internal/osc/codec 100
+          check ./internal/osc/consumer 100
+          check ./internal/osc/provider 100
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
