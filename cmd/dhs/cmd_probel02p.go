@@ -44,6 +44,34 @@ func runProbelsw02p(ctx context.Context, args []string) error {
 	sub := args[0]
 	rest := args[1:]
 	switch sub {
+	case "interrogate":
+		return runProbelsw02pInterrogate(ctx, rest)
+	case "connect":
+		return runProbelsw02pConnect(ctx, rest)
+	case "connect-on-go":
+		return runProbelsw02pConnectOnGo(ctx, rest)
+	case "go":
+		return runProbelsw02pGo(ctx, rest)
+	case "salvo-connect":
+		return runProbelsw02pSalvoConnect(ctx, rest)
+	case "protect-connect":
+		return runProbelsw02pProtectConnect(ctx, rest)
+	case "protect-disconnect":
+		return runProbelsw02pProtectDisconnect(ctx, rest)
+	case "protect-interrogate":
+		return runProbelsw02pProtectInterrogate(ctx, rest)
+	case "protect-dump":
+		return runProbelsw02pProtectDump(ctx, rest)
+	case "protect-name":
+		return runProbelsw02pProtectName(ctx, rest)
+	case "dual-status":
+		return runProbelsw02pDualStatus(ctx, rest)
+	case "lock-status":
+		return runProbelsw02pLockStatus(ctx, rest)
+	case "status":
+		return runProbelsw02pStatus(ctx, rest)
+	case "router-config":
+		return runProbelsw02pRouterConfig(ctx, rest)
 	case "watch":
 		return runProbelsw02pWatch(ctx, rest)
 	}
@@ -70,10 +98,30 @@ GLOBAL FLAGS (apply to every subcommand)
   + rotating keep-alive ping at (re)connect.
 
 SUBCOMMANDS
-  watch       subscribe to async tallies until Ctrl-C / --timeout
+  interrogate         query current source on one dst (rx 01; --extended → rx 65)
+  connect             route a source to a destination (rx 02; --extended → rx 66)
+  connect-on-go       stage one crosspoint into the pending salvo buffer (rx 05)
+  go                  commit (--op set) or discard (--op clear) the pending buffer (rx 06)
+  salvo-connect       stage N crosspoints under a group then fire it (rx 35 + rx 36)
+  protect-connect     set a protect on a destination for a device (rx 102)
+  protect-disconnect  clear a protect on a destination (rx 104)
+  protect-interrogate read protect state on one destination (rx 101)
+  protect-dump        request a protect tally dump fan-out (rx 105)
+  protect-name        resolve a device id → 8-char name (rx 103)
+  dual-status         read dual-controller redundancy state (rx 050)
+  lock-status         read source-lock bitmap, GET only (rx 014; SW-P-02 lock is read-only)
+  status              read controller status — 2 (rx 07)
+  router-config       read router configuration / level map (rx 075)
+  watch               subscribe to async tallies until Ctrl-C / --timeout
 
 EXAMPLES
-  dhs consumer probel-sw02p watch 127.0.0.1:2002 --dsts 64 --srcs 64`)
+  dhs consumer probel-sw02p interrogate    127.0.0.1:2002 --dst 5
+  dhs consumer probel-sw02p connect        127.0.0.1:2002 --dst 5 --src 12
+  dhs consumer probel-sw02p connect        127.0.0.1:2002 --dst 5 --src 12 --extended
+  dhs consumer probel-sw02p salvo-connect  127.0.0.1:2002 --src 3 --dsts 0-7 --salvo 1
+  dhs consumer probel-sw02p protect-connect 127.0.0.1:2002 --dst 5 --device 9
+  dhs consumer probel-sw02p router-config   127.0.0.1:2002
+  dhs consumer probel-sw02p watch          127.0.0.1:2002 --dsts 64 --srcs 64`)
 }
 
 // probelSW02RecorderKey is the context.Context key for the optional
