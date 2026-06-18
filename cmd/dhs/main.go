@@ -481,7 +481,7 @@ CONSUMER (outbound — connect to a device, query / control it)
     dhs consumer cerebrum-nb listen      10.6.239.50 --user admin --pass s3cr3t
 
 PRODUCER (inbound — serve a canonical tree to consumers over the wire)
-  Protocols: acp1 | acp2 | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   Verbs:     serve
 
   Examples:
@@ -549,7 +549,7 @@ USAGE
   dhs producer <protocol> serve [flags]
 
 PROTOCOLS
-  acp1 | acp2 | emberplus | probel-sw08p
+  acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
 
 FLAGS (common, slot-based protocols)
