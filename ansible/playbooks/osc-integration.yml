@@ -1,0 +1,147 @@
+---
+# OSC (Open Sound Control 1.0 + 1.1) integration CONTRACT TEST, per
+# ADR-0025 deliverable 3: "Ansible is the exclusive integration / verify
+# / deploy driver — no PowerShell .ps1 scripts." Live-rig parity driver
+# complementing the Go -tags integration body in
+# internal/osc/integration/.
+#
+# OSC is a symmetric push protocol — any peer can send to any peer; there
+# is no client/server handshake and no single device "address" the
+# consumer dials by host the way SW-P-02/08 dial a matrix. The
+# oracle-per-tier rule (never validate our consumer with our own
+# provider) is therefore satisfied by a *cross-implementation* oracle —
+# the osc.js reference peer (internal/osc/assets/test-harness) — NOT by a
+# lab host env var. So this play's two tiers differ from the probel
+# plays:
+#
+#   1. LOOPBACK (always): run `go test -tags integration` for the osc
+#      integration package, restricted to the in-process loopback +
+#      multi-peer suites (our provider <-> our consumer over real
+#      localhost UDP / TCP-LP / TCP-SLIP sockets). No external
+#      dependency, no VPN, no node. Each test binds an ephemeral socket
+#      and tears it down — zero persistent change → run-twice = same
+#      result (ADR-0025 idempotency). changed_when:false makes that
+#      explicit. The dissector-replay suite (tshark) and osc.js suite
+#      self-Skip cleanly when their tools are absent, so running the
+#      whole package here is also safe.
+#
+#   2. EXTERNAL / ORACLE (gated on node + osc.js): re-run the SAME Go
+#      integration body restricted to the OSCJS interop suite, which
+#      drives the osc.js Node reference peer as an independent encoder /
+#      decoder over the wire (byte oracle + UDP + TCP-LP + TCP-SLIP +
+#      fan-in). Those tests t.Skip() themselves when `node` is not on
+#      PATH or osc.js is not installed, so this tier is safe to invoke
+#      unconditionally: a missing toolchain surfaces as a clean Go
+#      SKIP, never a failure.
+#
+# NOTE on OSC_TEST_HOST: the OSC integration tests currently expose NO
+# external-host redirect (no test reads OSC_TEST_HOST / OSC_TEST_PORT).
+# Per ADR-0025's no-circular-oracle rule the cross-impl oracle (osc.js)
+# is the external tier, not a lab IP. OSC_TEST_HOST is RESERVED for a
+# future live-peer test (e.g. QLab / X32 / Companion on the lab net); it
+# is passed through to the external task's environment so that the day a
+# test honours it, this play already feeds it — but it is deliberately
+# NOT used to gate or branch today, because wiring a gate to a code path
+# no test supports would be an untested external path.
+#
+# dhs / go test logs are surfaced via register + debug stderr_lines so a
+# failing run shows the test output inline under `ansible-playbook -v`.
+#
+#   # loopback only (CI / agent, no node required):
+#   ansible-playbook -i inventory/hosts.ini playbooks/osc-integration.yml
+#
+#   # plus the osc.js cross-impl oracle (install node + osc.js first):
+#   #   cd internal/osc/assets/test-harness && npm install
+#   ansible-playbook -i inventory/hosts.ini playbooks/osc-integration.yml \
+#     -e osc_run_oscjs=true
+- name: OSC integration (loopback peers + optional osc.js cross-impl oracle)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    repo_root: "{{ playbook_dir }}/../.."
+    osc_pkg: "./internal/osc/integration/"
+    # Loopback tier: in-process provider<->consumer over real sockets.
+    # Restricted to the loopback + multi-peer suites by -run so the tier
+    # is deterministic regardless of node / tshark availability.
+    osc_loopback_run: "TestV10|TestV11|TestMultiPeer"
+    # External/oracle tier: the osc.js interop suite. Opt-in via
+    # -e osc_run_oscjs=true once node + osc.js are installed.
+    osc_run_oscjs: false
+    osc_oscjs_run: "TestOSCJS"
+    # RESERVED future live-peer redirect — see header note. Passed
+    # through to the external task environment but not used to gate.
+    osc_host: "{{ lookup('ansible.builtin.env', 'OSC_TEST_HOST') | default('', true) }}"
+    osc_port: "{{ lookup('ansible.builtin.env', 'OSC_TEST_PORT') | default('8000', true) }}"
+  tasks:
+    - name: "loopback — go test -tags integration (in-process peers over localhost sockets)"
+      ansible.builtin.command:
+        chdir: "{{ repo_root }}"
+        argv:
+          - go
+          - test
+          - -tags
+          - integration
+          - "{{ osc_pkg }}"
+          - -run
+          - "{{ osc_loopback_run }}"
+          - -count=1
+      register: osc_loopback
+      changed_when: false
+      failed_when: osc_loopback.rc != 0
+
+    - name: "loopback — surface go test output"
+      ansible.builtin.debug:
+        msg: "{{ osc_loopback.stdout_lines + osc_loopback.stderr_lines }}"
+      when: osc_loopback is defined
+
+    - name: "ASSERT loopback integration passed"
+      ansible.builtin.assert:
+        that:
+          - osc_loopback.rc == 0
+          - "'ok' in osc_loopback.stdout or 'PASS' in osc_loopback.stdout"
+        fail_msg: "OSC loopback integration test failed — see stderr_lines above"
+        quiet: true
+
+    - name: OSC loopback result
+      ansible.builtin.debug:
+        msg: "OSC integration: PASS (loopback peers — provider+consumer round-trip over UDP/TCP-LP/TCP-SLIP, ephemeral sockets / idempotent)"
+
+    # ---- External / oracle tier (osc.js cross-implementation peer) ------
+    - name: "external — go test -tags integration vs osc.js reference peer"
+      ansible.builtin.command:
+        chdir: "{{ repo_root }}"
+        argv:
+          - go
+          - test
+          - -tags
+          - integration
+          - "{{ osc_pkg }}"
+          - -run
+          - "{{ osc_oscjs_run }}"
+          - -v
+          - -count=1
+      environment:
+        # Reserved pass-through (see header). No osc.js test reads these
+        # today; they harmlessly feed a future live-peer test.
+        OSC_TEST_HOST: "{{ osc_host }}"
+        OSC_TEST_PORT: "{{ osc_port | string }}"
+      register: osc_oscjs
+      changed_when: false
+      # The osc.js suite self-Skips when node/osc.js are absent, so a
+      # non-zero rc is a real failure, not a missing toolchain.
+      failed_when: osc_oscjs.rc != 0
+      when: osc_run_oscjs | bool
+
+    - name: "external — surface go test output"
+      ansible.builtin.debug:
+        msg: "{{ osc_oscjs.stdout_lines + osc_oscjs.stderr_lines }}"
+      when:
+        - osc_run_oscjs | bool
+        - osc_oscjs is defined
+        - osc_oscjs.stdout_lines is defined
+
+    - name: OSC external result
+      ansible.builtin.debug:
+        msg: "OSC integration: osc.js cross-impl oracle ran (SKIP lines above mean node/osc.js absent — install per internal/osc/assets/test-harness; PASS means byte-oracle + wire interop held)"
+      when: osc_run_oscjs | bool
