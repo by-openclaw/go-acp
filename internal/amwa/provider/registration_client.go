@@ -271,6 +271,19 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 			c.deregisterAll()
 			return
 		case <-ticker.C:
+			// A ticker tick and loopCtx.Done() can be ready in the same
+			// iteration; select picks at random, so we can land here with
+			// the context already cancelled. If we proceed, the heartbeat
+			// + cascade below run against the dead context, fail with
+			// "context canceled", and flip registered→false — which makes
+			// the subsequent deregisterAll() early-return and skip every
+			// shutdown DELETE (the flaky-test symptom). Bail straight to
+			// shutdown instead so the unregister still runs while we're
+			// still marked registered.
+			if loopCtx.Err() != nil {
+				c.deregisterAll()
+				return
+			}
 			// IS-04 v1.3.3 §3.1 — Node selects the highest-priority
 			// Registry from those *currently* advertised. If a
 			// higher-priority one appeared after we registered, switch:
@@ -326,6 +339,15 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 			}
 			lastHeartbeat = time.Now()
 			err := c.sendHeartbeat(loopCtx)
+			if loopCtx.Err() != nil {
+				// The run context was cancelled while the heartbeat was
+				// in flight. Any error here is our own shutdown, not a
+				// Registry failure — do NOT clear registered or cascade
+				// (that would skip the shutdown DELETEs). Go straight to
+				// graceful deregistration.
+				c.deregisterAll()
+				return
+			}
 			if errors.Is(err, ErrRegistryNotFound) {
 				c.logger.Warn("provider/node: heartbeat 404 — re-registering")
 				atomic.AddUint64(&c.reregister, 1)
