@@ -1,0 +1,5 @@
+{"version":"v3.1","transport":"udp","description":"addr=7 tally1+tally4 brightness=full text=\"PGM LIVE\"","hex":"873950474d204c4956452020202020202020"}
+{"version":"v4.0","transport":"udp","description":"addr=11 displayL=red/green/amber displayR=green/red/off text=\"CAM 1 ISO\"","hex":"8b3543414d20312049534f2020202020202033021b24"}
+{"version":"v5.0","transport":"udp","description":"screen=1 single-DMSG index=11 lh=red/text=green/rh=amber ascii text=\"CAM 1\"","hex":"0f00000001000b00db00050043414d2031"}
+{"version":"v5.0","transport":"udp","description":"screen=0 multi-DMSG utf-16le text=[CAMÉRA,日本語,HOLA]","hex":"300000010000000010000c00430041004d00c90052004100010020000600e5652c679e8a02003000080048004f004c004100"}
+{"version":"v5.0","transport":"tcp-dle-stx","description":"screen=0xFEFE dmsg index=0xFE01 lh=red — exercises DLE/STX wrap + 0xFE stuffing","hex":"fe020f000000fefefefe01fefed00005005354554646"}
