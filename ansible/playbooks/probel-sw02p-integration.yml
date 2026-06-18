@@ -1,0 +1,107 @@
+---
+# Probel SW-P-02 integration CONTRACT TEST, per ADR-0025 deliverable 3:
+# "Ansible is the exclusive integration / verify / deploy driver — no
+# PowerShell .ps1 scripts." Live-rig parity driver complementing the Go
+# -tags integration body in internal/probel-sw02p/integration/.
+#
+# SW-P-02 has no separate vendor emulator in-tree: OUR OWN provider IS the
+# matrix emulator (the loopback integration test starts it in-process,
+# binds a real TCP listener, and drives our consumer against it over the
+# wire). So this play has two tiers:
+#
+#   1. LOOPBACK (always): run `go test -tags integration` for the
+#      sw02p integration package. The provider emulator + consumer
+#      round-trips run entirely in-process — no external dependency, no
+#      VPN. The provider is torn down by the Go test, so the net effect
+#      is zero persistent change → run-twice = same result (ADR-0025
+#      idempotency). changed_when:false makes that explicit.
+#
+#   2. EXTERNAL (gated on PROBEL_SW02P_TEST_HOST): re-run the SAME Go
+#      integration body with the env var set, pointing the consumer at a
+#      real SW-P-02 matrix / vendor emulator on the lab network instead
+#      of the in-process provider. Skipped cleanly when the var is unset,
+#      so the play is safe to invoke unconditionally (CI / agent).
+#
+# dhs / go test logs are surfaced via register + debug stderr_lines so a
+# failing run shows the test output inline under `ansible-playbook -v`.
+#
+#   # loopback only:
+#   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw02p-integration.yml
+#
+#   # plus the live matrix (lab, VPN):
+#   PROBEL_SW02P_TEST_HOST=10.100.0.42 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/probel-sw02p-integration.yml
+#   # non-default port:
+#   PROBEL_SW02P_TEST_HOST=10.100.0.42 PROBEL_SW02P_TEST_PORT=2002 ansible-playbook ...
+- name: Probel SW-P-02 integration (loopback emulator + optional live matrix)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    repo_root: "{{ playbook_dir }}/../.."
+    sw02p_pkg: "./internal/probel-sw02p/integration/"
+    sw02p_host: "{{ lookup('ansible.builtin.env', 'PROBEL_SW02P_TEST_HOST') | default('', true) }}"
+    sw02p_port: "{{ lookup('ansible.builtin.env', 'PROBEL_SW02P_TEST_PORT') | default('2002', true) }}"
+  tasks:
+    - name: "loopback — go test -tags integration (provider emulator in-process)"
+      ansible.builtin.command:
+        chdir: "{{ repo_root }}"
+        argv:
+          - go
+          - test
+          - -tags
+          - integration
+          - "{{ sw02p_pkg }}"
+          - -count=1
+      register: sw02p_loopback
+      changed_when: false
+      failed_when: sw02p_loopback.rc != 0
+
+    - name: "loopback — surface go test output"
+      ansible.builtin.debug:
+        msg: "{{ sw02p_loopback.stdout_lines + sw02p_loopback.stderr_lines }}"
+      when: sw02p_loopback is defined
+
+    - name: "ASSERT loopback integration passed"
+      ansible.builtin.assert:
+        that:
+          - sw02p_loopback.rc == 0
+          - "'ok' in sw02p_loopback.stdout or 'PASS' in sw02p_loopback.stdout"
+        fail_msg: "SW-P-02 loopback integration test failed — see stderr_lines above"
+        quiet: true
+
+    - name: SW-P-02 loopback result
+      ansible.builtin.debug:
+        msg: "SW-P-02 integration: PASS (loopback emulator — provider+consumer round-trip, read-only / idempotent)"
+
+    # ---- External tier (live matrix on the lab network) -----------------
+    - name: "external — go test -tags integration vs live SW-P-02 matrix"
+      ansible.builtin.command:
+        chdir: "{{ repo_root }}"
+        argv:
+          - go
+          - test
+          - -tags
+          - integration
+          - "{{ sw02p_pkg }}"
+          - -count=1
+      environment:
+        PROBEL_SW02P_TEST_HOST: "{{ sw02p_host }}"
+        PROBEL_SW02P_TEST_PORT: "{{ sw02p_port | string }}"
+      register: sw02p_external
+      changed_when: false
+      failed_when: sw02p_external.rc != 0
+      when: (sw02p_host | length) > 0
+
+    - name: "external — surface go test output"
+      ansible.builtin.debug:
+        msg: "{{ sw02p_external.stdout_lines + sw02p_external.stderr_lines }}"
+      when:
+        - (sw02p_host | length) > 0
+        - sw02p_external is defined
+        - sw02p_external.stdout_lines is defined
+
+    - name: SW-P-02 external result
+      ansible.builtin.debug:
+        msg: "SW-P-02 integration: PASS vs {{ sw02p_host }}:{{ sw02p_port }} (live matrix, read-only / idempotent)"
+      when: (sw02p_host | length) > 0
