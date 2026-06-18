@@ -1,0 +1,101 @@
+---
+# TSL UMD integration CONTRACT TEST, per ADR-0025 deliverable 3:
+# "Ansible is the exclusive integration / verify / deploy driver — no
+# PowerShell .ps1 scripts." Live-rig parity driver complementing the Go
+# -tags integration body in internal/tsl/integration/.
+#
+# TSL is a tally/UMD PUSH protocol (v3.1 / v4.0 UDP, v5.0 UDP + DLE/STX
+# TCP), not a matrix. OUR OWN provider IS the tally source: the loopback
+# integration tests start it in-process, bind a real UDP/TCP socket, and
+# drive our consumer against it over the wire (encode → socket → decode →
+# subscribe callback). So this play has two tiers:
+#
+#   1. LOOPBACK (always): run `go test -tags integration` for the tsl
+#      integration package. The provider + consumer round-trips run
+#      entirely in-process across all three wire versions — no external
+#      dependency, no VPN. Every socket is torn down by the Go test, so
+#      run-twice = same result (ADR-0025 idempotency). changed_when:false
+#      makes that explicit. This tier also runs the codec-driven golden-
+#      frame drift-guard (TestGoldenFrameFixtures) + round-trip
+#      (TestGoldenFramesRoundTrip), so a stale committed fixture fails
+#      the play.
+#
+#   2. EXTERNAL (gated on TSL_TEST_HOST): SKIPPED BY DESIGN today. Unlike
+#      the probel-swNNp plays, the Go integration body under
+#      internal/tsl/integration/ is LOOPBACK-ONLY — none of the tests read
+#      a *_TEST_HOST env var or dial an external tally source. Wiring an
+#      external go-test re-run here would invent an untested external path
+#      (forbidden — the test would silently still hit loopback). So this
+#      tier only PRINTS a clear "not yet supported" notice when
+#      TSL_TEST_HOST is set, and is otherwise inert. When the Go tests grow
+#      a real external dial path (Miranda IP Emulator / Lawo VSM on the lab
+#      network — see internal/tsl/CLAUDE.md "Testbed"), replace the notice
+#      task with an external `go test` invocation exporting TSL_TEST_HOST,
+#      mirroring playbooks/probel-sw02p-integration.yml.
+#
+# dhs / go test logs are surfaced via register + debug stderr_lines so a
+# failing run shows the test output inline under `ansible-playbook -v`.
+#
+#   # loopback only (the supported path):
+#   ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
+#
+#   # with TSL_TEST_HOST set — prints the not-yet-supported notice:
+#   TSL_TEST_HOST=10.100.0.42 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
+- name: TSL UMD integration (loopback provider+consumer, all three versions)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    repo_root: "{{ playbook_dir }}/../.."
+    tsl_pkg: "./internal/tsl/integration/"
+    # Convention-consistent with ACP1_TEST_HOST / PROBEL_SW0Np_TEST_HOST.
+    # The Go tests do not yet read it (loopback-only) — see header note.
+    tsl_host: "{{ lookup('ansible.builtin.env', 'TSL_TEST_HOST') | default('', true) }}"
+  tasks:
+    - name: "loopback — go test -tags integration (provider+consumer in-process)"
+      ansible.builtin.command:
+        chdir: "{{ repo_root }}"
+        argv:
+          - go
+          - test
+          - -tags
+          - integration
+          - "{{ tsl_pkg }}"
+          - -count=1
+      register: tsl_loopback
+      changed_when: false
+      failed_when: tsl_loopback.rc != 0
+
+    - name: "loopback — surface go test output"
+      ansible.builtin.debug:
+        msg: "{{ tsl_loopback.stdout_lines + tsl_loopback.stderr_lines }}"
+      when: tsl_loopback is defined
+
+    - name: "ASSERT loopback integration passed"
+      ansible.builtin.assert:
+        that:
+          - tsl_loopback.rc == 0
+          - "'ok' in tsl_loopback.stdout or 'PASS' in tsl_loopback.stdout"
+        fail_msg: "TSL loopback integration test failed — see stderr_lines above"
+        quiet: true
+
+    - name: TSL loopback result
+      ansible.builtin.debug:
+        msg: >-
+          TSL integration: PASS (loopback — v3.1/v4.0/v5.0 provider+consumer
+          round-trip + codec golden-frame drift-guard, read-only / idempotent)
+
+    # ---- External tier (live tally source on the lab network) -----------
+    # SKIPPED BY DESIGN: the Go tests are loopback-only today (no external
+    # dial path). We do NOT re-run go test with TSL_TEST_HOST set because it
+    # would silently still test loopback. See header note for the upgrade path.
+    - name: "external — NOT YET SUPPORTED notice"
+      ansible.builtin.debug:
+        msg: >-
+          TSL_TEST_HOST={{ tsl_host }} is set, but internal/tsl/integration/
+          is loopback-only — no external dial path exists yet. Skipping the
+          external tier (would otherwise re-test loopback). Add a real
+          external go-test path to the integration body first, then wire it
+          here mirroring playbooks/probel-sw02p-integration.yml.
+      when: (tsl_host | length) > 0
