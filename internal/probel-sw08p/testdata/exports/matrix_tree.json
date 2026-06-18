@@ -1,0 +1,42 @@
+{
+  "root": {
+    "number": 1,
+    "identifier": "router",
+    "path": "",
+    "oid": "1",
+    "isOnline": false,
+    "access": "",
+    "children": [
+      {
+        "number": 1,
+        "identifier": "matrix-0",
+        "path": "",
+        "oid": "1.1",
+        "isOnline": false,
+        "access": "",
+        "type": "oneToN",
+        "mode": "linear",
+        "targetCount": 16,
+        "sourceCount": 16,
+        "maximumTotalConnects": null,
+        "maximumConnectsPerTarget": null,
+        "parametersLocation": null,
+        "gainParameterNumber": null,
+        "labels": [
+          {
+            "basePath": "router.matrix-0.level-0",
+            "description": null
+          }
+        ],
+        "targets": null,
+        "sources": null,
+        "connections": null,
+        "targetLabels": null,
+        "sourceLabels": null,
+        "targetParams": null,
+        "sourceParams": null,
+        "connectionParams": null
+      }
+    ]
+  }
+}
