@@ -1,107 +1,227 @@
 ---
 # Probel SW-P-02 integration CONTRACT TEST, per ADR-0025 deliverable 3:
 # "Ansible is the exclusive integration / verify / deploy driver — no
-# PowerShell .ps1 scripts." Live-rig parity driver complementing the Go
-# -tags integration body in internal/probel-sw02p/integration/.
+# PowerShell .ps1 scripts." This play drives the REAL dhs CLI verbs (the
+# built binary), mirroring the gold-template acp1/acp2/emberplus plays —
+# NOT `go test`.
 #
 # SW-P-02 has no separate vendor emulator in-tree: OUR OWN provider IS the
-# matrix emulator (the loopback integration test starts it in-process,
-# binds a real TCP listener, and drives our consumer against it over the
-# wire). So this play has two tiers:
+# matrix emulator. So this play has two tiers:
 #
-#   1. LOOPBACK (always): run `go test -tags integration` for the
-#      sw02p integration package. The provider emulator + consumer
-#      round-trips run entirely in-process — no external dependency, no
-#      VPN. The provider is torn down by the Go test, so the net effect
-#      is zero persistent change → run-twice = same result (ADR-0025
-#      idempotency). changed_when:false makes that explicit.
+#   1. LOOPBACK (always): start `dhs producer probel-sw02p serve` from the
+#      committed demo matrix fixture (testdata/exports/matrix_tree.json, a
+#      single oneToN 8x8 matrix) bound to localhost, then drive the real
+#      consumer verbs (connect / interrogate / dual-status / lock-status /
+#      router-config) against it over the wire and assert the decoded
+#      stdout. The producer is ephemeral — torn down each run in `always`
+#      — so net effect is zero persistent change → run-twice = same result
+#      (ADR-0025 idempotency). changed_when:false on the state-changing
+#      connect makes that explicit (the emulator is wiped each run).
 #
-#   2. EXTERNAL (gated on PROBEL_SW02P_TEST_HOST): re-run the SAME Go
-#      integration body with the env var set, pointing the consumer at a
-#      real SW-P-02 matrix / vendor emulator on the lab network instead
-#      of the in-process provider. Skipped cleanly when the var is unset,
-#      so the play is safe to invoke unconditionally (CI / agent).
+#   2. EXTERNAL (gated on PROBEL_SW02P_TEST_HOST): the SAME consumer verbs
+#      pointed at a live SW-P-02 matrix on the lab network, but READ-ONLY
+#      only (interrogate / dual-status / router-config) — never mutate a
+#      real device. Skipped cleanly when the var is unset, so the play is
+#      safe to invoke unconditionally (CI / agent).
 #
-# dhs / go test logs are surfaced via register + debug stderr_lines so a
-# failing run shows the test output inline under `ansible-playbook -v`.
+# dhs logs go to stderr → register + debug stdout_lines + stderr_lines to
+# surface them under `ansible-playbook -v`.
 #
 #   # loopback only:
 #   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw02p-integration.yml
 #
-#   # plus the live matrix (lab, VPN):
+#   # plus a live matrix (lab, VPN), read-only verbs:
 #   PROBEL_SW02P_TEST_HOST=10.100.0.42 \
 #     ansible-playbook -i inventory/hosts.ini playbooks/probel-sw02p-integration.yml
-#   # non-default port:
 #   PROBEL_SW02P_TEST_HOST=10.100.0.42 PROBEL_SW02P_TEST_PORT=2002 ansible-playbook ...
-- name: Probel SW-P-02 integration (loopback emulator + optional live matrix)
+- name: Probel SW-P-02 integration (loopback verb-drive + optional live matrix)
   hosts: localhost
   connection: local
   gather_facts: false
   vars:
-    repo_root: "{{ playbook_dir }}/../.."
-    sw02p_pkg: "./internal/probel-sw02p/integration/"
+    dhs_bin: "{{ lookup('ansible.builtin.env', 'DHS_BIN') | default(playbook_dir + '/../../bin/dhs', true) }}"
+    sw02p_tree: "{{ playbook_dir }}/../../internal/probel-sw02p/testdata/exports/matrix_tree.json"
     sw02p_host: "{{ lookup('ansible.builtin.env', 'PROBEL_SW02P_TEST_HOST') | default('', true) }}"
     sw02p_port: "{{ lookup('ansible.builtin.env', 'PROBEL_SW02P_TEST_PORT') | default('2002', true) }}"
+    sw02p_loop_port: 12902
+    sw02p_log: /tmp/dhs-sw02p-integration.log
   tasks:
-    - name: "loopback — go test -tags integration (provider emulator in-process)"
-      ansible.builtin.command:
-        chdir: "{{ repo_root }}"
-        argv:
-          - go
-          - test
-          - -tags
-          - integration
-          - "{{ sw02p_pkg }}"
-          - -count=1
-      register: sw02p_loopback
+    # ---- Tier 1: LOOPBACK (always) -------------------------------------
+    - name: Skip loopback when the committed matrix fixture is absent
+      ansible.builtin.meta: end_play
+      when: not (sw02p_tree is exists)
+
+    - name: Stop any stale integration producer on the loopback port
+      ansible.builtin.shell: "pkill -f '[d]hs producer probel-sw02p serve --tree {{ sw02p_tree }}' || true"
       changed_when: false
-      failed_when: sw02p_loopback.rc != 0
 
-    - name: "loopback — surface go test output"
-      ansible.builtin.debug:
-        msg: "{{ sw02p_loopback.stdout_lines + sw02p_loopback.stderr_lines }}"
-      when: sw02p_loopback is defined
+    - name: Run the loopback producer/consumer verb contract
+      block:
+        - name: Start the probel-sw02p producer from the committed fixture
+          ansible.builtin.shell:
+            cmd: >-
+              nohup {{ dhs_bin }} producer probel-sw02p serve
+              --tree {{ sw02p_tree }}
+              --port {{ sw02p_loop_port }} --host 127.0.0.1
+              --log-level error > {{ sw02p_log }} 2>&1 &
+          changed_when: false
 
-    - name: "ASSERT loopback integration passed"
-      ansible.builtin.assert:
-        that:
-          - sw02p_loopback.rc == 0
-          - "'ok' in sw02p_loopback.stdout or 'PASS' in sw02p_loopback.stdout"
-        fail_msg: "SW-P-02 loopback integration test failed — see stderr_lines above"
-        quiet: true
+        - name: Wait for the producer to accept connections
+          ansible.builtin.wait_for:
+            host: 127.0.0.1
+            port: "{{ sw02p_loop_port }}"
+            timeout: 20
 
-    - name: SW-P-02 loopback result
-      ansible.builtin.debug:
-        msg: "SW-P-02 integration: PASS (loopback emulator — provider+consumer round-trip, read-only / idempotent)"
+        - name: "connect — route dst 2 ← src 5 (state-changing; emulator is ephemeral)"
+          ansible.builtin.command:
+            argv:
+              - "{{ dhs_bin }}"
+              - consumer
+              - probel-sw02p
+              - connect
+              - "127.0.0.1:{{ sw02p_loop_port }}"
+              - --dst
+              - "2"
+              - --src
+              - "5"
+          register: sw02p_connect
+          # The loopback emulator is torn down each run (always-block below),
+          # so a re-run starts from the same empty fixture and produces the
+          # same tx 04 CONNECTED — run-twice = same result (ADR-0025).
+          changed_when: false
+          failed_when: sw02p_connect.rc != 0
 
-    # ---- External tier (live matrix on the lab network) -----------------
-    - name: "external — go test -tags integration vs live SW-P-02 matrix"
+        - name: "ASSERT connect confirms dst 2 src 5"
+          ansible.builtin.assert:
+            that:
+              - "'connected' in sw02p_connect.stdout"
+              - "'dst=2' in sw02p_connect.stdout"
+              - "'src=5' in sw02p_connect.stdout"
+            fail_msg: "SW-P-02 connect did not confirm dst=2 src=5"
+            quiet: true
+
+        - name: "interrogate — read back dst 2 (must reflect the connect just made)"
+          ansible.builtin.command:
+            argv:
+              - "{{ dhs_bin }}"
+              - consumer
+              - probel-sw02p
+              - interrogate
+              - "127.0.0.1:{{ sw02p_loop_port }}"
+              - --dst
+              - "2"
+          register: sw02p_interrogate
+          changed_when: false
+          failed_when: sw02p_interrogate.rc != 0
+
+        - name: "ASSERT interrogate shows the src just set (dst 2 → src 5)"
+          ansible.builtin.assert:
+            that:
+              - "'tally' in sw02p_interrogate.stdout"
+              - "'dst=2' in sw02p_interrogate.stdout"
+              - "'src=5' in sw02p_interrogate.stdout"
+            fail_msg: "SW-P-02 interrogate did not read back the dst=2 → src=5 route"
+            quiet: true
+
+        - name: "dual-status — read controller redundancy state (read-only)"
+          ansible.builtin.command:
+            argv:
+              - "{{ dhs_bin }}"
+              - consumer
+              - probel-sw02p
+              - dual-status
+              - "127.0.0.1:{{ sw02p_loop_port }}"
+          register: sw02p_dual
+          changed_when: false
+          failed_when: sw02p_dual.rc != 0
+
+        - name: "ASSERT dual-status reports an active controller"
+          ansible.builtin.assert:
+            that:
+              - "'dual-controller' in sw02p_dual.stdout"
+              - "('active=MASTER' in sw02p_dual.stdout) or ('active=SLAVE' in sw02p_dual.stdout)"
+            fail_msg: "SW-P-02 dual-status did not report MASTER/SLAVE"
+            quiet: true
+
+        - name: "lock-status — read source-lock bitmap (read-only)"
+          ansible.builtin.command:
+            argv:
+              - "{{ dhs_bin }}"
+              - consumer
+              - probel-sw02p
+              - lock-status
+              - "127.0.0.1:{{ sw02p_loop_port }}"
+          register: sw02p_lock
+          changed_when: false
+          failed_when: sw02p_lock.rc != 0
+
+        - name: "ASSERT lock-status returns a source-lock report"
+          ansible.builtin.assert:
+            that:
+              - "'source-lock' in sw02p_lock.stdout"
+            fail_msg: "SW-P-02 lock-status returned no source-lock report"
+            quiet: true
+
+        - name: "loopback — surface CLI output"
+          ansible.builtin.debug:
+            msg: "{{ sw02p_connect.stdout_lines + sw02p_connect.stderr_lines + sw02p_interrogate.stdout_lines + sw02p_interrogate.stderr_lines }}"
+
+        - name: SW-P-02 loopback result
+          ansible.builtin.debug:
+            msg: "SW-P-02 integration: PASS (loopback verb-drive — connect+interrogate+dual-status+lock-status against served fixture, idempotent)"
+      always:
+        - name: Stop the loopback integration producer
+          ansible.builtin.shell: "pkill -f '[d]hs producer probel-sw02p serve --tree {{ sw02p_tree }}' || true"
+          changed_when: false
+
+    # ---- Tier 2: EXTERNAL (live matrix on the lab network) -------------
+    # Read-only verbs only — never mutate a real device.
+    - name: "external — interrogate dst 0 on the live SW-P-02 matrix"
       ansible.builtin.command:
-        chdir: "{{ repo_root }}"
         argv:
-          - go
-          - test
-          - -tags
-          - integration
-          - "{{ sw02p_pkg }}"
-          - -count=1
-      environment:
-        PROBEL_SW02P_TEST_HOST: "{{ sw02p_host }}"
-        PROBEL_SW02P_TEST_PORT: "{{ sw02p_port | string }}"
-      register: sw02p_external
+          - "{{ dhs_bin }}"
+          - consumer
+          - probel-sw02p
+          - interrogate
+          - "{{ sw02p_host }}:{{ sw02p_port }}"
+          - --dst
+          - "0"
+      register: sw02p_ext_interrogate
       changed_when: false
-      failed_when: sw02p_external.rc != 0
+      failed_when: sw02p_ext_interrogate.rc != 0
       when: (sw02p_host | length) > 0
 
-    - name: "external — surface go test output"
+    - name: "external — dual-status on the live SW-P-02 matrix"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - probel-sw02p
+          - dual-status
+          - "{{ sw02p_host }}:{{ sw02p_port }}"
+      register: sw02p_ext_dual
+      changed_when: false
+      failed_when: sw02p_ext_dual.rc != 0
+      when: (sw02p_host | length) > 0
+
+    - name: "external — surface CLI output"
       ansible.builtin.debug:
-        msg: "{{ sw02p_external.stdout_lines + sw02p_external.stderr_lines }}"
+        msg: "{{ sw02p_ext_interrogate.stdout_lines + sw02p_ext_interrogate.stderr_lines + sw02p_ext_dual.stdout_lines + sw02p_ext_dual.stderr_lines }}"
       when:
         - (sw02p_host | length) > 0
-        - sw02p_external is defined
-        - sw02p_external.stdout_lines is defined
+        - sw02p_ext_interrogate is defined
+        - sw02p_ext_interrogate.stdout_lines is defined
+
+    - name: "ASSERT external read-only verbs returned decoded replies"
+      ansible.builtin.assert:
+        that:
+          - "'tally' in sw02p_ext_interrogate.stdout"
+          - "'dual-controller' in sw02p_ext_dual.stdout"
+        fail_msg: "SW-P-02 external read-only verbs returned no decoded reply from the live matrix"
+        quiet: true
+      when: (sw02p_host | length) > 0
 
     - name: SW-P-02 external result
       ansible.builtin.debug:
-        msg: "SW-P-02 integration: PASS vs {{ sw02p_host }}:{{ sw02p_port }} (live matrix, read-only / idempotent)"
+        msg: "SW-P-02 integration: PASS vs {{ sw02p_host }}:{{ sw02p_port }} (live matrix, read-only verbs / idempotent)"
       when: (sw02p_host | length) > 0
