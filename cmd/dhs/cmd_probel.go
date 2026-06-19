@@ -33,7 +33,19 @@ func runProbelsw08p(ctx context.Context, args []string) error {
 		defer func() { _ = rec.Close() }()
 		ctx = context.WithValue(ctx, probelRecorderKey{}, rec)
 	}
-	args, mc, mcSet, err := extractMatrixConfigFlags(args)
+	// The `salvo-connect` verb owns its own --dsts (CSV/range) and --level
+	// flags via its per-command flag.FlagSet (cmd_probel_salvo.go). The
+	// global matrix-config extractor below treats --dsts as a single uint
+	// (matrix bootstrap shape) and would eat `--dsts 0-2` first, failing
+	// on strconv.ParseUint and starving the verb of its own flag. Detect
+	// the subcommand up front and skip the conflicting globals so
+	// salvo-connect is reachable from the CLI. --mtx-id / --srcs are not
+	// defined by salvo-connect, so they stay globally consumable.
+	skip := map[string]bool(nil)
+	if probelSubcommand(args) == "salvo-connect" {
+		skip = map[string]bool{"--dsts": true, "--level": true}
+	}
+	args, mc, mcSet, err := extractMatrixConfigFlags(args, skip)
 	if err != nil {
 		return err
 	}
@@ -189,7 +201,13 @@ type probelMatrixConfigKey struct{}
 // (not required for verbs that don't need them; required for the
 // future bootstrap-sweep / keep-alive ping wiring that mirrors what
 // SW-P-02 ships).
-func extractMatrixConfigFlags(args []string) ([]string, probelproto.MatrixConfig, bool, error) {
+//
+// skip names a set of global flag spellings (e.g. "--dsts", "--level")
+// that a subcommand owns itself and that must NOT be consumed here —
+// both the flag and its value are passed through untouched so the
+// subcommand's own flag.FlagSet can parse them. Pass nil to consume
+// every global flag (the default for verbs with no conflicts).
+func extractMatrixConfigFlags(args []string, skip map[string]bool) ([]string, probelproto.MatrixConfig, bool, error) {
 	var mc probelproto.MatrixConfig
 	var seen bool
 	out := make([]string, 0, len(args))
@@ -258,6 +276,17 @@ func extractMatrixConfigFlags(args []string) ([]string, probelproto.MatrixConfig
 			out = append(out, a)
 			continue
 		}
+		// A subcommand-owned flag — pass it (and its value) through
+		// untouched so the verb's own flag.FlagSet parses it. The "=" form
+		// is a single token; the space form already advanced i past the
+		// value, so re-emit both.
+		if skip[name] {
+			out = append(out, a)
+			if !strings.Contains(a, "=") {
+				out = append(out, val)
+			}
+			continue
+		}
 		seen = true
 		switch name {
 		case "--mtx-id":
@@ -287,6 +316,35 @@ func extractMatrixConfigFlags(args []string) ([]string, probelproto.MatrixConfig
 		}
 	}
 	return out, mc, seen, nil
+}
+
+// probelSubcommand returns the subcommand verb in args (the first
+// non-flag token), looking past any global matrix-config flags that
+// precede it. It runs BEFORE extractMatrixConfigFlags so the dispatcher
+// can decide which global flags a verb owns itself (e.g. salvo-connect's
+// own --dsts / --level). Returns "" when no verb is present.
+//
+// Global flags that take a separate value token (space form) are
+// skipped together with that value so a verb appearing after
+// `--mtx-id 0` is still found. The "=" form consumes a single token.
+func probelSubcommand(args []string) string {
+	valued := map[string]bool{
+		"--mtx-id": true, "-mtx-id": true,
+		"--level": true, "-level": true,
+		"--dsts": true, "-dsts": true,
+		"--srcs": true, "-srcs": true,
+	}
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if !strings.HasPrefix(a, "-") {
+			return a
+		}
+		// "--flag=value" is one token; "--flag value" consumes the next.
+		if !strings.Contains(a, "=") && valued[a] {
+			i++
+		}
+	}
+	return ""
 }
 
 // extractCaptureFlag scans args for "--capture FILE" or "--capture=FILE"

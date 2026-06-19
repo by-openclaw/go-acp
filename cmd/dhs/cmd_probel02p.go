@@ -30,7 +30,19 @@ func runProbelsw02p(ctx context.Context, args []string) error {
 		defer func() { _ = rec.Close() }()
 		ctx = context.WithValue(ctx, probelSW02RecorderKey{}, rec)
 	}
-	args, mc, mcSet, err := extractSW02MatrixConfigFlags(args)
+	// The `salvo-connect` verb owns its own --dsts (CSV/range) flag via
+	// its per-command flag.FlagSet (runProbelsw02pSalvoConnect). The
+	// global matrix-config extractor below treats --dsts as a single uint
+	// (matrix bootstrap shape) and would eat `--dsts 0-2` first, failing
+	// on strconv.ParseUint and starving the verb of its own flag. Detect
+	// the subcommand up front and skip --dsts so salvo-connect is
+	// reachable from the CLI. SW-P-02 salvo-connect defines no
+	// --mtx-id / --level / --srcs, so those stay globally consumable.
+	skip := map[string]bool(nil)
+	if probelSW02Subcommand(args) == "salvo-connect" {
+		skip = map[string]bool{"--dsts": true}
+	}
+	args, mc, mcSet, err := extractSW02MatrixConfigFlags(args, skip)
 	if err != nil {
 		return err
 	}
@@ -135,7 +147,12 @@ type probelSW02MatrixConfigKey struct{}
 // extractSW02MatrixConfigFlags pulls --mtx-id / --level / --dsts /
 // --srcs / --initial-poll / --app-keepalive / --bootstrap-spacing
 // out of args BEFORE sub-command dispatch.
-func extractSW02MatrixConfigFlags(args []string) ([]string, probelsw02proto.MatrixConfig, bool, error) {
+//
+// skip names a set of global flag spellings (e.g. "--dsts") that a
+// subcommand owns itself and must NOT be consumed here — both the flag
+// and its value are passed through untouched so the subcommand's own
+// flag.FlagSet can parse them. Pass nil to consume every global flag.
+func extractSW02MatrixConfigFlags(args []string, skip map[string]bool) ([]string, probelsw02proto.MatrixConfig, bool, error) {
 	mc := probelsw02proto.MatrixConfig{InitialPoll: true}
 	var seen bool
 	out := make([]string, 0, len(args))
@@ -209,6 +226,17 @@ func extractSW02MatrixConfigFlags(args []string) ([]string, probelsw02proto.Matr
 			out = append(out, a)
 			continue
 		}
+		// A subcommand-owned flag — pass it (and its value) through
+		// untouched so the verb's own flag.FlagSet parses it. The "=" form
+		// is a single token; the space form already advanced i past the
+		// value, so re-emit both.
+		if skip[name] {
+			out = append(out, a)
+			if !strings.Contains(a, "=") {
+				out = append(out, val)
+			}
+			continue
+		}
 		seen = true
 		switch name {
 		case "--mtx-id":
@@ -262,6 +290,37 @@ func extractSW02MatrixConfigFlags(args []string) ([]string, probelsw02proto.Matr
 		}
 	}
 	return out, mc, seen, nil
+}
+
+// probelSW02Subcommand returns the subcommand verb in args (the first
+// non-flag token), looking past any global matrix-config flags that
+// precede it. It runs BEFORE extractSW02MatrixConfigFlags so the
+// dispatcher can decide which global flags a verb owns itself (e.g.
+// salvo-connect's own --dsts). Returns "" when no verb is present.
+//
+// Every SW-P-02 global flag takes a separate value token in the space
+// form, so each is skipped together with its value. The "=" form
+// consumes a single token.
+func probelSW02Subcommand(args []string) string {
+	valued := map[string]bool{
+		"--mtx-id": true, "-mtx-id": true,
+		"--level": true, "-level": true,
+		"--dsts": true, "-dsts": true,
+		"--srcs": true, "-srcs": true,
+		"--initial-poll": true, "-initial-poll": true,
+		"--app-keepalive": true, "-app-keepalive": true,
+		"--bootstrap-spacing": true, "-bootstrap-spacing": true,
+	}
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if !strings.HasPrefix(a, "-") {
+			return a
+		}
+		if !strings.Contains(a, "=") && valued[a] {
+			i++
+		}
+	}
+	return ""
 }
 
 // dialProbelSW02 mirrors dialProbel for sw08p — connect-or-die helper
