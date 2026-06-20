@@ -1,9 +1,18 @@
 package codec
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // DeviceType is the §3.1 enum: Router / SNMP / Device. The wire form
 // is the canonical capitalised string — DO NOT lowercase.
+//
+// §3.1 (0v16 p9) also defines a sub-device colon syntax: a base type
+// followed by ":N" addresses the Nth sub-module (e.g. "ROUTER:2" for
+// the second matrix of an SW-P-08, "DEVICE:4" for the card in slot 4).
+// Use ParseDeviceType / DeviceType.Base / DeviceType.Index to model
+// base+index without losing the literal wire string.
 type DeviceType string
 
 const (
@@ -12,11 +21,61 @@ const (
 	DeviceTypeDevice DeviceType = "Device"
 )
 
-// LockKind is the §3.2 LOCK enum. Only PROTECT + RELEASE observed in
-// spec examples; treat the type as open for forward-compat.
+// Base returns the device type with any ":N" sub-device suffix removed.
+// "ROUTER:2".Base() == "ROUTER"; "SNMP".Base() == "SNMP". §3.1 p9.
+func (d DeviceType) Base() DeviceType {
+	s := string(d)
+	if i := strings.IndexByte(s, ':'); i >= 0 {
+		return DeviceType(s[:i])
+	}
+	return d
+}
+
+// Index returns the sub-device index from a ":N" suffix and ok=true, or
+// (0, false) when no suffix is present or N is not a valid integer.
+// "DEVICE:4".Index() == (4, true); "DEVICE".Index() == (0, false).
+// §3.1 p9.
+func (d DeviceType) Index() (int, bool) {
+	s := string(d)
+	i := strings.IndexByte(s, ':')
+	if i < 0 {
+		return 0, false
+	}
+	n, err := strconv.Atoi(s[i+1:])
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+// MakeDeviceType joins a base type and a sub-device index into the
+// colon wire form. index < 0 yields the bare base. §3.1 p9.
+func MakeDeviceType(base DeviceType, index int) DeviceType {
+	if index < 0 {
+		return base
+	}
+	return DeviceType(string(base) + ":" + strconv.Itoa(index))
+}
+
+// LockKind is the §3.2 LOCK enum (0v16 p9). 0v16 defines five values;
+// the pre-0v13 PROTECT / RELEASE strings the codec previously modelled
+// were never in the spec table and are retained only as deprecated
+// aliases so older callers keep compiling. The type is left open
+// (string) for forward-compat against future spec additions.
 type LockKind string
 
 const (
+	// §3.2 p9 canonical values.
+	LockUnlocked      LockKind = "UNLOCKED"
+	LockLocked        LockKind = "LOCKED"
+	LockProtected     LockKind = "PROTECTED"
+	LockLockedPath    LockKind = "LOCKED_PATH"
+	LockProtectedPath LockKind = "PROTECTED_PATH"
+
+	// Deprecated: not in the §3.2 table. The 4.1.2/4.1.3 worked
+	// examples (p11-12) still show LOCK="RELEASE"/"PROTECT" verbs, so
+	// these remain valid action arguments, but they are not LOCK_STATE
+	// values a device reports back.
 	LockProtect LockKind = "PROTECT"
 	LockRelease LockKind = "RELEASE"
 )
@@ -211,4 +270,279 @@ func (d *DeviceAction) encodeAction(b *strings.Builder) {
 		Add("OBJECT", d.Object).
 		Add("VALUE", d.Value)
 	emitElement(b, "DEVICE", a, nil)
+}
+
+// ----------------------------------------------------------------------
+// §4.5 — Device Configuration (0v16 pp20-23)
+//
+// CRUD over the Cerebrum device tree. Unlike §4.1-§4.4 these are NOT
+// wrapped in <ACTION>; <DEVICE_CONFIGURATION> is itself a top-level
+// command, so it has its own EncodeDeviceConfiguration entry point.
+//
+// The body shape under <CONFIGURATION> varies by DEVICE_TYPE
+// (GENERIC / PANEL / ROUTER / SNMP). REMOVE carries no body (§4.5.2
+// p23). The RX reply is <DEVICE_CONFIGURATION …><RESULT VALUE="…"/>
+// </DEVICE_CONFIGURATION> — decoded as KindDeviceConfigResult.
+// ----------------------------------------------------------------------
+
+// DeviceConfigType is the §4.5 <DEVICE_CONFIGURATION TYPE=…> verb.
+type DeviceConfigType string
+
+const (
+	DeviceConfigAdd    DeviceConfigType = "ADD"
+	DeviceConfigModify DeviceConfigType = "MODIFY"
+	DeviceConfigRemove DeviceConfigType = "REMOVE"
+)
+
+// ConfigDeviceType is the §4.5 DEVICE_TYPE selector. Distinct from the
+// §3.1 DeviceType enum: §4.5 uses "GENERIC" where §3.1 uses "Device",
+// and adds "PANEL". Keep the literal spec strings (p20-23).
+type ConfigDeviceType string
+
+const (
+	ConfigDeviceGeneric ConfigDeviceType = "GENERIC"
+	ConfigDevicePanel   ConfigDeviceType = "PANEL"
+	ConfigDeviceRouter  ConfigDeviceType = "ROUTER"
+	ConfigDeviceSNMP    ConfigDeviceType = "SNMP"
+)
+
+// ConnectionType is the §4.5 <PROTOCOL_CONFIGURATION CONNECTION_TYPE=…>
+// enum (p20): ASYNC_HTTP / UDP / TCP / WEBSOCKET_SERVER.
+type ConnectionType string
+
+const (
+	ConnAsyncHTTP        ConnectionType = "ASYNC_HTTP"
+	ConnUDP              ConnectionType = "UDP"
+	ConnTCP              ConnectionType = "TCP"
+	ConnWebsocketServer  ConnectionType = "WEBSOCKET_SERVER"
+)
+
+// DeviceConfiguration is one §4.5 device CRUD command. Type selects the
+// verb; DeviceType selects which body builder runs (Generic / Panel /
+// Router / SNMP). For REMOVE, all body pointers are ignored (§4.5.2).
+type DeviceConfiguration struct {
+	Type       DeviceConfigType
+	IPAddress  string
+	DeviceName string // optional on ADD; required (with IP) on MODIFY
+	DeviceType ConfigDeviceType
+
+	// Exactly one of the following is honoured, chosen by DeviceType.
+	Generic *GenericConfig // DEVICE_TYPE="GENERIC" (§4.5.1.1 p20)
+	Panel   *PanelConfig   // DEVICE_TYPE="PANEL"   (§4.5.1.2 p21)
+	Router  *RouterConfig  // DEVICE_TYPE="ROUTER"  (§4.5.1.3 p22)
+	SNMP    *SNMPConfig    // DEVICE_TYPE="SNMP"    (§4.5.1.4 p23)
+}
+
+// ProtocolConfiguration is the §4.5.1.1 <PROTOCOL_CONFIGURATION> child
+// shared by GENERIC + PANEL bodies (p20-21).
+type ProtocolConfiguration struct {
+	ConnectionType ConnectionType
+	PortNumber     string
+	Timeout        string // milliseconds
+	PollPeriod     string // milliseconds
+	Virtualise     string // "0" or "1"
+	SecondaryIP    string // optional
+}
+
+func (p *ProtocolConfiguration) attrs() AttrsBuilder {
+	return AttrsBuilder{}.
+		Add("CONNECTION_TYPE", string(p.ConnectionType)).
+		Add("PORT_NUMBER", p.PortNumber).
+		Add("TIMEOUT", p.Timeout).
+		Add("POLL_PERIOD", p.PollPeriod).
+		Add("VIRTUALISE", p.Virtualise).
+		Add("SECONDARY_IP", p.SecondaryIP)
+}
+
+// GenericConfig is the §4.5.1.1 GENERIC body (p20):
+//
+//	<CONFIGURATION DEVICE VERSION NAME>
+//	  <PROTOCOL_CONFIGURATION …/>
+//	  [<PROTOCOL_SPECIFIC>…</PROTOCOL_SPECIFIC>]
+//	</CONFIGURATION>
+type GenericConfig struct {
+	Device  string
+	Version string
+	Name    string
+
+	Protocol *ProtocolConfiguration
+
+	// ProtocolSpecific, when non-nil, emits a <PROTOCOL_SPECIFIC>
+	// child. The spec (p20) says its content is protocol-dependent and
+	// not exhaustively documented; we carry raw inner XML so callers can
+	// supply whatever the target protocol needs without the codec
+	// guessing a schema. Empty string emits <PROTOCOL_SPECIFIC/>.
+	ProtocolSpecific *string
+}
+
+func (g *GenericConfig) encodeBody(b *strings.Builder) {
+	a := AttrsBuilder{}.
+		Add("DEVICE", g.Device).
+		Add("VERSION", g.Version).
+		Add("NAME", g.Name)
+	emitElement(b, "CONFIGURATION", a, func() {
+		if g.Protocol != nil {
+			emitElement(b, "PROTOCOL_CONFIGURATION", g.Protocol.attrs(), nil)
+		}
+		if g.ProtocolSpecific != nil {
+			emitRawChild(b, "PROTOCOL_SPECIFIC", nil, *g.ProtocolSpecific)
+		}
+	})
+}
+
+// PanelConfig is the §4.5.1.2 PANEL body (p21). It reuses
+// <PROTOCOL_CONFIGURATION> and adds a <PROTOCOL_SPECIFIC CPF PANEL_ID
+// PANEL_TYPE> wrapper around a <PANEL_CONFIG> child.
+type PanelConfig struct {
+	Device  string
+	Version string
+	Name    string
+
+	Protocol *ProtocolConfiguration
+
+	CPF       string
+	PanelID   string // optional
+	PanelType string
+
+	// PanelConfigInner is the raw inner XML of <PANEL_CONFIG>. The spec
+	// example shows an empty <PANEL_CONFIG></PANEL_CONFIG>; content is
+	// protocol-specific and undocumented (p21).
+	PanelConfigInner string
+}
+
+func (p *PanelConfig) encodeBody(b *strings.Builder) {
+	a := AttrsBuilder{}.
+		Add("DEVICE", p.Device).
+		Add("VERSION", p.Version).
+		Add("NAME", p.Name)
+	emitElement(b, "CONFIGURATION", a, func() {
+		if p.Protocol != nil {
+			emitElement(b, "PROTOCOL_CONFIGURATION", p.Protocol.attrs(), nil)
+		}
+		ps := AttrsBuilder{}.
+			Add("CPF", p.CPF).
+			Add("PANEL_ID", p.PanelID).
+			Add("PANEL_TYPE", p.PanelType)
+		emitElement(b, "PROTOCOL_SPECIFIC", ps, func() {
+			emitRawChild(b, "PANEL_CONFIG", nil, p.PanelConfigInner)
+		})
+	})
+}
+
+// RouterConfig is the §4.5.1.3 ROUTER body (p22):
+//
+//	<CONFIGURATION DEVICE NAME TYPE SECONDARY_IP>
+//	  <SERIAL [BAUD PARITY DATA_BITS STOP_BITS_IP ENABLE_DSOM]/>
+//	  <ROUTER MAX_LEVEL MAX_SOURCE MAX_DEST IP_PORT MASTER_SERVER/>
+//	</CONFIGURATION>
+type RouterConfig struct {
+	Device      string
+	Name        string
+	Type        string // numeric routing-device type id
+	SecondaryIP string // optional
+
+	Serial *SerialConfig // emits <SERIAL …/>; nil omits (spec shows <SERIAL/> in examples)
+	Router *RouterParams // emits <ROUTER …/>
+}
+
+// SerialConfig is the §4.5.1.3 <SERIAL> child (p22). All attrs optional;
+// the worked example uses the bare self-closing <SERIAL/> form.
+type SerialConfig struct {
+	Baud       string
+	Parity     string
+	DataBits   string
+	StopBitsIP string
+	EnableDSOM string
+}
+
+// RouterParams is the §4.5.1.3 <ROUTER> child (p22).
+type RouterParams struct {
+	MaxLevel     string
+	MaxSource    string
+	MaxDest      string
+	IPPort       string
+	MasterServer string
+}
+
+func (r *RouterConfig) encodeBody(b *strings.Builder) {
+	a := AttrsBuilder{}.
+		Add("DEVICE", r.Device).
+		Add("NAME", r.Name).
+		Add("TYPE", r.Type).
+		Add("SECONDARY_IP", r.SecondaryIP)
+	emitElement(b, "CONFIGURATION", a, func() {
+		if r.Serial != nil {
+			sa := AttrsBuilder{}.
+				Add("BAUD", r.Serial.Baud).
+				Add("PARITY", r.Serial.Parity).
+				Add("DATA_BITS", r.Serial.DataBits).
+				Add("STOP_BITS_IP", r.Serial.StopBitsIP).
+				Add("ENABLE_DSOM", r.Serial.EnableDSOM)
+			emitElement(b, "SERIAL", sa, nil)
+		}
+		if r.Router != nil {
+			ra := AttrsBuilder{}.
+				Add("MAX_LEVEL", r.Router.MaxLevel).
+				Add("MAX_SOURCE", r.Router.MaxSource).
+				Add("MAX_DEST", r.Router.MaxDest).
+				Add("IP_PORT", r.Router.IPPort).
+				Add("MASTER_SERVER", r.Router.MasterServer)
+			emitElement(b, "ROUTER", ra, nil)
+		}
+	})
+}
+
+// SNMPConfig is the §4.5.1.4 SNMP body (p23): <CONFIGURATION NAME PORT/>.
+type SNMPConfig struct {
+	Name string
+	Port string
+}
+
+func (s *SNMPConfig) encodeBody(b *strings.Builder) {
+	a := AttrsBuilder{}.
+		Add("NAME", s.Name).
+		Add("PORT", s.Port)
+	emitElement(b, "CONFIGURATION", a, nil)
+}
+
+// EncodeDeviceConfiguration builds the §4.5 top-level command:
+//
+//	<DEVICE_CONFIGURATION TYPE="ADD|MODIFY|REMOVE" IP_ADDRESS="…"
+//	    [DEVICE_NAME="…"] DEVICE_TYPE="…">
+//	  …body…
+//	</DEVICE_CONFIGURATION>
+//
+// REMOVE and any config whose body pointer is nil emit the self-closing
+// form (§4.5.2 p23 shows <DEVICE_CONFIGURATION …/> for REMOVE).
+func EncodeDeviceConfiguration(mtid uint32, dc *DeviceConfiguration) []byte {
+	var b strings.Builder
+	a := AttrsBuilder{}.
+		ForceAdd("TYPE", string(dc.Type)).
+		Add("IP_ADDRESS", dc.IPAddress).
+		Add("DEVICE_NAME", dc.DeviceName).
+		Add("DEVICE_TYPE", string(dc.DeviceType)).
+		ForceAdd("MTID", formatMTID(mtid))
+
+	body := dc.bodyFunc(&b)
+	emitElement(&b, "DEVICE_CONFIGURATION", a, body)
+	return []byte(b.String())
+}
+
+// bodyFunc returns the body closure for the configured DeviceType, or
+// nil when there is no body to emit (REMOVE, or a missing body struct).
+func (dc *DeviceConfiguration) bodyFunc(b *strings.Builder) func() {
+	if dc.Type == DeviceConfigRemove {
+		return nil
+	}
+	switch {
+	case dc.Generic != nil:
+		return func() { dc.Generic.encodeBody(b) }
+	case dc.Panel != nil:
+		return func() { dc.Panel.encodeBody(b) }
+	case dc.Router != nil:
+		return func() { dc.Router.encodeBody(b) }
+	case dc.SNMP != nil:
+		return func() { dc.SNMP.encodeBody(b) }
+	}
+	return nil
 }

@@ -52,6 +52,62 @@ type RoutingChange struct {
 	RouteSourceID      string
 	RouteSourceLevelID string
 	RouteAvailable     bool
+
+	// Lock populates on RX for TYPE=SRCE_LOCK / DEST_LOCK (§5.1.2/§5.1.3
+	// p24). SRCE_LOCK carries the detail in a <VALUE …/> child;
+	// DEST_LOCK carries it in a <LOCK …/> child — the decoder accepts
+	// both element names. The 0v16 LOCK_STATE enum is the §3.2 five-value
+	// set (UNLOCKED / LOCKED / PROTECTED / LOCKED_PATH / PROTECTED_PATH).
+	Lock *RoutingLock
+
+	// OriginalMne / Associations / RMDefaultDevice populate on RX for
+	// the mnemonic rows (§5.1.4-§5.1.6 pp25-26). OriginalMne is the
+	// device's un-overridden mnemonic from the <MNE ORIGINAL_MNE=…/>
+	// child. RMDefaultDevice is present only on LEVEL_MNE for Routemaster
+	// levels. Associations carry per-level routing-master bindings.
+	OriginalMne     string
+	Associations    []RoutingAssociation
+	RMDefaultDevice *RMDefaultDevice
+
+	// Tags populates on RX for TYPE=RM_SRCE_TAGS / RM_DEST_TAGS
+	// (§5.1.7/§5.1.8 p27). The <TAGS LIST="Tag1|Tag2"/> child uses the
+	// pipe delimiter (§0.13 change-history p33), split into TagList.
+	TagsAvailable bool
+	TagList       []string
+}
+
+// RoutingLock is the lock detail of a SRCE_LOCK (<VALUE>) or DEST_LOCK
+// (<LOCK>) routing_change RX row (§5.1.2/§5.1.3 p24).
+type RoutingLock struct {
+	Available  bool
+	LockState  LockKind // §3.2 enum
+	LockedBy   string
+	UnlockTime string
+	UnlockDate string
+}
+
+// RoutingAssociation is one <ASSOCIATION_N …/> row of a mnemonic
+// routing_change RX (§5.1.5/§5.1.6 pp25-26). Index is the N suffix.
+// SRCE_ID is present on source-mnemonic rows, DEST_ID on destination
+// rows. The RM_* attributes are populated only for Routemaster sources.
+type RoutingAssociation struct {
+	Index        int
+	SrceID       string
+	DestID       string
+	RMDeviceName string
+	RMDeviceType DeviceType
+	RMLevelID    string
+	RMReversed   string
+	RMTags       string
+	RMIPUID      string
+}
+
+// RMDefaultDevice is the <RM_DEFAULT_DEVICE …/> child of a LEVEL_MNE
+// routing_change RX — present only for Routemaster levels (§5.1.4 p25).
+type RMDefaultDevice struct {
+	DeviceName string
+	DeviceType DeviceType
+	LevelID    string
 }
 
 func (r *RoutingChange) encodeSubItem(b *strings.Builder) {
@@ -115,6 +171,12 @@ type CategoryItem struct {
 	Index int
 	Type  string // "CATEGORY" | "SOURCE" | "DESTINATION" | "BLANK"
 	Value string
+
+	// Group is the optional GROUP attribute some item types carry
+	// (§5.2.2 p28 note: "Items may also contain a GROUP attribute for
+	// category types requiring group information" — e.g. SALVO items,
+	// per the §3.3 ITEM_TYPE table). Empty when absent.
+	Group string
 }
 
 func (c *CategoryChange) encodeSubItem(b *strings.Builder) {
@@ -151,10 +213,15 @@ type SalvoChange struct {
 	InstanceDetails *SalvoInstanceDetails
 }
 
-// SalvoInstanceDetails is the <details> child of a SALVO_CHANGE
-// TYPE=INSTANCE_DETAILS response.
+// SalvoInstanceDetails is the <DETAILS> child of a SALVO_CHANGE
+// TYPE=INSTANCE_DETAILS response (§5.3.3 p28). 0v16 enriches it with
+// DESCRIPTION / ACTIVE / DATE / TIME alongside AVAILABLE.
 type SalvoInstanceDetails struct {
-	Available bool
+	Available   bool
+	Description string
+	Active      bool
+	Date        string // e.g. "02/07/2017"
+	Time        string // e.g. "17:33:22:12"
 }
 
 func (s *SalvoChange) encodeSubItem(b *strings.Builder) {
@@ -199,14 +266,31 @@ type DeviceChange struct {
 	// false the server reports the object as unknown / unsupported;
 	// Value carries the live reading otherwise (verified shape on
 	// 2026-04-27 against a real Cerebrum returning available="0").
+	// For a single scalar object this is the first/only OBJECT_VALUE;
+	// ObjectValues carries every OBJECT_VALUE the server emitted.
 	ObjectValue *DeviceObjectValue
+
+	// ObjectValues holds all <OBJECT_VALUE …/> children of a TYPE=VALUE
+	// response. A scalar yields one entry; a group / table path (or a
+	// wildcard table path such as Devices.[*]) yields several (§5.4.3
+	// p29). ObjectValue == ObjectValues[0] when present.
+	ObjectValues []DeviceObjectValue
 }
 
-// DeviceObjectValue is the <object_value> child of a DEVICE_CHANGE
-// TYPE=VALUE response.
+// DeviceObjectValue is one <OBJECT_VALUE …/> child of a DEVICE_CHANGE
+// TYPE=VALUE response (§5.4.3 p29). 0v13 captured only Available +
+// Object; 0v16 carries the full descriptor.
 type DeviceObjectValue struct {
-	Available bool
 	Object    string
+	Value     string
+	Available bool
+	DataType  string // INTEGER / STRING / …
+	Readable  bool
+	Writable  bool
+	Units     string
+	Label     string
+	Default   string
+	EnumList  []string // ENUM_LIST="On,Off" split on comma
 }
 
 // DeviceEntry is one row of a TYPE=LIST DEVICE_CHANGE response (or one
@@ -266,16 +350,68 @@ func (d *DeviceChange) encodeSubItem(b *strings.Builder) {
 // §5.5 — Datastore events / subscribes
 // ----------------------------------------------------------------------
 
-// DatastoreChange covers §5.5: subscription/obtain by file path inside
-// a Cerebrum data store. RX replies echo this element with a TYPE
-// attribute (e.g. ATTRIBUTE).
+// DatastoreChange covers §5.5: subscription / obtain of a Cerebrum data
+// store by relative path, plus the two RX shapes (the obtain reply with
+// a <DATA> body, and the async change event with an <ELEMENT> body).
+//
+// PATH vs NAME ambiguity (§5.5.1 p30): the worked TX example uses
+// PATH="…", but the attribute table immediately below names the field
+// NAME. They cannot both be literal. Following the audit decision we
+// EMIT PATH (matching the only concrete example) and ACCEPT BOTH on
+// decode. See the report's flagged ambiguity.
 type DatastoreChange struct {
+	// Path is the relative store path. Used as the obtain/subscribe key
+	// (TX) and echoed on the change event (RX, in the NAME attribute).
+	Path string
+
+	// Name is a deprecated alias for Path, kept so 0v13-era callers that
+	// read DatastoreChange.Name keep compiling. The decoder mirrors Path
+	// into it. New code should use Path.
+	//
+	// Deprecated: use Path.
 	Name string
-	Type string // populated on RX, ignored on TX
+
+	// MTID, when non-empty on TX, is emitted as the optional §5.5.1
+	// MTID attribute so the bare terminator reply can be correlated.
+	MTID string
+
+	// Type populates on RX. Obtain reply: "FILE". Change event:
+	// "ATTRIBUTE" | "ELEMENT" | "FILE" (§5.5.2 p31).
+	Type string
+
+	// Available populates on the obtain reply (§5.5.1 p30) — whether the
+	// store file was read successfully.
+	Available bool
+
+	// Data is the raw inner XML of the <DATA>…</DATA> body of an obtain
+	// reply (§5.5.1 p30). Empty for the bare terminator and for change
+	// events.
+	Data string
+
+	// Terminator is true for the bare <DATASTORE_CHANGE MTID="…"/> that
+	// follows the <DATA> reply (§5.5.1 p30) — no TYPE, no body.
+	Terminator bool
+
+	// Element populates on a change event (§5.5.2 p31) from the single
+	// <ELEMENT …/> child.
+	Element *DatastoreElement
 }
 
+// DatastoreElement is the <ELEMENT …/> child of a §5.5.2 datastore
+// change event (p31).
+type DatastoreElement struct {
+	Attribute  string
+	Path       string
+	Value      string
+	Available  bool
+	ChildCount string
+}
+
+// encodeSubItem emits the §5.5.1 obtain/subscribe form. Per the
+// PATH/NAME resolution above we emit PATH (and optional MTID).
 func (d *DatastoreChange) encodeSubItem(b *strings.Builder) {
 	a := AttrsBuilder{}.
-		Add("NAME", d.Name)
+		Add("PATH", d.Path).
+		Add("MTID", d.MTID)
 	emitElement(b, "DATASTORE_CHANGE", a, nil)
 }

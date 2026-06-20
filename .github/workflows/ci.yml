@@ -93,6 +93,7 @@ jobs:
           check ./internal/osc/codec 100
           check ./internal/osc/consumer 100
           check ./internal/osc/provider 100
+          check ./internal/cerebrum-nb/codec 100
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'

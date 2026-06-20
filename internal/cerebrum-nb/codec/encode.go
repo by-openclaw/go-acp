@@ -54,6 +54,30 @@ func emitElement(b *strings.Builder, name string, attrs []Attr, body func()) {
 	b.WriteByte('>')
 }
 
+// emitRawChild writes <name attrs>inner</name>, where inner is already
+// well-formed XML and is copied verbatim (NOT escaped). Used for the
+// §4.5 <PROTOCOL_SPECIFIC> / <PANEL_CONFIG> wrappers whose content is
+// protocol-dependent and undocumented (0v16 p20-21) — the codec must
+// not invent a schema, so callers supply raw inner XML. An empty inner
+// still emits the open/close pair (<name></name>), matching the spec's
+// <PANEL_CONFIG></PANEL_CONFIG> example.
+func emitRawChild(b *strings.Builder, name string, attrs []Attr, inner string) {
+	b.WriteByte('<')
+	b.WriteString(name)
+	for _, a := range attrs {
+		b.WriteByte(' ')
+		b.WriteString(a.Key)
+		b.WriteString(`="`)
+		xmlEscapeAttr(b, a.Value)
+		b.WriteByte('"')
+	}
+	b.WriteByte('>')
+	b.WriteString(inner)
+	b.WriteString("</")
+	b.WriteString(name)
+	b.WriteByte('>')
+}
+
 func formatMTID(mtid uint32) string {
 	return strconv.FormatUint(uint64(mtid), 10)
 }
