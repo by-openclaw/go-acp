@@ -79,9 +79,19 @@ func ParseElement(data []byte) (*Element, error) {
 	return parseRoot(dec)
 }
 
+// nextToken is a test seam over (*xml.Decoder).Token used only by
+// parseRoot. The non-EOF error arm of parseRoot's pre-root loop cannot
+// be provoked through ParseElement's public surface: any byte stream
+// that makes the tokenizer fail before the first StartElement fails
+// with io.EOF (empty / whitespace) or is surfaced later from inside
+// parseElement, not here. Tests override this var to inject a non-EOF
+// error and exercise that guard. Production behaviour is the default.
+// (Mirrors the tcpSetKeepAlive* seam in internal/probel-sw02p/codec.)
+var nextToken = func(dec *xml.Decoder) (xml.Token, error) { return dec.Token() }
+
 func parseRoot(dec *xml.Decoder) (*Element, error) {
 	for {
-		tok, err := dec.Token()
+		tok, err := nextToken(dec)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil, errors.New("cerebrum-nb: empty XML")
