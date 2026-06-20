@@ -1,101 +1,175 @@
 ---
 # TSL UMD integration CONTRACT TEST, per ADR-0025 deliverable 3:
 # "Ansible is the exclusive integration / verify / deploy driver — no
-# PowerShell .ps1 scripts." Live-rig parity driver complementing the Go
-# -tags integration body in internal/tsl/integration/.
+# PowerShell .ps1 scripts." This play drives the REAL dhs CLI verbs (the
+# built binary), mirroring the gold-template acp1/acp2/emberplus plays —
+# NOT `go test`.
 #
-# TSL is a tally/UMD PUSH protocol (v3.1 / v4.0 UDP, v5.0 UDP + DLE/STX
-# TCP), not a matrix. OUR OWN provider IS the tally source: the loopback
-# integration tests start it in-process, bind a real UDP/TCP socket, and
-# drive our consumer against it over the wire (encode → socket → decode →
-# subscribe callback). So this play has two tiers:
+# TSL is a tally/UMD PUSH protocol: the producer is the tally SOURCE and
+# the consumer is the LISTENER. So unlike the probel matrix plays, the
+# loopback tier starts the CONSUMER first (a backgrounded `listen`
+# capturing stdout to a temp file), then runs the PRODUCER once to push a
+# frame, then asserts the listener decoded the UMD. v5.0 is covered (UDP).
 #
-#   1. LOOPBACK (always): run `go test -tags integration` for the tsl
-#      integration package. The provider + consumer round-trips run
-#      entirely in-process across all three wire versions — no external
-#      dependency, no VPN. Every socket is torn down by the Go test, so
+#   1. LOOPBACK (always): `dhs consumer tsl-v50 listen --bind 127.0.0.1:N`
+#      backgrounded → `dhs producer tsl-v50 send --dest 127.0.0.1:N ...`
+#      → assert the captured listener stdout decoded the UMD we sent. The
+#      listener is ephemeral (torn down each run in `always`), so
 #      run-twice = same result (ADR-0025 idempotency). changed_when:false
-#      makes that explicit. This tier also runs the codec-driven golden-
-#      frame drift-guard (TestGoldenFrameFixtures) + round-trip
-#      (TestGoldenFramesRoundTrip), so a stale committed fixture fails
-#      the play.
+#      throughout — push of one frame leaves no persistent state.
 #
-#   2. EXTERNAL (gated on TSL_TEST_HOST): SKIPPED BY DESIGN today. Unlike
-#      the probel-swNNp plays, the Go integration body under
-#      internal/tsl/integration/ is LOOPBACK-ONLY — none of the tests read
-#      a *_TEST_HOST env var or dial an external tally source. Wiring an
-#      external go-test re-run here would invent an untested external path
-#      (forbidden — the test would silently still hit loopback). So this
-#      tier only PRINTS a clear "not yet supported" notice when
-#      TSL_TEST_HOST is set, and is otherwise inert. When the Go tests grow
-#      a real external dial path (Miranda IP Emulator / Lawo VSM on the lab
-#      network — see internal/tsl/CLAUDE.md "Testbed"), replace the notice
-#      task with an external `go test` invocation exporting TSL_TEST_HOST,
-#      mirroring playbooks/probel-sw02p-integration.yml.
+#   2. EXTERNAL (gated on TSL_TEST_HOST): push the SAME producer frame to a
+#      live multiviewer / tally listener on the lab network (Miranda IP
+#      Emulator / Lawo VSM). A `send` to a real MV is trivially safe (it
+#      just paints a UMD label, no device mutation). We cannot assert the
+#      remote display from here, so the external tier asserts only that the
+#      producer emitted to the destination. Skipped when the var is unset.
 #
-# dhs / go test logs are surfaced via register + debug stderr_lines so a
-# failing run shows the test output inline under `ansible-playbook -v`.
+# dhs logs go to stderr → register + debug stdout_lines + stderr_lines to
+# surface them under `ansible-playbook -v`.
 #
-#   # loopback only (the supported path):
+#   # loopback only:
 #   ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
 #
-#   # with TSL_TEST_HOST set — prints the not-yet-supported notice:
+#   # plus a live tally listener (lab, VPN):
 #   TSL_TEST_HOST=10.100.0.42 \
 #     ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
-- name: TSL UMD integration (loopback provider+consumer, all three versions)
+#   TSL_TEST_HOST=10.100.0.42 TSL_TEST_PORT=8901 ansible-playbook ...
+- name: TSL UMD integration (loopback verb-drive v5.0 + optional live listener)
   hosts: localhost
   connection: local
   gather_facts: false
   vars:
-    repo_root: "{{ playbook_dir }}/../.."
-    tsl_pkg: "./internal/tsl/integration/"
-    # Convention-consistent with ACP1_TEST_HOST / PROBEL_SW0Np_TEST_HOST.
-    # The Go tests do not yet read it (loopback-only) — see header note.
+    dhs_bin: "{{ lookup('ansible.builtin.env', 'DHS_BIN') | default(playbook_dir + '/../../bin/dhs', true) }}"
     tsl_host: "{{ lookup('ansible.builtin.env', 'TSL_TEST_HOST') | default('', true) }}"
+    tsl_port: "{{ lookup('ansible.builtin.env', 'TSL_TEST_PORT') | default('8901', true) }}"
+    tsl_loop_port: 18901
+    tsl_umd: "PGM-AN2"
+    tsl_listen_out: /tmp/dhs-tsl-listen.out
   tasks:
-    - name: "loopback — go test -tags integration (provider+consumer in-process)"
-      ansible.builtin.command:
-        chdir: "{{ repo_root }}"
-        argv:
-          - go
-          - test
-          - -tags
-          - integration
-          - "{{ tsl_pkg }}"
-          - -count=1
-      register: tsl_loopback
+    # ---- Tier 1: LOOPBACK (always) -------------------------------------
+    - name: Stop any stale integration listener on the loopback port
+      ansible.builtin.shell: "pkill -f '[d]hs consumer tsl-v50 listen --bind 127.0.0.1:{{ tsl_loop_port }}' || true"
       changed_when: false
-      failed_when: tsl_loopback.rc != 0
 
-    - name: "loopback — surface go test output"
+    - name: Truncate the listener capture file
+      ansible.builtin.copy:
+        dest: "{{ tsl_listen_out }}"
+        content: ""
+        mode: "0644"
+      changed_when: false
+
+    - name: Run the loopback listener/sender verb contract
+      block:
+        - name: Start the tsl-v50 consumer listener (captures decoded frames)
+          ansible.builtin.shell:
+            cmd: >-
+              nohup {{ dhs_bin }} consumer tsl-v50 listen
+              --bind 127.0.0.1:{{ tsl_loop_port }}
+              > {{ tsl_listen_out }} 2>&1 &
+          changed_when: false
+
+        - name: Wait for the listener to print its listening banner
+          ansible.builtin.wait_for:
+            path: "{{ tsl_listen_out }}"
+            search_regex: "consumer listening on"
+            timeout: 20
+
+        - name: "send — push a v5.0 UMD frame to the loopback listener"
+          ansible.builtin.command:
+            argv:
+              - "{{ dhs_bin }}"
+              - producer
+              - tsl-v50
+              - send
+              - --dest
+              - "127.0.0.1:{{ tsl_loop_port }}"
+              - --screen
+              - "0"
+              - --index
+              - "2"
+              - --lh
+              - red
+              - --text
+              - "{{ tsl_umd }}"
+          register: tsl_send
+          changed_when: false
+          failed_when: tsl_send.rc != 0
+
+        - name: Give the listener a moment to decode the datagram
+          ansible.builtin.wait_for:
+            path: "{{ tsl_listen_out }}"
+            search_regex: "UMD=\"{{ tsl_umd }}\""
+            timeout: 10
+
+        - name: Read back the listener capture
+          ansible.builtin.slurp:
+            src: "{{ tsl_listen_out }}"
+          register: tsl_capture
+
+        - name: "ASSERT the listener decoded the UMD we sent"
+          ansible.builtin.assert:
+            that:
+              - "'v5.0' in (tsl_capture.content | b64decode)"
+              - "'UMD=\"' + tsl_umd + '\"' in (tsl_capture.content | b64decode)"
+              - "'LH=red' in (tsl_capture.content | b64decode)"
+            fail_msg: "TSL v5.0 listener did not decode the pushed UMD label"
+            quiet: true
+
+        - name: "loopback — surface CLI + capture output"
+          ansible.builtin.debug:
+            msg: "{{ tsl_send.stdout_lines + tsl_send.stderr_lines + (tsl_capture.content | b64decode).splitlines() }}"
+
+        - name: TSL loopback result
+          ansible.builtin.debug:
+            msg: "TSL integration: PASS (loopback verb-drive — tsl-v50 producer send → consumer listen decoded the UMD, idempotent)"
+      always:
+        - name: Stop the loopback integration listener
+          ansible.builtin.shell: "pkill -f '[d]hs consumer tsl-v50 listen --bind 127.0.0.1:{{ tsl_loop_port }}' || true"
+          changed_when: false
+
+    # ---- Tier 2: EXTERNAL (live tally listener on the lab network) -----
+    # A v5.0 UMD push to a real MV is trivially safe (paints a label only).
+    - name: "external — push a v5.0 UMD frame to the live tally listener"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - producer
+          - tsl-v50
+          - send
+          - --dest
+          - "{{ tsl_host }}:{{ tsl_port }}"
+          - --screen
+          - "0"
+          - --index
+          - "2"
+          - --lh
+          - red
+          - --text
+          - "{{ tsl_umd }}"
+      register: tsl_ext_send
+      changed_when: false
+      failed_when: tsl_ext_send.rc != 0
+      when: (tsl_host | length) > 0
+
+    - name: "external — surface CLI output"
       ansible.builtin.debug:
-        msg: "{{ tsl_loopback.stdout_lines + tsl_loopback.stderr_lines }}"
-      when: tsl_loopback is defined
+        msg: "{{ tsl_ext_send.stdout_lines + tsl_ext_send.stderr_lines }}"
+      when:
+        - (tsl_host | length) > 0
+        - tsl_ext_send is defined
+        - tsl_ext_send.stderr_lines is defined
 
-    - name: "ASSERT loopback integration passed"
+    - name: "ASSERT external send emitted to the destination"
       ansible.builtin.assert:
         that:
-          - tsl_loopback.rc == 0
-          - "'ok' in tsl_loopback.stdout or 'PASS' in tsl_loopback.stdout"
-        fail_msg: "TSL loopback integration test failed — see stderr_lines above"
+          # The producer logs "tsl-v50 send emitted to N destination(s)" on stderr.
+          - "'emitted to' in (tsl_ext_send.stderr | default(''))"
+        fail_msg: "TSL external send did not report emitting to the live listener"
         quiet: true
+      when: (tsl_host | length) > 0
 
-    - name: TSL loopback result
+    - name: TSL external result
       ansible.builtin.debug:
-        msg: >-
-          TSL integration: PASS (loopback — v3.1/v4.0/v5.0 provider+consumer
-          round-trip + codec golden-frame drift-guard, read-only / idempotent)
-
-    # ---- External tier (live tally source on the lab network) -----------
-    # SKIPPED BY DESIGN: the Go tests are loopback-only today (no external
-    # dial path). We do NOT re-run go test with TSL_TEST_HOST set because it
-    # would silently still test loopback. See header note for the upgrade path.
-    - name: "external — NOT YET SUPPORTED notice"
-      ansible.builtin.debug:
-        msg: >-
-          TSL_TEST_HOST={{ tsl_host }} is set, but internal/tsl/integration/
-          is loopback-only — no external dial path exists yet. Skipping the
-          external tier (would otherwise re-test loopback). Add a real
-          external go-test path to the integration body first, then wire it
-          here mirroring playbooks/probel-sw02p-integration.yml.
+        msg: "TSL integration: PASS vs {{ tsl_host }}:{{ tsl_port }} (live listener, v5.0 UMD push / idempotent)"
       when: (tsl_host | length) > 0
