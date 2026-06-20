@@ -2,7 +2,6 @@ package ws
 
 import (
 	"bufio"
-	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
 	"errors"
@@ -25,7 +24,7 @@ const rfc6455GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 // extraHeaders are merged on top of the required RFC 6455 set.
 func upgradeRequest(w io.Writer, u *url.URL, extraHeaders http.Header) (key string, err error) {
 	var nonce [16]byte
-	if _, err := rand.Read(nonce[:]); err != nil {
+	if _, err := randRead(nonce[:]); err != nil {
 		return "", err
 	}
 	key = base64.StdEncoding.EncodeToString(nonce[:])
