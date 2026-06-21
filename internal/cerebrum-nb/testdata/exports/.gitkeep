@@ -1,0 +1,8 @@
+# Reserved for canonical-tree JSON exports.
+#
+# Cerebrum NB is consumer-only by design (it CONSUMES the EVS Cerebrum
+# northbound API; there is no "serve Cerebrum" provider role — see
+# ../../docs/provider.md). It therefore serves no tree of its own and has
+# no provider-export fixture to commit here. This file holds the directory
+# so the testdata/ layout matches the probel-sw02p template
+# (fixtures/ + exports/).

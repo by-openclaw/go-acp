@@ -1,12 +1,16 @@
 # Cerebrum NB consumer — `dhs consumer cerebrum-nb`
 
-Drives the **EVS Cerebrum Northbound API v0.13** (a.k.a. **Neuron Bridge**)
+Drives the **EVS Cerebrum Northbound API 0v16** (a.k.a. **Neuron Bridge**)
 over XML-on-WebSocket. One licence per WebSocket connection;
-default port **40007**.
+default port **40007**. (0v13 is the historical baseline; 0v16 is a
+superset and is what this connector targets.)
 
 The full element / attribute / enum catalogue is at
-[keys.md](keys.md). Wire format + quirks live in
-[../CLAUDE.md](../CLAUDE.md). This page is the user-facing CLI reference.
+[keys.md](keys.md). The full verb + wire-sample reference (including the
+0v16 `device-config` verb, the 5-mode `lock`, and `obtain-datastore`) is at
+[verbs.md](verbs.md); the operator quick-ref is [runbook.md](runbook.md).
+Wire format + quirks live in [../CLAUDE.md](../CLAUDE.md). This page is the
+user-facing CLI reference.
 
 ---
 
@@ -21,7 +25,23 @@ The full element / attribute / enum catalogue is at
 | `device-details` / `device-value` | Detail + property snapshots for one device |
 | `list-categories` / `category-details` | Category catalogue + per-category items |
 | `list-salvo-groups` / `list-salvo-instances` / `salvo-instance-details` | Salvo catalogue snapshots |
+| `obtain-datastore` | One-shot `<obtain><datastore_change path='…'/></obtain>` — fetch a Cerebrum data store by relative path (§5.5.1) |
 | `keepalive-probe` | Diagnostic — hold the WS open, count keep-alive frames, optional periodic LOGIN |
+
+### Write verbs (§4 ACTION / §4.5 — auto-LOGIN with `--user`/`--pass`)
+
+| Verb | Purpose |
+|---|---|
+| `lock` / `unlock` | `<action><routing LOCK='…'/></action>` — `--kind SRCE_LOCK\|DEST_LOCK`, `--mode unlocked\|locked\|protected\|locked_path\|protected_path` (the 0v16 §3.2 five-value LOCK enum) |
+| `device-config` | `<DEVICE_CONFIGURATION TYPE='ADD\|MODIFY\|REMOVE'/>` — the 0v16 §4.5 device-tree CRUD command, `--device-type generic\|panel\|router\|snmp` |
+| `set-mnemonic` | `<action><routing TYPE='*_MNE'/></action>` — set a level / source / dest mnemonic |
+| `set-tags` | `<action><routing TYPE='RM_*_TAGS'/></action>` — Routemaster source / dest tags |
+| `salvo` | `<action><salvo TYPE='…'/></action>` — `--op run\|save\|rename\|delete` |
+| `category` | `<action><category TYPE='…'/></action>` — `--op create\|modify\|delete` |
+| `set-value` | `<action><device TYPE='SET_VALUE'/></action>` — write a device object value |
+
+See [verbs.md](verbs.md) for per-verb flags and codec-generated wire
+samples.
 
 ## Common flags
 

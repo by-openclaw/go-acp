@@ -1,20 +1,24 @@
-# Cerebrum Northbound API 0.13 — wire-key catalogue
+# Cerebrum Northbound API 0v16 — wire-key catalogue
 
 Authoritative, fact-only catalogue of every element name, attribute
-name, and enum value on the Cerebrum Northbound v0.13 wire. Derived
-from the EVS spec text and cross-referenced against live captures.
+name, and enum value on the Cerebrum Northbound wire. Targets **0v16**
+(authoritative); 0v13 is the historical baseline and remains a strict
+subset. Derived from the EVS spec and cross-referenced against the
+codec-generated fixtures (a live capture is pending the NB licence).
 
 **Sources**
 
-1. **Primary.** EVS *Cerebrum Northbound API 0.13* — full text extracted
-   from [../assets/cerebrum_northbound_api_full_v0_13.docx](../assets/cerebrum_northbound_api_full_v0_13.docx).
-   Also present: image-heavy DOCX original at
-   [../assets/Cerebrum Northbound API 0v13.docx](../assets/Cerebrum%20Northbound%20API%200v13.docx)
-   and the newer 0v16 PDF at
+1. **Primary (authoritative).** EVS *Cerebrum Northbound API 0v16* —
    [../assets/Cerebrum Northbound API 0v16.pdf](../assets/Cerebrum%20Northbound%20API%200v16.pdf).
-2. **Live wire captures.** pcaps from real Cerebrum servers — these
-   override spec text where the two disagree (see "Wire-actual vs
-   spec" below).
+2. **Historical baseline.** EVS *Cerebrum Northbound API 0.13* — full text
+   extracted from [../assets/cerebrum_northbound_api_full_v0_13.docx](../assets/cerebrum_northbound_api_full_v0_13.docx),
+   image-heavy DOCX original at
+   [../assets/Cerebrum Northbound API 0v13.docx](../assets/Cerebrum%20Northbound%20API%200v13.docx).
+   0v16 is a superset — every 0v13 key below is still valid.
+3. **Codec-generated fixtures.** [../testdata/fixtures/](../testdata/fixtures/README.md) —
+   real 0v16 frames emitted by the codec. Live pcaps from real Cerebrum
+   servers (pending NB licence) would override spec text where the two
+   disagree (see "Wire-actual vs spec" below).
 
 ---
 

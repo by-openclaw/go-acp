@@ -1,0 +1,1 @@
+<device_change ip_address="10.1.1.1" object="Status.Connected" sub_device="0" type="VALUE"><object_value available="1" data_type="INTEGER" default="0" enum_list="On,Off" label="" object="Status.Connected" readable="1" units="" value="1" writable="0"/></device_change>
