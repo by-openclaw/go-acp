@@ -157,10 +157,15 @@ func TestDial_DefaultPortInjected(t *testing.T) {
 		Dialer: &net.Dialer{Timeout: 200 * time.Millisecond},
 	})
 	if err == nil {
-		t.Fatal("expected dial failure to closed :80")
+		t.Fatal("expected dial failure to :80")
 	}
-	if !strings.Contains(err.Error(), "tcp dial") {
-		t.Fatalf("want tcp dial error, got %v", err)
+	// Prove the port-injection branch ran: the error must name the injected
+	// :80. We can't assert the *kind* of failure — on hosts where :80 is
+	// closed it's a "tcp dial" connection-refused; on hosts where something
+	// holds :80 (e.g. Windows http.sys) the TCP connect succeeds and the WS
+	// upgrade times out. Both name 127.0.0.1:80, which is what we're verifying.
+	if !strings.Contains(err.Error(), ":80") {
+		t.Fatalf("want error naming injected :80, got %v", err)
 	}
 }
 
@@ -171,10 +176,12 @@ func TestDial_WSSDefaultPortInjected(t *testing.T) {
 		Dialer: &net.Dialer{Timeout: 200 * time.Millisecond},
 	})
 	if err == nil {
-		t.Fatal("expected dial failure to closed :443")
+		t.Fatal("expected dial failure to :443")
 	}
-	if !strings.Contains(err.Error(), "tcp dial") {
-		t.Fatalf("want tcp dial error, got %v", err)
+	// As above: assert the injected :443 is named, not the failure kind
+	// (refused vs handshake/TLS timeout varies by host).
+	if !strings.Contains(err.Error(), ":443") {
+		t.Fatalf("want error naming injected :443, got %v", err)
 	}
 }
 
