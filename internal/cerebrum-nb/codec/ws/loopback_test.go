@@ -636,9 +636,8 @@ func TestWrite_MaskKeyError(t *testing.T) {
 	// randRead), then swap the seam to fail only the per-write mask-key
 	// generation.
 	conn := dialEcho(t, s)
-	orig := randRead
-	randRead = func([]byte) (int, error) { return 0, errors.New("rand boom") }
-	defer func() { randRead = orig; _ = conn.c.Close() }()
+	restore := setRandRead(func([]byte) (int, error) { return 0, errors.New("rand boom") })
+	defer func() { restore(); _ = conn.c.Close() }()
 
 	// writeData path.
 	if err := conn.WriteText(context.Background(), []byte("x")); err == nil ||

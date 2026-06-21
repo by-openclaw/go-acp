@@ -55,9 +55,7 @@ func TestUpgradeRequest_WriteError(t *testing.T) {
 }
 
 func TestUpgradeRequest_RandError(t *testing.T) {
-	orig := randRead
-	randRead = func([]byte) (int, error) { return 0, errors.New("rand fail") }
-	defer func() { randRead = orig }()
+	defer setRandRead(func([]byte) (int, error) { return 0, errors.New("rand fail") })()
 	u, _ := url.Parse("ws://host/")
 	_, err := upgradeRequest(errWriter{}, u, nil)
 	if err == nil || !strings.Contains(err.Error(), "rand fail") {
@@ -281,9 +279,7 @@ func TestUpgradeRequest_StarResourceURI(t *testing.T) {
 }
 
 func TestReadFrame_NegativeLengthGuard(t *testing.T) {
-	orig := plenSeam
-	plenSeam = func(int64) int64 { return -1 }
-	defer func() { plenSeam = orig }()
+	defer setPlenSeam(func(int64) int64 { return -1 })()
 	r := bufioReader([]byte{0x81, 1, 'x'})
 	if _, err := readFrame(r, 0); err == nil ||
 		!strings.Contains(err.Error(), "negative payload length") {
@@ -304,9 +300,8 @@ func TestReadMessage_PongWriteError(t *testing.T) {
 		_ = conn.Close()
 	}
 	conn := dialEcho(t, s)
-	orig := randRead
-	defer func() { randRead = orig; _ = conn.c.Close() }()
-	randRead = func([]byte) (int, error) { return 0, errors.New("pong rand boom") }
+	restore := setRandRead(func([]byte) (int, error) { return 0, errors.New("pong rand boom") })
+	defer func() { restore(); _ = conn.c.Close() }()
 	close(ready)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
