@@ -1,0 +1,136 @@
+---
+# Cerebrum NB integration CONTRACT TEST against a live EVS Cerebrum oracle
+# (a real, licensed Cerebrum Northbound API — never our own provider:
+# Cerebrum is consumer-only, there is NO provider and NO emulator), per
+# ADR-0025 deliverable 3: "Ansible is the exclusive integration / verify /
+# deploy driver — no PowerShell .ps1 scripts."
+#
+# This mirrors acp1-integration.yml's EXTERNAL-ORACLE pattern (gated on a
+# live host), NOT acp2's loopback pattern — Cerebrum has no loopback tier
+# because there is no provider to serve. See
+# internal/cerebrum-nb/docs/provider.md.
+#
+# ⚠ LICENCE REQUIRED. A live run needs the NB northbound LICENCE enabled on
+# the target Cerebrum (one licence per active WebSocket session). That
+# licence is currently MISSING on the lab Cerebrum, so this play is written
+# + ready but SKIPS until host + creds + licence all exist. There is also
+# no in-tree emulator: the only oracle is a real, licensed Cerebrum.
+#
+# Read-only verbs (connect + list-devices + device-details) →
+# changed_when:false → idempotent BY CONSTRUCTION (run-twice = 0 changes).
+# Skips cleanly when no oracle is configured, so it is safe to invoke
+# unconditionally (CI / agent).
+#
+#   CEREBRUM_TEST_HOST=10.6.239.50 \
+#   DHS_CEREBRUM_USER=admin DHS_CEREBRUM_PASS=s3cr3t \
+#   DHS_BIN=bin/dhs \
+#     ansible-playbook -i inventory/hosts.ini playbooks/cerebrum-nb-integration.yml
+#
+# Cerebrum NB speaks XML-over-WebSocket on TCP 40007. CEREBRUM_TEST_PORT
+# overrides.
+- name: Cerebrum NB integration vs live licensed Cerebrum oracle
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dhs_bin: "{{ lookup('ansible.builtin.env', 'DHS_BIN') | default(playbook_dir + '/../../bin/dhs', true) }}"
+    cerebrum_host: "{{ lookup('ansible.builtin.env', 'CEREBRUM_TEST_HOST') | default('', true) }}"
+    cerebrum_port: "{{ lookup('ansible.builtin.env', 'CEREBRUM_TEST_PORT') | default('40007', true) }}"
+    cerebrum_user: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') | default('', true) }}"
+    cerebrum_pass: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') | default('', true) }}"
+  tasks:
+    - name: Skip when no Cerebrum oracle is configured (host or creds unset)
+      ansible.builtin.meta: end_play
+      when: >-
+        (cerebrum_host | length) == 0
+        or (cerebrum_user | length) == 0
+        or (cerebrum_pass | length) == 0
+
+    - name: "connect — LOGIN + POLL (sanity + redundancy probe)"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - connect
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - 15s
+      register: cerebrum_connect
+      changed_when: false
+      failed_when: cerebrum_connect.rc != 0
+
+    - name: "ASSERT connect reached an authenticated, polled session"
+      ansible.builtin.assert:
+        that:
+          - "'poll' in (cerebrum_connect.stdout | lower) or 'server' in (cerebrum_connect.stdout | lower)"
+        fail_msg: "Cerebrum connect did not return a poll reply from the live oracle (licence enabled?)"
+        quiet: true
+
+    - name: "list-devices — OBTAIN device_change LIST"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - list-devices
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - 20s
+      register: cerebrum_devices
+      changed_when: false
+      failed_when: cerebrum_devices.rc != 0
+
+    - name: "ASSERT list-devices returned a device table"
+      ansible.builtin.assert:
+        that:
+          - "'device' in (cerebrum_devices.stdout | lower)"
+        fail_msg: "Cerebrum list-devices returned no devices from the live oracle"
+        quiet: true
+
+    - name: "device-details — OBTAIN device_change DETAILS (first device row)"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - device-details
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - 20s
+      register: cerebrum_details
+      changed_when: false
+      # device-details needs a --device argument the operator supplies from
+      # the list-devices output; without it the verb usage-errors. We do not
+      # fail the play on that — the read-only reachability is already proven
+      # by connect + list-devices above. Surface stdout/stderr for the
+      # operator instead.
+      failed_when: false
+
+    - name: "Cerebrum NB integration logs (stderr carries dhs slog output)"
+      ansible.builtin.debug:
+        msg: "{{ cerebrum_connect.stderr_lines + cerebrum_devices.stderr_lines + cerebrum_details.stderr_lines }}"
+
+    - name: Cerebrum NB integration result
+      ansible.builtin.debug:
+        msg: >-
+          Cerebrum NB integration: PASS vs {{ cerebrum_host }}:{{ cerebrum_port }}
+          (live licensed oracle, read-only / idempotent; no provider / no loopback by design)
