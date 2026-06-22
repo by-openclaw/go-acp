@@ -253,22 +253,32 @@ func (s *SalvoAction) encodeAction(b *strings.Builder) {
 // §4.4 — Device actions
 // ----------------------------------------------------------------------
 
-// DeviceAction is the §4.4 catalogue: SET_VALUE only (in 0.13).
+// DeviceAction is the §4.4 catalogue: SET_VALUE. 0v16 (§4.4.1 p19) adds
+// the IP_ADDRESS alternative to DEVICE_NAME, plus the IS_ENUM and MODE
+// attributes.
 type DeviceAction struct {
 	Type       string
 	DeviceName string
+	IPAddress  string // §4.4.1: DEVICE_NAME *or* IP_ADDRESS may address the device
 	SubDevice  string
 	Object     string
 	Value      string
+	IsEnum     bool   // §4.4.1: IS_ENUM="1" — VALUE is a string repr of an enum (0/omitted by default)
+	Mode       string // §4.4.1: CSV MODE — SET | ADD_TAIL | INSERT_AT_HEAD | REMOVE (SET by default)
 }
 
 func (d *DeviceAction) encodeAction(b *strings.Builder) {
 	a := AttrsBuilder{}.
 		ForceAdd("TYPE", d.Type).
 		Add("DEVICE_NAME", d.DeviceName).
+		Add("IP_ADDRESS", d.IPAddress).
 		Add("SUB_DEVICE", d.SubDevice).
 		Add("OBJECT", d.Object).
-		Add("VALUE", d.Value)
+		Add("VALUE", d.Value).
+		Add("MODE", d.Mode)
+	if d.IsEnum {
+		a = a.Add("IS_ENUM", "1")
+	}
 	emitElement(b, "DEVICE", a, nil)
 }
 

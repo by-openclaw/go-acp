@@ -78,6 +78,12 @@ func readFrame(r io.Reader, maxPayload int64) (*frame, error) {
 		}
 		plen = int64(v)
 	}
+	// plenSeam is the identity in production: plen is derived from a 7-bit
+	// field (0..125), a u16 (case 126), or a u64 with its high bit already
+	// rejected (case 127), so it can never be negative on a real frame.
+	// The seam lets a test drive the defensive guard below without
+	// weakening it (see seam.go).
+	plen = plenSeam(plen)
 	if plen < 0 {
 		return nil, errors.New("ws: negative payload length")
 	}

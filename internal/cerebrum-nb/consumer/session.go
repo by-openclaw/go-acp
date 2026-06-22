@@ -387,19 +387,23 @@ func (s *Session) readLoop() {
 func (s *Session) dispatch(f *codec.Frame) {
 	// 1. Try to match an in-flight request by mtid.
 	if f.MTID != "" {
-		// Only Ack / Nack / Busy / LoginReply / PollReply are valid
-		// terminal replies for an in-flight request. ROUTING_CHANGE /
-		// CATEGORY_CHANGE / SALVO_CHANGE / DEVICE_CHANGE rows can carry
-		// the same MTID as the originating SUBSCRIBE (server streams the
-		// snapshot rows before the WILDCARD_COMPLETE + ACK), but they
-		// are notifications, not replies — routing them into the pending
-		// channel makes roundTrip return the first row instead of the
-		// ACK, which then mis-classifies the SUBSCRIBE as "unexpected
-		// ROUTING_CHANGE" failure. Send only terminal replies to the
-		// pending waiter; let everything else fan out to subscribers.
+		// Only Ack / Nack / Busy / LoginReply / PollReply /
+		// DeviceConfigResult are valid terminal replies for an in-flight
+		// request. ROUTING_CHANGE / CATEGORY_CHANGE / SALVO_CHANGE /
+		// DEVICE_CHANGE rows can carry the same MTID as the originating
+		// SUBSCRIBE (server streams the snapshot rows before the
+		// WILDCARD_COMPLETE + ACK), but they are notifications, not
+		// replies — routing them into the pending channel makes roundTrip
+		// return the first row instead of the ACK, which then
+		// mis-classifies the SUBSCRIBE as "unexpected ROUTING_CHANGE"
+		// failure. Send only terminal replies to the pending waiter; let
+		// everything else (including CONTINUE / WILDCARD_COMPLETE, which
+		// are flow-control notifications, not request terminators) fan out
+		// to subscribers.
 		switch f.Kind {
 		case codec.KindAck, codec.KindNack, codec.KindBusy,
-			codec.KindLoginReply, codec.KindPollReply:
+			codec.KindLoginReply, codec.KindPollReply,
+			codec.KindDeviceConfigResult:
 			s.mu.Lock()
 			ch, ok := s.pending[f.MTID]
 			s.mu.Unlock()
@@ -413,7 +417,26 @@ func (s *Session) dispatch(f *codec.Frame) {
 			}
 		}
 	}
-	// 2. Fan out to OnEvent subscribers.
+	// 2. Flow-control notifications (§1.4 CONTINUE after BUSY, §1.6
+	// WILDCARD_COMPLETE end-of-snapshot). These are not terminal replies
+	// to a request, so they fall through the mtid switch above and are
+	// logged here before fanning out — a listener that registered an
+	// OnEvent(KindContinue/KindWildcardComplete) still sees them.
+	switch f.Kind {
+	case codec.KindContinue:
+		// Server signals it has drained its BUSY backlog and the client
+		// may resume sending. Log + continue (no client-side throttle is
+		// modelled today); subscribers may react.
+		s.logger.Debug("flow-control: CONTINUE (resume after BUSY)", slog.String("mtid", f.MTID))
+		s.compliance.Event("cerebrum_continue_received")
+	case codec.KindWildcardComplete:
+		// End of an OBTAIN/SUBSCRIBE wildcard snapshot — every matching
+		// row has been sent. Subscribers use this as the "snapshot
+		// complete" marker.
+		s.logger.Debug("flow-control: WILDCARD_COMPLETE (snapshot done)", slog.String("mtid", f.MTID))
+	}
+
+	// 3. Fan out to OnEvent subscribers.
 	if f.Kind == codec.KindUnknown {
 		s.compliance.Event("cerebrum_unknown_notification")
 		return

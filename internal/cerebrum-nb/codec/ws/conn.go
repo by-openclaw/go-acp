@@ -3,7 +3,6 @@ package ws
 import (
 	"bufio"
 	"context"
-	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -173,9 +172,12 @@ func (c *Conn) closeUnderlying() {
 	})
 }
 
-// newMaskKey returns 4 random bytes for client-to-server masking.
+// newMaskKey returns 4 random bytes for client-to-server masking. The
+// crypto/rand read goes through the randRead seam (seam.go) so the
+// otherwise-unreachable error arm in writeData / writeControl can be
+// driven by a test without weakening the guard.
 func newMaskKey() ([4]byte, error) {
 	var k [4]byte
-	_, err := rand.Read(k[:])
+	_, err := randRead(k[:])
 	return k, err
 }

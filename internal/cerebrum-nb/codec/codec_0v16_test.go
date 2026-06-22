@@ -313,6 +313,27 @@ func TestEncodeDeviceConfiguration_SNMPAdd(t *testing.T) {
 	}
 }
 
+func TestEncodeAction_DeviceSetValue_0v16(t *testing.T) {
+	// §4.4.1 p19 worked example: IS_ENUM + SUB_DEVICE + MODE, addressed
+	// by IP_ADDRESS instead of DEVICE_NAME. IS_ENUM emits only when true;
+	// MODE/IP_ADDRESS emit when non-empty. Attr order is the codec's
+	// deterministic order (XML attr order is not significant).
+	body := &DeviceAction{
+		Type:      "SET_VALUE",
+		IPAddress: "10.0.0.5",
+		SubDevice: "1",
+		Object:    "PSU.Fan Control",
+		Value:     "Automatic",
+		IsEnum:    true,
+		Mode:      "SET",
+	}
+	got := string(EncodeAction(1, body))
+	want := `<ACTION MTID="1"><DEVICE TYPE="SET_VALUE" IP_ADDRESS="10.0.0.5" SUB_DEVICE="1" OBJECT="PSU.Fan Control" VALUE="Automatic" MODE="SET" IS_ENUM="1"/></ACTION>`
+	if got != want {
+		t.Fatalf("\n got %s\nwant %s", got, want)
+	}
+}
+
 func TestEncodeDeviceConfiguration_Remove(t *testing.T) {
 	// §4.5.2 p23 worked example: self-closing, no body.
 	dc := &DeviceConfiguration{
