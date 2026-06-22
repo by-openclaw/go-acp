@@ -1,0 +1,95 @@
+---
+# dhs UNIT TESTS + coverage floors — the Ansible-driven unit-test runner.
+#
+# Per the project rule, Ansible is the EXCLUSIVE test/verify driver: no
+# PowerShell .ps1, no .sh, no .py wrapper scripts. This play runs the same
+# gate CI enforces (build, vet, the Go unit suite, and the per-package 100%
+# coverage floors) so the unit tests can be driven from the controller (.103)
+# or any checkout with Go installed — never via an ad-hoc shell loop.
+#
+# hosts: localhost / connection: local => runs wherever Go + the repo live.
+# Read-only (changed_when:false throughout) => run-twice = same result.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/unit-tests.yml
+#   # race detector (needs cgo + a C compiler on the host):
+#   ansible-playbook -i inventory/hosts.ini playbooks/unit-tests.yml -e ut_race=true
+#
+# The coverage floors are a STRICT 100% (no retry crutch): every listed
+# package must measure exactly 100.0%. A dip is a real signal — fix the
+# package's test determinism (e.g. join the goroutine that owns the
+# scheduling-dependent line, as done for acp1 Listener.Stop), do NOT paper
+# over it with retries.
+- name: dhs unit tests + per-package coverage floors
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    repo_root: "{{ playbook_dir }}/../.."
+    ut_race: false
+    floor_packages:
+      - ./internal/acp1/codec
+      - ./internal/acp1/consumer
+      - ./internal/acp1/provider
+      - ./internal/acp2/codec
+      - ./internal/acp2/consumer
+      - ./internal/acp2/provider
+      - ./internal/emberplus/codec/ber
+      - ./internal/emberplus/codec/glow
+      - ./internal/emberplus/codec/matrix
+      - ./internal/emberplus/codec/s101
+      - ./internal/emberplus/consumer
+      - ./internal/emberplus/provider
+      - ./internal/probel-sw02p/codec
+      - ./internal/probel-sw02p/consumer
+      - ./internal/probel-sw02p/provider
+      - ./internal/probel-sw08p/codec
+      - ./internal/probel-sw08p/consumer
+      - ./internal/probel-sw08p/provider
+      - ./internal/tsl/codec
+      - ./internal/tsl/consumer
+      - ./internal/tsl/provider
+      - ./internal/osc/codec
+      - ./internal/osc/consumer
+      - ./internal/osc/provider
+      - ./internal/cerebrum-nb/codec
+      - ./internal/cerebrum-nb/codec/ws
+      - ./internal/cerebrum-nb/consumer
+  tasks:
+    - name: "build — go build ./..."
+      ansible.builtin.command:
+        chdir: "{{ repo_root }}"
+        argv: [go, build, ./...]
+      changed_when: false
+
+    - name: "vet — go vet ./..."
+      ansible.builtin.command:
+        chdir: "{{ repo_root }}"
+        argv: [go, vet, ./...]
+      changed_when: false
+
+    - name: "unit suite — go test ./... (-race when ut_race=true)"
+      ansible.builtin.command:
+        chdir: "{{ repo_root }}"
+        argv: "{{ ['go', 'test', '-count=1'] + (['-race'] if (ut_race | bool) else []) + ['./...'] }}"
+      register: ut_run
+      changed_when: false
+      failed_when: ut_run.rc != 0
+
+    - name: "surface unit-test output"
+      ansible.builtin.debug:
+        msg: "{{ ut_run.stdout_lines | reject('match', '^ok ') | list }}"
+
+    - name: "coverage floor — every listed package must be exactly 100.0%"
+      ansible.builtin.command:
+        chdir: "{{ repo_root }}"
+        argv: [go, test, -count=1, -cover, "{{ item }}"]
+      register: cov
+      changed_when: false
+      failed_when: "'coverage: 100.0% of statements' not in cov.stdout"
+      loop: "{{ floor_packages }}"
+      loop_control:
+        label: "{{ item }}"
+
+    - name: "result"
+      ansible.builtin.debug:
+        msg: "dhs unit tests: PASS — suite green + {{ floor_packages | length }} packages at 100.0% coverage (strict, no retry)"
