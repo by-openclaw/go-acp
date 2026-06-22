@@ -1,0 +1,294 @@
+---
+# Cerebrum NB VERB-TEST contract play (EXTERNAL-ONLY) — deploy the per-OS binary
+# to each target, then drive the READ-ONLY Cerebrum Northbound consumer verbs
+# against a LIVE, licensed EVS Cerebrum oracle. Per ADR-0025 deliverable 3 +
+# ADR-0016.
+#
+# ⚠ LICENCE REQUIRED. A live run needs the NB northbound LICENCE enabled on the
+# target Cerebrum (one licence per active WebSocket session). Cerebrum is
+# consumer-only: there is NO provider and NO emulator (internal/cerebrum-nb/
+# docs/provider.md), so there is NO serve/push/loopback tier — this play does
+# NOT use the dhs_verbtest role's serve or push paths. It mirrors that role's
+# cross-OS DEPLOY (copy/win_copy) + the dhs_acp1 per-OS command dispatch, but
+# INLINE (deploy binary, then run read-only verbs against the external oracle).
+#
+# GATING: skips cleanly (meta: end_play) unless CEREBRUM_TEST_HOST +
+# DHS_CEREBRUM_USER + DHS_CEREBRUM_PASS are all set, so it is safe to invoke
+# unconditionally (CI / agent). Read-only verbs (connect / list-* / *-details /
+# keepalive-probe) → changed_when:false → idempotent BY CONSTRUCTION.
+#
+# Cerebrum NB speaks XML-over-WebSocket on TCP 40007 (CEREBRUM_TEST_PORT
+# overrides). The cross-build of bin/dhs-* happens on the control node exactly
+# as the dhs_verbtest role does it (go build per GOOS), so the target needs no
+# Go toolchain.
+#
+#   CEREBRUM_TEST_HOST=10.6.239.50 \
+#   DHS_CEREBRUM_USER=admin DHS_CEREBRUM_PASS=s3cr3t \
+#     ansible-playbook -i inventory/hosts.ini playbooks/cerebrum-nb-verbs.yml
+- name: Cerebrum NB verb test (deploy binary per OS, drive read-only verbs vs live oracle)
+  hosts: linux:windows
+  gather_facts: true
+  vars:
+    # Oracle coordinates from the environment (control-node env), mirroring
+    # cerebrum-nb-integration.yml. Empty → skip.
+    cerebrum_host: "{{ lookup('ansible.builtin.env', 'CEREBRUM_TEST_HOST') | default('', true) }}"
+    cerebrum_port: "{{ lookup('ansible.builtin.env', 'CEREBRUM_TEST_PORT') | default('40007', true) }}"
+    cerebrum_user: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') | default('', true) }}"
+    cerebrum_pass: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') | default('', true) }}"
+  tasks:
+    - name: Skip when no Cerebrum oracle is configured (host or creds unset)
+      ansible.builtin.meta: end_play
+      when: >-
+        (cerebrum_host | length) == 0
+        or (cerebrum_user | length) == 0
+        or (cerebrum_pass | length) == 0
+
+    # ---- Cross-build BOTH per-OS binaries ONCE on the control node ----------
+    # Mirrors dhs_verbtest/tasks/main.yml: build each artifact regardless of the
+    # current target so a mixed linux+windows play builds each exactly once. The
+    # output paths are EXACTLY what group_vars dhs_local_binary point at.
+    - name: Cross-build the linux dhs binary on the control node
+      ansible.builtin.command:
+        argv:
+          - go
+          - build
+          - -o
+          - "{{ playbook_dir }}/../../bin/dhs-linux-amd64"
+          - ./cmd/dhs
+        chdir: "{{ playbook_dir }}/../.."
+      environment:
+        GOOS: linux
+        GOARCH: amd64
+      delegate_to: localhost
+      run_once: true
+      changed_when: false
+
+    - name: Cross-build the windows dhs binary on the control node
+      ansible.builtin.command:
+        argv:
+          - go
+          - build
+          - -o
+          - "{{ playbook_dir }}/../../bin/dhs-windows-amd64.exe"
+          - ./cmd/dhs
+        chdir: "{{ playbook_dir }}/../.."
+      environment:
+        GOOS: windows
+        GOARCH: amd64
+      delegate_to: localhost
+      run_once: true
+      changed_when: false
+
+    # ---- Deploy the per-OS binary (mirror dhs_acp1 deploy tasks) ------------
+    # POSIX (SSH) — file + copy.
+    - name: Create the dhs install directory (POSIX)
+      ansible.builtin.file:
+        path: "{{ dhs_dir }}"
+        state: directory
+        mode: "0755"
+      when: ansible_os_family != "Windows"
+
+    - name: Deploy the linux dhs binary (POSIX)
+      ansible.builtin.copy:
+        src: "{{ dhs_local_binary }}"
+        dest: "{{ dhs_bin }}"
+        mode: "0755"
+      when: ansible_os_family != "Windows"
+
+    # Windows (WinRM) — win_file + win_copy.
+    - name: Create the dhs install directory (Windows)
+      ansible.windows.win_file:
+        path: "{{ dhs_dir }}"
+        state: directory
+      when: ansible_os_family == "Windows"
+
+    - name: Deploy the windows dhs binary (Windows)
+      ansible.windows.win_copy:
+        src: "{{ dhs_local_binary }}"
+        dest: "{{ dhs_bin }}"
+      when: ansible_os_family == "Windows"
+
+    # ---- Drive the READ-ONLY consumer verbs (cmd/dhs/cmd_cerebrum.go) -------
+    # Dispatcher: runCerebrum switch (cmd_cerebrum.go:111-155). Common flags
+    # --port/--user/--pass/--timeout from newCerebrumFlags (cmd_cerebrum.go:33-43).
+    # Each verb is read-only (OBTAIN / POLL / DIAGNOSTIC) → changed_when:false.
+    # Per OS, command (POSIX) vs win_command (Windows) — mirrors dhs_acp1.
+
+    # connect — POLL sanity + redundancy probe (cmd_cerebrum.go:112,396).
+    - name: "connect — LOGIN + POLL (POSIX)"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - connect
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - "15s"
+      register: cere_connect_posix
+      changed_when: false
+      failed_when: cere_connect_posix.rc != 0
+      when: ansible_os_family != "Windows"
+
+    - name: "connect — LOGIN + POLL (Windows)"
+      ansible.windows.win_command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - connect
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - "15s"
+      register: cere_connect_win
+      changed_when: false
+      failed_when: cere_connect_win.rc != 0
+      when: ansible_os_family == "Windows"
+
+    # list-devices — OBTAIN device_change LIST (cmd_cerebrum.go:116,481).
+    - name: "list-devices — OBTAIN device list (POSIX)"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - list-devices
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - "20s"
+      register: cere_devices_posix
+      changed_when: false
+      failed_when: cere_devices_posix.rc != 0
+      when: ansible_os_family != "Windows"
+
+    - name: "list-devices — OBTAIN device list (Windows)"
+      ansible.windows.win_command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - list-devices
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - "20s"
+      register: cere_devices_win
+      changed_when: false
+      failed_when: cere_devices_win.rc != 0
+      when: ansible_os_family == "Windows"
+
+    # list-categories — OBTAIN category_change CATEGORY_LIST (cmd_cerebrum.go:122,652).
+    - name: "list-categories — OBTAIN category list (POSIX)"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - list-categories
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - "20s"
+      register: cere_cats_posix
+      changed_when: false
+      failed_when: cere_cats_posix.rc != 0
+      when: ansible_os_family != "Windows"
+
+    - name: "list-categories — OBTAIN category list (Windows)"
+      ansible.windows.win_command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - list-categories
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - "20s"
+      register: cere_cats_win
+      changed_when: false
+      failed_when: cere_cats_win.rc != 0
+      when: ansible_os_family == "Windows"
+
+    # list-salvo-groups — OBTAIN salvo_change GROUP_LIST (cmd_cerebrum.go:126,717).
+    - name: "list-salvo-groups — OBTAIN salvo group list (POSIX)"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - list-salvo-groups
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - "20s"
+      register: cere_salvos_posix
+      changed_when: false
+      failed_when: cere_salvos_posix.rc != 0
+      when: ansible_os_family != "Windows"
+
+    - name: "list-salvo-groups — OBTAIN salvo group list (Windows)"
+      ansible.windows.win_command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - cerebrum-nb
+          - list-salvo-groups
+          - "{{ cerebrum_host }}"
+          - --port
+          - "{{ cerebrum_port | string }}"
+          - --user
+          - "{{ cerebrum_user }}"
+          - --pass
+          - "{{ cerebrum_pass }}"
+          - --timeout
+          - "20s"
+      register: cere_salvos_win
+      changed_when: false
+      failed_when: cere_salvos_win.rc != 0
+      when: ansible_os_family == "Windows"
+
+    - name: Cerebrum NB verb test result
+      ansible.builtin.debug:
+        msg: >-
+          Cerebrum NB verb test: drove connect + list-devices + list-categories
+          + list-salvo-groups vs {{ cerebrum_host }}:{{ cerebrum_port }}
+          (live licensed oracle, read-only / idempotent; no provider / no loopback by design)
