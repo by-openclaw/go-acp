@@ -18,6 +18,22 @@ dhs_local_binary: "{{ playbook_dir }}/../../bin/dhs-linux-amd64"
 # `dhs consumer <proto> <verb>`.
 vt_proto: ""
 
+# Test mode. Two shapes:
+#   serve  (default) — producer serve <proto> on the target, then drive a set
+#                      of consumer verbs that DIAL the served producer. Used by
+#                      the matrix/tree connectors (probel-sw02p/sw08p, acp1,
+#                      acp2, emberplus). Honours vt_serve_argv / vt_serve_files /
+#                      vt_verbs.
+#   push           — PUSH protocols (tsl, osc): there is no serve+query. Instead
+#                      a consumer LISTENS (backgrounded, async/poll:0, decoded
+#                      output captured to a file on the target) and a producer
+#                      SENDS one or more frames; the role then reads the
+#                      listener's captured file back and asserts the pushed
+#                      frame was decoded. Honours vt_listen_argv /
+#                      vt_send_argv_list / vt_push_assert_contains. vt_serve_*
+#                      and vt_verbs are ignored in push mode.
+vt_mode: serve
+
 # Extra argv appended after `dhs producer <vt_proto> serve`. The connector play
 # MUST point any --tree / --manifest at the DEPLOYED fixture path on the target
 # (e.g. "{{ dhs_dir }}/matrix_tree.json"), never the repo path.
@@ -46,3 +62,34 @@ vt_port_wait_timeout: 30
 # The role prepends dhs_bin + consumer + vt_proto and runs each with the
 # OS-appropriate command / win_command module.
 vt_verbs: []
+
+# ---- PUSH mode parameters (vt_mode: push) --------------------------------
+# The consumer LISTEN argv tail, appended after `dhs consumer <vt_proto>` —
+# e.g. [ listen, --bind, "0.0.0.0:8901", --tcp ]. The role redirects the
+# listener's decoded stdout to vt_listen_capture on the target.
+vt_listen_argv: []
+
+# One or more producer SEND invocations. Each item is the argv tail appended
+# after `dhs producer <vt_proto>` — e.g.
+#   - [ send, --dest, "127.0.0.1:8901", --tcp, --screen, "0", ... ]
+# Every entry runs in sequence after the listener is up; long-running listeners
+# pick up each frame.
+vt_send_argv_list: []
+
+# Absolute path on the TARGET where the backgrounded listener's decoded output
+# is captured (then read back + asserted). Defaults under dhs_dir, which is
+# per-OS from group_vars (/usr/local/bin on linux, C:\dhs on windows), so this
+# one expression resolves on both target families.
+vt_listen_capture: "{{ dhs_dir }}/dhs-{{ vt_proto }}-listen.out"
+
+# Substrings that MUST appear in the captured listener output after the sends.
+# Each is asserted with `<token> in capture`.
+vt_push_assert_contains: []
+
+# How long (seconds) the backgrounded listener runs. async timeout bounds it so
+# Ansible auto-expires it — no manual kill. Must outlast the send loop + read.
+vt_listen_ttl: 30
+
+# Seconds to let the listener bind + the sent frames arrive before reading the
+# capture back. Push transports (UDP/TCP) deliver fast; a small settle suffices.
+vt_push_settle: 5

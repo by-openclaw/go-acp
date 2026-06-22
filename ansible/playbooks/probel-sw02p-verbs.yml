@@ -1,0 +1,82 @@
+---
+# Probel SW-P-02 VERB-TEST contract play — drives the FULL consumer verb
+# catalogue on the TARGET against OUR producer served on the SAME target, end to
+# end over the wire. Mirrors probel-sw08p-verbs.yml exactly (deploy binary +
+# fixture, serve on target, drive every verb) per ADR-0025 deliverable 3
+# (Ansible the exclusive integration/verify/deploy driver) and ADR-0016
+# (one multi-OS binary, identical on every platform).
+#
+# SW-P-02 is single-matrix / single-level on the wire (§3.1), so unlike SW-P-08
+# the verbs carry NO --matrix / --level flags — host:port first, then per-verb
+# --dst / --src etc. (cmd/dhs/cmd_probel02p.go dispatcher lines 59-89).
+#
+# SW-P-02 has no separate vendor emulator: OUR provider IS the matrix emulator
+# (the committed demo matrix tree). The producer is ephemeral (TTL auto-expiry),
+# so run-twice = same result.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw02p-verbs.yml \
+#     -e @secrets/credentials.json
+- name: Probel SW-P-02 verb test (deploy binary + fixture, serve on target, drive every verb)
+  hosts: linux:windows
+  gather_facts: true
+  vars:
+    vt_host: "127.0.0.1"
+    vt_port: 12902
+  roles:
+    - role: dhs_verbtest
+      vars:
+        vt_proto: probel-sw02p
+
+        # Committed single-matrix demo tree; dest under dhs_dir (per-OS path).
+        vt_serve_files:
+          - src: "{{ playbook_dir }}/../../internal/probel-sw02p/testdata/exports/matrix_tree.json"
+            dest: "{{ dhs_dir }}/sw02p_matrix_tree.json"
+
+        # producer serve argv — --tree points at the DEPLOYED fixture on target.
+        vt_serve_argv:
+          - --tree
+          - "{{ dhs_dir }}/sw02p_matrix_tree.json"
+          - --port
+          - "{{ vt_port }}"
+          - --host
+          - "{{ vt_host }}"
+          - --log-level
+          - error
+
+        # Every SW-P-02 consumer verb (cmd_probel02p.go switch, lines 59-89).
+        # Each entry is the argv tail after `dhs consumer probel-sw02p`.
+        vt_verbs:
+          # --- core routing verbs ---
+          # connect: route src→dst (rx 02). cmd_probel02p.go:95 runProbelsw02pConnect.
+          - [connect, "{{ vt_host }}:{{ vt_port }}", --dst, "2", --src, "5"]
+          # interrogate: read current src on a dst (rx 01). cmd_probel02p.go:65.
+          - [interrogate, "{{ vt_host }}:{{ vt_port }}", --dst, "2"]
+          # connect-on-go: stage one crosspoint into the pending buffer (rx 05). :125.
+          - [connect-on-go, "{{ vt_host }}:{{ vt_port }}", --dst, "3", --src, "6"]
+          # go: commit the pending buffer (rx 06, --op set). :146.
+          - [go, "{{ vt_host }}:{{ vt_port }}", --op, set]
+          # salvo-connect: stage N crosspoints under a group then fire (rx 35+36). :180.
+          - [salvo-connect, "{{ vt_host }}:{{ vt_port }}", --src, "4", --dsts, "0-3", --salvo, "1"]
+          # --- protect family (Extended rx 101/102/104/105/103) ---
+          # protect-interrogate: read protect state on a dst (rx 101). :291.
+          - [protect-interrogate, "{{ vt_host }}:{{ vt_port }}", --dst, "2"]
+          # protect-connect: set a protect for a device (rx 102). :249.
+          - [protect-connect, "{{ vt_host }}:{{ vt_port }}", --dst, "2", --device, "9"]
+          # protect-disconnect: clear a protect (rx 104). :270.
+          - [protect-disconnect, "{{ vt_host }}:{{ vt_port }}", --dst, "2", --device, "9"]
+          # protect-dump: request a protect tally-dump fan-out (rx 105). :312.
+          - [protect-dump, "{{ vt_host }}:{{ vt_port }}", --first-dst, "0", --count, "8", --collect, "1s"]
+          # protect-name: resolve a device id → name (rx 103). :376.
+          - [protect-name, "{{ vt_host }}:{{ vt_port }}", --device, "9"]
+          # --- status / config (read-only) ---
+          # dual-status: dual-controller redundancy state (rx 050). :405.
+          - [dual-status, "{{ vt_host }}:{{ vt_port }}"]
+          # lock-status: source-lock bitmap, GET-only (rx 014). :430.
+          - [lock-status, "{{ vt_host }}:{{ vt_port }}", --controller, lh]
+          # status: controller status-2 (rx 07). :470.
+          - [status, "{{ vt_host }}:{{ vt_port }}", --controller, lh]
+          # router-config: router config / level map (rx 075). :501.
+          - [router-config, "{{ vt_host }}:{{ vt_port }}"]
+          # --- watch (bounded with --timeout so it returns) ---
+          # watch: subscribe to async tallies until --timeout (cmd_probel02p.go:351).
+          - [watch, "{{ vt_host }}:{{ vt_port }}", --dsts, "8", --srcs, "8", --timeout, "3s"]
