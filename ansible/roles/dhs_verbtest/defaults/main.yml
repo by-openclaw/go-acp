@@ -1,0 +1,66 @@
+---
+# dhs_verbtest — OS-portable verb-matrix engine for the real dhs binary.
+#
+# A connector play sets vt_proto / vt_serve_argv / vt_verbs (+ optional
+# overrides) and includes this role. ALL OS-specific logic (which command
+# module, which wait_for, the binary extension) lives in the role, so a
+# connector play carries ZERO per-OS code. See tasks/main.yml for the
+# Windows-vs-POSIX dispatch and the async-expiry producer model.
+
+# --- binary resolution -----------------------------------------------------
+# The compiled binary's filename is OS-dependent (Windows needs .exe). The
+# role's own `go build` step (tasks/main.yml) writes to exactly this name, so
+# the built artifact and the path the verbs invoke always agree.
+dhs_bin_name: "{{ 'dhs.exe' if ansible_os_family == 'Windows' else 'dhs' }}"
+
+# Repo root, relative to the playbook (ansible/playbooks/<play>.yml → repo).
+vt_repo_root: "{{ playbook_dir }}/../.."
+
+# Resolve the binary path: honour the DHS_BIN env override first (lets an
+# operator point at a pre-built binary), else <repo>/bin/<dhs_bin_name>.
+# The default is a path under the repo so the role's build step and the verb
+# loop reference the same file on every OS.
+dhs_bin: >-
+  {{ lookup('ansible.builtin.env', 'DHS_BIN')
+     | default(vt_repo_root ~ '/bin/' ~ dhs_bin_name, true) }}
+
+# --- per-OS scratch dir for producer logs ----------------------------------
+# Windows has no /tmp; use the per-user TEMP. POSIX uses /tmp.
+vt_tmp: "{{ (ansible_env.TEMP | default('C:/Windows/Temp')) if ansible_os_family == 'Windows' else '/tmp' }}"
+
+# --- producer lifecycle knobs ----------------------------------------------
+# The loopback producer is started fire-and-forget with async/poll:0 and a
+# bounded TTL. When the TTL expires Ansible's async job reaper kills the
+# producer for us — NO manual nohup / pkill / Stop-Process is needed, and the
+# net effect across a run is zero persistent change (ADR-0025 idempotency).
+# The TTL must exceed the time the whole verb matrix takes to run.
+vt_serve_ttl: 120
+
+# Loopback host + port the producer binds and the verbs dial.
+vt_host: "127.0.0.1"
+vt_port: 12908
+
+# How long wait_for blocks for the producer's listening socket before failing.
+vt_wait_timeout: 30
+
+# Default per-verb timeout (seconds) for the command/win_command task wrapper.
+# This is the Ansible-side async ceiling for a single verb, distinct from any
+# CLI --timeout the verb argv itself carries.
+vt_verb_timeout: 60
+
+# --- role parameters a connector play MUST supply --------------------------
+# vt_proto        protocol name, e.g. "probel-sw08p" (used in dispatch + log names)
+# vt_serve_argv   producer serve args AFTER the binary path, e.g.
+#                 [producer, "{{ vt_proto }}", serve, --tree, "{{ tree }}",
+#                  --port, "{{ vt_port }}", --host, "{{ vt_host }}",
+#                  --log-level, error]
+# vt_verbs        list of verb specs, each:
+#                   name:            human label for the task + assert
+#                   argv:            full consumer argv AFTER the binary path
+#                   assert_contains: list of substrings every one of which
+#                                    must appear in stdout
+#                 (the binary path is prepended by the role, so a verb's argv
+#                  starts at `consumer`).
+vt_proto: ""
+vt_serve_argv: []
+vt_verbs: []

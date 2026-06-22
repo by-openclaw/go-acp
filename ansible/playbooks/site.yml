@@ -1,14 +1,107 @@
 ---
-# Converge the ACP1 device from every OS client in the lab.
+# site.yml — top-level CROSS-OS verb-test orchestrator for dhs (ADR-0016).
 #
-#   ansible-playbook playbooks/site.yml                 # apply
-#   ansible-playbook playbooks/site.yml --check         # dry-run (maps to ensure --check)
-#   ansible-playbook playbooks/site.yml                 # run again -> changed=0 (idempotent)
+# This is the new role-driven entry point built on the dhs_verbtest role. It
+# chains two tiers and is designed to run identically on Windows, Linux and
+# macOS — the OS portability lives entirely in the role, so this file (and
+# each <proto>-verbs.yml it imports) carries ZERO per-OS code.
 #
-# The second apply run must report 0 changed for every host on every OS - that
-# is the idempotency proof the `ensure` verb was built for.
-- name: Converge ACP1 device state from every OS client
-  hosts: dhs_clients
-  gather_facts: true
-  roles:
-    - dhs_acp1
+#   UNIT    build + vet + go-test suite + per-package 100% coverage floors
+#           (unit-tests.yml). Portable: `go test` runs on every OS.
+#   SMOKE   each connector's CROSS-OS verb matrix — the dhs_verbtest role
+#           builds the real binary, starts a loopback producer fire-and-forget
+#           (async/poll:0 + bounded TTL → the async reaper tears it down, no
+#           manual kill; net change = zero → ADR-0025 idempotent), waits for
+#           the port, then drives EVERY consumer verb + asserts on stdout.
+#
+# Per ADR-0025 deliverable 3, Ansible is the EXCLUSIVE test / verify / deploy
+# driver (no PowerShell .ps1, no .sh, no .py wrapper).
+#
+# The pre-existing POSIX-oriented orchestrator (legacy *-integration.yml plays
+# + the multi-OS ACP1 converge + the gated external/live-oracle tier) is
+# preserved verbatim as `site-legacy.yml`. Run that when you need the external
+# integration tier against a live matrix, or the ACP1 converge. As each of the
+# remaining 7 connectors gains a <proto>-verbs.yml (below), it migrates from
+# site-legacy.yml to here.
+#
+# ── TAGS ────────────────────────────────────────────────────────────────────
+#   unit          only unit-tests.yml
+#   smoke         the cross-OS verb matrix of every wired connector
+#   <proto>       one connector across its tiers (e.g. probel-sw08p)
+#
+# ── USAGE ───────────────────────────────────────────────────────────────────
+#   # everything wired so far (unit + every cross-OS verb matrix), on the
+#   # controller's own OS (localhost):
+#   ansible-playbook -i inventory/hosts.ini playbooks/site.yml
+#
+#   # one tier:
+#   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --tags unit
+#   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --tags smoke
+#
+#   # one connector:
+#   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --tags probel-sw08p
+#
+#   # TARGET A SPECIFIC OS — the same plays, a different client. Each
+#   # <proto>-verbs.yml takes `hosts: {{ vt_target | default('localhost') }}`,
+#   # so pass an inventory group via -e vt_target=... (or -l to limit):
+#   ansible-playbook -i inventory/hosts.ini playbooks/site.yml -e vt_target=linux
+#   ansible-playbook -i inventory/hosts.ini playbooks/site.yml -e vt_target=windows
+#   ansible-playbook -i inventory/hosts.ini playbooks/site.yml -e vt_target=macos
+#   # (groups come from inventory/hosts.ini; the role auto-selects SSH vs WinRM
+#   #  modules off ansible_os_family — nothing in these plays changes per OS.)
+#
+# The EXTERNAL / live-oracle tier (read-safe verbs vs a real matrix gated on
+# <PROTO>_TEST_HOST) is NOT part of this verb-matrix orchestrator yet — it
+# still lives in site-legacy.yml. Folding it into the role (a vt_external_*
+# parameter set) is tracked in the role backlog.
+
+# ── UNIT ──────────────────────────────────────────────────────────────────
+- name: import unit-tests
+  ansible.builtin.import_playbook: unit-tests.yml
+  tags: [unit]
+
+# ── SMOKE (cross-OS verb matrix) per connector ──────────────────────────────
+# probel-sw08p is the proven template (richest verb set). Each import below is
+# one connector's <proto>-verbs.yml, which carries only data and delegates all
+# execution + OS dispatch to the dhs_verbtest role.
+- name: import probel-sw08p cross-OS verb matrix
+  ansible.builtin.import_playbook: probel-sw08p-verbs.yml
+  tags: [smoke, probel-sw08p]
+
+# ── TODO: remaining 7 connectors ────────────────────────────────────────────
+# Replicate probel-sw08p-verbs.yml per connector (copy the play, swap vt_proto
+# + vt_serve_argv + vt_verbs from that connector's cmd_<proto>.go verb table +
+# its committed fixture), then uncomment the matching import here. Order mirrors
+# the connector roadmap. NONE are wired yet — get the role reviewed on all
+# three OSes against probel-sw08p first, then this is pure data replication.
+#
+# - name: import probel-sw02p cross-OS verb matrix       # cmd_probel02p*.go
+#   ansible.builtin.import_playbook: probel-sw02p-verbs.yml
+#   tags: [smoke, probel-sw02p]
+#
+# - name: import acp1 cross-OS verb matrix               # cmd_acp1*.go / generic verb table
+#   ansible.builtin.import_playbook: acp1-verbs.yml
+#   tags: [smoke, acp1]
+#
+# - name: import acp2 cross-OS verb matrix               # cmd_acp2*.go / generic verb table
+#   ansible.builtin.import_playbook: acp2-verbs.yml
+#   tags: [smoke, acp2]
+#
+# - name: import emberplus cross-OS verb matrix          # generic verb table
+#   ansible.builtin.import_playbook: emberplus-verbs.yml
+#   tags: [smoke, emberplus]
+#
+# - name: import tsl cross-OS verb matrix                # cmd_tsl*.go (tsl-v31/40/50)
+#   ansible.builtin.import_playbook: tsl-verbs.yml
+#   tags: [smoke, tsl]
+#
+# - name: import osc cross-OS verb matrix                # cmd_osc*.go (osc-v10/v11)
+#   ansible.builtin.import_playbook: osc-verbs.yml
+#   tags: [smoke, osc]
+#
+# - name: import cerebrum-nb cross-OS verb matrix        # cmd_cerebrum*.go
+#   # NOTE: cerebrum-nb is consumer-only (no provider / no loopback producer),
+#   # so its play cannot use the role's serve+loopback path as-is — it needs an
+#   # external oracle. Wire it last and likely via the legacy external tier.
+#   ansible.builtin.import_playbook: cerebrum-nb-verbs.yml
+#   tags: [smoke, cerebrum-nb]

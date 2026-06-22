@@ -1,0 +1,29 @@
+---
+# Run ONE consumer verb (vt_verb) on Windows, then assert its stdout.
+# Included once per item by windows.yml's loop. The assert logic is identical
+# to posix_verb.yml (stdout substring match) — only the run module differs.
+
+- name: "{{ vt_proto }} verb — {{ vt_verb.name }}"
+  ansible.windows.win_command:
+    argv: "{{ [dhs_bin] + vt_verb.argv }}"
+  async: "{{ vt_verb.timeout | default(vt_verb_timeout) }}"
+  poll: 1
+  changed_when: false
+  failed_when: vt_verb_run.rc != 0
+  register: vt_verb_run
+
+- name: "{{ vt_proto }} verb — surface {{ vt_verb.name }} output (visible under -v)"
+  ansible.builtin.debug:
+    msg: "{{ vt_verb_run.stdout_lines | default([]) }}"
+
+- name: "{{ vt_proto }} verb — assert {{ vt_verb.name }} stdout contains its markers"
+  ansible.builtin.assert:
+    that:
+      - "vt_verb.assert_contains | difference(_present) | length == 0"
+    fail_msg: >-
+      {{ vt_proto }} verb '{{ vt_verb.name }}' stdout missing
+      {{ vt_verb.assert_contains | difference(_present) }} —
+      got: {{ vt_verb_run.stdout }}
+    quiet: true
+  vars:
+    _present: "{{ vt_verb.assert_contains | select('in', vt_verb_run.stdout) | list }}"

@@ -1,0 +1,40 @@
+---
+# POSIX (Linux + macOS, over SSH) verb matrix for one connector.
+#
+# Producer lifecycle = async-expiry, NOT manual kill:
+#   - start with ansible.builtin.command + async: {{ vt_serve_ttl }} + poll: 0
+#     → fire-and-forget. Ansible launches the producer detached and returns
+#     immediately. When vt_serve_ttl elapses the async job reaper terminates
+#     it. There is no nohup, no pkill, no `always:` teardown — the producer
+#     auto-expires, so a re-run starts from the same fixture and the net
+#     persistent change is zero (ADR-0025 idempotency).
+#   - wait_for the TCP port makes the start race-safe: no verb runs until the
+#     producer is actually accepting connections.
+
+- name: "{{ vt_proto }} — start the loopback producer (fire-and-forget, auto-expiring)"
+  ansible.builtin.command:
+    argv: "{{ [dhs_bin] + vt_serve_argv }}"
+  async: "{{ vt_serve_ttl }}"
+  poll: 0
+  changed_when: false
+  register: vt_producer
+
+- name: "{{ vt_proto }} — wait for the producer to accept connections on {{ vt_host }}:{{ vt_port }}"
+  ansible.builtin.wait_for:
+    host: "{{ vt_host }}"
+    port: "{{ vt_port }}"
+    timeout: "{{ vt_wait_timeout }}"
+
+- name: "{{ vt_proto }} — run + assert every consumer verb against the loopback producer"
+  ansible.builtin.include_tasks: posix_verb.yml
+  loop: "{{ vt_verbs }}"
+  loop_control:
+    loop_var: vt_verb
+    label: "{{ vt_verb.name }}"
+
+- name: "{{ vt_proto }} — POSIX verb matrix result"
+  ansible.builtin.debug:
+    msg: >-
+      {{ vt_proto }} verb matrix: PASS ({{ vt_verbs | length }} verbs driven
+      against the loopback producer, asserted; producer auto-expires →
+      run-twice = same result)

@@ -1,0 +1,63 @@
+---
+# dhs_verbtest entry point. Three stages:
+#   1. Gather facts — we NEED ansible_os_family for every dispatch decision
+#      and ansible_env (Windows TEMP) for vt_tmp. Connector plays may run with
+#      gather_facts:false, so force it here, scoped to this task.
+#   2. Build the real dhs binary to {{ dhs_bin }}. `go build -o <path>
+#      ./cmd/dhs` is portable across Linux/macOS/Windows; the only OS variance
+#      is the .exe extension, already baked into dhs_bin_name → dhs_bin. The
+#      go toolchain itself is invoked with the OS-appropriate command module.
+#   3. Hand off to posix.yml or windows.yml — the only files that name an
+#      OS-specific module. Everything a connector play sees is OS-neutral.
+
+- name: Gather the minimum facts the role dispatches on (os_family, env)
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "min"
+
+- name: Validate the role was given a connector to test
+  ansible.builtin.assert:
+    that:
+      - vt_proto | length > 0
+      - vt_serve_argv | length > 0
+      - vt_verbs | length > 0
+    fail_msg: >-
+      dhs_verbtest requires vt_proto, vt_serve_argv and vt_verbs to be set by
+      the calling play.
+    quiet: true
+
+# ---- build (POSIX) --------------------------------------------------------
+- name: "build — go build -o {{ dhs_bin }} ./cmd/dhs (POSIX)"
+  ansible.builtin.command:
+    chdir: "{{ vt_repo_root }}"
+    argv:
+      - go
+      - build
+      - -o
+      - "{{ dhs_bin }}"
+      - ./cmd/dhs
+  changed_when: false
+  when: ansible_os_family != "Windows"
+
+# ---- build (Windows) ------------------------------------------------------
+- name: "build — go build -o {{ dhs_bin }} ./cmd/dhs (Windows)"
+  ansible.windows.win_command:
+    chdir: "{{ vt_repo_root }}"
+    argv:
+      - go
+      - build
+      - -o
+      - "{{ dhs_bin }}"
+      - ./cmd/dhs
+  changed_when: false
+  when: ansible_os_family == "Windows"
+
+# ---- per-OS verb matrix ---------------------------------------------------
+- name: Run the verb matrix on a POSIX client (SSH)
+  ansible.builtin.include_tasks: posix.yml
+  when: ansible_os_family != "Windows"
+
+- name: Run the verb matrix on a Windows client (WinRM)
+  ansible.builtin.include_tasks: windows.yml
+  when: ansible_os_family == "Windows"

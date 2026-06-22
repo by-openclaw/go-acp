@@ -1,0 +1,29 @@
+---
+# Run ONE consumer verb (vt_verb) on POSIX, then assert its stdout.
+# Included once per item by posix.yml's loop, so the run + its assert share
+# the same vt_verb (no fragile index-zip across two registers).
+
+- name: "{{ vt_proto }} verb — {{ vt_verb.name }}"
+  ansible.builtin.command:
+    argv: "{{ [dhs_bin] + vt_verb.argv }}"
+  async: "{{ vt_verb.timeout | default(vt_verb_timeout) }}"
+  poll: 1
+  changed_when: false
+  failed_when: vt_verb_run.rc != 0
+  register: vt_verb_run
+
+- name: "{{ vt_proto }} verb — surface {{ vt_verb.name }} output (visible under -v)"
+  ansible.builtin.debug:
+    msg: "{{ vt_verb_run.stdout_lines | default([]) }}"
+
+- name: "{{ vt_proto }} verb — assert {{ vt_verb.name }} stdout contains its markers"
+  ansible.builtin.assert:
+    that:
+      - "vt_verb.assert_contains | difference(_present) | length == 0"
+    fail_msg: >-
+      {{ vt_proto }} verb '{{ vt_verb.name }}' stdout missing
+      {{ vt_verb.assert_contains | difference(_present) }} —
+      got: {{ vt_verb_run.stdout }}
+    quiet: true
+  vars:
+    _present: "{{ vt_verb.assert_contains | select('in', vt_verb_run.stdout) | list }}"

@@ -1,0 +1,122 @@
+---
+# site-legacy.yml — the PRE-dhs_verbtest orchestrator (preserved verbatim).
+#
+# This is the original site.yml, kept under a new name when the role-based
+# cross-OS verb-matrix tier (dhs_verbtest + <proto>-verbs.yml) was introduced
+# and `site.yml` was repurposed as the new top-level entry point. It chains
+# the legacy *-integration.yml plays (POSIX-oriented loopback + external) and
+# the multi-OS ACP1 converge. Use this until every connector has migrated to a
+# <proto>-verbs.yml driven by the dhs_verbtest role, after which it can be
+# retired.
+#
+# Per ADR-0025 deliverable 3, Ansible is the EXCLUSIVE test / verify / deploy
+# driver (no PowerShell .ps1, no .sh, no .py wrapper). This single entry point
+# chains the three test tiers across EVERY connector:
+#
+#   UNIT        build + vet + go-test suite + per-package 100% coverage floors
+#               (unit-tests.yml).
+#   SMOKE       each connector's LOOPBACK tier — start the in-process
+#               provider / emulator (or, for push protocols, a backgrounded
+#               listener) and drive EVERY consumer + producer verb against it
+#               with a per-verb assert. Always runs; needs no lab network.
+#   INTEGRATION each connector's EXTERNAL tier — the read-safe verbs against a
+#               live oracle, gated on <PROTO>_TEST_HOST. Skips cleanly when the
+#               var is unset, so it is safe to run unconditionally.
+#
+# Every <proto>-integration.yml holds BOTH its smoke (loopback) tier and its
+# integration (external) tier; this orchestrator imports each one once and
+# tags the plays so an operator can select a tier or a single connector.
+#
+# TAGS
+#   unit          only unit-tests.yml
+#   smoke         loopback tier of every connector (no live oracle needed)
+#   integration   external tier of every connector (gated on <PROTO>_TEST_HOST)
+#   converge      the multi-OS ACP1 ensure/idempotency converge (live clients)
+#   per-proto     acp1 acp2 emberplus probel-sw08p probel-sw02p tsl osc
+#                 cerebrum-nb  — select one connector across all its tiers
+#
+# Because smoke + integration live in the same imported play, --tags smoke and
+# --tags integration both enter every <proto>-integration.yml; the loopback
+# blocks short-circuit when only-external is wanted (and vice-versa) via the
+# per-tier `when:` guards already inside each play. Use a per-proto tag to run
+# exactly one connector end to end.
+#
+# USAGE
+#   # everything (unit + every smoke tier; external tiers skip unless gated):
+#   ansible-playbook -i inventory/hosts.ini playbooks/site-legacy.yml
+#
+#   # one tier:
+#   ansible-playbook -i inventory/hosts.ini playbooks/site-legacy.yml --tags unit
+#   ansible-playbook -i inventory/hosts.ini playbooks/site-legacy.yml --tags smoke
+#
+#   # external tier vs a live oracle (gate per connector with its TEST_HOST):
+#   PROBEL_SW08P_TEST_HOST=10.100.0.42 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/site-legacy.yml --tags integration
+#   ACP1_TEST_HOST=10.6.239.113 EMBERPLUS_TEST_HOST=10.6.239.113 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/site-legacy.yml --tags integration
+#
+#   # a single connector across all its tiers:
+#   ansible-playbook -i inventory/hosts.ini playbooks/site-legacy.yml --tags emberplus
+#
+#   # the multi-OS converge (the original site.yml behaviour):
+#   ansible-playbook -i inventory/hosts.ini playbooks/site-legacy.yml --tags converge
+
+# ── UNIT ──────────────────────────────────────────────────────────────────
+- name: import unit-tests
+  ansible.builtin.import_playbook: unit-tests.yml
+  tags: [unit]
+
+# ── SMOKE (loopback) + INTEGRATION (external) per connector ─────────────────
+# Each import carries BOTH the smoke and integration tier; the smoke/integration
+# tags both apply so a tier selection reaches every connector, and the per-proto
+# tag selects one connector across its tiers.
+- name: import acp1 integration (loopback smoke + external)
+  ansible.builtin.import_playbook: acp1-integration.yml
+  tags: [smoke, integration, acp1]
+
+- name: import acp2 integration (loopback smoke + external)
+  ansible.builtin.import_playbook: acp2-integration.yml
+  tags: [smoke, integration, acp2]
+
+- name: import emberplus integration (loopback smoke + external)
+  ansible.builtin.import_playbook: emberplus-integration.yml
+  tags: [smoke, integration, emberplus]
+
+- name: import probel-sw08p integration (loopback smoke + external)
+  ansible.builtin.import_playbook: probel-sw08p-integration.yml
+  tags: [smoke, integration, probel-sw08p]
+
+- name: import probel-sw02p integration (loopback smoke + external)
+  ansible.builtin.import_playbook: probel-sw02p-integration.yml
+  tags: [smoke, integration, probel-sw02p]
+
+- name: import tsl integration (loopback smoke + external)
+  ansible.builtin.import_playbook: tsl-integration.yml
+  tags: [smoke, integration, tsl]
+
+- name: import osc integration (loopback smoke + external)
+  ansible.builtin.import_playbook: osc-integration.yml
+  tags: [smoke, integration, osc]
+
+# cerebrum-nb has NO provider / NO emulator (consumer-only, licensed oracle):
+# it carries ONLY an external tier, so it is tagged integration (not smoke).
+- name: import cerebrum-nb integration (external only — no loopback by design)
+  ansible.builtin.import_playbook: cerebrum-nb-integration.yml
+  tags: [integration, cerebrum-nb]
+
+# ── CONVERGE (multi-OS ACP1 ensure idempotency — live clients) ──────────────
+# Preserved from the original site.yml: converge ACP1 device state from every
+# OS client. Lives behind the `converge` tag so the default site run (unit +
+# smoke) does not require the dhs_clients inventory group to be reachable.
+#
+#   ansible-playbook playbooks/site-legacy.yml --tags converge          # apply
+#   ansible-playbook playbooks/site-legacy.yml --tags converge --check  # dry-run
+#
+# The second apply run must report 0 changed for every host on every OS — that
+# is the idempotency proof the `ensure` verb was built for.
+- name: Converge ACP1 device state from every OS client
+  hosts: dhs_clients
+  gather_facts: true
+  tags: [converge]
+  roles:
+    - dhs_acp1

@@ -1,0 +1,464 @@
+---
+# probel-sw08p-verbs.yml — the CROSS-OS verb-matrix smoke play for Probel
+# SW-P-08 / SW-P-88. This is the TEMPLATE the other 7 connectors copy: it
+# carries ONLY data (the producer serve args + the full consumer verb list)
+# and delegates ALL execution + every per-OS decision to the dhs_verbtest
+# role. There is no `command` vs `win_command` here, no wait_for vs
+# win_wait_for, no .exe handling — the role owns all of that (ADR-0016).
+#
+# The role:
+#   1. go build -o <repo>/bin/dhs[.exe] ./cmd/dhs   (portable; ext per-OS)
+#   2. start `dhs producer probel-sw08p serve --tree matrix_tree.json ...`
+#      fire-and-forget (async/poll:0, bounded TTL → async reaper tears it
+#      down, no manual kill; net change = zero → ADR-0025 idempotent)
+#   3. wait_for the loopback port
+#   4. drive every verb below + assert on stdout substrings
+#
+# Producer serve flags are sourced from cmd/dhs/cmd_producer.go:
+#   --tree   line 45   --port line 48   --host line 49   --log-level line 51
+# (the probel provider ignores acp1-only flags like --transport / --announce.)
+#
+# EVERY verb below is a real subcommand dispatched in
+# cmd/dhs/cmd_probel.go runProbelsw08p() switch (lines 61-106); each is
+# source-cited inline. assert_contains markers are the literal fmt.Printf
+# prefixes in the verb's run function (also cited).
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw08p-verbs.yml
+#   # target a single OS group from the inventory:
+#   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw08p-verbs.yml -l linux
+#   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw08p-verbs.yml -l windows
+#
+# By default it runs on localhost (the controller's own OS). Point -l at an
+# inventory group to drive a remote Linux/macOS (SSH) or Windows (WinRM)
+# client — the role adapts with zero changes to this file.
+- name: Probel SW-P-08 cross-OS verb matrix (loopback, real binary)
+  hosts: "{{ vt_target | default('localhost') }}"
+  gather_facts: false
+  vars:
+    # Loopback bind/dial endpoint (also the role defaults; pinned here so the
+    # serve argv and the verb argv reference the same port unambiguously).
+    sw08p_host: "127.0.0.1"
+    sw08p_port: 12908
+    # The committed demo matrix fixture (single oneToN 16x16 matrix) — same
+    # artifact the legacy probel-sw08p-integration.yml serves.
+    sw08p_tree: "{{ playbook_dir }}/../../internal/probel-sw08p/testdata/exports/matrix_tree.json"
+    sw08p_addr: "{{ sw08p_host }}:{{ sw08p_port }}"
+  roles:
+    - role: dhs_verbtest
+      vars:
+        vt_proto: probel-sw08p
+        vt_host: "{{ sw08p_host }}"
+        vt_port: "{{ sw08p_port }}"
+
+        # ---- producer serve args (after the binary path) ------------------
+        # dhs producer probel-sw08p serve --tree <fixture> --port N --host H
+        #   --log-level error
+        # main.go dispatchProducer → runProducer (cmd_producer.go:42).
+        vt_serve_argv:
+          - producer
+          - probel-sw08p
+          - serve
+          - --tree
+          - "{{ sw08p_tree }}"
+          - --port
+          - "{{ sw08p_port | string }}"
+          - --host
+          - "{{ sw08p_host }}"
+          - --log-level
+          - error
+
+        # ---- the FULL consumer verb matrix -------------------------------
+        # Every entry's argv begins at `consumer` (the role prepends the
+        # binary path). Order: state-changing connect first so the read-backs
+        # have something to observe, then reads, then the write/diagnostic
+        # verbs. Each `# cmd_probel*.go:LINE` cites the dispatch + the output
+        # string the assert matches.
+        vt_verbs:
+          # connect — route dst 3 ← src 7. dispatch cmd_probel.go:77;
+          # runProbelConnect cmd_probel.go:449; output "crosspoint connected"
+          # cmd_probel.go:466.
+          - name: connect
+            argv:
+              - consumer
+              - probel-sw08p
+              - connect
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+              - --dst
+              - "3"
+              - --src
+              - "7"
+            assert_contains:
+              - "crosspoint connected"
+              - "dst=3"
+              - "src=7"
+
+          # interrogate — read back dst 3. dispatch cmd_probel.go:63;
+          # runProbelInterrogate cmd_probel.go:428; output "crosspoint tally"
+          # cmd_probel.go:444.
+          - name: interrogate
+            argv:
+              - consumer
+              - probel-sw08p
+              - interrogate
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+              - --dst
+              - "3"
+            assert_contains:
+              - "crosspoint tally"
+              - "dst=3"
+
+          # tally-dump — every crosspoint on M0 L0. dispatch cmd_probel.go:73;
+          # runProbelTallyDump cmd_probel.go:577; output "tally-dump (word|byte)"
+          # cmd_probel.go:594/601.
+          - name: tally-dump
+            argv:
+              - consumer
+              - probel-sw08p
+              - tally-dump
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+            assert_contains:
+              - "tally-dump"
+
+          # dual-status — 1:1 redundancy state. dispatch cmd_probel.go:70;
+          # runProbelDualStatus cmd_probel.go:548; output "dual-controller"
+          # cmd_probel.go:573.
+          - name: dual-status
+            argv:
+              - consumer
+              - probel-sw08p
+              - dual-status
+              - "{{ sw08p_addr }}"
+            assert_contains:
+              - "dual-controller"
+
+          # all-source-names — every source label. dispatch cmd_probel.go:89;
+          # runProbelAllSourceNames cmd_probel_names.go:75; output
+          # "source names" cmd_probel_names.go:91.
+          - name: all-source-names
+            argv:
+              - consumer
+              - probel-sw08p
+              - all-source-names
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+            assert_contains:
+              - "source names"
+
+          # single-source-name — one source label. dispatch cmd_probel.go:91;
+          # runProbelSingleSourceName cmd_probel_names.go:99; output
+          # "source name" cmd_probel_names.go:115.
+          - name: single-source-name
+            argv:
+              - consumer
+              - probel-sw08p
+              - single-source-name
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+              - --src
+              - "0"
+            assert_contains:
+              - "source name"
+
+          # all-dest-names — every dest-assoc label. dispatch cmd_probel.go:93;
+          # runProbelAllDestAssocNames cmd_probel_names.go:120; output
+          # "dest assoc names" cmd_probel_names.go:136.
+          - name: all-dest-names
+            argv:
+              - consumer
+              - probel-sw08p
+              - all-dest-names
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+            assert_contains:
+              - "dest assoc names"
+
+          # single-dest-name — one dest-assoc label. dispatch cmd_probel.go:95;
+          # runProbelSingleDestAssocName cmd_probel_names.go:144; output
+          # "dest assoc name" cmd_probel_names.go:160.
+          - name: single-dest-name
+            argv:
+              - consumer
+              - probel-sw08p
+              - single-dest-name
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --dst
+              - "0"
+            assert_contains:
+              - "dest assoc name"
+
+          # all-source-assoc-names — every source-assoc label. dispatch
+          # cmd_probel.go:97; runProbelAllSourceAssocNames
+          # cmd_probel_names.go:165; output "source assoc names"
+          # cmd_probel_names.go:181.
+          - name: all-source-assoc-names
+            argv:
+              - consumer
+              - probel-sw08p
+              - all-source-assoc-names
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+            assert_contains:
+              - "source assoc names"
+
+          # single-source-assoc-name — one source-assoc label. dispatch
+          # cmd_probel.go:99; runProbelSingleSourceAssocName
+          # cmd_probel_names.go:189; output "source assoc name"
+          # cmd_probel_names.go:205.
+          - name: single-source-assoc-name
+            argv:
+              - consumer
+              - probel-sw08p
+              - single-source-assoc-name
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --src
+              - "0"
+            assert_contains:
+              - "source assoc name"
+
+          # discover — one-shot read-only sweep. dispatch cmd_probel.go:87;
+          # runProbelDiscover cmd_probel_names.go:214; output "=== discover"
+          # cmd_probel_names.go:238 + "dual-status" cmd_probel_names.go:241.
+          - name: discover
+            argv:
+              - consumer
+              - probel-sw08p
+              - discover
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+            assert_contains:
+              - "=== discover"
+              - "dual-status"
+
+          # update-name — write a source label (rx 117, fire-and-forget).
+          # dispatch cmd_probel.go:101; runProbelUpdateName
+          # cmd_probel_update_name.go:23; output "update-name sent"
+          # cmd_probel_update_name.go:83.
+          - name: update-name
+            argv:
+              - consumer
+              - probel-sw08p
+              - update-name
+              - "{{ sw08p_addr }}"
+              - --type
+              - source
+              - --width
+              - "8"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+              - --first-id
+              - "0"
+              - --names
+              - "CAM1,CAM2"
+            assert_contains:
+              - "update-name sent"
+
+          # protect-interrogate — read protect on (M,L,dst). dispatch
+          # cmd_probel.go:75; runProbelProtectInterrogate cmd_probel.go:635;
+          # output "protect tally" cmd_probel.go:652.
+          - name: protect-interrogate
+            argv:
+              - consumer
+              - probel-sw08p
+              - protect-interrogate
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+              - --dst
+              - "3"
+            assert_contains:
+              - "protect tally"
+
+          # protect-connect — set a protect for a device. dispatch
+          # cmd_probel.go:77 (case protect-connect); runProbelProtectConnect
+          # cmd_probel.go:657; output "protect connected" cmd_probel.go:674.
+          - name: protect-connect
+            argv:
+              - consumer
+              - probel-sw08p
+              - protect-connect
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+              - --dst
+              - "3"
+              - --device
+              - "1"
+            assert_contains:
+              - "protect connected"
+
+          # protect-disconnect — clear a protect. dispatch cmd_probel.go:79;
+          # runProbelProtectDisconnect cmd_probel.go:679; output
+          # "protect disconnected" cmd_probel.go:696.
+          - name: protect-disconnect
+            argv:
+              - consumer
+              - probel-sw08p
+              - protect-disconnect
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+              - --dst
+              - "3"
+              - --device
+              - "1"
+            assert_contains:
+              - "protect disconnected"
+
+          # protect-name — resolve device id → name. dispatch cmd_probel.go:81;
+          # runProbelProtectName cmd_probel.go:701; output "name=" (printf
+          # `device %d name=%q`) cmd_probel.go:723.
+          - name: protect-name
+            argv:
+              - consumer
+              - probel-sw08p
+              - protect-name
+              - "{{ sw08p_addr }}"
+              - --device
+              - "1"
+            assert_contains:
+              - "name="
+
+          # protect-dump — every protect on (M,L). dispatch cmd_probel.go:83;
+          # runProbelProtectDump cmd_probel.go:727; output "protect tally-dump"
+          # cmd_probel.go:751.
+          - name: protect-dump
+            argv:
+              - consumer
+              - probel-sw08p
+              - protect-dump
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+            assert_contains:
+              - "protect tally-dump"
+
+          # master-protect — master-override protect connect. dispatch
+          # cmd_probel.go:85; runProbelMasterProtect cmd_probel.go:760; output
+          # "master-protect connected" cmd_probel.go:777.
+          - name: master-protect
+            argv:
+              - consumer
+              - probel-sw08p
+              - master-protect
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+              - --dst
+              - "4"
+              - --device
+              - "2"
+            assert_contains:
+              - "master-protect connected"
+
+          # maintenance — soft-reset maintenance message. dispatch
+          # cmd_probel.go:69 (case maintenance); runProbelMaintenance
+          # cmd_probel.go:507; output "maintenance sent" cmd_probel.go:544.
+          - name: maintenance
+            argv:
+              - consumer
+              - probel-sw08p
+              - maintenance
+              - "{{ sw08p_addr }}"
+              - --function
+              - soft-reset
+            assert_contains:
+              - "maintenance sent"
+
+          # salvo-connect — VSM-style staged batch connect (cmd 120/121).
+          # dispatch cmd_probel.go:105; runProbelSalvoConnect
+          # cmd_probel_salvo.go:29; output "=== salvo-connect:"
+          # cmd_probel_salvo.go:92 + "=== summary ===" cmd_probel_salvo.go:146.
+          - name: salvo-connect
+            argv:
+              - consumer
+              - probel-sw08p
+              - salvo-connect
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --level
+              - "0"
+              - --src
+              - "5"
+              - --dsts
+              - "0-2"
+              - --salvo
+              - "1"
+            assert_contains:
+              - "=== salvo-connect:"
+              - "=== summary ==="
+
+          # bench — tiny-size scale benchmark on a persistent TCP conn.
+          # --size kept small so the matrix runs fast. dispatch
+          # cmd_probel.go:103; runProbelBench cmd_probel_bench.go:30; output
+          # "=== Bench summary ===" cmd_probel_bench.go:104.
+          - name: bench
+            timeout: 120
+            argv:
+              - consumer
+              - probel-sw08p
+              - bench
+              - "{{ sw08p_addr }}"
+              - --matrix
+              - "0"
+              - --size
+              - "16"
+              - --progress
+              - "0"
+            assert_contains:
+              - "=== Bench summary ==="
+
+          # watch — subscribe to async tallies, bounded by --timeout so it
+          # returns instead of blocking on Ctrl-C. dispatch cmd_probel.go:67;
+          # runProbelWatch cmd_probel.go:474. Emits "event ..." only when a
+          # frame arrives, so we assert on a clean exit (rc==0) — no stdout
+          # marker is guaranteed for a quiet matrix.
+          - name: watch
+            timeout: 30
+            argv:
+              - consumer
+              - probel-sw08p
+              - watch
+              - "{{ sw08p_addr }}"
+              - --timeout
+              - "2s"
+            assert_contains: []

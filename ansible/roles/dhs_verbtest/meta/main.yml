@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  role_name: dhs_verbtest
+  author: by-rune
+  description: >-
+    OS-portable verb-matrix engine. Given a connector's producer serve args
+    and its full consumer verb list, builds the real dhs binary, starts a
+    loopback producer fire-and-forget (async/poll:0 with a bounded TTL so the
+    async reaper tears it down — no manual kill), waits for the port, then
+    drives every consumer verb and asserts on stdout. All OS-specific logic
+    (command vs win_command, wait_for vs win_wait_for, dhs vs dhs.exe) lives
+    here, so connector plays carry zero per-OS code. Per ADR-0016 multi-OS.
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: MacOSX
+      versions: [all]
+    - name: Windows
+      versions: [all]
+dependencies: []
