@@ -1,0 +1,14 @@
+---
+# One consumer verb on a Windows target. vt_verb is the argv tail appended after
+# `dhs consumer <vt_proto>` (e.g. [connect, host:port, --matrix, "0", ...]).
+- name: "verb: {{ vt_verb | join(' ') }}"
+  ansible.windows.win_command:
+    argv: "{{ ([dhs_bin, 'consumer', vt_proto] + vt_verb) }}"
+  register: vt_result
+  # Read-only verb drive against an ephemeral producer — assert rc, not change.
+  changed_when: false
+  failed_when: vt_result.rc != 0
+
+- name: "verb output: {{ vt_verb | join(' ') }}"
+  ansible.builtin.debug:
+    msg: "{{ vt_result.stdout_lines + vt_result.stderr_lines }}"

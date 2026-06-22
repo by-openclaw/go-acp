@@ -1,0 +1,87 @@
+---
+# Probel SW-P-08 VERB-TEST contract play — drives the FULL consumer verb
+# catalogue on the TARGET against OUR producer served on the SAME target, end to
+# end over the wire. Per ADR-0025 deliverable 3 (Ansible is the exclusive
+# integration / verify / deploy driver — no PowerShell .ps1) and ADR-0016
+# (the multi-OS binary behaves identically on every platform).
+#
+# Flow (per OS, via the dhs_verbtest role):
+#   1. CONTROL NODE cross-builds bin/dhs-linux-amd64 + bin/dhs-windows-amd64.exe
+#      (run_once) — the target has NO Go toolchain.
+#   2. The role DEPLOYS the per-OS binary (dhs_local_binary -> dhs_bin) AND the
+#      matrix_tree.json fixture (vt_serve_files) to the target under dhs_dir.
+#   3. The role SERVES `dhs producer probel-sw08p serve --tree <deployed>` on the
+#      target (async / poll:0 fire-and-forget; vt_serve_ttl auto-expires it —
+#      no manual kill), waits for the port, then drives every verb with the
+#      deployed dhs_bin against the local producer.
+#
+# SW-P-08 has no separate in-tree vendor emulator: OUR provider IS the matrix
+# emulator (single oneToN 16x16 matrix from the committed demo fixture). The
+# producer is ephemeral (TTL auto-expiry), so run-twice = same result.
+#
+# Run against the linux + windows fleet:
+#   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw08p-verbs.yml \
+#     -e @secrets/credentials.json
+- name: Probel SW-P-08 verb test (deploy binary + fixture, serve on target, drive every verb)
+  hosts: linux:windows
+  gather_facts: true
+  vars:
+    # The producer binds here on the target; every verb dials the same.
+    vt_host: "127.0.0.1"
+    vt_port: 12908
+  roles:
+    - role: dhs_verbtest
+      vars:
+        vt_proto: probel-sw08p
+
+        # Fixture the producer needs ON the target. Source is the committed demo
+        # matrix tree in the repo; dest is under dhs_dir (per-OS path from
+        # group_vars) so it resolves on both linux and windows.
+        vt_serve_files:
+          - src: "{{ playbook_dir }}/../../internal/probel-sw08p/testdata/exports/matrix_tree.json"
+            dest: "{{ dhs_dir }}/matrix_tree.json"
+
+        # producer serve argv — --tree points at the DEPLOYED fixture path on the
+        # target, NOT the repo path.
+        vt_serve_argv:
+          - --tree
+          - "{{ dhs_dir }}/matrix_tree.json"
+          - --port
+          - "{{ vt_port }}"
+          - --host
+          - "{{ vt_host }}"
+          - --log-level
+          - error
+
+        # 23 consumer verbs. Each entry is the argv tail appended after
+        # `dhs consumer probel-sw08p`. host:port first, then per-verb flags.
+        # connect/salvo-connect mutate the EPHEMERAL emulator only (wiped each
+        # run via TTL auto-expiry), so the whole play stays idempotent.
+        vt_verbs:
+          # --- core matrix verbs ---
+          - [connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3", --src, "7"]
+          - [interrogate, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [tally-dump, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
+          - [dual-status, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [maintenance, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
+          - [discover, "{{ vt_host }}:{{ vt_port }}"]
+          - [salvo-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dsts, "1,2", --srcs, "4,5"]
+          # --- protect verbs ---
+          - [protect-interrogate, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [protect-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [protect-disconnect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [protect-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [protect-dump, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
+          - [master-protect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          # --- name verbs ---
+          - [all-source-names, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
+          - [single-source-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --src, "7"]
+          - [all-dest-names, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
+          - [single-dest-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [all-source-assoc-names, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
+          - [single-source-assoc-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --src, "7"]
+          - [update-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --src, "7", --name, VT-SRC7]
+          # --- watch + bench ---
+          - [watch, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --count, "1"]
+          - [bench, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --count, "8"]
+          - [protect-dump, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "1"]

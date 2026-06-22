@@ -1,0 +1,49 @@
+---
+# Windows target (WinRM). Deploy the control-node-built binary + the producer's
+# tree fixture, serve it on the target, then drive the consumer verbs over the
+# wire. Module choices mirror dhs_acp1/tasks/windows.yml exactly.
+
+# ---- Deploy (mirror dhs_acp1/tasks/windows.yml exactly) ------------------
+- name: Create the dhs install directory
+  ansible.windows.win_file:
+    path: "{{ dhs_dir }}"
+    state: directory
+
+- name: Deploy the windows dhs binary
+  ansible.windows.win_copy:
+    src: "{{ dhs_local_binary }}"
+    dest: "{{ dhs_bin }}"
+
+# The binary alone isn't enough — `producer serve --tree <path>` needs the
+# fixture ON the target. Deploy each {src, dest} the connector play supplies.
+- name: Deploy the producer tree fixture(s) to the target
+  ansible.windows.win_copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop: "{{ vt_serve_files }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+# ---- Serve on the target (fire-and-forget, TTL auto-expiry) --------------
+# async + poll:0 = fire-and-forget; the async timeout (vt_serve_ttl) is the
+# producer's bounded lifetime, so Ansible auto-expires it — no manual kill.
+- name: Start the {{ vt_proto }} producer on the target
+  ansible.windows.win_command:
+    argv: "{{ ([dhs_bin, 'producer', vt_proto, 'serve'] + vt_serve_argv) }}"
+  async: "{{ vt_serve_ttl }}"
+  poll: 0
+  changed_when: false
+
+- name: Wait for the producer to accept connections
+  ansible.windows.win_wait_for:
+    host: "{{ vt_host }}"
+    port: "{{ vt_port }}"
+    timeout: "{{ vt_port_wait_timeout }}"
+
+# ---- Drive the verbs -----------------------------------------------------
+- name: Drive each consumer verb against the served producer
+  ansible.builtin.include_tasks: windows_verb.yml
+  loop: "{{ vt_verbs }}"
+  loop_control:
+    loop_var: vt_verb
+    label: "{{ vt_verb | join(' ') }}"

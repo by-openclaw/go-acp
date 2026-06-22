@@ -1,0 +1,34 @@
+---
+# dhs TEST ORCHESTRATOR — all tiers, all Ansible (no .ps1/.sh/.py), per
+# ADR-0016 multi-OS + ADR-0025. Imports the unit tier + the per-connector
+# verb matrices so one command runs the whole gate.
+#
+#   UNIT  — unit-tests.yml: go build + vet + the Go unit suite + strict-100%
+#           per-package coverage floors. Runs on the control node (localhost).
+#   SMOKE — <proto>-verbs.yml: the dhs_verbtest role cross-builds the binary on
+#           the control node, DEPLOYS it (+ the producer's tree fixture) to each
+#           OS client (Linux over SSH, win11 over WinRM), serves it, and drives
+#           EVERY consumer verb of that connector against it, asserting output.
+#           This is where the real dhs / dhs.exe is exercised on every OS.
+#
+# Run (from the Linux/WSL control node — Ansible is not a native-Windows
+# control node; win11 is a WinRM *target*, not the controller):
+#   ansible-playbook -i inventory/hosts.ini playbooks/test.yml -e @secrets/credentials.json
+#   ansible-playbook ... playbooks/test.yml --tags unit          # unit tier only
+#   ansible-playbook ... playbooks/test.yml --tags smoke         # verb matrices only
+#   ansible-playbook ... playbooks/test.yml --tags probel-sw08p  # one connector
+#   ansible-playbook ... playbooks/test.yml --limit win11        # one OS target
+#
+# (The integration tier = the same <proto>-verbs.yml verb matrices pointed at a
+# live device/oracle; the smoke tier above is the loopback equivalent.)
+- import_playbook: unit-tests.yml
+- import_playbook: probel-sw08p-verbs.yml
+# TODO (data-only replication via the dhs_verbtest role, once the probel-sw08p
+# template is confirmed green on a live Linux + win11 run):
+#   - import_playbook: acp1-verbs.yml
+#   - import_playbook: acp2-verbs.yml
+#   - import_playbook: emberplus-verbs.yml
+#   - import_playbook: probel-sw02p-verbs.yml
+#   - import_playbook: tsl-verbs.yml
+#   - import_playbook: osc-verbs.yml
+#   - import_playbook: cerebrum-nb-verbs.yml   # external-only (no provider/loopback)
