@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: dhs_verbtest
+  author: by-rune
+  description: >-
+    Drive a set of dhs consumer verbs on a target against a dhs producer served
+    on the same target, end-to-end over the wire. The dhs binary is cross-built
+    on the control node and deployed per-OS (no Go toolchain on the target),
+    mirroring dhs_acp1. Works on Linux (SSH) and Windows (WinRM).
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Windows
+      versions: [all]
+dependencies: []

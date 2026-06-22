@@ -1,0 +1,48 @@
+---
+# dhs_verbtest — drive a set of consumer verbs on the TARGET against a producer
+# that is ALSO served on the target, end-to-end over the wire. The dhs binary is
+# cross-built on the CONTROL NODE and DEPLOYED here (mirrors dhs_acp1); the
+# target needs NO Go toolchain.
+#
+# Binary + install paths come from inventory group_vars (linux.yml / windows.yml):
+#   dhs_dir / dhs_bin / dhs_local_binary
+# Do NOT redefine those here when a host is in the linux/windows groups — the
+# group_vars own them. The fallbacks below only exist so the role does not
+# explode if an ungrouped host happens to run it; a grouped host overrides them.
+dhs_dir: /usr/local/bin
+dhs_bin: /usr/local/bin/dhs
+dhs_local_binary: "{{ playbook_dir }}/../../bin/dhs-linux-amd64"
+
+# ---- Role parameters the connector play supplies -------------------------
+# Protocol name passed to `dhs producer <proto> serve` and
+# `dhs consumer <proto> <verb>`.
+vt_proto: ""
+
+# Extra argv appended after `dhs producer <vt_proto> serve`. The connector play
+# MUST point any --tree / --manifest at the DEPLOYED fixture path on the target
+# (e.g. "{{ dhs_dir }}/matrix_tree.json"), never the repo path.
+vt_serve_argv: []
+
+# Fixtures the producer needs ON THE TARGET. List of {src, dest}; src is a path
+# on the control node (typically under the repo), dest is an absolute path on the
+# target (typically under dhs_dir). Each is copied with copy / win_copy.
+vt_serve_files: []
+
+# Host / port the producer binds and the verbs dial.
+vt_host: "127.0.0.1"
+vt_port: 12908
+
+# Producer lifetime. The serve task runs async (poll:0, fire-and-forget); this
+# TTL (seconds) is the async timeout, so Ansible auto-expires the producer — no
+# manual kill needed. Make it comfortably longer than the verb loop takes.
+vt_serve_ttl: 120
+
+# How long to wait (seconds) for the producer port to accept connections.
+vt_port_wait_timeout: 30
+
+# The verbs to drive. Each item is a list of argv tokens APPENDED after
+# `dhs consumer <vt_proto>` — e.g.
+#   - [ connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3", --src, "7" ]
+# The role prepends dhs_bin + consumer + vt_proto and runs each with the
+# OS-appropriate command / win_command module.
+vt_verbs: []

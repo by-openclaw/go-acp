@@ -1,0 +1,48 @@
+---
+# Build BOTH per-OS binaries ONCE on the control node, then deploy + drive verbs
+# per target. NO Go toolchain on the target — same proven split as dhs_acp1.
+
+# ---- Cross-build on the control node (run_once, not per target) ----------
+# Both binaries are produced regardless of which OS the current target is, so a
+# mixed linux+windows play builds each artifact exactly once. The output paths
+# are EXACTLY what group_vars dhs_local_binary point at.
+- name: Cross-build the linux dhs binary on the control node
+  ansible.builtin.command:
+    argv:
+      - go
+      - build
+      - -o
+      - "{{ playbook_dir }}/../../bin/dhs-linux-amd64"
+      - ./cmd/dhs
+    chdir: "{{ playbook_dir }}/../.."
+  environment:
+    GOOS: linux
+    GOARCH: amd64
+  delegate_to: localhost
+  run_once: true
+  changed_when: false
+
+- name: Cross-build the windows dhs binary on the control node
+  ansible.builtin.command:
+    argv:
+      - go
+      - build
+      - -o
+      - "{{ playbook_dir }}/../../bin/dhs-windows-amd64.exe"
+      - ./cmd/dhs
+    chdir: "{{ playbook_dir }}/../.."
+  environment:
+    GOOS: windows
+    GOARCH: amd64
+  delegate_to: localhost
+  run_once: true
+  changed_when: false
+
+# ---- Dispatch by OS family (mirror dhs_acp1) -----------------------------
+- name: Drive the verb test on a POSIX client (SSH)
+  ansible.builtin.include_tasks: posix.yml
+  when: ansible_os_family != "Windows"
+
+- name: Drive the verb test on a Windows client (WinRM)
+  ansible.builtin.include_tasks: windows.yml
+  when: ansible_os_family == "Windows"
