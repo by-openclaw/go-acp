@@ -88,15 +88,23 @@ func (l *Listener) Start(ctx context.Context) {
 // call multiple times. Blocks until the goroutine exits so callers can
 // rely on no further callback invocations after Stop returns.
 func (l *Listener) Stop() {
+	started := l.cancel != nil
 	if l.cancel != nil {
 		l.cancel()
 	}
 	if l.conn != nil {
 		_ = l.conn.Close()
 	}
-	select {
-	case <-l.done:
-	default:
+	// Block until loop() has actually returned (it closes l.done via
+	// defer). This honours the documented contract — no callback fires
+	// after Stop — and makes loop()'s exit path deterministic rather than
+	// scheduling-dependent (the prior non-blocking select left it racing
+	// process exit, which surfaced as a flaky 99.9% coverage dip). Guard
+	// on `started` so Stop without a preceding Start (no goroutine, l.done
+	// never closed) doesn't block forever. A second Stop reads the already-
+	// closed channel and returns immediately, so it stays idempotent.
+	if started {
+		<-l.done
 	}
 }
 
