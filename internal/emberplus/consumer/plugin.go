@@ -1977,11 +1977,22 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	p.treeMu.RUnlock()
 
 	var state *matrix.State
+	// changedConns holds only the connections that genuinely rerouted a
+	// target we already knew — the subset worth a watch event. The initial
+	// tally (every target new) and provider re-broadcasts (same sources)
+	// are excluded so a big console matrix like DHD Device.Routing.2 doesn't
+	// flood the watch with hundreds of false "modified" lines (it streams
+	// the tally in multiple waves, which the old per-message first-sighting
+	// flag could not suppress past wave 1).
+	var changedConns []glow.Connection
 	isInitial := existing == nil || existing.matrixState == nil
 	if !isInitial {
 		state = existing.matrixState
 		for _, c := range m.Connections {
-			state.ApplyConnection(c, matrix.ChangeAnnounce)
+			existed, changed := state.ApplyConnectionReport(c, matrix.ChangeAnnounce)
+			if existed && changed {
+				changedConns = append(changedConns, c)
+			}
 		}
 	} else {
 		state = matrix.NewStateFromGlow(m)
@@ -2009,15 +2020,16 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	}
 	p.storeEntry(entry, stringPath)
 
-	// Notify subscribers of matrix crosspoint changes. On the first
-	// sight of a matrix (isInitial=true) we do NOT fire per-connection
-	// events — that would flood the watch with initial-state noise.
-	// On subsequent updates each announced Connection is a genuine
-	// crosspoint delta and fires one event. The Event carries the
-	// matrix OID/Path plus a MatrixChange payload identifying the
-	// specific crosspoint within it.
+	// Notify subscribers of matrix crosspoint changes. First sight of a
+	// matrix (isInitial=true) populates state silently — no initial-state
+	// noise. On later messages we fire ONLY for changedConns: connections
+	// that rerouted a target we already knew. That excludes both the
+	// initial tally streamed across multiple waves (targets still new) and
+	// provider re-broadcasts of the same tally (same sources). The Event
+	// carries the matrix OID/Path plus a MatrixChange payload identifying
+	// the specific crosspoint.
 	if !isInitial {
-		for _, c := range m.Connections {
+		for _, c := range changedConns {
 			p.notifyMatrixSubscribers(entry, c)
 		}
 	}
@@ -2031,7 +2043,16 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	// provider to emit the current tally. Many providers (incl.
 	// TinyEmberPlus) only send `connections` on demand, so without
 	// this call the matrix._meta.connections field stays empty.
-	if len(m.Connections) == 0 && len(numPath) > 0 {
+	//
+	// Gate on isInitial — same "first sighting" guard processNode uses
+	// for its lazy GetDirectory. A matrix with NO current routes is a
+	// legal steady state: the provider answers our GetDirectory with the
+	// matrix again, still connections-empty. Without the guard we'd
+	// re-request on every such reply, and since each reply keeps the walk
+	// settle-timer alive this spins forever (observed live on DHD
+	// Device.routing.2, a matrix with zero connections). One request on
+	// first sight is enough; empty-after-that means "no routes".
+	if isInitial && len(m.Connections) == 0 && len(numPath) > 0 {
 		if s := p.currentSession(); s != nil {
 			numCopy := cloneInt32Slice(numPath)
 			go func() {

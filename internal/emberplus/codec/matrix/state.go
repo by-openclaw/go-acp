@@ -117,11 +117,34 @@ func NewStateFromGlow(m *glow.Matrix) *State {
 //
 // Spec reference: Ember+ Documentation.pdf §Connection p. 89.
 func (s *State) ApplyConnection(c glow.Connection, source ChangeSource) {
+	_, _ = s.ApplyConnectionReport(c, source)
+}
+
+// ApplyConnectionReport is ApplyConnection plus a verdict the consumer
+// needs to suppress non-events on a watch:
+//
+//   - existed: the target was already in the tally before this apply.
+//     The initial GetDirectory tally makes every target new (existed=false)
+//     — and a big console matrix streams that tally in many waves, so the
+//     coarse per-message "first sighting" flag can't suppress waves 2..N.
+//     existed=false means "initial population", never a change event.
+//   - changed: the target's resolved source SET actually differs after the
+//     apply. Providers re-broadcast the full tally (and multi-frame chunks
+//     repeat it); existed=true + changed=false is such a no-op re-send and
+//     must stay silent.
+//
+// Only existed && changed is a genuine reroute worth announcing — which is
+// what makes Ember+ watch behave like acp2 (changes only, not initial state).
+func (s *State) ApplyConnectionReport(c glow.Connection, source ChangeSource) (existed bool, changed bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	tgt, ok := s.Targets[c.Target]
-	if !ok {
+	existed = ok
+	var before []int32
+	if ok {
+		before = append([]int32(nil), tgt.Sources...)
+	} else {
 		tgt = &TargetState{Target: c.Target}
 		s.Targets[c.Target] = tgt
 	}
@@ -133,10 +156,35 @@ func (s *State) ApplyConnection(c glow.Connection, source ChangeSource) {
 	default: // absolute
 		tgt.Sources = append([]int32(nil), c.Sources...)
 	}
+	changed = !sourceSetEqual(before, tgt.Sources)
 	tgt.Operation = c.Operation
 	tgt.Disposition = c.Disposition
 	tgt.LastChanged = time.Now()
 	tgt.ChangedBy = source
+	return existed, changed
+}
+
+// sourceSetEqual reports whether two source lists hold the same set of
+// source numbers, order-independent. Used to tell a real reroute from a
+// re-broadcast of the same tally.
+func sourceSetEqual(a, b []int32) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	if len(a) == 0 {
+		return true
+	}
+	seen := make(map[int32]int, len(a))
+	for _, x := range a {
+		seen[x]++
+	}
+	for _, x := range b {
+		if seen[x] == 0 {
+			return false
+		}
+		seen[x]--
+	}
+	return true
 }
 
 // Snapshot returns a deep copy of all target records, safe to pass up to
