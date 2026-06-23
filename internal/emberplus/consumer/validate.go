@@ -78,6 +78,18 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 
 		switch frame.MsgType {
 		case s101.MsgEmBER:
+			// Keep-alives are encoded as MsgEmBER with command 0x01/0x02 —
+			// the wire never uses a distinct MsgKeepAlive message type (see
+			// s101/frame.go: NewKeepAliveRequest/Response set MsgType=MsgEmBER).
+			// They carry no Glow payload and are frequent during streaming,
+			// so accept them here rather than flagging "unexpected command".
+			if frame.Command == s101.CmdKeepAliveReq || frame.Command == s101.CmdKeepAliveResp {
+				if len(frame.Payload) != 0 {
+					report.Invariants = append(report.Invariants,
+						fmt.Sprintf("trame %d: keep-alive carries unexpected payload (%d bytes)", i, len(frame.Payload)))
+				}
+				continue
+			}
 			if frame.Command != s101.CmdEmBER {
 				report.Invariants = append(report.Invariants,
 					fmt.Sprintf("trame %d: EmBER msg with unexpected command 0x%02x", i, frame.Command))
