@@ -72,10 +72,12 @@ ansible/secrets/*.vault
 !internal/**/testdata/scenarios/**/*.jsonl
 !internal/**/testdata/replay/**/*.jsonl
 !tests/fixtures/**/*.jsonl
-# Deliberate exception to the "never live captures" rule above: a full
-# real-device DHD console capture kept as the Ember+ decoder oracle +
-# matrix flood/spin regression fixture (user-approved 2026-06-24).
-!internal/emberplus/testdata/fixtures/dhd/*.jsonl
+# ADR-0020 Bucket 5 (amendment 2026-06-24): one full real-device decoder
+# oracle per protocol is committed under
+# internal/<proto>/testdata/fixtures/<device>/ to enrich the codec
+# regression with ground-truth device bytes (acp1/acp2/emberplus/probel).
+# Scratch --capture output under the repo-root captures/ tree stays ignored.
+!internal/**/testdata/fixtures/**/*.jsonl
 
 # ADR-0020 Bucket 4: cache + manual capture archive at repo root.
 # Both gitignored — wire traces are LOCAL ONLY (no LFS, no committed
