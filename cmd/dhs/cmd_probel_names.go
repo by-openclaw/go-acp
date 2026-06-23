@@ -307,7 +307,7 @@ func runProbelDiscover(ctx context.Context, args []string) error {
 					r.Word.MatrixID, r.Word.LevelID, r.Word.FirstDestinationID, len(r.Word.SourceIDs))
 				for i, s := range r.Word.SourceIDs {
 					if int(s) != 0 || i < 4 {
-						fmt.Printf("  dst=%d -> src=%d\n", int(r.Word.FirstDestinationID)+i, s)
+						fmt.Printf("  dst=%d <- src=%d\n", int(r.Word.FirstDestinationID)+i, s)
 					}
 					if i >= 15 {
 						fmt.Printf("  ... (first 16)\n")
@@ -319,7 +319,7 @@ func runProbelDiscover(ctx context.Context, args []string) error {
 					r.Byte.MatrixID, r.Byte.LevelID, r.Byte.FirstDestinationID, len(r.Byte.SourceIDs))
 				for i, s := range r.Byte.SourceIDs {
 					if s != 0 || i < 4 {
-						fmt.Printf("  dst=%d -> src=%d\n", int(r.Byte.FirstDestinationID)+i, s)
+						fmt.Printf("  dst=%d <- src=%d\n", int(r.Byte.FirstDestinationID)+i, s)
 					}
 					if i >= 15 {
 						fmt.Printf("  ... (first 16)\n")

@@ -458,7 +458,7 @@ func runProbelInterrogate(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("crosspoint tally  matrix=%d level=%d dst=%d -> src=%d\n",
+	fmt.Printf("crosspoint tally  matrix=%d level=%d dst=%d <- src=%d\n",
 		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.SourceID)
 	return nil
 }
@@ -613,14 +613,14 @@ func runProbelTallyDump(ctx context.Context, args []string) error {
 			res.Word.MatrixID, res.Word.LevelID,
 			res.Word.FirstDestinationID, len(res.Word.SourceIDs))
 		for i, src := range res.Word.SourceIDs {
-			fmt.Printf("  dst=%d -> src=%d\n", int(res.Word.FirstDestinationID)+i, src)
+			fmt.Printf("  dst=%d <- src=%d\n", int(res.Word.FirstDestinationID)+i, src)
 		}
 	} else {
 		fmt.Printf("tally-dump (byte) matrix=%d level=%d first_dst=%d tallies=%d\n",
 			res.Byte.MatrixID, res.Byte.LevelID,
 			res.Byte.FirstDestinationID, len(res.Byte.SourceIDs))
 		for i, src := range res.Byte.SourceIDs {
-			fmt.Printf("  dst=%d -> src=%d\n", int(res.Byte.FirstDestinationID)+i, src)
+			fmt.Printf("  dst=%d <- src=%d\n", int(res.Byte.FirstDestinationID)+i, src)
 		}
 	}
 	return nil
