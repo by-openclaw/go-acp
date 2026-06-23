@@ -26,6 +26,13 @@ var probelCSVSizes = []struct {
 	{"label_16", codec.NameLen16},
 }
 
+// probelReadNameSizes are the widths the name-RESPONSE commands (cmd 106/107)
+// actually return — SW-P-08 §3.3 supports 4/8/12 only. Width 16 is reserved for
+// update-name (rx 117) + UMD, so it is NOT readable: the export leaves the
+// label_16 column empty for the operator to fill before import (which DOES
+// support 16 via update-name).
+var probelReadNameSizes = []codec.NameLength{codec.NameLen4, codec.NameLen8, codec.NameLen12}
+
 // runProbelExport writes the router config of one (matrix, level) as three CSV
 // files — the recall set the operator edits and re-imports:
 //
@@ -67,12 +74,12 @@ func runProbelExport(ctx context.Context, args []string) error {
 	// Sources — read at each width.
 	srcLabels := map[codec.NameLength][]string{}
 	srcFirst := 0
-	for _, s := range probelCSVSizes {
-		r, rerr := p.AllSourceNames(cctx, mtx, level, s.nl)
+	for _, nl := range probelReadNameSizes {
+		r, rerr := p.AllSourceNames(cctx, mtx, level, nl)
 		if rerr != nil {
-			return fmt.Errorf("all-source-names size %d: %w", s.nl.Bytes(), rerr)
+			return fmt.Errorf("all-source-names size %d: %w", nl.Bytes(), rerr)
 		}
-		srcLabels[s.nl] = r.Names
+		srcLabels[nl] = r.Names
 		srcFirst = int(r.FirstSourceID)
 	}
 	srcPath := filepath.Join(*outDir, *prefix+"-src.csv")
@@ -83,12 +90,12 @@ func runProbelExport(ctx context.Context, args []string) error {
 	// Destinations — read at each width (matrix-scoped).
 	dstLabels := map[codec.NameLength][]string{}
 	dstFirst := 0
-	for _, s := range probelCSVSizes {
-		r, rerr := p.AllDestAssocNames(cctx, mtx, s.nl)
+	for _, nl := range probelReadNameSizes {
+		r, rerr := p.AllDestAssocNames(cctx, mtx, nl)
 		if rerr != nil {
-			return fmt.Errorf("all-dest-names size %d: %w", s.nl.Bytes(), rerr)
+			return fmt.Errorf("all-dest-names size %d: %w", nl.Bytes(), rerr)
 		}
-		dstLabels[s.nl] = r.Names
+		dstLabels[nl] = r.Names
 		dstFirst = int(r.FirstDestAssociationID)
 	}
 	dstPath := filepath.Join(*outDir, *prefix+"-dst.csv")
@@ -107,8 +114,8 @@ func runProbelExport(ctx context.Context, args []string) error {
 		return err
 	}
 
-	fmt.Printf("exported matrix=%d level=%d:\n  %s  (%d sources)\n  %s  (%d dests)\n  %s  (%d crosspoints)\n",
-		mtx, level, srcPath, len(srcLabels[codec.NameLen16]), dstPath, len(dstLabels[codec.NameLen16]), xpPath, nXP)
+	fmt.Printf("exported matrix=%d level=%d:\n  %s  (%d sources)\n  %s  (%d dests)\n  %s  (%d crosspoints)\n  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
+		mtx, level, srcPath, len(srcLabels[codec.NameLen12]), dstPath, len(dstLabels[codec.NameLen12]), xpPath, nXP)
 	return nil
 }
 
@@ -135,7 +142,7 @@ func writeProbelNameCSV(path, idCol string, mtx, level uint8, first int, sizeLab
 	}
 	for i := 0; i < n; i++ {
 		def := ""
-		if l := sizeLabels[codec.NameLen16]; i < len(l) {
+		if l := sizeLabels[codec.NameLen12]; i < len(l) { // widest READABLE width
 			def = trimProbelName(l[i])
 		}
 		row := []string{strconv.Itoa(int(mtx)), strconv.Itoa(int(level)), strconv.Itoa(first + i), def}
@@ -186,4 +193,191 @@ func writeProbelXpointCSV(path string, mtx, level uint8, res probelproto.TallyDu
 		}
 	}
 	return n, w.Error()
+}
+
+// labelColumnForSize maps a SW-P-08 width (4|8|12|16) to its column index in the
+// src/dst CSV (matrix_id,level_id,id,default_label,label_4,label_8,label_12,label_16).
+func labelColumnForSize(size int) (int, error) {
+	switch size {
+	case 4:
+		return 4, nil
+	case 8:
+		return 5, nil
+	case 12:
+		return 6, nil
+	case 16:
+		return 7, nil
+	}
+	return 0, fmt.Errorf("--size: expected 4|8|12|16, got %d", size)
+}
+
+// runProbelImport reads the CSVs written by `export` and applies them: src/dst
+// labels via update-name (at the width the operator selects with --size, reading
+// that one label_<size> column) and crosspoints via connect (one per dst <- src
+// row). --dry-run previews without sending. Crosspoints re-route the matrix, so
+// they are opt-in (--xpoints).
+func runProbelImport(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("probel-import", flag.ContinueOnError)
+	inDir := fs.String("in", ".", "directory containing the CSV files")
+	prefix := fs.String("prefix", "sw08p", "CSV filename prefix")
+	size := fs.Int("size", 8, "which label width column to import: 4 | 8 | 12 | 16")
+	dryRun := fs.Bool("dry-run", false, "preview the would-send actions without sending")
+	doLabels := fs.Bool("labels", true, "import src + dst labels")
+	doXpoints := fs.Bool("xpoints", false, "import crosspoints (RE-ROUTES the matrix)")
+	timeout := fs.Duration("timeout", 300*time.Second, "overall timeout")
+	addr, flagArgs := popPositional(args)
+	if addr == "" {
+		return fmt.Errorf("missing <host:port>")
+	}
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
+	width, err := parseNameLen(strconv.Itoa(*size))
+	if err != nil {
+		return err
+	}
+	col, err := labelColumnForSize(*size)
+	if err != nil {
+		return err
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, *timeout)
+	defer cancel()
+	p, closer, err := dialProbel(cctx, addr)
+	if err != nil {
+		return err
+	}
+	defer closer()
+
+	if *doLabels {
+		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-src.csv"), "source", col, width, *dryRun); err != nil {
+			return err
+		}
+		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-dst.csv"), "dest-assoc", col, width, *dryRun); err != nil {
+			return err
+		}
+	}
+	if *doXpoints {
+		if err := applyProbelXpointCSV(cctx, p, filepath.Join(*inDir, *prefix+"-xpoint.csv"), *dryRun); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("crosspoints: skipped (pass --xpoints to apply; it re-routes the matrix)")
+	}
+	return nil
+}
+
+// readProbelCSV reads a CSV (lenient on field count) and returns all records
+// including the header row.
+func readProbelCSV(path string) ([][]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", path, err)
+	}
+	defer func() { _ = f.Close() }()
+	r := csv.NewReader(f)
+	r.FieldsPerRecord = -1
+	return r.ReadAll()
+}
+
+// applyProbelNameCSV pushes one width column of labels via update-name. Labels
+// are batched into contiguous id runs sized to fit the SW-P-08 DATA cap.
+func applyProbelNameCSV(ctx context.Context, p *probelproto.Plugin, path, typ string, col int, width codec.NameLength, dryRun bool) error {
+	rows, err := readProbelCSV(path)
+	if err != nil {
+		return err
+	}
+	if len(rows) < 2 {
+		return nil
+	}
+	nameType, err := parseUpdateNameType(typ)
+	if err != nil {
+		return err
+	}
+	type item struct {
+		id       int
+		label    string
+		mtx, lvl uint8
+	}
+	var items []item
+	for _, rec := range rows[1:] {
+		if len(rec) <= col {
+			continue
+		}
+		id, e1 := strconv.Atoi(strings.TrimSpace(rec[2]))
+		mtx, e2 := strconv.Atoi(strings.TrimSpace(rec[0]))
+		lvl, e3 := strconv.Atoi(strings.TrimSpace(rec[1]))
+		if e1 != nil || e2 != nil || e3 != nil {
+			continue
+		}
+		items = append(items, item{id: id, label: rec[col], mtx: uint8(mtx), lvl: uint8(lvl)})
+	}
+	perFrame := 120 / int(width.Bytes())
+	if perFrame < 1 {
+		perFrame = 1
+	}
+	sent := 0
+	for i := 0; i < len(items); {
+		start := items[i]
+		names := []string{start.label}
+		j := i + 1
+		for j < len(items) && items[j].id == items[j-1].id+1 && len(names) < perFrame {
+			names = append(names, items[j].label)
+			j++
+		}
+		if dryRun {
+			fmt.Printf("[dry-run] %s update-name matrix=%d level=%d first=%d count=%d width=%d\n",
+				typ, start.mtx, start.lvl, start.id, len(names), width.Bytes())
+		} else {
+			err := p.UpdateNameRequest(ctx, codec.UpdateNameRequestParams{
+				NameType: nameType, NameLength: width,
+				MatrixID: start.mtx, LevelID: start.lvl,
+				FirstID: uint16(start.id), Names: names,
+			})
+			if err != nil {
+				return fmt.Errorf("update-name %s first=%d: %w", typ, start.id, err)
+			}
+		}
+		sent += len(names)
+		i = j
+	}
+	verb := "updated"
+	if dryRun {
+		verb = "would update"
+	}
+	fmt.Printf("%s labels: %s %d (width %d) from %s\n", typ, verb, sent, width.Bytes(), filepath.Base(path))
+	return nil
+}
+
+// applyProbelXpointCSV connects each dst <- src crosspoint from the CSV.
+func applyProbelXpointCSV(ctx context.Context, p *probelproto.Plugin, path string, dryRun bool) error {
+	rows, err := readProbelCSV(path)
+	if err != nil {
+		return err
+	}
+	n := 0
+	for _, rec := range rows[1:] {
+		if len(rec) < 4 {
+			continue
+		}
+		mtx, e1 := strconv.Atoi(strings.TrimSpace(rec[0]))
+		lvl, e2 := strconv.Atoi(strings.TrimSpace(rec[1]))
+		dst, e3 := strconv.Atoi(strings.TrimSpace(rec[2]))
+		src, e4 := strconv.Atoi(strings.TrimSpace(rec[3]))
+		if e1 != nil || e2 != nil || e3 != nil || e4 != nil {
+			continue
+		}
+		if !dryRun {
+			if _, err := p.CrosspointConnect(ctx, uint8(mtx), uint8(lvl), uint16(dst), uint16(src)); err != nil {
+				return fmt.Errorf("connect dst=%d src=%d: %w", dst, src, err)
+			}
+		}
+		n++
+	}
+	verb := "connected"
+	if dryRun {
+		verb = "would connect"
+	}
+	fmt.Printf("crosspoints: %s %d routes (dst <- src) from %s\n", verb, n, filepath.Base(path))
+	return nil
 }
