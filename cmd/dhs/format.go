@@ -16,12 +16,46 @@ import (
 // parent path joined with `.`. Nodes with no path fall back to Group.
 func sectionHeader(o consumer.Object) string {
 	if len(o.Path) > 1 {
-		return strings.Join(o.Path[:len(o.Path)-1], ".")
+		return stripDisplayRoot(strings.Join(o.Path[:len(o.Path)-1], "."))
 	}
 	if len(o.Path) == 1 {
-		return o.Path[0]
+		return stripDisplayRoot(o.Path[0])
 	}
 	return o.Group
+}
+
+// displayRoots are top-level container labels stripped from displayed
+// paths so the output matches the addressable (root-stripped) form the
+// resolver already accepts (consumer.ResolveObjectIndex / pathHasSuffix)
+// AND the form Cerebrum shows on its UI — e.g. "ROOT_NODE_V2.REFERENCE.X"
+// renders as "REFERENCE.X". Mirrors the export root-strip in
+// internal/export/{json,yaml}.go. Ember+ paths never start with these
+// labels, so they pass through untouched.
+var displayRoots = []string{"ROOT_NODE_V2", "ROOT"}
+
+// stripDisplayRoot drops a leading "<root>." segment from a dotted path
+// string for display only. The bare root (no children) is left as-is so
+// the root itself stays visible. Case-insensitive, matching the export.
+func stripDisplayRoot(path string) string {
+	for _, r := range displayRoots {
+		if len(path) > len(r)+1 && strings.EqualFold(path[:len(r)+1], r+".") {
+			return path[len(r)+1:]
+		}
+	}
+	return path
+}
+
+// isDisplayRoot reports whether a single path segment is a device root
+// label (ROOT_NODE_V2 / ROOT). Used to collapse the root anchor out of
+// the tree view so it starts at the root's children — same convention as
+// stripDisplayRoot for flat path strings.
+func isDisplayRoot(seg string) bool {
+	for _, r := range displayRoots {
+		if strings.EqualFold(seg, r) {
+			return true
+		}
+	}
+	return false
 }
 
 // printSlotTree is the shared render helper used by `walk --slot N` and

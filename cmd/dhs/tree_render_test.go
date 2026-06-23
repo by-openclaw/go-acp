@@ -36,7 +36,13 @@ func TestRenderTree_FullFromRoot(t *testing.T) {
 		t.Fatalf("renderTree: %v", err)
 	}
 	out := buf.String()
-	for _, want := range []string{"ROOT_NODE_V2", "INPUT", "OUTPUT", "CHANNEL 01", "Direction", "Used"} {
+	// The device root ROOT_NODE_V2 is collapsed out of the view so the tree
+	// starts at its children — matches the root-stripped path strings and
+	// Cerebrum's UI.
+	if strings.Contains(out, "ROOT_NODE_V2") {
+		t.Errorf("device root ROOT_NODE_V2 should be collapsed, not rendered:\n%s", out)
+	}
+	for _, want := range []string{"INPUT", "OUTPUT", "CHANNEL 01", "Direction", "Used"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected %q in output:\n%s", want, out)
 		}
@@ -53,8 +59,12 @@ func TestRenderTree_FocusByPath_RendersAncestorChain(t *testing.T) {
 		t.Fatalf("renderTree: %v", err)
 	}
 	out := buf.String()
-	// Ancestor chain ROOT_NODE_V2 -> INPUT -> SDI -> CHANNEL 01 must be present.
-	for _, want := range []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01", "Direction", "Used", "Video Format"} {
+	// Ancestor chain INPUT -> SDI -> CHANNEL 01 must be present; the
+	// collapsed root ROOT_NODE_V2 must not.
+	if strings.Contains(out, "ROOT_NODE_V2") {
+		t.Errorf("collapsed root ROOT_NODE_V2 should not render:\n%s", out)
+	}
+	for _, want := range []string{"INPUT", "SDI", "CHANNEL 01", "Direction", "Used", "Video Format"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected %q in focused output:\n%s", want, out)
 		}
@@ -76,7 +86,10 @@ func TestRenderTree_FocusByOID_ResolvesToPath(t *testing.T) {
 		t.Fatalf("renderTree: %v", err)
 	}
 	out := buf.String()
-	for _, want := range []string{"ROOT_NODE_V2", "INPUT", "SDI", "CHANNEL 01", "Direction"} {
+	if strings.Contains(out, "ROOT_NODE_V2") {
+		t.Errorf("collapsed root ROOT_NODE_V2 should not render:\n%s", out)
+	}
+	for _, want := range []string{"INPUT", "SDI", "CHANNEL 01", "Direction"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected %q in OID-focused output:\n%s", want, out)
 		}

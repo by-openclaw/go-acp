@@ -268,6 +268,11 @@ func runWatch(ctx context.Context, args []string) error {
 			if oid == "" {
 				oid = fmt.Sprintf("s%d.%s.%d", ev.Slot, ev.Group, ev.ID)
 			}
+			// Strip the device root (ROOT_NODE_V2 / ROOT) from the
+			// displayed path so it matches Cerebrum's UI and the
+			// root-stripped form --path accepts. Display only; ev.Path
+			// is not used for resolution past this point.
+			ev.Path = stripDisplayRoot(ev.Path)
 
 			// Matrix crosspoint events render differently —
 			// target/sources/disposition replace the single value

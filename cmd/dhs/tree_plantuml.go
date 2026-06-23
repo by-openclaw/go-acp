@@ -57,7 +57,17 @@ func renderTreePlantUML(w io.Writer, objs []consumer.Object, opts treeRenderOpts
 	if _, err := fmt.Fprintln(w, "* device"); err != nil {
 		return err
 	}
-	for _, c := range root.sortedChildren() {
+	children := root.sortedChildren()
+	// Collapse the single device-root anchor (ROOT_NODE_V2 / ROOT) so the
+	// mindmap starts at its children — matches the ASCII tree and the
+	// root-stripped path strings. Drop the matching focus head in lock-step.
+	if len(children) == 1 && isDisplayRoot(children[0].Name) {
+		if len(focus) > 0 && strings.EqualFold(focus[0], children[0].Name) {
+			focus = focus[1:]
+		}
+		children = children[0].sortedChildren()
+	}
+	for _, c := range children {
 		renderPlantUMLNode(w, c, 2, focus, 0, opts.Depth, filterLower)
 	}
 	if _, err := fmt.Fprintln(w, "@endmindmap"); err != nil {
