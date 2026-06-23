@@ -36,7 +36,7 @@ func runTree(ctx context.Context, args []string) error {
 	out := fs.String("out", "", "write to this file instead of stdout")
 	filter := fs.String("filter", "", "case-insensitive substring filter (drops non-matching lines)")
 	dmIdentity := fs.String("dm", "", "Ember+ DM identity for offline hot-load (e.g. \"dhs-emberplus-integration@1.0.0\"). Skips wire walk; no host connection required.")
-	noWalk := fs.Bool("no-walk", false, "Ember+ only: fail fast on cache miss instead of falling back to a wire walk")
+	noWalk := fs.Bool("no-walk", false, "fail fast on a DM cache miss instead of falling back to a wire walk (acp1/acp2/ember+)")
 
 	host, rest, err := popHost(args)
 	dmOnly := false
@@ -94,15 +94,26 @@ func runTree(ctx context.Context, args []string) error {
 		}
 		defer cleanup()
 		// Ember+ DM auto-cache: hot-load when --dm hits, else walk +
-		// auto-extract. Non-Ember+ protocols walk every time.
+		// auto-extract.
 		if cf.protocol == "emberplus" {
 			if err := ensureEmberplusTree(ctx, plug, host, cf.port, *dmIdentity, *slot, *noWalk); err != nil {
 				return err
 			}
+		} else {
+			// acp1/acp2: seed from the identity-keyed DM cache first so
+			// `tree` renders without a full per-card walk — a CONVERT Hybrid
+			// slot is ~40k objects and a live walk times out. Walk() consults
+			// the seeded tree cache (plugin.go:380) and returns it; on a cache
+			// miss it falls through to a live walk. Mirrors cmd_get/cmd_set.
+			if !hotLoadIdentityDM(ctx, plug, cf.protocol, *slot) && *noWalk {
+				return fmt.Errorf("--no-walk: no DM cached for slot %d (run 'walk --slot %d' once to populate .cache/dm/%s/, or drop --no-walk)", *slot, *slot, cf.protocol)
+			}
 		}
-		opCtx, cancel := withTimeout(ctx, cf.timeout)
-		defer cancel()
-		o, werr := plug.Walk(opCtx, *slot)
+		// Walks run until done — do NOT bound by --timeout (the 1s per-op
+		// default can't enumerate a 40k-object slot; this matches `walk`,
+		// whose flag help says walks ignore --timeout). On a DM cache hit
+		// above, Walk returns the seeded tree instantly anyway.
+		o, werr := plug.Walk(ctx, *slot)
 		if werr != nil {
 			return werr
 		}
