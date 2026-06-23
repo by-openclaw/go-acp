@@ -19,3 +19,9 @@
 *.EmBER filter=lfs diff=lfs merge=lfs -text
 *.Ember filter=lfs diff=lfs merge=lfs -text
 *.dat filter=lfs diff=lfs merge=lfs -text
+
+# Real DHD console capture fixture (Ember+ decoder oracle + matrix
+# regression). Byte-stable golden: no EOL conversion so the pinned frame
+# count stays exact across platforms. Regular blob, not LFS (LFS disabled
+# above). Deliberate full live-capture exception, user-approved 2026-06-24.
+internal/emberplus/testdata/fixtures/dhd/* -text
