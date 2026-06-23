@@ -211,19 +211,25 @@ func labelColumnForSize(size int) (int, error) {
 	return 0, fmt.Errorf("--size: expected 4|8|12|16, got %d", size)
 }
 
-// runProbelImport reads the CSVs written by `export` and applies them: src/dst
-// labels via update-name (at the width the operator selects with --size, reading
-// that one label_<size> column) and crosspoints via connect (one per dst <- src
-// row). --dry-run previews without sending. Crosspoints re-route the matrix, so
-// they are opt-in (--xpoints).
+// runProbelImport reads the CSVs written by `export` and applies them. Each file
+// is selectable independently — import all or one at a time:
+//
+//	--src       src labels  (sw08p-src.csv)      via update-name
+//	--dst       dst labels  (sw08p-dst.csv)      via update-name
+//	--xpoints   crosspoints (sw08p-xpoint.csv)   via connect (RE-ROUTES the matrix)
+//
+// With no selector, it defaults to labels (src + dst) and skips crosspoints.
+// --size picks which label_<N> column drives the labels. --dry-run previews
+// without sending.
 func runProbelImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-import", flag.ContinueOnError)
 	inDir := fs.String("in", ".", "directory containing the CSV files")
 	prefix := fs.String("prefix", "sw08p", "CSV filename prefix")
 	size := fs.Int("size", 8, "which label width column to import: 4 | 8 | 12 | 16")
 	dryRun := fs.Bool("dry-run", false, "preview the would-send actions without sending")
-	doLabels := fs.Bool("labels", true, "import src + dst labels")
-	doXpoints := fs.Bool("xpoints", false, "import crosspoints (RE-ROUTES the matrix)")
+	doSrc := fs.Bool("src", false, "import source labels (<prefix>-src.csv)")
+	doDst := fs.Bool("dst", false, "import destination labels (<prefix>-dst.csv)")
+	doXpoints := fs.Bool("xpoints", false, "import crosspoints (<prefix>-xpoint.csv; RE-ROUTES the matrix)")
 	timeout := fs.Duration("timeout", 300*time.Second, "overall timeout")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
@@ -231,6 +237,10 @@ func runProbelImport(ctx context.Context, args []string) error {
 	}
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
+	}
+	// No selector → default to labels only (never auto-reroute crosspoints).
+	if !*doSrc && !*doDst && !*doXpoints {
+		*doSrc, *doDst = true, true
 	}
 	width, err := parseNameLen(strconv.Itoa(*size))
 	if err != nil {
@@ -249,10 +259,12 @@ func runProbelImport(ctx context.Context, args []string) error {
 	}
 	defer closer()
 
-	if *doLabels {
+	if *doSrc {
 		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-src.csv"), "source", col, width, *dryRun); err != nil {
 			return err
 		}
+	}
+	if *doDst {
 		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-dst.csv"), "dest-assoc", col, width, *dryRun); err != nil {
 			return err
 		}
@@ -261,8 +273,6 @@ func runProbelImport(ctx context.Context, args []string) error {
 		if err := applyProbelXpointCSV(cctx, p, filepath.Join(*inDir, *prefix+"-xpoint.csv"), *dryRun); err != nil {
 			return err
 		}
-	} else {
-		fmt.Println("crosspoints: skipped (pass --xpoints to apply; it re-routes the matrix)")
 	}
 	return nil
 }

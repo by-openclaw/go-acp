@@ -150,8 +150,8 @@ SUBCOMMANDS
   export                    write router config of (matrix, level) as 3 CSVs:
                             <prefix>-src.csv / -dst.csv (labels @ 4/8/12/16)
                             + -xpoint.csv (crosspoints, dst <- src)
-  import                    apply those CSVs back: labels (--size selects the
-                            width column) + crosspoints (--xpoints); --dry-run
+  import                    apply CSVs back, each file selectable: --src / --dst
+                            (labels, --size picks width) / --xpoints; --dry-run
 
 EXAMPLES
   dhs consumer probel-sw08p interrogate         127.0.0.1:2008 --matrix 0 --level 0 --dst 5
