@@ -115,3 +115,46 @@ func TestProcessMatrix_TallyFloodSuppressed(t *testing.T) {
 		t.Fatalf("one real reroute should fire exactly one event, got %d", got)
 	}
 }
+
+// TestProcessMatrix_ConnectionDeltaPreservesContents is the regression for
+// the DHD matrix-label loss: a provider sends full MatrixContents once
+// (targetCount/sourceCount/labels) then connection-only deltas. The delta
+// must NOT wipe the static contents — otherwise targetCount resets to 0 and
+// the labels descriptor is dropped, so crosspoint labels vanish. Ground
+// truth from the DHD (Ember+ Viewer XML): targetCount 147, sourceCount 130,
+// labels basePath 0.5.1 "Primary".
+func TestProcessMatrix_ConnectionDeltaPreservesContents(t *testing.T) {
+	p := freshPlugin()
+
+	// Full MatrixContents (first sight).
+	p.handleElements([]glow.Element{{Matrix: &glow.Matrix{
+		Number: 2, Identifier: "matrix", MatrixType: glow.MatrixTypeNToN,
+		AddressingMode: 1, TargetCount: 147, SourceCount: 130,
+		Labels:      []glow.Label{{BasePath: []int32{0, 5, 1}, Description: "Primary"}},
+		Connections: []glow.Connection{{Target: 20, Sources: []int32{126}}},
+	}}})
+
+	// Connection-only delta: a later reroute, no MatrixContents fields.
+	p.handleElements([]glow.Element{{Matrix: &glow.Matrix{
+		Number: 2, Identifier: "matrix",
+		Connections: []glow.Connection{{Target: 21, Sources: []int32{69}}},
+	}}})
+
+	e := p.numIndex["2"]
+	if e == nil {
+		t.Fatal("matrix not indexed at OID 2")
+	}
+	if tc, _ := e.obj.Meta["targetCount"].(int32); tc != 147 {
+		t.Errorf("targetCount after connection-only delta = %v, want 147 (delta wiped contents)", e.obj.Meta["targetCount"])
+	}
+	if sc, _ := e.obj.Meta["sourceCount"].(int32); sc != 130 {
+		t.Errorf("sourceCount after delta = %v, want 130", e.obj.Meta["sourceCount"])
+	}
+	labels, ok := e.obj.Meta["labels"].([]map[string]any)
+	if !ok || len(labels) != 1 {
+		t.Fatalf("labels descriptor lost after delta: %#v", e.obj.Meta["labels"])
+	}
+	if labels[0]["basePath"] != "0.5.1" || labels[0]["description"] != "Primary" {
+		t.Errorf("labels descriptor = %v, want basePath 0.5.1 / Primary", labels[0])
+	}
+}
