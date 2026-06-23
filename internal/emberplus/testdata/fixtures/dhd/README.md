@@ -1,11 +1,14 @@
 # DHD console — real Ember+ capture fixture
 
 Full `walk --capture` triple from a **real DHD audio console** over Ember+
-(S101/TCP). This is a deliberate, user-approved exception to the
-"`testdata/fixtures` JSONL must be small / never live captures" rule in the
-repo `.gitignore` — it is re-included explicitly there. It serves as the
-Ember+ **decoder oracle** (Tier‑1: real device bytes decode through our codec)
-and as the regression fixture behind the matrix walk‑storm / watch‑flood fixes.
+(S101/TCP). This is the Ember+ entry of the **ADR-0020 Bucket 5** per-device
+decoder-oracle library (amendment 2026-06-24): one full real-device capture
+per protocol per device, committed to enrich the codec regression with
+ground-truth bytes. `.gitignore` re-includes
+`internal/**/testdata/fixtures/**/*.jsonl`; `.gitattributes` marks the dir
+`-text` (byte-stable). It is the Tier‑1 decoder oracle (real device bytes
+decode through our codec) and the regression fixture behind the matrix
+walk‑storm / watch‑flood fixes.
 
 ## Provenance
 - Device: DHD audio console (`Device.Identity.Product` / `Firmwareversion` in `tree.json`).
