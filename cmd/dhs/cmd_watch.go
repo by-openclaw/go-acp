@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"dhs/internal/consumer"
+	"dhs/internal/datastore"
 	"dhs/internal/devicemodel"
 	emberplus "dhs/internal/emberplus/consumer"
 	"dhs/internal/export/canonical"
 	"dhs/internal/manifest"
-	"dhs/internal/consumer"
-	"dhs/internal/datastore"
 )
 
 // runWatch subscribes to live announcements and prints each event as it
@@ -204,6 +204,10 @@ func runWatch(ctx context.Context, args []string) error {
 		Group: *group,
 		Label: *label,
 		ID:    *id,
+		// Path filter — Ember+ applies it via the wildcard subscribe filter
+		// above; acp2/acp1 apply it in their announce closure. Plugins that
+		// don't use req.Path ignore it.
+		Path: *pathFilter,
 	}
 
 	// Apply Ember+ wildcard-subscribe filters (--path / --no-streams /

@@ -58,14 +58,17 @@ func runGet(ctx context.Context, args []string) error {
 			return err
 		}
 	} else if cf.protocol != "emberplus" && (*pathFlag != "" || *label != "") {
-		// Non-Ember+ protocols keep the legacy walk-for-resolution path.
-		if _, err := plug.Walk(ctx, *slot); err != nil {
-			return fmt.Errorf("walk for resolution: %w", err)
-		}
-	}
-	if *label != "" && *id < 0 {
-		if cachedID := resolveLabelFromCache(host, cf.protocol, *slot, *group, *label); cachedID >= 0 {
-			*id = cachedID
+		// Seed from the identity-keyed DM cache first (same hot-load as
+		// watch); only walk the card live on a cache miss. acp1/acp2 DM
+		// caches are identity-keyed (.cache/dm/<proto>/<Card>@<Ver>.json,
+		// #353/#363), which the host/slot-keyed resolvePathFromCache never
+		// sees — so a targeted IdentityProbe + seed avoids the full
+		// per-card walk (~40k objects on a CONVERT Hybrid). GetValue then
+		// resolves --path/--label from the seeded tree.
+		if !hotLoadIdentityDM(ctx, plug, cf.protocol, *slot) {
+			if _, err := plug.Walk(ctx, *slot); err != nil {
+				return fmt.Errorf("walk for resolution: %w", err)
+			}
 		}
 	}
 

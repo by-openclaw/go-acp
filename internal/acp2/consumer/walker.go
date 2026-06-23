@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"dhs/internal/consumer"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/consumer"
 )
 
 // WalkedTree is the decoded object tree for one slot, analogous to

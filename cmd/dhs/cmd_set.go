@@ -124,13 +124,19 @@ func runSet(ctx context.Context, args []string) error {
 	}
 
 	if cf.protocol != "emberplus" && !resolvedFromCache && (*pathFlag != "" || *label != "") {
-		if *noWalk {
-			return fmt.Errorf("--no-walk: %q not found in cache for slot %d (run 'walk --slot %d' first or drop --no-walk)",
-				orFirst(*pathFlag, *label), *slot, *slot)
-		}
-		// Cache miss on non-Ember+ — walk the slot to populate.
-		if _, err := plug.Walk(ctx, *slot); err != nil {
-			return fmt.Errorf("walk for resolution: %w", err)
+		// Identity-keyed DM cache (acp1/acp2) before any walk — the
+		// host/slot-keyed resolvePathFromCache above never sees these
+		// (.cache/dm/<proto>/<Card>@<Ver>.json, #353/#363). SetValue then
+		// resolves --path/--label from the seeded tree.
+		if !hotLoadIdentityDM(ctx, plug, cf.protocol, *slot) {
+			if *noWalk {
+				return fmt.Errorf("--no-walk: %q not found in cache for slot %d (run 'walk --slot %d' first or drop --no-walk)",
+					orFirst(*pathFlag, *label), *slot, *slot)
+			}
+			// Cache miss on non-Ember+ — walk the slot to populate.
+			if _, err := plug.Walk(ctx, *slot); err != nil {
+				return fmt.Errorf("walk for resolution: %w", err)
+			}
 		}
 	}
 
