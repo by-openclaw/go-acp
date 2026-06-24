@@ -106,6 +106,13 @@ type Plugin struct {
 	// before the settle timer fires — otherwise targetCount stays 0.
 	pendingMatrixFetches int32
 
+	// Walk settle tuning. Zero means production default (see Walk). Tests
+	// set small values to drive the settle/grace loop deterministically.
+	walkSettleInitial  time.Duration
+	walkSettleInterval time.Duration
+	walkGraceInterval  time.Duration
+	walkGraceMax       int
+
 	// templates is keyed by the canonical numeric RelOID of the
 	// template; used by ResolveTemplate and TemplateFor callers.
 	// Spec p.54–58 (Ember+ 1.4 Templates).
@@ -592,7 +599,26 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 
 	time.Sleep(500 * time.Millisecond)
 
-	settle := time.NewTimer(15 * time.Second)
+	// Settle/grace timings — zero fields take the production defaults; tests
+	// set small values to exercise the grace loop deterministically.
+	settleInit := p.walkSettleInitial
+	if settleInit == 0 {
+		settleInit = 15 * time.Second
+	}
+	settleIvl := p.walkSettleInterval
+	if settleIvl == 0 {
+		settleIvl = 2 * time.Second
+	}
+	graceIvl := p.walkGraceInterval
+	if graceIvl == 0 {
+		graceIvl = 500 * time.Millisecond
+	}
+	graceMax := p.walkGraceMax
+	if graceMax == 0 {
+		graceMax = 16
+	}
+
+	settle := time.NewTimer(settleInit)
 	defer settle.Stop()
 	lastCount := 0
 	matrixGrace := 0
@@ -609,9 +635,9 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 			// Without this wait the snapshot keeps targetCount 0 / no labels
 			// even though the bytes arrive moments later. Bounded ~8s; clears
 			// the instant the contents merge (pendingMatrixFetches -> 0).
-			if atomic.LoadInt32(&p.pendingMatrixFetches) > 0 && matrixGrace < 16 {
+			if atomic.LoadInt32(&p.pendingMatrixFetches) > 0 && matrixGrace < graceMax {
 				matrixGrace++
-				settle.Reset(500 * time.Millisecond)
+				settle.Reset(graceIvl)
 				continue
 			}
 			goto done
@@ -621,7 +647,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 			p.treeMu.RUnlock()
 			if count > lastCount {
 				lastCount = count
-				settle.Reset(2 * time.Second)
+				settle.Reset(settleIvl)
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
