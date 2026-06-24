@@ -124,6 +124,36 @@ func TestProcessMatrix_ConnectedButNoContents_FetchesContents(t *testing.T) {
 	}
 }
 
+// TestProcessMatrix_PendingFetchBalances pins the Walk wait-gate counter:
+// a matrix that arrives without contents schedules a fetch (pending=1) so
+// Walk() won't settle before the contents reply; when that reply lands
+// (targetCount/labels present) the counter returns to 0 and Walk can finish.
+func TestProcessMatrix_PendingFetchBalances(t *testing.T) {
+	s, cleanup := pipeSession(t)
+	defer cleanup()
+	p := freshPlugin()
+	p.session = s
+
+	// First sight: connection, no contents -> fetch scheduled, pending=1.
+	p.handleElements([]glow.Element{{Matrix: &glow.Matrix{
+		Number: 2, Identifier: "matrix",
+		Connections: []glow.Connection{{Target: 361, Sources: []int32{213}}},
+	}}})
+	time.Sleep(50 * time.Millisecond)
+	if got := atomic.LoadInt32(&p.pendingMatrixFetches); got != 1 {
+		t.Fatalf("pending after no-contents sighting = %d, want 1", got)
+	}
+
+	// Contents reply lands -> pending back to 0, Walk free to settle.
+	p.handleElements([]glow.Element{{Matrix: &glow.Matrix{
+		Number: 2, Identifier: "matrix", TargetCount: 147, SourceCount: 130,
+		Labels: []glow.Label{{BasePath: []int32{0, 5, 1}, Description: "Primary"}},
+	}}})
+	if got := atomic.LoadInt32(&p.pendingMatrixFetches); got != 0 {
+		t.Fatalf("pending after contents reply = %d, want 0", got)
+	}
+}
+
 // TestProcessMatrix_TallyFloodSuppressed is the regression for the DHD
 // Device.Routing.2 watch flood: a big matrix streams its current tally in
 // multiple waves (and providers re-broadcast it), and the consumer must

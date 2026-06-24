@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"dhs/internal/consumer"
@@ -97,6 +98,13 @@ type Plugin struct {
 	streamSubs  map[string][]int32
 	streamIndex map[int64][]string
 	subsMu      sync.RWMutex
+
+	// pendingMatrixFetches counts matrix GetDirectory requests sent during
+	// a walk whose contents reply (targetCount/labels) hasn't arrived yet.
+	// Walk() keeps waiting while this is > 0 so a matrix whose MatrixContents
+	// is deferred to an explicit GetDirectory (DHD console) lands in the tree
+	// before the settle timer fires — otherwise targetCount stays 0.
+	pendingMatrixFetches int32
 
 	// templates is keyed by the canonical numeric RelOID of the
 	// template; used by ResolveTemplate and TemplateFor callers.
@@ -587,11 +595,22 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 	settle := time.NewTimer(15 * time.Second)
 	defer settle.Stop()
 	lastCount := 0
+	matrixGrace := 0
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-settle.C:
+			// Before finishing, give a deferred matrix-contents reply a
+			// bounded grace to land. Some providers (DHD console) serve
+			// MatrixContents only on an explicit matrix GetDirectory whose
+			// reply trails the object stream — without this, targetCount /
+			// labels would be missing from the snapshot. Capped at ~3s.
+			if atomic.LoadInt32(&p.pendingMatrixFetches) > 0 && matrixGrace < 6 {
+				matrixGrace++
+				settle.Reset(500 * time.Millisecond)
+				continue
+			}
 			goto done
 		default:
 			p.treeMu.RLock()
@@ -2033,6 +2052,11 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 			}
 		}
 	}
+	// A contents-bearing reply to our deferred GetDirectory has landed —
+	// release one pending fetch so Walk() can settle.
+	if matrixHasContents && atomic.LoadInt32(&p.pendingMatrixFetches) > 0 {
+		atomic.AddInt32(&p.pendingMatrixFetches, -1)
+	}
 
 	entry := &treeEntry{
 		glowMatrix:  m,
@@ -2098,6 +2122,13 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	if isInitial && len(numPath) > 0 && (len(m.Connections) == 0 || !matrixHasContents) {
 		if s := p.currentSession(); s != nil {
 			numCopy := cloneInt32Slice(numPath)
+			// Mark a fetch pending BEFORE sending so Walk() doesn't settle
+			// out from under the reply (the contents land in a non-initial
+			// processMatrix that decrements it). Only when we lack contents —
+			// a connections-empty fetch that already had contents needs no wait.
+			if !matrixHasContents {
+				atomic.AddInt32(&p.pendingMatrixFetches, 1)
+			}
 			go func() {
 				p.logger.Debug("emberplus: matrix GetDirectory",
 					"path", numCopy, "identifier", m.Identifier)
