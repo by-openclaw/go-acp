@@ -2085,10 +2085,17 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	// legal steady state: the provider answers our GetDirectory with the
 	// matrix again, still connections-empty. Without the guard we'd
 	// re-request on every such reply, and since each reply keeps the walk
-	// settle-timer alive this spins forever (observed live on DHD
-	// Device.routing.2, a matrix with zero connections). One request on
-	// first sight is enough; empty-after-that means "no routes".
-	if isInitial && len(m.Connections) == 0 && len(numPath) > 0 {
+	// settle-timer alive this spins forever (observed live on a matrix with
+	// zero connections). One request on first sight is enough.
+	//
+	// Fire when the matrix is INCOMPLETE: either no connections (need the
+	// tally) OR no MatrixContents (need targetCount/labels/targets). The
+	// DHD console serves the matrix node + its connections inline but defers
+	// MatrixContents to an explicit matrix GetDirectory (exactly what
+	// EmberPlusView does to render the labelled grid). Without the
+	// !matrixHasContents arm we'd skip that fetch whenever a connection was
+	// already present, and the crosspoint labels never resolve.
+	if isInitial && len(numPath) > 0 && (len(m.Connections) == 0 || !matrixHasContents) {
 		if s := p.currentSession(); s != nil {
 			numCopy := cloneInt32Slice(numPath)
 			go func() {

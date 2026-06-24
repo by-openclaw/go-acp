@@ -70,6 +70,60 @@ func TestProcessMatrix_EmptyConn_RequestsOnlyOnFirstSighting(t *testing.T) {
 	}
 }
 
+// TestProcessMatrix_ConnectedButNoContents_FetchesContents is the DHD-9000
+// regression: the console serves the matrix node + its connections inline but
+// defers MatrixContents (targetCount/labels/targets) to an explicit matrix
+// GetDirectory — exactly what EmberPlusView issues to render the labelled
+// grid. A matrix that arrives WITH a connection but WITHOUT contents must
+// still trigger that fetch on first sight (else crosspoint labels never
+// resolve). One request, isInitial-gated (no spin).
+func TestProcessMatrix_ConnectedButNoContents_FetchesContents(t *testing.T) {
+	srvConn, cliConn := net.Pipe()
+	defer func() { _ = srvConn.Close() }()
+	defer func() { _ = cliConn.Close() }()
+
+	s := NewSession(discardLogger())
+	s.SetProfile(&compliance.Profile{})
+	s.mu.Lock()
+	s.conn = srvConn
+	s.reader = s101.NewReader(srvConn)
+	s.writer = s101.NewWriter(srvConn)
+	s.closed = false
+	s.mu.Unlock()
+
+	var frames int64
+	r := s101.NewReader(cliConn)
+	go func() {
+		for {
+			if _, err := r.ReadFrame(); err != nil {
+				return
+			}
+			atomic.AddInt64(&frames, 1)
+		}
+	}()
+
+	p := freshPlugin()
+	p.session = s
+
+	// Matrix arrives WITH a connection but NO MatrixContents (targetCount 0,
+	// no labels) — the DHD console shape.
+	bare := func() []glow.Element {
+		return []glow.Element{{Matrix: &glow.Matrix{
+			Number: 2, Identifier: "matrix",
+			Connections: []glow.Connection{{Target: 361, Sources: []int32{213}}},
+		}}}
+	}
+	p.handleElements(bare())
+	time.Sleep(100 * time.Millisecond)
+	// Re-delivery (still no contents) must NOT re-fire — isInitial gate.
+	p.handleElements(bare())
+	time.Sleep(100 * time.Millisecond)
+
+	if got := atomic.LoadInt64(&frames); got != 1 {
+		t.Errorf("matrix with connection-but-no-contents must fetch contents once on first sight; got %d GetDirectory sends", got)
+	}
+}
+
 // TestProcessMatrix_TallyFloodSuppressed is the regression for the DHD
 // Device.Routing.2 watch flood: a big matrix streams its current tally in
 // multiple waves (and providers re-broadcast it), and the consumer must
