@@ -601,12 +601,15 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-settle.C:
-			// Before finishing, give a deferred matrix-contents reply a
-			// bounded grace to land. Some providers (DHD console) serve
-			// MatrixContents only on an explicit matrix GetDirectory whose
-			// reply trails the object stream — without this, targetCount /
-			// labels would be missing from the snapshot. Capped at ~3s.
-			if atomic.LoadInt32(&p.pendingMatrixFetches) > 0 && matrixGrace < 6 {
+			// Before finishing, wait for any deferred matrix-contents reply
+			// to land. Real devices (DHD console, Lawo PowerCore) deliver the
+			// matrix's contents (identifier / targetCount / Labels descriptor)
+			// in a frame that can trail the object stream — and on a large
+			// matrix (PowerCore: 1024×1024) that reply is sizeable and slow.
+			// Without this wait the snapshot keeps targetCount 0 / no labels
+			// even though the bytes arrive moments later. Bounded ~8s; clears
+			// the instant the contents merge (pendingMatrixFetches -> 0).
+			if atomic.LoadInt32(&p.pendingMatrixFetches) > 0 && matrixGrace < 16 {
 				matrixGrace++
 				settle.Reset(500 * time.Millisecond)
 				continue
