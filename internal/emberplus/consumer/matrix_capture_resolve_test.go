@@ -11,11 +11,11 @@ import (
 	"dhs/internal/wiretrace"
 )
 
-// replayCapture feeds a committed raw.s101.jsonl through the full S101
+// replayCapturePlugin feeds a committed raw.s101.jsonl through the full S101
 // reassembly + tree-builder (exactly as session.readLoop does) and returns
-// the post-walk snapshot. Proves end-to-end decode → tree → enrich on real
-// device bytes, independent of the live walk's settle timing.
-func replayCapture(t *testing.T, path string) []consumer.Object {
+// the populated plugin — so tests can inspect both the flat snapshot
+// (obj.Meta) and the per-entry glowMatrix the canonical export reads.
+func replayCapturePlugin(t *testing.T, path string) *Plugin {
 	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {
@@ -60,7 +60,7 @@ func replayCapture(t *testing.T, path string) []consumer.Object {
 			p.handleElements(els)
 		}
 	}
-	return p.snapshot()
+	return p
 }
 
 func findMatrix(objs []consumer.Object, oid string) *consumer.Object {
@@ -119,16 +119,30 @@ func TestMatrixResolvesFromRealCaptures(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			objs := replayCapture(t, c.path)
+			p := replayCapturePlugin(t, c.path)
+			objs := p.snapshot()
 			m := findMatrix(objs, c.oid)
 			if m == nil {
 				t.Fatalf("matrix %s not found in snapshot", c.oid)
 			}
+			// Flat snapshot (obj.Meta) — what tree.json / --dm hot-load show.
 			if got := metaInt(m.Meta["targetCount"]); got != c.wantTargets {
-				t.Errorf("targetCount = %d, want %d", got, c.wantTargets)
+				t.Errorf("flat targetCount = %d, want %d", got, c.wantTargets)
 			}
 			if got := countTargetLabels(m); got != c.wantTargets {
 				t.Errorf("resolved targetLabels = %d, want %d", got, c.wantTargets)
+			}
+			// Single-source check: the glowMatrix the canonical export reads
+			// must agree with the flat Meta — no 0-vs-N duplicate split.
+			p.treeMu.RLock()
+			e := p.numIndex[c.oid]
+			p.treeMu.RUnlock()
+			if e == nil || e.glowMatrix == nil {
+				t.Fatalf("matrix entry %s missing glowMatrix", c.oid)
+			}
+			if int(e.glowMatrix.TargetCount) != c.wantTargets {
+				t.Errorf("canonical glowMatrix.TargetCount = %d, want %d (flat/canonical disagree = the duplicate)",
+					e.glowMatrix.TargetCount, c.wantTargets)
 			}
 		})
 	}

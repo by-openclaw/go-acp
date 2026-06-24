@@ -1594,19 +1594,6 @@ func parameterMeta(p *glow.Parameter) map[string]any {
 // matrixMeta surfaces every MatrixContents field (spec p.88) plus the
 // observed connections tally — this is what providers consume when we
 // round-trip the JSON tree back into a live matrix.
-// matrixStaticMetaKeys are the MatrixContents fields that describe the
-// matrix shape (not per-frame connection deltas). A connection-only
-// announce omits them; they must persist from the frame that carried them
-// rather than be clobbered to zero/empty. "element" and "connections" are
-// excluded — those are kept fresh from the current frame.
-var matrixStaticMetaKeys = []string{
-	"type", "mode", "targetCount", "sourceCount",
-	"maximumTotalConnects", "maximumConnectsPerTarget",
-	"parametersLocation", "gainParameterNumber",
-	"labels", "targets", "sources",
-	"schemaIdentifiers", "templateReference", "description",
-}
-
 func matrixMeta(m *glow.Matrix) map[string]any {
 	out := map[string]any{
 		"element":     "matrix",
@@ -2033,28 +2020,28 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 		state = matrix.NewStateFromGlow(m)
 	}
 
-	// Build Meta, but DON'T let a connection-only delta wipe the matrix's
-	// static MatrixContents. Providers send the full MatrixContents
-	// (targetCount/sourceCount/labels/targets/sources) once, then stream
-	// connection-only deltas (everything else zero/empty). matrixMeta(m)
-	// rebuilt from such a delta would reset those to 0/[] — which on the
-	// DHD console zeroed targetCount (real: 147) and dropped the "Primary"
-	// labels descriptor (basePath 0.5.1), so enrichMatrixLabels resolved
-	// nothing. When this frame carries no contents, keep the static fields
-	// from the contents-bearing frame and take only the fresh connections.
-	meta := matrixMeta(m)
+	// Accumulate MatrixContents on a SINGLE glow struct (gm) so every
+	// downstream view is consistent. Providers send the full MatrixContents
+	// (identifier/targetCount/labels/targets/sources) once, then stream
+	// connection-only deltas with everything else zero/empty. Stored raw,
+	// the canonical export (reads glowMatrix) and the flat snapshot (reads
+	// obj.Meta) can disagree — one targetCount 1024, the other 0: the
+	// duplicate seen in real DHD/PowerCore DMs. Merge: keep the prior
+	// contents, take only the delta's fresh connections. gm is then the one
+	// resolved source feeding BOTH the canonical export and the flat Meta.
 	matrixHasContents := m.TargetCount != 0 || m.SourceCount != 0 ||
 		len(m.Labels) > 0 || len(m.Targets) > 0 || len(m.Sources) > 0 ||
 		m.ParametersLocation != nil || len(m.TemplateReference) > 0
-	if !isInitial && !matrixHasContents && existing != nil && existing.obj.Meta != nil {
-		for _, k := range matrixStaticMetaKeys {
-			if v, ok := existing.obj.Meta[k]; ok {
-				meta[k] = v
-			} else {
-				delete(meta, k)
-			}
-		}
+	gm := m
+	if !isInitial && !matrixHasContents && existing != nil && existing.glowMatrix != nil {
+		merged := *existing.glowMatrix
+		merged.Number = m.Number
+		merged.Path = m.Path
+		merged.Connections = m.Connections
+		merged.UnknownContents = m.UnknownContents
+		gm = &merged
 	}
+	meta := matrixMeta(gm)
 	// A contents-bearing reply to our deferred GetDirectory has landed —
 	// release one pending fetch so Walk() can settle.
 	if matrixHasContents && atomic.LoadInt32(&p.pendingMatrixFetches) > 0 {
@@ -2062,16 +2049,16 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	}
 
 	entry := &treeEntry{
-		glowMatrix:  m,
+		glowMatrix:  gm,
 		numericPath: numPath,
 		matrixState: state,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
 		obj: consumer.Object{
 			Slot:   0,
-			ID:     int(m.Number),
+			ID:     int(gm.Number),
 			OID:    numericKey(numPath),
-			Label:  m.Identifier,
+			Label:  gm.Identifier,
 			Kind:   consumer.KindRaw,
 			Path:   stringPath,
 			Access: 3,
