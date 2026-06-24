@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/acp2/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/transport"
-	"dhs/internal/acp2/codec"
 )
 
 // init registers the ACP2 plugin with the global protocol registry.
@@ -625,6 +625,7 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 	slot := req.Slot
 	wantID := req.ID
 	wantLabel := req.Label
+	wantPath := req.Path
 
 	return func(annSlot uint8, msg *codec.ACP2Message) {
 		if slot >= 0 && int(annSlot) != slot {
@@ -645,6 +646,7 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 
 		// Find object index in tree.
 		treeIdx := -1
+		var objPath []string
 		if tree != nil {
 			for ti, tobj := range tree.Objects {
 				if tobj.ID == int(msg.ObjID) {
@@ -653,6 +655,7 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 					ev.Unit = tobj.Unit
 					ev.Group = tobj.Group
 					ev.Access = tobj.Access
+					objPath = tobj.Path
 					if len(tobj.Path) > 0 {
 						ev.Path = strings.Join(tobj.Path, ".")
 					}
@@ -662,6 +665,12 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 		}
 
 		if wantLabel != "" && ev.Label != wantLabel {
+			return
+		}
+
+		// --path filter: same connector-agnostic rule get/set use (full or
+		// root-stripped path), via consumer.PathMatches.
+		if wantPath != "" && !consumer.PathMatches(objPath, wantPath) {
 			return
 		}
 
@@ -706,32 +715,29 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 // resolveRequest translates a ValueRequest into an ACP2 obj-id, object type,
 // number type, and (optionally) the cached consumer.Object.
 func (p *Plugin) resolveRequest(req consumer.ValueRequest, tree *WalkedTree) (uint32, codec.ACP2ObjType, codec.NumberType, *consumer.Object, error) {
-	if req.Label != "" {
-		if tree == nil {
-			return 0, 0, 0, nil, fmt.Errorf("%w: no walked tree for slot %d",
-				consumer.ErrUnknownLabel, req.Slot)
-		}
-		idx := tree.Lookup(req.Label)
-		if idx < 0 {
-			return 0, 0, 0, nil, fmt.Errorf("%w: label %q not found on slot %d",
-				consumer.ErrUnknownLabel, req.Label, req.Slot)
-		}
+	var objs []consumer.Object
+	if tree != nil {
+		objs = tree.Objects
+	}
+	// Connector-agnostic resolution rule (id, then label, then path — full or
+	// root-stripped) shared across all plugins via consumer.ResolveObjectIndex,
+	// so addressing is identical on every protocol.
+	if idx, ok := consumer.ResolveObjectIndex(objs, req.Path, req.Label, req.ID); ok {
 		obj := &tree.Objects[idx]
 		return uint32(obj.ID), tree.ObjTypes[idx], tree.NumTypes[idx], obj, nil
 	}
-
-	// Address by explicit ID.
-	objID := uint32(req.ID)
-	if tree != nil {
-		for i, obj := range tree.Objects {
-			if obj.ID == req.ID {
-				return objID, tree.ObjTypes[i], tree.NumTypes[i], &tree.Objects[i], nil
-			}
-		}
+	// Not in the tree. An explicit id is still usable directly (type unknown;
+	// caller may fetch metadata or work with raw bytes). An unresolved
+	// label/path is a hard error.
+	switch {
+	case req.Label != "":
+		return 0, 0, 0, nil, fmt.Errorf("%w: label %q not found on slot %d",
+			consumer.ErrUnknownLabel, req.Label, req.Slot)
+	case req.Path != "":
+		return 0, 0, 0, nil, fmt.Errorf("%w: path %q not found on slot %d",
+			consumer.ErrObjectNotFound, req.Path, req.Slot)
 	}
-	// No tree or not found — return with unknown type. The caller may
-	// still work with raw bytes.
-	return objID, 0, 0, nil, nil
+	return uint32(req.ID), 0, 0, nil, nil
 }
 
 // objTypeFromVType maps an ACP2 §5.2.2 number-type byte (the data byte

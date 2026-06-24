@@ -19,3 +19,11 @@
 *.EmBER filter=lfs diff=lfs merge=lfs -text
 *.Ember filter=lfs diff=lfs merge=lfs -text
 *.dat filter=lfs diff=lfs merge=lfs -text
+
+# ADR-0020 Bucket 5: per-device decoder-oracle captures committed under
+# internal/<proto>/testdata/fixtures/<device>/. Byte-stable golden — no EOL
+# conversion so pinned frame counts stay exact across platforms. Regular
+# blobs, not LFS (LFS disabled above). Covers acp1/acp2/emberplus/probel.
+internal/*/testdata/fixtures/**/raw.*.jsonl -text
+internal/*/testdata/fixtures/**/tree.json -text
+internal/*/testdata/fixtures/**/glow.json -text

@@ -155,10 +155,12 @@ func TestProcessMatrix_AnnounceDeltaNotifies(t *testing.T) {
 		return &glow.Matrix{Number: 1, Identifier: "m", MatrixType: glow.MatrixTypeNToN,
 			TargetCount: 4, SourceCount: 4, Connections: conns}
 	}
-	// First sighting (initial) â€” has a connection but does NOT notify.
+	// First sighting (initial) â€” target 0 routed from source 0; does NOT notify.
 	p.handleElements([]glow.Element{{Matrix: mat([]glow.Connection{{Target: 0, Sources: []int32{0}}})}})
-	// Second processMatrix â€” announced delta fires notifyMatrixSubscribers.
-	p.handleElements([]glow.Element{{Matrix: mat([]glow.Connection{{Target: 1, Sources: []int32{2}, Disposition: glow.ConnDispLocked}})}})
+	// Second processMatrix â€” target 0 (already KNOWN) reroutes 0 -> 2: a real
+	// change, fires notifyMatrixSubscribers. (A brand-new target would be
+	// treated as initial population and stay silent.)
+	p.handleElements([]glow.Element{{Matrix: mat([]glow.Connection{{Target: 0, Sources: []int32{2}, Disposition: glow.ConnDispLocked}})}})
 	select {
 	case e := <-got:
 		if e.MatrixChange == nil {

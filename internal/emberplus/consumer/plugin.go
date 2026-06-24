@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"dhs/internal/consumer"
@@ -97,6 +98,20 @@ type Plugin struct {
 	streamSubs  map[string][]int32
 	streamIndex map[int64][]string
 	subsMu      sync.RWMutex
+
+	// pendingMatrixFetches counts matrix GetDirectory requests sent during
+	// a walk whose contents reply (targetCount/labels) hasn't arrived yet.
+	// Walk() keeps waiting while this is > 0 so a matrix whose MatrixContents
+	// is deferred to an explicit GetDirectory (DHD console) lands in the tree
+	// before the settle timer fires — otherwise targetCount stays 0.
+	pendingMatrixFetches int32
+
+	// Walk settle tuning. Zero means production default (see Walk). Tests
+	// set small values to drive the settle/grace loop deterministically.
+	walkSettleInitial  time.Duration
+	walkSettleInterval time.Duration
+	walkGraceInterval  time.Duration
+	walkGraceMax       int
 
 	// templates is keyed by the canonical numeric RelOID of the
 	// template; used by ResolveTemplate and TemplateFor callers.
@@ -584,14 +599,47 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 
 	time.Sleep(500 * time.Millisecond)
 
-	settle := time.NewTimer(15 * time.Second)
+	// Settle/grace timings — zero fields take the production defaults; tests
+	// set small values to exercise the grace loop deterministically.
+	settleInit := p.walkSettleInitial
+	if settleInit == 0 {
+		settleInit = 15 * time.Second
+	}
+	settleIvl := p.walkSettleInterval
+	if settleIvl == 0 {
+		settleIvl = 2 * time.Second
+	}
+	graceIvl := p.walkGraceInterval
+	if graceIvl == 0 {
+		graceIvl = 500 * time.Millisecond
+	}
+	graceMax := p.walkGraceMax
+	if graceMax == 0 {
+		graceMax = 16
+	}
+
+	settle := time.NewTimer(settleInit)
 	defer settle.Stop()
 	lastCount := 0
+	matrixGrace := 0
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-settle.C:
+			// Before finishing, wait for any deferred matrix-contents reply
+			// to land. Real devices (DHD console, Lawo PowerCore) deliver the
+			// matrix's contents (identifier / targetCount / Labels descriptor)
+			// in a frame that can trail the object stream — and on a large
+			// matrix (PowerCore: 1024×1024) that reply is sizeable and slow.
+			// Without this wait the snapshot keeps targetCount 0 / no labels
+			// even though the bytes arrive moments later. Bounded ~8s; clears
+			// the instant the contents merge (pendingMatrixFetches -> 0).
+			if atomic.LoadInt32(&p.pendingMatrixFetches) > 0 && matrixGrace < graceMax {
+				matrixGrace++
+				settle.Reset(graceIvl)
+				continue
+			}
 			goto done
 		default:
 			p.treeMu.RLock()
@@ -599,7 +647,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 			p.treeMu.RUnlock()
 			if count > lastCount {
 				lastCount = count
-				settle.Reset(2 * time.Second)
+				settle.Reset(settleIvl)
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -1977,31 +2025,70 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	p.treeMu.RUnlock()
 
 	var state *matrix.State
+	// changedConns holds only the connections that genuinely rerouted a
+	// target we already knew — the subset worth a watch event. The initial
+	// tally (every target new) and provider re-broadcasts (same sources)
+	// are excluded so a big console matrix like DHD Device.Routing.2 doesn't
+	// flood the watch with hundreds of false "modified" lines (it streams
+	// the tally in multiple waves, which the old per-message first-sighting
+	// flag could not suppress past wave 1).
+	var changedConns []glow.Connection
 	isInitial := existing == nil || existing.matrixState == nil
 	if !isInitial {
 		state = existing.matrixState
 		for _, c := range m.Connections {
-			state.ApplyConnection(c, matrix.ChangeAnnounce)
+			existed, changed := state.ApplyConnectionReport(c, matrix.ChangeAnnounce)
+			if existed && changed {
+				changedConns = append(changedConns, c)
+			}
 		}
 	} else {
 		state = matrix.NewStateFromGlow(m)
 	}
 
+	// Accumulate MatrixContents on a SINGLE glow struct (gm) so every
+	// downstream view is consistent. Providers send the full MatrixContents
+	// (identifier/targetCount/labels/targets/sources) once, then stream
+	// connection-only deltas with everything else zero/empty. Stored raw,
+	// the canonical export (reads glowMatrix) and the flat snapshot (reads
+	// obj.Meta) can disagree — one targetCount 1024, the other 0: the
+	// duplicate seen in real DHD/PowerCore DMs. Merge: keep the prior
+	// contents, take only the delta's fresh connections. gm is then the one
+	// resolved source feeding BOTH the canonical export and the flat Meta.
+	matrixHasContents := m.TargetCount != 0 || m.SourceCount != 0 ||
+		len(m.Labels) > 0 || len(m.Targets) > 0 || len(m.Sources) > 0 ||
+		m.ParametersLocation != nil || len(m.TemplateReference) > 0
+	gm := m
+	if !isInitial && !matrixHasContents && existing != nil && existing.glowMatrix != nil {
+		merged := *existing.glowMatrix
+		merged.Number = m.Number
+		merged.Path = m.Path
+		merged.Connections = m.Connections
+		merged.UnknownContents = m.UnknownContents
+		gm = &merged
+	}
+	meta := matrixMeta(gm)
+	// A contents-bearing reply to our deferred GetDirectory has landed —
+	// release one pending fetch so Walk() can settle.
+	if matrixHasContents && atomic.LoadInt32(&p.pendingMatrixFetches) > 0 {
+		atomic.AddInt32(&p.pendingMatrixFetches, -1)
+	}
+
 	entry := &treeEntry{
-		glowMatrix:  m,
+		glowMatrix:  gm,
 		numericPath: numPath,
 		matrixState: state,
 		freshness:   FreshnessLive,
 		updatedAt:   time.Now(),
 		obj: consumer.Object{
 			Slot:   0,
-			ID:     int(m.Number),
+			ID:     int(gm.Number),
 			OID:    numericKey(numPath),
-			Label:  m.Identifier,
+			Label:  gm.Identifier,
 			Kind:   consumer.KindRaw,
 			Path:   stringPath,
 			Access: 3,
-			Meta:   matrixMeta(m),
+			Meta:   meta,
 		},
 	}
 	if len(stringPath) > 1 {
@@ -2009,15 +2096,16 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	}
 	p.storeEntry(entry, stringPath)
 
-	// Notify subscribers of matrix crosspoint changes. On the first
-	// sight of a matrix (isInitial=true) we do NOT fire per-connection
-	// events — that would flood the watch with initial-state noise.
-	// On subsequent updates each announced Connection is a genuine
-	// crosspoint delta and fires one event. The Event carries the
-	// matrix OID/Path plus a MatrixChange payload identifying the
-	// specific crosspoint within it.
+	// Notify subscribers of matrix crosspoint changes. First sight of a
+	// matrix (isInitial=true) populates state silently — no initial-state
+	// noise. On later messages we fire ONLY for changedConns: connections
+	// that rerouted a target we already knew. That excludes both the
+	// initial tally streamed across multiple waves (targets still new) and
+	// provider re-broadcasts of the same tally (same sources). The Event
+	// carries the matrix OID/Path plus a MatrixChange payload identifying
+	// the specific crosspoint.
 	if !isInitial {
-		for _, c := range m.Connections {
+		for _, c := range changedConns {
 			p.notifyMatrixSubscribers(entry, c)
 		}
 	}
@@ -2031,9 +2119,32 @@ func (p *Plugin) processMatrix(m *glow.Matrix, parentPath []string, parentNumPat
 	// provider to emit the current tally. Many providers (incl.
 	// TinyEmberPlus) only send `connections` on demand, so without
 	// this call the matrix._meta.connections field stays empty.
-	if len(m.Connections) == 0 && len(numPath) > 0 {
+	//
+	// Gate on isInitial — same "first sighting" guard processNode uses
+	// for its lazy GetDirectory. A matrix with NO current routes is a
+	// legal steady state: the provider answers our GetDirectory with the
+	// matrix again, still connections-empty. Without the guard we'd
+	// re-request on every such reply, and since each reply keeps the walk
+	// settle-timer alive this spins forever (observed live on a matrix with
+	// zero connections). One request on first sight is enough.
+	//
+	// Fire when the matrix is INCOMPLETE: either no connections (need the
+	// tally) OR no MatrixContents (need targetCount/labels/targets). The
+	// DHD console serves the matrix node + its connections inline but defers
+	// MatrixContents to an explicit matrix GetDirectory (exactly what
+	// EmberPlusView does to render the labelled grid). Without the
+	// !matrixHasContents arm we'd skip that fetch whenever a connection was
+	// already present, and the crosspoint labels never resolve.
+	if isInitial && len(numPath) > 0 && (len(m.Connections) == 0 || !matrixHasContents) {
 		if s := p.currentSession(); s != nil {
 			numCopy := cloneInt32Slice(numPath)
+			// Mark a fetch pending BEFORE sending so Walk() doesn't settle
+			// out from under the reply (the contents land in a non-initial
+			// processMatrix that decrements it). Only when we lack contents —
+			// a connections-empty fetch that already had contents needs no wait.
+			if !matrixHasContents {
+				atomic.AddInt32(&p.pendingMatrixFetches, 1)
+			}
 			go func() {
 				p.logger.Debug("emberplus: matrix GetDirectory",
 					"path", numCopy, "identifier", m.Identifier)

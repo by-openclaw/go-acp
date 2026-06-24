@@ -84,7 +84,8 @@ func runProbelAllSourceNames(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
-	r, err := p.AllSourceNames(cctx, uint8(pf.matrix), uint8(pf.level), nameLen)
+	matrix, level := probelTarget(p, pf.matrix)
+	r, err := p.AllSourceNames(cctx, matrix, level, nameLen)
 	if err != nil {
 		return err
 	}
@@ -129,7 +130,8 @@ func runProbelAllDestAssocNames(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
-	r, err := p.AllDestAssocNames(cctx, uint8(pf.matrix), nameLen)
+	matrix, _ := probelTarget(p, pf.matrix)
+	r, err := p.AllDestAssocNames(cctx, matrix, nameLen)
 	if err != nil {
 		return err
 	}
@@ -216,6 +218,13 @@ func runProbelDiscover(ctx context.Context, args []string) error {
 	size := fs.String("size", "8", "name length on the wire: 4 | 8 | 12 | 16")
 	matrix := fs.Int("matrix", 0, "matrix id to probe (0-255)")
 	level := fs.Int("level", 0, "level id to probe (0-15)")
+	skipDual := fs.Bool("skip-dual-status", false,
+		"skip the cmd 8 dual-controller-status probe. Server-mode endpoints "+
+			"(EVS Neuron, Lawo VSM server mode) DLE-ACK it but never send the "+
+			"cmd 9 reply, so it always burns a full --timeout for nothing.")
+	opTimeout := fs.Duration("timeout", 5*time.Second,
+		"per-request timeout — each probe (dial, dual-status, names, tally) "+
+			"gets its own window so one non-responding command can't starve the rest")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
@@ -227,72 +236,101 @@ func runProbelDiscover(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	cctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-	p, closer, err := dialProbel(cctx, addr)
+	// Dial under its own timeout; every probe below gets a fresh one too. This
+	// replaces the old single 15s budget that a hung dual-status (server-mode
+	// endpoints never reply) could consume entirely, starving names + tally.
+	dctx, dcancel := context.WithTimeout(ctx, *opTimeout)
+	defer dcancel()
+	p, closer, err := dialProbel(dctx, addr)
 	if err != nil {
 		return err
 	}
 	defer closer()
 
-	fmt.Printf("\n=== discover %s (M=%d L=%d size=%d) ===\n", addr, *matrix, *level, nameLen.Bytes())
+	// Resolve target the same way every read verb does: matrix from --matrix or
+	// global --mtx-id; level from the global --level (the per-verb --level here is
+	// shadowed by the dispatcher's config extractor). _ = *level keeps the flag
+	// documented even though its value arrives via the config.
+	_ = *level
+	mtx, lvl := probelTarget(p, *matrix)
 
-	if ds, err := p.DualControllerStatus(cctx); err == nil {
-		fmt.Printf("dual-status  master_active=%v active=%v idle_faulty=%v\n",
-			!ds.SlaveActive, ds.Active, ds.IdleControllerFaulty)
-	} else {
-		fmt.Printf("dual-status  ERROR: %v\n", err)
+	fmt.Printf("\n=== discover %s (M=%d L=%d size=%d) ===\n", addr, mtx, lvl, nameLen.Bytes())
+
+	// withOp runs fn under a fresh per-request timeout derived from --timeout.
+	withOp := func(fn func(context.Context)) {
+		octx, ocancel := context.WithTimeout(ctx, *opTimeout)
+		defer ocancel()
+		fn(octx)
 	}
 
-	if r, err := p.AllSourceNames(cctx, uint8(*matrix), uint8(*level), nameLen); err == nil {
-		fmt.Printf("\nsource names  matrix=%d level=%d count=%d (first=%d)\n",
-			r.MatrixID, r.LevelID, len(r.Names), r.FirstSourceID)
-		for i, n := range r.Names {
-			fmt.Printf("  src=%d  %q\n", int(r.FirstSourceID)+i, strings.TrimRight(n, "\x00 "))
+	if *skipDual {
+		fmt.Printf("dual-status  SKIPPED (--skip-dual-status)\n")
+	} else {
+		withOp(func(cctx context.Context) {
+			if ds, err := p.DualControllerStatus(cctx); err == nil {
+				fmt.Printf("dual-status  master_active=%v active=%v idle_faulty=%v\n",
+					!ds.SlaveActive, ds.Active, ds.IdleControllerFaulty)
+			} else {
+				fmt.Printf("dual-status  ERROR: %v\n", err)
+			}
+		})
+	}
+
+	withOp(func(cctx context.Context) {
+		if r, err := p.AllSourceNames(cctx, mtx, lvl, nameLen); err == nil {
+			fmt.Printf("\nsource names  matrix=%d level=%d count=%d (first=%d)\n",
+				r.MatrixID, r.LevelID, len(r.Names), r.FirstSourceID)
+			for i, n := range r.Names {
+				fmt.Printf("  src=%d  %q\n", int(r.FirstSourceID)+i, strings.TrimRight(n, "\x00 "))
+			}
+		} else {
+			fmt.Printf("\nsource names  ERROR: %v\n", err)
 		}
-	} else {
-		fmt.Printf("\nsource names  ERROR: %v\n", err)
-	}
+	})
 
-	if r, err := p.AllDestAssocNames(cctx, uint8(*matrix), nameLen); err == nil {
-		fmt.Printf("\ndest names  matrix=%d count=%d (first=%d)\n",
-			r.MatrixID, len(r.Names), r.FirstDestAssociationID)
-		for i, n := range r.Names {
-			fmt.Printf("  dst=%d  %q\n", int(r.FirstDestAssociationID)+i, strings.TrimRight(n, "\x00 "))
+	withOp(func(cctx context.Context) {
+		if r, err := p.AllDestAssocNames(cctx, mtx, nameLen); err == nil {
+			fmt.Printf("\ndest names  matrix=%d count=%d (first=%d)\n",
+				r.MatrixID, len(r.Names), r.FirstDestAssociationID)
+			for i, n := range r.Names {
+				fmt.Printf("  dst=%d  %q\n", int(r.FirstDestAssociationID)+i, strings.TrimRight(n, "\x00 "))
+			}
+		} else {
+			fmt.Printf("\ndest names  ERROR: %v\n", err)
 		}
-	} else {
-		fmt.Printf("\ndest names  ERROR: %v\n", err)
-	}
+	})
 
-	if r, err := p.CrosspointTallyDump(cctx, uint8(*matrix), uint8(*level)); err == nil {
-		if r.IsWord {
-			fmt.Printf("\ntally dump (word)  matrix=%d level=%d first=%d count=%d\n",
-				r.Word.MatrixID, r.Word.LevelID, r.Word.FirstDestinationID, len(r.Word.SourceIDs))
-			for i, s := range r.Word.SourceIDs {
-				if int(s) != 0 || i < 4 {
-					fmt.Printf("  dst=%d → src=%d\n", int(r.Word.FirstDestinationID)+i, s)
+	withOp(func(cctx context.Context) {
+		if r, err := p.CrosspointTallyDump(cctx, mtx, lvl); err == nil {
+			if r.IsWord {
+				fmt.Printf("\ntally dump (word)  matrix=%d level=%d first=%d count=%d\n",
+					r.Word.MatrixID, r.Word.LevelID, r.Word.FirstDestinationID, len(r.Word.SourceIDs))
+				for i, s := range r.Word.SourceIDs {
+					if int(s) != 0 || i < 4 {
+						fmt.Printf("  dst=%d <- src=%d\n", int(r.Word.FirstDestinationID)+i, s)
+					}
+					if i >= 15 {
+						fmt.Printf("  ... (first 16)\n")
+						break
+					}
 				}
-				if i >= 15 {
-					fmt.Printf("  ... (first 16)\n")
-					break
+			} else {
+				fmt.Printf("\ntally dump (byte)  matrix=%d level=%d first=%d count=%d\n",
+					r.Byte.MatrixID, r.Byte.LevelID, r.Byte.FirstDestinationID, len(r.Byte.SourceIDs))
+				for i, s := range r.Byte.SourceIDs {
+					if s != 0 || i < 4 {
+						fmt.Printf("  dst=%d <- src=%d\n", int(r.Byte.FirstDestinationID)+i, s)
+					}
+					if i >= 15 {
+						fmt.Printf("  ... (first 16)\n")
+						break
+					}
 				}
 			}
 		} else {
-			fmt.Printf("\ntally dump (byte)  matrix=%d level=%d first=%d count=%d\n",
-				r.Byte.MatrixID, r.Byte.LevelID, r.Byte.FirstDestinationID, len(r.Byte.SourceIDs))
-			for i, s := range r.Byte.SourceIDs {
-				if s != 0 || i < 4 {
-					fmt.Printf("  dst=%d → src=%d\n", int(r.Byte.FirstDestinationID)+i, s)
-				}
-				if i >= 15 {
-					fmt.Printf("  ... (first 16)\n")
-					break
-				}
-			}
+			fmt.Printf("\ntally dump  ERROR: %v\n", err)
 		}
-	} else {
-		fmt.Printf("\ntally dump  ERROR: %v\n", err)
-	}
+	})
 
 	return nil
 }

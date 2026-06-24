@@ -112,6 +112,16 @@ func renderTree(w io.Writer, objs []consumer.Object, opts treeRenderOpts) error 
 	// When focused, the first segment of focus selects which top-level
 	// subtree to render; pruning happens inside renderNode.
 	children := root.sortedChildren()
+	// Collapse a single device-root anchor (ROOT_NODE_V2 / ROOT) so the
+	// tree starts at its children — matches the root-stripped path strings
+	// and Cerebrum's UI. resolveFromPath always returns the canonical path
+	// from the real root, so focus[0] is that root; drop it in lock-step.
+	if len(children) == 1 && isDisplayRoot(children[0].Name) {
+		if len(focus) > 0 && strings.EqualFold(focus[0], children[0].Name) {
+			focus = focus[1:]
+		}
+		children = children[0].sortedChildren()
+	}
 	for i, c := range children {
 		isLast := i == len(children)-1
 		renderNode(w, c, "", isLast, focus, 0, opts.Depth, chars, filterLower)

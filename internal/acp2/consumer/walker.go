@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"dhs/internal/consumer"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/consumer"
 )
 
 // WalkedTree is the decoded object tree for one slot, analogous to
@@ -24,18 +24,6 @@ type WalkedTree struct {
 	OptionsMaps []map[uint32]string
 	// Labels maps label → index into Objects for label-based lookup.
 	Labels map[string]int
-}
-
-// Lookup finds the object index by label. Returns -1 if not found.
-func (t *WalkedTree) Lookup(label string) int {
-	if t == nil {
-		return -1
-	}
-	idx, ok := t.Labels[label]
-	if !ok {
-		return -1
-	}
-	return idx
 }
 
 // WalkProgressFunc is called after each object is added to the tree during walk.

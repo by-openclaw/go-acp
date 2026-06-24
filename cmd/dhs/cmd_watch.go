@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"dhs/internal/consumer"
+	"dhs/internal/datastore"
 	"dhs/internal/devicemodel"
 	emberplus "dhs/internal/emberplus/consumer"
 	"dhs/internal/export/canonical"
 	"dhs/internal/manifest"
-	"dhs/internal/consumer"
-	"dhs/internal/datastore"
 )
 
 // runWatch subscribes to live announcements and prints each event as it
@@ -204,6 +204,10 @@ func runWatch(ctx context.Context, args []string) error {
 		Group: *group,
 		Label: *label,
 		ID:    *id,
+		// Path filter — Ember+ applies it via the wildcard subscribe filter
+		// above; acp2/acp1 apply it in their announce closure. Plugins that
+		// don't use req.Path ignore it.
+		Path: *pathFilter,
 	}
 
 	// Apply Ember+ wildcard-subscribe filters (--path / --no-streams /
@@ -264,6 +268,11 @@ func runWatch(ctx context.Context, args []string) error {
 			if oid == "" {
 				oid = fmt.Sprintf("s%d.%s.%d", ev.Slot, ev.Group, ev.ID)
 			}
+			// Strip the device root (ROOT_NODE_V2 / ROOT) from the
+			// displayed path so it matches Cerebrum's UI and the
+			// root-stripped form --path accepts. Display only; ev.Path
+			// is not used for resolution past this point.
+			ev.Path = stripDisplayRoot(ev.Path)
 
 			// Matrix crosspoint events render differently —
 			// target/sources/disposition replace the single value

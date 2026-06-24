@@ -87,11 +87,12 @@ var (
 type Client struct {
 	logger *slog.Logger
 
-	mu      sync.Mutex
-	conn    net.Conn
-	closed  bool
-	readers []eventFunc    // async-event listeners (tallies, unsolicited)
-	pending *pendingWaiter // single-flight reply waiter
+	mu        sync.Mutex
+	conn      net.Conn
+	closed    bool
+	readers   []subscription // async-event listeners (tallies, unsolicited)
+	nextSubID int            // monotonic id source for Subscribe/Unsubscribe
+	pending   *pendingWaiter // single-flight reply waiter
 
 	// readerDone is closed when the reader goroutine exits.
 	readerDone chan struct{}
@@ -120,6 +121,12 @@ type Client struct {
 // eventFunc is an async-event callback. Listeners receive every frame
 // that isn't claimed by a pending Send matcher (typically tallies).
 type eventFunc func(Frame)
+
+// subscription pairs an async listener with the id Unsubscribe removes it by.
+type subscription struct {
+	id int
+	fn eventFunc
+}
 
 // pendingWaiter captures a single in-flight Send. SW-P-08 is half-duplex
 // per logical transaction: only one outstanding request at a time.
@@ -353,7 +360,8 @@ func newClient(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
 	// Subscribe (refs #234).
 	if cfg.OnEvent != nil {
 		onEv := cfg.OnEvent
-		c.readers = append(c.readers, func(f Frame) { onEv(c, f) })
+		c.readers = append(c.readers, subscription{id: c.nextSubID, fn: func(f Frame) { onEv(c, f) }})
+		c.nextSubID++
 	}
 	return c
 }
@@ -388,10 +396,28 @@ func (c *Client) Close() error {
 
 // Subscribe registers an async-event listener. Frames that aren't claimed
 // by an outstanding Send matcher are delivered to every listener in the
-// order they were registered. The listener MUST NOT block.
-func (c *Client) Subscribe(fn eventFunc) {
+// order they were registered. The listener MUST NOT block. The returned id
+// can be passed to Unsubscribe to remove the listener (callers that never
+// remove may ignore it).
+func (c *Client) Subscribe(fn eventFunc) int {
 	c.mu.Lock()
-	c.readers = append(c.readers, fn)
+	id := c.nextSubID
+	c.nextSubID++
+	c.readers = append(c.readers, subscription{id: id, fn: fn})
+	c.mu.Unlock()
+	return id
+}
+
+// Unsubscribe removes a listener previously registered by Subscribe. Unknown
+// ids are ignored. Safe to call concurrently with dispatch.
+func (c *Client) Unsubscribe(id int) {
+	c.mu.Lock()
+	for i := range c.readers {
+		if c.readers[i].id == id {
+			c.readers = append(c.readers[:i], c.readers[i+1:]...)
+			break
+		}
+	}
 	c.mu.Unlock()
 }
 
@@ -522,6 +548,110 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 	return Frame{}, ErrMaxAttempts
 }
 
+// SendCollect sends f and gathers a multi-frame streamed reply: the first frame
+// matching match (claimed by the Send waiter) plus every later frame matching
+// collect that arrives before idleGap elapses with no new match (or ctx ends).
+//
+// SW-P-08 splits large tables across many frames with ascending First* indices —
+// source/dest names (tx 106 / tx 107) and crosspoint tally dumps (tx 022 / 023).
+// A plain Send returns only the first frame; SendCollect pulls the whole table
+// from large matrices (the documented 65535×65535 scale target). Because the
+// session stays open until the stream goes idle, any attached capture recorder
+// also logs every frame, not just the first.
+//
+// collect defaults to match when nil; idleGap defaults to 750ms when <= 0.
+// Frames return in arrival order, first match leading. On ctx expiry the frames
+// gathered so far are returned alongside ctx.Err() — callers wanting a
+// best-effort partial dump may use the slice when len > 0.
+//
+// done, when non-nil, is evaluated (in this goroutine, never concurrently) on
+// the frames collected so far after each new frame; returning true ends
+// collection immediately. This gives a deterministic stop when the caller knows
+// the table size — e.g. "I have all N source names" — while idleGap stays as the
+// generic fallback for peers/sizes the caller can't predict. SW-P-08 carries no
+// matrix-size primitive on the wire, so done is the only deterministic option.
+func (c *Client) SendCollect(
+	ctx context.Context,
+	f Frame,
+	match func(Frame) bool,
+	collect func(Frame) bool,
+	idleGap time.Duration,
+	done func([]Frame) bool,
+) ([]Frame, error) {
+	if collect == nil {
+		collect = match
+	}
+	if idleGap <= 0 {
+		idleGap = 750 * time.Millisecond
+	}
+
+	var mu sync.Mutex
+	frames := make([]Frame, 0, 16)
+	bump := make(chan struct{}, 1)
+
+	id := c.Subscribe(func(fr Frame) {
+		if collect != nil && !collect(fr) {
+			return
+		}
+		mu.Lock()
+		frames = append(frames, fr)
+		mu.Unlock()
+		select {
+		case bump <- struct{}{}:
+		default:
+		}
+	})
+	defer c.Unsubscribe(id)
+
+	first, err := c.Send(ctx, f, match)
+	if err != nil {
+		return nil, err
+	}
+	// Prepend the Send-claimed first frame; the collector only sees later ones.
+	// After this one-time prepend the slice is append-only, so a done() closure
+	// can safely track how many frames it has already examined across calls.
+	mu.Lock()
+	frames = append([]Frame{first}, frames...)
+	snap := append([]Frame(nil), frames...)
+	mu.Unlock()
+	if done != nil && done(snap) {
+		return snap, nil
+	}
+
+	timer := time.NewTimer(idleGap)
+	defer timer.Stop()
+	for {
+		select {
+		case <-bump:
+			if done != nil {
+				mu.Lock()
+				snap := append([]Frame(nil), frames...)
+				mu.Unlock()
+				if done(snap) {
+					return snap, nil
+				}
+			}
+			// A fresh matching frame arrived — restart the idle window. Under
+			// the Go 1.23+ timer semantics this module targets (go.mod: go
+			// 1.23.0), the timer channel is drained automatically on Reset, so
+			// the old Stop()+drain dance is no longer required (and is in fact
+			// unreachable: Stop() returns true even after the timer has fired
+			// into an unreceived channel). Reset alone is correct here.
+			timer.Reset(idleGap)
+		case <-timer.C:
+			mu.Lock()
+			out := append([]Frame(nil), frames...)
+			mu.Unlock()
+			return out, nil
+		case <-ctx.Done():
+			mu.Lock()
+			out := append([]Frame(nil), frames...)
+			mu.Unlock()
+			return out, ctx.Err()
+		}
+	}
+}
+
 // Write sends a pre-built raw byte sequence (typically a DLE ACK / DLE
 // NAK). Bypasses Pack and the retry loop. Used by the reader itself to
 // emit ACK/NAK for received frames — these control sequences don't
@@ -646,7 +776,7 @@ func (c *Client) signalNAK() {
 func (c *Client) dispatch(f Frame) {
 	c.mu.Lock()
 	waiter := c.pending
-	listeners := append([]eventFunc(nil), c.readers...)
+	listeners := append([]subscription(nil), c.readers...)
 	c.mu.Unlock()
 
 	if waiter != nil && waiter.match != nil && waiter.match(f) {
@@ -657,8 +787,8 @@ func (c *Client) dispatch(f Frame) {
 			// reply slot already filled (duplicate frame?) — fall through.
 		}
 	}
-	for _, fn := range listeners {
-		fn(f)
+	for _, s := range listeners {
+		s.fn(f)
 	}
 }
 

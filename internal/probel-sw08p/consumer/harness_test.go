@@ -115,11 +115,20 @@ func (m *matrixPeer) run() {
 			if handler == nil {
 				continue
 			}
-			for _, reply := range handler(f) {
-				if _, werr := m.conn.Write(codec.Pack(reply)); werr != nil {
-					return
+			// Stream the replies from a separate goroutine so this read loop
+			// keeps draining the plugin's per-frame ACKs. On a synchronous
+			// net.Pipe a multi-frame reply would otherwise deadlock: the peer
+			// blocks writing reply N+1 while the plugin blocks writing the ACK
+			// for reply N with nobody reading it. Real matrices likewise stream
+			// table replies asynchronously while the consumer ACKs each frame.
+			replies := handler(f)
+			go func() {
+				for _, reply := range replies {
+					if _, werr := m.conn.Write(codec.Pack(reply)); werr != nil {
+						return
+					}
 				}
-			}
+			}()
 		}
 	}
 }

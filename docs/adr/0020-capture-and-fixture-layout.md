@@ -1,6 +1,48 @@
 # ADR-0020 — capture and fixture file layout
 
-Status: accepted
+Status: accepted (amended 2026-06-24 — see "Amendment 2026-06-24: committed per-device decoder oracles")
+
+## Amendment 2026-06-24: committed per-device decoder oracles
+
+The original ADR kept every live wire trace local-only (Bucket 4 gitignored,
+"no committed blobs", traces ≥100 KB never committed). Operating experience
+reversed that for one class of artifact: we now **commit one full real-device
+capture per protocol per device** so the codec/decoder is regression-tested
+against ground-truth bytes from every device we touch (the first was the DHD
+Ember+ console — see `internal/emberplus/testdata/fixtures/dhd/`). Synthetic
+frames miss device-specific shapes (multi-wave matrix tallies, vendor label
+schemes, firmware quirks); a committed real capture is the only oracle that
+catches them and keeps catching them in CI.
+
+### New bucket — Bucket 5: per-device decoder oracle (committed)
+
+```text
+internal/<proto>/testdata/fixtures/<device>/
+├── raw.<transport>.jsonl   raw wire frames per ADR-0021 (the decoder input)
+│                           acp1 raw.acp1.jsonl · acp2 raw.an2.jsonl ·
+│                           emberplus raw.s101.jsonl · probel raw.jsonl
+├── tree.json               canonical tree (consumer view; the device DM)
+├── glow.json               Ember+ only (provider view)
+└── README.md               provenance: device, host, fw, date, frame count
+```
+
+Rules for Bucket 5 (override the conflicting original rules below):
+- **Committed in full**, regardless of size — this is the point (enrich the
+  decoder with the whole device DM, not a trimmed slice).
+- One `<device>` folder per physical/firmware device. Name it by the device
+  (`dhd`, `neuron-convert-hybrid`, `axon-synapse`, …), lowercase slug.
+- Regular git blob, **not LFS** (LFS is disabled on this repo — free-plan cap).
+- Byte-stable: `.gitattributes` marks the dir `-text` (no EOL conversion) so a
+  pinned frame count holds across platforms.
+- Drives a `<proto>` decoder-oracle test that replays `raw.*.jsonl` through the
+  codec and asserts a clean decode + the expected tree shape
+  (pattern: `internal/emberplus/consumer/dhd_capture_test.go`).
+- `.gitignore` re-includes `internal/**/testdata/fixtures/**/*.jsonl`; scratch
+  `--capture` output under the repo-root `captures/` tree stays ignored.
+
+Bucket 4 (gitignored scratch) and Bucket 3 (small product-fingerprint library)
+are unchanged for their roles; Bucket 5 is the committed full-DM oracle that
+"no committed blobs" / "≥100 KB never committed" explicitly no longer forbid.
 
 ## Context
 
@@ -90,7 +132,9 @@ captures/<proto>/<scenario>/                               manual replay archive
 ```
 
 Both `.cache/` and `captures/` are at repo root and BOTH gitignored —
-no LFS, no committed blobs (per ADR-0021). The two-segment
+no LFS, no committed blobs (per ADR-0021). (Committed decoder oracles are
+Bucket 5 under `internal/<proto>/testdata/fixtures/<device>/`, not here.)
+The two-segment
 `<proto>/<scenario>/` keying is uniform across every protocol; nest
 deeper inside the scenario folder if a protocol needs slot / API
 version disambiguation (e.g. `captures/acp2/slot0_walk/frames.jsonl`,
@@ -155,7 +199,7 @@ fingerprints.
 | `capture.pcapng` is the canonical name in every bucket | Single name across the project; reviewers know what to open |
 | Every committed `.pcapng` MUST have a sibling `README.md` | A binary alone is unreadable in 6 months |
 | Per-type fixtures MUST also ship `tshark.tree` | Reviewers diff dissector output without launching Wireshark |
-| Wire traces (`.jsonl`, `.pcapng` ≥ 100 KB) live under `captures/` (Bucket 4, gitignored) — never LFS, never committed | Per ADR-0021 traces are local-only; LFS is reserved for spec PDFs / vendor tools / images |
+| Wire traces (`.jsonl`, `.pcapng` ≥ 100 KB) live under `captures/` (Bucket 4, gitignored) — never LFS, never committed. EXCEPTION: one full per-device decoder oracle per protocol is committed under `internal/<proto>/testdata/fixtures/<device>/` (Bucket 5, amendment 2026-06-24) | Per ADR-0021 scratch traces are local-only; the decoder oracle is the deliberately-committed ground truth |
 
 ## Forbidden
 
