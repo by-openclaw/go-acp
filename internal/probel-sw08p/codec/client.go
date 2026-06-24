@@ -631,12 +631,12 @@ func (c *Client) SendCollect(
 					return snap, nil
 				}
 			}
-			if !timer.Stop() {
-				select {
-				case <-timer.C:
-				default:
-				}
-			}
+			// A fresh matching frame arrived — restart the idle window. Under
+			// the Go 1.23+ timer semantics this module targets (go.mod: go
+			// 1.23.0), the timer channel is drained automatically on Reset, so
+			// the old Stop()+drain dance is no longer required (and is in fact
+			// unreachable: Stop() returns true even after the timer has fired
+			// into an unreceived channel). Reset alone is correct here.
 			timer.Reset(idleGap)
 		case <-timer.C:
 			mu.Lock()
