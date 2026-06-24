@@ -26,18 +26,6 @@ type WalkedTree struct {
 	Labels map[string]int
 }
 
-// Lookup finds the object index by label. Returns -1 if not found.
-func (t *WalkedTree) Lookup(label string) int {
-	if t == nil {
-		return -1
-	}
-	idx, ok := t.Labels[label]
-	if !ok {
-		return -1
-	}
-	return idx
-}
-
 // WalkProgressFunc is called after each object is added to the tree during walk.
 type WalkProgressFunc func(count int, obj *consumer.Object)
 

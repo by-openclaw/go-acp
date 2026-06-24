@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -24,13 +25,41 @@ func unitLogger() *slog.Logger {
 }
 
 // ----------------------------------------------------------------------
-// walker.go — Lookup nil, decodeValue / decodeConstraint / numberTypeToKind
+// walker.go — decodeValue / decodeConstraint / numberTypeToKind
 
-// TestWalkedTree_LookupNil covers the nil-receiver guard.
-func TestWalkedTree_LookupNil(t *testing.T) {
-	var tr *WalkedTree
-	if got := tr.Lookup("anything"); got != -1 {
-		t.Errorf("nil tree Lookup = %d, want -1", got)
+// TestResolveRequest_PathNotFound covers resolveRequest's unresolved-path
+// branch: a --path that matches no walked object returns ErrObjectNotFound
+// (the label branch is exercised elsewhere; this pins the path arm).
+func TestResolveRequest_PathNotFound(t *testing.T) {
+	p := &Plugin{}
+	tree := &WalkedTree{
+		Objects:  []consumer.Object{{ID: 1, Label: "X", Path: []string{"ROOT_NODE_V2", "X"}}},
+		ObjTypes: []codec.ACP2ObjType{codec.ObjTypeString},
+		NumTypes: []codec.NumberType{codec.NumTypeString},
+	}
+	_, _, _, _, err := p.resolveRequest(consumer.ValueRequest{Path: "DOES.NOT.EXIST", ID: -1}, tree)
+	if !errors.Is(err, consumer.ErrObjectNotFound) {
+		t.Errorf("path not found: want ErrObjectNotFound, got %v", err)
+	}
+}
+
+// TestBuildAnnounceClosure_PathFilterDrops covers the --path watch filter
+// branch: an announce for an object whose path does NOT match the watch's
+// --path is dropped (callback not fired). Deterministic — pins the filter
+// arm so the package coverage doesn't depend on live-watch scheduling.
+func TestBuildAnnounceClosure_PathFilterDrops(t *testing.T) {
+	p := &Plugin{logger: unitLogger()}
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{
+		{ID: 42, Label: "Gain", Path: []string{"ROOT_NODE_V2", "BOARD", "Gain"}},
+	})
+	called := false
+	closure := p.buildAnnounceClosure(
+		consumer.ValueRequest{Slot: -1, ID: -1, Path: "OTHER.SUBTREE"},
+		func(consumer.Event) { called = true },
+	)
+	closure(0, &codec.ACP2Message{ObjID: 42})
+	if called {
+		t.Error("announce with non-matching --path must be filtered out")
 	}
 }
 
