@@ -253,11 +253,24 @@ func (s *session) handleEmber(payload []byte) error {
 
 	if path, conns, ok := findMatrixConnectionsInElements(els); ok {
 		oid := oidFromPath(path)
-		s.logger.Debug("matrix connection", slog.String("oid", oid), slog.Int("count", len(conns)))
+		for _, c := range conns {
+			s.logger.Debug("matrix connection in",
+				slog.String("oid", oid),
+				slog.Int64("target", c.Target),
+				slog.Any("sources", c.Sources),
+				slog.String("op", c.Operation))
+		}
 		post, err := s.srv.applyMatrixConnections(oid, conns)
 		if err != nil {
 			s.logger.Debug("matrix connection failed", slog.String("oid", oid), slog.String("err", err.Error()))
 			return nil
+		}
+		for _, c := range post {
+			s.logger.Debug("matrix connection post",
+				slog.String("oid", oid),
+				slog.Int64("target", c.Target),
+				slog.Any("sources", c.Sources),
+				slog.String("disp", c.Disposition))
 		}
 		s.srv.broadcastMatrixConnections(oid, post, s)
 		return nil

@@ -142,6 +142,28 @@ func (s *server) applyMatrixConnections(matrixOID string, incoming []canonical.M
 			if in.Operation == canonical.ConnOpConnect {
 				in.Operation = canonical.ConnOpAbsolute
 			}
+			// oneToOne toggle-off disconnect: a oneToOne target can be
+			// unrouted (the 1:1 pairing may be broken), and EmberPlusViewer /
+			// libember have no separate unroute gesture — clicking the lit
+			// crosspoint re-sends the SAME source with operation=absolute, and
+			// the provider is expected to read "absolute-select the already-
+			// connected source" as DISCONNECT. Verified live on the wire
+			// against EmberPlusViewer 2.40: a oneToOne target routed to source
+			// S that receives absolute[S] clears to empty.
+			//
+			// oneToN is deliberately EXCLUDED: a oneToN target always holds a
+			// source (you re-route it, never unroute to nothing), so re-
+			// selecting its current source is a confirming no-op, NOT a
+			// disconnect. nToN keeps explicit operation=disconnect.
+			if m.Type == canonical.MatrixOneToOne &&
+				in.Operation == canonical.ConnOpAbsolute && len(in.Sources) == 1 {
+				if idx := findConnectionIndex(m.Connections, in.Target); idx >= 0 {
+					cur := m.Connections[idx].Sources
+					if len(cur) == 1 && cur[0] == in.Sources[0] {
+						in.Sources = nil // toggle off
+					}
+				}
+			}
 		}
 
 		// Spec p.88: enforce maximumConnectsPerTarget and
