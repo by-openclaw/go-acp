@@ -112,7 +112,7 @@ form flips bit 7). Full table in [`../CLAUDE.md`](../CLAUDE.md).
 | Name family 100/101/102/103/114/115 | §3.2.x | ✅ fully compliant | 4/8/12/16-char widths; space/NUL pad |
 | Update-name (write labels) | §3.2.26 | ✅ fully compliant | fire-and-forget (no reply) |
 | Dual-controller status | §3.2.8 | ✅ fully compliant | master/slave/active/idle-faulty |
-| Salvo connect-on-go + go (build / fire / clear) | §3.2.30 | ✅ codec + provider; ⚠ CLI blocked | see [salvo-connect](#salvo-connect--cli-blocked) |
+| Salvo connect-on-go + go (build / fire / clear) | §3.2.30 | ✅ codec + provider + CLI | see [salvo-connect](#salvo-connect--controller-side-batch-route) |
 | Application keepalive (auto-answer matrix ping) | TS #91 | ✅ fully compliant | plugin answers `tx 011` keepalive with `rx 034` |
 | Async tally fan-out (`watch`) | §3.2.3 | ✅ fully compliant | observes `tx 003` broadcast to all sessions |
 | Scale bench (persistent TCP, 2 mtx × 65535) | — (our extension) | ✅ fully compliant | per-cmd latency to CSV/MD |
@@ -269,19 +269,56 @@ dhs consumer probel-sw08p bench 127.0.0.1:2008 --matrix 0,1 --size 65535 --csv b
 Flags: `--phase interrogate|connect|both`, `--matrix CSV`, `--size N`,
 `--csv` / `--md`, `--progress N`, `--timeout DUR`, `--skip-warmup`.
 
-### `salvo-connect` — CLI BLOCKED
+### `salvo-connect` — controller-side batch route
+
+Stage many `dst←src` crosspoints into a numbered salvo group, then fire
+them together with one GO (a "take"). The verb wraps the two-phase wire
+flow: N × `cmd 120` BUILD (one per dst) → `cmd 121` GO `op=set`, and by
+default a trailing `cmd 121` GO `op=clear` to wipe the stage buffer.
 
 ```
-dhs consumer probel-sw08p salvo-connect 127.0.0.1:2008 --matrix 0 --level 0 --src 7 --dsts 0-2 --salvo 5
-→ error: --dsts: strconv.ParseUint: parsing "0-2": invalid syntax
+dhs consumer probel-sw08p salvo-connect 127.0.0.1:2008 --matrix 0 --level 0 --src 7 --dsts 10-11 --salvo 5
 ```
 
-The global `--dsts` matrix-config flag (parsed before sub-command
-dispatch) shadows `salvo-connect`'s own `--dsts`. The salvo path itself is
-proven working over TCP by the integration test
-[`TestSalvoConnectOnGoThenGo`](../integration/loopback_test.go); the CLI
-capture is **pending the flag fix** — no salvo CLI sample is fabricated.
-See [verbs.md §10](verbs.md#10-salvo-connect-controller-side-batch--cli-blocked-today).
+`--dsts` takes a CSV or `N-M` range (`5` · `1,3,5` · `0-7`) and every dst
+in it is routed to the single `--src` — the fan-out case (one source →
+many destinations). Mixed sources per dst are separate invocations (or
+separate wire frames): each `cmd 120` carries exactly one `(dst, src)`
+pair, and a dst appearing twice in a group is last-write-wins. Flags:
+`--matrix` / `--level` / `--src` / `--dsts` / `--salvo` (0-127),
+`--clear` (default true), `--wait` (async-tally settle), `--timeout`.
+
+> The verb owns its own `--dsts` (CSV/range) and `--level`; the global
+> matrix-config extractor is told to skip them for this subcommand
+> ([`cmd_probel.go`](../../../cmd/dhs/cmd_probel.go) `probelSubcommand`),
+> so `--dsts 0-7` reaches the verb intact. Regression-pinned by
+> [`cmd_probel_salvo_dsts_test.go`](../../../cmd/dhs/cmd_probel_salvo_dsts_test.go).
+
+Real wire trace of the command above, `--capture`'d against the loopback
+provider (`dhs producer probel-sw08p serve`). `10 06` is a DLE ACK (§2
+frame-level), elided per pair for brevity:
+
+```
+tx cmd=120 BUILD  mtx=0 lvl=0 dst=10 src=7 salvo=5   10 02 78 00 00 0a 07 05 06 6c 10 03
+rx cmd=122 ACK    mtx=0 lvl=0 dst=10 src=7 salvo=5   10 02 7a 00 00 0a 07 05 06 6a 10 03
+tx cmd=120 BUILD  mtx=0 lvl=0 dst=11 src=7 salvo=5   10 02 78 00 00 0b 07 05 06 6b 10 03
+rx cmd=122 ACK    mtx=0 lvl=0 dst=11 src=7 salvo=5   10 02 7a 00 00 0b 07 05 06 69 10 03
+tx cmd=121 GO     op=set   salvo=5                    10 02 79 00 05 03 7f 10 03
+rx cmd=123 DONE   status=Set salvo=5                  10 02 7b 00 05 03 7d 10 03
+rx cmd=004 CONN   mtx=0 lvl=0 dst=10 src=7            10 02 04 00 00 0a 07 05 e6 10 03
+rx cmd=004 CONN   mtx=0 lvl=0 dst=11 src=7            10 02 04 00 00 0b 07 05 e5 10 03
+tx cmd=121 GO     op=clear salvo=5                    10 02 79 01 05 03 7e 10 03
+rx cmd=123 DONE   status=None salvo=5                 10 02 7b 02 05 03 7b 10 03
+```
+
+The two `rx cmd 004 Connected` after the go-done are the documented #92
+deviation (see "Salvo commit emits `cmd 04`" below): the spec §3.2.30
+says a matrix should NOT emit `cmd 04` on the salvo path, but Commie and
+Lawo VSM only update tally from `cmd 04`, so our provider emits one per
+applied slot and fires `probel_salvo_emitted_connected`. The salvo path
+is also proven over TCP by
+[`TestSalvoConnectOnGoThenGo`](../integration/loopback_test.go). Byte-exact
+field decode: [`dhs_probel_sw08p.lua`](../wireshark/dhs_probel_sw08p.lua).
 
 ---
 
@@ -352,7 +389,7 @@ patched.
 | Frame | checksum / BTC mismatch | line-quality issue; dissector flags it |
 | Link | `DLE NAK` after 5× retry | command unsupported by the peer (compliance event) |
 | Validation | `--matrix out of range (0-255)`, `--device out of range (0-1023)` | fix the flag value |
-| CLI flag | `salvo-connect ... --dsts 0-2` collision | pending fix; see [salvo-connect](#salvo-connect--cli-blocked) |
+| CLI flag | `salvo-connect ... --dsts 0-2` (verb owns `--dsts`/`--level`) | resolved; see [salvo-connect](#salvo-connect--controller-side-batch-route) |
 
 ---
 

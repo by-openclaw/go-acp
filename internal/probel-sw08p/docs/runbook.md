@@ -13,7 +13,7 @@
 | **Roles** | dhs as **consumer** (outbound) and **provider** (inbound); both exercised against the loopback emulator |
 | **Producer source** | committed fixture [`../testdata/exports/matrix_tree.json`](../testdata/exports/matrix_tree.json) — one 16×16 one-to-N matrix at matrix 0 / level 0 |
 | **OS** | Windows 11 (primary host, PowerShell); Linux LXCs for Ansible parity |
-| **Out of scope** | `salvo-connect` CLI path (blocked by a flag collision — [§ salvo-connect](#salvo-connect--blocked)); live-matrix Tier-3 (VPN-gated) |
+| **Out of scope** | live-matrix Tier-3 (VPN-gated) |
 
 ## Setup — build + serve
 
@@ -70,9 +70,9 @@ positional defaults (`SRC 0001…`, `DST 0001…`, `DEV 0009`).
 | `discover` | composite | ✅ | dual-status + names + tally-dump |
 | `watch` | passive | ✅ | async tally feed |
 | `bench` | 001/002 ×N | ✅ | per-cmd latency CSV/MD |
-| `salvo-connect` | 120/121 → 122/123 | ⛔ CLI blocked | codec/provider OK; CLI flag collision |
+| `salvo-connect` | 120/121 → 122/123 | ✅ | build ×N → go set → go clear; verb owns `--dsts`/`--level` |
 
-Legend: ✅ working · ⛔ CLI-blocked.
+Legend: ✅ working.
 
 ---
 
@@ -337,21 +337,26 @@ per-op rows + a summary table.
 
 ---
 
-## salvo-connect — BLOCKED
+## salvo-connect — controller-side batch
 
 ```powershell
-.\bin\dhs.exe consumer probel-sw08p salvo-connect 127.0.0.1:2008 --matrix 0 --level 0 --src 7 --dsts 0-2 --salvo 5
-# error: --dsts: strconv.ParseUint: parsing "0-2": invalid syntax
+.\bin\dhs.exe consumer probel-sw08p salvo-connect 127.0.0.1:2008 --matrix 0 --level 0 --src 7 --dsts 10-11 --salvo 5
 ```
 
-The global `--dsts` matrix-config flag (parsed in `extractMatrixConfigFlags`
-before sub-command dispatch) shadows `salvo-connect`'s own `--dsts`. A
-range form errors; a single int is consumed by the global parser, leaving
-salvo's `--dsts` empty. This is a **real CLI flag collision, not a protocol
-limit**. The salvo path is proven working over a real TCP round-trip by
+Stages one `rx 120` per dst (each acked by `tx 122`), fires with
+`rx 121` op=set (`tx 123` Go-Done status=Set), then op=clear by default.
+`--dsts` takes a CSV or `N-M` range routed to the single `--src` (fan-out).
+The verb owns its `--dsts` / `--level`; `probelSubcommand` in
+[`cmd_probel.go`](../../../cmd/dhs/cmd_probel.go) makes the global
+matrix-config extractor skip them for this subcommand, so `--dsts 0-2`
+reaches the verb — pinned by
+[`cmd_probel_salvo_dsts_test.go`](../../../cmd/dhs/cmd_probel_salvo_dsts_test.go).
+The salvo path is proven working over a real TCP round-trip by
 [`TestSalvoConnectOnGoThenGo`](../integration/loopback_test.go) (stage 3
 slots via `rx 120` → fire via `rx 121` → `tx 123` Go-Done status=Set →
-every slot reads back). CLI capture is **pending the flag fix**.
+every slot reads back). Add `--capture salvo.jsonl` for a wire trace; the
+annotated trace is in
+[`consumer.md`](consumer.md#salvo-connect--controller-side-batch-route).
 
 ---
 
