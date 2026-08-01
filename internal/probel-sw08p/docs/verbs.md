@@ -316,25 +316,33 @@ device 9 name="DEV 0009"
 {"dir":"rx","hex":"100212000944455620303030390b121003","len":17}   ← tx 018 "DEV 0009"
 ```
 
-## 10. salvo-connect (controller-side batch — CLI BLOCKED today)
+## 10. salvo-connect (controller-side batch)
 
 `salvo-connect` mimics the VSM batch-connect flow: N × `rx 120 Connect-On-Go
 Salvo` (stage), then `rx 121 Go Salvo` op=set (fire), then op=clear (wipe).
 
-> **⚠ Not invokable from the CLI today.** The global `--dsts` matrix-config
-> flag (parsed in `extractMatrixConfigFlags` before sub-command dispatch)
-> shadows `salvo-connect`'s own `--dsts` flag. `--dsts 0-2` errors with
-> `--dsts: strconv.ParseUint: parsing "0-2": invalid syntax`; a single
-> int `--dsts 3` is eaten by the global parser, leaving salvo's `--dsts`
-> empty (`--dsts is required`). This is a real CLI flag collision, not a
-> protocol limit — **no salvo CLI sample is fabricated here.**
+```
+dhs consumer probel-sw08p salvo-connect 127.0.0.1:2008 --matrix 0 --level 0 --src 7 --dsts 10-11 --salvo 5
+```
 
-The underlying salvo path is proven working over a real TCP round-trip by
+`--dsts` accepts a CSV or `N-M` range; every dst is routed to the single
+`--src` (fan-out). The verb owns its own `--dsts` and `--level`: the
+global matrix-config extractor (`extractMatrixConfigFlags`) is told to
+skip them when `probelSubcommand(args) == "salvo-connect"`
+([`cmd_probel.go`](../../../cmd/dhs/cmd_probel.go)), so `--dsts 0-2`
+reaches the verb intact instead of being eaten by the global uint parser.
+Regression-pinned by
+[`cmd_probel_salvo_dsts_test.go`](../../../cmd/dhs/cmd_probel_salvo_dsts_test.go)
+(both SW-P-08 and SW-P-02 dispatchers; the global uint `--dsts` bootstrap
+still works for non-salvo verbs).
+
+The salvo path is also proven working over a real TCP round-trip by
 the loopback integration test
 [`TestSalvoConnectOnGoThenGo`](../integration/loopback_test.go) (stage 3
 slots → fire → every slot reads back via interrogate, `tx 123 Go-Done
 status=Set`). The wire shape is `rx 120` × N → `tx 122` ack × N →
-`rx 121` set → `tx 123` go-done. CLI capture is **pending the flag fix**.
+`rx 121` set → `tx 123` go-done. A `--capture`'d CLI trace of this verb is
+in [`consumer.md`](consumer.md#salvo-connect--controller-side-batch-route).
 
 > Spec-vs-reality note: §3.2.30 says the matrix emits **no** `cmd 04` on
 > the salvo path. Neither Commie nor Lawo VSM implement that listener

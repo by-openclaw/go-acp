@@ -41,7 +41,7 @@ default port 2008).
 Every wire sample in these docs is a **real captured frame** — the
 `{ts, proto, dir, hex, len}` JSONL emitted by `--capture` against the
 loopback provider, not hand-written hex. The capture procedure is
-documented in [runbook.md](runbook.md#capture-procedure-how-the-samples-in-these-docs-were-made);
-the one verb that cannot be driven from the CLI today
-(`salvo-connect`, blocked by a flag collision) is marked as such and its
-wire shape is taken from the integration test, never fabricated.
+documented in [runbook.md](runbook.md#capture-procedure-how-the-samples-in-these-docs-were-made).
+All verbs — including `salvo-connect` — are driven from the CLI; the
+`salvo-connect` trace is a real `--capture` of the build → go-set →
+go-clear flow (see [consumer.md](consumer.md#salvo-connect--controller-side-batch-route)).
