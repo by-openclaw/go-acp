@@ -227,9 +227,11 @@ func runProbelImport(ctx context.Context, args []string) error {
 	prefix := fs.String("prefix", "sw08p", "CSV filename prefix")
 	size := fs.Int("size", 8, "which label width column to import: 4 | 8 | 12 | 16")
 	dryRun := fs.Bool("dry-run", false, "preview the would-send actions without sending")
+	check := fs.Bool("check", false, "dry-run alias (ADR-0007): preview would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; xpoints emit the ADR-0007 shape)")
 	doSrc := fs.Bool("src", false, "import source labels (<prefix>-src.csv)")
 	doDst := fs.Bool("dst", false, "import destination labels (<prefix>-dst.csv)")
-	doXpoints := fs.Bool("xpoints", false, "import crosspoints (<prefix>-xpoint.csv; RE-ROUTES the matrix)")
+	doXpoints := fs.Bool("xpoints", false, "import crosspoints (<prefix>-xpoint.csv; converges the matrix, idempotent)")
 	timeout := fs.Duration("timeout", 300*time.Second, "overall timeout")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
@@ -250,6 +252,11 @@ func runProbelImport(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
+	}
+	dry := *dryRun || *check
 
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
@@ -260,17 +267,17 @@ func runProbelImport(ctx context.Context, args []string) error {
 	defer closer()
 
 	if *doSrc {
-		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-src.csv"), "source", col, width, *dryRun); err != nil {
+		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-src.csv"), "source", col, width, dry); err != nil {
 			return err
 		}
 	}
 	if *doDst {
-		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-dst.csv"), "dest-assoc", col, width, *dryRun); err != nil {
+		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-dst.csv"), "dest-assoc", col, width, dry); err != nil {
 			return err
 		}
 	}
 	if *doXpoints {
-		if err := applyProbelXpointCSV(cctx, p, filepath.Join(*inDir, *prefix+"-xpoint.csv"), *dryRun); err != nil {
+		if err := applyProbelXpointCSV(cctx, p, filepath.Join(*inDir, *prefix+"-xpoint.csv"), dry, jsonOut); err != nil {
 			return err
 		}
 	}
@@ -360,12 +367,16 @@ func applyProbelNameCSV(ctx context.Context, p *probelproto.Plugin, path, typ st
 }
 
 // applyProbelXpointCSV connects each dst <- src crosspoint from the CSV.
-func applyProbelXpointCSV(ctx context.Context, p *probelproto.Plugin, path string, dryRun bool) error {
-	rows, err := readProbelCSV(path)
-	if err != nil {
-		return err
-	}
-	n := 0
+type xpointRow struct {
+	mtx, lvl uint8
+	dst, src uint16
+}
+
+// parseXpointRows reads the xpoint CSV (skipping the header) into typed rows,
+// silently dropping short (<4 field) or non-integer rows — same leniency as the
+// original importer.
+func parseXpointRows(rows [][]string) []xpointRow {
+	var out []xpointRow
 	for _, rec := range rows[1:] {
 		if len(rec) < 4 {
 			continue
@@ -377,17 +388,101 @@ func applyProbelXpointCSV(ctx context.Context, p *probelproto.Plugin, path strin
 		if e1 != nil || e2 != nil || e3 != nil || e4 != nil {
 			continue
 		}
-		if !dryRun {
-			if _, err := p.CrosspointConnect(ctx, uint8(mtx), uint8(lvl), uint16(dst), uint16(src)); err != nil {
-				return fmt.Errorf("connect dst=%d src=%d: %w", dst, src, err)
+		out = append(out, xpointRow{uint8(mtx), uint8(lvl), uint16(dst), uint16(src)})
+	}
+	return out
+}
+
+// tallyToMap flattens a tally-dump result into dst→src. The dump carries a
+// contiguous SourceIDs slice starting at FirstDestinationID.
+func tallyToMap(res probelproto.TallyDumpResult) map[uint16]uint16 {
+	m := map[uint16]uint16{}
+	if res.IsWord {
+		first := res.Word.FirstDestinationID
+		for i, s := range res.Word.SourceIDs {
+			m[first+uint16(i)] = s
+		}
+		return m
+	}
+	first := uint16(res.Byte.FirstDestinationID)
+	for i, s := range res.Byte.SourceIDs {
+		m[first+uint16(i)] = uint16(s)
+	}
+	return m
+}
+
+// xpointDiff decides, for one desired dst←src against the current tally,
+// whether the crosspoint needs changing and renders the "from" value ("" when
+// the destination is currently unrouted / absent from the tally).
+func xpointDiff(current map[uint16]uint16, dst, src uint16) (changed bool, from string) {
+	cur, ok := current[dst]
+	if ok && cur == src {
+		return false, "" // already routed as desired — idempotent skip
+	}
+	if ok {
+		return true, strconv.Itoa(int(cur))
+	}
+	return true, ""
+}
+
+// applyProbelXpointCSV converges the matrix crosspoints to the CSV, idempotently
+// (ADR-0007 / ADR-0023): it reads the live tally per (matrix,level) once, sends
+// CrosspointConnect only for rows that differ, and reports the ADR-0007
+// {changed|would_change, diff[]} shape. check=true is a dry-run (no send).
+func applyProbelXpointCSV(ctx context.Context, p *probelproto.Plugin, path string, check, jsonOut bool) error {
+	rows, err := readProbelCSV(path)
+	if err != nil {
+		return err
+	}
+	parsed := parseXpointRows(rows)
+
+	// Read current tally once per (matrix,level) — never per row (scale).
+	current := map[[2]uint8]map[uint16]uint16{}
+	for _, r := range parsed {
+		key := [2]uint8{r.mtx, r.lvl}
+		if _, ok := current[key]; ok {
+			continue
+		}
+		res, terr := p.CrosspointTallyDump(ctx, r.mtx, r.lvl)
+		if terr != nil {
+			return fmt.Errorf("tally-dump matrix=%d level=%d: %w", r.mtx, r.lvl, terr)
+		}
+		current[key] = tallyToMap(res)
+	}
+
+	diffs := []ensureDiff{}
+	for _, r := range parsed {
+		changed, from := xpointDiff(current[[2]uint8{r.mtx, r.lvl}], r.dst, r.src)
+		if !changed {
+			continue
+		}
+		diffs = append(diffs, ensureDiff{
+			Field: fmt.Sprintf("%d.%d.%d", r.mtx, r.lvl, r.dst),
+			From:  from,
+			To:    strconv.Itoa(int(r.src)),
+		})
+		if !check {
+			if _, err := p.CrosspointConnect(ctx, r.mtx, r.lvl, r.dst, r.src); err != nil {
+				return fmt.Errorf("connect dst=%d src=%d: %w", r.dst, r.src, err)
 			}
 		}
-		n++
+	}
+
+	changed := len(diffs) > 0
+	if jsonOut {
+		res := ensureResult{Diff: diffs}
+		if check {
+			res.WouldChange = &changed
+		} else {
+			res.Changed = &changed
+		}
+		return emitEnsure(true, res)
 	}
 	verb := "connected"
-	if dryRun {
+	if check {
 		verb = "would connect"
 	}
-	fmt.Printf("crosspoints: %s %d routes (dst <- src) from %s\n", verb, n, filepath.Base(path))
+	fmt.Printf("crosspoints: %s %d of %d routes (%d already converged) from %s\n",
+		verb, len(diffs), len(parsed), len(parsed)-len(diffs), filepath.Base(path))
 	return nil
 }

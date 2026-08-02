@@ -1,0 +1,54 @@
+# Use-case acceptance test (ADR-0025 Tier-3) for the Probel SW-P-08 crosspoint
+# ensure (idempotent `import --xpoints`, ADR-0007 / ADR-0023). Drives a running
+# SW-P-08 matrix (real device or the demo provider) and asserts the contract:
+#
+#   1. import  -> changed=true   (first converge)
+#   2. import  -> changed=false  (run-twice idempotency, the core proof)
+#   3. --check -> would_change=false (dry-run, sends nothing)
+#
+# No PowerShell; CLI-in-a-role. Provide <in_dir>/<prefix>-xpoint.csv
+# (matrix_id,level_id,dst_id,src_id) on the control node.
+#
+#   ansible-playbook -i inventory/probel.ini playbooks/probel-sw08p-xpoint-ensure.yml \
+#     -e 'addr=10.100.0.42:2008 in_dir=routes/mcr'
+#
+- name: Probel SW-P-08 crosspoint ensure (idempotency contract)
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ conn | default('local') }}"
+  gather_facts: false
+  vars:
+    dhs_bin: dhs
+    addr: 127.0.0.1:2008
+    in_dir: routes
+    prefix: sw08p
+  tasks:
+    - name: converge crosspoints (first import -> changed)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw08p import {{ addr }}
+        --in {{ in_dir }} --prefix {{ prefix }} --xpoints --output json
+      register: first
+      changed_when: (first.stdout | from_json).changed | bool
+
+    - name: converge again (run-twice -> NO change, the idempotency proof)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw08p import {{ addr }}
+        --in {{ in_dir }} --prefix {{ prefix }} --xpoints --output json
+      register: second
+      changed_when: (second.stdout | from_json).changed | bool
+
+    - name: dry-run --check reports no change and sends nothing
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw08p import {{ addr }}
+        --in {{ in_dir }} --prefix {{ prefix }} --xpoints --check --output json
+      register: dryrun
+      changed_when: false
+
+    - name: ASSERT the contract
+      ansible.builtin.assert:
+        that:
+          - (first.stdout  | from_json).changed       == true
+          - (second.stdout | from_json).changed       == false
+          - (second.stdout | from_json).diff | length == 0
+          - (dryrun.stdout | from_json).would_change   == false
+        success_msg: "sw08p crosspoint ensure idempotency contract PASS"
+        fail_msg: "sw08p crosspoint ensure FAIL: {{ first.stdout }} / {{ second.stdout }} / {{ dryrun.stdout }}"
