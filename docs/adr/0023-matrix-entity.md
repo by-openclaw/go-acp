@@ -151,7 +151,19 @@ endpoint it currently advertises as active.
   matrices block, or behavior values → block until this ADR is
   updated".
 
+## Matrix convergence (ensure)
+
+Declarative convergence of crosspoints is realized through the canonical
+`matrix` verb per the ADR-0007 amendment (2026-08-02): read the target's
+current source set from the matrix read-back (Ember+ connection snapshot,
+Probel tally dump), diff against the desired set honoring `behavior`
+(`1to1`/`1toN`/`NtoM` caps + lock), and send the minimal Connection operation
+only when different — idempotent, `--check`-safe, emitting the ADR-0007
+`{changed|would_change, diff[]}` shape. The read-back is mandatory: a converge
+never blind-writes.
+
 ## Revisions
 
 - 2026-05-14 — initial — yboujraf
 - 2026-05-14 — added §"Dual-controller matrix": writes go to active only; reads symmetric on both; Probel cmd 8/9 is the native indicator — yboujraf
+- 2026-08-02 — added §"Matrix convergence (ensure)": crosspoint convergence via the canonical `matrix` verb + ADR-0007 shape; read-back mandatory — by-rune

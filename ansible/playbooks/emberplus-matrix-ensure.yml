@@ -1,0 +1,65 @@
+# Use-case acceptance test (ADR-0025 Tier-3) for the canonical matrix-ensure
+# (ADR-0007 amendment / ADR-0023). Drives the DEPLOYED Ember+ provider through
+# the `matrix --op absolute` verb and asserts the operator CONTRACT:
+#
+#   1. converge  -> changed=true   (first apply)
+#   2. converge  -> changed=false  (run-twice idempotency, the core proof)
+#   3. --check   -> would_change=false, and state unchanged after it
+#
+# No PowerShell; CLI-in-a-role. Requires the provider serving the integration
+# manifest (same host as emberplus-provider-matrix.yml).
+#
+#   ansible-playbook -i inventory/fleet.ini playbooks/emberplus-matrix-ensure.yml \
+#     -e target=dhs-debian
+#
+- name: Ember+ canonical matrix-ensure (idempotency contract)
+  hosts: "{{ target | default('dhs-debian') }}"
+  gather_facts: false
+  vars:
+    dhs_bin: /usr/local/bin/dhs
+    host: 127.0.0.1
+    port: 9000
+    m_oneton: "1.1.3"
+    tgt: 0
+    src: 5
+  tasks:
+    - name: ASSERT the provider is serving on {{ port }}
+      ansible.builtin.wait_for: { port: "{{ port }}", host: "{{ host }}", timeout: 5 }
+
+    # Normalise to a known different source first so the first converge changes.
+    - name: pre-set target {{ tgt }} <- 1 (baseline)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }}
+        --path {{ m_oneton }} --target {{ tgt }} --sources 1 --op absolute --output json
+      changed_when: false
+
+    - name: converge target {{ tgt }} <- {{ src }} (first apply -> changed)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }}
+        --path {{ m_oneton }} --target {{ tgt }} --sources {{ src }} --op absolute --output json
+      register: first
+      changed_when: (first.stdout | from_json).changed | bool
+
+    - name: converge again (run-twice -> NO change, the idempotency proof)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }}
+        --path {{ m_oneton }} --target {{ tgt }} --sources {{ src }} --op absolute --output json
+      register: second
+      changed_when: (second.stdout | from_json).changed | bool
+
+    - name: dry-run --check reports no change and mutates nothing
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }}
+        --path {{ m_oneton }} --target {{ tgt }} --sources {{ src }} --op absolute --check --output json
+      register: dryrun
+      changed_when: false
+
+    - name: ASSERT the contract
+      ansible.builtin.assert:
+        that:
+          - (first.stdout  | from_json).changed       == true
+          - (second.stdout | from_json).changed       == false
+          - (second.stdout | from_json).diff | length == 0
+          - (dryrun.stdout | from_json).would_change   == false
+        success_msg: "matrix-ensure idempotency contract PASS (changed->no-change->check-clean)"
+        fail_msg: "matrix-ensure contract FAIL: {{ first.stdout }} / {{ second.stdout }} / {{ dryrun.stdout }}"
