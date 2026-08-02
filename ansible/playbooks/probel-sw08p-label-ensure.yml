@@ -1,0 +1,57 @@
+# Use-case acceptance test (ADR-0025 Tier-3) for the Probel SW-P-08 label
+# ensure (idempotent `import --src`, ADR-0007). Drives a running matrix (real
+# device or the demo provider) and asserts the contract:
+#
+#   1. import source labels -> changed=true   (first converge, if any differ)
+#   2. import again         -> changed=false  (run-twice idempotency, the proof)
+#   3. --check              -> would_change=false
+#
+# No PowerShell; CLI-in-a-role. Provide <in_dir>/<prefix>-src.csv
+# (matrix_id,level_id,src_id,default_label,label_4,label_8,label_12,label_16) —
+# an `export` produces it in the right shape. Use --size 4|8|12 for the
+# idempotency proof; width 16 has no read-back and always sends (documented).
+# One selector per run so stdout is a single JSON object (dst is symmetric).
+#
+#   ansible-playbook -i inventory/probel.ini playbooks/probel-sw08p-label-ensure.yml \
+#     -e 'addr=10.100.0.42:2008 in_dir=routes/mcr size=8'
+#
+- name: Probel SW-P-08 label ensure (idempotency contract)
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ conn | default('local') }}"
+  gather_facts: false
+  vars:
+    dhs_bin: dhs
+    addr: 127.0.0.1:2008
+    in_dir: routes
+    prefix: sw08p
+    size: 8
+  tasks:
+    - name: converge source labels (first import)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw08p import {{ addr }}
+        --in {{ in_dir }} --prefix {{ prefix }} --src --size {{ size }} --output json
+      register: first
+      changed_when: (first.stdout | from_json).changed | bool
+
+    - name: converge again (run-twice -> NO change, the idempotency proof)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw08p import {{ addr }}
+        --in {{ in_dir }} --prefix {{ prefix }} --src --size {{ size }} --output json
+      register: second
+      changed_when: (second.stdout | from_json).changed | bool
+
+    - name: dry-run --check sends nothing
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw08p import {{ addr }}
+        --in {{ in_dir }} --prefix {{ prefix }} --src --size {{ size }} --check --output json
+      register: dryrun
+      changed_when: false
+
+    - name: ASSERT the contract
+      ansible.builtin.assert:
+        that:
+          - (second.stdout | from_json).changed       == false
+          - (second.stdout | from_json).diff | length == 0
+          - (dryrun.stdout | from_json).would_change   == false
+        success_msg: "sw08p label ensure idempotency contract PASS"
+        fail_msg: "sw08p label ensure FAIL: 2nd={{ second.stdout }} check={{ dryrun.stdout }}"

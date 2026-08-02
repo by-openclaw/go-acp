@@ -267,12 +267,12 @@ func runProbelImport(ctx context.Context, args []string) error {
 	defer closer()
 
 	if *doSrc {
-		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-src.csv"), "source", col, width, dry); err != nil {
+		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-src.csv"), "source", col, width, dry, jsonOut); err != nil {
 			return err
 		}
 	}
 	if *doDst {
-		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-dst.csv"), "dest-assoc", col, width, dry); err != nil {
+		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-dst.csv"), "dest-assoc", col, width, dry, jsonOut); err != nil {
 			return err
 		}
 	}
@@ -297,9 +297,42 @@ func readProbelCSV(path string) ([][]string, error) {
 	return r.ReadAll()
 }
 
-// applyProbelNameCSV pushes one width column of labels via update-name. Labels
-// are batched into contiguous id runs sized to fit the SW-P-08 DATA cap.
-func applyProbelNameCSV(ctx context.Context, p *probelproto.Plugin, path, typ string, col int, width codec.NameLength, dryRun bool) error {
+type labelItem struct {
+	id       int
+	label    string
+	mtx, lvl uint8
+}
+
+// parseLabelItems reads the typed label rows (id from col 2, label from the
+// width column), dropping short/non-integer rows.
+func parseLabelItems(rows [][]string, col int) []labelItem {
+	var items []labelItem
+	for _, rec := range rows[1:] {
+		if len(rec) <= col {
+			continue
+		}
+		id, e1 := strconv.Atoi(strings.TrimSpace(rec[2]))
+		mtx, e2 := strconv.Atoi(strings.TrimSpace(rec[0]))
+		lvl, e3 := strconv.Atoi(strings.TrimSpace(rec[1]))
+		if e1 != nil || e2 != nil || e3 != nil {
+			continue
+		}
+		items = append(items, labelItem{id: id, label: rec[col], mtx: uint8(mtx), lvl: uint8(lvl)})
+	}
+	return items
+}
+
+// trimLabel strips the trailing space / NUL padding SW-P-08 applies to
+// fixed-width name fields, so a read-back name compares equal to a CSV label.
+func trimLabel(s string) string { return strings.TrimRight(s, " \x00") }
+
+// applyProbelNameCSV converges one width column of labels to the CSV,
+// idempotently (ADR-0007): it reads the current names back (widths 4/8/12) and
+// sends update-name only for labels that differ, reporting the ADR-0007
+// {changed|would_change, diff[]} shape. Width 16 has no read-back command, so
+// those labels are always (re)sent and reported changed — a documented
+// carve-out. check=true is a dry-run (no send).
+func applyProbelNameCSV(ctx context.Context, p *probelproto.Plugin, path, typ string, col int, width codec.NameLength, check, jsonOut bool) error {
 	rows, err := readProbelCSV(path)
 	if err != nil {
 		return err
@@ -311,58 +344,121 @@ func applyProbelNameCSV(ctx context.Context, p *probelproto.Plugin, path, typ st
 	if err != nil {
 		return err
 	}
-	type item struct {
-		id       int
-		label    string
-		mtx, lvl uint8
-	}
-	var items []item
-	for _, rec := range rows[1:] {
-		if len(rec) <= col {
-			continue
+	items := parseLabelItems(rows, col)
+
+	// Read current names for the read-back diff. SW-P-08 read commands support
+	// 4/8/12-char widths only; width 16 cannot be read back.
+	readable := width.Bytes() <= 12
+	isSource := typ == "source"
+	current := map[[3]int]string{} // {mtx, lvl-or-0, id} -> trimmed name
+	if readable {
+		done := map[[2]uint8]bool{}
+		for _, it := range items {
+			k := [2]uint8{it.mtx, it.lvl}
+			if !isSource {
+				k[1] = 0 // dest names are matrix-scoped, not level-scoped
+			}
+			if done[k] {
+				continue
+			}
+			done[k] = true
+			if isSource {
+				r, rerr := p.AllSourceNames(ctx, it.mtx, it.lvl, width)
+				if rerr != nil {
+					return fmt.Errorf("all-source-names matrix=%d level=%d: %w", it.mtx, it.lvl, rerr)
+				}
+				for i, n := range r.Names {
+					current[[3]int{int(it.mtx), int(it.lvl), int(r.FirstSourceID) + i}] = trimLabel(n)
+				}
+			} else {
+				r, rerr := p.AllDestAssocNames(ctx, it.mtx, width)
+				if rerr != nil {
+					return fmt.Errorf("all-dest-names matrix=%d: %w", it.mtx, rerr)
+				}
+				for i, n := range r.Names {
+					current[[3]int{int(it.mtx), 0, int(r.FirstDestAssociationID) + i}] = trimLabel(n)
+				}
+			}
 		}
-		id, e1 := strconv.Atoi(strings.TrimSpace(rec[2]))
-		mtx, e2 := strconv.Atoi(strings.TrimSpace(rec[0]))
-		lvl, e3 := strconv.Atoi(strings.TrimSpace(rec[1]))
-		if e1 != nil || e2 != nil || e3 != nil {
-			continue
-		}
-		items = append(items, item{id: id, label: rec[col], mtx: uint8(mtx), lvl: uint8(lvl)})
 	}
-	perFrame := 120 / int(width.Bytes())
-	if perFrame < 1 {
-		perFrame = 1
-	}
-	sent := 0
-	for i := 0; i < len(items); {
-		start := items[i]
-		names := []string{start.label}
-		j := i + 1
-		for j < len(items) && items[j].id == items[j-1].id+1 && len(names) < perFrame {
-			names = append(names, items[j].label)
-			j++
+
+	// Diff: keep only labels that differ from the device.
+	changedItems := make([]labelItem, 0, len(items))
+	diffs := []ensureDiff{}
+	for _, it := range items {
+		key := [3]int{int(it.mtx), int(it.lvl), it.id}
+		if !isSource {
+			key[1] = 0
 		}
-		if dryRun {
-			fmt.Printf("[dry-run] %s update-name matrix=%d level=%d first=%d count=%d width=%d\n",
-				typ, start.mtx, start.lvl, start.id, len(names), width.Bytes())
-		} else {
-			err := p.UpdateNameRequest(ctx, codec.UpdateNameRequestParams{
+		want := trimLabel(it.label)
+		// An id absent from the read-back is unlabeled on the device (name ""),
+		// so map-miss defaults to "". Skipping when cur == want (including both
+		// empty) is what makes the whole table idempotent — otherwise the many
+		// unlabeled slots (""→"") would re-send on every run.
+		cur := current[key]
+		if readable && cur == want {
+			continue // already set (or both empty) — idempotent skip
+		}
+		changedItems = append(changedItems, it)
+		field := fmt.Sprintf("src.%d.%d.%d", it.mtx, it.lvl, it.id)
+		if !isSource {
+			field = fmt.Sprintf("dst.%d.%d", it.mtx, it.id)
+		}
+		from := cur
+		if !readable {
+			from = "?" // width 16: no read-back
+		}
+		diffs = append(diffs, ensureDiff{Field: field, From: from, To: want})
+	}
+
+	// Apply changed labels, batched into contiguous same-(matrix,level) id runs
+	// sized to the SW-P-08 DATA cap. Skipped entirely on --check.
+	if !check {
+		perFrame := 120 / int(width.Bytes())
+		if perFrame < 1 {
+			perFrame = 1
+		}
+		for i := 0; i < len(changedItems); {
+			start := changedItems[i]
+			names := []string{start.label}
+			j := i + 1
+			for j < len(changedItems) &&
+				changedItems[j].mtx == start.mtx && changedItems[j].lvl == start.lvl &&
+				changedItems[j].id == changedItems[j-1].id+1 && len(names) < perFrame {
+				names = append(names, changedItems[j].label)
+				j++
+			}
+			if err := p.UpdateNameRequest(ctx, codec.UpdateNameRequestParams{
 				NameType: nameType, NameLength: width,
 				MatrixID: start.mtx, LevelID: start.lvl,
 				FirstID: uint16(start.id), Names: names,
-			})
-			if err != nil {
+			}); err != nil {
 				return fmt.Errorf("update-name %s first=%d: %w", typ, start.id, err)
 			}
+			i = j
 		}
-		sent += len(names)
-		i = j
+	}
+
+	changed := len(diffs) > 0
+	if jsonOut {
+		res := ensureResult{Diff: diffs}
+		if check {
+			res.WouldChange = &changed
+		} else {
+			res.Changed = &changed
+		}
+		return emitEnsure(true, res)
 	}
 	verb := "updated"
-	if dryRun {
+	if check {
 		verb = "would update"
 	}
-	fmt.Printf("%s labels: %s %d (width %d) from %s\n", typ, verb, sent, width.Bytes(), filepath.Base(path))
+	note := ""
+	if !readable {
+		note = " (width 16: no read-back — always sent)"
+	}
+	fmt.Printf("%s labels: %s %d of %d (width %d)%s from %s\n",
+		typ, verb, len(diffs), len(items), width.Bytes(), note, filepath.Base(path))
 	return nil
 }
 

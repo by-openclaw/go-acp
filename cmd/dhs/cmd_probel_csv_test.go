@@ -57,6 +57,46 @@ func TestTallyToMap(t *testing.T) {
 	})
 }
 
+// TestTrimLabel pins the fixed-width pad stripping so a read-back name compares
+// equal to a CSV label (SW-P-08 pads names with trailing space or NUL).
+func TestTrimLabel(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"VID", "VID"},
+		{"VID ", "VID"},
+		{"VID\x00\x00", "VID"},
+		{"VID  \x00", "VID"},
+		{"", ""},
+		{"  ", ""},
+	}
+	for _, tc := range cases {
+		if got := trimLabel(tc.in); got != tc.want {
+			t.Errorf("trimLabel(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// TestParseLabelItems pins the label CSV parse (id from col 2, label from the
+// width column at `col`): header skipped, short/non-integer rows dropped.
+func TestParseLabelItems(t *testing.T) {
+	// columns: matrix_id,level_id,src_id,default_label,label_4,label_8,...
+	col := 4 // label_4
+	rows := [][]string{
+		{"matrix_id", "level_id", "src_id", "default_label", "label_4"}, // header
+		{"0", "0", "0", "", "VID1"},                                     // valid
+		{"0", "0", "1"},                                                 // short -> dropped
+		{"1", "0", "x", "", "BAD"},                                      // non-int id -> dropped
+		{"1", "0", "7", "", "AUX7"},                                     // valid
+	}
+	got := parseLabelItems(rows, col)
+	if len(got) != 2 {
+		t.Fatalf("parsed %d, want 2: %+v", len(got), got)
+	}
+	if got[0] != (labelItem{id: 0, label: "VID1", mtx: 0, lvl: 0}) ||
+		got[1] != (labelItem{id: 7, label: "AUX7", mtx: 1, lvl: 0}) {
+		t.Errorf("parsed = %+v, want [{0 VID1 0 0} {7 AUX7 1 0}]", got)
+	}
+}
+
 // TestParseXpointRows pins the lenient CSV parse: header skipped, short and
 // non-integer rows dropped, valid rows typed.
 func TestParseXpointRows(t *testing.T) {
