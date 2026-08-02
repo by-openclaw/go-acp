@@ -779,12 +779,34 @@ func (c *Client) dispatch(f Frame) {
 	listeners := append([]subscription(nil), c.readers...)
 	c.mu.Unlock()
 
+	// A pending Send claims the FIRST matching frame — but only once. We clear
+	// c.pending here, on the reader goroutine, the instant the frame is claimed,
+	// so the NEXT matching frame (e.g. the second tx 106 of a streamed name
+	// table) is delivered to the Subscribe listeners instead of being swallowed
+	// by an already-satisfied waiter.
+	//
+	// Previously c.pending was cleared only by Send's deferred cleanup, which
+	// runs on the *caller* goroutine and races this reader: a matrix streaming
+	// frame N+1 back-to-back could have it dispatched before that defer fired,
+	// so dispatch still saw the satisfied waiter and dropped the frame into
+	// waiter.reply — a buffered channel nobody reads again — losing it. That
+	// truncated multi-frame SendCollect results (the flaky *_MultiFrame tests,
+	// and, on a fast real matrix, dropped table rows). The claim is guarded by
+	// c.pending == waiter so a newer in-flight Send is never disturbed.
 	if waiter != nil && waiter.match != nil && waiter.match(f) {
-		select {
-		case waiter.reply <- replyResult{frame: f}:
-			return
-		default:
-			// reply slot already filled (duplicate frame?) — fall through.
+		c.mu.Lock()
+		claimed := c.pending == waiter
+		if claimed {
+			c.pending = nil
+		}
+		c.mu.Unlock()
+		if claimed {
+			select {
+			case waiter.reply <- replyResult{frame: f}:
+				return
+			default:
+				// reply slot already filled — fall through to listeners.
+			}
 		}
 	}
 	for _, s := range listeners {
