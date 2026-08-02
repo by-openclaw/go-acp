@@ -40,7 +40,8 @@ func runEnsure(ctx context.Context, args []string) error {
 	valueStr := fs.String("value", "", "desired value to converge to")
 	state := fs.String("state", "present", "present (converge --value) | absent (producer/registry only)")
 	check := fs.Bool("check", false, "dry-run: report would_change, write nothing")
-	asJSON := fs.Bool("json", false, "emit a JSON result (Ansible-friendly)")
+	asJSON := fs.Bool("json", false, "deprecated alias for --output json")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; yaml reserved, not yet supported)")
 	noWalk := fs.Bool("no-walk", false, "fail on cache miss instead of walking the slot to resolve --path/--label")
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2").`)
 	host, rest, err := popHost(args)
@@ -48,6 +49,11 @@ func runEnsure(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: dhs consumer <proto> ensure <host> --slot N (--path P | --label L | --id I) --value <v> [--state present] [--check] [--json]")
 	}
 	_ = fs.Parse(rest)
+
+	jsonOut, oerr := resolveEnsureOutput(*output, *asJSON)
+	if oerr != nil {
+		return oerr
+	}
 
 	if *state != "present" {
 		return ensureValErr(fmt.Sprintf("--state %q: consumer ensure converges values with --state present only; absent (session/service teardown) is a producer/registry concern (ADR-0007)", *state))
@@ -154,10 +160,10 @@ func runEnsure(ctx context.Context, args []string) error {
 	changed := !valuesEqual(current, target)
 
 	if *check {
-		return emitEnsure(*asJSON, ensureResult{WouldChange: &changed, Current: curStr, Target: target})
+		return emitEnsure(jsonOut, ensureResult{WouldChange: &changed, Current: curStr, Target: target, Diff: ensureValueDiff(changed, curStr, target)})
 	}
 	if !changed {
-		return emitEnsure(*asJSON, ensureResult{Changed: &changed, Previous: curStr, Current: curStr})
+		return emitEnsure(jsonOut, ensureResult{Changed: &changed, Previous: curStr, Current: curStr, Diff: ensureValueDiff(changed, curStr, curStr)})
 	}
 	confirmed, err := plug.SetValue(opCtx, req, want)
 	if err != nil {
@@ -168,18 +174,55 @@ func runEnsure(ctx context.Context, args []string) error {
 	// pre-set prediction, so a write that the device clamps back onto the
 	// current value still reports changed=false.
 	applied := !valuesEqual(current, newStr)
-	return emitEnsure(*asJSON, ensureResult{Changed: &applied, Previous: curStr, Current: newStr})
+	return emitEnsure(jsonOut, ensureResult{Changed: &applied, Previous: curStr, Current: newStr, Diff: ensureValueDiff(applied, curStr, newStr)})
+}
+
+// resolveEnsureOutput maps the canonical --output flag (ADR-0002) and the
+// deprecated --json alias to a single json-vs-text decision. --output json (or
+// the --json alias) selects JSON; text is the default. yaml is reserved by
+// ADR-0002 but not yet implemented; anything else is a validation error (exit 2
+// per error-codes.md).
+func resolveEnsureOutput(output string, jsonAlias bool) (bool, error) {
+	switch output {
+	case "text":
+		return jsonAlias, nil
+	case "json":
+		return true, nil
+	case "yaml":
+		return false, ensureValErr("--output yaml: not yet supported (use --output json)")
+	default:
+		return false, ensureValErr(fmt.Sprintf("--output %q: expected text | json", output))
+	}
 }
 
 // ensureResult is the structured outcome (ADR-0007 shape, simplified for the
 // consumer value case). Pointers distinguish apply (changed) from check
 // (would_change) and keep `false` from being omitted.
 type ensureResult struct {
-	Changed     *bool  `json:"changed,omitempty"`
-	WouldChange *bool  `json:"would_change,omitempty"`
-	Previous    string `json:"previous,omitempty"`
-	Current     string `json:"current,omitempty"`
-	Target      string `json:"target,omitempty"`
+	Changed     *bool        `json:"changed,omitempty"`
+	WouldChange *bool        `json:"would_change,omitempty"`
+	Previous    string       `json:"previous,omitempty"`
+	Current     string       `json:"current,omitempty"`
+	Target      string       `json:"target,omitempty"`
+	Diff        []ensureDiff `json:"diff"`
+}
+
+// ensureDiff is one field-level change in the ADR-0007 diff[] array.
+type ensureDiff struct {
+	Field string `json:"field"`
+	From  string `json:"from"`
+	To    string `json:"to"`
+}
+
+// ensureValueDiff builds the ADR-0007 diff[] for the single-value ensure case:
+// one {field:"value", from, to} entry when the value changes, an empty but
+// non-nil slice otherwise. ADR-0007 §Forbidden requires diff to always be
+// emitted (even []), so this never returns nil.
+func ensureValueDiff(changed bool, from, to string) []ensureDiff {
+	if !changed {
+		return []ensureDiff{}
+	}
+	return []ensureDiff{{Field: "value", From: from, To: to}}
 }
 
 func emitEnsure(asJSON bool, r ensureResult) error {
