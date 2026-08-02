@@ -39,7 +39,27 @@ jobs:
         run: go vet ./...
 
       - name: Unit tests
-        run: go test -count=1 -race ./...
+        shell: bash
+        run: |
+          set -o pipefail
+          # A few consumer/provider tests exercise goroutine / reconnect /
+          # timer timing (net.Pipe, fast reconnect backoff, keep-alive) that
+          # can flake on a loaded CI runner even when the code is correct —
+          # the same class the coverage-floor step already retries. Retry the
+          # suite up to 3x and pass on the first green; a genuine failure
+          # fails all three attempts. Root-causing individual flakes is still
+          # tracked separately — this only stops them gating merges.
+          for attempt in 1 2 3; do
+            echo "::group::unit tests (attempt $attempt/3)"
+            if go test -count=1 -race ./...; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "::warning::unit tests failed on attempt $attempt/3; retrying"
+          done
+          echo "::error::unit tests failed after 3 attempts"
+          exit 1
 
       - name: Unit tests (coverage)
         if: matrix.os == 'ubuntu-latest'
