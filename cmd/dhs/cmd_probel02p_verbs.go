@@ -33,6 +33,8 @@ type probelSW02Flags struct {
 	extended  bool
 	badSource bool
 	timeout   time.Duration
+	check     bool
+	output    string
 }
 
 func parseProbelSW02Flags(args []string, want struct{ src, badSource bool }) (probelSW02Flags, error) {
@@ -45,6 +47,8 @@ func parseProbelSW02Flags(args []string, want struct{ src, badSource bool }) (pr
 		fs.BoolVar(&pf.badSource, "bad-source", false, "set the narrow Multiplier bad-source bit (rx 02 only; ignored when --extended)")
 	}
 	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
+	fs.BoolVar(&pf.check, "check", false, "dry-run: report would_change, send nothing (ADR-0007)")
+	fs.StringVar(&pf.output, "output", "text", "output format: text | json (ADR-0002)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return pf, fmt.Errorf("missing <host:port>")
@@ -92,10 +96,19 @@ func runProbelsw02pInterrogate(ctx context.Context, args []string) error {
 	return nil
 }
 
+// runProbelsw02pConnect converges dst to carry --src, idempotently (ADR-0007):
+// it interrogates the current source and only sends a connect when the dst is
+// not already routed from --src (and same bad-source bit). --check dry-runs;
+// --output json emits {changed|would_change, diff[]} — the same shape every
+// other protocol uses, so Ansible treats sw02 identically.
 func runProbelsw02pConnect(ctx context.Context, args []string) error {
 	pf, err := parseProbelSW02Flags(args, struct{ src, badSource bool }{src: true, badSource: true})
 	if err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(pf.output, false)
+	if oerr != nil {
+		return oerr
 	}
 	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
 	defer cancel()
@@ -104,22 +117,51 @@ func runProbelsw02pConnect(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
+
+	// Read current source (read-back) for the idempotency decision.
+	var curSrc int
+	var curBad bool
 	if pf.extended {
-		reply, err := p.SendExtendedConnect(cctx, uint16(pf.dst), uint16(pf.src))
-		if err != nil {
-			return err
+		cur, ierr := p.SendExtendedInterrogate(cctx, uint16(pf.dst))
+		if ierr != nil {
+			return ierr
 		}
-		fmt.Printf("extended connected  dst=%d src=%d bad_source=%v update_off=%v\n",
-			reply.Destination, reply.Source, reply.BadSource, reply.UpdateOff)
-		return nil
+		curSrc, curBad = int(cur.Source), cur.BadSource
+	} else {
+		cur, ierr := p.SendInterrogate(cctx, uint16(pf.dst))
+		if ierr != nil {
+			return ierr
+		}
+		curSrc, curBad = int(cur.Source), cur.BadSource
 	}
-	reply, err := p.SendConnect(cctx, uint16(pf.dst), uint16(pf.src), pf.badSource)
-	if err != nil {
-		return err
+	field := fmt.Sprintf("xpoint.%d", pf.dst)
+	from := fmt.Sprintf("src=%d bad_source=%v", curSrc, curBad)
+	to := fmt.Sprintf("src=%d bad_source=%v", pf.src, pf.badSource)
+	changed := curSrc != pf.src || curBad != pf.badSource
+
+	if pf.check {
+		return emitEnsure(jsonOut, ensureResult{WouldChange: &changed, Current: from, Target: to, Diff: ensureFieldDiff(changed, field, from, to)})
 	}
-	fmt.Printf("connected  dst=%d src=%d bad_source=%v\n",
-		reply.Destination, reply.Source, reply.BadSource)
-	return nil
+	if !changed {
+		return emitEnsure(jsonOut, ensureResult{Changed: &changed, Previous: from, Current: from, Diff: []ensureDiff{}})
+	}
+
+	var now string
+	if pf.extended {
+		reply, cerr := p.SendExtendedConnect(cctx, uint16(pf.dst), uint16(pf.src))
+		if cerr != nil {
+			return cerr
+		}
+		now = fmt.Sprintf("src=%d bad_source=%v", reply.Source, reply.BadSource)
+	} else {
+		reply, cerr := p.SendConnect(cctx, uint16(pf.dst), uint16(pf.src), pf.badSource)
+		if cerr != nil {
+			return cerr
+		}
+		now = fmt.Sprintf("src=%d bad_source=%v", reply.Source, reply.BadSource)
+	}
+	applied := true
+	return emitEnsure(jsonOut, ensureResult{Changed: &applied, Previous: from, Current: now, Diff: ensureFieldDiff(true, field, from, now)})
 }
 
 func runProbelsw02pConnectOnGo(ctx context.Context, args []string) error {

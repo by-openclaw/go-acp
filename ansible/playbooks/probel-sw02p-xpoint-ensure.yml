@@ -1,0 +1,52 @@
+# Use-case acceptance test (ADR-0025 Tier-3) for the Probel SW-P-02 crosspoint
+# ensure (idempotent `connect`, ADR-0007). Same contract as sw08 — identical
+# JSON, so this play is the sw08 play with the proto/verb swapped:
+#
+#   1. connect     -> changed (if the dst wasn't already on --src)
+#   2. connect     -> changed=false  (run-twice idempotency, the proof)
+#   3. --check     -> would_change=false
+#
+# No PowerShell; CLI-in-a-role.
+#
+#   ansible-playbook -i inventory/probel.ini playbooks/probel-sw02p-xpoint-ensure.yml \
+#     -e 'addr=10.100.0.42:2002 dst=0 src=5'
+#
+- name: Probel SW-P-02 crosspoint ensure (idempotency contract)
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ conn | default('local') }}"
+  gather_facts: false
+  vars:
+    dhs_bin: dhs
+    addr: 127.0.0.1:2002
+    dst: 0
+    src: 5
+  tasks:
+    - name: converge crosspoint (first connect)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw02p connect {{ addr }}
+        --dst {{ dst }} --src {{ src }} --output json
+      register: first
+      changed_when: (first.stdout | from_json).changed | bool
+
+    - name: converge again (run-twice -> NO change, the idempotency proof)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw02p connect {{ addr }}
+        --dst {{ dst }} --src {{ src }} --output json
+      register: second
+      changed_when: (second.stdout | from_json).changed | bool
+
+    - name: dry-run --check reports no change and sends nothing
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw02p connect {{ addr }}
+        --dst {{ dst }} --src {{ src }} --check --output json
+      register: dryrun
+      changed_when: false
+
+    - name: ASSERT the contract (identical to every other protocol)
+      ansible.builtin.assert:
+        that:
+          - (second.stdout | from_json).changed       == false
+          - (second.stdout | from_json).diff | length == 0
+          - (dryrun.stdout | from_json).would_change   == false
+        success_msg: "sw02p crosspoint ensure idempotency contract PASS"
+        fail_msg: "sw02p crosspoint ensure FAIL: 2nd={{ second.stdout }} check={{ dryrun.stdout }}"
