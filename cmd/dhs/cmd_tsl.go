@@ -21,6 +21,12 @@ import (
 //
 //	listen [--bind HOST:PORT] [--tcp]   bind a UDP (or v5.0 TCP) listener
 //	                                    and print every decoded frame.
+//	validate <frames.jsonl>             decode a captured trace offline
+//	                                    through the codec (per ADR-0021).
+//
+// TSL is push-only with no read-back, so the idempotent `ensure` verb is
+// N/A for it (ratified in the ADR-0007 amendment): "keep it set" is the
+// producer's `serve --refresh`, not a converge.
 //
 // `proto` is one of `tsl-v31` / `tsl-v40` / `tsl-v50`.
 func runTSLConsumer(ctx context.Context, proto string, args []string) error {
@@ -33,8 +39,13 @@ func runTSLConsumer(ctx context.Context, proto string, args []string) error {
 	switch verb {
 	case "listen":
 		return runTSLListen(ctx, proto, rest)
+	case "validate":
+		// The tsl plugin implements consumer.Validator; route to the generic
+		// offline validator with --protocol injected, exactly like the
+		// acp1/acp2/emberplus dispatch (main.go dispatchConsumer).
+		return runValidate(ctx, append([]string{"--protocol", proto}, rest...))
 	}
-	return fmt.Errorf("consumer %s: unknown verb %q (expected: listen)", proto, verb)
+	return fmt.Errorf("consumer %s: unknown verb %q (expected: listen | validate)", proto, verb)
 }
 
 // runTSLListen binds a UDP (or v5.0 TCP) listener and prints every
