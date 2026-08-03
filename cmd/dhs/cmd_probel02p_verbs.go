@@ -288,11 +288,19 @@ func runProbelsw02pSalvoConnect(ctx context.Context, args []string) error {
 	return nil
 }
 
+// runProbelsw02pProtectConnect converges dst to "protected by --device",
+// idempotently (ADR-0007): interrogates current protect state and only sends a
+// connect when not already ProtectProBel owned by that device. --check dry-run;
+// --output json emits the same {changed|would_change, diff[]} as every protocol.
 func runProbelsw02pProtectConnect(ctx context.Context, args []string) error {
 	pf, device, err := parseProbelSW02ProtectFlags(args)
 	if err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(pf.output, false)
+	if oerr != nil {
+		return oerr
+	}
 	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
 	defer cancel()
 	p, closer, err := dialProbelSW02(cctx, pf.addr)
@@ -300,20 +308,41 @@ func runProbelsw02pProtectConnect(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
+	cur, err := p.SendExtendedProtectInterrogate(cctx, uint16(pf.dst))
+	if err != nil {
+		return err
+	}
+	field := fmt.Sprintf("protect.%d", pf.dst)
+	from := fmt.Sprintf("state=%s device=%d", protectStateName(cur.Protect), cur.Device)
+	to := fmt.Sprintf("state=%s device=%d", protectStateName(codec02.ProtectProBel), device)
+	changed := cur.Protect != codec02.ProtectProBel || int(cur.Device) != device
+	if pf.check {
+		return emitEnsure(jsonOut, ensureResult{WouldChange: &changed, Current: from, Target: to, Diff: ensureFieldDiff(changed, field, from, to)})
+	}
+	if !changed {
+		return emitEnsure(jsonOut, ensureResult{Changed: &changed, Previous: from, Current: from, Diff: []ensureDiff{}})
+	}
 	reply, err := p.SendExtendedProtectConnect(cctx, uint16(pf.dst), uint16(device))
 	if err != nil {
 		return err
 	}
-	fmt.Printf("protect connected  dst=%d device=%d state=%s\n",
-		reply.Destination, reply.Device, protectStateName(reply.Protect))
-	return nil
+	now := fmt.Sprintf("state=%s device=%d", protectStateName(reply.Protect), reply.Device)
+	applied := true
+	return emitEnsure(jsonOut, ensureResult{Changed: &applied, Previous: from, Current: now, Diff: ensureFieldDiff(true, field, from, now)})
 }
 
+// runProbelsw02pProtectDisconnect converges dst to unprotected (ProtectNone),
+// idempotently: interrogates and only sends a disconnect when the dst is
+// currently protected. --check dry-run; --output json.
 func runProbelsw02pProtectDisconnect(ctx context.Context, args []string) error {
 	pf, device, err := parseProbelSW02ProtectFlags(args)
 	if err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(pf.output, false)
+	if oerr != nil {
+		return oerr
+	}
 	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
 	defer cancel()
 	p, closer, err := dialProbelSW02(cctx, pf.addr)
@@ -321,13 +350,27 @@ func runProbelsw02pProtectDisconnect(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
+	cur, err := p.SendExtendedProtectInterrogate(cctx, uint16(pf.dst))
+	if err != nil {
+		return err
+	}
+	field := fmt.Sprintf("protect.%d", pf.dst)
+	from := fmt.Sprintf("state=%s device=%d", protectStateName(cur.Protect), cur.Device)
+	to := fmt.Sprintf("state=%s device=%d", protectStateName(codec02.ProtectNone), 0)
+	changed := cur.Protect != codec02.ProtectNone
+	if pf.check {
+		return emitEnsure(jsonOut, ensureResult{WouldChange: &changed, Current: from, Target: to, Diff: ensureFieldDiff(changed, field, from, to)})
+	}
+	if !changed {
+		return emitEnsure(jsonOut, ensureResult{Changed: &changed, Previous: from, Current: from, Diff: []ensureDiff{}})
+	}
 	reply, err := p.SendExtendedProtectDisconnect(cctx, uint16(pf.dst), uint16(device))
 	if err != nil {
 		return err
 	}
-	fmt.Printf("protect disconnected  dst=%d device=%d state=%s\n",
-		reply.Destination, reply.Device, protectStateName(reply.Protect))
-	return nil
+	now := fmt.Sprintf("state=%s device=%d", protectStateName(reply.Protect), reply.Device)
+	applied := true
+	return emitEnsure(jsonOut, ensureResult{Changed: &applied, Previous: from, Current: now, Diff: ensureFieldDiff(true, field, from, now)})
 }
 
 func runProbelsw02pProtectInterrogate(ctx context.Context, args []string) error {
@@ -588,6 +631,8 @@ func parseProbelSW02ProtectFlags(args []string) (probelSW02Flags, int, error) {
 	device := 0
 	fs.IntVar(&device, "device", 0, "device id (0-16383)")
 	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
+	fs.BoolVar(&pf.check, "check", false, "dry-run: report would_change, send nothing (ADR-0007)")
+	fs.StringVar(&pf.output, "output", "text", "output format: text | json (ADR-0002)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return pf, 0, fmt.Errorf("missing <host:port>")
