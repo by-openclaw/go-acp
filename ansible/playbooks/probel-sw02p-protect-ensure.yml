@@ -1,0 +1,68 @@
+# Use-case acceptance test (ADR-0025 Tier-3) for the Probel SW-P-02 protect
+# ensure (idempotent protect-connect / protect-disconnect, ADR-0007). Same
+# contract as sw08 — identical JSON, so this is the sw08 protect play with the
+# proto swapped:
+#
+#   1. protect-connect     -> changed (if not already protected by --device)
+#   2. protect-connect     -> changed=false  (run-twice idempotency, the proof)
+#   3. protect-connect --check -> would_change=false
+#   4. protect-disconnect  -> changed ; re-run -> changed=false
+#
+# No PowerShell; CLI-in-a-role.
+#
+#   ansible-playbook -i inventory/probel.ini playbooks/probel-sw02p-protect-ensure.yml \
+#     -e 'addr=10.100.0.42:2002 dst=5 device=9'
+#
+- name: Probel SW-P-02 protect ensure (idempotency contract)
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ conn | default('local') }}"
+  gather_facts: false
+  vars:
+    dhs_bin: dhs
+    addr: 127.0.0.1:2002
+    dst: 5
+    device: 9
+  tasks:
+    - name: converge protect (first)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw02p protect-connect {{ addr }}
+        --dst {{ dst }} --device {{ device }} --output json
+      register: c1
+      changed_when: (c1.stdout | from_json).changed | bool
+
+    - name: converge protect again (run-twice -> NO change)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw02p protect-connect {{ addr }}
+        --dst {{ dst }} --device {{ device }} --output json
+      register: c2
+      changed_when: (c2.stdout | from_json).changed | bool
+
+    - name: protect --check (would_change=false when converged)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw02p protect-connect {{ addr }}
+        --dst {{ dst }} --device {{ device }} --check --output json
+      register: cchk
+      changed_when: false
+
+    - name: release protect, then re-run
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw02p protect-disconnect {{ addr }}
+        --dst {{ dst }} --device {{ device }} --output json
+      register: d1
+      changed_when: (d1.stdout | from_json).changed | bool
+
+    - name: release again (NO change)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw02p protect-disconnect {{ addr }}
+        --dst {{ dst }} --device {{ device }} --output json
+      register: d2
+      changed_when: (d2.stdout | from_json).changed | bool
+
+    - name: ASSERT the contract
+      ansible.builtin.assert:
+        that:
+          - (c2.stdout   | from_json).changed       == false
+          - (cchk.stdout | from_json).would_change   == false
+          - (d2.stdout   | from_json).changed       == false
+        success_msg: "sw02p protect ensure idempotency contract PASS"
+        fail_msg: "sw02p protect ensure FAIL: c2={{ c2.stdout }} chk={{ cchk.stdout }} d2={{ d2.stdout }}"
