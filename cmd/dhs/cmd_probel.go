@@ -417,6 +417,8 @@ type probelFlags struct {
 	dst     int
 	src     int
 	timeout time.Duration
+	check   bool
+	output  string
 }
 
 func parseProbelFlags(args []string, want struct{ dst, src bool }) (probelFlags, error) {
@@ -646,6 +648,8 @@ func parseProbelProtectFlags(args []string) (probelFlags, int, error) {
 	device := 0
 	fs.IntVar(&device, "device", 0, "device id (0-1023)")
 	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
+	fs.BoolVar(&pf.check, "check", false, "dry-run: report would_change, send nothing (ADR-0007)")
+	fs.StringVar(&pf.output, "output", "text", "output format: text | json (ADR-0002)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return pf, 0, fmt.Errorf("missing <host:port>")
@@ -682,11 +686,24 @@ func runProbelProtectInterrogate(ctx context.Context, args []string) error {
 	return nil
 }
 
+// protectStateStr renders a protect (state, device) pair for the ADR-0007 diff.
+func protectStateStr(state codec.ProtectState, device int) string {
+	return fmt.Sprintf("state=%d device=%d", state, device)
+}
+
+// runProbelProtectConnect converges dst to "protected by --device", idempotently
+// (ADR-0007): it reads ProtectInterrogate and only sends ProtectConnect when the
+// dst is not already ProtectProbel owned by that device. --check is a dry-run;
+// --output json emits {changed|would_change, diff[]}.
 func runProbelProtectConnect(ctx context.Context, args []string) error {
 	pf, device, err := parseProbelProtectFlags(args)
 	if err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(pf.output, false)
+	if oerr != nil {
+		return oerr
+	}
 	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
 	defer cancel()
 	p, closer, err := dialProbel(cctx, pf.addr)
@@ -694,20 +711,42 @@ func runProbelProtectConnect(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
+	cur, err := p.ProtectInterrogate(cctx,
+		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
+	if err != nil {
+		return err
+	}
+	field := fmt.Sprintf("protect.%d.%d.%d", pf.matrix, pf.level, pf.dst)
+	from := protectStateStr(cur.State, int(cur.DeviceID))
+	to := protectStateStr(codec.ProtectProbel, device)
+	changed := cur.State != codec.ProtectProbel || int(cur.DeviceID) != device
+	if pf.check {
+		return emitEnsure(jsonOut, ensureResult{WouldChange: &changed, Current: from, Target: to, Diff: ensureFieldDiff(changed, field, from, to)})
+	}
+	if !changed {
+		return emitEnsure(jsonOut, ensureResult{Changed: &changed, Previous: from, Current: from, Diff: []ensureDiff{}})
+	}
 	reply, err := p.ProtectConnect(cctx,
 		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
 	if err != nil {
 		return err
 	}
-	fmt.Printf("protect connected  matrix=%d level=%d dst=%d device=%d state=%d\n",
-		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.DeviceID, reply.State)
-	return nil
+	now := protectStateStr(reply.State, int(reply.DeviceID))
+	applied := true
+	return emitEnsure(jsonOut, ensureResult{Changed: &applied, Previous: from, Current: now, Diff: ensureFieldDiff(true, field, from, now)})
 }
 
+// runProbelProtectDisconnect converges dst to unprotected (ProtectNone),
+// idempotently: reads ProtectInterrogate and only sends ProtectDisconnect when
+// the dst is currently protected. --check dry-run; --output json.
 func runProbelProtectDisconnect(ctx context.Context, args []string) error {
 	pf, device, err := parseProbelProtectFlags(args)
 	if err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(pf.output, false)
+	if oerr != nil {
+		return oerr
 	}
 	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
 	defer cancel()
@@ -716,14 +755,29 @@ func runProbelProtectDisconnect(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
+	cur, err := p.ProtectInterrogate(cctx,
+		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
+	if err != nil {
+		return err
+	}
+	field := fmt.Sprintf("protect.%d.%d.%d", pf.matrix, pf.level, pf.dst)
+	from := protectStateStr(cur.State, int(cur.DeviceID))
+	to := protectStateStr(codec.ProtectNone, 0)
+	changed := cur.State != codec.ProtectNone
+	if pf.check {
+		return emitEnsure(jsonOut, ensureResult{WouldChange: &changed, Current: from, Target: to, Diff: ensureFieldDiff(changed, field, from, to)})
+	}
+	if !changed {
+		return emitEnsure(jsonOut, ensureResult{Changed: &changed, Previous: from, Current: from, Diff: []ensureDiff{}})
+	}
 	reply, err := p.ProtectDisconnect(cctx,
 		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
 	if err != nil {
 		return err
 	}
-	fmt.Printf("protect disconnected  matrix=%d level=%d dst=%d device=%d state=%d\n",
-		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.DeviceID, reply.State)
-	return nil
+	now := protectStateStr(reply.State, int(reply.DeviceID))
+	applied := true
+	return emitEnsure(jsonOut, ensureResult{Changed: &applied, Previous: from, Current: now, Diff: ensureFieldDiff(true, field, from, now)})
 }
 
 func runProbelProtectName(ctx context.Context, args []string) error {
