@@ -351,6 +351,13 @@ func dispatchProducer(ctx context.Context, args []string) error {
 		return runProducer(ctx, proto, rest)
 	case "tree":
 		return runProducerTree(ctx, proto, rest)
+	case "status":
+		// Canonical producer status = the live runtime snapshot of a serving
+		// instance (frames/bytes/latency/errors/uptime), fetched from its
+		// /snapshot.json. Delegates to the existing metrics-show renderer so
+		// there is one implementation. Requires the server started with
+		// --metrics-addr; pass --url http://host:port/snapshot.json.
+		return runMetricsShow(ctx, rest)
 	case "validate":
 		// Offline decode of a captured frames.jsonl through the codec — the
 		// same generic validator the consumer side uses (direction-agnostic);
@@ -367,7 +374,7 @@ func dispatchProducer(ctx context.Context, args []string) error {
 		}
 		return runACP1Fuzz(ctx, rest)
 	}
-	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | tree | validate | admin | fuzz)", proto, verb)
+	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | tree | status | validate | admin | fuzz)", proto, verb)
 }
 
 // dispatchRegistry routes `dhs registry <proto> <verb> [args]`. The
