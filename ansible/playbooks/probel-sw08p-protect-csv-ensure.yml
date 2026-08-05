@@ -1,0 +1,53 @@
+# Use-case acceptance test (ADR-0025 Tier-3) for the Probel SW-P-08 bulk
+# protect ensure (`import --protect`, ADR-0007). Same contract as crosspoints
+# and labels — provision a whole plant's protect state from a CSV, idempotently.
+#
+#   1. import --protect -> changed (if any dst not in desired state)
+#   2. import --protect -> changed=false  (run-twice idempotency, the proof)
+#   3. --check          -> would_change=false
+#
+# No PowerShell; CLI-in-a-role. Provide <in_dir>/<prefix>-protect.csv
+# (matrix_id,level_id,dst_id,state,device ; state = none|probel).
+#
+#   ansible-playbook -i inventory/probel.ini playbooks/probel-sw08p-protect-csv-ensure.yml \
+#     -e 'addr=10.100.0.42:2008 in_dir=routes/mcr'
+#
+- name: Probel SW-P-08 bulk protect ensure (idempotency contract)
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ conn | default('local') }}"
+  gather_facts: false
+  vars:
+    dhs_bin: dhs
+    addr: 127.0.0.1:2008
+    in_dir: routes
+    prefix: sw08p
+  tasks:
+    - name: converge protect states (first import)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw08p import {{ addr }}
+        --in {{ in_dir }} --prefix {{ prefix }} --protect --output json
+      register: first
+      changed_when: (first.stdout | from_json).changed | bool
+
+    - name: converge again (run-twice -> NO change, the idempotency proof)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw08p import {{ addr }}
+        --in {{ in_dir }} --prefix {{ prefix }} --protect --output json
+      register: second
+      changed_when: (second.stdout | from_json).changed | bool
+
+    - name: dry-run --check sends nothing
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer probel-sw08p import {{ addr }}
+        --in {{ in_dir }} --prefix {{ prefix }} --protect --check --output json
+      register: dryrun
+      changed_when: false
+
+    - name: ASSERT the contract
+      ansible.builtin.assert:
+        that:
+          - (second.stdout | from_json).changed       == false
+          - (second.stdout | from_json).diff | length == 0
+          - (dryrun.stdout | from_json).would_change   == false
+        success_msg: "sw08p bulk protect ensure idempotency contract PASS"
+        fail_msg: "sw08p bulk protect ensure FAIL: 2nd={{ second.stdout }} check={{ dryrun.stdout }}"

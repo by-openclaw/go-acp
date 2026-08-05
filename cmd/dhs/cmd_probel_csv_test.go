@@ -57,6 +57,36 @@ func TestTallyToMap(t *testing.T) {
 	})
 }
 
+// TestParseProtectDesired pins the protect-CSV state-cell mapping (none/probel
+// in words or 0/1), and that unknown cells are rejected.
+func TestParseProtectDesired(t *testing.T) {
+	cases := []struct {
+		in       string
+		wantOK   bool
+		wantNone bool // true => ProtectNone, false => ProtectProbel
+	}{
+		{"none", true, true},
+		{"0", true, true},
+		{"unprotected", true, true},
+		{"probel", true, false},
+		{"1", true, false},
+		{"protected", true, false},
+		{"  Probel ", true, false},
+		{"bogus", false, false},
+		{"", false, false},
+	}
+	for _, tc := range cases {
+		got, ok := parseProtectDesired(tc.in)
+		if ok != tc.wantOK {
+			t.Errorf("parseProtectDesired(%q) ok = %v, want %v", tc.in, ok, tc.wantOK)
+			continue
+		}
+		if ok && (got == 0) != tc.wantNone {
+			t.Errorf("parseProtectDesired(%q) = %d, wantNone=%v", tc.in, got, tc.wantNone)
+		}
+	}
+}
+
 // TestTrimLabel pins the fixed-width pad stripping so a read-back name compares
 // equal to a CSV label (SW-P-08 pads names with trailing space or NUL).
 func TestTrimLabel(t *testing.T) {

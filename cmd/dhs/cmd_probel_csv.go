@@ -232,6 +232,7 @@ func runProbelImport(ctx context.Context, args []string) error {
 	doSrc := fs.Bool("src", false, "import source labels (<prefix>-src.csv)")
 	doDst := fs.Bool("dst", false, "import destination labels (<prefix>-dst.csv)")
 	doXpoints := fs.Bool("xpoints", false, "import crosspoints (<prefix>-xpoint.csv; converges the matrix, idempotent)")
+	doProtect := fs.Bool("protect", false, "import protect states (<prefix>-protect.csv; converges protect, idempotent)")
 	timeout := fs.Duration("timeout", 300*time.Second, "overall timeout")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
@@ -240,8 +241,8 @@ func runProbelImport(ctx context.Context, args []string) error {
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
-	// No selector → default to labels only (never auto-reroute crosspoints).
-	if !*doSrc && !*doDst && !*doXpoints {
+	// No selector → default to labels only (never auto-reroute crosspoints/protect).
+	if !*doSrc && !*doDst && !*doXpoints && !*doProtect {
 		*doSrc, *doDst = true, true
 	}
 	width, err := parseNameLen(strconv.Itoa(*size))
@@ -281,6 +282,99 @@ func runProbelImport(ctx context.Context, args []string) error {
 			return err
 		}
 	}
+	if *doProtect {
+		if err := applyProbelProtectCSV(cctx, p, filepath.Join(*inDir, *prefix+"-protect.csv"), dry, jsonOut); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// parseProtectDesired maps a protect-CSV state cell to a desired ProtectState.
+// Accepts "none"/"0"/"unprotected" and "probel"/"1"/"protected".
+func parseProtectDesired(s string) (codec.ProtectState, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "none", "0", "unprotected":
+		return codec.ProtectNone, true
+	case "probel", "1", "protected":
+		return codec.ProtectProbel, true
+	}
+	return 0, false
+}
+
+// applyProbelProtectCSV converges destination protect state to the CSV,
+// idempotently (ADR-0007). Each row is matrix_id,level_id,dst_id,state,device
+// (state = none|probel); it reads ProtectInterrogate and only sends a
+// protect-connect / protect-disconnect when the state (and owner, for probel)
+// differs. check=true is a dry-run.
+func applyProbelProtectCSV(ctx context.Context, p *probelproto.Plugin, path string, check, jsonOut bool) error {
+	rows, err := readProbelCSV(path)
+	if err != nil {
+		return err
+	}
+	total := 0
+	diffs := []ensureDiff{}
+	for _, rec := range rows[1:] {
+		if len(rec) < 5 {
+			continue
+		}
+		mtx, e1 := strconv.Atoi(strings.TrimSpace(rec[0]))
+		lvl, e2 := strconv.Atoi(strings.TrimSpace(rec[1]))
+		dst, e3 := strconv.Atoi(strings.TrimSpace(rec[2]))
+		dev, e4 := strconv.Atoi(strings.TrimSpace(rec[4]))
+		want, okState := parseProtectDesired(rec[3])
+		if e1 != nil || e2 != nil || e3 != nil || e4 != nil || !okState {
+			continue
+		}
+		total++
+		cur, ierr := p.ProtectInterrogate(ctx, uint8(mtx), uint8(lvl), uint16(dst), uint16(dev))
+		if ierr != nil {
+			return fmt.Errorf("protect-interrogate dst=%d: %w", dst, ierr)
+		}
+		var changed bool
+		if want == codec.ProtectProbel {
+			changed = cur.State != codec.ProtectProbel || int(cur.DeviceID) != dev
+		} else {
+			changed = cur.State != codec.ProtectNone
+		}
+		if !changed {
+			continue
+		}
+		from := fmt.Sprintf("state=%d device=%d", cur.State, cur.DeviceID)
+		toDev := dev
+		if want == codec.ProtectNone {
+			toDev = 0
+		}
+		to := fmt.Sprintf("state=%d device=%d", want, toDev)
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("protect.%d.%d.%d", mtx, lvl, dst), From: from, To: to})
+		if check {
+			continue
+		}
+		if want == codec.ProtectProbel {
+			if _, cerr := p.ProtectConnect(ctx, uint8(mtx), uint8(lvl), uint16(dst), uint16(dev)); cerr != nil {
+				return fmt.Errorf("protect-connect dst=%d: %w", dst, cerr)
+			}
+		} else {
+			if _, cerr := p.ProtectDisconnect(ctx, uint8(mtx), uint8(lvl), uint16(dst), uint16(dev)); cerr != nil {
+				return fmt.Errorf("protect-disconnect dst=%d: %w", dst, cerr)
+			}
+		}
+	}
+	changed := len(diffs) > 0
+	if jsonOut {
+		res := ensureResult{Diff: diffs}
+		if check {
+			res.WouldChange = &changed
+		} else {
+			res.Changed = &changed
+		}
+		return emitEnsure(true, res)
+	}
+	verb := "applied"
+	if check {
+		verb = "would apply"
+	}
+	fmt.Printf("protect: %s %d of %d changes from %s\n", verb, len(diffs), total, filepath.Base(path))
 	return nil
 }
 
