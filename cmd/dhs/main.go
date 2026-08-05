@@ -349,6 +349,13 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	switch verb {
 	case "serve":
 		return runProducer(ctx, proto, rest)
+	case "tree":
+		return runProducerTree(ctx, proto, rest)
+	case "validate":
+		// Offline decode of a captured frames.jsonl through the codec — the
+		// same generic validator the consumer side uses (direction-agnostic);
+		// inject --protocol like dispatchConsumer does.
+		return runValidate(ctx, append([]string{"--protocol", proto}, rest...))
 	case "admin":
 		if proto != "acp1" {
 			return fmt.Errorf("producer %s: admin verb is acp1-only (advances #258)", proto)
@@ -360,7 +367,7 @@ func dispatchProducer(ctx context.Context, args []string) error {
 		}
 		return runACP1Fuzz(ctx, rest)
 	}
-	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | admin | fuzz)", proto, verb)
+	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | tree | validate | admin | fuzz)", proto, verb)
 }
 
 // dispatchRegistry routes `dhs registry <proto> <verb> [args]`. The
