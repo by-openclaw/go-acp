@@ -56,10 +56,10 @@ Deferred: osc, cerebrum-nb (northbound), amwa.
 ## Plan (each item: branch → Go tests @100% → Ansible use-case test → PR → CI green → merge)
 
 ### Phase 0 — shared foundation (benefits all 6)
-- Unify **`--output json|yaml|text`** (keep `--json` as a deprecated alias).
-- Add **`diff[]`** to `ensure` output (ADR-0007 requires it always).
-- Add canonical consumer verbs **`status`**, **`replay`**, **`connect`**, **`disconnect`**.
-- Add producer verb surface **`stop`/`status`/`tree`/`ensure`** (extend `dispatchProducer` + provider iface).
+- ✅ Unify **`--output json|yaml|text`** (keep `--json` as a deprecated alias). *(#628)*
+- ✅ Add **`diff[]`** to `ensure` output (ADR-0007 requires it always). *(#628)*
+- Add canonical consumer verbs **`status`** ✅ *(#648)*, **`replay`**, **`connect`**, **`disconnect`**.
+- ✅ Add producer verb surface **`stop`** *(#654)* **/`status`** *(#648)* **/`tree`** *(#650)* **/`ensure`** *(#656)* **/`validate`** — `dispatchProducer` now routes `serve · tree · status · stop · ensure · validate`. Producer `ensure` converges a serving instance to `--state present|absent` keyed on `--pidfile`, emitting the standard `{changed|would_change, diff[]}`; `absent` is idempotent teardown, `present`-apply-when-stopped errors (foreground start is the supervisor's job, not a faked change).
 
 ### Phase 1 — canonical matrix-ensure (headline)
 - Shared converge: read snapshot → diff vs desired honoring behavior
