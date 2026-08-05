@@ -67,6 +67,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		play          = fs.String("play", "", "acp1 only: oscillate objects with random values; each tick fires a spontaneous status announce. Pass `all` to oscillate every oscillatable object on every slot (slot 0 included), or a comma-separated path list 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7 oscillates Temp_Left + Temp_Right on slot 0")
 		playEvery     = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
 		playMode      = fs.String("play-mode", "walk", "acp1 only: --play value strategy — `walk` (mean-reverting drift, realistic) or `random` (force a uniform value across the object's full [min,max] each tick)")
+		pidfile       = fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer <proto> stop --pidfile PATH` can signal it")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -81,6 +82,15 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	// --host stays for backwards-compat. When both are set, --bind wins.
 	if *bind != "" {
 		*host = *bind
+	}
+
+	// Write a PID file for `producer stop` to signal, removed on exit. Atomic
+	// (.tmp + rename) per the repo's file-write convention.
+	if *pidfile != "" {
+		if err := writePIDFile(*pidfile); err != nil {
+			return fmt.Errorf("write pidfile: %w", err)
+		}
+		defer func() { _ = os.Remove(*pidfile) }()
 	}
 
 	logger := newLogger(*logLevel, *logFormat)

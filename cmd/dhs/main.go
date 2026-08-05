@@ -358,6 +358,8 @@ func dispatchProducer(ctx context.Context, args []string) error {
 		// there is one implementation. Requires the server started with
 		// --metrics-addr; pass --url http://host:port/snapshot.json.
 		return runMetricsShow(ctx, rest)
+	case "stop":
+		return runProducerStop(ctx, proto, rest)
 	case "validate":
 		// Offline decode of a captured frames.jsonl through the codec — the
 		// same generic validator the consumer side uses (direction-agnostic);
@@ -374,7 +376,7 @@ func dispatchProducer(ctx context.Context, args []string) error {
 		}
 		return runACP1Fuzz(ctx, rest)
 	}
-	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | tree | status | validate | admin | fuzz)", proto, verb)
+	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | tree | status | stop | validate | admin | fuzz)", proto, verb)
 }
 
 // dispatchRegistry routes `dhs registry <proto> <verb> [args]`. The
