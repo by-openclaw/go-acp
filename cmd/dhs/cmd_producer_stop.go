@@ -33,23 +33,34 @@ func runProducerStop(_ context.Context, protoName string, args []string) error {
 	if *pidfile == "" {
 		return fmt.Errorf("producer %s stop: --pidfile is required (the path serve was started with)", protoName)
 	}
-	data, err := os.ReadFile(*pidfile)
+	pid, err := signalPIDFile(*pidfile)
 	if err != nil {
-		return fmt.Errorf("read pidfile %s: %w", *pidfile, err)
+		return err
+	}
+	fmt.Printf("producer %s stop: signaled pid %d (pidfile %s)\n", protoName, pid, *pidfile)
+	return nil
+}
+
+// signalPIDFile reads a PID file, signals that process (graceful on Unix / kill
+// on Windows via stopProcess), removes the file, and returns the PID. Shared by
+// `stop` and `ensure --state absent`.
+func signalPIDFile(pidfile string) (int, error) {
+	data, err := os.ReadFile(pidfile)
+	if err != nil {
+		return 0, fmt.Errorf("read pidfile %s: %w", pidfile, err)
 	}
 	pidStr := strings.TrimSpace(string(data))
 	pid, err := strconv.Atoi(pidStr)
 	if err != nil {
-		return fmt.Errorf("pidfile %s: invalid PID %q: %w", *pidfile, pidStr, err)
+		return 0, fmt.Errorf("pidfile %s: invalid PID %q: %w", pidfile, pidStr, err)
 	}
 	proc, err := os.FindProcess(pid)
 	if err != nil {
-		return fmt.Errorf("find process %d: %w", pid, err)
+		return 0, fmt.Errorf("find process %d: %w", pid, err)
 	}
 	if err := stopProcess(proc); err != nil {
-		return fmt.Errorf("signal process %d: %w", pid, err)
+		return 0, fmt.Errorf("signal process %d: %w", pid, err)
 	}
-	_ = os.Remove(*pidfile)
-	fmt.Printf("producer %s stop: signaled pid %d (pidfile %s)\n", protoName, pid, *pidfile)
-	return nil
+	_ = os.Remove(pidfile)
+	return pid, nil
 }

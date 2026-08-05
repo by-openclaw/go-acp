@@ -360,6 +360,12 @@ func dispatchProducer(ctx context.Context, args []string) error {
 		return runMetricsShow(ctx, rest)
 	case "stop":
 		return runProducerStop(ctx, proto, rest)
+	case "ensure":
+		// Canonical ADR-0007 ensure for the serving instance: converge to
+		// --state present|absent keyed on --pidfile (idempotent teardown; drift
+		// report for present). See runProducerEnsure for the honest boundary on
+		// apply-present.
+		return runProducerEnsure(ctx, proto, rest)
 	case "validate":
 		// Offline decode of a captured frames.jsonl through the codec — the
 		// same generic validator the consumer side uses (direction-agnostic);
@@ -376,7 +382,7 @@ func dispatchProducer(ctx context.Context, args []string) error {
 		}
 		return runACP1Fuzz(ctx, rest)
 	}
-	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | tree | status | stop | validate | admin | fuzz)", proto, verb)
+	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | tree | status | stop | ensure | validate | admin | fuzz)", proto, verb)
 }
 
 // dispatchRegistry routes `dhs registry <proto> <verb> [args]`. The
@@ -563,7 +569,15 @@ func printProducerHelp() {
 	fmt.Println(`dhs producer — inbound (serve a canonical tree over the wire)
 
 USAGE
-  dhs producer <protocol> serve [flags]
+  dhs producer <protocol> <verb> [flags]
+
+VERBS
+  serve     bind the transport(s) and serve the canonical tree
+  tree      print the canonical tree that would be served (no bind)
+  status    live runtime snapshot of a serving instance (--url .../snapshot.json)
+  stop      signal a 'serve --pidfile PATH' instance to shut down (--pidfile PATH)
+  ensure    ADR-0007 converge to --state present|absent, keyed on --pidfile
+  validate  offline decode a captured frames.jsonl through the codec
 
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
