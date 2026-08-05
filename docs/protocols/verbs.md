@@ -151,15 +151,27 @@ Global flags: `--mtx-id --level --dsts --srcs` (`--dsts` enables bootstrap rx01 
 
 ## 6. Producer verbs (inbound — serve as a device)
 
+**Common lifecycle verbs** (generic in `dispatchProducer`, same behaviour for every
+slot/matrix protocol below): `serve · tree · status · stop · ensure · validate`.
+
+| Verb | Description |
+|---|---|
+| `serve` | bind the transport(s) and serve the canonical tree (`--pidfile` optional, for `stop`/`ensure`) |
+| `tree` | print the canonical tree that would be served — no bind |
+| `status` | live runtime snapshot of a serving instance (`--url .../snapshot.json`; needs `serve --metrics-addr`) |
+| `stop` | signal a `serve --pidfile PATH` instance to shut down (graceful SIGTERM on Unix, kill on Windows) |
+| `ensure` | ADR-0007 converge to `--state present\|absent`, keyed on `--pidfile`; `--check`/`--output json`; `absent` = idempotent teardown, `present`-apply-when-stopped errors (start is the supervisor's job, not a faked change) |
+| `validate` | offline-decode a captured `frames.jsonl` through the codec |
+
 | Protocol | Verbs | Notes |
 |---|---|---|
-| acp1 | `serve` (+ `admin`, `fuzz` — acp1-only) | `--tree --port --host`; `--announce-demo*` |
-| acp2 | `serve` | `--tree --port`; `--announce-demo*` |
-| emberplus | `serve` | `--tree --port` (+ `--mdns`, `--stream-ttl`, `--admin`) |
-| probel-sw08p | `serve` | `--tree matrix.json --port 2008` |
-| osc-v10 / osc-v11 | `send`, `fader`, `serve` | push model: emit / high-rate fader / bind+log |
-| **tsl** | ❌ **not CLI-wired** | docs claim `send`/`serve`; not in `producer -h` / dispatch |
-| **probel-sw02p** | ❌ **not CLI-wired** | provider pkg may exist; no producer command |
+| acp1 | common + `admin`, `fuzz` (acp1-only) | `serve --tree --port --host`; `--announce-demo*` |
+| acp2 | common | `serve --tree --port`; `--announce-demo*` |
+| emberplus | common | `serve --tree --port` (+ `--mdns`, `--stream-ttl`, `--admin`) |
+| probel-sw08p | common | `serve --tree matrix.json --port 2008` |
+| probel-sw02p | common | reaches the generic dispatch; `serve` needs the sw02p provider plugin |
+| osc-v10 / osc-v11 | `send`, `fader`, `serve` | push model (own dispatch): emit / high-rate fader / bind+log |
+| tsl-v31/v40/v50 | `serve`, `send` | push model (own dispatch, `runTSLProducer`) — not the generic lifecycle set |
 | cerebrum-nb | ❌ none | consumer-only by design |
 
 ## 7. Registry (NMOS only)
@@ -169,12 +181,12 @@ Global flags: `--mtx-id --level --dsts --srcs` (`--dsts` enables bootstrap rx01 
 
 ## 8. Gaps this matrix surfaces (for "released + compliant")
 
-1. **`ensure`** — implemented + verified on **acp1** (the idempotency primitive, ADR-0007); still missing on the other connectors.
-2. **`status`, `replay` missing** — in ADR-0002 canonical list, not in CLI (`replay` deferred per ADR-0021).
+1. **`ensure`** — the idempotency primitive (ADR-0007), now with `--output` + `diff[]` (#628): scalar `ensure` on the Tree/DM connectors; matrix/crosspoint/label/protect converge on emberplus + probel-sw08p/sw02p (read-back-diff-apply); producer lifecycle `ensure` on the serving side (#656). TSL ratified **N/A** (push-only) per the ADR-0007 amendment.
+2. **`status`** now wired (consumer #648 + producer lifecycle); **`replay` still missing** (deferred per ADR-0021).
 3. **`set` validation exit code** — returns 1, should be 2 (error-codes.md); no client-side ValueValidator on acp1 (emberplus has it).
 4. **`tree`** — acp1 now nests sub-group sections (DOWN CONV / TRANSPARENT / …) as parents (2026-06-12); other Tree/DM connectors still render shallow.
-5. **tsl + probel-sw02p producers not CLI-wired** — provider code may exist but no `dhs producer` path.
-6. **`-h` help stale** — `consumer -h` omits tsl + probel-sw02p; `producer -h` omits tsl. `list-protocols` is authoritative.
+5. **producer wiring** — tsl producer is CLI-wired via its own dispatch (`runTSLProducer`); probel-sw02p reaches the generic lifecycle dispatch (`serve` gated on its provider plugin).
+6. **`-h` help** — `producer -h` now lists the lifecycle VERBS; `consumer -h` still omits tsl + probel-sw02p. `list-protocols` is authoritative.
 7. **ADR-0002 uniformity vs reality** — only Tree/DM implements the canonical set; Matrix/Push/Bridge diverge (see §1 open decision).
 
 ---
