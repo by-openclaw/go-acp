@@ -79,15 +79,22 @@ jobs:
           # same line can miss on all three consecutive attempts (a plain
           # retry then fails even though the code is 100%-coverable).
           #
-          # Fix: UNION the coverage profiles across attempts. A statement is
-          # counted covered if it was hit in ANY attempt, so a line that is
-          # coverable at all converges into the union within a few runs. The
-          # 100% bar stays genuine: a line no test can ever reach is absent
-          # from every profile, so the union stays below the floor and fails
-          # all three attempts. This removes the scheduling flake (all
-          # protocols) without weakening the gate.
+          # Fix: UNION the coverage profiles across up to 5 attempts. A
+          # statement is counted covered if it was hit in ANY attempt, so a
+          # line that is coverable at all converges into the union within a few
+          # runs; the loop returns early as soon as the union meets the floor,
+          # so non-flaky packages still cost one run. With per-run miss rate p
+          # for a scheduling-dependent line, a 5-attempt union false-fails with
+          # probability ~p^5 (e.g. p=0.2 -> 3e-4). The 100% bar stays genuine:
+          # a line no test can EVER reach is absent from every profile, so the
+          # union stays below the floor and fails all five attempts.
           #
-          # union_pct FILE...  -> prints the unioned statement coverage %.
+          # When it does fail, we print the exact uncovered file:line blocks
+          # from the union — so a genuine gap (or a stubborn scheduling line) is
+          # named and fixed deterministically instead of being a mystery retry.
+          #
+          # union_pct FILE...       -> prints the unioned statement coverage %.
+          # union_uncovered FILE... -> prints the blocks uncovered in the union.
           # Coverprofile rows are "pkg/file.go:sL.sC,eL.eC <numStmt> <count>";
           # the first line ("mode: set") is skipped per file.
           union_pct() {
@@ -102,11 +109,18 @@ jobs:
               }
             ' "$@"
           }
+          union_uncovered() {
+            awk '
+              FNR==1 { next }
+              { stmts[$1]=$2; if ($3+0>0) covered[$1]=1 }
+              END { for (k in stmts) if (!(k in covered)) print "    " k "  (" stmts[k] " stmt)" }
+            ' "$@" | sort
+          }
           check() {
             local pkg=$1 floor=$2 pct tag
             tag=$(printf '%s' "$pkg" | tr '/.' '__')
             local profs=()
-            for attempt in 1 2 3; do
+            for attempt in 1 2 3 4 5; do
               local pf="cov_${tag}.${attempt}.out"
               go test -count=1 -covermode=set -coverprofile="$pf" "$pkg" >/dev/null
               profs+=("$pf")
@@ -114,7 +128,9 @@ jobs:
               printf '%s: union %s%% (floor %s%%, after attempt %s)\n' "$pkg" "$pct" "$floor" "$attempt"
               if awk "BEGIN{exit !(${pct:-0}+0 >= $floor)}"; then return 0; fi
             done
-            echo "::error::$pkg union coverage ${pct}% below floor $floor% after 3 attempts"
+            echo "::error::$pkg union coverage ${pct}% below floor $floor% after 5 attempts"
+            echo "uncovered blocks in the 5-attempt union (cover these deterministically):"
+            union_uncovered "${profs[@]}"
             exit 1
           }
           check ./internal/acp1/codec 100
