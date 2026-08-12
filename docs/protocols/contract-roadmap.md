@@ -90,9 +90,17 @@ Deferred: osc, cerebrum-nb (northbound), amwa.
 - **acp2** — iface complete and loopback-tested (the old "unvalidated / 69 funcs
   at 0%" handoff is **stale**); `replay`/`status` missing; `validate --out-tree/
   --out-params` partial; AN2/TCP only; producer thin.
-- **emberplus** — iface complete; scalar `ensure` works but no `diff[]`;
-  `connect`/`disconnect`/`status`/`replay` missing; **matrix CLI fire-and-forget
-  despite a read-back-capable behavior model**; lock/salvo provider-only.
+- **emberplus** — iface complete; scalar `ensure` carries `diff[]` + canonical
+  `--output` (#628); **matrix-ensure is read-back-diff-apply** (#630), not
+  fire-and-forget; audit bugs #445/#455/#456/#458/#465 fixed; `status` wired
+  (#648). **ADR-0025 deliverable 3 proven live vs the vendor oracle**
+  (TinyEmber+ :9000 / router :9092): Go `-tags integration` — info + walk +
+  matrix-ensure idempotency (#660) + scalar-ensure idempotency (#663) — **plus**
+  the Ansible form (`emberplus-integration.yml`: info/walk/matrix-ensure, #665).
+  Standalone `connect`/`disconnect` + `replay` (ADR-0021, deferred) still
+  missing. **DOD: 5 of 6** — only deliverable 6's APP-24 relative-form Template
+  replay fixture remains, and it is hardware-gated (needs a Template-emitting
+  device; not present on the desk oracle).
 - **probel-sw02p** — bypasses generic table; neutral methods `ErrNotImplemented`;
   TCP-only (no UDP/serial); provider exists; crosspoint/protect read-back exists
   but unwired; salvo fire-and-forget.
