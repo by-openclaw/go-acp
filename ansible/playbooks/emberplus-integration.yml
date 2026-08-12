@@ -23,6 +23,9 @@
     dhs_bin: "{{ lookup('ansible.builtin.env', 'DHS_BIN') | default(playbook_dir + '/../../bin/dhs', true) }}"
     ember_host: "{{ lookup('ansible.builtin.env', 'EMBERPLUS_TEST_HOST') | default('', true) }}"
     ember_port: "{{ lookup('ansible.builtin.env', 'EMBERPLUS_TEST_PORT') | default('9000', true) }}"
+    # Optional matrix path on the oracle (router port). When set, the ensure
+    # idempotency contract is exercised too; empty -> those tasks skip.
+    ember_matrix: "{{ lookup('ansible.builtin.env', 'EMBERPLUS_TEST_MATRIX') | default('', true) }}"
   tasks:
     - name: Skip when no Ember+ oracle is configured
       ansible.builtin.meta: end_play
@@ -76,6 +79,102 @@
           Ember+ walk returned no objects / no scalar-typed parameter from the
           live oracle — S101+BER+glow decode suspect.
         quiet: true
+
+    # --- ensure idempotency vs the vendor oracle (ADR-0007 contract) ---
+    # Runs only when EMBERPLUS_TEST_MATRIX names a matrix on the oracle (router
+    # port, e.g. 9092 path router.dynamic.matrix). The Ansible twin of the Go
+    # test TestExternalEmberMatrixIdempotent — invariant-based: the RE-APPLY
+    # (not the first apply) is the idempotency proof, so it holds against any
+    # starting crosspoint state. Leaves target 0 routed to source 0.
+    - name: "matrix-ensure — apply target 0 <- source 0 (first apply)"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - emberplus
+          - matrix
+          - "{{ ember_host }}"
+          - --port
+          - "{{ ember_port | string }}"
+          - --path
+          - "{{ ember_matrix }}"
+          - --target
+          - "0"
+          - --sources
+          - "0"
+          - --op
+          - absolute
+          - --output
+          - json
+          - --timeout
+          - 20s
+      register: mx1
+      changed_when: (mx1.stdout | from_json).changed | bool
+      when: (ember_matrix | length) > 0
+
+    - name: "matrix-ensure — re-apply is a no-op (run-twice = 0 changes)"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - emberplus
+          - matrix
+          - "{{ ember_host }}"
+          - --port
+          - "{{ ember_port | string }}"
+          - --path
+          - "{{ ember_matrix }}"
+          - --target
+          - "0"
+          - --sources
+          - "0"
+          - --op
+          - absolute
+          - --output
+          - json
+          - --timeout
+          - 20s
+      register: mx2
+      changed_when: (mx2.stdout | from_json).changed | bool
+      when: (ember_matrix | length) > 0
+
+    - name: "matrix-ensure — --check a different source reports drift, no mutation"
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs_bin }}"
+          - consumer
+          - emberplus
+          - matrix
+          - "{{ ember_host }}"
+          - --port
+          - "{{ ember_port | string }}"
+          - --path
+          - "{{ ember_matrix }}"
+          - --target
+          - "0"
+          - --sources
+          - "1"
+          - --op
+          - absolute
+          - --check
+          - --output
+          - json
+          - --timeout
+          - 20s
+      register: mxchk
+      changed_when: false
+      when: (ember_matrix | length) > 0
+
+    - name: "ASSERT matrix-ensure idempotency contract vs oracle"
+      ansible.builtin.assert:
+        that:
+          - (mx2.stdout   | from_json).changed       == false
+          - (mx2.stdout   | from_json).diff | length == 0
+          - (mxchk.stdout | from_json).would_change  == true
+        fail_msg: "matrix-ensure contract FAIL vs oracle: reapply={{ mx2.stdout }} check={{ mxchk.stdout }}"
+        success_msg: "matrix-ensure idempotency contract PASS vs oracle (reapply no-op, --check non-mutating)"
+        quiet: true
+      when: (ember_matrix | length) > 0
 
     - name: Ember+ integration result
       ansible.builtin.debug:
