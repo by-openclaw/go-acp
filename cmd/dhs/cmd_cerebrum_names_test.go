@@ -189,6 +189,26 @@ func TestCerebrumImportSetGuardRails(t *testing.T) {
 	}
 }
 
+// TestFormatCerebrumCatalogCSV pins the catalog CSV shape (kind,category,name),
+// its (kind, category, name) ordering, and RFC 4180 quoting for names with
+// commas — the wildcard-free inventory leg from the §5.2 category walk.
+func TestFormatCerebrumCatalogCSV(t *testing.T) {
+	got := formatCerebrumCatalogCSV([]cerebrumCatalogRow{
+		{Kind: "SOURCE", Category: "SRC-V", Name: "EVS-2"},
+		{Kind: "DEST", Category: "DST-V", Name: "MON-1"},
+		{Kind: "SOURCE", Category: "SRC-A", Name: "MIC, boom"},
+		{Kind: "SOURCE", Category: "SRC-V", Name: "EVS-1"},
+	})
+	want := "kind,category,name\n" +
+		"DEST,DST-V,MON-1\n" +
+		"SOURCE,SRC-A,\"MIC, boom\"\n" +
+		"SOURCE,SRC-V,EVS-1\n" +
+		"SOURCE,SRC-V,EVS-2\n"
+	if got != want {
+		t.Errorf("catalog CSV:\n%s\nwant:\n%s", got, want)
+	}
+}
+
 // TestCerebrumExportSetFlags pins export's flag validation offline:
 // --out vs --out-dir exclusivity and the missing-host guard.
 func TestCerebrumExportSetFlags(t *testing.T) {

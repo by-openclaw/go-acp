@@ -566,6 +566,29 @@ collect:
 		return nil
 	}
 
+	// Category walk — the wildcard-free src/dst INVENTORY (0v16 §5.2): plain
+	// request/response OBTAINs, one CATEGORY_LIST then one CATEGORY_DETAILS per
+	// category. Enumerates every configured item (TYPE=SOURCE/DEST/... with the
+	// routable name), independent of routing state — a source appears here even
+	// if nothing routes from it. Degrades to an empty catalog with a warning.
+	var catalog []cerebrumCatalogRow
+	if list, lerr := obtainSingleCategoryChange(sess, cf.timeout, &codec.CategoryChange{Type: "CATEGORY_LIST"}, "CATEGORY_LIST"); lerr != nil {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb export: CATEGORY_LIST refused (%v) — catalog CSV will be empty\n", lerr)
+	} else if list != nil && list.Category != nil {
+		for _, cat := range list.Category.Categories {
+			det, derr := obtainSingleCategoryChange(sess, cf.timeout, &codec.CategoryChange{Type: "CATEGORY_DETAILS", Category: cat}, "CATEGORY_DETAILS")
+			if derr != nil || det == nil || det.Category == nil || det.Category.Details == nil {
+				fmt.Fprintf(os.Stderr, "cerebrum-nb export: CATEGORY_DETAILS %q unavailable (%v)\n", cat, derr)
+				continue
+			}
+			for _, it := range det.Category.Details.Items {
+				if it.Value != "" {
+					catalog = append(catalog, cerebrumCatalogRow{Kind: it.Type, Category: cat, Name: it.Value})
+				}
+			}
+		}
+	}
+
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
 		return err
 	}
@@ -575,6 +598,7 @@ collect:
 		{*prefix + "-src.csv", formatCerebrumMneCSV("srce", dedupeCerebrumMnes(srcSnap))},
 		{*prefix + "-dst.csv", formatCerebrumMneCSV("dest", dedupeCerebrumMnes(dstSnap))},
 		{*prefix + "-level.csv", formatCerebrumMneCSV("level", dedupeCerebrumMnes(lvlSnap))},
+		{*prefix + "-catalog.csv", formatCerebrumCatalogCSV(catalog)},
 		{*prefix + "-xpoint.csv", xpCSV},
 	}
 	for _, f := range files {

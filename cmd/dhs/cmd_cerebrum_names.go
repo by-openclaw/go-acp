@@ -115,6 +115,39 @@ func formatCerebrumMneCSV(keyCol string, rows []cerebrumMneRow) string {
 	return b.String()
 }
 
+// cerebrumCatalogRow is one configured item from the category walk — the
+// wildcard-free src/dst inventory (0v16 §5.2: CATEGORY_LIST then
+// CATEGORY_DETAILS per category; items are TYPE="SOURCE"/"DEST"/... with the
+// routable name in VALUE, §1.8 name-or-ID).
+type cerebrumCatalogRow struct {
+	Kind     string // item TYPE: SOURCE / DEST / SALVO / ...
+	Category string
+	Name     string // item VALUE — routable name
+}
+
+// formatCerebrumCatalogCSV renders the catalog as `kind,category,name` with
+// RFC 4180 quoting, sorted (kind, category, name) for stable diffs.
+func formatCerebrumCatalogCSV(rows []cerebrumCatalogRow) string {
+	sorted := append([]cerebrumCatalogRow(nil), rows...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		if sorted[i].Kind != sorted[j].Kind {
+			return sorted[i].Kind < sorted[j].Kind
+		}
+		if sorted[i].Category != sorted[j].Category {
+			return sorted[i].Category < sorted[j].Category
+		}
+		return sorted[i].Name < sorted[j].Name
+	})
+	var b strings.Builder
+	w := csv.NewWriter(&b)
+	_ = w.Write([]string{"kind", "category", "name"})
+	for _, r := range sorted {
+		_ = w.Write([]string{r.Kind, r.Category, r.Name})
+	}
+	w.Flush()
+	return b.String()
+}
+
 // crossLevelRoute reports whether a routing-snapshot row is a cross-level
 // route (source level differs from the row's dest level). The dest,srce,levels
 // CSV cannot represent those yet, so export skips them LOUDLY, never silently.
