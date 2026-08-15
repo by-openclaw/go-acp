@@ -77,8 +77,14 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 		if id == "" || m == "" {
 			return
 		}
+		row := cerebrumMneRow{ID: id, Mnemonic: m}
+		if mneType != "LEVEL_MNE" {
+			// Capability: which levels this src/dst EXISTS on (associations;
+			// row LEVEL_ID fallback) — the shuffle-decision input.
+			row.Levels = mneLevelsFromChange(rc, id)
+		}
 		mu.Lock()
-		rows = append(rows, cerebrumMneRow{ID: id, Mnemonic: m})
+		rows = append(rows, row)
 		mu.Unlock()
 		select {
 		case tick <- struct{}{}:
@@ -150,7 +156,27 @@ collect:
 	}
 	fmt.Printf("count %d\n", len(list))
 	for _, r := range list {
-		fmt.Printf("%8s  %s\n", r.ID, r.Mnemonic)
+		if mneType == "LEVEL_MNE" {
+			fmt.Printf("%8s  %s\n", r.ID, r.Mnemonic)
+			continue
+		}
+		lv := "-"
+		if len(r.Levels) > 0 {
+			lv = joinSemis(r.Levels)
+		}
+		fmt.Printf("%8s  %-16s  %s\n", r.ID, lv, r.Mnemonic)
 	}
 	return nil
+}
+
+// joinSemis joins level IDs with ';' (the same convention as the xpoint CSV).
+func joinSemis(ids []string) string {
+	out := ""
+	for i, s := range ids {
+		if i > 0 {
+			out += ";"
+		}
+		out += s
+	}
+	return out
 }

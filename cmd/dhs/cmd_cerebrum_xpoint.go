@@ -448,14 +448,15 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 			}
 			routes = append(routes, routeSpec{Dest: rc.DestID, Srce: rc.RouteSourceID, Level: rc.LevelID})
 		case "SRCE_MNE":
-			// Router mnemonics are per-ID; LEVEL_ID on the row is ignored
-			// (0v16 §5.1.5) and dedupeCerebrumMnes drops per-level repeats.
+			// Mnemonic per-ID (0v16 §5.1.5); Levels = capability from the
+			// ASSOCIATION children (which levels the source exists on);
+			// dedupe merges per-level repeats.
 			if m := primaryMnemonic(rc); m != "" && rc.SrceID != "" {
-				srcMne = append(srcMne, cerebrumMneRow{ID: rc.SrceID, Mnemonic: m})
+				srcMne = append(srcMne, cerebrumMneRow{ID: rc.SrceID, Mnemonic: m, Levels: mneLevelsFromChange(rc, rc.SrceID)})
 			}
 		case "DEST_MNE":
 			if m := primaryMnemonic(rc); m != "" && rc.DestID != "" {
-				dstMne = append(dstMne, cerebrumMneRow{ID: rc.DestID, Mnemonic: m})
+				dstMne = append(dstMne, cerebrumMneRow{ID: rc.DestID, Mnemonic: m, Levels: mneLevelsFromChange(rc, rc.DestID)})
 			}
 		case "LEVEL_MNE":
 			if m := primaryMnemonic(rc); m != "" && rc.LevelID != "" {
