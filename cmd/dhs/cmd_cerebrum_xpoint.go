@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -196,43 +197,98 @@ func cmpCerebrumID(a, b string) int {
 	return strings.Compare(a, b)
 }
 
-// cerebrumImportXpoint applies a crosspoint CSV (dest,srce,levels) as a stream
-// of ROUTE actions — the northbound analogue of `probel-sw08p import --xpoint`.
-// Multi-level rows expand to one ROUTE per level. `--check` is a pure offline
-// dry-run: it prints exactly what would be sent and connects to nothing.
+// cerebrumImportXpoint applies the probel-sw08p-style import trio: a
+// crosspoint CSV (`--xpoint`, alias `--csv`; columns dest,srce,levels) as ROUTE
+// actions, plus optional src/dst mnemonic CSVs (`--src`/`--dst`; columns
+// srce|dest,levels,mnemonic) as SRCE_MNE/DEST_MNE actions. Multi-level rows
+// expand to one action per level. `--check` is a pure offline dry-run: it
+// prints exactly what would be sent and connects to nothing.
 func cerebrumImportXpoint(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb import", flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
 	router := fs.String("router", "0.0.0.0", "router IP target (route-master sentinel 0.0.0.0) or a physical Router IP")
 	deviceName := fs.String("device-name", "", "address by DEVICE_NAME instead of --router")
-	csvPath := fs.String("csv", "", "crosspoint CSV to import (columns dest,srce,levels) — required")
-	check := fs.Bool("check", false, "dry-run: print the ROUTE actions that would be sent; connect to nothing")
+	csvPath := fs.String("csv", "", "alias for --xpoint (kept from the first release)")
+	xpointPath := fs.String("xpoint", "", "crosspoint CSV to import (columns dest,srce,levels)")
+	srcPath := fs.String("src", "", "source-mnemonic CSV to import (columns srce,levels,mnemonic)")
+	dstPath := fs.String("dst", "", "dest-mnemonic CSV to import (columns dest,levels,mnemonic)")
+	check := fs.Bool("check", false, "dry-run: print the actions that would be sent; connect to nothing")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *csvPath == "" {
-		return fmt.Errorf("cerebrum-nb import: --csv FILE is required (columns dest,srce,levels)")
+	if *csvPath != "" && *xpointPath != "" {
+		return fmt.Errorf("cerebrum-nb import: --csv and --xpoint are the same input — pass one")
 	}
-	data, err := os.ReadFile(*csvPath)
+	xp := *xpointPath
+	if xp == "" {
+		xp = *csvPath
+	}
+	if xp == "" && *srcPath == "" && *dstPath == "" {
+		return fmt.Errorf("cerebrum-nb import: nothing to import (pass --xpoint and/or --src and/or --dst)")
+	}
+
+	// Parse everything up front so a malformed file fails before any wire I/O.
+	var routes []routeSpec
+	var xpRows int
+	if xp != "" {
+		data, err := os.ReadFile(xp)
+		if err != nil {
+			return err
+		}
+		rows, err := parseCerebrumXpoint(data, xp)
+		if err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			return fmt.Errorf("cerebrum-nb import: %s has no crosspoints", xp)
+		}
+		xpRows = len(rows)
+		routes = expandCerebrumXpoint(rows)
+	}
+	loadMne := func(path, keyCol string) ([]cerebrumMneRow, error) {
+		if path == "" {
+			return nil, nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		rows, err := parseCerebrumMneCSV(data, keyCol, path)
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			return nil, fmt.Errorf("cerebrum-nb import: %s has no mnemonics", path)
+		}
+		return rows, nil
+	}
+	srcRows, err := loadMne(*srcPath, "srce")
 	if err != nil {
 		return err
 	}
-	rows, err := parseCerebrumXpoint(data, *csvPath)
+	dstRows, err := loadMne(*dstPath, "dest")
 	if err != nil {
 		return err
-	}
-	routes := expandCerebrumXpoint(rows)
-	if len(routes) == 0 {
-		return fmt.Errorf("cerebrum-nb import: %s has no crosspoints", *csvPath)
 	}
 
 	// --check: offline dry-run, no connection.
 	if *check {
 		for _, r := range routes {
-			fmt.Printf("[would-route] dst=%s src=%s lvl=%s\n", r.Dest, r.Srce, r.Level)
+			fmt.Printf("[would-route]   dst=%s src=%s lvl=%s\n", r.Dest, r.Srce, r.Level)
 		}
-		fmt.Printf("cerebrum-nb import --check: %d crosspoint(s) across %d row(s) — nothing sent\n", len(routes), len(rows))
+		for _, m := range srcRows {
+			for _, lvl := range m.Levels {
+				fmt.Printf("[would-srce-mne] src=%s lvl=%s mne=%q\n", m.ID, lvl, m.Mnemonic)
+			}
+		}
+		for _, m := range dstRows {
+			for _, lvl := range m.Levels {
+				fmt.Printf("[would-dest-mne] dst=%s lvl=%s mne=%q\n", m.ID, lvl, m.Mnemonic)
+			}
+		}
+		fmt.Printf("cerebrum-nb import --check: %d crosspoint(s) across %d row(s), %d src-mne row(s), %d dst-mne row(s) — nothing sent\n",
+			len(routes), xpRows, len(srcRows), len(dstRows))
 		return nil
 	}
 
@@ -252,6 +308,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 	sess := p.Session()
+	target := routeTargetFromFlags(*router, *deviceName)
 
 	fails := 0
 	for _, r := range routes {
@@ -267,29 +324,65 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		}
 		fmt.Printf("[route] OK   dst=%s src=%s lvl=%s\n", r.Dest, r.Srce, r.Level)
 	}
-	if fails > 0 {
-		return fmt.Errorf("%d/%d crosspoints failed", fails, len(routes))
+	applyMne := func(kind string, rows []cerebrumMneRow) {
+		for _, m := range rows {
+			for _, lvl := range m.Levels {
+				srce, dest := m.ID, ""
+				if kind == "DEST_MNE" {
+					srce, dest = "", m.ID
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
+				err := sess.SetMnemonic(ctx, kind, target, srce, dest, lvl, m.Mnemonic, "")
+				cancel()
+				if err != nil {
+					fmt.Printf("[%s] NACK id=%s lvl=%s mne=%q reason=%s\n", strings.ToLower(kind), m.ID, lvl, m.Mnemonic, err)
+					fails++
+					continue
+				}
+				fmt.Printf("[%s] OK   id=%s lvl=%s mne=%q\n", strings.ToLower(kind), m.ID, lvl, m.Mnemonic)
+			}
+		}
 	}
-	fmt.Printf("cerebrum-nb import: applied %d crosspoint(s) from %s\n", len(routes), *csvPath)
+	applyMne("SRCE_MNE", srcRows)
+	applyMne("DEST_MNE", dstRows)
+	if fails > 0 {
+		return fmt.Errorf("cerebrum-nb import: %d action(s) failed", fails)
+	}
+	fmt.Printf("cerebrum-nb import: applied %d crosspoint(s), %d src-mne row(s), %d dst-mne row(s)\n", len(routes), len(srcRows), len(dstRows))
 	return nil
 }
 
-// cerebrumExportXpoint reads the router's current crosspoints by subscribing to
-// the ROUTING_CHANGE snapshot (route-master sentinel, DEST/LEVEL wildcards),
-// collapses them into multi-level rows, and writes the dest,srce,levels CSV that
-// `import` reads back — the northbound analogue of `probel-sw08p export`. It
-// stops on the WILDCARD_COMPLETE sentinel, or after the stream is quiet for
-// --idle.
+// cerebrumExportXpoint reads the router's current state by subscribing to
+// ROUTING_CHANGE snapshots (route-master sentinel + wildcards) and writes CSVs
+// that `import` reads back — the northbound analogue of `probel-sw08p export`.
+//
+// Two modes:
+//
+//	--out FILE            crosspoints only (first-release shape), stdout default
+//	--out-dir D --prefix P probel-style trio: P-src.csv + P-dst.csv + P-xpoint.csv
+//	                       (adds SRCE_MNE / DEST_MNE snapshot subscriptions)
+//
+// Cross-level routes (source_level_id != level_id on the RX row) cannot be
+// represented in the dest,srce,levels CSV yet: they are counted and reported
+// LOUDLY, never silently flattened. Collection stops when every successful
+// subscription has delivered its WILDCARD_COMPLETE sentinel, or after the
+// stream is quiet for --idle.
 func cerebrumExportXpoint(ctx context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb export", flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
 	router := fs.String("router", "0.0.0.0", "router IP target (route-master sentinel 0.0.0.0) or a physical Router IP")
 	deviceType := fs.String("device-type", "ROUTER", "route-master device type")
-	out := fs.String("out", "", "write the crosspoint CSV here (default: stdout)")
+	out := fs.String("out", "", "crosspoints-only mode: write the xpoint CSV here (default: stdout)")
+	outDir := fs.String("out-dir", "", "trio mode: directory for <prefix>-src.csv / -dst.csv / -xpoint.csv")
+	prefix := fs.String("prefix", "cerebrum", "trio mode: file prefix")
 	idle := fs.Duration("idle", 3*time.Second, "stop collecting this long after the last snapshot frame if no WILDCARD_COMPLETE arrives")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	trio := *outDir != ""
+	if trio && *out != "" {
+		return fmt.Errorf("cerebrum-nb export: --out and --out-dir are mutually exclusive")
 	}
 	rest := fs.Args()
 	if len(rest) < 1 {
@@ -310,42 +403,93 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 
 	var mu sync.Mutex
 	var routes []routeSpec
+	var srcMne, dstMne []cerebrumMneRow
+	crossLevel := 0
+	completes := 0
 	tick := make(chan struct{}, 1)
-	done := make(chan struct{})
-	var once sync.Once
-
-	sess.OnEvent(codec.KindRoutingChange, func(f *codec.Frame) {
-		rc := f.Routing
-		if rc == nil || rc.Type != "ROUTE" || rc.RouteSourceID == "" {
-			return
-		}
-		mu.Lock()
-		routes = append(routes, routeSpec{Dest: rc.DestID, Srce: rc.RouteSourceID, Level: rc.LevelID})
-		mu.Unlock()
+	kick := func() {
 		select {
 		case tick <- struct{}{}:
 		default:
 		}
-	})
-	sess.OnEvent(codec.KindWildcardComplete, func(*codec.Frame) {
-		once.Do(func() { close(done) })
-	})
-
-	subCtx, subCancel := context.WithCancel(context.Background())
-	defer subCancel()
-	item := &codec.RoutingChange{Type: "ROUTE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), DestID: "*", LevelID: "*"}
-	if err := sess.Subscribe(subCtx, []codec.SubItem{item}); err != nil {
-		return fmt.Errorf("cerebrum-nb export: subscribe failed: %w", err)
 	}
 
-	// Collect until WILDCARD_COMPLETE, or until the stream goes quiet for --idle.
+	sess.OnEvent(codec.KindRoutingChange, func(f *codec.Frame) {
+		rc := f.Routing
+		if rc == nil {
+			return
+		}
+		mu.Lock()
+		switch rc.Type {
+		case "ROUTE":
+			if rc.RouteSourceID == "" {
+				break
+			}
+			if crossLevelRoute(rc.LevelID, rc.RouteSourceLevelID) {
+				crossLevel++
+				break
+			}
+			routes = append(routes, routeSpec{Dest: rc.DestID, Srce: rc.RouteSourceID, Level: rc.LevelID})
+		case "SRCE_MNE":
+			if m := primaryMnemonic(rc); m != "" && rc.SrceID != "" {
+				srcMne = append(srcMne, cerebrumMneRow{ID: rc.SrceID, Levels: []string{rc.LevelID}, Mnemonic: m})
+			}
+		case "DEST_MNE":
+			if m := primaryMnemonic(rc); m != "" && rc.DestID != "" {
+				dstMne = append(dstMne, cerebrumMneRow{ID: rc.DestID, Levels: []string{rc.LevelID}, Mnemonic: m})
+			}
+		}
+		mu.Unlock()
+		kick()
+	})
+	sess.OnEvent(codec.KindWildcardComplete, func(*codec.Frame) {
+		mu.Lock()
+		completes++
+		mu.Unlock()
+		kick()
+	})
+
+	// One SUBSCRIBE per item (a NACK on one must not sink the others; the
+	// live server is known to NACK some ROUTING_CHANGE wildcard rows).
+	type subItem struct {
+		name string
+		item codec.SubItem
+	}
+	plan := []subItem{
+		{"ROUTE", &codec.RoutingChange{Type: "ROUTE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), DestID: "*", LevelID: "*"}},
+	}
+	if trio {
+		plan = append(plan,
+			subItem{"SRCE_MNE", &codec.RoutingChange{Type: "SRCE_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), SrceID: "*", LevelID: "*"}},
+			subItem{"DEST_MNE", &codec.RoutingChange{Type: "DEST_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), DestID: "*", LevelID: "*"}},
+		)
+	}
+	subCtx, subCancel := context.WithCancel(context.Background())
+	defer subCancel()
+	okSubs := 0
+	for _, s := range plan {
+		if err := sess.Subscribe(subCtx, []codec.SubItem{s.item}); err != nil {
+			if s.name == "ROUTE" {
+				return fmt.Errorf("cerebrum-nb export: ROUTE subscribe failed: %w", err)
+			}
+			fmt.Fprintf(os.Stderr, "cerebrum-nb export: %s subscribe refused (%v) — %s CSV will be empty\n", s.name, err, strings.ToLower(s.name))
+			continue
+		}
+		okSubs++
+	}
+
+	// Collect until every granted subscription completed, or --idle of quiet.
 	idleTimer := time.NewTimer(*idle)
 	defer idleTimer.Stop()
 collect:
 	for {
-		select {
-		case <-done:
+		mu.Lock()
+		doneAll := okSubs > 0 && completes >= okSubs
+		mu.Unlock()
+		if doneAll {
 			break collect
+		}
+		select {
 		case <-tick:
 			if !idleTimer.Stop() {
 				select {
@@ -363,17 +507,45 @@ collect:
 
 	mu.Lock()
 	snap := append([]routeSpec(nil), routes...)
+	srcSnap := append([]cerebrumMneRow(nil), srcMne...)
+	dstSnap := append([]cerebrumMneRow(nil), dstMne...)
+	skipped := crossLevel
 	mu.Unlock()
 
-	csv := formatCerebrumXpointCSV(collapseCerebrumRoutes(snap))
-	if *out == "" {
-		fmt.Print(csv)
+	if skipped > 0 {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb export: WARNING — %d cross-level route(s) skipped (dest,srce,levels CSV cannot represent SRCE_LEVEL != DEST_LEVEL yet)\n", skipped)
+	}
+
+	xpCSV := formatCerebrumXpointCSV(collapseCerebrumRoutes(snap))
+	if !trio {
+		if *out == "" {
+			fmt.Print(xpCSV)
+			return nil
+		}
+		if err := os.WriteFile(*out, []byte(xpCSV), 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "cerebrum-nb export: wrote %d crosspoint row(s) to %s\n", strings.Count(xpCSV, "\n")-1, *out)
 		return nil
 	}
-	if err := os.WriteFile(*out, []byte(csv), 0o644); err != nil {
+
+	if err := os.MkdirAll(*outDir, 0o755); err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "cerebrum-nb export: wrote %d crosspoint row(s) to %s\n", strings.Count(csv, "\n")-1, *out)
+	files := []struct {
+		name, content string
+	}{
+		{*prefix + "-src.csv", formatCerebrumMneCSV("srce", collapseCerebrumMnes(srcSnap))},
+		{*prefix + "-dst.csv", formatCerebrumMneCSV("dest", collapseCerebrumMnes(dstSnap))},
+		{*prefix + "-xpoint.csv", xpCSV},
+	}
+	for _, f := range files {
+		path := filepath.Join(*outDir, f.name)
+		if err := os.WriteFile(path, []byte(f.content), 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "cerebrum-nb export: wrote %s (%d row(s))\n", path, strings.Count(f.content, "\n")-1)
+	}
 	return nil
 }
 
