@@ -135,6 +135,12 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumRoute(ctx, rest)
 	case "export":
 		return cerebrumExportXpoint(ctx, rest)
+	case "list-sources":
+		return cerebrumListMne(ctx, rest, "SRCE_MNE", "srce")
+	case "list-dests":
+		return cerebrumListMne(ctx, rest, "DEST_MNE", "dest")
+	case "list-levels":
+		return cerebrumListMne(ctx, rest, "LEVEL_MNE", "level")
 	case "import":
 		return cerebrumImportXpoint(ctx, rest)
 	case "lock":
@@ -172,6 +178,9 @@ VERBS
   connect                  POLL (LOGIN auto when --user/--pass set)
   listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop
   route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
+  list-sources             one-shot OBTAIN SRCE_MNE  → every configured source ID + label   [--out FILE]
+  list-dests               one-shot OBTAIN DEST_MNE  → every configured destination ID + label  [--out FILE]
+  list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--out FILE]
   export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE]. Full set (src+dst+level mnemonics+xpoint): --out-dir DIR [--prefix P]
   import                   apply CSVs: --xpoint F (dest,srce,levels; --csv alias) + --src/--dst/--levels F (mnemonics, per-ID)  [--check]
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device]
