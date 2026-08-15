@@ -465,7 +465,14 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 		mu.Unlock()
 		kick()
 	})
-	sess.OnEvent(codec.KindWildcardComplete, func(*codec.Frame) {
+	sess.OnEvent(codec.KindWildcardComplete, func(f *codec.Frame) {
+		// Live NOC Cerebrum (2026-08) emits a bare <wildcard_complete/> with NO
+		// MTID after every event — spec §1.6 defines exactly one per wildcard
+		// request, carrying the request's MTID. Count only the real ones so the
+		// spurious per-event sentinels can't end collection early.
+		if f.MTID == "" {
+			return
+		}
 		mu.Lock()
 		completes++
 		mu.Unlock()
