@@ -94,12 +94,20 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 		once.Do(func() { close(done) })
 	})
 
+	// Live NOC Cerebrum (2026-08-15) NACKs 10:ONE_OR_MORE_OBTAINS_INVALID when
+	// LEVEL_ID is absent from the SRCE_MNE / DEST_MNE filter, even though the
+	// spec marks it router-ignored (§5.1.5/§5.1.6): this server requires every
+	// wildcardable attribute to be present. LEVEL_ID="*" is spec-harmless on
+	// routers, so send it always. (Same pattern: ROUTE/DEST_LOCK with
+	// LEVEL_ID="*" were granted; SRCE_LOCK without it was refused.)
 	item := &codec.RoutingChange{Type: mneType, IPAddress: *router, DeviceType: codec.DeviceType(*deviceType)}
 	switch mneType {
 	case "SRCE_MNE":
 		item.SrceID = "*"
+		item.LevelID = "*"
 	case "DEST_MNE":
 		item.DestID = "*"
+		item.LevelID = "*"
 	case "LEVEL_MNE":
 		item.LevelID = "*"
 	}

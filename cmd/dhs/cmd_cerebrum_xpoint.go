@@ -494,9 +494,11 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 		{"ROUTE", &codec.RoutingChange{Type: "ROUTE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), DestID: "*", LevelID: routeLevel}},
 	}
 	if trio {
+		// LEVEL_ID="*" on the MNE filters is REQUIRED by live NOC Cerebrum
+		// (NACK 10 without it, 2026-08-15) and spec-harmless on routers.
 		plan = append(plan,
-			obtainItem{"SRCE_MNE", &codec.RoutingChange{Type: "SRCE_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), SrceID: "*"}},
-			obtainItem{"DEST_MNE", &codec.RoutingChange{Type: "DEST_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), DestID: "*"}},
+			obtainItem{"SRCE_MNE", &codec.RoutingChange{Type: "SRCE_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), SrceID: "*", LevelID: "*"}},
+			obtainItem{"DEST_MNE", &codec.RoutingChange{Type: "DEST_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), DestID: "*", LevelID: "*"}},
 			obtainItem{"LEVEL_MNE", &codec.RoutingChange{Type: "LEVEL_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), LevelID: "*"}},
 		)
 	}
