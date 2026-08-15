@@ -26,9 +26,15 @@ import (
 // quoting throughout (mnemonics may contain commas/quotes).
 
 // cerebrumMneRow is one line of a mnemonic CSV: an ID (source, destination or
-// level, per the file's key column) and its primary mnemonic.
+// level, per the file's key column), its primary mnemonic, and — for src/dst
+// rows — the levels the resource EXISTS on (capability, from the §5.1.5/§5.1.6
+// ASSOCIATION children; RM_LEVEL_ID per binding). Capability, not state: the
+// xpoint CSV's levels are the routed ones; these are the routable ones — the
+// input to the straight-route vs cross-level(shuffle) decision (§4.1.1).
+// Renames stay per-ID (the levels column is inventory, never rename scope).
 type cerebrumMneRow struct {
 	ID       string
+	Levels   []string
 	Mnemonic string
 }
 
@@ -59,6 +65,9 @@ func parseCerebrumMneCSV(data []byte, keyCol, srcName string) ([]cerebrumMneRow,
 	if !ok {
 		return nil, fmt.Errorf("%s: missing column \"mnemonic\"", srcName)
 	}
+	// Optional capability column ("levels", ';'-list) on src/dst files. Import
+	// ignores it (renames are per-ID); parse keeps it for round-trip fidelity.
+	lvlCol, hasLevels := idx["levels"]
 	var out []cerebrumMneRow
 	for n, rec := range recs[1:] {
 		if len(rec) <= key || len(rec) <= mne {
@@ -69,7 +78,13 @@ func parseCerebrumMneCSV(data []byte, keyCol, srcName string) ([]cerebrumMneRow,
 		if id == "" || m == "" {
 			return nil, fmt.Errorf("%s row %d: %s and mnemonic are both required", srcName, n+2, keyCol)
 		}
-		out = append(out, cerebrumMneRow{ID: id, Mnemonic: m})
+		row := cerebrumMneRow{ID: id, Mnemonic: m}
+		if hasLevels && len(rec) > lvlCol {
+			if lv := splitLevelCell(rec[lvlCol]); len(lv) > 0 {
+				row.Levels = lv
+			}
+		}
+		out = append(out, row)
 	}
 	return out, nil
 }
@@ -80,18 +95,35 @@ func parseCerebrumMneCSV(data []byte, keyCol, srcName string) ([]cerebrumMneRow,
 // mnemonic) for stable diffs. Conflicting mnemonics for one ID are kept (both
 // rows), so an inconsistency is visible rather than silently resolved.
 func dedupeCerebrumMnes(rows []cerebrumMneRow) []cerebrumMneRow {
-	seen := map[string]bool{}
-	out := make([]cerebrumMneRow, 0, len(rows))
+	type acc struct {
+		row  cerebrumMneRow
+		seen map[string]bool
+	}
+	groups := map[string]*acc{}
+	var order []string
 	for _, r := range rows {
 		if r.ID == "" || r.Mnemonic == "" {
 			continue
 		}
 		k := r.ID + "\x00" + r.Mnemonic
-		if seen[k] {
-			continue
+		g := groups[k]
+		if g == nil {
+			g = &acc{row: cerebrumMneRow{ID: r.ID, Mnemonic: r.Mnemonic}, seen: map[string]bool{}}
+			groups[k] = g
+			order = append(order, k)
 		}
-		seen[k] = true
-		out = append(out, r)
+		// Merge capability levels across per-level snapshot repeats.
+		for _, lvl := range r.Levels {
+			if lvl != "" && !g.seen[lvl] {
+				g.seen[lvl] = true
+				g.row.Levels = append(g.row.Levels, lvl)
+			}
+		}
+	}
+	out := make([]cerebrumMneRow, 0, len(order))
+	for _, k := range order {
+		sortCerebrumIDs(groups[k].row.Levels)
+		out = append(out, groups[k].row)
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if c := cmpCerebrumID(out[i].ID, out[j].ID); c != 0 {
@@ -102,17 +134,58 @@ func dedupeCerebrumMnes(rows []cerebrumMneRow) []cerebrumMneRow {
 	return out
 }
 
-// formatCerebrumMneCSV renders rows as `keyCol,mnemonic` with RFC 4180
-// quoting — the exact shape parseCerebrumMneCSV reads back.
+// formatCerebrumMneCSV renders rows with RFC 4180 quoting — the exact shape
+// parseCerebrumMneCSV reads back. src/dst files carry the capability column
+// (`keyCol,levels,mnemonic`); the level file is `level,mnemonic` (a levels
+// column on levels would be meaningless).
 func formatCerebrumMneCSV(keyCol string, rows []cerebrumMneRow) string {
 	var b strings.Builder
 	w := csv.NewWriter(&b)
-	_ = w.Write([]string{keyCol, "mnemonic"})
-	for _, r := range rows {
-		_ = w.Write([]string{r.ID, r.Mnemonic})
+	if keyCol == "level" {
+		_ = w.Write([]string{keyCol, "mnemonic"})
+		for _, r := range rows {
+			_ = w.Write([]string{r.ID, r.Mnemonic})
+		}
+	} else {
+		_ = w.Write([]string{keyCol, "levels", "mnemonic"})
+		for _, r := range rows {
+			_ = w.Write([]string{r.ID, strings.Join(r.Levels, ";"), r.Mnemonic})
+		}
 	}
 	w.Flush()
 	return b.String()
+}
+
+// mneLevelsFromChange extracts the capability levels for the row's resource
+// from a *_MNE routing_change RX: the ASSOCIATION children's RM_LEVEL_ID
+// (filtered to this row's ID when the association names one), plus the row's
+// own LEVEL_ID as fallback. Capability = levels the resource exists on.
+func mneLevelsFromChange(rc *codec.RoutingChange, id string) []string {
+	if rc == nil {
+		return nil
+	}
+	var out []string
+	for _, a := range rc.Associations {
+		aid := a.SrceID
+		if aid == "" {
+			aid = a.DestID
+		}
+		if aid != "" && id != "" && aid != id {
+			continue
+		}
+		if a.RMLevelID != "" && a.RMLevelID != "*" {
+			out = append(out, a.RMLevelID)
+		}
+	}
+	// Fallback: the row's own LEVEL_ID — but NEVER the literal "*", which is
+	// just our wildcard filter echoed back ("attributes as per TX"). Live NOC
+	// rows without associations (logical resources, e.g. PGM cut-points) echo
+	// "*"; that means "no level binding reported", not "all levels" — leave
+	// the capability empty rather than invent one.
+	if len(out) == 0 && rc.LevelID != "" && rc.LevelID != "*" {
+		out = append(out, rc.LevelID)
+	}
+	return out
 }
 
 // crossLevelRoute reports whether a routing-snapshot row is a cross-level

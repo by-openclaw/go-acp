@@ -189,6 +189,85 @@ func TestCerebrumImportSetGuardRails(t *testing.T) {
 	}
 }
 
+// TestCerebrumMneCapabilityLevels pins the capability-levels pipeline: parse
+// accepts an optional `levels` column; dedupe MERGES levels across per-level
+// snapshot repeats (numeric order); format writes the levels column for
+// src/dst files but NOT for the level file; empty levels round-trip as empty.
+func TestCerebrumMneCapabilityLevels(t *testing.T) {
+	t.Run("dedupe merges levels", func(t *testing.T) {
+		got := dedupeCerebrumMnes([]cerebrumMneRow{
+			{ID: "5121", Mnemonic: "CAM1", Levels: []string{"2"}},
+			{ID: "5121", Mnemonic: "CAM1", Levels: []string{"1", "2"}},
+			{ID: "5121", Mnemonic: "CAM1", Levels: []string{"12"}},
+		})
+		want := []cerebrumMneRow{{ID: "5121", Mnemonic: "CAM1", Levels: []string{"1", "2", "12"}}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("dedupe = %+v, want %+v", got, want)
+		}
+	})
+	t.Run("src file carries levels column", func(t *testing.T) {
+		got := formatCerebrumMneCSV("srce", []cerebrumMneRow{{ID: "5121", Mnemonic: "CAM1", Levels: []string{"1", "2", "12"}}})
+		want := "srce,levels,mnemonic\n5121,1;2;12,CAM1\n"
+		if got != want {
+			t.Errorf("src csv = %q, want %q", got, want)
+		}
+	})
+	t.Run("level file has no levels column", func(t *testing.T) {
+		got := formatCerebrumMneCSV("level", []cerebrumMneRow{{ID: "1", Mnemonic: "Video"}})
+		want := "level,mnemonic\n1,Video\n"
+		if got != want {
+			t.Errorf("level csv = %q, want %q", got, want)
+		}
+	})
+	t.Run("levels round-trip", func(t *testing.T) {
+		orig := []cerebrumMneRow{
+			{ID: "5121", Mnemonic: "CAM1", Levels: []string{"1", "2", "12"}},
+			{ID: "5122", Mnemonic: "GFX"}, // no levels -> empty cell -> stays nil
+		}
+		back, err := parseCerebrumMneCSV([]byte(formatCerebrumMneCSV("srce", orig)), "srce", "rt")
+		if err != nil {
+			t.Fatalf("reparse: %v", err)
+		}
+		if !reflect.DeepEqual(back, orig) {
+			t.Errorf("round-trip drifted:\ngot  %+v\nwant %+v", back, orig)
+		}
+	})
+}
+
+// TestMneLevelsFromChange pins capability extraction from a *_MNE RX row:
+// association RM_LEVEL_IDs win (filtered to the row's ID); the row's own
+// LEVEL_ID is the fallback; nil-safe.
+func TestMneLevelsFromChange(t *testing.T) {
+	if got := mneLevelsFromChange(nil, "1"); got != nil {
+		t.Errorf("nil rc = %v, want nil", got)
+	}
+	rc := &codec.RoutingChange{
+		SrceID:  "1",
+		LevelID: "9",
+		Associations: []codec.RoutingAssociation{
+			{SrceID: "1", RMLevelID: "1"},
+			{SrceID: "1", RMLevelID: "12"},
+			{SrceID: "2", RMLevelID: "3"}, // other resource — filtered out
+		},
+	}
+	if got := mneLevelsFromChange(rc, "1"); !reflect.DeepEqual(got, []string{"1", "12"}) {
+		t.Errorf("assoc levels = %v, want [1 12]", got)
+	}
+	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "7", LevelID: "4"}, "7"); !reflect.DeepEqual(got, []string{"4"}) {
+		t.Errorf("fallback = %v, want [4]", got)
+	}
+	// The wildcard echo must never leak into capability: a row with no
+	// associations and LEVEL_ID="*" (our own filter echoed back, live NOC
+	// 2026-08-15) yields NO levels — unknown, not "all".
+	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "28576", LevelID: "*"}, "28576"); got != nil {
+		t.Errorf("wildcard echo = %v, want nil", got)
+	}
+	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "9", LevelID: "*",
+		Associations: []codec.RoutingAssociation{{SrceID: "9", RMLevelID: "*"}}}, "9"); got != nil {
+		t.Errorf("wildcard assoc = %v, want nil", got)
+	}
+}
+
 // TestCerebrumListMneRequiresHost pins that the three inventory verbs error
 // before dialling when no host is given (offline guard; the OBTAIN itself is
 // device-gated).
