@@ -189,6 +189,21 @@ func TestCerebrumImportSetGuardRails(t *testing.T) {
 	}
 }
 
+// TestCerebrumListMneRequiresHost pins that the three inventory verbs error
+// before dialling when no host is given (offline guard; the OBTAIN itself is
+// device-gated).
+func TestCerebrumListMneRequiresHost(t *testing.T) {
+	for _, tc := range []struct{ mneType, key string }{
+		{"SRCE_MNE", "srce"},
+		{"DEST_MNE", "dest"},
+		{"LEVEL_MNE", "level"},
+	} {
+		if err := cerebrumListMne(context.Background(), []string{"--idle", "1s"}, tc.mneType, tc.key); err == nil {
+			t.Errorf("list-%s without host: err = nil, want error", tc.key)
+		}
+	}
+}
+
 // TestCerebrumExportSetFlags pins export's flag validation offline:
 // --out vs --out-dir exclusivity and the missing-host guard.
 func TestCerebrumExportSetFlags(t *testing.T) {
