@@ -173,11 +173,16 @@ func mneLevelsFromChange(rc *codec.RoutingChange, id string) []string {
 		if aid != "" && id != "" && aid != id {
 			continue
 		}
-		if a.RMLevelID != "" {
+		if a.RMLevelID != "" && a.RMLevelID != "*" {
 			out = append(out, a.RMLevelID)
 		}
 	}
-	if len(out) == 0 && rc.LevelID != "" {
+	// Fallback: the row's own LEVEL_ID — but NEVER the literal "*", which is
+	// just our wildcard filter echoed back ("attributes as per TX"). Live NOC
+	// rows without associations (logical resources, e.g. PGM cut-points) echo
+	// "*"; that means "no level binding reported", not "all levels" — leave
+	// the capability empty rather than invent one.
+	if len(out) == 0 && rc.LevelID != "" && rc.LevelID != "*" {
 		out = append(out, rc.LevelID)
 	}
 	return out

@@ -256,6 +256,16 @@ func TestMneLevelsFromChange(t *testing.T) {
 	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "7", LevelID: "4"}, "7"); !reflect.DeepEqual(got, []string{"4"}) {
 		t.Errorf("fallback = %v, want [4]", got)
 	}
+	// The wildcard echo must never leak into capability: a row with no
+	// associations and LEVEL_ID="*" (our own filter echoed back, live NOC
+	// 2026-08-15) yields NO levels — unknown, not "all".
+	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "28576", LevelID: "*"}, "28576"); got != nil {
+		t.Errorf("wildcard echo = %v, want nil", got)
+	}
+	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "9", LevelID: "*",
+		Associations: []codec.RoutingAssociation{{SrceID: "9", RMLevelID: "*"}}}, "9"); got != nil {
+		t.Errorf("wildcard assoc = %v, want nil", got)
+	}
 }
 
 // TestCerebrumListMneRequiresHost pins that the three inventory verbs error
