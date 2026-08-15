@@ -172,8 +172,8 @@ VERBS
   connect                  POLL (LOGIN auto when --user/--pass set)
   listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop
   route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
-  export                   SUBSCRIBE snapshot → CSVs. Crosspoints only: [--out FILE]. Probel-style trio (src+dst mnemonics+xpoint): --out-dir DIR [--prefix P]
-  import                   apply CSVs: --xpoint F (dest,srce,levels; --csv alias) + --src F / --dst F (mnemonics)  [--check]
+  export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE]. Full set (src+dst+level mnemonics+xpoint): --out-dir DIR [--prefix P]
+  import                   apply CSVs: --xpoint F (dest,srce,levels; --csv alias) + --src/--dst/--levels F (mnemonics, per-ID)  [--check]
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device]
   device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y

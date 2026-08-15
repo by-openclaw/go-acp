@@ -10,33 +10,36 @@ import (
 	"dhs/internal/cerebrum-nb/codec"
 )
 
-// Cerebrum src/dst mnemonic CSVs — the names leg of the probel-sw08p-style
-// export/import trio (<prefix>-src.csv / <prefix>-dst.csv / <prefix>-xpoint.csv).
+// Cerebrum src/dst/level mnemonic CSVs — the names legs of the
+// probel-sw08p-style export/import set (<prefix>-src.csv / -dst.csv /
+// -level.csv / -xpoint.csv).
 //
-// Shape (proper CSV, quoted, so mnemonics may contain commas):
+// Per 0v16 §4.1.5/§4.1.6 a source/destination mnemonic on a ROUTER
+// (Routemaster) target is global for that ID — the LEVEL attribute exists only
+// for non-router devices ("ignored unless the DEVICE_TYPE is DEVICE",
+// §5.1.5/§5.1.6). So the mnemonic CSVs carry NO level column:
 //
-//	srce,levels,mnemonic      dest,levels,mnemonic
-//	5121,1;2,"CAM 1"          5123,1,"MON 1"
+//	srce,mnemonic        dest,mnemonic        level,mnemonic
+//	5121,"CAM 1, main"   5123,"MON 1"         1,LVL-1
 //
-// `levels` is the same ';'-separated multi-level list the xpoint CSV uses; a
-// legacy single `level` column is accepted on read. One row expands to one
-// SRCE_MNE / DEST_MNE action per level on import.
+// Level names themselves are per-level via LEVEL_MNE (§4.1.4). RFC 4180
+// quoting throughout (mnemonics may contain commas/quotes).
 
-// cerebrumMneRow is one line of a mnemonic CSV: an ID named `Mnemonic` across
-// one or more levels.
+// cerebrumMneRow is one line of a mnemonic CSV: an ID (source, destination or
+// level, per the file's key column) and its primary mnemonic.
 type cerebrumMneRow struct {
 	ID       string
-	Levels   []string
 	Mnemonic string
 }
 
 // parseCerebrumMneCSV decodes a mnemonic CSV whose key column is keyCol
-// ("srce" or "dest"). Header is case-insensitive and order-independent;
-// '#' comment lines are skipped; quoting per RFC 4180 (encoding/csv).
+// ("srce", "dest" or "level"). Header is case-insensitive and
+// order-independent; '#' comment lines are skipped; quoting per RFC 4180.
 func parseCerebrumMneCSV(data []byte, keyCol, srcName string) ([]cerebrumMneRow, error) {
 	r := csv.NewReader(bytes.NewReader(data))
 	r.Comment = '#'
 	r.TrimLeadingSpace = true
+	r.FieldsPerRecord = -1
 	recs, err := r.ReadAll()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", srcName, err)
@@ -56,64 +59,39 @@ func parseCerebrumMneCSV(data []byte, keyCol, srcName string) ([]cerebrumMneRow,
 	if !ok {
 		return nil, fmt.Errorf("%s: missing column \"mnemonic\"", srcName)
 	}
-	lvlCol, multi := idx["levels"]
-	if !multi {
-		lvlCol, ok = idx["level"]
-		if !ok {
-			return nil, fmt.Errorf("%s: missing level column (need \"levels\" or \"level\")", srcName)
-		}
-	}
 	var out []cerebrumMneRow
 	for n, rec := range recs[1:] {
-		if len(rec) <= key || len(rec) <= mne || len(rec) <= lvlCol {
+		if len(rec) <= key || len(rec) <= mne {
 			return nil, fmt.Errorf("%s row %d: too few columns", srcName, n+2)
 		}
 		id := strings.TrimSpace(rec[key])
-		levels := splitLevelCell(rec[lvlCol])
 		m := rec[mne]
-		if id == "" || len(levels) == 0 || m == "" {
-			return nil, fmt.Errorf("%s row %d: %s, level(s) and mnemonic are all required", srcName, n+2, keyCol)
+		if id == "" || m == "" {
+			return nil, fmt.Errorf("%s row %d: %s and mnemonic are both required", srcName, n+2, keyCol)
 		}
-		out = append(out, cerebrumMneRow{ID: id, Levels: levels, Mnemonic: m})
+		out = append(out, cerebrumMneRow{ID: id, Mnemonic: m})
 	}
 	return out, nil
 }
 
-// collapseCerebrumMnes groups per-(id,level) snapshot rows into multi-level
-// rows: levels sharing the same mnemonic for an ID coalesce; an ID whose
-// mnemonic differs per level keeps one row per distinct mnemonic. Levels are
-// deduped and numeric-sorted; rows are ordered (ID, mnemonic) for stable diffs.
-func collapseCerebrumMnes(rows []cerebrumMneRow) []cerebrumMneRow {
-	type acc struct {
-		id, mne string
-		levels  []string
-		seen    map[string]bool
-	}
-	groups := map[string]*acc{}
-	var order []string
+// dedupeCerebrumMnes drops exact duplicate (ID, mnemonic) rows — the OBTAIN
+// snapshot may deliver one row per level for a router ID, all carrying the
+// same global mnemonic — and orders the result numeric-aware by ID (then
+// mnemonic) for stable diffs. Conflicting mnemonics for one ID are kept (both
+// rows), so an inconsistency is visible rather than silently resolved.
+func dedupeCerebrumMnes(rows []cerebrumMneRow) []cerebrumMneRow {
+	seen := map[string]bool{}
+	out := make([]cerebrumMneRow, 0, len(rows))
 	for _, r := range rows {
 		if r.ID == "" || r.Mnemonic == "" {
 			continue
 		}
 		k := r.ID + "\x00" + r.Mnemonic
-		g := groups[k]
-		if g == nil {
-			g = &acc{id: r.ID, mne: r.Mnemonic, seen: map[string]bool{}}
-			groups[k] = g
-			order = append(order, k)
+		if seen[k] {
+			continue
 		}
-		for _, lvl := range r.Levels {
-			if lvl != "" && !g.seen[lvl] {
-				g.seen[lvl] = true
-				g.levels = append(g.levels, lvl)
-			}
-		}
-	}
-	out := make([]cerebrumMneRow, 0, len(order))
-	for _, k := range order {
-		g := groups[k]
-		sortCerebrumIDs(g.levels)
-		out = append(out, cerebrumMneRow{ID: g.id, Levels: g.levels, Mnemonic: g.mne})
+		seen[k] = true
+		out = append(out, r)
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if c := cmpCerebrumID(out[i].ID, out[j].ID); c != 0 {
@@ -124,14 +102,14 @@ func collapseCerebrumMnes(rows []cerebrumMneRow) []cerebrumMneRow {
 	return out
 }
 
-// formatCerebrumMneCSV renders rows as `keyCol,levels,mnemonic` with RFC 4180
+// formatCerebrumMneCSV renders rows as `keyCol,mnemonic` with RFC 4180
 // quoting — the exact shape parseCerebrumMneCSV reads back.
 func formatCerebrumMneCSV(keyCol string, rows []cerebrumMneRow) string {
 	var b strings.Builder
 	w := csv.NewWriter(&b)
-	_ = w.Write([]string{keyCol, "levels", "mnemonic"})
+	_ = w.Write([]string{keyCol, "mnemonic"})
 	for _, r := range rows {
-		_ = w.Write([]string{r.ID, strings.Join(r.Levels, ";"), r.Mnemonic})
+		_ = w.Write([]string{r.ID, r.Mnemonic})
 	}
 	w.Flush()
 	return b.String()
