@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
@@ -90,7 +91,7 @@ func cerebrumTree(_ context.Context, args []string) error {
 	}
 
 	opts := treeRenderOpts{
-		FromPath: *focus,
+		FromPath: cerebrumExpandFocus(objs, *focus),
 		Depth:    *depth,
 		ASCII:    *format == "ascii",
 		Filter:   *filter,
@@ -99,6 +100,45 @@ func cerebrumTree(_ context.Context, args []string) error {
 		return renderTreePlantUML(writer, objs, opts)
 	}
 	return renderTree(writer, objs, opts)
+}
+
+// cerebrumExpandFocus resolves a --path that names a node ANYWHERE in the
+// tree, not only from the root: sub-category nesting means a category's
+// canonical path runs through its parents (Categories.DESTINATIONS.
+// DST-FUSION), but operators reference categories directly. The user's
+// dotted segments are matched as a contiguous subsequence of any object
+// path (case-insensitive, shallowest match wins) and expanded to the full
+// root path the renderer needs. No match returns the input unchanged so
+// the renderer's own error still fires.
+func cerebrumExpandFocus(objs []consumer.Object, focus string) string {
+	if focus == "" {
+		return focus
+	}
+	segs := strings.Split(focus, ".")
+	best := []string(nil)
+	for i := range objs {
+		p := objs[i].Path
+		for start := 0; start+len(segs) <= len(p); start++ {
+			ok := true
+			for j, s := range segs {
+				if !strings.EqualFold(p[start+j], s) {
+					ok = false
+					break
+				}
+			}
+			if ok {
+				full := p[:start+len(segs)]
+				if best == nil || len(full) < len(best) {
+					best = append([]string{}, full...)
+				}
+				break
+			}
+		}
+	}
+	if best == nil {
+		return focus
+	}
+	return strings.Join(best, ".")
 }
 
 // cerebrumSalvoTreeObjects walks §5.3 (GROUP_LIST → INSTANCE_LIST →
