@@ -741,8 +741,32 @@ func cerebrumDeviceValue(_ context.Context, args []string) error {
 	fmt.Printf("device      %s (%s)\n", d.IPAddress, displayName(d.DeviceName))
 	fmt.Printf("sub_device  %s\n", d.SubDevice)
 	fmt.Printf("object      %s\n", d.Object)
-	if d.ObjectValue != nil {
-		fmt.Printf("available   %s\n", boolFlag(d.ObjectValue.Available))
+	// Print EVERY OBJECT_VALUE child with the full 0v16 descriptor — a
+	// wildcard OBJECT/SUB_DEVICE obtain may return many.
+	if n := len(d.ObjectValues); n > 1 {
+		fmt.Printf("values      %d\n", n)
+	}
+	for _, ov := range d.ObjectValues {
+		line := fmt.Sprintf("  %-40s available=%s", ov.Object, boolFlag(ov.Available))
+		if ov.Value != "" {
+			line += fmt.Sprintf(" value=%q", ov.Value)
+		}
+		if ov.DataType != "" {
+			line += " type=" + ov.DataType
+		}
+		if ov.Readable || ov.Writable {
+			line += fmt.Sprintf(" rw=%s%s", boolFlag(ov.Readable), boolFlag(ov.Writable))
+		}
+		if ov.Units != "" {
+			line += " units=" + ov.Units
+		}
+		if ov.Label != "" {
+			line += fmt.Sprintf(" label=%q", ov.Label)
+		}
+		if len(ov.EnumList) > 0 {
+			line += fmt.Sprintf(" enum=%s", strings.Join(ov.EnumList, "|"))
+		}
+		fmt.Println(line)
 	}
 	return nil
 }
