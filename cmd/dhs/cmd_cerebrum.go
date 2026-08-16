@@ -267,7 +267,7 @@ VERBS
   list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--id N] [--out FILE]
   export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]
   import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
-  list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device]
+  list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device] [--names: join DEVICE_NAME + PRIMARY/SECONDARY state via one DETAILS obtain per IP — LIST itself never carries names (§5.4.1)]
   device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
   list-categories          OBTAIN <category_change type='CATEGORY_LIST'/>
@@ -683,25 +683,62 @@ func cerebrumListen(ctx context.Context, args []string) error {
 
 func cerebrumListDevices(_ context.Context, args []string) error {
 	classFilter := ""
+	withNames := false
 	filtered := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--device-type" && i+1 < len(args) {
+		switch {
+		case args[i] == "--device-type" && i+1 < len(args):
 			classFilter = args[i+1]
 			i++
-			continue
+		case args[i] == "--names":
+			withNames = true
+		default:
+			filtered = append(filtered, args[i])
 		}
-		filtered = append(filtered, args[i])
 	}
 	jsonOut, filtered, err := extractOutputJSON(filtered)
 	if err != nil {
 		return err
 	}
-	p, sess, _, _, err := connectAndLogin(filtered, "list-devices")
+	p, sess, cf, _, err := connectAndLogin(filtered, "list-devices")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
-	return obtainAndPrintDeviceList(sess, classFilter, jsonOut)
+	return obtainAndPrintDeviceList(sess, cf.timeout, classFilter, jsonOut, withNames)
+}
+
+// cerebrumDeviceNameJoin enriches LIST rows with the per-device DETAILS
+// row (§5.4.2) — the ONLY place the wire exposes DEVICE_NAME and the
+// PRIMARY/SECONDARY connection states (LIST carries no attributes at
+// all, spec §5.4.1 + live 2026-08-16). One IP-addressed obtain per
+// unique IP, sequential on the same session; a device that does not
+// answer within the per-request timeout keeps empty fields — the join
+// never fails the verb.
+type cerebrumDeviceMeta struct {
+	Name           string
+	PrimaryState   string
+	SecondaryState string
+}
+
+func cerebrumDeviceNameJoin(sess *cerebrum.Session, timeout time.Duration, ips []string) map[string]cerebrumDeviceMeta {
+	meta := make(map[string]cerebrumDeviceMeta, len(ips))
+	for _, ip := range ips {
+		got, err := obtainSingleDeviceChange(sess, timeout, &codec.DeviceChange{Type: "DETAILS", IPAddress: ip}, "DETAILS")
+		if err != nil || got == nil || got.Device == nil {
+			continue
+		}
+		var m cerebrumDeviceMeta
+		if got.Device.Details != nil {
+			m.Name = got.Device.Details.Name
+		}
+		if got.Device.Connection != nil {
+			m.PrimaryState = got.Device.Connection.PrimaryState
+			m.SecondaryState = got.Device.Connection.SecondaryState
+		}
+		meta[ip] = m
+	}
+	return meta
 }
 
 // cerebrumDeviceDetails issues an OBTAIN of DEVICE_CHANGE TYPE=DETAILS for a
@@ -1334,7 +1371,7 @@ func extractDeviceDetailsFlags(args []string) (device, deviceType string, byName
 // helpers
 // ----------------------------------------------------------------------
 
-func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string, jsonOut bool) error {
+func obtainAndPrintDeviceList(sess *cerebrum.Session, timeout time.Duration, deviceTypeFilter string, jsonOut, withNames bool) error {
 	var entries []codec.DeviceEntry
 	var snapshotEntries int
 	var snapshotTypes []string
@@ -1388,22 +1425,66 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string, j
 	<-done
 	timer.Stop()
 
+	// --names: LIST rows never carry DEVICE_NAME (§5.4.1 LIST has no
+	// attributes) — join the per-IP DETAILS rows for name + states.
+	meta := map[string]cerebrumDeviceMeta{}
+	if withNames {
+		seen := map[string]bool{}
+		ips := make([]string, 0, len(entries))
+		for _, d := range entries {
+			if !seen[d.IPAddress] {
+				seen[d.IPAddress] = true
+				ips = append(ips, d.IPAddress)
+			}
+		}
+		meta = cerebrumDeviceNameJoin(sess, timeout, ips)
+	}
+
 	if jsonOut {
 		type row struct {
-			Class     string `json:"class"`
-			IPAddress string `json:"ip_address"`
-			Name      string `json:"name,omitempty"`
+			Class          string `json:"class"`
+			IPAddress      string `json:"ip_address"`
+			Name           string `json:"name,omitempty"`
+			PrimaryState   string `json:"primary_state,omitempty"`
+			SecondaryState string `json:"secondary_state,omitempty"`
 		}
 		rows := []row{}
 		if deviceTypeFilter == "" || strings.EqualFold(deviceTypeFilter, "Router") {
-			rows = append(rows, row{"ROUTER", "0.0.0.0", "Routemaster"}) // synthesized sentinel
+			rows = append(rows, row{Class: "ROUTER", IPAddress: "0.0.0.0", Name: "Routemaster"}) // synthesized sentinel
 		}
 		for _, d := range entries {
-			rows = append(rows, row{string(d.DeviceType), d.IPAddress, d.DeviceName})
+			r := row{Class: string(d.DeviceType), IPAddress: d.IPAddress, Name: d.DeviceName}
+			if m, ok := meta[d.IPAddress]; ok {
+				if r.Name == "" {
+					r.Name = m.Name
+				}
+				r.PrimaryState, r.SecondaryState = m.PrimaryState, m.SecondaryState
+			}
+			rows = append(rows, r)
 		}
 		return printCerebrumJSON(struct {
 			Devices []row `json:"devices"`
 		}{rows})
+	}
+	if withNames {
+		fmt.Printf("%-10s  %-16s  %-32s  %-14s  %s\n", "DEVICE_TYPE", "IP_ADDRESS", "NAME", "PRIMARY", "SECONDARY")
+		if deviceTypeFilter == "" || strings.EqualFold(deviceTypeFilter, "Router") {
+			fmt.Printf("%-10s  %-16s  %-32s  %-14s  %s\n", "ROUTER", "0.0.0.0", "Routemaster", "-", "-")
+		}
+		for _, d := range entries {
+			m := meta[d.IPAddress]
+			name := d.DeviceName
+			if name == "" {
+				name = m.Name
+			}
+			fmt.Printf("%-10s  %-16s  %-32s  %-14s  %s\n",
+				d.DeviceType, d.IPAddress, displayDash(name),
+				displayDash(m.PrimaryState), displayDash(m.SecondaryState))
+		}
+		if len(entries) == 0 {
+			fmt.Fprintln(os.Stderr, "(server returned no DEVICE entries within 15s — check connectivity / licence)")
+		}
+		return nil
 	}
 	fmt.Printf("%-10s  %s\n", "DEVICE_TYPE", "IP_ADDRESS")
 	// Prepend the route-master sentinel (`0.0.0.0/ROUTER`) — central
