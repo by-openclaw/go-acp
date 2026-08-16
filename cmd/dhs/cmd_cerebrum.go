@@ -173,6 +173,8 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumKeepaliveProbe(ctx, rest)
 	case "tree":
 		return cerebrumTree(ctx, rest)
+	case "watch":
+		return cerebrumWatch(ctx, rest)
 	case "route":
 		return cerebrumRoute(ctx, rest)
 	case "export":
@@ -235,6 +237,7 @@ VERBS
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch (object path must be known — wildcards refused, live-verified)
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
@@ -1160,6 +1163,82 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 	return nil
 }
 
+// cerebrumWatch subscribes to one device's changes — the DEVICE-class
+// analogue of `listen --router` (§2.4: SUBSCRIBE takes the same §5.4 rows):
+//
+//	watch --device IP [--device-type DEVICE|ROUTER|SNMP]
+//	    DETAILS subscribe — connection / sub-device state changes
+//	watch --device NAME --by-name --sub-device S --object O
+//	    VALUE subscribe — one object's value changes (object paths must be
+//	    known a priori; wildcards are refused on this row, live-verified)
+func cerebrumWatch(ctx context.Context, args []string) error {
+	device, deviceType, byName, rest, err := extractDeviceDetailsFlags(args)
+	if err != nil {
+		return err
+	}
+	subDev, rest, err := extractStringFlag(rest, "--sub-device")
+	if err != nil {
+		return err
+	}
+	object, rest, err := extractStringFlag(rest, "--object")
+	if err != nil {
+		return err
+	}
+	if device == "" {
+		return fmt.Errorf("cerebrum-nb watch: --device IP|NAME is required")
+	}
+	if (subDev == "") != (object == "") {
+		return fmt.Errorf("cerebrum-nb watch: --sub-device and --object go together (both = VALUE watch, neither = DETAILS watch)")
+	}
+
+	args = reorderFlagsFirst(rest)
+	fs := flag.NewFlagSet("cerebrum-nb watch", flag.ContinueOnError)
+	cf := newCerebrumFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "watch")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = p.Disconnect() }()
+
+	dc := &codec.DeviceChange{}
+	if subDev != "" {
+		dc.Type = "VALUE"
+		dc.SubDevice = subDev
+		dc.Object = object
+		if byName {
+			dc.DeviceName = device
+		} else {
+			dc.IPAddress = device
+		}
+	} else {
+		// DETAILS addressing is IP-only (by-name NACKs — spec-conform).
+		dc.Type = "DETAILS"
+		dc.IPAddress = device
+		if deviceType == "" {
+			deviceType = "DEVICE"
+		}
+	}
+	if deviceType != "" {
+		dc.DeviceType = codec.DeviceType(strings.ToUpper(deviceType))
+	}
+
+	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
+		if f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "" {
+			return
+		}
+		printEventLabeled(f, nil)
+	})
+	if err := sess.Subscribe(ctx, []codec.SubItem{dc}); err != nil {
+		return fmt.Errorf("cerebrum-nb watch: subscribe %s: %w", dc.Type, err)
+	}
+	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE TYPE=%s on %s — Ctrl+C to stop\n", dc.Type, device)
+	<-ctx.Done()
+	return nil
+}
+
 // printEventLabeled renders one dispatched frame; srcNames (optional) joins
 // source labels by ID — the wire never carries a SOURCE_NAME on ROUTE rows
 // (§5.1.1), so listen pre-fetches the catalogue and fills them client-side.
@@ -1209,6 +1288,17 @@ func printEventLabeled(f *codec.Frame, srcNames map[string]string) {
 			fmt.Printf("[device] %-8s type=%s name=%s ip=%s sub=%s obj=%s\n",
 				f.Device.Type, f.Device.DeviceType, f.Device.DeviceName,
 				f.Device.IPAddress, f.Device.SubDevice, f.Device.Object)
+			for _, ov := range f.Device.ObjectValues {
+				fmt.Printf("           %-40s available=%s value=%q\n", ov.Object, boolFlag(ov.Available), ov.Value)
+			}
+			if c := f.Device.Connection; c != nil {
+				fmt.Printf("           connection primary=%q secondary=%q\n", c.PrimaryState, c.SecondaryState)
+			}
+			for _, sd := range f.Device.SubDevices {
+				if sd.PrimaryState != "" || sd.SecondaryState != "" {
+					fmt.Printf("           sub %02d %-20s primary=%q secondary=%q\n", sd.Index, displayName(sd.DeviceName), sd.PrimaryState, sd.SecondaryState)
+				}
+			}
 		}
 	case codec.KindDatastoreChange:
 		fmt.Printf("[datastore] %s type=%s\n", f.Datastore.Name, f.Datastore.Type)
