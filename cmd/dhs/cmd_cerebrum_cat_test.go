@@ -97,25 +97,34 @@ func TestDiffCerebrumCategory(t *testing.T) {
 	}
 }
 
-// TestClassifyCerebrumCategories pins the SRC/DST export split: subtree
-// resource types decide, recursing through CATEGORY references; a subtree
-// with both kinds lands in both files and is reported.
+// TestClassifyCerebrumCategories pins the SRC/DST export split: a
+// category's own DIRECT resource items decide (a "DST-…" gateway holding
+// SOURCE ports is a src category — names are convention); resource-less
+// parents inherit from their children; a parent with direct DEST items is
+// dst even when a referenced child carries sources (live NOC shape:
+// DESTINATIONS -> DST-PASSERELLES gateway); mixed = direct both only.
 func TestClassifyCerebrumCategories(t *testing.T) {
-	names := []string{"SRC-A", "DST-B", "MIX", "PARENT-SRC"}
+	names := []string{"SRC-A", "DST-B", "MIX", "PARENT-SRC", "DST-GATEWAY", "DESTINATIONS"}
 	details := map[string]*codec.CategoryDetailsInfo{
-		"SRC-A":      {Items: []codec.CategoryItem{{Index: 1, Type: "SOURCE", Value: "1"}}},
-		"DST-B":      {Items: []codec.CategoryItem{{Index: 1, Type: "DEST", Value: "2"}}},
-		"MIX":        {Items: []codec.CategoryItem{{Index: 1, Type: "SOURCE", Value: "1"}, {Index: 2, Type: "DEST", Value: "2"}}},
-		"PARENT-SRC": {Items: []codec.CategoryItem{{Index: 1, Type: "CATEGORY", Value: "SRC-A"}}},
+		"SRC-A":       {Items: []codec.CategoryItem{{Index: 1, Type: "SOURCE", Value: "1"}}},
+		"DST-B":       {Items: []codec.CategoryItem{{Index: 1, Type: "DEST", Value: "2"}}},
+		"MIX":         {Items: []codec.CategoryItem{{Index: 1, Type: "SOURCE", Value: "1"}, {Index: 2, Type: "DEST", Value: "2"}}},
+		"PARENT-SRC":  {Items: []codec.CategoryItem{{Index: 1, Type: "CATEGORY", Value: "SRC-A"}}},
+		"DST-GATEWAY": {Items: []codec.CategoryItem{{Index: 1, Type: "SOURCE", Value: "8601"}}},
+		"DESTINATIONS": {Items: []codec.CategoryItem{
+			{Index: 1, Type: "CATEGORY", Value: "DST-GATEWAY"},
+			{Index: 2, Type: "CATEGORY", Value: "DST-B"},
+			{Index: 3, Type: "DEST", Value: "4201"},
+		}},
 	}
 	src, dst, both := classifyCerebrumCategories(names, details)
-	if !src["SRC-A"] || !src["PARENT-SRC"] || src["DST-B"] {
+	if !src["SRC-A"] || !src["PARENT-SRC"] || !src["DST-GATEWAY"] || src["DST-B"] || src["DESTINATIONS"] {
 		t.Errorf("src = %v", src)
 	}
-	if !dst["DST-B"] || dst["SRC-A"] {
+	if !dst["DST-B"] || !dst["DESTINATIONS"] || dst["SRC-A"] || dst["DST-GATEWAY"] {
 		t.Errorf("dst = %v", dst)
 	}
-	if len(both) != 1 || both[0] != "MIX" || !src["MIX"] || !dst["MIX"] {
-		t.Errorf("both = %v", both)
+	if len(both) != 1 || both[0] != "MIX" || src["MIX"] || dst["MIX"] {
+		t.Errorf("both = %v (src[MIX]=%v dst[MIX]=%v)", both, src["MIX"], dst["MIX"])
 	}
 }

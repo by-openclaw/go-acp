@@ -224,21 +224,18 @@ func fetchCerebrumCategories(sess *cerebrum.Session, timeout time.Duration) ([]s
 }
 
 // classifyCerebrumCategories splits the live category set into src / dst
-// for the two-file export: a category counts as src when its subtree
-// contains any SOURCE/SRCE item, dst when it contains any DEST item
-// (recursing through CATEGORY references). Categories whose subtree has
-// both are reported in BOTH files (and counted for the caller's warning);
-// categories with neither (pure TEXT / empty) land where they are
-// referenced, or nowhere when unreferenced.
+// for the two-file export. A category's own DIRECT resource items decide
+// (owner rule: src stays src, dst stays dst — the SRC-/DST- name prefix
+// is convention, e.g. a "DST-…" gateway category may legitimately hold
+// SOURCE ports); only categories with NO direct resource items (pure
+// parents holding CATEGORY/TEXT rows, like the SOURCES / DESTINATIONS
+// masters) recurse into their children to inherit a side. A category
+// whose DIRECT items carry both kinds is reported as mixed (own file);
+// subtree diversity alone never makes a parent mixed.
 func classifyCerebrumCategories(names []string, details map[string]*codec.CategoryDetailsInfo) (src, dst map[string]bool, both []string) {
 	src = map[string]bool{}
 	dst = map[string]bool{}
-	var walk func(cat string, visited map[string]bool) (hasSrc, hasDst bool)
-	walk = func(cat string, visited map[string]bool) (bool, bool) {
-		if visited[cat] {
-			return false, false
-		}
-		visited[cat] = true
+	direct := func(cat string) (bool, bool) {
 		d := details[cat]
 		if d == nil {
 			return false, false
@@ -250,24 +247,48 @@ func classifyCerebrumCategories(names []string, details map[string]*codec.Catego
 				hasSrc = true
 			case "DEST", "DESTINATION":
 				hasDst = true
-			case "CATEGORY":
-				s, dd := walk(it.Value, visited)
-				hasSrc = hasSrc || s
-				hasDst = hasDst || dd
 			}
 		}
 		return hasSrc, hasDst
 	}
+	var subtree func(cat string, visited map[string]bool) (bool, bool)
+	subtree = func(cat string, visited map[string]bool) (bool, bool) {
+		if visited[cat] {
+			return false, false
+		}
+		visited[cat] = true
+		hasSrc, hasDst := direct(cat)
+		if hasSrc || hasDst {
+			return hasSrc, hasDst
+		}
+		d := details[cat]
+		if d == nil {
+			return false, false
+		}
+		for _, it := range d.Items {
+			if it.Type != "CATEGORY" {
+				continue
+			}
+			s, dd := subtree(it.Value, visited)
+			hasSrc = hasSrc || s
+			hasDst = hasDst || dd
+		}
+		return hasSrc, hasDst
+	}
 	for _, cat := range names {
-		hasSrc, hasDst := walk(cat, map[string]bool{})
+		hasSrc, hasDst := direct(cat)
+		if !hasSrc && !hasDst {
+			hasSrc, hasDst = subtree(cat, map[string]bool{})
+		}
+		if hasSrc && hasDst {
+			both = append(both, cat)
+			continue
+		}
 		if hasSrc {
 			src[cat] = true
 		}
 		if hasDst {
 			dst[cat] = true
-		}
-		if hasSrc && hasDst {
-			both = append(both, cat)
 		}
 	}
 	return src, dst, both
