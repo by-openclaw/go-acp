@@ -106,7 +106,7 @@ func cerebrumTree(_ context.Context, args []string) error {
 		renderFocus = "" // --path already scoped the walk itself
 	} else {
 		if *domain == "sources" || *domain == "dests" || *domain == "all" {
-			mneObjs, merr := cerebrumMneTreeObjects(sess, *domain, *alt)
+			mneObjs, merr := cerebrumMneTreeObjects(sess, cf.timeout, *domain, *alt)
 			if merr != nil {
 				return merr
 			}
@@ -296,13 +296,14 @@ func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, de
 	return objs, nil
 }
 
-// cerebrumMneTreeObjects renders the Routemaster resource inventory as
-// tree domains: Sources / Dests roots with one leaf per resource — ID
-// (zero-padded so the sorted tree keeps numeric order), capability levels
-// (ASSOCIATION indices), label from the selected set (--alt) and the alt
-// list. domain "sources" | "dests" | "all" selects which wildcard MNE
-// reads run.
-func cerebrumMneTreeObjects(sess *cerebrum.Session, domain string, alt int) ([]consumer.Object, error) {
+// cerebrumMneTreeObjects renders the resource inventory PER ROUTER (owner
+// rule: "RM first and then all the routers if exists"): Sources / Dests →
+// router node ("RM 0.0.0.0" then each ROUTER-class device from the §5.4
+// LIST) → one leaf per resource — ID zero-padded so the sorted tree keeps
+// numeric order, capability levels, label from the selected set (--alt)
+// and the alt list. A router that refuses the MNE reads is skipped with a
+// warning (lenient — per-router grants proven live 2026-08-16 on .27).
+func cerebrumMneTreeObjects(sess *cerebrum.Session, timeout time.Duration, domain string, alt int) ([]consumer.Object, error) {
 	want := cerebrumStateWant{Verb: "tree"}
 	if domain == "sources" || domain == "all" {
 		want.SrcMne = true
@@ -310,18 +311,33 @@ func cerebrumMneTreeObjects(sess *cerebrum.Session, domain string, alt int) ([]c
 	if domain == "dests" || domain == "all" {
 		want.DstMne = true
 	}
-	st, err := cerebrumObtainState(context.Background(), sess, "0.0.0.0", "ROUTER", 15*time.Second, want)
-	if err != nil {
-		return nil, err
+
+	// RM sentinel first, then every ROUTER-class device the plant lists.
+	routers := []string{"0.0.0.0"}
+	if got, err := obtainSingleDeviceChange(sess, timeout, &codec.DeviceChange{Type: "LIST"}, "LIST"); err == nil && got != nil && got.Device != nil {
+		seen := map[string]bool{"0.0.0.0": true}
+		for _, d := range got.Device.Devices {
+			isRouter := d.DeviceType == codec.DeviceType("ROUTER")
+			for _, t := range d.DeviceTypes {
+				if t == codec.DeviceType("ROUTER") {
+					isRouter = true
+				}
+			}
+			if isRouter && d.IPAddress != "" && !seen[d.IPAddress] {
+				seen[d.IPAddress] = true
+				routers = append(routers, d.IPAddress)
+			}
+		}
 	}
+
 	pad := func(id string) string {
 		if n, aerr := strconv.Atoi(strings.TrimSpace(id)); aerr == nil {
 			return fmt.Sprintf("%05d", n)
 		}
 		return id
 	}
-	emit := func(root string, rows []cerebrumMneRow) []consumer.Object {
-		var out []consumer.Object
+	var objs []consumer.Object
+	emit := func(root, routerNode string, rows []cerebrumMneRow) {
 		for _, r := range rows {
 			label := r.Mnemonic
 			if alt > 0 {
@@ -334,18 +350,27 @@ func cerebrumMneTreeObjects(sess *cerebrum.Session, domain string, alt int) ([]c
 			if len(r.Alts) > 0 && alt <= 0 {
 				meta += " alts=" + formatAlts(r.Alts)
 			}
-			out = append(out, consumer.Object{
-				Path:  []string{root, pad(r.ID)},
+			objs = append(objs, consumer.Object{
+				Path:  []string{root, routerNode, pad(r.ID)},
 				Label: r.ID,
 				Kind:  consumer.KindString, Access: 1,
 				Value: consumer.Value{Kind: consumer.KindString, Str: meta},
 			})
 		}
-		return out
 	}
-	var objs []consumer.Object
-	objs = append(objs, emit("Sources", st.Src)...)
-	objs = append(objs, emit("Dests", st.Dst)...)
+	for _, router := range routers {
+		node := router
+		if router == "0.0.0.0" {
+			node = "RM 0.0.0.0"
+		}
+		st, err := cerebrumObtainState(context.Background(), sess, router, "ROUTER", 15*time.Second, want)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb tree: router %s skipped (%v)\n", router, err)
+			continue
+		}
+		emit("Sources", node, st.Src)
+		emit("Dests", node, st.Dst)
+	}
 	return objs, nil
 }
 
