@@ -99,11 +99,13 @@ func TestParseDeviceChange_DetailsPositionalSubDevices(t *testing.T) {
 	// PRIMARY_STATE SECONDARY_STATE/> children — DEVICE_N like ITEM_N /
 	// ASSOCIATION_N, TYPE = sub-device model (class-filtered: the ROUTER-
 	// class sub-device of the same shelf is absent from the DEVICE view).
+	// DEVICE_X (non-numeric suffix) exercises the malformed-index guard —
+	// skipped, never decoded.
 	wire := `<DEVICE_CHANGE TYPE="DETAILS" IP_ADDRESS="10.44.72.27" DEVICE_TYPE="DEVICE">` +
 		`<DETAILS IP1="10.44.72.27" IP2="" NAME="bm-n-nnshf-004" TYPE="bm-n-nnshf-004"/>` +
 		`<SERVICE/>` +
 		`<CONNECTION PRIMARY_STATE="Connection Active" SECONDARY_STATE="Connection Not Configured"/>` +
-		`<SUB_DEVICES><DEVICE_1 TYPE="SHUFFLE-256" PRIMARY_STATE="Connection Active" SECONDARY_STATE="Connection Not Configured"/></SUB_DEVICES>` +
+		`<SUB_DEVICES><DEVICE_1 TYPE="SHUFFLE-256" PRIMARY_STATE="Connection Active" SECONDARY_STATE="Connection Not Configured"/><DEVICE_X TYPE="BOGUS"/></SUB_DEVICES>` +
 		`</DEVICE_CHANGE>`
 	f, err := Decode([]byte(wire))
 	if err != nil {
