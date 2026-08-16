@@ -31,6 +31,8 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 	cf := newCerebrumFlags(fs)
 	router := fs.String("router", "0.0.0.0", "router IP target (route-master sentinel 0.0.0.0) or a physical Router IP")
 	deviceType := fs.String("device-type", "ROUTER", "route-master device type")
+	id := fs.String("id", "*", "query ONE resource ID instead of the wildcard (diagnostic single-row OBTAIN)")
+	level := fs.String("level", "*", "LEVEL_ID filter to send (server requires the attribute present; a concrete value is echoed back in the RX row)")
 	idle := fs.Duration("idle", 5*time.Second, "stop collecting this long after the last row if no WILDCARD_COMPLETE arrives")
 	out := fs.String("out", "", "write the list as a CSV here (default: print a table)")
 	if err := fs.Parse(args); err != nil {
@@ -77,11 +79,11 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 		if id == "" || m == "" {
 			return
 		}
-		row := cerebrumMneRow{ID: id, Mnemonic: m}
+		row := cerebrumMneRow{ID: id, Mnemonic: m, Alts: altMnemonics(rc)}
 		if mneType != "LEVEL_MNE" {
 			// Capability: which levels this src/dst EXISTS on (associations;
 			// row LEVEL_ID fallback) — the shuffle-decision input.
-			row.Levels = mneLevelsFromChange(rc, id)
+			row.Levels = mneLevelsFromChange(rc)
 		}
 		mu.Lock()
 		rows = append(rows, row)
@@ -109,13 +111,13 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 	item := &codec.RoutingChange{Type: mneType, IPAddress: *router, DeviceType: codec.DeviceType(*deviceType)}
 	switch mneType {
 	case "SRCE_MNE":
-		item.SrceID = "*"
-		item.LevelID = "*"
+		item.SrceID = *id
+		item.LevelID = *level
 	case "DEST_MNE":
-		item.DestID = "*"
-		item.LevelID = "*"
+		item.DestID = *id
+		item.LevelID = *level
 	case "LEVEL_MNE":
-		item.LevelID = "*"
+		item.LevelID = *id
 	}
 	obtCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -148,7 +150,7 @@ collect:
 	mu.Unlock()
 
 	if *out != "" {
-		if err := os.WriteFile(*out, []byte(formatCerebrumMneCSV(keyCol, list)), 0o644); err != nil {
+		if err := cerebrumWriteFile(*out, []byte(formatCerebrumMneCSV(keyCol, list))); err != nil {
 			return err
 		}
 		fmt.Fprintf(os.Stderr, "cerebrum-nb list-%s: wrote %d row(s) to %s\n", keyCol, len(list), *out)
@@ -157,14 +159,14 @@ collect:
 	fmt.Printf("count %d\n", len(list))
 	for _, r := range list {
 		if mneType == "LEVEL_MNE" {
-			fmt.Printf("%8s  %s\n", r.ID, r.Mnemonic)
+			fmt.Printf("%8s  %-24s  %s\n", r.ID, r.Mnemonic, formatAlts(r.Alts))
 			continue
 		}
 		lv := "-"
 		if len(r.Levels) > 0 {
 			lv = joinSemis(r.Levels)
 		}
-		fmt.Printf("%8s  %-16s  %s\n", r.ID, lv, r.Mnemonic)
+		fmt.Printf("%8s  %-16s  %-28s  %s\n", r.ID, lv, r.Mnemonic, formatAlts(r.Alts))
 	}
 	return nil
 }

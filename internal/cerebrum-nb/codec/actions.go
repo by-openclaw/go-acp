@@ -135,6 +135,11 @@ type RoutingAction struct {
 	Mnemonic string
 	AltMne   string
 	OnDevice string
+	// EmptyMnemonic forces MNEMONIC="" onto the wire (normally empty attrs
+	// are omitted) — the label-CLEAR form. 0v16 does not document clearing;
+	// an explicit empty string is the plausible mechanism (RX announces a
+	// cleared alt by omitting its slot). Live server behaviour unverified.
+	EmptyMnemonic bool
 
 	// ASSOC actions
 	LogicalSrceID    string
@@ -151,6 +156,15 @@ type RoutingAction struct {
 
 	// RM_TAGS actions
 	Tags string
+}
+
+// addMnemonic emits MNEMONIC normally (omitted when empty), or force-emits
+// MNEMONIC="" for the clear form (RoutingAction.EmptyMnemonic).
+func (a AttrsBuilder) addMnemonic(v string, forceEmpty bool) AttrsBuilder {
+	if forceEmpty {
+		return a.ForceAdd("MNEMONIC", v)
+	}
+	return a.Add("MNEMONIC", v)
 }
 
 // encodeAction satisfies ActionBody. Spec §4.1 attributes use
@@ -174,7 +188,7 @@ func (r *RoutingAction) encodeAction(b *strings.Builder) {
 		Add("LEVEL_NAME", r.LevelName).
 		Add("LOCK", string(r.Lock)).
 		Add("DURATION", r.Duration).
-		Add("MNEMONIC", r.Mnemonic).
+		addMnemonic(r.Mnemonic, r.EmptyMnemonic).
 		Add("ALT_MNE", r.AltMne).
 		Add("ON_DEVICE", r.OnDevice).
 		Add("LOGICAL_SRCE_ID", r.LogicalSrceID).

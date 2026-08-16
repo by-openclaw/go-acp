@@ -58,6 +58,9 @@ func (s *Session) SetMnemonic(ctx context.Context, mneType string, addr RouteTar
 		LevelID:    levelID,
 		Mnemonic:   mnemonic,
 		AltMne:     altSlot,
+		// An explicitly empty mnemonic is the CLEAR form: force MNEMONIC=""
+		// onto the wire (callers gate this behind --allow-clear).
+		EmptyMnemonic: mnemonic == "",
 	}
 	return s.Action(ctx, body)
 }

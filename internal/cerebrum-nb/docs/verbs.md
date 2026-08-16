@@ -323,9 +323,9 @@ It is **gated** on `CEREBRUM_TEST_HOST` (+ `DHS_CEREBRUM_USER` /
 `meta: end_play` skips cleanly when unset — so it is safe to invoke
 unconditionally.
 
-> **The live run requires the NB northbound LICENCE enabled on the
-> Cerebrum** — currently missing. The play is written + ready and skips
-> until host + creds + licence all exist.
+> The NB licence is now present (2026-06) and the read-side verbs were
+> live-verified against a production Cerebrum (2026-08). The play still
+> gates on the env vars and skips cleanly when unset.
 
 ```
 CEREBRUM_TEST_HOST=10.6.239.50 DHS_CEREBRUM_USER=admin DHS_CEREBRUM_PASS=s3cr3t \
@@ -336,7 +336,80 @@ Read-only verbs → `changed_when: false` → idempotent by construction
 (run-twice = 0 changes). dhs logs go to stderr → tasks `register` and
 `debug` the combined `stdout_lines + stderr_lines`.
 
-## 12. See also
+## 12. Inventory + snapshot — list-* / export / import (ensure)
+
+The probel-sw08p-parity operator surface: enumerate the Route-Master,
+snapshot it to CSVs, and converge live state back from (possibly edited)
+CSVs. All reads are **one-shot OBTAIN** (§2.4) — never SUBSCRIBE; the read
+ends on the MTID-carrying `WILDCARD_COMPLETE` (§1.6).
+
+### list-sources / list-dests (alias `list-destinations`) / list-levels
+
+```
+dhs consumer cerebrum-nb list-sources 10.6.239.50 --user U --pass P [--id N] [--out FILE]
+```
+
+One row per resource: `ID · LEVELS · LABEL · ALTS`. **Capability levels**
+come from the `ASSOCIATION_n` indices (index = Routemaster level — live-wire
+fact, not in the 0v16 PDF); a resource with no ASSOCIATIONS block is
+unbound and shows no levels. Alternate labels print as `1=Black 4=ENG`
+(slot index, §4.1.5 `ALT_MNE=n`); the slot→set-name mapping is Cerebrum
+config and not exposed over NB. `--id N` narrows to one resource, `--out`
+writes CSV instead of the table.
+
+### export — full snapshot
+
+```
+# crosspoints only (optionally one level):
+dhs consumer cerebrum-nb export HOST --user U --pass P --out xp.csv [--level N]
+# full Route-Master snapshot:
+dhs consumer cerebrum-nb export HOST --user U --pass P --out-dir DIR --prefix noc
+#   → noc-src.csv  noc-dst.csv  noc-level.csv  noc-xpoint.csv
+```
+
+- Mnemonic CSVs: `<kind>_id,levels,mnemonic,alt_1..alt_N` — alt columns are
+  **uniform plant-wide** (sized to the highest used slot across the whole
+  snapshot), `levels` is `;`-separated capability levels.
+- Xpoint CSV: `dest,srce,level` — one row per **routed** cell. The server
+  answers every dest × level cell; `SOURCE_ID` `0` / `4294967294` /
+  `4294967295` are undocumented **no-route sentinels** and are filtered.
+- Cross-level routes (src level ≠ dst level) are skipped with a warning —
+  shuffle representation is not yet supported (parked).
+
+### import — ENSURE (ADR-0007)
+
+```
+# mirror of export --out-dir — reads the same file set back:
+dhs consumer cerebrum-nb import HOST --user U --pass P --in-dir DIR --prefix noc [--check] [--allow-clear]
+# or per-file (partial scope):
+dhs consumer cerebrum-nb import HOST --user U --pass P \
+  [--xpoint xp.csv] [--src s.csv] [--dst d.csv] [--levels l.csv] [--check] [--allow-clear]
+```
+
+`--in-dir` resolves `<prefix>-xpoint.csv / -src.csv / -dst.csv /
+-level.csv`; files absent from the directory are simply out of scope, and
+an explicit per-file flag overrides its `--in-dir` counterpart.
+
+Diff-first: reads live state over the same OBTAINs, diffs against the
+CSVs, sends **only the differences** (`ROUTE` actions / `*_MNE` writes via
+`ALT_MNE=n`). Contract:
+
+- `--check` — online dry-run: prints `[would-*] …` lines + `would_change=N`,
+  sends nothing (a host is still required — ensure reads live state).
+- Partial CSV = partial scope: rows/files absent are never touched.
+- Empty label cell = untouched, **unless** `--allow-clear` AND the column is
+  managed (present in the CSV header; primary always managed) AND the live
+  value is set → clear-write (`MNEMONIC=""`). ⚠ the clear wire-form is
+  **live-unverified** — staging only.
+- Route import never disconnects — an unrouted live cell only changes if
+  the CSV routes it.
+- Run-twice = 0 changes (idempotent by construction).
+- `--output json` — the canonical ADR-0007 shape on stdout
+  (`{changed|would_change, diff[]}`, one `diff[]` entry per cell:
+  `route.<dest>.<level>` / `<kind>.<id>.<slot>`); per-change narration
+  moves to stderr so Ansible can parse stdout.
+
+## 13. See also
 
 - [`../CLAUDE.md`](../CLAUDE.md) — wire format, mtid, quirks, "what NOT to do"
 - [`README.md`](README.md) · [`consumer.md`](consumer.md) · [`runbook.md`](runbook.md) · [`provider.md`](provider.md) · [`keys.md`](keys.md)

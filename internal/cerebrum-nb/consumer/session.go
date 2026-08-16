@@ -181,6 +181,9 @@ func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*
 		s.mu.Unlock()
 	}()
 
+	// Raw TX at debug level — the wire truth for diagnostics; --debug on the
+	// CLI promises "verbose RX/TX XML logging" and this is that promise.
+	s.logger.Debug("tx", slog.String("xml", string(payload)))
 	if err := s.conn.WriteText(ctx, payload); err != nil {
 		return nil, fmt.Errorf("cerebrum-nb: write: %w", err)
 	}
@@ -367,6 +370,8 @@ func (s *Session) readLoop() {
 			s.logger.Debug("dropping non-text frame", slog.Int("opcode", int(op)))
 			continue
 		}
+		// Raw RX at debug level — see the tx twin in roundTrip.
+		s.logger.Debug("rx", slog.String("xml", string(payload)))
 		f, err := codec.Decode(payload)
 		if err != nil {
 			s.logger.Warn("decode failed",

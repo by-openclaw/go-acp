@@ -21,7 +21,7 @@ func TestParseCerebrumMneCSV(t *testing.T) {
 			"# names\n" +
 			"5121,\"CAM 1, main\"\n" +
 			"5122,CAM2\n"
-		rows, err := parseCerebrumMneCSV([]byte(csv), "srce", "t.csv")
+		rows, _, err := parseCerebrumMneCSV([]byte(csv), "srce", "t.csv")
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
@@ -35,7 +35,7 @@ func TestParseCerebrumMneCSV(t *testing.T) {
 	})
 
 	t.Run("dest key, reordered columns", func(t *testing.T) {
-		rows, err := parseCerebrumMneCSV([]byte("mnemonic,dest\nMON1,5123\n"), "dest", "t.csv")
+		rows, _, err := parseCerebrumMneCSV([]byte("mnemonic,dest\nMON1,5123\n"), "dest", "t.csv")
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
@@ -45,7 +45,7 @@ func TestParseCerebrumMneCSV(t *testing.T) {
 	})
 
 	t.Run("level key", func(t *testing.T) {
-		rows, err := parseCerebrumMneCSV([]byte("level,mnemonic\n1,LVL-1\n2,LVL-2\n"), "level", "t.csv")
+		rows, _, err := parseCerebrumMneCSV([]byte("level,mnemonic\n1,LVL-1\n2,LVL-2\n"), "level", "t.csv")
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
@@ -61,7 +61,7 @@ func TestParseCerebrumMneCSV(t *testing.T) {
 		{"blank fields", "srce,mnemonic\n,\n", "srce"},
 	} {
 		t.Run("error: "+tc.name, func(t *testing.T) {
-			if _, err := parseCerebrumMneCSV([]byte(tc.csv), tc.key, "t.csv"); err == nil {
+			if _, _, err := parseCerebrumMneCSV([]byte(tc.csv), tc.key, "t.csv"); err == nil {
 				t.Errorf("parse %q: err = nil, want error", tc.csv)
 			}
 		})
@@ -98,12 +98,86 @@ func TestCerebrumMneCSVRoundTrip(t *testing.T) {
 		{ID: "5122", Mnemonic: "plain"},
 	}
 	csv := formatCerebrumMneCSV("srce", orig)
-	back, err := parseCerebrumMneCSV([]byte(csv), "srce", "roundtrip")
+	back, _, err := parseCerebrumMneCSV([]byte(csv), "srce", "roundtrip")
 	if err != nil {
 		t.Fatalf("reparse: %v\n%s", err, csv)
 	}
 	if !reflect.DeepEqual(back, orig) {
 		t.Errorf("round-trip drifted:\ngot  %+v\nwant %+v\ncsv:\n%s", back, orig, csv)
+	}
+}
+
+// TestCerebrumAltMnemonics pins the alternate-label pipeline: extraction from
+// the RX slot map (slot>=1 only), dynamic alt_N CSV columns sized to the
+// highest used slot, byte-stable round-trip, dedupe slot-merge, and the
+// compact table rendering.
+func TestCerebrumAltMnemonics(t *testing.T) {
+	t.Run("extract slots >= 1", func(t *testing.T) {
+		got := altMnemonics(&codec.RoutingChange{Mnemonics: map[int]string{0: "PRIMARY", 1: "Black", 4: "ENG"}})
+		if !reflect.DeepEqual(got, map[int]string{1: "Black", 4: "ENG"}) {
+			t.Errorf("alts = %v", got)
+		}
+		if altMnemonics(nil) != nil || altMnemonics(&codec.RoutingChange{}) != nil {
+			t.Error("nil/empty rc must yield nil alts")
+		}
+	})
+	t.Run("csv columns + round-trip", func(t *testing.T) {
+		rows := []cerebrumMneRow{
+			{ID: "11", Levels: []string{"1", "2"}, Mnemonic: "SRC-A", Alts: map[int]string{1: "Black", 4: "ENG, x"}},
+			{ID: "12", Levels: []string{"1"}, Mnemonic: "SRC-B"},
+		}
+		csvText := formatCerebrumMneCSV("srce", rows)
+		wantHdr := "srce,levels,mnemonic,alt_1,alt_2,alt_3,alt_4\n"
+		if !strings.HasPrefix(csvText, wantHdr) {
+			t.Fatalf("header = %q, want prefix %q", csvText[:60], wantHdr)
+		}
+		back, _, err := parseCerebrumMneCSV([]byte(csvText), "srce", "rt")
+		if err != nil {
+			t.Fatalf("reparse: %v", err)
+		}
+		if !reflect.DeepEqual(back, rows) {
+			t.Errorf("round-trip drifted:\ngot  %+v\nwant %+v", back, rows)
+		}
+	})
+	t.Run("no alts -> no alt columns", func(t *testing.T) {
+		csvText := formatCerebrumMneCSV("srce", []cerebrumMneRow{{ID: "1", Mnemonic: "X"}})
+		if !strings.HasPrefix(csvText, "srce,levels,mnemonic\n") {
+			t.Errorf("unexpected header: %q", csvText)
+		}
+	})
+	t.Run("dedupe merges slots", func(t *testing.T) {
+		got := dedupeCerebrumMnes([]cerebrumMneRow{
+			{ID: "11", Mnemonic: "A", Alts: map[int]string{1: "Black"}},
+			{ID: "11", Mnemonic: "A", Alts: map[int]string{4: "ENG"}},
+		})
+		want := []cerebrumMneRow{{ID: "11", Mnemonic: "A", Alts: map[int]string{1: "Black", 4: "ENG"}}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("dedupe = %+v, want %+v", got, want)
+		}
+	})
+	t.Run("table rendering", func(t *testing.T) {
+		if got := formatAlts(map[int]string{4: "ENG", 1: "Black"}); got != "1=Black 4=ENG" {
+			t.Errorf("formatAlts = %q", got)
+		}
+		if got := formatAlts(nil); got != "-" {
+			t.Errorf("formatAlts(nil) = %q", got)
+		}
+	})
+}
+
+// TestCerebrumNoRouteSentinel pins the live-wire "no route" markers (NOC
+// 2026-08-15): 0, 0xFFFFFFFE, 0xFFFFFFFF and empty are unrouted cells; real
+// source IDs are not.
+func TestCerebrumNoRouteSentinel(t *testing.T) {
+	for _, s := range []string{"", "0", "4294967294", "4294967295"} {
+		if !cerebrumNoRouteSentinel(s) {
+			t.Errorf("sentinel %q not detected", s)
+		}
+	}
+	for _, s := range []string{"1", "11", "9191", "28576"} {
+		if cerebrumNoRouteSentinel(s) {
+			t.Errorf("real source %q misclassified as sentinel", s)
+		}
 	}
 }
 
@@ -141,28 +215,26 @@ func TestPrimaryMnemonic(t *testing.T) {
 	}
 }
 
-// TestCerebrumImportSetCheckOffline pins that `import --check` with all four
-// files is a pure offline dry-run covering routes + src/dst/level mnemonics.
-func TestCerebrumImportSetCheckOffline(t *testing.T) {
+// TestCerebrumImportCheckNeedsHost pins the ENSURE contract (ADR-0007):
+// `--check` reads live state to compute would_change, so it requires the
+// host — a check without one errors, mentioning live state, and the error
+// arrives only AFTER all files parsed cleanly (parse-before-wire).
+func TestCerebrumImportCheckNeedsHost(t *testing.T) {
 	dir := t.TempDir()
 	xp := filepath.Join(dir, "x.csv")
 	src := filepath.Join(dir, "s.csv")
-	dst := filepath.Join(dir, "d.csv")
-	lvl := filepath.Join(dir, "l.csv")
 	if err := os.WriteFile(xp, []byte("dest,srce,levels\n5123,5121,1;2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(src, []byte("srce,mnemonic\n5121,CAM1\n"), 0o644); err != nil {
+	if err := os.WriteFile(src, []byte("srce,mnemonic,alt_1\n5121,CAM1,Black\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(dst, []byte("dest,mnemonic\n5123,MON1\n"), 0o644); err != nil {
-		t.Fatal(err)
+	err := cerebrumImportXpoint(context.Background(), []string{"--xpoint", xp, "--src", src, "--check"})
+	if err == nil {
+		t.Fatal("--check without host: err = nil, want error (ensure needs live state)")
 	}
-	if err := os.WriteFile(lvl, []byte("level,mnemonic\n1,LVL-1\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := cerebrumImportXpoint(context.Background(), []string{"--xpoint", xp, "--src", src, "--dst", dst, "--levels", lvl, "--check"}); err != nil {
-		t.Fatalf("set --check offline: err = %v, want nil", err)
+	if !strings.Contains(err.Error(), "live state") {
+		t.Errorf("error should explain the live-state requirement, got: %v", err)
 	}
 }
 
@@ -224,7 +296,7 @@ func TestCerebrumMneCapabilityLevels(t *testing.T) {
 			{ID: "5121", Mnemonic: "CAM1", Levels: []string{"1", "2", "12"}},
 			{ID: "5122", Mnemonic: "GFX"}, // no levels -> empty cell -> stays nil
 		}
-		back, err := parseCerebrumMneCSV([]byte(formatCerebrumMneCSV("srce", orig)), "srce", "rt")
+		back, _, err := parseCerebrumMneCSV([]byte(formatCerebrumMneCSV("srce", orig)), "srce", "rt")
 		if err != nil {
 			t.Fatalf("reparse: %v", err)
 		}
@@ -234,37 +306,36 @@ func TestCerebrumMneCapabilityLevels(t *testing.T) {
 	})
 }
 
-// TestMneLevelsFromChange pins capability extraction from a *_MNE RX row:
-// association RM_LEVEL_IDs win (filtered to the row's ID); the row's own
-// LEVEL_ID is the fallback; nil-safe.
+// TestMneLevelsFromChange pins capability extraction from a *_MNE RX row —
+// LIVE-WIRE semantics (NOC frames-src.log 2026-08-15, cross-checked against
+// the Routemaster UI): the ASSOCIATION_n INDEX is the Routemaster level; the
+// association SRCE_ID is a device port UID (never the row's resource ID, so
+// no filtering); RM_LEVEL_ID is the level inside the physical device and is
+// NOT used. Row LEVEL_ID is the fallback, except the "*" wildcard echo.
 func TestMneLevelsFromChange(t *testing.T) {
-	if got := mneLevelsFromChange(nil, "1"); got != nil {
+	if got := mneLevelsFromChange(nil); got != nil {
 		t.Errorf("nil rc = %v, want nil", got)
 	}
+	// Live shape: port-UID SRCE_ID, RM_LEVEL_ID=0, index = RM level.
 	rc := &codec.RoutingChange{
-		SrceID:  "1",
-		LevelID: "9",
+		SrceID:  "11",
+		LevelID: "*",
 		Associations: []codec.RoutingAssociation{
-			{SrceID: "1", RMLevelID: "1"},
-			{SrceID: "1", RMLevelID: "12"},
-			{SrceID: "2", RMLevelID: "3"}, // other resource — filtered out
+			{Index: 1, SrceID: "4026531837", RMLevelID: "0"},
+			{Index: 2, SrceID: "4026531837", RMLevelID: "0"},
+			{Index: 3, SrceID: "4026531837", RMLevelID: "0"},
 		},
 	}
-	if got := mneLevelsFromChange(rc, "1"); !reflect.DeepEqual(got, []string{"1", "12"}) {
-		t.Errorf("assoc levels = %v, want [1 12]", got)
+	if got := mneLevelsFromChange(rc); !reflect.DeepEqual(got, []string{"1", "2", "3"}) {
+		t.Errorf("assoc index levels = %v, want [1 2 3]", got)
 	}
-	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "7", LevelID: "4"}, "7"); !reflect.DeepEqual(got, []string{"4"}) {
+	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "7", LevelID: "4"}); !reflect.DeepEqual(got, []string{"4"}) {
 		t.Errorf("fallback = %v, want [4]", got)
 	}
-	// The wildcard echo must never leak into capability: a row with no
-	// associations and LEVEL_ID="*" (our own filter echoed back, live NOC
-	// 2026-08-15) yields NO levels — unknown, not "all".
-	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "28576", LevelID: "*"}, "28576"); got != nil {
+	// The wildcard echo must never leak into capability: no associations and
+	// LEVEL_ID="*" (our own filter echoed back) yields NO levels.
+	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "28576", LevelID: "*"}); got != nil {
 		t.Errorf("wildcard echo = %v, want nil", got)
-	}
-	if got := mneLevelsFromChange(&codec.RoutingChange{SrceID: "9", LevelID: "*",
-		Associations: []codec.RoutingAssociation{{SrceID: "9", RMLevelID: "*"}}}, "9"); got != nil {
-		t.Errorf("wildcard assoc = %v, want nil", got)
 	}
 }
 
