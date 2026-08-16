@@ -557,9 +557,16 @@ func cerebrumListen(ctx context.Context, args []string) error {
 			Type: "DEST_LOCK", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
 			DestID: "*", LevelID: "*",
 		}},
-		{"CATEGORY_CHANGE TYPE=CATEGORY_LIST", &codec.CategoryChange{Type: "CATEGORY_LIST"}},
-		{"SALVO_CHANGE TYPE=GROUP_LIST", &codec.SalvoChange{Type: "GROUP_LIST"}},
-		{"DEVICE_CHANGE TYPE=LIST", &codec.DeviceChange{Type: "LIST"}},
+	}
+	// Category / salvo / device rows exist only at Routemaster scope
+	// (owner rule: no cat/salvo on a physical ROUTER — 0.0.0.0 RT only).
+	// A per-router listen subscribes just the routing rows.
+	if router == "0.0.0.0" {
+		plan = append(plan,
+			sub{"CATEGORY_CHANGE TYPE=CATEGORY_LIST", &codec.CategoryChange{Type: "CATEGORY_LIST"}},
+			sub{"SALVO_CHANGE TYPE=GROUP_LIST", &codec.SalvoChange{Type: "GROUP_LIST"}},
+			sub{"DEVICE_CHANGE TYPE=LIST", &codec.DeviceChange{Type: "LIST"}},
+		)
 	}
 	var ok, fail int
 	for _, p := range plan {
