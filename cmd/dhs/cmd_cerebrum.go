@@ -1291,10 +1291,14 @@ func printEventLabeled(f *codec.Frame, srcNames map[string]string) {
 		if srceName == "" && srcNames != nil {
 			srceName = srcNames[rawID]
 		}
-		fmt.Printf("[routing] %-8s dev=%s/%s srce=%s(%s) dest=%s(%s) lvl=%s(%s)\n",
+		line := fmt.Sprintf("[routing] %-8s dev=%s/%s srce=%s(%s) dest=%s(%s) lvl=%s(%s)",
 			rc.Type, rc.DeviceType, rc.DeviceName,
 			srceID, srceName, rc.DestID, rc.DestName,
 			rc.LevelID, rc.LevelName)
+		if rc.Lock != nil {
+			line += fmt.Sprintf(" state=%s by=%q", rc.Lock.LockState, rc.Lock.LockedBy)
+		}
+		fmt.Println(line)
 	case codec.KindCategoryChange:
 		if f.Category.Type == "CATEGORY_LIST" {
 			fmt.Printf("[category] CATEGORY_LIST count=%d %s\n", len(f.Category.Categories), summarise(f.Category.Categories))
@@ -1641,8 +1645,15 @@ func lockModeValue(mode string) (codec.LockKind, error) {
 		return codec.LockLockedPath, nil
 	case "protected_path", "protected-path":
 		return codec.LockProtectedPath, nil
+	case "released":
+		// Wire-actual, NOT spec (live 2026-08-16): a UI release reports
+		// LOCK_STATE="RELEASED" — a sixth value absent from the §3.2 table
+		// and the §4.1.2/4.1.3 worked examples (whose RELEASE the server
+		// NACKs, as it does UNLOCKED). RELEASED is the state machine's own
+		// cleared value and the candidate clearing action.
+		return codec.LockKind("RELEASED"), nil
 	default:
-		return "", fmt.Errorf("cerebrum-nb lock: unknown --mode %q (want unlocked|locked|protected|locked_path|protected_path)", mode)
+		return "", fmt.Errorf("cerebrum-nb lock: unknown --mode %q (want unlocked|locked|protected|locked_path|protected_path|released)", mode)
 	}
 }
 
