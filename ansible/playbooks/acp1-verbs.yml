@@ -1,0 +1,102 @@
+---
+# ACP1 VERB-TEST contract play — deploy the per-OS binary + the committed
+# synapse manifest/DM fixture, serve our acp1 producer on the target, and drive
+# the consumer verbs against it end to end over the wire. Mirrors
+# probel-sw08p-verbs.yml via the dhs_verbtest role (cross-build on control node,
+# deploy per OS, serve, drive). Per ADR-0025 deliverable 3 + ADR-0016.
+#
+# ACP1 has NO single committed tree.json — the producer assembles its tree from
+# a manifest (--manifest) + the referenced DMs under <cache-dir>/dm/acp1/ per
+# ADR-0022 (same shape acp2-integration.yml uses). We therefore deploy the
+# manifest AND each DM to a cache layout under dhs_dir and point --manifest /
+# --cache-dir at the DEPLOYED paths (never the repo path).
+#
+# Serve over TCP (Mode B, --transport tcp): the role's wait_for probes a TCP
+# port, and the consumer dials the same with --transport tcp. (Mode A UDP can't
+# be wait_for-probed cross-OS; TCP gives a deterministic loopback contract.)
+#
+# The producer is ephemeral (TTL auto-expiry), so run-twice = same result.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/acp1-verbs.yml \
+#     -e @secrets/credentials.json
+- name: ACP1 verb test (deploy binary + manifest/DM fixture, serve on target, drive verbs)
+  hosts: linux:windows
+  gather_facts: true
+  vars:
+    vt_host: "127.0.0.1"
+    vt_port: 12071
+    # Repo fixture roots (control node) for the synapse manifest + its DMs.
+    acp1_fix: "{{ playbook_dir }}/../../internal/acp1/testdata/integration-test"
+  roles:
+    - role: dhs_verbtest
+      vars:
+        vt_proto: acp1
+
+        # Deploy the manifest + every DM it references into a cache layout under
+        # dhs_dir. manifest.BuildExport resolves DMs at <cache-dir>/dm/acp1/.
+        vt_serve_files:
+          - src: "{{ acp1_fix }}/manifest/synapse-test.json"
+            dest: "{{ dhs_dir }}/acp1fix/manifest/synapse-test.json"
+          - src: "{{ acp1_fix }}/dm/acp1/RRS18@1601.json"
+            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/RRS18@1601.json"
+          - src: "{{ acp1_fix }}/dm/acp1/2GS110@2728.json"
+            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/2GS110@2728.json"
+          - src: "{{ acp1_fix }}/dm/acp1/2HF110@4326.json"
+            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/2HF110@4326.json"
+          - src: "{{ acp1_fix }}/dm/acp1/GED130@2522.json"
+            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/GED130@2522.json"
+          - src: "{{ acp1_fix }}/dm/acp1/SDB20@0806.json"
+            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/SDB20@0806.json"
+          - src: "{{ acp1_fix }}/dm/acp1/2GS110@2929.json"
+            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/2GS110@2929.json"
+
+        # producer serve argv (cmd/dhs/cmd_producer.go runProducer). --manifest +
+        # --cache-dir + --transport tcp; bind loopback on the test port.
+        vt_serve_argv:
+          - --manifest
+          - "{{ dhs_dir }}/acp1fix/manifest/synapse-test.json"
+          - --cache-dir
+          - "{{ dhs_dir }}/acp1fix"
+          - --transport
+          - tcp
+          - --port
+          - "{{ vt_port }}"
+          - --host
+          - "{{ vt_host }}"
+          - --log-level
+          - error
+
+        # Consumer verbs (generic table, cmd/dhs/main.go:155-180). Each dials
+        # the served producer over TCP. host is the first token; --transport tcp
+        # + --port pin Mode B. Writable target: slot 2 (2HF110) Float "GainA"
+        # (id 59, access readWrite, step 1) — used for get/set/inc/dec/reset/
+        # ensure. NOTE: `watch` is intentionally omitted — the generic watch has
+        # no --timeout/--count bound (cmd_watch.go:44) and blocks until Ctrl-C,
+        # so it cannot be driven non-interactively in the serve loop.
+        vt_verbs:
+          # info — rack + per-slot status (cmd_info.go:9 / main.go:156).
+          - [info, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --timeout, "15s"]
+          # walk slot 0 — rack controller (cmd_walk.go / main.go:157).
+          - [walk, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --slot, "0", --timeout, "20s"]
+          # tree slot 2 — render object tree (cmd_tree.go:28 / main.go:158).
+          - [tree, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --slot, "2", --timeout, "20s"]
+          # get GainA — read one Float value (cmd_get.go:12 / main.go:159).
+          - [get, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --slot, "2", --label, GainA, --timeout, "15s"]
+          # set GainA — write a Float value (cmd_set.go:24 / main.go:160).
+          - [set, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --slot, "2", --label, GainA, --value, "3", --timeout, "15s"]
+          # inc — setIncValue, ACP1 method 2 (cmd_mutate.go:21 / main.go:161).
+          - [inc, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --slot, "2", --label, GainA, --timeout, "15s"]
+          # dec — setDecValue, ACP1 method 3 (cmd_mutate.go:22 / main.go:162).
+          - [dec, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --slot, "2", --label, GainA, --timeout, "15s"]
+          # reset — setDefValue, ACP1 method 4 (cmd_mutate.go:23 / main.go:163).
+          - [reset, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --slot, "2", --label, GainA, --timeout, "15s"]
+          # ensure — converge GainA idempotently (cmd_ensure.go:32 / main.go:164).
+          - [ensure, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --slot, "2", --label, GainA, --value, "3", --timeout, "15s"]
+          # export slot 0 to json on stdout (cmd_export.go:21 / main.go:166).
+          - [export, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --slot, "0", --format, json, --timeout, "20s"]
+          # health — 3-layer session health (cmd_health.go:15 / main.go:178).
+          - [health, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --timeout, "15s"]
+          # profile — compliance classification (cmd_profile.go:39 / main.go:175).
+          - [profile, "{{ vt_host }}", --transport, tcp, --port, "{{ vt_port }}", --timeout, "20s"]
+          # discover — bounded LAN scan; acp1-only (cmd_discover.go:16 / main.go:171).
+          - [discover, --duration, "2s", --scan-port, "{{ vt_port }}"]

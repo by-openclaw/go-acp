@@ -1,0 +1,68 @@
+---
+# TSL UMD VERB-TEST contract play (PUSH mode) — deploy the per-OS binary, start
+# a backgrounded consumer LISTEN on the target that decodes received frames to a
+# capture file, fire producer SENDs, then read the capture back and assert the
+# pushed UMD labels were decoded. Mirrors tsl-integration.yml's loopback tier
+# but driven entirely through the dhs_verbtest role (push mode). Per ADR-0025
+# deliverable 3 + ADR-0016.
+#
+# TSL is a tally/UMD PUSH protocol (cmd/dhs/cmd_tsl.go:17-25): the producer is
+# the tally SOURCE (send/serve) and the consumer is the LISTENER (listen). There
+# is no serve+query, so this uses the role's push path (vt_mode: push):
+#   - vt_listen_argv     → consumer listen ... (cmd_tsl.go:42 runTSLListen)
+#   - vt_send_argv_list  → producer send ...   (cmd_tsl_producer.go:121 runTSLSend)
+#   - vt_push_assert_contains → decoded tokens the listener must print
+#
+# VERSION SCOPE: the dhs_verbtest role prepends a SINGLE `dhs consumer <vt_proto>`
+# for the listener and `dhs producer <vt_proto>` for every send, so one play
+# pins ONE wire version (a v3.1 listener cannot decode a v5.0 frame). This play
+# pins tsl-v50 (the richest frame: screen + DMSG + tally colours), matching the
+# tsl-integration.yml loopback choice. v3.1 / v4.0 send+listen are exercised by
+# tsl-integration.yml's verb-drive; per-version verb plays can be added by
+# cloning this file with vt_proto: tsl-v31 / tsl-v40 and the matching flags
+# (cmd_tsl_producer.go:92-100 v3.1/v4.0 flags; defaultTSLPort 4000 vs 8901,
+# cmd_tsl.go:184-191).
+#
+# The listener is ephemeral (TTL auto-expiry via the role) and a single UDP push
+# leaves no persistent state, so run-twice = same result (ADR-0025 idempotency).
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/tsl-verbs.yml \
+#     -e @secrets/credentials.json
+- name: TSL UMD verb test (deploy binary, listen on target, push frames, assert decode)
+  hosts: linux:windows
+  gather_facts: true
+  vars:
+    vt_host: "127.0.0.1"
+    vt_port: 18950
+  roles:
+    - role: dhs_verbtest
+      vars:
+        vt_proto: tsl-v50
+        vt_mode: push
+
+        # Consumer LISTEN argv tail (after `dhs consumer tsl-v50`). UDP listener
+        # bound on the test port — cmd_tsl.go:42-49 runTSLListen, --bind at
+        # cmd_tsl.go:44. The role captures its decoded stdout to vt_listen_capture.
+        vt_listen_argv:
+          - listen
+          - --bind
+          - "{{ vt_host }}:{{ vt_port }}"
+
+        # Producer SEND argvs (each appended after `dhs producer tsl-v50`).
+        # send is one-shot UDP emit — cmd_tsl_producer.go:34-35 / runTSLSend.
+        # v5.0 flags: --dest (cmd_tsl_producer.go:86), --screen (106), --index
+        # (109), --lh (110), --text-tally (111), --rh (112), --text (89),
+        # --brightness (90). Two distinct DMSGs prove multiple frames decode.
+        vt_send_argv_list:
+          - [send, --dest, "{{ vt_host }}:{{ vt_port }}", --screen, "0", --index, "2", --lh, red, --text, "PGM-VT50"]
+          - [send, --dest, "{{ vt_host }}:{{ vt_port }}", --screen, "0", --index, "3", --rh, amber, --text, "PVW-VT50"]
+
+        # Tokens the listener MUST have decoded. The v5.0 listener prints
+        # `UMD=%q`, `LH=...`, `RH=...` per DMSG (cmd_tsl.go:108-123 SubscribeV50
+        # output: "display=%d  LH=%s  Text=%s  RH=%s  brightness=%s  UMD=%q").
+        # The version banner is "tsl-v50 consumer listening on ..." (cmd_tsl.go:82).
+        vt_push_assert_contains:
+          - 'UMD="PGM-VT50"'
+          - 'UMD="PVW-VT50"'
+          - "LH=red"
+          - "RH=amber"

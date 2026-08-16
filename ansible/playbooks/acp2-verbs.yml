@@ -1,0 +1,88 @@
+---
+# ACP2 VERB-TEST contract play — deploy the per-OS binary + the committed
+# Neuron manifest/DM fixture, serve our acp2 producer on the target, and drive
+# the consumer verbs against it end to end over the wire. Mirrors
+# acp1-verbs.yml via the dhs_verbtest role (cross-build on control node, deploy
+# per OS, serve, drive). Per ADR-0025 deliverable 3 + ADR-0016.
+#
+# ACP2 has NO single committed tree.json and NO vendor emulator (the Neuron is
+# our own emulator): the producer assembles its tree from a manifest
+# (--manifest) + the referenced DMs under <cache-dir>/dm/acp2/ per ADR-0022
+# (same shape acp2-integration.yml uses). We therefore deploy the manifest AND
+# each DM to a cache layout under dhs_dir and point --manifest / --cache-dir at
+# the DEPLOYED paths (never the repo path).
+#
+# Transport: ACP2 is AN2/TCP only (cmd/dhs/main.go:520). The producer's serve
+# loop runs the provider's default Serve (cmd/dhs/cmd_producer.go:416 — the
+# --transport flag is acp1-only, cmd_producer.go:60), and the consumer dials
+# with --port only (default --transport auto is TCP-first, common.go:67). The
+# role's wait_for probes the same TCP port. Default ACP2 port is 2072
+# (internal/acp2/codec/types.go:23); we serve on a distinct test port.
+#
+# The producer is ephemeral (TTL auto-expiry), so run-twice = same result.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/acp2-verbs.yml \
+#     -e @secrets/credentials.json
+- name: ACP2 verb test (deploy binary + manifest/DM fixture, serve on target, drive verbs)
+  hosts: linux:windows
+  gather_facts: true
+  vars:
+    vt_host: "127.0.0.1"
+    vt_port: 12072
+    # Repo fixture roots (control node) for the Neuron manifest + its DMs.
+    acp2_fix: "{{ playbook_dir }}/../../internal/acp2/testdata/integration-test"
+  roles:
+    - role: dhs_verbtest
+      vars:
+        vt_proto: acp2
+
+        # Deploy the manifest + every DM it references into a cache layout under
+        # dhs_dir. manifest.BuildExport resolves DMs at <cache-dir>/dm/acp2/.
+        # The two DMs are the slots in neuron-test.json (slot 0 SHPRM1, slot 1
+        # CONVERT Hybrid).
+        vt_serve_files:
+          - src: "{{ acp2_fix }}/manifest/neuron-test.json"
+            dest: "{{ dhs_dir }}/acp2fix/manifest/neuron-test.json"
+          - src: "{{ acp2_fix }}/dm/acp2/SHPRM1@5.3.5.json"
+            dest: "{{ dhs_dir }}/acp2fix/dm/acp2/SHPRM1@5.3.5.json"
+          - src: "{{ acp2_fix }}/dm/acp2/CONVERT Hybrid@6.7.4.json"
+            dest: "{{ dhs_dir }}/acp2fix/dm/acp2/CONVERT Hybrid@6.7.4.json"
+
+        # producer serve argv (cmd/dhs/cmd_producer.go runProducer). --manifest +
+        # --cache-dir (lines 46-47) + --port/--host (48-49); bind loopback on the
+        # test port. No --transport: it is acp1-only (cmd_producer.go:60) and
+        # acp2 serves its default AN2/TCP.
+        vt_serve_argv:
+          - --manifest
+          - "{{ dhs_dir }}/acp2fix/manifest/neuron-test.json"
+          - --cache-dir
+          - "{{ dhs_dir }}/acp2fix"
+          - --port
+          - "{{ vt_port }}"
+          - --host
+          - "{{ vt_host }}"
+          - --log-level
+          - error
+
+        # Consumer verbs (generic table, cmd/dhs/main.go:155-180; dispatched via
+        # dispatchConsumer with --protocol acp2 injected, main.go:262-316). Each
+        # dials the served producer; host is the first token; --port pins the
+        # test port (common.go:71), --timeout the per-op deadline (common.go:72).
+        # NOTE: `watch` is intentionally omitted — the generic watch has no
+        # --timeout/--count bound (cmd_watch.go has no timeout flag) so it blocks
+        # until Ctrl-C and cannot run non-interactively. Mirrors acp1-verbs.yml.
+        vt_verbs:
+          # info — rack + per-slot status (cmd_info.go / main.go:156).
+          - [info, "{{ vt_host }}", --port, "{{ vt_port }}", --timeout, "15s"]
+          # walk slot 0 — SHPRM1 rack controller (cmd_walk.go:22 / main.go:157).
+          - [walk, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --timeout, "25s"]
+          # walk slot 1 — CONVERT Hybrid card (cmd_walk.go:22 / main.go:157).
+          - [walk, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "1", --timeout, "25s"]
+          # tree slot 0 — render object tree (cmd_tree.go:31 / main.go:158).
+          - [tree, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --timeout, "25s"]
+          # export slot 0 to json on stdout (cmd_export.go:24-26 / main.go:166).
+          - [export, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --format, json, --timeout, "25s"]
+          # diag slot 0 — ACP2 diagnostic probes (cmd_diag.go:17 / main.go:176).
+          - [diag, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --timeout, "20s"]
+          # health — 3-layer session health (cmd_health.go / main.go:178).
+          - [health, "{{ vt_host }}", --port, "{{ vt_port }}", --timeout, "15s"]

@@ -1,0 +1,82 @@
+---
+# Windows target (WinRM) — PUSH protocols (tsl / osc). Deploy the
+# control-node-built binary, start a backgrounded consumer LISTEN that decodes
+# received frames to a capture file, fire one or more producer SENDs, then read
+# the capture back and assert the pushed frames were decoded. Module choices
+# mirror dhs_acp1/tasks/windows.yml. No serve, no on-target build.
+
+# ---- Deploy (mirror dhs_acp1/tasks/windows.yml exactly) ------------------
+- name: Create the dhs install directory
+  ansible.windows.win_file:
+    path: "{{ dhs_dir }}"
+    state: directory
+
+- name: Deploy the windows dhs binary
+  ansible.windows.win_copy:
+    src: "{{ dhs_local_binary }}"
+    dest: "{{ dhs_bin }}"
+
+# Any fixtures the push test needs on the target (usually none for tsl/osc).
+- name: Deploy push fixtures to the target
+  ansible.windows.win_copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop: "{{ vt_serve_files }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+# ---- Start the listener (fire-and-forget, TTL auto-expiry) ---------------
+# async + poll:0 = fire-and-forget; vt_listen_ttl bounds the listener so Ansible
+# auto-expires it. The decoded frames the consumer prints on stdout are
+# redirected to vt_listen_capture (a Windows path); stderr (dhs logs) is
+# dropped. win_shell runs the line under PowerShell on the target.
+- name: Start the {{ vt_proto }} consumer listener on the target
+  ansible.windows.win_shell: >-
+    & {{ dhs_bin }} consumer {{ vt_proto }} {{ vt_listen_argv | join(' ') }}
+    1> {{ vt_listen_capture }} 2> $null
+  async: "{{ vt_listen_ttl }}"
+  poll: 0
+  changed_when: false
+
+- name: Give the listener a moment to bind its socket
+  ansible.builtin.pause:
+    seconds: 2
+
+# ---- Fire the producer send(s) ------------------------------------------
+# A non-zero rc on any send fails the task by default (win_command). The send
+# is a one-shot UDP/TCP emit — assert rc, not change.
+- name: "send: producer {{ vt_proto }}"
+  ansible.windows.win_command:
+    argv: "{{ ([dhs_bin, 'producer', vt_proto] + item) }}"
+  loop: "{{ vt_send_argv_list }}"
+  loop_control:
+    label: "{{ item | join(' ') }}"
+  changed_when: false
+
+# ---- Let the frames arrive, read the capture, assert --------------------
+- name: Let the pushed frames arrive at the listener
+  ansible.builtin.pause:
+    seconds: "{{ vt_push_settle }}"
+
+- name: Read the listener capture back from the target
+  ansible.windows.win_slurp:
+    src: "{{ vt_listen_capture }}"
+  register: vt_capture_raw
+
+- name: Decode the captured listener output
+  ansible.builtin.set_fact:
+    vt_capture: "{{ vt_capture_raw.content | b64decode }}"
+
+- name: "push capture: {{ vt_proto }}"
+  ansible.builtin.debug:
+    msg: "{{ vt_capture.split('\n') }}"
+
+- name: ASSERT the listener decoded every pushed frame
+  ansible.builtin.assert:
+    that:
+      - "item in vt_capture"
+    fail_msg: "{{ vt_proto }} listener did not capture expected token: {{ item }}"
+    quiet: true
+  loop: "{{ vt_push_assert_contains }}"
+  loop_control:
+    label: "{{ item }}"

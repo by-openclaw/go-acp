@@ -1,0 +1,116 @@
+---
+# Ember+ VERB-TEST contract play — deploy the per-OS binary + the committed
+# Ember+ manifest/DM fixture, serve our emberplus producer on the target, and
+# drive the consumer verbs against it end to end over the wire. Mirrors
+# probel-sw08p-verbs.yml / acp1-verbs.yml via the dhs_verbtest role (cross-build
+# on control node, deploy per OS, serve, drive). Per ADR-0025 deliverable 3 +
+# ADR-0016.
+#
+# Ember+ has NO single committed tree.json: like acp1/acp2 the producer
+# assembles its tree from a manifest (--manifest) + the referenced DMs under
+# <cache-dir>/dm/emberplus/ per ADR-0022. The manifest device name is
+# "dhs-emberplus-integration" (internal/emberplus/testdata/integration-test/
+# manifest/emberplus-integration.json), so served tree paths are prefixed with
+# that name — e.g. the nToN matrix is dhs-emberplus-integration.nToN.matrix
+# (cmd/dhs/main.go:190-192 bench help is authoritative for the composed path).
+# We deploy the manifest AND each of the 7 DMs to a cache layout under dhs_dir
+# and point --manifest / --cache-dir at the DEPLOYED paths (never the repo path).
+#
+# Transport: Ember+ is S101 over TCP (internal/emberplus/CLAUDE.md "Transport").
+# The producer's serve loop runs the provider's default Serve
+# (cmd/dhs/cmd_producer.go:416); the consumer dials with --port only. The role's
+# wait_for probes the same TCP port. Default Ember+ port is 9010
+# (internal/emberplus/provider/plugin.go:28); we serve on a distinct test port.
+#
+# OUR provider IS the Ember+ emulator (committed DM fixture). The producer is
+# ephemeral (TTL auto-expiry); matrix/invoke mutate the EPHEMERAL emulator only,
+# so run-twice = same result.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/emberplus-verbs.yml \
+#     -e @secrets/credentials.json
+- name: Ember+ verb test (deploy binary + manifest/DM fixture, serve on target, drive verbs)
+  hosts: linux:windows
+  gather_facts: true
+  vars:
+    vt_host: "127.0.0.1"
+    vt_port: 19010
+    # Repo fixture roots (control node) for the Ember+ manifest + its DMs.
+    ember_fix: "{{ playbook_dir }}/../../internal/emberplus/testdata/integration-test"
+  roles:
+    - role: dhs_verbtest
+      vars:
+        vt_proto: emberplus
+
+        # Deploy the manifest + every DM it references into a cache layout under
+        # dhs_dir. manifest.BuildExport resolves DMs at <cache-dir>/dm/emberplus/.
+        # The 7 DMs are the slots in emberplus-integration.json (oid 1.0..1.6).
+        vt_serve_files:
+          - src: "{{ ember_fix }}/manifest/emberplus-integration.json"
+            dest: "{{ dhs_dir }}/emberfix/manifest/emberplus-integration.json"
+          - src: "{{ ember_fix }}/dm/emberplus/identity-strict@1.0.0.json"
+            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/identity-strict@1.0.0.json"
+          - src: "{{ ember_fix }}/dm/emberplus/oneToN-strict@1.0.0.json"
+            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/oneToN-strict@1.0.0.json"
+          - src: "{{ ember_fix }}/dm/emberplus/oneToOne-strict@1.0.0.json"
+            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/oneToOne-strict@1.0.0.json"
+          - src: "{{ ember_fix }}/dm/emberplus/nToN-strict@1.0.0.json"
+            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/nToN-strict@1.0.0.json"
+          - src: "{{ ember_fix }}/dm/emberplus/dynamic-strict@1.0.0.json"
+            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/dynamic-strict@1.0.0.json"
+          - src: "{{ ember_fix }}/dm/emberplus/functions-strict@1.0.0.json"
+            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/functions-strict@1.0.0.json"
+          - src: "{{ ember_fix }}/dm/emberplus/glow-types-strict@1.0.0.json"
+            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/glow-types-strict@1.0.0.json"
+
+        # producer serve argv (cmd/dhs/cmd_producer.go runProducer). --manifest +
+        # --cache-dir (lines 46-47) + --port/--host (48-49). No --transport: it
+        # is acp1-only (cmd_producer.go:60); emberplus serves S101/TCP by default.
+        vt_serve_argv:
+          - --manifest
+          - "{{ dhs_dir }}/emberfix/manifest/emberplus-integration.json"
+          - --cache-dir
+          - "{{ dhs_dir }}/emberfix"
+          - --port
+          - "{{ vt_port }}"
+          - --host
+          - "{{ vt_host }}"
+          - --log-level
+          - error
+
+        # Consumer verbs (generic table, cmd/dhs/main.go:155-180; dispatched via
+        # dispatchConsumer with --protocol emberplus injected, main.go:262-316).
+        # Each dials the served producer; host is the first token; --port pins
+        # the test port (common.go:71), --timeout the per-op deadline
+        # (common.go:72). Ember+ addresses by dotted --path (cmd_get.go:20,
+        # cmd_matrix.go:17, cmd_invoke.go:19) prefixed with the device name.
+        # NOTE: `watch` and `stream` are intentionally omitted — both block on
+        # ctx until Ctrl-C with no --timeout/--count bound, so they cannot run
+        # non-interactively in the serve loop. Mirrors acp1-verbs.yml's watch
+        # omission.
+        vt_verbs:
+          # info — provider device summary (cmd_info.go / main.go:156).
+          - [info, "{{ vt_host }}", --port, "{{ vt_port }}", --timeout, "20s"]
+          # walk slot 0 — full glow tree (cmd_walk.go:22 / main.go:157).
+          - [walk, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --timeout, "45s"]
+          # tree slot 0 — render object tree (cmd_tree.go:31 / main.go:158).
+          - [tree, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --timeout, "45s"]
+          # get a scalar parameter on the identity node by path (cmd_get.go:20 /
+          # main.go:159). identity is oid 1.0; product is a string parameter.
+          - [get, "{{ vt_host }}", --port, "{{ vt_port }}", --path, "dhs-emberplus-integration.identity.product", --timeout, "20s"]
+          # matrix — connect a crosspoint on the nToN matrix (cmd_matrix.go:16-21
+          # / main.go:172). path prefixed with the device name; op=connect.
+          - [matrix, "{{ vt_host }}", --port, "{{ vt_port }}", --path, "dhs-emberplus-integration.nToN.matrix", --target, "0", --sources, "1", --op, connect, --timeout, "30s"]
+          # invoke — call an Ember+ function (cmd_invoke.go:18-22 / main.go:173).
+          # functions node is oid 1.5; listLocks (oid 1.5.2) takes a single
+          # string arg matrixPath (functions-strict@1.0.0.json), so --args is
+          # the matrix path. --args is comma-separated (cmd_invoke.go:20).
+          - [invoke, "{{ vt_host }}", --port, "{{ vt_port }}", --path, "dhs-emberplus-integration.functions.listLocks", --args, "dhs-emberplus-integration.nToN.matrix", --timeout, "30s"]
+          # profile — classify provider compliance (cmd_profile.go / main.go:175).
+          - [profile, "{{ vt_host }}", --port, "{{ vt_port }}", --timeout, "30s"]
+          # export slot 0 to json on stdout (cmd_export.go:24-26 / main.go:166).
+          - [export, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --format, json, --timeout, "45s"]
+          # bench — N matrix crosspoint ops over one TCP session (cmd_emberplus_bench.go
+          # / main.go:179). --dm + --path per the bench help (main.go:190-192).
+          - [bench, "{{ vt_host }}", --port, "{{ vt_port }}", --dm, "dhs-emberplus-integration@1.0.0", --path, "dhs-emberplus-integration.nToN.matrix", --n, "8", --op, connect]
+          # health — 3-layer session health (cmd_health.go / main.go:178).
+          - [health, "{{ vt_host }}", --port, "{{ vt_port }}", --timeout, "20s"]

@@ -1,0 +1,68 @@
+---
+# OSC (Open Sound Control 1.0 + 1.1) VERB-TEST contract play (PUSH mode) —
+# deploy the per-OS binary, start a backgrounded consumer WATCH on the target
+# that decodes received messages to a capture file, fire producer SENDs, then
+# read the capture back and assert the watcher decoded the address + args.
+# Mirrors osc-integration.yml's loopback tier but driven entirely through the
+# dhs_verbtest role (push mode). Per ADR-0025 deliverable 3 + ADR-0016.
+#
+# OSC is a symmetric PUSH protocol (cmd/dhs/cmd_osc.go:1-16): a producer SENDs
+# to a consumer that WATCHes. There is no serve+query, so this uses the role's
+# push path (vt_mode: push):
+#   - vt_listen_argv     → consumer watch ... (cmd_osc.go:74 runOSCWatch)
+#   - vt_send_argv_list  → producer send ...  (cmd_osc.go:117 runOSCSend)
+#   - vt_push_assert_contains → decoded tokens the watcher must print
+#
+# VERSION SCOPE: the role prepends a SINGLE `dhs consumer <vt_proto>` for the
+# watcher and `dhs producer <vt_proto>` for every send, so one play pins ONE
+# version. This play pins osc-v11 over UDP (works for both versions; default
+# port 8000, cmd_osc.go:76). Transport variants tcp-len (osc-v10 only) and
+# tcp-slip (osc-v11 only) are gated by requireVersion (cmd_osc.go:344-352): a
+# tcp-len play needs vt_proto: osc-v10; a tcp-slip play needs vt_proto: osc-v11.
+# The osc-integration.yml loopback covers the udp path for osc-v11; per-transport
+# verb plays can be added by cloning this file with the matching vt_proto +
+# --listen / --transport.
+#
+# The watcher is ephemeral (TTL auto-expiry via the role) and a single UDP
+# datagram leaves no persistent state, so run-twice = same result (ADR-0025).
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/osc-verbs.yml \
+#     -e @secrets/credentials.json
+- name: OSC verb test (deploy binary, watch on target, send messages, assert decode)
+  hosts: linux:windows
+  gather_facts: true
+  vars:
+    vt_host: "127.0.0.1"
+    vt_port: 18050
+  roles:
+    - role: dhs_verbtest
+      vars:
+        vt_proto: osc-v11
+        vt_mode: push
+
+        # Consumer WATCH argv tail (after `dhs consumer osc-v11`). UDP listener
+        # on the test port — cmd_osc.go:74-113 runOSCWatch, --listen transport:port
+        # at cmd_osc.go:76. The role captures its decoded stdout to vt_listen_capture.
+        vt_listen_argv:
+          - watch
+          - --listen
+          - "udp:{{ vt_port }}"
+
+        # Producer SEND argvs (each appended after `dhs producer osc-v11`).
+        # send is one-shot emit — cmd_osc.go:62-63 / runOSCSend. Flags: --to
+        # (cmd_osc.go:119), --transport (120), --address (121), --types (122);
+        # positional args follow --types (cmd_osc.go:134 fs.Args). The type-tag
+        # 'i' consumes one int token, 's' one string (cmd_osc.go:386,426).
+        vt_send_argv_list:
+          - [send, --to, "{{ vt_host }}:{{ vt_port }}", --transport, udp, --address, "/vt/int", --types, i, "7"]
+          - [send, --to, "{{ vt_host }}:{{ vt_port }}", --transport, udp, --address, "/vt/str", --types, s, "VT-OSC"]
+
+        # Tokens the watcher MUST have decoded. printPacket renders each message
+        # as "[transport] /address  ,tags  args" (cmd_osc.go:516-527); a string
+        # arg is quoted via strconv.Quote (cmd_osc.go:549). So the watcher prints
+        # e.g.  [udp      ] /vt/int  ,i  7   and   [udp      ] /vt/str  ,s  "VT-OSC".
+        vt_push_assert_contains:
+          - "/vt/int"
+          - ",i"
+          - "/vt/str"
+          - '"VT-OSC"'
