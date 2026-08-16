@@ -1586,7 +1586,7 @@ func routeTargetFromFlags(router, deviceName string) cerebrum.RouteTarget {
 
 func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	verb := "lock"
-	if mode == codec.LockRelease {
+	if mode == codec.LockRelease || mode == codec.LockReleased {
 		verb = "unlock"
 	}
 	args = reorderFlagsFirst(args)
