@@ -97,6 +97,40 @@ func TestDiffCerebrumCategory(t *testing.T) {
 	}
 }
 
+// TestCerebrumCatGapRoundTrip pins the live-found NOC bug: the wire omits
+// BLANK slots (grid 1,2,4 with 3 empty), so export must materialize gaps
+// as BLANK rows and the diff of that export against the same live state
+// must be EMPTY — no phantom re-pack (331 false changes on the first NOC
+// snapshot), no BLANK written onto an already-empty slot.
+func TestCerebrumCatGapRoundTrip(t *testing.T) {
+	live := &codec.CategoryDetailsInfo{Items: []codec.CategoryItem{
+		{Index: 1, Type: "SOURCE", Value: "9348"},
+		{Index: 2, Type: "SOURCE", Value: "9349"},
+		{Index: 4, Type: "SOURCE", Value: "9350"}, // slot 3 is a live gap
+	}}
+	names := []string{"SRC-HAIVISION"}
+	details := map[string]*codec.CategoryDetailsInfo{"SRC-HAIVISION": live}
+	defs := cerebrumCatDefsFromLive(names, map[string]bool{"SRC-HAIVISION": true}, details)
+	if len(defs) != 1 || len(defs[0].Items) != 4 {
+		t.Fatalf("defs = %+v, want 1 def with 4 rows (gap materialized)", defs)
+	}
+	if defs[0].Items[2].Type != "BLANK" {
+		t.Fatalf("slot 3 must export as BLANK, got %+v", defs[0].Items[2])
+	}
+	// The exported grid diffed against the same live state = zero changes.
+	if ch := diffCerebrumCategory("SRC-HAIVISION", live, defs[0].Items); len(ch) != 0 {
+		t.Errorf("untouched export must diff to 0, got %+v", ch)
+	}
+	// And the CSV itself round-trips through the parser.
+	reparsed, err := parseCerebrumCatCSV([]byte(formatCerebrumCatCSV(defs)), "src", "rt")
+	if err != nil {
+		t.Fatalf("reparse: %v", err)
+	}
+	if ch := diffCerebrumCategory("SRC-HAIVISION", live, reparsed[0].Items); len(ch) != 0 {
+		t.Errorf("parsed export must diff to 0, got %+v", ch)
+	}
+}
+
 // TestClassifyCerebrumCategories pins the SRC/DST export split: a
 // category's own DIRECT resource items decide (a "DST-…" gateway holding
 // SOURCE ports is a src category — names are convention); resource-less

@@ -169,6 +169,11 @@ func diffCerebrumCategory(cat string, live *codec.CategoryDetailsInfo, desired [
 	for i, want := range desired {
 		slot := i + 1
 		cur, ok := liveByIdx[slot]
+		// A desired BLANK over an empty (or already-BLANK) live slot is a
+		// no-op — gaps round-trip without churn.
+		if strings.EqualFold(want.Type, "BLANK") && (!ok || strings.EqualFold(cur.Type, "BLANK")) {
+			continue
+		}
 		if ok && strings.EqualFold(cur.Type, want.Type) && cur.Value == want.Value {
 			continue
 		}
@@ -295,7 +300,11 @@ func classifyCerebrumCategories(names []string, details map[string]*codec.Catego
 }
 
 // cerebrumCatDefsFromLive renders the live grids of the given categories
-// (in list order) as CSV defs — the export side of the round-trip.
+// (in list order) as CSV defs — the export side of the round-trip. The
+// wire omits BLANK slots but keeps real indices, so gaps are materialized
+// as explicit BLANK rows: row order in the CSV is then EXACTLY the live
+// slot order and the import diff reports 0 on an untouched export
+// (live-found: packed export produced 331 phantom re-pack changes).
 func cerebrumCatDefsFromLive(names []string, pick map[string]bool, details map[string]*codec.CategoryDetailsInfo) []cerebrumCatDef {
 	var defs []cerebrumCatDef
 	for _, cat := range names {
@@ -306,9 +315,21 @@ func cerebrumCatDefsFromLive(names []string, pick map[string]bool, details map[s
 		if d == nil {
 			continue
 		}
-		def := cerebrumCatDef{Name: cat}
+		byIdx := map[int]codec.CategoryItem{}
+		maxIdx := 0
 		for _, it := range d.Items {
-			def.Items = append(def.Items, cerebrumCatItem{Type: it.Type, Value: it.Value})
+			byIdx[it.Index] = it
+			if it.Index > maxIdx {
+				maxIdx = it.Index
+			}
+		}
+		def := cerebrumCatDef{Name: cat}
+		for slot := 1; slot <= maxIdx; slot++ {
+			if it, ok := byIdx[slot]; ok && !strings.EqualFold(it.Type, "BLANK") {
+				def.Items = append(def.Items, cerebrumCatItem{Type: it.Type, Value: it.Value})
+			} else {
+				def.Items = append(def.Items, cerebrumCatItem{Type: "BLANK", Value: ""})
+			}
 		}
 		defs = append(defs, def)
 	}
