@@ -190,7 +190,9 @@ func runCerebrum(ctx context.Context, args []string) error {
 	case "lock":
 		return cerebrumLock(ctx, rest, codec.LockProtect)
 	case "unlock":
-		return cerebrumLock(ctx, rest, codec.LockRelease)
+		// Default = RELEASED, the wire-actual clearing value (live
+		// 2026-08-16: the spec's RELEASE / UNLOCKED both NACK 8).
+		return cerebrumLock(ctx, rest, codec.LockReleased)
 	case "device-config":
 		return cerebrumDeviceConfig(ctx, rest)
 	case "set-mnemonic":
@@ -242,7 +244,7 @@ VERBS
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
   lock                     ACTION <ROUTING LOCK='PROTECT'/>   --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] --level ID [--duration S] [--mode locked|protected|locked_path|protected_path|unlocked]
-  unlock                   ACTION <ROUTING LOCK='RELEASE'/>   (same flags as lock)
+  unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
   set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]
   set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --tags a,b,c
