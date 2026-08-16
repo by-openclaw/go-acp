@@ -1,0 +1,115 @@
+package main
+
+import (
+	"reflect"
+	"strings"
+	"testing"
+
+	"dhs/internal/cerebrum-nb/codec"
+)
+
+// TestParseCerebrumCatCSV pins the minimal category CSV: row order = slot
+// order, §3.3 type validation, and the SRC/DST file separation rule.
+func TestParseCerebrumCatCSV(t *testing.T) {
+	csv := "category,type,value\n" +
+		"# nav panel\n" +
+		"SRC-STUDIO-A,TEXT,Cameras\n" +
+		"SRC-STUDIO-A,SOURCE,10001\n" +
+		"SRC-ALL,CATEGORY,SRC-STUDIO-A\n"
+	defs, err := parseCerebrumCatCSV([]byte(csv), "src", "t.csv")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	want := []cerebrumCatDef{
+		{Name: "SRC-STUDIO-A", Items: []cerebrumCatItem{{Type: "TEXT", Value: "Cameras"}, {Type: "SOURCE", Value: "10001"}}},
+		{Name: "SRC-ALL", Items: []cerebrumCatItem{{Type: "CATEGORY", Value: "SRC-STUDIO-A"}}},
+	}
+	if !reflect.DeepEqual(defs, want) {
+		t.Errorf("defs:\ngot  %+v\nwant %+v", defs, want)
+	}
+
+	// Round-trip: format -> parse is stable.
+	again, err := parseCerebrumCatCSV([]byte(formatCerebrumCatCSV(defs)), "src", "rt")
+	if err != nil || !reflect.DeepEqual(again, defs) {
+		t.Errorf("round-trip: %v / %+v", err, again)
+	}
+
+	for _, tc := range []struct{ name, kind, csv, want string }{
+		{"dest in src file", "src", "category,type,value\nC,DEST,5\n", "keep SRC and DST files separate"},
+		{"source in dst file", "dst", "category,type,value\nC,SOURCE,5\n", "keep SRC and DST files separate"},
+		{"bad type", "src", "category,type,value\nC,WAT,5\n", "unknown type"},
+		{"missing value", "src", "category,type,value\nC,SOURCE,\n", "value is required"},
+		{"no rows", "src", "category,type,value\n", "no category rows"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := parseCerebrumCatCSV([]byte(tc.csv), tc.kind, "t.csv")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("err = %v, want substring %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// TestDiffCerebrumCategory pins the per-slot ensure: identical grid = no
+// changes; differing/missing slots = MODIFY_ITEM; live slots beyond the
+// desired grid clear via ITEM_TYPE=BLANK (never DELETE_ITEM — index-shift
+// semantics undefined in the spec); absent category = CREATE + slots;
+// run-twice = 0.
+func TestDiffCerebrumCategory(t *testing.T) {
+	live := &codec.CategoryDetailsInfo{Items: []codec.CategoryItem{
+		{Index: 1, Type: "TEXT", Value: "Cameras"},
+		{Index: 2, Type: "SOURCE", Value: "10001"},
+		{Index: 3, Type: "SOURCE", Value: "10099"},
+	}}
+	desired := []cerebrumCatItem{
+		{Type: "TEXT", Value: "Cameras"},   // identical -> none
+		{Type: "SOURCE", Value: "10002"},   // differs -> modify slot 2
+	}
+	got := diffCerebrumCategory("C", live, desired)
+	want := []cerebrumCatChange{
+		{Cat: "C", Op: "MODIFY_ITEM", Index: 2, Type: "SOURCE", Value: "10002", From: "SOURCE 10001"},
+		{Cat: "C", Op: "MODIFY_ITEM", Index: 3, Type: "BLANK", Value: "", From: "SOURCE 10099"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("diff:\ngot  %+v\nwant %+v", got, want)
+	}
+
+	// Absent category: CREATE first, then every slot.
+	got = diffCerebrumCategory("NEW", nil, []cerebrumCatItem{{Type: "SOURCE", Value: "1"}})
+	if len(got) != 2 || got[0].Op != "CREATE" || got[1].Op != "MODIFY_ITEM" || got[1].Index != 1 {
+		t.Errorf("create diff = %+v", got)
+	}
+
+	// Run-twice = 0: live equal to desired yields nothing.
+	after := &codec.CategoryDetailsInfo{Items: []codec.CategoryItem{
+		{Index: 1, Type: "TEXT", Value: "Cameras"},
+		{Index: 2, Type: "SOURCE", Value: "10002"},
+		{Index: 3, Type: "BLANK", Value: ""},
+	}}
+	if again := diffCerebrumCategory("C", after, desired); len(again) != 0 {
+		t.Errorf("run-twice must be 0, got %+v", again)
+	}
+}
+
+// TestClassifyCerebrumCategories pins the SRC/DST export split: subtree
+// resource types decide, recursing through CATEGORY references; a subtree
+// with both kinds lands in both files and is reported.
+func TestClassifyCerebrumCategories(t *testing.T) {
+	names := []string{"SRC-A", "DST-B", "MIX", "PARENT-SRC"}
+	details := map[string]*codec.CategoryDetailsInfo{
+		"SRC-A":      {Items: []codec.CategoryItem{{Index: 1, Type: "SOURCE", Value: "1"}}},
+		"DST-B":      {Items: []codec.CategoryItem{{Index: 1, Type: "DEST", Value: "2"}}},
+		"MIX":        {Items: []codec.CategoryItem{{Index: 1, Type: "SOURCE", Value: "1"}, {Index: 2, Type: "DEST", Value: "2"}}},
+		"PARENT-SRC": {Items: []codec.CategoryItem{{Index: 1, Type: "CATEGORY", Value: "SRC-A"}}},
+	}
+	src, dst, both := classifyCerebrumCategories(names, details)
+	if !src["SRC-A"] || !src["PARENT-SRC"] || src["DST-B"] {
+		t.Errorf("src = %v", src)
+	}
+	if !dst["DST-B"] || dst["SRC-A"] {
+		t.Errorf("dst = %v", dst)
+	}
+	if len(both) != 1 || both[0] != "MIX" || !src["MIX"] || !dst["MIX"] {
+		t.Errorf("both = %v", both)
+	}
+}

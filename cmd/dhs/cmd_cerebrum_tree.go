@@ -209,15 +209,6 @@ func cerebrumSalvoTreeObjects(sess *cerebrum.Session, timeout time.Duration) ([]
 // FILE, CUSTOM rows render verbatim. The index prefix preserves the
 // category's slot order in the sorted tree.
 func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration, alt int, noMne bool) ([]consumer.Object, error) {
-	list, err := obtainSingleCategoryChange(sess, timeout,
-		&codec.CategoryChange{Type: "CATEGORY_LIST"}, "CATEGORY_LIST")
-	if err != nil {
-		return nil, err
-	}
-	if list == nil || list.Category == nil {
-		return nil, fmt.Errorf("cerebrum-nb tree: no CATEGORY_LIST reply within timeout")
-	}
-
 	// Mnemonic join: ID -> label for SOURCE and DEST item rows. --alt picks
 	// the set (0 = primary, N = ALT_MNE slot N); --no-mne skips the join.
 	srcName := map[string]string{}
@@ -243,28 +234,24 @@ func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration, 
 		}
 	}
 
-	// Fetch every category's details once, then compose the FOREST:
-	// categories referenced as CATEGORY items nest under their parent
-	// (recursively — real sub-category subtrees, matching the UI Inherits/
-	// membership view) instead of duplicating at top level. Roots are the
-	// categories no other category references.
-	details := map[string]*codec.CategoryDetailsInfo{}
+	// Fetch every category's details once (shared §5.2 walk), then compose
+	// the FOREST: categories referenced as CATEGORY items nest under their
+	// parent (recursively — real sub-category subtrees, matching the UI
+	// Inherits/membership view) instead of duplicating at top level. Roots
+	// are the categories no other category references.
+	names, details, err := fetchCerebrumCategories(sess, timeout)
+	if err != nil {
+		return nil, err
+	}
 	referenced := map[string]bool{}
-	for _, cat := range list.Category.Categories {
-		det, derr := obtainSingleCategoryChange(sess, timeout,
-			&codec.CategoryChange{Type: "CATEGORY_DETAILS", Category: cat}, "CATEGORY_DETAILS")
-		if derr != nil {
-			return nil, derr
+	for _, d := range details {
+		if d == nil {
+			continue
 		}
-		if det != nil && det.Category != nil && det.Category.Details != nil {
-			details[cat] = det.Category.Details
-			for _, it := range det.Category.Details.Items {
-				if it.Type == "CATEGORY" {
-					referenced[it.Value] = true
-				}
+		for _, it := range d.Items {
+			if it.Type == "CATEGORY" {
+				referenced[it.Value] = true
 			}
-		} else {
-			details[cat] = nil
 		}
 	}
 
@@ -312,7 +299,7 @@ func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration, 
 			})
 		}
 	}
-	for _, cat := range list.Category.Categories {
+	for _, cat := range names {
 		if referenced[cat] {
 			continue // rendered under its parent(s)
 		}
