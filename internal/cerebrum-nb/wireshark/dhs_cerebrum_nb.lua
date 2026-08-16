@@ -297,15 +297,29 @@ end
 -- WebSocket frame dissector
 -------------------------------------------------------------------------------
 
--- Returns (consumed_bytes) on success, (0, true) when needs more bytes.
--- We do not call desegment APIs — relying on Wireshark's default TCP
--- reassembly preference (Edit → Preferences → Protocols → TCP → "Allow
--- subdissector to reassemble TCP streams"). When that's on, Wireshark
--- delivers the reassembled buffer to us; when off, we just decode
--- whatever fits in one segment and label partial frames.
+-- One TCP segment routinely carries SEVERAL complete WebSocket messages
+-- (the server coalesces small events — e.g. a ROUTING_CHANGE plus its
+-- WILDCARD_COMPLETE). Every document must appear in the Info column,
+-- separated — a packet-list row that shows only one of its documents
+-- (or mashes them together) is not usable as evidence.
+local function set_info(pinfo, first, s)
+  if first then
+    pinfo.cols.info:set(s)
+  else
+    pinfo.cols.info:append(" | " .. s)
+  end
+end
+
+-- Returns (consumed_bytes, needed_bytes). consumed > 0 = one full frame
+-- decoded. needed > 0 = the frame does not fit this buffer and EXACTLY
+-- that many more bytes are required — the caller passes it to
+-- pinfo.desegment_len so Wireshark reassembles the precise PDU (the
+-- contract built-in dissectors use; an approximate "one more byte" loop
+-- fractures giant snapshot messages and is not evidence-grade).
 local function dissect_ws_frame(buffer, pinfo, tree, offset)
   local available = buffer:len() - offset
-  if available < 2 then return 0, true end
+  if available < 2 then return 0, 2 - available end
+  local first = (offset == 0)
 
   local b0 = buffer(offset, 1):uint()
   local b1 = buffer(offset + 1, 1):uint()
@@ -316,14 +330,33 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
   local masked = bit_and(b1, 0x80) ~= 0
   local len7   = bit_and(b1, 0x7f)
 
+  -- Header sanity (evidence-grade): a TCP out-of-order / lost-segment
+  -- region hands us bytes that start MID-PAYLOAD, and XML text misread
+  -- as a header would fabricate a frame ("op=0x5 len=84") or worse, a
+  -- fake TEXT frame whose "payload" starts mid-document (the truncated
+  -- ROUTE/ROU/VALUE roots seen on the 48MB production capture). RFC 6455
+  -- gives three hard invariants to reject those: the opcode set, RSV=0
+  -- (no extensions are negotiated on NB sessions), and the mask rule —
+  -- client frames are ALWAYS masked, server frames NEVER (§5.1). A
+  -- random byte pair passes all three ~2% of the time vs ~40% on the
+  -- opcode check alone.
+  local from_client = pinfo.src_port > pinfo.dst_port
+  local sane = opcode_names[opcode] ~= nil and rsv == 0 and masked == from_client
+  if not sane then
+    local subtree = tree:add(p_cnb, buffer(offset, available), "Mid-frame data (unaligned segment)")
+    subtree:add(f.phase, "unaligned")
+    set_info(pinfo, first, string.format("%s mid-frame data — unaligned segment (%d bytes; reassembly places the real frame)", direction_arrow(pinfo), available))
+    return available, 0
+  end
+
   local hdr_len = 2
   local plen = len7
   if len7 == 126 then
-    if available < hdr_len + 2 then return 0, true end
+    if available < hdr_len + 2 then return 0, (hdr_len + 2) - available end
     plen = buffer(offset + hdr_len, 2):uint()
     hdr_len = hdr_len + 2
   elseif len7 == 127 then
-    if available < hdr_len + 8 then return 0, true end
+    if available < hdr_len + 8 then return 0, (hdr_len + 8) - available end
     plen = buffer(offset + hdr_len, 8):uint64():tonumber()
     hdr_len = hdr_len + 8
   end
@@ -332,7 +365,7 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
   if masked then hdr_len = hdr_len + 4 end
 
   local total_needed = hdr_len + plen
-  if available < total_needed then return 0, true end
+  if available < total_needed then return 0, total_needed - available end
 
   local pos = offset + hdr_len
   local subtree = tree:add(p_cnb, buffer(offset, total_needed), "WebSocket Frame")
@@ -437,9 +470,9 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
         root_item:add_proto_expert_info(ef.unknown_root)
         info = info .. " [unknown root]"
       end
-      pinfo.cols.info:set(info)
+      set_info(pinfo, first, info)
     else
-      pinfo.cols.info:set(string.format("%s TEXT (no XML root) %d bytes", arrow, plen))
+      set_info(pinfo, first, string.format("%s TEXT (no XML root) %d bytes", arrow, plen))
     end
   elseif opcode == 0x8 then
 if plen >= 2 then
@@ -449,19 +482,19 @@ if plen >= 2 then
       if plen > 2 then
         reason = payload_str:sub(3)
         subtree:add(f.close_reason, buffer(pos + 2, plen - 2), reason)
-        pinfo.cols.info:set(string.format("%s CLOSE code=%d reason=%q", arrow, code, reason))
+        set_info(pinfo, first, string.format("%s CLOSE code=%d reason=%q", arrow, code, reason))
       else
-        pinfo.cols.info:set(string.format("%s CLOSE code=%d", arrow, code))
+        set_info(pinfo, first, string.format("%s CLOSE code=%d", arrow, code))
       end
     else
-      pinfo.cols.info:set(string.format("%s CLOSE", arrow))
+      set_info(pinfo, first, string.format("%s CLOSE", arrow))
     end
   elseif opcode == 0x9 then
-pinfo.cols.info:set(arrow .. " PING")
+set_info(pinfo, first, arrow .. " PING")
   elseif opcode == 0xA then
-pinfo.cols.info:set(arrow .. " PONG")
+set_info(pinfo, first, arrow .. " PONG")
   else
-pinfo.cols.info:set(string.format("%s %s len=%d", arrow, op_name, plen))
+set_info(pinfo, first, string.format("%s %s len=%d", arrow, op_name, plen))
   end
 
   return total_needed, false
@@ -517,13 +550,16 @@ function p_cnb.dissector(buffer, pinfo, tree)
   end
 
   -- WS frame mode. Decode as many full frames as fit in this buffer.
-  -- If the last one is partial, request reassembly via desegment_*.
+  -- If the last one is partial, request reassembly with the EXACT byte
+  -- count still missing — Wireshark then rebuilds the full PDU (multi-MB
+  -- snapshot documents included) and re-calls us once, so no frame is
+  -- ever decoded fractured.
   local offset = 0
   while offset < len do
-    local consumed, need_more = dissect_ws_frame(buffer, pinfo, tree, offset)
-    if need_more then
+    local consumed, needed = dissect_ws_frame(buffer, pinfo, tree, offset)
+    if needed and needed > 0 then
       pinfo.desegment_offset = offset
-      pinfo.desegment_len = 1 -- "give me more bytes; I'll figure out exact need next call"
+      pinfo.desegment_len = needed
       return offset > 0 and offset or nil
     end
     if consumed == 0 then break end
