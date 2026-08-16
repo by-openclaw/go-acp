@@ -1285,9 +1285,27 @@ func printEventLabeled(f *codec.Frame, srcNames map[string]string) {
 				fmt.Printf("           %-10s %-20s %s\n", d.DeviceType, displayName(d.DeviceName), d.IPAddress)
 			}
 		} else {
-			fmt.Printf("[device] %-8s type=%s name=%s ip=%s sub=%s obj=%s\n",
-				f.Device.Type, f.Device.DeviceType, f.Device.DeviceName,
-				f.Device.IPAddress, f.Device.SubDevice, f.Device.Object)
+			// Only print the attrs the row kind actually carries: SUB_DEVICE/
+			// OBJECT belong to VALUE rows; on DETAILS the name lives in the
+			// <DETAILS> child, not the outer attribute.
+			name := f.Device.DeviceName
+			if name == "" && f.Device.Details != nil {
+				name = f.Device.Details.Name
+			}
+			line := fmt.Sprintf("[device] %-8s type=%s", f.Device.Type, f.Device.DeviceType)
+			if name != "" {
+				line += " name=" + name
+			}
+			if f.Device.IPAddress != "" {
+				line += " ip=" + f.Device.IPAddress
+			}
+			if f.Device.SubDevice != "" {
+				line += " sub=" + f.Device.SubDevice
+			}
+			if f.Device.Object != "" {
+				line += " obj=" + f.Device.Object
+			}
+			fmt.Println(line)
 			for _, ov := range f.Device.ObjectValues {
 				fmt.Printf("           %-40s available=%s value=%q\n", ov.Object, boolFlag(ov.Available), ov.Value)
 			}
