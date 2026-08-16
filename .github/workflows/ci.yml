@@ -26,14 +26,14 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         go: ["1.23"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
 
@@ -171,7 +171,7 @@ jobs:
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage
           path: coverage.out
@@ -192,7 +192,7 @@ jobs:
       - name: Install git + git-lfs
         run: dnf install -y git git-lfs
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
@@ -202,7 +202,7 @@ jobs:
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.23"
 
@@ -236,14 +236,14 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.23"
 
@@ -257,14 +257,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, test-rhel, lint]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.23"
 
@@ -287,7 +287,7 @@ jobs:
           done
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: binaries
           path: dist/
@@ -325,9 +325,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.22"
 
