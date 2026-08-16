@@ -220,6 +220,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	srcPath := fs.String("src", "", "source-mnemonic CSV to import (columns srce,mnemonic — router mnemonics are per-ID, not per-level, 0v16 §4.1.5)")
 	dstPath := fs.String("dst", "", "dest-mnemonic CSV to import (columns dest,mnemonic — 0v16 §4.1.6)")
 	lvlPath := fs.String("levels", "", "level-mnemonic CSV to import (columns level,mnemonic — LEVEL_MNE, 0v16 §4.1.4)")
+	lockPath := fs.String("lock", "", "DEST_LOCK CSV to import (columns dest,state,levels[,locked_by] — absent cell = untouched; clearing needs an explicit state=RELEASED row)")
 	catSrcPath := fs.String("cat-src", "", "SRC category CSV (category,type,value — row order = slot order; builds/converges the navigation categories; DEST items rejected)")
 	catDstPath := fs.String("cat-dst", "", "DST category CSV (same shape; SOURCE items rejected)")
 	catMixedPath := fs.String("cat-mixed", "", "mixed category CSV (same shape; both kinds legal — export writes genuinely mixed-subtree categories here)")
@@ -274,6 +275,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		resolve(srcPath, "-src.csv")
 		resolve(dstPath, "-dst.csv")
 		resolve(lvlPath, "-level.csv")
+		resolve(lockPath, "-lock.csv")
 		if nonRMTarget {
 			// The dir may hold a full RM export set — its cat files are out
 			// of scope for a physical-router import, never an error.
@@ -285,11 +287,11 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 			resolve(catDstPath, "-cat-dst.csv")
 			resolve(catMixedPath, "-cat-mixed.csv")
 		}
-		fmt.Fprintf(os.Stderr, "cerebrum-nb import: --in-dir resolved xpoint=%s src=%s dst=%s levels=%s cat-src=%s cat-dst=%s cat-mixed=%s\n",
-			orDash(xp), orDash(*srcPath), orDash(*dstPath), orDash(*lvlPath), orDash(*catSrcPath), orDash(*catDstPath), orDash(*catMixedPath))
+		fmt.Fprintf(os.Stderr, "cerebrum-nb import: --in-dir resolved xpoint=%s src=%s dst=%s levels=%s lock=%s cat-src=%s cat-dst=%s cat-mixed=%s\n",
+			orDash(xp), orDash(*srcPath), orDash(*dstPath), orDash(*lvlPath), orDash(*lockPath), orDash(*catSrcPath), orDash(*catDstPath), orDash(*catMixedPath))
 	}
-	if xp == "" && *srcPath == "" && *dstPath == "" && *lvlPath == "" && *catSrcPath == "" && *catDstPath == "" && *catMixedPath == "" {
-		return cerebrumValErr("import", "nothing to import (pass --xpoint / --src / --dst / --levels / --cat-src / --cat-dst / --cat-mixed, or --in-dir DIR --prefix P)")
+	if xp == "" && *srcPath == "" && *dstPath == "" && *lvlPath == "" && *lockPath == "" && *catSrcPath == "" && *catDstPath == "" && *catMixedPath == "" {
+		return cerebrumValErr("import", "nothing to import (pass --xpoint / --src / --dst / --levels / --lock / --cat-src / --cat-dst / --cat-mixed, or --in-dir DIR --prefix P)")
 	}
 
 	// Parse everything up front so a malformed file fails before any wire I/O.
@@ -339,6 +341,17 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	var lockRows []cerebrumLockRow
+	if *lockPath != "" {
+		data, rerr := os.ReadFile(*lockPath)
+		if rerr != nil {
+			return rerr
+		}
+		lockRows, err = parseCerebrumLockCSV(data, *lockPath)
+		if err != nil {
+			return err
+		}
+	}
 	loadCat := func(path, kind string) ([]cerebrumCatDef, error) {
 		if path == "" {
 			return nil, nil
@@ -385,9 +398,10 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	target := routeTargetFromFlags(*router, *deviceName)
 
 	st := &cerebrumState{}
-	if xp != "" || *srcPath != "" || *dstPath != "" || *lvlPath != "" {
+	if xp != "" || *srcPath != "" || *dstPath != "" || *lvlPath != "" || len(lockRows) > 0 {
 		got, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 15*time.Second, cerebrumStateWant{
 			Routes: xp != "", SrcMne: *srcPath != "", DstMne: *dstPath != "", LvlMne: *lvlPath != "",
+			DestLock:  len(lockRows) > 0,
 			StrictMne: true, Verb: "import",
 		})
 		if serr != nil {
@@ -397,6 +411,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	}
 
 	routeChanges := diffCerebrumRoutes(st.Routes, routes)
+	lockChanges := diffCerebrumLocks(st.Locks, lockRows)
 	srcChanges := diffCerebrumMnemonics("SRCE_MNE", st.Src, srcRows, srcSlots, *allowClear)
 	dstChanges := diffCerebrumMnemonics("DEST_MNE", st.Dst, dstRows, dstSlots, *allowClear)
 	lvlChanges := diffCerebrumMnemonics("LEVEL_MNE", st.Lvl, lvlRows, lvlSlots, *allowClear)
@@ -425,7 +440,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 			catChanges = append(catChanges, diffCerebrumCategory(def.Name, live, def.Items)...)
 		}
 	}
-	total := len(routeChanges) + len(mneChanges) + len(catChanges)
+	total := len(routeChanges) + len(mneChanges) + len(lockChanges) + len(catChanges)
 
 	// ADR-0007 diff[] — always built (even empty), one entry per converging
 	// cell: route.<dest>.<level> or <kind>.<id>.<slot>.
@@ -435,6 +450,9 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	}
 	for _, c := range mneChanges {
 		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("%s.%s.%d", strings.ToLower(c.Kind), c.ID, c.Slot), From: c.From, To: c.To})
+	}
+	for _, c := range lockChanges {
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("dest_lock.%s.%s", c.Dest, c.Level), From: c.From, To: c.To})
 	}
 	for _, c := range catChanges {
 		if c.Op == "CREATE" {
@@ -451,6 +469,9 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		for _, c := range mneChanges {
 			_, _ = fmt.Fprintf(logw, "[would-%s] id=%s slot=%d: %q -> %q\n", strings.ToLower(c.Kind), c.ID, c.Slot, c.From, c.To)
 		}
+		for _, c := range lockChanges {
+			_, _ = fmt.Fprintf(logw, "[would-lock] dst=%s lvl=%s: %s -> %s\n", c.Dest, c.Level, c.From, c.To)
+		}
 		for _, c := range catChanges {
 			if c.Op == "CREATE" {
 				_, _ = fmt.Fprintf(logw, "[would-category] create %s\n", c.Cat)
@@ -458,8 +479,8 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 			}
 			_, _ = fmt.Fprintf(logw, "[would-category] %s slot %d: %q -> %q\n", c.Cat, c.Index, c.From, strings.TrimSpace(c.Type+" "+c.Value))
 		}
-		_, _ = fmt.Fprintf(logw, "cerebrum-nb import --check: would_change=%d (%d route(s), %d label(s), %d category change(s)) of %d crosspoint(s)/%d label row(s)/%d categor(ies) desired — nothing sent\n",
-			total, len(routeChanges), len(mneChanges), len(catChanges), len(routes), xpRows+len(srcRows)+len(dstRows)+len(lvlRows), len(catDefs))
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb import --check: would_change=%d (%d route(s), %d label(s), %d lock(s), %d category change(s)) of %d crosspoint(s)/%d label row(s)/%d lock row(s)/%d categor(ies) desired — nothing sent\n",
+			total, len(routeChanges), len(mneChanges), len(lockChanges), len(catChanges), len(routes), xpRows+len(srcRows)+len(dstRows)+len(lvlRows), len(lockRows), len(catDefs))
 		if jsonOut {
 			wc := total > 0
 			return emitEnsure(true, ensureResult{WouldChange: &wc, Diff: diffs})
@@ -504,6 +525,23 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		}
 		_, _ = fmt.Fprintf(logw, "[%s] OK   id=%s slot=%d: %q -> %q\n", strings.ToLower(c.Kind), c.ID, c.Slot, c.From, c.To)
 	}
+	for _, c := range lockChanges {
+		mode, merr := cerebrumLockStateMode(c.To)
+		if merr != nil {
+			_, _ = fmt.Fprintf(logw, "[lock] SKIP dst=%s lvl=%s reason=%s\n", c.Dest, c.Level, merr)
+			fails++
+			continue
+		}
+		actx, cancel := context.WithTimeout(context.Background(), cf.timeout)
+		err := sess.Lock(actx, "DEST_LOCK", mode, target, "", c.Dest, c.Level, "")
+		cancel()
+		if err != nil {
+			_, _ = fmt.Fprintf(logw, "[lock] NACK dst=%s lvl=%s %s -> %s reason=%s\n", c.Dest, c.Level, c.From, c.To, err)
+			fails++
+			continue
+		}
+		_, _ = fmt.Fprintf(logw, "[lock] OK   dst=%s lvl=%s: %s -> %s\n", c.Dest, c.Level, c.From, c.To)
+	}
 	for _, c := range catChanges {
 		actx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 		var aerr error
@@ -531,7 +569,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	if fails > 0 {
 		return fmt.Errorf("cerebrum-nb import: %d action(s) failed", fails)
 	}
-	_, _ = fmt.Fprintf(logw, "cerebrum-nb import: changed=%d (%d route(s), %d label(s), %d category change(s)); run again to verify 0\n", total, len(routeChanges), len(mneChanges), len(catChanges))
+	_, _ = fmt.Fprintf(logw, "cerebrum-nb import: changed=%d (%d route(s), %d label(s), %d lock(s), %d category change(s)); run again to verify 0\n", total, len(routeChanges), len(mneChanges), len(lockChanges), len(catChanges))
 	if jsonOut {
 		ch := total > 0
 		return emitEnsure(true, ensureResult{Changed: &ch, Diff: diffs})
@@ -596,7 +634,8 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 	st, err := cerebrumObtainState(ctx, p.Session(), *router, *deviceType, *idle, cerebrumStateWant{
 		Routes: true, RouteLevel: *level,
 		SrcMne: trio, DstMne: trio, LvlMne: trio,
-		Verb: "export",
+		DestLock: trio, // -lock.csv: DEST_LOCK is granted on RM and routers alike
+		Verb:     "export",
 	})
 	if err != nil {
 		return err
@@ -639,6 +678,9 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 		{*prefix + "-dst.csv", formatCerebrumMneCSVN("dest", dstD, nAlt)},
 		{*prefix + "-level.csv", formatCerebrumMneCSVN("level", lvlD, nAlt)},
 		{*prefix + "-xpoint.csv", xpCSV},
+		// DEST_LOCK snapshot — set cells only (unlocked = absent). Written on
+		// RM and physical routers alike (same grant as ROUTE, live-proven).
+		{*prefix + "-lock.csv", formatCerebrumLockCSV(st.Locks)},
 	}
 	// Category navigation files (§5.2 walk): SRC and DST kept in separate
 	// files by owner rule; a category whose subtree carries both kinds is
