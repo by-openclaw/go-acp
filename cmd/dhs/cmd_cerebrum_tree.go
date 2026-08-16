@@ -105,11 +105,13 @@ func cerebrumTree(_ context.Context, args []string) error {
 // cerebrumExpandFocus resolves a --path that names a node ANYWHERE in the
 // tree, not only from the root: sub-category nesting means a category's
 // canonical path runs through its parents (Categories.DESTINATIONS.
-// DST-FUSION), but operators reference categories directly. The user's
-// dotted segments are matched as a contiguous subsequence of any object
-// path (case-insensitive, shallowest match wins) and expanded to the full
-// root path the renderer needs. No match returns the input unchanged so
-// the renderer's own error still fires.
+// DST-FUSION), but operators reference categories directly — with or
+// without the intermediate levels. The user's dotted segments are matched
+// IN ORDER against any object path, gaps allowed (case-insensitive), so
+// "Categories.DST-FUSION", "DST-FUSION" and the full canonical path all
+// resolve. The prefix ending at the last matched segment becomes the
+// renderer focus; the shallowest match wins. No match returns the input
+// unchanged so the renderer's own error still fires.
 func cerebrumExpandFocus(objs []consumer.Object, focus string) string {
 	if focus == "" {
 		return focus
@@ -118,20 +120,18 @@ func cerebrumExpandFocus(objs []consumer.Object, focus string) string {
 	best := []string(nil)
 	for i := range objs {
 		p := objs[i].Path
-		for start := 0; start+len(segs) <= len(p); start++ {
-			ok := true
-			for j, s := range segs {
-				if !strings.EqualFold(p[start+j], s) {
-					ok = false
-					break
-				}
+		j := 0
+		end := -1
+		for k := 0; k < len(p) && j < len(segs); k++ {
+			if strings.EqualFold(p[k], segs[j]) {
+				j++
+				end = k
 			}
-			if ok {
-				full := p[:start+len(segs)]
-				if best == nil || len(full) < len(best) {
-					best = append([]string{}, full...)
-				}
-				break
+		}
+		if j == len(segs) {
+			full := p[:end+1]
+			if best == nil || len(full) < len(best) {
+				best = append([]string{}, full...)
 			}
 		}
 	}
