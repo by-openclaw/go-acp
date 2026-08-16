@@ -360,27 +360,31 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
     subtree:add(f.ws_mask_key, buffer(mask_offset, 4))
   end
 
-  -- Unmask payload into a Lua string for display + parsing.
-  local payload_chars = {}
+  -- Payload into a Lua string for display + parsing. Server frames are
+  -- UNMASKED (RFC 6455 §5.1) and carry the big snapshot documents — take
+  -- them in ONE TvbRange:raw() call; a per-byte Lua loop here made live
+  -- decoding of production event streams visibly lag. Only client frames
+  -- are masked, and those are small (commands), so the per-byte unmask
+  -- loop stays for them alone.
+  local payload_str = ""
   if plen > 0 then
-    local raw = buffer(pos, plen):bytes()
     if masked then
+      local raw = buffer(pos, plen):bytes()
       local mk = {
         buffer(mask_offset,     1):uint(),
         buffer(mask_offset + 1, 1):uint(),
         buffer(mask_offset + 2, 1):uint(),
         buffer(mask_offset + 3, 1):uint(),
       }
+      local payload_chars = {}
       for i = 0, plen - 1 do
         payload_chars[i + 1] = string.char(bit_xor(raw:get_index(i), mk[(i % 4) + 1]))
       end
+      payload_str = table.concat(payload_chars)
     else
-      for i = 0, plen - 1 do
-        payload_chars[i + 1] = string.char(raw:get_index(i))
-      end
+      payload_str = buffer(pos, plen):raw()
     end
   end
-  local payload_str = table.concat(payload_chars)
 
   local arrow = direction_arrow(pinfo)
   local op_name = opcode_names[opcode] or string.format("op=0x%x", opcode)
