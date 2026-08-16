@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,7 +37,7 @@ func cerebrumTree(_ context.Context, args []string) error {
 	out := fs.String("out", "", "write to this file instead of stdout")
 	filter := fs.String("filter", "", "case-insensitive substring filter (drops non-matching lines)")
 	focus := fs.String("path", "", `focus subtree at this dotted path (e.g. "Salvos.Salvo Group 1" or "Categories.SRC-INTERPHONIE"; in --device mode: the start group, e.g. "PROCESSING AUDIO")`)
-	domain := fs.String("domain", "all", "which catalogue(s) to walk: salvos | categories | all")
+	domain := fs.String("domain", "all", "which catalogue(s) to walk: sources | dests | categories | salvos | devices | all (all = every domain — the whole-Cerebrum tree; sources/dests are the 2 wildcard MNE reads, devices is the LIST read)")
 	device := fs.String("device", "", "DEVICE OBJECT TREE mode: walk one device's §5.4.3 object tree recursively (group obtains return children — live 2026-08-16). NAME with --by-name (exact string incl. whitespace!) or IP")
 	byName := fs.Bool("by-name", false, "--device is a DEVICE_NAME (exact, incl. trailing whitespace) instead of an IP")
 	subDev := fs.String("sub-device", "", "sub-device index for --device mode (from device-details, e.g. 1)")
@@ -47,9 +48,9 @@ func cerebrumTree(_ context.Context, args []string) error {
 		return err
 	}
 	switch *domain {
-	case "salvos", "categories", "all":
+	case "sources", "dests", "categories", "salvos", "devices", "all":
 	default:
-		return fmt.Errorf("cerebrum-nb tree: --domain must be salvos | categories | all, got %q", *domain)
+		return fmt.Errorf("cerebrum-nb tree: --domain must be sources | dests | categories | salvos | devices | all, got %q", *domain)
 	}
 	if *format != "ascii" && *format != "plantuml" {
 		return fmt.Errorf("cerebrum-nb tree: --format must be \"ascii\" or \"plantuml\", got %q", *format)
@@ -104,6 +105,13 @@ func cerebrumTree(_ context.Context, args []string) error {
 		objs = devObjs
 		renderFocus = "" // --path already scoped the walk itself
 	} else {
+		if *domain == "sources" || *domain == "dests" || *domain == "all" {
+			mneObjs, merr := cerebrumMneTreeObjects(sess, *domain, *alt)
+			if merr != nil {
+				return merr
+			}
+			objs = append(objs, mneObjs...)
+		}
 		if *domain == "categories" || *domain == "all" {
 			catObjs, cerr := cerebrumCategoryTreeObjects(sess, cf.timeout, *alt, *noMne)
 			if cerr != nil {
@@ -117,6 +125,13 @@ func cerebrumTree(_ context.Context, args []string) error {
 				return serr
 			}
 			objs = append(objs, salvoObjs...)
+		}
+		if *domain == "devices" || *domain == "all" {
+			devObjs, derr := cerebrumDeviceListTreeObjects(sess, cf.timeout)
+			if derr != nil {
+				return derr
+			}
+			objs = append(objs, devObjs...)
 		}
 		renderFocus = cerebrumExpandFocus(objs, *focus)
 	}
@@ -278,6 +293,90 @@ func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, de
 		fmt.Fprintf(os.Stderr, "cerebrum-nb tree: WARNING — walk truncated at --max-requests=%d obtains (raise it for the full tree)\n", maxReq)
 	}
 	fmt.Fprintf(os.Stderr, "cerebrum-nb tree: device walk used %d obtain(s), %d object(s)\n", requests, len(objs))
+	return objs, nil
+}
+
+// cerebrumMneTreeObjects renders the Routemaster resource inventory as
+// tree domains: Sources / Dests roots with one leaf per resource — ID
+// (zero-padded so the sorted tree keeps numeric order), capability levels
+// (ASSOCIATION indices), label from the selected set (--alt) and the alt
+// list. domain "sources" | "dests" | "all" selects which wildcard MNE
+// reads run.
+func cerebrumMneTreeObjects(sess *cerebrum.Session, domain string, alt int) ([]consumer.Object, error) {
+	want := cerebrumStateWant{Verb: "tree"}
+	if domain == "sources" || domain == "all" {
+		want.SrcMne = true
+	}
+	if domain == "dests" || domain == "all" {
+		want.DstMne = true
+	}
+	st, err := cerebrumObtainState(context.Background(), sess, "0.0.0.0", "ROUTER", 15*time.Second, want)
+	if err != nil {
+		return nil, err
+	}
+	pad := func(id string) string {
+		if n, aerr := strconv.Atoi(strings.TrimSpace(id)); aerr == nil {
+			return fmt.Sprintf("%05d", n)
+		}
+		return id
+	}
+	emit := func(root string, rows []cerebrumMneRow) []consumer.Object {
+		var out []consumer.Object
+		for _, r := range rows {
+			label := r.Mnemonic
+			if alt > 0 {
+				label = r.Alts[alt]
+			}
+			meta := fmt.Sprintf("label=%q", label)
+			if len(r.Levels) > 0 {
+				meta += " levels=" + strings.Join(r.Levels, ";")
+			}
+			if len(r.Alts) > 0 && alt <= 0 {
+				meta += " alts=" + formatAlts(r.Alts)
+			}
+			out = append(out, consumer.Object{
+				Path:  []string{root, pad(r.ID)},
+				Label: r.ID,
+				Kind:  consumer.KindString, Access: 1,
+				Value: consumer.Value{Kind: consumer.KindString, Str: meta},
+			})
+		}
+		return out
+	}
+	var objs []consumer.Object
+	objs = append(objs, emit("Sources", st.Src)...)
+	objs = append(objs, emit("Dests", st.Dst)...)
+	return objs, nil
+}
+
+// cerebrumDeviceListTreeObjects renders the §5.4 LIST as a Devices tree:
+// Devices → class → IP (one leaf per class instance, mirroring the wire's
+// one-row-per-class shape).
+func cerebrumDeviceListTreeObjects(sess *cerebrum.Session, timeout time.Duration) ([]consumer.Object, error) {
+	got, err := obtainSingleDeviceChange(sess, timeout, &codec.DeviceChange{Type: "LIST"}, "LIST")
+	if err != nil {
+		return nil, err
+	}
+	if got == nil || got.Device == nil {
+		return nil, fmt.Errorf("cerebrum-nb tree: no DEVICE_CHANGE TYPE=LIST reply within timeout")
+	}
+	var objs []consumer.Object
+	for _, d := range got.Device.Devices {
+		class := string(d.DeviceType)
+		if class == "" {
+			class = "UNKNOWN"
+		}
+		meta := "class=" + class
+		if d.DeviceName != "" {
+			meta += fmt.Sprintf(" name=%q", d.DeviceName)
+		}
+		objs = append(objs, consumer.Object{
+			Path:  []string{"Devices", class, d.IPAddress},
+			Label: d.IPAddress,
+			Kind:  consumer.KindString, Access: 1,
+			Value: consumer.Value{Kind: consumer.KindString, Str: meta},
+		})
+	}
 	return objs, nil
 }
 
