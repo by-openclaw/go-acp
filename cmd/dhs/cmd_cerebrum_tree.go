@@ -386,21 +386,40 @@ func cerebrumDeviceListTreeObjects(sess *cerebrum.Session, timeout time.Duration
 		return nil, fmt.Errorf("cerebrum-nb tree: no DEVICE_CHANGE TYPE=LIST reply within timeout")
 	}
 	var objs []consumer.Object
-	for _, d := range got.Device.Devices {
-		class := string(d.DeviceType)
+	seen := map[string]bool{}
+	emit := func(class, ip, name string) {
 		if class == "" {
 			class = "UNKNOWN"
 		}
+		key := class + "\x00" + ip
+		if ip == "" || seen[key] {
+			return
+		}
+		seen[key] = true
 		meta := "class=" + class
-		if d.DeviceName != "" {
-			meta += fmt.Sprintf(" name=%q", d.DeviceName)
+		if name != "" {
+			meta += fmt.Sprintf(" name=%q", name)
 		}
 		objs = append(objs, consumer.Object{
-			Path:  []string{"Devices", class, d.IPAddress},
-			Label: d.IPAddress,
+			Path:  []string{"Devices", class, ip},
+			Label: ip,
 			Kind:  consumer.KindString, Access: 1,
 			Value: consumer.Value{Kind: consumer.KindString, Str: meta},
 		})
+	}
+	// The route-master sentinel is synthesized (same as list-devices —
+	// the wire LIST does not carry it).
+	emit("ROUTER", "0.0.0.0", "Routemaster")
+	for _, d := range got.Device.Devices {
+		// One leaf PER CLASS INSTANCE — a device may be DEVICE and ROUTER
+		// at once (one <INSTANCE> per class on the wire).
+		classes := d.DeviceTypes
+		if len(classes) == 0 && d.DeviceType != "" {
+			classes = []codec.DeviceType{d.DeviceType}
+		}
+		for _, c := range classes {
+			emit(string(c), d.IPAddress, d.DeviceName)
+		}
 	}
 	return objs, nil
 }
