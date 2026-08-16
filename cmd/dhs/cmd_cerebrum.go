@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,7 +19,14 @@ import (
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/cerebrum-nb/codec/ws"
 	cerebrum "dhs/internal/cerebrum-nb/consumer"
+	"dhs/internal/consumer"
 )
+
+// cerebrumValErr returns a client-side ValidationError — mapped to exit 2
+// (docs/protocols/error-codes.md: 0 outcome-ok / 1 runtime / 2 validation).
+func cerebrumValErr(verb, reason string) error {
+	return &consumer.ValidationError{Field: "cerebrum-nb " + verb, Reason: reason}
+}
 
 // cerebrumFlags is the common flag set for every dhs consumer cerebrum-nb
 // verb. host[:port] is positional; everything else is a flag.
@@ -1469,8 +1477,14 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	var routesFlag stringSliceFlag
 	fs.Var(&routesFlag, "route", "repeatable: dst:src:lvl (use multiple --route to batch)")
 	csv := fs.String("csv", "", "CSV file with columns dest,srce,level")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read live routes, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	rest := fs.Args()
 	if len(rest) < 1 {
@@ -1527,30 +1541,62 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 	sess := p.Session()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+
+	// ADR-0007 (amendment): matrix connections MUST converge — read the live
+	// crosspoint state, diff, send only the differences (probel tally-first
+	// template). Never disconnects; identical cells cost no wire write.
+	st, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 15*time.Second, cerebrumStateWant{
+		Routes: true, Verb: "route",
+	})
+	if serr != nil {
+		return serr
+	}
+	changes := diffCerebrumRoutes(st.Routes, routes)
+	diffs := make([]ensureDiff, 0, len(changes))
+	for _, c := range changes {
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("route.%s.%s", c.Dest, c.Level), From: c.From, To: c.To})
+	}
+	changed := len(changes) > 0
+
+	if *check {
+		for _, c := range changes {
+			_, _ = fmt.Fprintf(logw, "[would-route] dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.To)
+		}
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb route --check: would_change=%d of %d desired — nothing sent\n", len(changes), len(routes))
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Diff: diffs})
+		}
+		return nil
+	}
 
 	fails := 0
-	for _, r := range routes {
+	for _, c := range changes {
 		body := &codec.RoutingAction{
-			Type:        "ROUTE",
-			IPAddress:   *router,
-			DeviceName:  *deviceName,
-			DeviceType:  codec.DeviceType("ROUTER"),
-			DestID:      r.Dest,
-			SrceID:      r.Srce,
-			LevelID:     r.Level,
-		}
-		if cf.debug {
-			fmt.Fprintf(os.Stderr, "tx: <action mtid=N><ROUTING TYPE=ROUTE DEST_ID=%s SRCE_ID=%s LEVEL_ID=%s/></action>\n", r.Dest, r.Srce, r.Level)
+			Type:       "ROUTE",
+			IPAddress:  *router,
+			DeviceName: *deviceName,
+			DeviceType: codec.DeviceType("ROUTER"),
+			DestID:     c.Dest,
+			SrceID:     c.To,
+			LevelID:    c.Level,
 		}
 		if err := sess.Action(context.Background(), body); err != nil {
-			fmt.Printf("[route] NACK dst=%s src=%s lvl=%s reason=%s\n", r.Dest, r.Srce, r.Level, err)
+			_, _ = fmt.Fprintf(logw, "[route] NACK dst=%s src=%s lvl=%s reason=%s\n", c.Dest, c.To, c.Level, err)
 			fails++
 			continue
 		}
-		fmt.Printf("[route] OK   dst=%s src=%s lvl=%s\n", r.Dest, r.Srce, r.Level)
+		_, _ = fmt.Fprintf(logw, "[route] OK   dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.To)
 	}
 	if fails > 0 {
-		return fmt.Errorf("%d/%d routes failed", fails, len(routes))
+		return fmt.Errorf("%d/%d route change(s) failed", fails, len(changes))
+	}
+	_, _ = fmt.Fprintf(logw, "cerebrum-nb route: changed=%d of %d desired (already-converged cells untouched); run again to verify 0\n", len(changes), len(routes))
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Diff: diffs})
 	}
 	return nil
 }
@@ -1601,9 +1647,15 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	duration := fs.String("duration", "", "optional timed-lock duration")
 	// --mode (0v16 §3.2): override the default PROTECT/RELEASE verb with one
 	// of the five canonical LOCK_STATE values. Empty keeps the verb default.
-	modeFlag := fs.String("mode", "", "0v16 lock mode: locked | protected | locked_path | protected_path | unlocked (overrides the default "+verb+" verb)")
+	modeFlag := fs.String("mode", "", "0v16 lock mode: locked | protected | locked_path | protected_path | released (overrides the default "+verb+" verb)")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live lock state, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	if err := requireKind(*kind, verb, "SRCE_LOCK", "DEST_LOCK"); err != nil {
 		return err
@@ -1616,29 +1668,115 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 		mode = m
 	}
 	if *srce == "" && *dest == "" {
-		return fmt.Errorf("cerebrum-nb %s: --srce or --dest is required", verb)
+		return cerebrumValErr(verb, "--srce or --dest is required")
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), verb)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+
 	// --level takes one level, a ';'-separated list (client-side expansion,
 	// one action per level — the CSV grammar), or empty = the wire's
 	// all-level form (live-verified: locks every existing level in one
 	// action, nonexistent levels no-op).
 	levels := splitLevelCell(*level)
-	if len(levels) == 0 {
-		levels = []string{""}
+
+	// Ensure read phase (ADR-0007, probel protect-connect template).
+	// DEST_LOCK state is readable (LOCK_STATE + LOCKED_BY per cell); the
+	// desired state maps: LOCKED/PROTECTED/... set values compare directly,
+	// the clearing values (RELEASED wire-actual, legacy RELEASE) converge to
+	// RELEASED. SRCE_LOCK reads are refused by every live Cerebrum tested —
+	// falls through to an imperative send reported as changed.
+	desired := strings.ToUpper(string(mode))
+	if desired == "RELEASE" {
+		desired = "RELEASED"
 	}
-	for _, lvl := range levels {
+	type lockChange struct{ Level, From string }
+	var changes []lockChange
+	readOK := false
+	if *kind == "DEST_LOCK" && *dest != "" {
+		st, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 10*time.Second, cerebrumStateWant{
+			DestLock: true, Verb: verb,
+		})
+		if serr == nil {
+			readOK = true
+			live := map[string]cerebrumLockSpec{}
+			var destLevels []string
+			for _, l := range st.Locks {
+				if l.Dest == *dest {
+					live[l.Level] = l
+					destLevels = append(destLevels, l.Level)
+				}
+			}
+			want := levels
+			if len(want) == 0 {
+				want = destLevels // all-level: every level the snapshot shows
+			}
+			for _, lvl := range want {
+				cur, ok := live[lvl]
+				state := "RELEASED" // absent cell = no lock
+				if ok && cur.State != "" {
+					state = strings.ToUpper(cur.State)
+				}
+				if state != desired {
+					changes = append(changes, lockChange{Level: lvl, From: state})
+				}
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb %s: lock-state read unavailable (%v) — imperative send, reported changed\n", verb, serr)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb %s: SRCE_LOCK state is not readable on live Cerebrums — imperative send, reported changed\n", verb)
+	}
+	if !readOK {
+		lv := levels
+		if len(lv) == 0 {
+			lv = []string{""}
+		}
+		for _, lvl := range lv {
+			changes = append(changes, lockChange{Level: lvl, From: "?"})
+		}
+	}
+
+	target := *dest
+	if target == "" {
+		target = *srce
+	}
+	diffs := make([]ensureDiff, 0, len(changes))
+	for _, c := range changes {
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("%s.%s.%s", strings.ToLower(*kind), target, displayDash(c.Level)), From: c.From, To: desired})
+	}
+	changed := len(changes) > 0
+
+	if *check {
+		for _, c := range changes {
+			_, _ = fmt.Fprintf(logw, "[would-%s] %s dest=%s lvl=%s: %s -> %s\n", verb, *kind, displayDash(*dest), displayDash(c.Level), c.From, desired)
+		}
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb %s --check: would_change=%d — nothing sent\n", verb, len(changes))
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Diff: diffs})
+		}
+		return nil
+	}
+	for _, c := range changes {
 		ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
-		err := sess.Lock(ctx, *kind, mode, routeTargetFromFlags(*router, *deviceName), *srce, *dest, lvl, *duration)
+		err := sess.Lock(ctx, *kind, mode, routeTargetFromFlags(*router, *deviceName), *srce, *dest, c.Level, *duration)
 		cancel()
 		if err != nil {
-			return fmt.Errorf("cerebrum-nb %s lvl=%s: %w", verb, displayDash(lvl), err)
+			return fmt.Errorf("cerebrum-nb %s lvl=%s: %w", verb, displayDash(c.Level), err)
 		}
-		fmt.Printf("[%s] OK %s mode=%s srce=%s dest=%s lvl=%s\n", verb, *kind, mode, displayDash(*srce), displayDash(*dest), displayDash(lvl))
+		_, _ = fmt.Fprintf(logw, "[%s] OK %s mode=%s srce=%s dest=%s lvl=%s (was %s)\n", verb, *kind, mode, displayDash(*srce), displayDash(*dest), displayDash(c.Level), c.From)
+	}
+	if len(changes) == 0 {
+		_, _ = fmt.Fprintf(logw, "[%s] already converged — nothing sent (state=%s)\n", verb, desired)
+	}
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Diff: diffs})
 	}
 	return nil
 }
@@ -1682,26 +1820,109 @@ func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	level := fs.String("level", "", "level ID")
 	mnemonic := fs.String("mnemonic", "", "mnemonic text")
 	alt := fs.String("alt", "", "alternate mnemonic slot (ALT_MNE)")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live label, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, previous, current, diff[]})")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	if err := requireKind(*kind, "set-mnemonic", "LEVEL_MNE", "SRCE_MNE", "DEST_MNE"); err != nil {
 		return err
 	}
 	if *mnemonic == "" {
-		return fmt.Errorf("cerebrum-nb set-mnemonic: --mnemonic is required")
+		return cerebrumValErr("set-mnemonic", "--mnemonic is required")
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-mnemonic")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+
+	// Ensure read phase (ADR-0007): read the kind's catalogue, find the
+	// target row, compare the addressed slot (primary or --alt N).
+	kindUp := strings.ToUpper(*kind)
+	want := cerebrumStateWant{Verb: "set-mnemonic", StrictMne: true}
+	id := *level
+	switch kindUp {
+	case "SRCE_MNE":
+		want.SrcMne = true
+		id = *srce
+	case "DEST_MNE":
+		want.DstMne = true
+		id = *dest
+	case "LEVEL_MNE":
+		want.LvlMne = true
+	}
+	if id == "" {
+		return cerebrumValErr("set-mnemonic", "the target ID is required (--srce / --dest / --level per --kind)")
+	}
+	st, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 15*time.Second, want)
+	if serr != nil {
+		return serr
+	}
+	rows := st.Src
+	switch kindUp {
+	case "DEST_MNE":
+		rows = st.Dst
+	case "LEVEL_MNE":
+		rows = st.Lvl
+	}
+	slot := 0
+	if *alt != "" {
+		n, aerr := strconv.Atoi(*alt)
+		if aerr != nil || n < 1 {
+			return cerebrumValErr("set-mnemonic", "--alt must be a positive slot index")
+		}
+		slot = n
+	}
+	previous := ""
+	for _, r := range dedupeCerebrumMnes(rows) {
+		if r.ID != id {
+			continue
+		}
+		if slot == 0 {
+			previous = r.Mnemonic
+		} else {
+			previous = r.Alts[slot]
+		}
+		break
+	}
+	changed := previous != *mnemonic
+	diffs := []ensureDiff{}
+	if changed {
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("%s.%s.%d", strings.ToLower(kindUp), id, slot), From: previous, To: *mnemonic})
+	}
+
+	if *check {
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb set-mnemonic --check: would_change=%t (%q -> %q) — nothing sent\n", changed, previous, *mnemonic)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Current: previous, Target: *mnemonic, Diff: diffs})
+		}
+		return nil
+	}
+	if !changed {
+		_, _ = fmt.Fprintf(logw, "[set-mnemonic] already converged — %s id=%s slot=%d = %q (nothing sent)\n", kindUp, id, slot, previous)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: previous, Diff: diffs})
+		}
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
-	if err := sess.SetMnemonic(ctx, *kind, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *level, *mnemonic, *alt); err != nil {
+	if err := sess.SetMnemonic(ctx, kindUp, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *level, *mnemonic, *alt); err != nil {
 		return fmt.Errorf("cerebrum-nb set-mnemonic: %w", err)
 	}
-	fmt.Printf("[set-mnemonic] OK %s mne=%q\n", *kind, *mnemonic)
+	_, _ = fmt.Fprintf(logw, "[set-mnemonic] OK %s id=%s slot=%d: %q -> %q\n", kindUp, id, slot, previous, *mnemonic)
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: *mnemonic, Diff: diffs})
+	}
 	return nil
 }
 
@@ -1715,26 +1936,83 @@ func cerebrumSetTags(_ context.Context, args []string) error {
 	srce := fs.String("srce", "", "source ID")
 	dest := fs.String("dest", "", "destination ID")
 	tags := fs.String("tags", "", "comma-separated tag list")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live tags where the server allows, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	if err := requireKind(*kind, "set-tags", "RM_SRCE_TAGS", "RM_DEST_TAGS"); err != nil {
 		return err
 	}
 	if *tags == "" {
-		return fmt.Errorf("cerebrum-nb set-tags: --tags is required")
+		return cerebrumValErr("set-tags", "--tags is required")
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-tags")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+
+	// Ensure read phase — best effort: a single-row RM tags obtain has no
+	// live-proven grant (SRCE_LOCK-style refusals are likely). A granted
+	// read enables a real diff; a refusal degrades to an imperative send
+	// reported as changed.
+	kindUp := strings.ToUpper(*kind)
+	id := *dest
+	item := &codec.RoutingChange{Type: kindUp, IPAddress: *router, DeviceType: codec.DeviceType("ROUTER"), DestID: *dest, SrceID: *srce, LevelID: "*"}
+	if kindUp == "RM_SRCE_TAGS" {
+		id = *srce
+	}
+	previous, readOK := "", false
+	if got, gerr := obtainOneEvent(sess, cf.timeout, codec.KindRoutingChange, item, func(f *codec.Frame) bool {
+		return f.Routing != nil && f.Routing.Type == kindUp
+	}); gerr == nil && got != nil && got.Routing != nil {
+		readOK = true
+		previous = strings.Join(got.Routing.TagList, ",")
+	} else {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb set-tags: live tags not readable — imperative send, reported changed\n")
+	}
+	changed := !readOK || previous != *tags
+	diffs := []ensureDiff{}
+	if changed {
+		from := previous
+		if !readOK {
+			from = "?"
+		}
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("%s.%s", strings.ToLower(kindUp), id), From: from, To: *tags})
+	}
+
+	if *check {
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb set-tags --check: would_change=%t — nothing sent\n", changed)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Current: previous, Target: *tags, Diff: diffs})
+		}
+		return nil
+	}
+	if !changed {
+		_, _ = fmt.Fprintf(logw, "[set-tags] already converged — %s id=%s tags=%q (nothing sent)\n", kindUp, id, previous)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: previous, Diff: diffs})
+		}
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
-	if err := sess.SetTags(ctx, *kind, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *tags); err != nil {
+	if err := sess.SetTags(ctx, kindUp, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *tags); err != nil {
 		return fmt.Errorf("cerebrum-nb set-tags: %w", err)
 	}
-	fmt.Printf("[set-tags] OK %s tags=%q\n", *kind, *tags)
+	_, _ = fmt.Fprintf(logw, "[set-tags] OK %s id=%s tags=%q\n", kindUp, id, *tags)
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: *tags, Diff: diffs})
+	}
 	return nil
 }
 
@@ -1943,11 +2221,17 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 	value := fs.String("value", "", "value to set")
 	isEnum := fs.Bool("is-enum", false, "VALUE is a string representation of an enumeration (§4.4.1 IS_ENUM)")
 	mode := fs.String("mode", "", "CSV write mode: SET|ADD_TAIL|INSERT_AT_HEAD|REMOVE (default SET)")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live value, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, previous, current, diff[]})")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
+	}
 	if (*device == "" && *ip == "") || *subDevice == "" || *object == "" {
-		return fmt.Errorf("cerebrum-nb set-value: --device (or --ip), --sub-device and --object are required")
+		return cerebrumValErr("set-value", "--device (or --ip), --sub-device and --object are required")
 	}
 	normMode, err := setValueModeValue(*mode)
 	if err != nil {
@@ -1958,6 +2242,62 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+	target := *device
+	if target == "" {
+		target = *ip
+	}
+
+	// Ensure read phase (ADR-0007): read the object first (§5.4.3 — the
+	// live-proven happy path). Numeric-aware comparison so "5" converges
+	// with a canonical "5.000000" reply instead of churning. MODE-flagged
+	// CSV writes (ADD_TAIL/INSERT_AT_HEAD/REMOVE) are list edits, not a
+	// converge — they skip the diff and always send.
+	previous, readOK := "", false
+	if normMode == "" || normMode == "SET" {
+		dc := &codec.DeviceChange{Type: "VALUE", SubDevice: *subDevice, Object: *object, DeviceName: *device, IPAddress: *ip}
+		if got, gerr := obtainSingleDeviceChange(sess, cf.timeout, dc, "VALUE"); gerr == nil && got != nil && got.Device != nil && got.Device.ObjectValue != nil && got.Device.ObjectValue.Available {
+			readOK = true
+			previous = got.Device.ObjectValue.Value
+		} else {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb set-value: live value not readable — imperative send, reported changed\n")
+		}
+	}
+	equalValue := func(a, b string) bool {
+		if a == b {
+			return true
+		}
+		fa, ea := strconv.ParseFloat(strings.TrimSpace(a), 64)
+		fb, eb := strconv.ParseFloat(strings.TrimSpace(b), 64)
+		return ea == nil && eb == nil && fa == fb
+	}
+	changed := !readOK || !equalValue(previous, *value)
+	diffs := []ensureDiff{}
+	if changed {
+		from := previous
+		if !readOK {
+			from = "?"
+		}
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("value.%s.%s.%s", strings.TrimSpace(target), *subDevice, *object), From: from, To: *value})
+	}
+
+	if *check {
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb set-value --check: would_change=%t (%q -> %q) — nothing sent\n", changed, previous, *value)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Current: previous, Target: *value, Diff: diffs})
+		}
+		return nil
+	}
+	if !changed {
+		_, _ = fmt.Fprintf(logw, "[set-value] already converged — %s.%s.%s = %q (nothing sent)\n", target, *subDevice, *object, previous)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: previous, Diff: diffs})
+		}
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	// Build the full §4.4 DEVICE SET_VALUE (incl. 0v16 IP_ADDRESS / IS_ENUM /
@@ -1975,11 +2315,10 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 	if err := sess.Action(ctx, body); err != nil {
 		return fmt.Errorf("cerebrum-nb set-value: %w", err)
 	}
-	target := *device
-	if target == "" {
-		target = *ip
+	_, _ = fmt.Fprintf(logw, "[set-value] OK %s.%s.%s: %q -> %q\n", target, *subDevice, *object, previous, *value)
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: *value, Diff: diffs})
 	}
-	fmt.Printf("[set-value] OK %s.%s.%s = %q\n", target, *subDevice, *object, *value)
 	return nil
 }
 
@@ -2096,12 +2435,18 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 	maxDest := fs.String("max-dest", "", "ROUTER MAX_DEST")
 	// SNMP body
 	snmpPort := fs.String("snmp-port", "", "SNMP PORT")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): consult the live device LIST, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
 
 	if err := fs.Parse(rest); err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
+	}
 	if *ip == "" {
-		return fmt.Errorf("cerebrum-nb device-config: --ip is required")
+		return cerebrumValErr("device-config", "--ip is required")
 	}
 	dc := &codec.DeviceConfiguration{
 		Type:       cfgType,
@@ -2128,15 +2473,71 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+
+	// Ensure read phase (ADR-0007): ADD and REMOVE are idempotent against
+	// the live device LIST (add-existing / remove-absent = changed:false,
+	// nothing sent). MODIFY has no per-field read-back over NB, so it
+	// always sends and always reports changed.
+	changed := true
+	from := "?"
+	if cfgType != "MODIFY" {
+		if got, gerr := obtainSingleDeviceChange(sess, cf.timeout, &codec.DeviceChange{Type: "LIST"}, "LIST"); gerr == nil && got != nil && got.Device != nil {
+			present := false
+			for _, d := range got.Device.Devices {
+				if d.IPAddress == *ip {
+					present = true
+					break
+				}
+			}
+			if present {
+				from = "present"
+			} else {
+				from = "absent"
+			}
+			if cfgType == codec.DeviceConfigRemove {
+				changed = present
+			} else { // ADD
+				changed = !present
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb device-config: device LIST not readable — imperative send, reported changed\n")
+		}
+	}
+	diffs := []ensureDiff{}
+	if changed {
+		diffs = append(diffs, ensureDiff{Field: "device." + *ip, From: from, To: string(cfgType)})
+	}
+
+	if *check {
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb device-config --check: would_change=%t (%s ip=%s, live=%s) — nothing sent\n", changed, cfgType, *ip, from)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Current: from, Target: string(cfgType), Diff: diffs})
+		}
+		return nil
+	}
+	if !changed {
+		_, _ = fmt.Fprintf(logw, "[device-config] already converged — %s ip=%s (live=%s, nothing sent)\n", cfgType, *ip, from)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Previous: from, Current: from, Diff: diffs})
+		}
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	res, err := sess.DeviceConfig(ctx, dc)
 	if err != nil {
 		return fmt.Errorf("cerebrum-nb device-config: %w", err)
 	}
-	fmt.Printf("[device-config] %s %s ip=%s result=%s\n", cfgType, dc.DeviceType, dc.IPAddress, displayDash(res.Value))
+	_, _ = fmt.Fprintf(logw, "[device-config] %s %s ip=%s result=%s\n", cfgType, dc.DeviceType, dc.IPAddress, displayDash(res.Value))
 	if !res.Accepted {
 		return fmt.Errorf("cerebrum-nb device-config: server returned %s", displayDash(res.Value))
+	}
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Previous: from, Diff: diffs})
 	}
 	return nil
 }

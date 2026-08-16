@@ -25,10 +25,19 @@ type cerebrumStateWant struct {
 	SrcMne     bool
 	DstMne     bool
 	LvlMne     bool
+	DestLock   bool // DEST_LOCK snapshot (LOCK_STATE + LOCKED_BY per dest x level)
 	// StrictMne: a refused *_MNE obtain is an error (import needs live state
 	// to diff against) instead of a warn-and-empty (export's degrade).
 	StrictMne bool
 	Verb      string // message prefix: "export" / "import"
+}
+
+// cerebrumLockSpec is one DEST_LOCK cell of the live snapshot.
+type cerebrumLockSpec struct {
+	Dest     string
+	Level    string
+	State    string // LOCK_STATE: LOCKED / PROTECTED / RELEASED / ... (live enum)
+	LockedBy string
 }
 
 // cerebrumState is the raw collected snapshot (un-deduped, un-collapsed).
@@ -37,6 +46,7 @@ type cerebrumState struct {
 	Src        []cerebrumMneRow
 	Dst        []cerebrumMneRow
 	Lvl        []cerebrumMneRow
+	Locks      []cerebrumLockSpec
 	CrossLevel int // routes skipped: SRCE_LEVEL != DEST_LEVEL (shuffle parked)
 }
 
@@ -86,6 +96,13 @@ func cerebrumObtainState(ctx context.Context, sess *cerebrum.Session, router, de
 			if m := primaryMnemonic(rc); m != "" && rc.LevelID != "" {
 				st.Lvl = append(st.Lvl, cerebrumMneRow{ID: rc.LevelID, Mnemonic: m, Alts: altMnemonics(rc)})
 			}
+		case "DEST_LOCK":
+			if rc.Lock != nil && rc.DestID != "" {
+				st.Locks = append(st.Locks, cerebrumLockSpec{
+					Dest: rc.DestID, Level: rc.LevelID,
+					State: string(rc.Lock.LockState), LockedBy: rc.Lock.LockedBy,
+				})
+			}
 		}
 		mu.Unlock()
 		kick()
@@ -122,6 +139,9 @@ func cerebrumObtainState(ctx context.Context, sess *cerebrum.Session, router, de
 	}
 	if want.LvlMne {
 		plan = append(plan, obtainItem{"LEVEL_MNE", &codec.RoutingChange{Type: "LEVEL_MNE", IPAddress: router, DeviceType: codec.DeviceType(deviceType), LevelID: "*"}})
+	}
+	if want.DestLock {
+		plan = append(plan, obtainItem{"DEST_LOCK", &codec.RoutingChange{Type: "DEST_LOCK", IPAddress: router, DeviceType: codec.DeviceType(deviceType), DestID: "*", LevelID: "*"}})
 	}
 	if len(plan) == 0 {
 		return st, nil
@@ -174,6 +194,7 @@ collect:
 		Src:        append([]cerebrumMneRow(nil), st.Src...),
 		Dst:        append([]cerebrumMneRow(nil), st.Dst...),
 		Lvl:        append([]cerebrumMneRow(nil), st.Lvl...),
+		Locks:      append([]cerebrumLockSpec(nil), st.Locks...),
 		CrossLevel: st.CrossLevel,
 	}
 	return out, nil
