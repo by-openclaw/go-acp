@@ -57,6 +57,42 @@ func TestParseCategoryChange_BadItemChildren(t *testing.T) {
 	}
 }
 
+func TestParseDeviceChange_ValueChangeEventTopLevelAttr(t *testing.T) {
+	// Live NOC frame 2026-08-16 (CONVERT audio delay, VALUE SUBSCRIBE):
+	// change events carry the new value as a TOP-LEVEL attribute with no
+	// OBJECT_VALUE child — the decoder synthesizes one so consumers see a
+	// single shape.
+	wire := `<DEVICE_CHANGE TYPE="VALUE" IP_ADDRESS="10.44.72.28" DEVICE_NAME="bm-n-nncvt-001 " SUB_DEVICE="1" OBJECT="PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay" VALUE="2.000000"/>`
+	f, err := Decode([]byte(wire))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := f.Device
+	if d == nil || len(d.ObjectValues) != 1 {
+		t.Fatalf("ObjectValues = %+v", d)
+	}
+	ov := d.ObjectValues[0]
+	if ov.Value != "2.000000" || !ov.Available || ov.Object != "PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay" {
+		t.Errorf("synthesized value = %+v", ov)
+	}
+}
+
+func TestParseDeviceChange_ValueDescriptorMinMaxStep(t *testing.T) {
+	// Live NOC snapshot 2026-08-16: the full descriptor carries MIN/MAX/
+	// STEP range attrs on FLOAT objects.
+	wire := `<DEVICE_CHANGE TYPE="VALUE" IP_ADDRESS="10.44.72.28" DEVICE_NAME="bm-n-nncvt-001 " SUB_DEVICE="1" OBJECT="PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay">` +
+		`<OBJECT_VALUE OBJECT="PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay" VALUE="0.000000" AVAILABLE="1" DATA_TYPE="FLOAT" READABLE="1" WRITABLE="1" MIN="0.000000" MAX="3000.000000" STEP="1.000000" DEFAULT="0.000000"/>` +
+		`</DEVICE_CHANGE>`
+	f, err := Decode([]byte(wire))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ov := f.Device.ObjectValue
+	if ov == nil || ov.Min != "0.000000" || ov.Max != "3000.000000" || ov.Step != "1.000000" || ov.Default != "0.000000" {
+		t.Errorf("descriptor = %+v", ov)
+	}
+}
+
 func TestParseDeviceChange_DetailsPositionalSubDevices(t *testing.T) {
 	// Live NOC frame 2026-08-16 (Neuron shelf bm-n-nnshf-004, DEVICE-class
 	// view): SUB_DEVICES carries positional <DEVICE_N TYPE="model"

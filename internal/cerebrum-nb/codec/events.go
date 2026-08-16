@@ -290,6 +290,9 @@ type DeviceObjectValue struct {
 	Units     string
 	Label     string
 	Default   string
+	Min       string // §5.4.3 range attrs (live 2026-08-16: MIN/MAX/STEP on FLOAT objects)
+	Max       string
+	Step      string
 	EnumList  []string // ENUM_LIST="On,Off" split on comma
 }
 

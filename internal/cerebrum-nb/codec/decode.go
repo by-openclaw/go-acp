@@ -515,7 +515,8 @@ func parseDeviceChange(e *Element) *DeviceChange {
 	}
 	// TYPE=VALUE: one or more <OBJECT_VALUE …/> children (§5.4.3 p29).
 	// A scalar object yields one; a group / table / wildcard path yields
-	// several. The full 0v16 descriptor is captured per entry.
+	// several. The full 0v16 descriptor is captured per entry, incl. the
+	// MIN/MAX/STEP range attrs (live 2026-08-16, CONVERT audio delay).
 	for _, ov := range e.ChildrenNamed("object_value") {
 		d.ObjectValues = append(d.ObjectValues, DeviceObjectValue{
 			Object:    ov.Attr("object"),
@@ -527,11 +528,27 @@ func parseDeviceChange(e *Element) *DeviceChange {
 			Units:     ov.Attr("units"),
 			Label:     ov.Attr("label"),
 			Default:   ov.Attr("default"),
+			Min:       ov.Attr("min"),
+			Max:       ov.Attr("max"),
+			Step:      ov.Attr("step"),
 			EnumList:  splitCSV(ov.Attr("enum_list")),
 		})
 	}
 	if len(d.ObjectValues) > 0 {
 		d.ObjectValue = &d.ObjectValues[0]
+	}
+	// Live-wire change-event shape (2026-08-16): after a VALUE SUBSCRIBE,
+	// each change arrives with the new value as a TOP-LEVEL attribute and
+	// NO OBJECT_VALUE child:
+	//   <DEVICE_CHANGE TYPE="VALUE" … OBJECT="…" VALUE="2.000000"/>
+	// Surface it as a synthesized ObjectValue so consumers see one shape.
+	if len(d.ObjectValues) == 0 && d.Type == "VALUE" {
+		if v := e.Attr("value"); v != "" {
+			d.ObjectValues = append(d.ObjectValues, DeviceObjectValue{
+				Object: d.Object, Value: v, Available: true,
+			})
+			d.ObjectValue = &d.ObjectValues[0]
+		}
 	}
 	if subs := e.Child("sub_devices"); subs != nil {
 		for _, child := range subs.ChildrenNamed("device") {

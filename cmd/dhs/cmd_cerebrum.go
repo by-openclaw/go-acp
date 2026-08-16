@@ -809,6 +809,15 @@ func cerebrumDeviceValue(_ context.Context, args []string) error {
 		if ov.Label != "" {
 			line += fmt.Sprintf(" label=%q", ov.Label)
 		}
+		if ov.Min != "" || ov.Max != "" {
+			line += fmt.Sprintf(" range=%s..%s", ov.Min, ov.Max)
+		}
+		if ov.Step != "" {
+			line += " step=" + ov.Step
+		}
+		if ov.Default != "" {
+			line += " default=" + ov.Default
+		}
 		if len(ov.EnumList) > 0 {
 			line += fmt.Sprintf(" enum=%s", strings.Join(ov.EnumList, "|"))
 		}
@@ -1226,8 +1235,11 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	}
 
 	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
-		if f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "" {
-			return
+		switch {
+		case f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "":
+			return // spurious §1.6 deviation
+		case f.Kind == codec.KindAck:
+			return // transaction plumbing, not an event
 		}
 		printEventLabeled(f, nil)
 	})
