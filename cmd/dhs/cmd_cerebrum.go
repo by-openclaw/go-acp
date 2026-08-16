@@ -218,7 +218,7 @@ VERBS
   Verb                     Wire
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
-  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop
+  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0]
   route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
   list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE]
   list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE]
@@ -507,6 +507,17 @@ func cerebrumConnect(_ context.Context, args []string) error {
 }
 
 func cerebrumListen(ctx context.Context, args []string) error {
+	// --router points the ROUTING_CHANGE subscriptions at a specific
+	// router device instead of the route-master sentinel — the live
+	// experiment "does a crosspoint change surface per-device or only on
+	// the Routemaster?".
+	router, args, err := extractStringFlag(args, "--router")
+	if err != nil {
+		return err
+	}
+	if router == "" {
+		router = "0.0.0.0"
+	}
 	p, sess, _, _, err := connectAndLogin(args, "listen")
 	if err != nil {
 		return err
@@ -535,15 +546,15 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		// row-specific ID wildcards from spec §5.1; missing them yields
 		// NACK ONE_OR_MORE_EVENTS_INVALID.
 		{"ROUTING_CHANGE TYPE=ROUTE", &codec.RoutingChange{
-			Type: "ROUTE", IPAddress: "0.0.0.0", DeviceType: codec.DeviceType("ROUTER"),
+			Type: "ROUTE", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
 			DestID: "*", LevelID: "*",
 		}},
 		{"ROUTING_CHANGE TYPE=SRCE_LOCK", &codec.RoutingChange{
-			Type: "SRCE_LOCK", IPAddress: "0.0.0.0", DeviceType: codec.DeviceType("ROUTER"),
+			Type: "SRCE_LOCK", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
 			SrceID: "*",
 		}},
 		{"ROUTING_CHANGE TYPE=DEST_LOCK", &codec.RoutingChange{
-			Type: "DEST_LOCK", IPAddress: "0.0.0.0", DeviceType: codec.DeviceType("ROUTER"),
+			Type: "DEST_LOCK", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
 			DestID: "*", LevelID: "*",
 		}},
 		{"CATEGORY_CHANGE TYPE=CATEGORY_LIST", &codec.CategoryChange{Type: "CATEGORY_LIST"}},
