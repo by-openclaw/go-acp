@@ -885,8 +885,15 @@ func cerebrumSalvoInstanceDetails(_ context.Context, args []string) error {
 	s := got.Salvo
 	fmt.Printf("group       %s\n", s.Group)
 	fmt.Printf("instance    %s\n", s.Instance)
-	if s.InstanceDetails != nil {
-		fmt.Printf("available   %s\n", boolFlag(s.InstanceDetails.Available))
+	if d := s.InstanceDetails; d != nil {
+		fmt.Printf("available   %s\n", boolFlag(d.Available))
+		fmt.Printf("active      %s\n", boolFlag(d.Active))
+		if d.Description != "" {
+			fmt.Printf("description %s\n", d.Description)
+		}
+		if d.Date != "" || d.Time != "" {
+			fmt.Printf("saved       %s %s\n", d.Date, d.Time)
+		}
 	}
 	return nil
 }
