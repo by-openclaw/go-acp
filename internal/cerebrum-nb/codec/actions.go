@@ -72,10 +72,18 @@ const (
 	LockLockedPath    LockKind = "LOCKED_PATH"
 	LockProtectedPath LockKind = "PROTECTED_PATH"
 
+	// Wire-actual, NOT spec (live NOC 2026-08-16): the clearing action a
+	// real Cerebrum ACCEPTS — and the LOCK_STATE it reports for cleared
+	// locks — is RELEASED, a sixth value absent from the §3.2 table and
+	// the worked examples. The spec's RELEASE/PROTECT and §3.2's
+	// UNLOCKED are all NACKed 8 as actions on that server.
+	LockReleased LockKind = "RELEASED"
+
 	// Deprecated: not in the §3.2 table. The 4.1.2/4.1.3 worked
 	// examples (p11-12) still show LOCK="RELEASE"/"PROTECT" verbs, so
-	// these remain valid action arguments, but they are not LOCK_STATE
-	// values a device reports back.
+	// these remain valid action arguments per the PDF, but a live NOC
+	// Cerebrum NACKs both (see LockReleased) and they are not
+	// LOCK_STATE values a device reports back.
 	LockProtect LockKind = "PROTECT"
 	LockRelease LockKind = "RELEASE"
 )

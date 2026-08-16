@@ -54,6 +54,7 @@ func TestCerebrumWriteVerbsValidateFlags(t *testing.T) {
 		{"salvo-bad-op", []string{"salvo", "h", "--op", "frob", "--group", "G"}, "unknown --op"},
 		{"salvo-no-group", []string{"salvo", "h", "--op", "run"}, "--group is required"},
 		{"salvo-rename-no-name", []string{"salvo", "h", "--op", "rename", "--group", "G"}, "--new-name is required"},
+		{"salvo-desc-no-text", []string{"salvo", "h", "--op", "description", "--group", "G"}, "--description is required"},
 		// category: missing/unknown op, missing category.
 		{"cat-no-op", []string{"category", "h", "--category", "C"}, "--op is required"},
 		{"cat-bad-op", []string{"category", "h", "--op", "frob", "--category", "C"}, "unknown --op"},
@@ -99,9 +100,29 @@ func TestCerebrumWriteVerbsRequireHost(t *testing.T) {
 	}
 }
 
+// TestWriteVerbPortReachesDial pins the dropped-connection-flags fix: the §4
+// write verbs (and obtain-datastore) parse the shared connection flags in
+// their own FlagSet, and those values MUST reach the dialer. Before the fix
+// they re-parsed only the leftover host, silently dialing the default port.
+// Port 1 on loopback refuses instantly; the dial error must name it.
+func TestWriteVerbPortReachesDial(t *testing.T) {
+	cases := [][]string{
+		{"salvo", "--op", "run", "--group", "G", "--user", "u", "--pass", "p", "--port", "1", "--timeout", "500ms", "127.0.0.1"},
+		{"obtain-datastore", "--name", "x", "--port", "1", "--timeout", "500ms", "127.0.0.1"},
+	}
+	for _, args := range cases {
+		t.Run(args[0], func(t *testing.T) {
+			err := runCerebrum(context.Background(), args)
+			if err == nil || !strings.Contains(err.Error(), ":1") {
+				t.Fatalf("verb %q: want dial error naming port 1, got %v", args[0], err)
+			}
+		})
+	}
+}
+
 // TestSalvoOpType / TestCategoryOpType pin the op -> wire TYPE maps.
 func TestSalvoOpType(t *testing.T) {
-	cases := map[string]string{"run": "RUN", "save": "SAVE", "rename": "RENAME", "delete": "DELETE"}
+	cases := map[string]string{"run": "RUN", "save": "SAVE", "rename": "RENAME", "description": "DESCRIPTION", "delete": "DELETE"}
 	for in, want := range cases {
 		got, err := salvoOpType(in)
 		if err != nil || got != want {

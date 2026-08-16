@@ -36,7 +36,7 @@ user-facing CLI reference.
 | `device-config` | `<DEVICE_CONFIGURATION TYPE='ADD\|MODIFY\|REMOVE'/>` — the 0v16 §4.5 device-tree CRUD command, `--device-type generic\|panel\|router\|snmp` |
 | `set-mnemonic` | `<action><routing TYPE='*_MNE'/></action>` — set a level / source / dest mnemonic |
 | `set-tags` | `<action><routing TYPE='RM_*_TAGS'/></action>` — Routemaster source / dest tags |
-| `salvo` | `<action><salvo TYPE='…'/></action>` — `--op run\|save\|rename\|delete` |
+| `salvo` | `<action><salvo TYPE='…'/></action>` — `--op run\|save\|rename\|description\|delete` |
 | `category` | `<action><category TYPE='…'/></action>` — `--op create\|modify\|delete` |
 | `set-value` | `<action><device TYPE='SET_VALUE'/></action>` — write a device object value |
 
