@@ -222,6 +222,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	lvlPath := fs.String("levels", "", "level-mnemonic CSV to import (columns level,mnemonic — LEVEL_MNE, 0v16 §4.1.4)")
 	catSrcPath := fs.String("cat-src", "", "SRC category CSV (category,type,value — row order = slot order; builds/converges the navigation categories; DEST items rejected)")
 	catDstPath := fs.String("cat-dst", "", "DST category CSV (same shape; SOURCE items rejected)")
+	catMixedPath := fs.String("cat-mixed", "", "mixed category CSV (same shape; both kinds legal — export writes genuinely mixed-subtree categories here)")
 	inDir := fs.String("in-dir", "", "directory holding an export set: <prefix>-xpoint.csv / -src.csv / -dst.csv / -level.csv / -cat-src.csv / -cat-dst.csv (the exact files `export --out-dir` wrote; files absent from the dir are simply out of scope)")
 	prefix := fs.String("prefix", "cerebrum", "file prefix used with --in-dir (same default as export)")
 	check := fs.Bool("check", false, "dry-run: read live state, report would_change per cell, send nothing")
@@ -266,11 +267,12 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		resolve(lvlPath, "-level.csv")
 		resolve(catSrcPath, "-cat-src.csv")
 		resolve(catDstPath, "-cat-dst.csv")
-		fmt.Fprintf(os.Stderr, "cerebrum-nb import: --in-dir resolved xpoint=%s src=%s dst=%s levels=%s cat-src=%s cat-dst=%s\n",
-			orDash(xp), orDash(*srcPath), orDash(*dstPath), orDash(*lvlPath), orDash(*catSrcPath), orDash(*catDstPath))
+		resolve(catMixedPath, "-cat-mixed.csv")
+		fmt.Fprintf(os.Stderr, "cerebrum-nb import: --in-dir resolved xpoint=%s src=%s dst=%s levels=%s cat-src=%s cat-dst=%s cat-mixed=%s\n",
+			orDash(xp), orDash(*srcPath), orDash(*dstPath), orDash(*lvlPath), orDash(*catSrcPath), orDash(*catDstPath), orDash(*catMixedPath))
 	}
-	if xp == "" && *srcPath == "" && *dstPath == "" && *lvlPath == "" && *catSrcPath == "" && *catDstPath == "" {
-		return fmt.Errorf("cerebrum-nb import: nothing to import (pass --xpoint / --src / --dst / --levels / --cat-src / --cat-dst, or --in-dir DIR --prefix P)")
+	if xp == "" && *srcPath == "" && *dstPath == "" && *lvlPath == "" && *catSrcPath == "" && *catDstPath == "" && *catMixedPath == "" {
+		return fmt.Errorf("cerebrum-nb import: nothing to import (pass --xpoint / --src / --dst / --levels / --cat-src / --cat-dst / --cat-mixed, or --in-dir DIR --prefix P)")
 	}
 
 	// Parse everything up front so a malformed file fails before any wire I/O.
@@ -338,7 +340,11 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	catDefs := append(append([]cerebrumCatDef{}, catSrcDefs...), catDstDefs...)
+	catMixedDefs, err := loadCat(*catMixedPath, "mixed")
+	if err != nil {
+		return err
+	}
+	catDefs := append(append(append([]cerebrumCatDef{}, catSrcDefs...), catDstDefs...), catMixedDefs...)
 
 	// Ensure semantics (ADR-0007): read live state, diff, converge only the
 	// differences. --check reports would_change and sends nothing. Both need
@@ -625,13 +631,24 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 		return cerr
 	}
 	srcPick, dstPick, mixed := classifyCerebrumCategories(catNames, catDetails)
-	if len(mixed) > 0 {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb export: WARNING — %d categor(ies) carry BOTH source and dest resources (written to both files): %s\n", len(mixed), strings.Join(mixed, ", "))
+	// Mixed-subtree categories get their OWN file so the src/dst files stay
+	// pure (their parsers reject the other kind — round-trip must hold).
+	mixedPick := map[string]bool{}
+	for _, m := range mixed {
+		mixedPick[m] = true
+		delete(srcPick, m)
+		delete(dstPick, m)
 	}
 	files = append(files,
 		struct{ name, content string }{*prefix + "-cat-src.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, srcPick, catDetails))},
 		struct{ name, content string }{*prefix + "-cat-dst.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, dstPick, catDetails))},
 	)
+	if len(mixed) > 0 {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb export: %d categor(ies) carry BOTH source and dest resources in their subtree — written to %s-cat-mixed.csv: %s\n", len(mixed), *prefix, strings.Join(mixed, ", "))
+		files = append(files,
+			struct{ name, content string }{*prefix + "-cat-mixed.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, mixedPick, catDetails))},
+		)
+	}
 	for _, f := range files {
 		path := filepath.Join(*outDir, f.name)
 		if err := os.WriteFile(path, []byte(f.content), 0o644); err != nil {

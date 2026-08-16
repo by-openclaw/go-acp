@@ -94,12 +94,15 @@ func parseCerebrumCatCSV(data []byte, kind, srcName string) ([]cerebrumCatDef, e
 		switch kind {
 		case "src":
 			if typ == "DEST" {
-				return nil, fmt.Errorf("%s line %d: DEST item in the SRC category file — keep SRC and DST files separate", srcName, start+n+2)
+				return nil, fmt.Errorf("%s line %d: DEST item in the SRC category file — keep SRC and DST files separate (genuinely mixed categories belong in the -cat-mixed.csv file)", srcName, start+n+2)
 			}
 		case "dst":
 			if typ == "SOURCE" || typ == "SRCE" {
-				return nil, fmt.Errorf("%s line %d: %s item in the DST category file — keep SRC and DST files separate", srcName, start+n+2, typ)
+				return nil, fmt.Errorf("%s line %d: %s item in the DST category file — keep SRC and DST files separate (genuinely mixed categories belong in the -cat-mixed.csv file)", srcName, start+n+2, typ)
 			}
+		case "mixed":
+			// both kinds legal — the file for categories whose subtree
+			// carries sources AND dests (e.g. a master category).
 		}
 		i, seen := byName[cat]
 		if !seen {

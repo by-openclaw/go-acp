@@ -48,6 +48,12 @@ func TestParseCerebrumCatCSV(t *testing.T) {
 			}
 		})
 	}
+
+	// kind=mixed accepts both resource kinds (the -cat-mixed.csv file).
+	mixedCSV := "category,type,value\nDESTINATIONS,DEST,4201\nDESTINATIONS,CATEGORY,SRC-ALL\nDESTINATIONS,SOURCE,7\n"
+	if _, err := parseCerebrumCatCSV([]byte(mixedCSV), "mixed", "m.csv"); err != nil {
+		t.Errorf("mixed kind must accept both: %v", err)
+	}
 }
 
 // TestDiffCerebrumCategory pins the per-slot ensure: identical grid = no
