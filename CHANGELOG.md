@@ -45,6 +45,15 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.16.0](https://github.com/by-openclaw/go-acp/compare/v0.15.0...v0.16.0) (2026-08-16)
+
+
+### Features
+
+* **cerebrum-nb:** evidence-grade wireshark dissector ([#689](https://github.com/by-openclaw/go-acp/issues/689)) ([70d10bc](https://github.com/by-openclaw/go-acp/commit/70d10bc5c460aa4520d8b8730788e9ccd58f544a))
+* **cerebrum-nb:** per-router export/import scope + lock file ([#688](https://github.com/by-openclaw/go-acp/issues/688)) ([8abf331](https://github.com/by-openclaw/go-acp/commit/8abf3316548c970938b0ebf36972b0e34465056e))
+* **cerebrum-nb:** verb contract - converge + --output json + exit codes ([#684](https://github.com/by-openclaw/go-acp/issues/684)) ([8ffaaac](https://github.com/by-openclaw/go-acp/commit/8ffaaac99e79b40ac2b3dc112cab1d92e52d8085))
+
 ## [0.15.0](https://github.com/by-openclaw/go-acp/compare/v0.14.0...v0.15.0) (2026-08-16)
 
 
