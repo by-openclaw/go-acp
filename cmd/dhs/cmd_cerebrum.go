@@ -230,7 +230,7 @@ VERBS
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
   list-categories          OBTAIN <category_change type='CATEGORY_LIST'/>
   category-details         OBTAIN <category_change type='CATEGORY_DETAILS'/>  --category NAME
-  tree                     NB catalogue tree — canonical renderer (same as <proto> tree). Categories (§5.2: categories → SOURCE/DEST/CATEGORY items) + Salvos (§5.3: groups → instances → metadata)  [--domain salvos|categories|all] [--format ascii|plantuml] [--path P] [--depth N] [--filter S] [--out FILE]
+  tree                     NB catalogue tree — canonical renderer (same as <proto> tree). Categories (§5.2: categories → SOURCE/DEST/CATEGORY items) + Salvos (§5.3: groups → instances → metadata)  [--domain salvos|categories|all] [--alt N | --no-mne] [--format ascii|plantuml] [--path P] [--depth N] [--filter S] [--out FILE]
   list-salvo-groups        OBTAIN <salvo_change type='GROUP_LIST'/>
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME

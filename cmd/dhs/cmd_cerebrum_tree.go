@@ -36,6 +36,8 @@ func cerebrumTree(_ context.Context, args []string) error {
 	filter := fs.String("filter", "", "case-insensitive substring filter (drops non-matching lines)")
 	focus := fs.String("path", "", `focus subtree at this dotted path (e.g. "Salvos.Salvo Group 1" or "Categories.SRC-INTERPHONIE")`)
 	domain := fs.String("domain", "all", "which catalogue(s) to walk: salvos | categories | all")
+	alt := fs.Int("alt", 0, "label set for SOURCE/DEST item annotation: 0 = primary mnemonic, N = alternate set N (ALT_MNE, e.g. 1 = Panels on the NOC)")
+	noMne := fs.Bool("no-mne", false, "skip the mnemonic join — show raw item IDs only (also skips the two SRCE/DEST_MNE wildcard reads)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -73,7 +75,7 @@ func cerebrumTree(_ context.Context, args []string) error {
 
 	var objs []consumer.Object
 	if *domain == "categories" || *domain == "all" {
-		catObjs, cerr := cerebrumCategoryTreeObjects(sess, cf.timeout)
+		catObjs, cerr := cerebrumCategoryTreeObjects(sess, cf.timeout, *alt, *noMne)
 		if cerr != nil {
 			return cerr
 		}
@@ -166,7 +168,7 @@ func cerebrumSalvoTreeObjects(sess *cerebrum.Session, timeout time.Duration) ([]
 // the same reads list-sources / list-dests use). Nested CATEGORY, TEXT,
 // FILE, CUSTOM rows render verbatim. The index prefix preserves the
 // category's slot order in the sorted tree.
-func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration) ([]consumer.Object, error) {
+func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration, alt int, noMne bool) ([]consumer.Object, error) {
 	list, err := obtainSingleCategoryChange(sess, timeout,
 		&codec.CategoryChange{Type: "CATEGORY_LIST"}, "CATEGORY_LIST")
 	if err != nil {
@@ -176,20 +178,29 @@ func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration) 
 		return nil, fmt.Errorf("cerebrum-nb tree: no CATEGORY_LIST reply within timeout")
 	}
 
-	// Mnemonic join: ID -> primary label for SOURCE and DEST item rows.
-	st, err := cerebrumObtainState(context.Background(), sess, "0.0.0.0", "ROUTER", 15*time.Second, cerebrumStateWant{
-		SrcMne: true, DstMne: true, Verb: "tree",
-	})
-	if err != nil {
-		return nil, err
-	}
+	// Mnemonic join: ID -> label for SOURCE and DEST item rows. --alt picks
+	// the set (0 = primary, N = ALT_MNE slot N); --no-mne skips the join.
 	srcName := map[string]string{}
-	for _, r := range st.Src {
-		srcName[r.ID] = r.Mnemonic
-	}
 	dstName := map[string]string{}
-	for _, r := range st.Dst {
-		dstName[r.ID] = r.Mnemonic
+	if !noMne {
+		st, serr := cerebrumObtainState(context.Background(), sess, "0.0.0.0", "ROUTER", 15*time.Second, cerebrumStateWant{
+			SrcMne: true, DstMne: true, Verb: "tree",
+		})
+		if serr != nil {
+			return nil, serr
+		}
+		pick := func(r cerebrumMneRow) string {
+			if alt <= 0 {
+				return r.Mnemonic
+			}
+			return r.Alts[alt]
+		}
+		for _, r := range st.Src {
+			srcName[r.ID] = pick(r)
+		}
+		for _, r := range st.Dst {
+			dstName[r.ID] = pick(r)
+		}
 	}
 
 	var objs []consumer.Object
