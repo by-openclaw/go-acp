@@ -84,7 +84,20 @@ func cerebrumTree(_ context.Context, args []string) error {
 		if *subDev == "" {
 			return fmt.Errorf("cerebrum-nb tree: --device mode needs --sub-device (index from device-details)")
 		}
-		devObjs, derr := cerebrumDeviceTreeObjects(sess, cf.timeout, *device, *byName, *subDev, *focus, *maxReq)
+		// OBJECT="" is refused by the server (live: NACK 10) — the device
+		// root cannot be listed, so the walk is seeded from start groups:
+		// --path takes one group or a ';'-separated list (e.g. the top
+		// folders from the Object Browser).
+		var starts []string
+		for _, s := range strings.Split(*focus, ";") {
+			if s = strings.TrimSpace(s); s != "" && s != "." {
+				starts = append(starts, s)
+			}
+		}
+		if len(starts) == 0 {
+			return fmt.Errorf("cerebrum-nb tree: --device mode needs --path with one or more start groups (';'-separated) — the server refuses an empty OBJECT, so the root must be seeded (top folders from the device's Object Browser)")
+		}
+		devObjs, derr := cerebrumDeviceTreeObjects(sess, cf.timeout, *device, *byName, *subDev, starts, *maxReq)
 		if derr != nil {
 			return derr
 		}
@@ -167,10 +180,7 @@ func cerebrumExpandFocus(objs []consumer.Object, focus string) string {
 // re-classifies "single self-echo" answers as unavailable leaves. start
 // "" (or the "." sentinel) walks from the device root; maxReq caps the
 // obtain count.
-func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, start string, maxReq int) ([]consumer.Object, error) {
-	if start == "." {
-		start = ""
-	}
+func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev string, starts []string, maxReq int) ([]consumer.Object, error) {
 	rootLabel := strings.TrimSpace(device)
 	requests := 0
 	obtain := func(object string) ([]codec.DeviceObjectValue, error) {
@@ -247,8 +257,10 @@ func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, de
 		}
 		return nil
 	}
-	if err := walk(start); err != nil {
-		return nil, err
+	for _, start := range starts {
+		if err := walk(start); err != nil {
+			return nil, err
+		}
 	}
 	if truncated {
 		fmt.Fprintf(os.Stderr, "cerebrum-nb tree: WARNING — walk truncated at --max-requests=%d obtains (raise it for the full tree)\n", maxReq)
