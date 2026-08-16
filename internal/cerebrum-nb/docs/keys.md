@@ -124,6 +124,13 @@ Three device classes:
 | `SNMP` | SNMP-managed device |
 | `Device` | Generic non-router, non-SNMP device |
 
+> **Wire-actual, NOT spec (live 2026-08-16):** the server is
+> case-sensitive on this attribute's VALUE and accepts only the
+> UPPERCASE forms — `DEVICE_TYPE="Router"` (the spec's own spelling)
+> NACKs 10, `DEVICE_TYPE="ROUTER"` answers. Same spec-vs-wire case
+> pattern as element names ("Element case on the wire" above). Encoder
+> policy: always emit UPPERCASE; CLI flags accept any case.
+
 ### LOCK (§3.2)
 
 Valid values for the `LOCK` / `lock` attribute on routing
