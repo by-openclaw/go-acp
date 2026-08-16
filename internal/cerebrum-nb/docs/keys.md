@@ -142,9 +142,12 @@ Three device classes:
 > cleared locks report `LOCK_STATE="RELEASED"`). The spec's documented
 > clearing forms all NACK 8: §4.1.2/4.1.3 `RELEASE`, legacy `PROTECT`,
 > §3.2 `UNLOCKED`. Cross-session release by the same NB user works with
-> RELEASED. `unlock` sends RELEASED by default. EVS follow-ups: confirm
-> RELEASED is the sanctioned clearing action; cross-USER release rules
-> (the UI's Admin could release YOB's lock).
+> RELEASED. `unlock` sends RELEASED by default. **All-level form
+> verified** (2026-08-16): omitting LEVEL locks every existing level in
+> one action (14 per-level events observed; nonexistent levels no-op
+> silently). EVS follow-ups: confirm RELEASED is the sanctioned
+> clearing action; cross-USER release rules (the UI's Admin could
+> release YOB's lock).
 
 Valid values for the `LOCK` / `lock` attribute on routing
 actions/events. Observed from spec examples:
