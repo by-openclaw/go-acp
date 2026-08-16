@@ -627,7 +627,11 @@ func cerebrumDeviceDetails(_ context.Context, args []string) error {
 		dc.IPAddress = device
 	}
 	if deviceType != "" {
-		dc.DeviceType = codec.DeviceType(deviceType)
+		// Wire-actual: the server is case-sensitive on DEVICE_TYPE values
+		// and accepts the UPPERCASE forms only (live 2026-08-16: "Router"
+		// NACKs 10, "ROUTER" answers) — normalize so operators can type
+		// either.
+		dc.DeviceType = codec.DeviceType(strings.ToUpper(deviceType))
 	}
 	obCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
