@@ -524,9 +524,33 @@ func cerebrumListen(ctx context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 
-	// Print every dispatched event. Wildcard-everything subscription.
+	// Source-label join: ROUTE rows never carry a source name (§5.1.1), so
+	// pre-fetch the source catalogue once and fill labels client-side.
+	// Lenient — a NACK (e.g. per-router MNE not granted) just means events
+	// print IDs only.
+	srcNames := map[string]string{}
+	if sess.LoggedIn() {
+		if st, serr := cerebrumObtainState(ctx, sess, router, "ROUTER", 10*time.Second, cerebrumStateWant{
+			SrcMne: true, Verb: "listen",
+		}); serr == nil {
+			for _, r := range st.Src {
+				srcNames[r.ID] = r.Mnemonic
+			}
+			fmt.Fprintf(os.Stderr, "source labels: %d loaded for %s\n", len(srcNames), router)
+		} else {
+			fmt.Fprintf(os.Stderr, "source labels unavailable for %s (%v) — events print IDs only\n", router, serr)
+		}
+	}
+
+	// Print every dispatched event. Wildcard-everything subscription. The
+	// spurious MTID-less WILDCARD_COMPLETE the server emits after every
+	// event (§1.6 deviation, live-verified) is suppressed from the display;
+	// MTID-carrying completes (real end-of-snapshot markers) still print.
 	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
-		printEvent(f)
+		if f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "" {
+			return
+		}
+		printEventLabeled(f, srcNames)
 	})
 
 	// Submit one SUBSCRIBE per item, each with its own mtid, so a NACK
@@ -1136,7 +1160,10 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 	return nil
 }
 
-func printEvent(f *codec.Frame) {
+// printEventLabeled renders one dispatched frame; srcNames (optional) joins
+// source labels by ID — the wire never carries a SOURCE_NAME on ROUTE rows
+// (§5.1.1), so listen pre-fetches the catalogue and fills them client-side.
+func printEventLabeled(f *codec.Frame, srcNames map[string]string) {
 	switch f.Kind {
 	case codec.KindRoutingChange:
 		rc := f.Routing
@@ -1145,11 +1172,16 @@ func printEvent(f *codec.Frame) {
 		// top-level srce_id attribute. SRCE_LOCK / DEST_LOCK / *_MNE rows
 		// keep the source on the top-level attrs as before.
 		srceID, srceName := rc.SrceID, rc.SrceName
+		rawID := rc.SrceID
 		if rc.Type == "ROUTE" && rc.RouteSourceID != "" {
+			rawID = rc.RouteSourceID
 			srceID = rc.RouteSourceID
 			if rc.RouteSourceLevelID != "" && rc.RouteSourceLevelID != rc.LevelID {
 				srceID = fmt.Sprintf("%s@lvl%s", rc.RouteSourceID, rc.RouteSourceLevelID)
 			}
+		}
+		if srceName == "" && srcNames != nil {
+			srceName = srcNames[rawID]
 		}
 		fmt.Printf("[routing] %-8s dev=%s/%s srce=%s(%s) dest=%s(%s) lvl=%s(%s)\n",
 			rc.Type, rc.DeviceType, rc.DeviceName,
