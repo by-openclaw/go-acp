@@ -57,6 +57,33 @@ func TestParseCategoryChange_BadItemChildren(t *testing.T) {
 	}
 }
 
+func TestParseDeviceChange_DetailsPositionalSubDevices(t *testing.T) {
+	// Live NOC frame 2026-08-16 (Neuron shelf bm-n-nnshf-004, DEVICE-class
+	// view): SUB_DEVICES carries positional <DEVICE_N TYPE="model"
+	// PRIMARY_STATE SECONDARY_STATE/> children — DEVICE_N like ITEM_N /
+	// ASSOCIATION_N, TYPE = sub-device model (class-filtered: the ROUTER-
+	// class sub-device of the same shelf is absent from the DEVICE view).
+	wire := `<DEVICE_CHANGE TYPE="DETAILS" IP_ADDRESS="10.44.72.27" DEVICE_TYPE="DEVICE">` +
+		`<DETAILS IP1="10.44.72.27" IP2="" NAME="bm-n-nnshf-004" TYPE="bm-n-nnshf-004"/>` +
+		`<SERVICE/>` +
+		`<CONNECTION PRIMARY_STATE="Connection Active" SECONDARY_STATE="Connection Not Configured"/>` +
+		`<SUB_DEVICES><DEVICE_1 TYPE="SHUFFLE-256" PRIMARY_STATE="Connection Active" SECONDARY_STATE="Connection Not Configured"/></SUB_DEVICES>` +
+		`</DEVICE_CHANGE>`
+	f, err := Decode([]byte(wire))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := f.Device
+	if d == nil || len(d.SubDevices) != 1 {
+		t.Fatalf("SubDevices = %+v", d)
+	}
+	sd := d.SubDevices[0]
+	if sd.Index != 1 || sd.DeviceName != "SHUFFLE-256" ||
+		sd.PrimaryState != "Connection Active" || sd.SecondaryState != "Connection Not Configured" {
+		t.Errorf("sub-device = %+v", sd)
+	}
+}
+
 func TestParseDeviceChange_DetailsWithPopulatedSubDevices(t *testing.T) {
 	// §5.4.2 p29-style DETAILS with a populated <SUB_DEVICES> containing
 	// <DEVICE> children — exercises the sub-device loop + the

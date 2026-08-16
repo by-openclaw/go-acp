@@ -550,6 +550,26 @@ func parseDeviceChange(e *Element) *DeviceChange {
 			}
 			d.SubDevices = append(d.SubDevices, entry)
 		}
+		// Live-NOC positional shape (2026-08-16, Neuron shelf): the child
+		// is <DEVICE_N TYPE="model" PRIMARY_STATE="..." SECONDARY_STATE=
+		// "..."/> — DEVICE_N like the ITEM_N / ASSOCIATION_N grids, TYPE
+		// carries the sub-device model name (not the §3.1 class enum).
+		for _, child := range subs.Children {
+			nStr, ok := strings.CutPrefix(child.Name, "device_")
+			if !ok {
+				continue
+			}
+			n, err := strconv.Atoi(nStr)
+			if err != nil {
+				continue
+			}
+			d.SubDevices = append(d.SubDevices, DeviceEntry{
+				Index:          n,
+				DeviceName:     child.Attr("type"),
+				PrimaryState:   child.Attr("primary_state"),
+				SecondaryState: child.Attr("secondary_state"),
+			})
+		}
 	}
 	return d
 }

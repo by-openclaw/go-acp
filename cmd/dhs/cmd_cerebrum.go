@@ -671,6 +671,11 @@ func cerebrumDeviceDetails(_ context.Context, args []string) error {
 	if len(d.SubDevices) > 0 {
 		fmt.Printf("sub_devices  %d\n", len(d.SubDevices))
 		for _, e := range d.SubDevices {
+			if e.PrimaryState != "" || e.SecondaryState != "" {
+				// Positional DEVICE_N shape (live NOC): index + model + states.
+				fmt.Printf("  %02d  %-20s primary=%q secondary=%q\n", e.Index, displayName(e.DeviceName), e.PrimaryState, e.SecondaryState)
+				continue
+			}
 			fmt.Printf("  %-12s %-20s %s\n", e.DeviceType, displayName(e.DeviceName), e.IPAddress)
 		}
 	}

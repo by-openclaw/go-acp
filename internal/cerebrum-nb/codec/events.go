@@ -308,6 +308,16 @@ type DeviceEntry struct {
 	DeviceType  DeviceType   // first instance — convenience accessor
 	DeviceTypes []DeviceType // every <INSTANCE DEVICE_TYPE="..."/> emitted by the server
 	DeviceName  string
+
+	// Index / states populate for the positional SUB_DEVICES shape a live
+	// NOC Cerebrum emits under DETAILS (2026-08-16, Neuron shelf
+	// bm-n-nnshf-004): <SUB_DEVICES><DEVICE_1 TYPE="SHUFFLE-256"
+	// PRIMARY_STATE="Connection Active" SECONDARY_STATE="..."/> — the
+	// child is DEVICE_N (not <DEVICE>) and TYPE carries the sub-device
+	// model, which lands in DeviceName. Index is N.
+	Index          int
+	PrimaryState   string
+	SecondaryState string
 }
 
 // DeviceDetails is the <details> child of a DEVICE_CHANGE TYPE=DETAILS
