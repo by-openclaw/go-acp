@@ -239,7 +239,7 @@ VERBS
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
   set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]
   set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --tags a,b,c
-  salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|delete --group G [--instance I] [--new-name N] [--description D]
+  salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|description|delete --group G [--instance I] [--new-name N] [--description D]
   category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|delete --category C [--index N] [--name N] [--label L] [--description D]
   set-value                ACTION <DEVICE TYPE='SET_VALUE'/>  --device NAME --sub-device X --object Y --value V
   obtain-datastore         OBTAIN <datastore_change name='…'/>  --name PATH
@@ -1471,11 +1471,11 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb salvo", flag.ContinueOnError)
 	_ = newCerebrumFlags(fs)
-	op := fs.String("op", "", "operation: run | save | rename | delete")
+	op := fs.String("op", "", "operation: run | save | rename | description | delete")
 	group := fs.String("group", "", "salvo group")
 	instance := fs.String("instance", "", "salvo instance")
 	newName := fs.String("new-name", "", "new name (rename)")
-	desc := fs.String("description", "", "description (save)")
+	desc := fs.String("description", "", "description text (op=description; §4.3 DESCRIPTION)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -1488,6 +1488,9 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 	}
 	if salvoType == "RENAME" && *newName == "" {
 		return fmt.Errorf("cerebrum-nb salvo: --new-name is required for rename")
+	}
+	if salvoType == "DESCRIPTION" && *desc == "" {
+		return fmt.Errorf("cerebrum-nb salvo: --description is required for description")
 	}
 	p, sess, cf, _, err := connectAndAuth(fs.Args(), "salvo")
 	if err != nil {
@@ -1854,12 +1857,14 @@ func salvoOpType(op string) (string, error) {
 		return "SAVE", nil
 	case "rename":
 		return "RENAME", nil
+	case "description":
+		return "DESCRIPTION", nil
 	case "delete":
 		return "DELETE", nil
 	case "":
-		return "", fmt.Errorf("cerebrum-nb salvo: --op is required (run|save|rename|delete)")
+		return "", fmt.Errorf("cerebrum-nb salvo: --op is required (run|save|rename|description|delete)")
 	default:
-		return "", fmt.Errorf("cerebrum-nb salvo: unknown --op %q (want run|save|rename|delete)", op)
+		return "", fmt.Errorf("cerebrum-nb salvo: unknown --op %q (want run|save|rename|description|delete)", op)
 	}
 }
 

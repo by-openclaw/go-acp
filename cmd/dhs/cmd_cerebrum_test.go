@@ -54,6 +54,7 @@ func TestCerebrumWriteVerbsValidateFlags(t *testing.T) {
 		{"salvo-bad-op", []string{"salvo", "h", "--op", "frob", "--group", "G"}, "unknown --op"},
 		{"salvo-no-group", []string{"salvo", "h", "--op", "run"}, "--group is required"},
 		{"salvo-rename-no-name", []string{"salvo", "h", "--op", "rename", "--group", "G"}, "--new-name is required"},
+		{"salvo-desc-no-text", []string{"salvo", "h", "--op", "description", "--group", "G"}, "--description is required"},
 		// category: missing/unknown op, missing category.
 		{"cat-no-op", []string{"category", "h", "--category", "C"}, "--op is required"},
 		{"cat-bad-op", []string{"category", "h", "--op", "frob", "--category", "C"}, "unknown --op"},
@@ -101,7 +102,7 @@ func TestCerebrumWriteVerbsRequireHost(t *testing.T) {
 
 // TestSalvoOpType / TestCategoryOpType pin the op -> wire TYPE maps.
 func TestSalvoOpType(t *testing.T) {
-	cases := map[string]string{"run": "RUN", "save": "SAVE", "rename": "RENAME", "delete": "DELETE"}
+	cases := map[string]string{"run": "RUN", "save": "SAVE", "rename": "RENAME", "description": "DESCRIPTION", "delete": "DELETE"}
 	for in, want := range cases {
 		got, err := salvoOpType(in)
 		if err != nil || got != want {

@@ -35,7 +35,7 @@ EVS **Cerebrum Northbound API 0v16** (authoritative) — also branded
 | | `list-categories` / `category-details` | category domain (items = SOURCE/DEST names) |
 | | `list-salvo-groups` / `list-salvo-instances` / `salvo-instance-details` | salvo domain |
 | | `obtain-datastore` | data store fetch |
-| Writes | `salvo` (run/save/rename/delete) · `category` (create/modify/delete) · `set-value` · `device-config` | §4 actions |
+| Writes | `salvo` (run/save/rename/description/delete) · `category` (create/modify/delete) · `set-value` · `device-config` | §4 actions |
 
 Common flags: `--port` (default 40007) · `--user/--pass` (or `$DHS_CEREBRUM_USER/_PASS`)
 · `--tls` · `--timeout` · `--debug` (RX/TX XML to stderr) · **`--log FILE`**
