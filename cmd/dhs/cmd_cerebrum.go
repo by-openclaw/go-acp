@@ -243,7 +243,7 @@ VERBS
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
-  lock                     ACTION <ROUTING LOCK='PROTECT'/>   --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] --level ID [--duration S] [--mode locked|protected|locked_path|protected_path|unlocked]
+  lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released]
   unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
   set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]
@@ -1623,12 +1623,23 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
-	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
-	defer cancel()
-	if err := sess.Lock(ctx, *kind, mode, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *level, *duration); err != nil {
-		return fmt.Errorf("cerebrum-nb %s: %w", verb, err)
+	// --level takes one level, a ';'-separated list (client-side expansion,
+	// one action per level — the CSV grammar), or empty = the wire's
+	// all-level form (live-verified: locks every existing level in one
+	// action, nonexistent levels no-op).
+	levels := splitLevelCell(*level)
+	if len(levels) == 0 {
+		levels = []string{""}
 	}
-	fmt.Printf("[%s] OK %s mode=%s srce=%s dest=%s lvl=%s\n", verb, *kind, mode, displayDash(*srce), displayDash(*dest), displayDash(*level))
+	for _, lvl := range levels {
+		ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
+		err := sess.Lock(ctx, *kind, mode, routeTargetFromFlags(*router, *deviceName), *srce, *dest, lvl, *duration)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("cerebrum-nb %s lvl=%s: %w", verb, displayDash(lvl), err)
+		}
+		fmt.Printf("[%s] OK %s mode=%s srce=%s dest=%s lvl=%s\n", verb, *kind, mode, displayDash(*srce), displayDash(*dest), displayDash(lvl))
+	}
 	return nil
 }
 
