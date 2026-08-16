@@ -133,6 +133,17 @@ Three device classes:
 
 ### LOCK (§3.2)
 
+> **Wire-actual, NOT spec (live NOC 2026-08-16, DEST_LOCK on the
+> route-master):** the server ACCEPTS the five-mode set values
+> (`LOCKED` and `PROTECTED` verified; lock visible in the Matrix View)
+> but **NACKs 8 on every clearing value** — the §4.1.2/4.1.3 worked
+> examples' `RELEASE`, the legacy `PROTECT`, and the §3.2 `UNLOCKED`
+> alike — at least from a session other than the one that set the lock
+> (every CLI run is a fresh session). Release worked only via the UI.
+> Open EVS question: how does an NB client release a lock — owner /
+> same-session only, or not at all? Until answered, prefer timed locks
+> (`DURATION`) for automation.
+
 Valid values for the `LOCK` / `lock` attribute on routing
 actions/events. Observed from spec examples:
 
