@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -32,7 +33,7 @@ func cerebrumTree(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb tree", flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
-	format := fs.String("format", "ascii", `output format: "ascii" (default) or "plantuml"`)
+	format := fs.String("format", "ascii", `output format: "ascii" (default), "plantuml" or "json" (structured object rows for playbooks)`)
 	depth := fs.Int("depth", 0, "max render depth from the focus node (0 = unlimited)")
 	out := fs.String("out", "", "write to this file instead of stdout")
 	filter := fs.String("filter", "", "case-insensitive substring filter (drops non-matching lines)")
@@ -50,10 +51,10 @@ func cerebrumTree(_ context.Context, args []string) error {
 	switch *domain {
 	case "sources", "dests", "categories", "salvos", "devices", "all":
 	default:
-		return fmt.Errorf("cerebrum-nb tree: --domain must be sources | dests | categories | salvos | devices | all, got %q", *domain)
+		return cerebrumValErr("tree", fmt.Sprintf("--domain must be sources | dests | categories | salvos | devices | all, got %q", *domain))
 	}
-	if *format != "ascii" && *format != "plantuml" {
-		return fmt.Errorf("cerebrum-nb tree: --format must be \"ascii\" or \"plantuml\", got %q", *format)
+	if *format != "ascii" && *format != "plantuml" && *format != "json" {
+		return cerebrumValErr("tree", fmt.Sprintf("--format must be \"ascii\", \"plantuml\" or \"json\", got %q", *format))
 	}
 
 	// Open --out before any wire traffic so a bad path fails fast (missing
@@ -83,7 +84,7 @@ func cerebrumTree(_ context.Context, args []string) error {
 	var renderFocus string
 	if *device != "" {
 		if *subDev == "" {
-			return fmt.Errorf("cerebrum-nb tree: --device mode needs --sub-device (index from device-details)")
+			return cerebrumValErr("tree", "--device mode needs --sub-device (index from device-details)")
 		}
 		// OBJECT="" is refused by the server (live: NACK 10) — the device
 		// root cannot be listed, so the walk is seeded from start groups:
@@ -96,7 +97,7 @@ func cerebrumTree(_ context.Context, args []string) error {
 			}
 		}
 		if len(starts) == 0 {
-			return fmt.Errorf("cerebrum-nb tree: --device mode needs --path with one or more start groups (';'-separated) — the server refuses an empty OBJECT, so the root must be seeded (top folders from the device's Object Browser)")
+			return cerebrumValErr("tree", "--device mode needs --path with one or more start groups (';'-separated) — the server refuses an empty OBJECT, so the root must be seeded (top folders from the device's Object Browser)")
 		}
 		devObjs, derr := cerebrumDeviceTreeObjects(sess, cf.timeout, *device, *byName, *subDev, starts, *maxReq)
 		if derr != nil {
@@ -142,10 +143,48 @@ func cerebrumTree(_ context.Context, args []string) error {
 		ASCII:    *format == "ascii",
 		Filter:   *filter,
 	}
+	if *format == "json" {
+		return writeCerebrumTreeJSON(writer, objs, renderFocus, *filter, *depth)
+	}
 	if *format == "plantuml" {
 		return renderTreePlantUML(writer, objs, opts)
 	}
 	return renderTree(writer, objs, opts)
+}
+
+// writeCerebrumTreeJSON emits the collected objects as one JSON document —
+// the machine face of the tree verb (ADR-0002 structured output). The
+// renderer flags keep their meaning: --path scopes to the focus subtree,
+// --filter drops non-matching paths, --depth limits segments below the
+// focus node.
+func writeCerebrumTreeJSON(w io.Writer, objs []consumer.Object, focus, filter string, depth int) error {
+	focusSegs := 0
+	if focus != "" {
+		focusSegs = len(strings.Split(focus, "."))
+	}
+	rows := make([]consumer.Object, 0, len(objs))
+	for _, o := range objs {
+		dotted := strings.Join(o.Path, ".")
+		if focus != "" && !strings.EqualFold(dotted, focus) &&
+			!strings.HasPrefix(strings.ToLower(dotted), strings.ToLower(focus)+".") {
+			continue
+		}
+		if depth > 0 && len(o.Path) > focusSegs+depth {
+			continue
+		}
+		if filter != "" && !strings.Contains(strings.ToLower(dotted), strings.ToLower(filter)) {
+			continue
+		}
+		rows = append(rows, o)
+	}
+	b, err := json.Marshal(struct {
+		Objects []consumer.Object `json:"objects"`
+	}{rows})
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(w, string(b))
+	return err
 }
 
 // cerebrumExpandFocus resolves a --path that names a node ANYWHERE in the

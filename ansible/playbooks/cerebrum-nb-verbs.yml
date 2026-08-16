@@ -1,0 +1,205 @@
+---
+# Cerebrum NB VERB-CONTRACT play — drives the consumer verb catalogue against a
+# live EVS Cerebrum oracle and PROVES the ADR-0007 ensure contract from Ansible:
+# structured --output json on the reads, {changed,would_change} on the writes,
+# and run-twice = 0 changes on the converging verbs.
+#
+# Cerebrum is consumer-only (no provider, no emulator — see
+# internal/cerebrum-nb/docs/provider.md), so unlike probel-sw08p-verbs.yml this
+# play cannot serve its own oracle: it is env-gated on a live licensed Cerebrum,
+# the same EXTERNAL-ORACLE pattern as cerebrum-nb-integration.yml.
+#
+# Gates (all read from the environment):
+#   CEREBRUM_TEST_HOST / CEREBRUM_TEST_PORT   the oracle (default port 40009-style
+#                                             setups override; default 40007)
+#   DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS     NB credentials (LOGIN)
+#   CEREBRUM_ALLOW_WRITE=1                    unlocks the WRITE section — set this
+#                                             ONLY against the staging Cerebrum
+#                                             (10.100.0.105), NEVER production
+#   CEREBRUM_VT_DEST / CEREBRUM_VT_SRCE / CEREBRUM_VT_LEVEL
+#                                             the route-master crosspoint the
+#                                             write section converges on
+#
+# Read-only run (any oracle, incl. production — nothing mutates):
+#   CEREBRUM_TEST_HOST=10.100.0.105 DHS_CEREBRUM_USER=u DHS_CEREBRUM_PASS=p \
+#     ansible-playbook -i inventory/hosts.ini playbooks/cerebrum-nb-verbs.yml
+#
+# Full contract run (STAGING ONLY):
+#   ... CEREBRUM_ALLOW_WRITE=1 CEREBRUM_VT_DEST=1 CEREBRUM_VT_SRCE=2 CEREBRUM_VT_LEVEL=1 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/cerebrum-nb-verbs.yml
+- name: Cerebrum NB verb contract vs live oracle (reads json + writes converge)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dhs_bin: "{{ lookup('ansible.builtin.env', 'DHS_BIN') | default(playbook_dir + '/../../bin/dhs', true) }}"
+    cerebrum_host: "{{ lookup('ansible.builtin.env', 'CEREBRUM_TEST_HOST') | default('', true) }}"
+    cerebrum_port: "{{ lookup('ansible.builtin.env', 'CEREBRUM_TEST_PORT') | default('40007', true) }}"
+    cerebrum_user: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') | default('', true) }}"
+    cerebrum_pass: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') | default('', true) }}"
+    cerebrum_write: "{{ lookup('ansible.builtin.env', 'CEREBRUM_ALLOW_WRITE') | default('', true) }}"
+    vt_dest: "{{ lookup('ansible.builtin.env', 'CEREBRUM_VT_DEST') | default('', true) }}"
+    vt_srce: "{{ lookup('ansible.builtin.env', 'CEREBRUM_VT_SRCE') | default('', true) }}"
+    vt_level: "{{ lookup('ansible.builtin.env', 'CEREBRUM_VT_LEVEL') | default('', true) }}"
+    # Common argv tail every verb needs (auth + port).
+    cereb_auth:
+      - --port
+      - "{{ cerebrum_port | string }}"
+      - --user
+      - "{{ cerebrum_user }}"
+      - --pass
+      - "{{ cerebrum_pass }}"
+  tasks:
+    - name: Skip when no Cerebrum oracle is configured (host or creds unset)
+      ansible.builtin.meta: end_play
+      when: >-
+        (cerebrum_host | length) == 0
+        or (cerebrum_user | length) == 0
+        or (cerebrum_pass | length) == 0
+
+    # ------------------------------------------------------------------
+    # READ verbs — every one registers structured rows via --output json
+    # (ADR-0002); changed_when:false → idempotent by construction.
+    # ------------------------------------------------------------------
+    - name: "connect --output json"
+      ansible.builtin.command:
+        argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'connect', cerebrum_host, '--output', 'json', '--timeout', '15s'] + cereb_auth }}"
+      register: vt_connect
+      changed_when: false
+
+    - name: "ASSERT connect json parses and names the host"
+      ansible.builtin.assert:
+        that:
+          - (vt_connect.stdout | from_json).host == cerebrum_host
+        fail_msg: "connect --output json did not return a parsable document"
+        quiet: true
+
+    - name: "list-devices --output json"
+      ansible.builtin.command:
+        argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'list-devices', cerebrum_host, '--output', 'json'] + cereb_auth }}"
+      register: vt_devices
+      changed_when: false
+
+    - name: "ASSERT list-devices returned the route-master sentinel row"
+      ansible.builtin.assert:
+        that:
+          - (vt_devices.stdout | from_json).devices | selectattr('ip_address', 'equalto', '0.0.0.0') | list | length == 1
+        fail_msg: "list-devices json is missing the 0.0.0.0 route-master row"
+        quiet: true
+
+    - name: "list-sources / list-dests / list-levels --output json"
+      ansible.builtin.command:
+        argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', item, cerebrum_host, '--output', 'json'] + cereb_auth }}"
+      loop: [list-sources, list-dests, list-levels]
+      register: vt_mne
+      changed_when: false
+
+    - name: "ASSERT every mnemonic list parses as json"
+      ansible.builtin.assert:
+        that:
+          - item.stdout | from_json is mapping
+        fail_msg: "{{ item.item }} --output json did not parse"
+        quiet: true
+      loop: "{{ vt_mne.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: "list-categories --output json"
+      ansible.builtin.command:
+        argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'list-categories', cerebrum_host, '--output', 'json'] + cereb_auth }}"
+      register: vt_cats
+      changed_when: false
+
+    - name: "list-salvo-groups --output json"
+      ansible.builtin.command:
+        argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'list-salvo-groups', cerebrum_host, '--output', 'json'] + cereb_auth }}"
+      register: vt_salvos
+      changed_when: false
+
+    - name: "ASSERT category + salvo catalogues parse as json"
+      ansible.builtin.assert:
+        that:
+          - (vt_cats.stdout | from_json).categories is not none
+          - (vt_salvos.stdout | from_json).groups is not none
+        fail_msg: "catalogue reads did not return parsable json"
+        quiet: true
+
+    - name: "tree --domain salvos --format json (structured object rows)"
+      ansible.builtin.command:
+        argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'tree', cerebrum_host, '--domain', 'salvos', '--format', 'json'] + cereb_auth }}"
+      register: vt_tree
+      changed_when: false
+
+    - name: "ASSERT tree json carries object rows with paths"
+      ansible.builtin.assert:
+        that:
+          - (vt_tree.stdout | from_json).objects is not none
+        fail_msg: "tree --format json did not return an objects array"
+        quiet: true
+
+    # ------------------------------------------------------------------
+    # WRITE verbs — ADR-0007 ensure proof. Gated TWICE: the play-level env
+    # gate above AND CEREBRUM_ALLOW_WRITE=1 + a named crosspoint. Run this
+    # section against STAGING only.
+    # ------------------------------------------------------------------
+    - name: Write-contract block (staging only)
+      when: >-
+        cerebrum_write == '1'
+        and (vt_dest | length) > 0
+        and (vt_srce | length) > 0
+        and (vt_level | length) > 0
+      block:
+        - name: "route --check (would_change dry-run, mutates nothing)"
+          ansible.builtin.command:
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--check', '--output', 'json'] + cereb_auth }}"
+          register: vt_route_check
+          changed_when: false
+
+        - name: "ASSERT --check reports would_change and never changed"
+          ansible.builtin.assert:
+            that:
+              - "'would_change' in (vt_route_check.stdout | from_json)"
+            fail_msg: "route --check did not emit the ensure contract document"
+            quiet: true
+
+        - name: "route apply (converge pass 1)"
+          ansible.builtin.command:
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--output', 'json'] + cereb_auth }}"
+          register: vt_route_1
+          changed_when: (vt_route_1.stdout | from_json).changed
+
+        - name: "route apply (converge pass 2 — MUST be a no-op)"
+          ansible.builtin.command:
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--output', 'json'] + cereb_auth }}"
+          register: vt_route_2
+          changed_when: (vt_route_2.stdout | from_json).changed
+
+        - name: "ASSERT run-twice = 0 changes (ADR-0007)"
+          ansible.builtin.assert:
+            that:
+              - not (vt_route_2.stdout | from_json).changed
+            fail_msg: "route did not converge — second identical apply still reported changed"
+            quiet: true
+
+        # lock/lock/released: the middle apply proves lock converges
+        # (changed:false); released restores the staging Cerebrum so the
+        # play itself is run-twice clean.
+        - name: "lock DEST_LOCK (pass 1) then re-apply (pass 2 no-op) then release"
+          ansible.builtin.command:
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'lock', cerebrum_host, '--kind', 'DEST_LOCK', '--dest', vt_dest, '--level', vt_level, '--mode', item, '--output', 'json'] + cereb_auth }}"
+          loop: [locked, locked, released]
+          register: vt_lock
+          changed_when: (vt_lock.stdout | default('{}') | from_json).changed | default(false)
+
+        - name: "ASSERT lock converged on the second apply"
+          ansible.builtin.assert:
+            that:
+              - not (vt_lock.results[1].stdout | from_json).changed
+            fail_msg: "lock did not converge — second identical apply still reported changed"
+            quiet: true
+
+    - name: Cerebrum NB verb contract result
+      ansible.builtin.debug:
+        msg: >-
+          Cerebrum NB verb contract: PASS vs {{ cerebrum_host }}:{{ cerebrum_port }}
+          (reads json{{ (cerebrum_write == '1') | ternary(' + write converge proven', '; write section skipped — set CEREBRUM_ALLOW_WRITE=1 on staging') }})

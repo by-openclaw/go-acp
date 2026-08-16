@@ -35,12 +35,13 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 	level := fs.String("level", "*", "LEVEL_ID filter to send (server requires the attribute present; a concrete value is echoed back in the RX row)")
 	idle := fs.Duration("idle", 5*time.Second, "stop collecting this long after the last row if no WILDCARD_COMPLETE arrives")
 	out := fs.String("out", "", "write the list as a CSV here (default: print a table)")
+	output := fs.String("output", "text", "stdout format: text | json")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	rest := fs.Args()
 	if len(rest) < 1 {
-		return fmt.Errorf("cerebrum-nb list-%s: missing host[:port] argument", keyCol)
+		return cerebrumValErr("list-"+keyCol, "missing host[:port] argument")
 	}
 	host, portArg, err := splitHostPort(rest[0], cf.port)
 	if err != nil {
@@ -155,6 +156,23 @@ collect:
 		}
 		fmt.Fprintf(os.Stderr, "cerebrum-nb list-%s: wrote %d row(s) to %s\n", keyCol, len(list), *out)
 		return nil
+	}
+	switch *output {
+	case "json":
+		type row struct {
+			ID       string         `json:"id"`
+			Mnemonic string         `json:"mnemonic"`
+			Alts     map[int]string `json:"alts,omitempty"`
+			Levels   []string       `json:"levels,omitempty"`
+		}
+		jrows := []row{}
+		for _, r := range list {
+			jrows = append(jrows, row{r.ID, r.Mnemonic, r.Alts, r.Levels})
+		}
+		return printCerebrumJSON(map[string][]row{keyCol: jrows})
+	case "text":
+	default:
+		return cerebrumValErr("list-"+keyCol, "--output must be text or json")
 	}
 	fmt.Printf("count %d\n", len(list))
 	for _, r := range list {

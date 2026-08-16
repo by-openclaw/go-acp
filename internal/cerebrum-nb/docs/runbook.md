@@ -75,6 +75,25 @@ device we serve (see [provider.md](provider.md)).
 | `category` | Create / modify item(s) / set description / delete a category or item | `--op create\|modify\|modify-all\|modify-desc\|delete\|delete-item --category [--index --item-type --value --name --label --inherits --description]` |
 | `set-value` | Write a device object value | `--device --sub-device --object --value` |
 
+## Structured output + exit codes (Ansible contract)
+
+Every read verb takes `--output json` and emits ONE JSON document on
+stdout (the tree verb uses `--format json` — object rows). Every write
+verb converges per ADR-0007: read live state → diff → send only the
+differences → report `{changed|would_change, previous, current, diff[]}`
+(`--check` reports without sending; run-twice = 0 changes).
+
+| Exit code | Meaning |
+|---:|---|
+| 0 | success — read OK, write converged or already converged |
+| 1 | runtime failure — dial, LOGIN, NACK, timeout |
+| 2 | validation error — bad flag / missing argument, nothing sent |
+
+The full catalogue is driven from Ansible by
+[../../../ansible/playbooks/cerebrum-nb-verbs.yml](../../../ansible/playbooks/cerebrum-nb-verbs.yml)
+(reads everywhere; the write-converge section is gated on
+`CEREBRUM_ALLOW_WRITE=1` — staging only).
+
 ## Logging
 
 - **Logs go to stderr, data to stdout** — `2>run.log 1>out.txt` separates them.
