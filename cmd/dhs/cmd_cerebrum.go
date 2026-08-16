@@ -604,6 +604,9 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		// dies the underlying read returns immediately.
 		err := sess.Subscribe(ctx, []codec.SubItem{p.item})
 		if err != nil {
+			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return nil // Ctrl+C mid-subscribe — clean exit
+			}
 			slog.Warn("subscribe failed", "plugin", "cerebrum-nb", "item", p.name, "err", err)
 			fail++
 			continue
@@ -612,6 +615,7 @@ func cerebrumListen(ctx context.Context, args []string) error {
 	}
 	fmt.Fprintf(os.Stderr, "subscribed: %d ok, %d failed (SRCE_LOCK skipped — every live Cerebrum NACKs it; re-enable if a server ever grants it); listening for events; Ctrl+C to stop\n", ok, fail)
 	<-ctx.Done()
+	fmt.Fprintln(os.Stderr, "listen stopped.")
 	return nil
 }
 
@@ -1244,10 +1248,14 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		printEventLabeled(f, nil)
 	})
 	if err := sess.Subscribe(ctx, []codec.SubItem{dc}); err != nil {
+		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+			return nil // Ctrl+C during subscribe — clean exit, not an error
+		}
 		return fmt.Errorf("cerebrum-nb watch: subscribe %s: %w", dc.Type, err)
 	}
 	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE TYPE=%s on %s — Ctrl+C to stop\n", dc.Type, device)
 	<-ctx.Done()
+	fmt.Fprintln(os.Stderr, "watch stopped.")
 	return nil
 }
 
