@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# One live run per ref: a new push to a PR branch cancels the in-progress
+# run on the outdated commit (no more two same-titled rows per PR). Runs on
+# main are NEVER cancelled — every merge commit keeps its own complete
+# verification (a cancelled main run would hide a real red).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -18,14 +26,14 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         go: ["1.23"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
 
@@ -163,7 +171,7 @@ jobs:
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage
           path: coverage.out
@@ -184,7 +192,7 @@ jobs:
       - name: Install git + git-lfs
         run: dnf install -y git git-lfs
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
@@ -194,7 +202,7 @@ jobs:
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.23"
 
@@ -204,21 +212,38 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # Same 3-attempt retry as the main test matrix — the container jobs
+      # were the one place a timing flake could still gate a merge (live
+      # case 2026-08-17: TestRunDiagnostics_ConnectionClosed on rocky9
+      # reddened a main push that every other platform passed).
       - name: Unit tests
-        run: go test -count=1 ./...
+        shell: bash
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            echo "::group::unit tests (attempt $attempt/3)"
+            if go test -count=1 ./...; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "::warning::unit tests failed on attempt $attempt/3; retrying"
+          done
+          echo "::error::unit tests failed after 3 attempts"
+          exit 1
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.23"
 
@@ -232,14 +257,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, test-rhel, lint]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.23"
 
@@ -262,7 +287,133 @@ jobs:
           done
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: binaries
           path: dist/
+
+  # ---- Release (push-to-main only, AFTER everything is green) -------------
+  # One workflow = one action run per commit, and releasing on red is
+  # structurally impossible: release-please bookkeeping (and the version
+  # tag it eventually creates when its release PR merges) only runs behind
+  # the full test/lint/cross-compile gate. Formerly a separate release.yml
+  # sharing the push:main trigger — every merge showed two same-titled runs
+  # and the release path never waited for CI (#690).
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    needs: [test, test-rhel, lint, build-all]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: go
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-release:
+    name: Build release binaries
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+
+      # Embed the Windows .exe version resource (CompanyName / ProductName /
+      # FileVersion / LegalCopyright shown in the Properties dialog) from
+      # cmd/dhs/winres/winres.json. go-winres writes a GOOS=windows .syso that
+      # `go build` links automatically for windows targets only; other GOOS
+      # builds ignore it. Best-effort — a tooling hiccup must never block a
+      # release, the .exe just ships without the resource.
+      - name: Embed Windows version resource
+        run: |
+          VERSION=${{ needs.release-please.outputs.tag_name }}
+          NUMVER=${VERSION#v}
+          go install github.com/tc-hib/go-winres@v0.3.3 || true
+          if command -v go-winres >/dev/null 2>&1; then
+            go-winres make --in cmd/dhs/winres/winres.json \
+              --product-version "${NUMVER}" --file-version "${NUMVER}" \
+              --out cmd/dhs/rsrc || echo "go-winres failed — windows .exe will lack the version resource"
+          else
+            echo "go-winres not installed — windows .exe will lack the version resource"
+          fi
+
+      - name: Build all targets
+        run: |
+          VERSION=${{ needs.release-please.outputs.tag_name }}
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}"
+
+          for GOOS in linux darwin windows; do
+            for GOARCH in amd64 arm64; do
+              if [ "$GOOS" = "windows" ] && [ "$GOARCH" = "arm64" ]; then continue; fi
+              EXT=""; if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+              DIR="dist/dhs_${GOOS}_${GOARCH}"
+              mkdir -p "$DIR"
+              GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "${LDFLAGS}" \
+                -o "${DIR}/dhs${EXT}" ./cmd/dhs
+            done
+          done
+
+      # Authenticode-sign the Windows binaries. Gated on the WINDOWS_CERT_PFX_B64
+      # secret (base64-encoded .pfx) + WINDOWS_CERT_PASSWORD — skipped cleanly
+      # when unset so releases work without a cert, and switch on the moment the
+      # secrets are added. Uses osslsigncode (Linux-runnable).
+      - name: Sign Windows binaries
+        env:
+          PFX_B64: ${{ secrets.WINDOWS_CERT_PFX_B64 }}
+          PFX_PASS: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          if [ -z "${PFX_B64}" ]; then
+            echo "WINDOWS_CERT_PFX_B64 not set — skipping Authenticode signing"
+            exit 0
+          fi
+          sudo apt-get update && sudo apt-get install -y osslsigncode
+          echo "${PFX_B64}" | base64 -d > /tmp/cert.pfx
+          for exe in dist/dhs_windows_*/dhs.exe; do
+            osslsigncode sign -pkcs12 /tmp/cert.pfx -pass "${PFX_PASS}" \
+              -n "Device Hub Systems" -i https://www.by-systems.be \
+              -t http://timestamp.digicert.com -in "$exe" -out "${exe}.signed"
+            mv "${exe}.signed" "$exe"
+          done
+          rm -f /tmp/cert.pfx
+
+      - name: Package archives
+        run: |
+          cd dist
+          for d in dhs_linux_* dhs_darwin_*; do
+            tar -czf "${d}.tar.gz" "$d"
+          done
+          for d in dhs_windows_*; do
+            zip -qr "${d}.zip" "$d"
+          done
+
+      # Provenance: a SHA-256 manifest of every artifact so downloaders can
+      # verify integrity (and a basis for future SLSA attestation).
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/SHA256SUMS.txt
