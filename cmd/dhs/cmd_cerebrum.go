@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +28,7 @@ type cerebrumFlags struct {
 	tls      bool
 	insecure bool
 	debug    bool
+	logPath  string
 	timeout  time.Duration
 }
 
@@ -38,8 +40,45 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.BoolVar(&c.tls, "tls", false, "use wss:// instead of ws://")
 	fs.BoolVar(&c.insecure, "insecure-skip-verify", false, "with --tls, skip TLS cert verification")
 	fs.BoolVar(&c.debug, "debug", false, "verbose RX/TX XML logging")
+	fs.StringVar(&c.logPath, "log", "", "write the diagnostic log (incl. RX/TX XML at full debug verbosity) to this file — clean UTF-8, no PowerShell 2> stderr wrapping; stderr stays silent")
 	fs.DurationVar(&c.timeout, "timeout", 5*time.Second, "per-request timeout")
 	return c
+}
+
+// newLogger builds the verb logger per flags: --log FILE writes a clean
+// debug-verbosity log to the file (stderr untouched — avoids PowerShell 5.1
+// wrapping redirected native stderr into error records, the "red flag");
+// otherwise stderr at Warn (quiet success) or Debug with --debug. The
+// returned closer is a no-op for stderr.
+func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
+	if c.logPath != "" {
+		if dir := filepath.Dir(c.logPath); dir != "." {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
+			}
+		}
+		f, err := os.Create(c.logPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
+		}
+		return slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{Level: slog.LevelDebug})), func() { _ = f.Close() }, nil
+	}
+	level := slog.LevelWarn // quiet stderr on success (PS 2> flags any stderr as error)
+	if c.debug {
+		level = slog.LevelDebug
+	}
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})), func() {}, nil
+}
+
+// cerebrumWriteFile writes an output file, creating missing parent
+// directories first (so --out captures\x.csv works on a fresh host).
+func cerebrumWriteFile(path string, data []byte) error {
+	if dir := filepath.Dir(path); dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+	return os.WriteFile(path, data, 0o644)
 }
 
 // reorderFlagsFirst moves any tokens that look like Go flags (start with
@@ -137,7 +176,7 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumExportXpoint(ctx, rest)
 	case "list-sources":
 		return cerebrumListMne(ctx, rest, "SRCE_MNE", "srce")
-	case "list-dests":
+	case "list-dests", "list-destinations":
 		return cerebrumListMne(ctx, rest, "DEST_MNE", "dest")
 	case "list-levels":
 		return cerebrumListMne(ctx, rest, "LEVEL_MNE", "level")
@@ -178,11 +217,11 @@ VERBS
   connect                  POLL (LOGIN auto when --user/--pass set)
   listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop
   route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
-  list-sources             one-shot OBTAIN SRCE_MNE  → every configured source ID + label   [--out FILE]
-  list-dests               one-shot OBTAIN DEST_MNE  → every configured destination ID + label  [--out FILE]
-  list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--out FILE]
-  export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE]. Full set (src+dst+level mnemonics+xpoint): --out-dir DIR [--prefix P]
-  import                   apply CSVs: --xpoint F (dest,srce,levels; --csv alias) + --src/--dst/--levels F (mnemonics, per-ID)  [--check]
+  list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE]
+  list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE]
+  list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--id N] [--out FILE]
+  export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint): --out-dir DIR [--prefix P]
+  import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels. --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device]
   device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
@@ -211,7 +250,8 @@ FLAGS (order doesn't matter — flags can come before OR after the host)
   --pass P                  NB password (or $DHS_CEREBRUM_PASS)
   --tls                     use wss:// instead of ws://
   --insecure-skip-verify    with --tls, skip cert validation
-  --debug                   verbose RX/TX XML logging
+  --debug                   verbose RX/TX XML logging (stderr)
+  --log FILE                full debug log incl. RX/TX XML to FILE (clean UTF-8; stderr stays quiet)
   --timeout DUR             per-request timeout (default 5s — fail fast)
 
 EXAMPLES
@@ -246,11 +286,10 @@ func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Se
 	}
 	cf.port = portArg
 
-	logLevel := slog.LevelInfo
-	if cf.debug {
-		logLevel = slog.LevelDebug
+	logger, _, lerr := cf.newLogger()
+	if lerr != nil {
+		return nil, nil, nil, nil, lerr
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
 
 	p := cerebrum.NewPlugin(logger)
 	p.Username = cf.user
@@ -1199,11 +1238,10 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	}
 	cf.port = portArg
 
-	logLevel := slog.LevelInfo
-	if cf.debug {
-		logLevel = slog.LevelDebug
+	logger, _, lerr := cf.newLogger()
+	if lerr != nil {
+		return lerr
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
 
 	p := cerebrum.NewPlugin(logger)
 	p.Username = cf.user

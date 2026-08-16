@@ -4,13 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
@@ -197,6 +195,14 @@ func cmpCerebrumID(a, b string) int {
 	return strings.Compare(a, b)
 }
 
+// orDash renders an empty (out-of-scope) path as "-" in scope reports.
+func orDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
+}
+
 // cerebrumImportXpoint applies the probel-sw08p-style import trio: a
 // crosspoint CSV (`--xpoint`, alias `--csv`; columns dest,srce,levels) as ROUTE
 // actions, plus optional src/dst mnemonic CSVs (`--src`/`--dst`; columns
@@ -214,9 +220,23 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	srcPath := fs.String("src", "", "source-mnemonic CSV to import (columns srce,mnemonic — router mnemonics are per-ID, not per-level, 0v16 §4.1.5)")
 	dstPath := fs.String("dst", "", "dest-mnemonic CSV to import (columns dest,mnemonic — 0v16 §4.1.6)")
 	lvlPath := fs.String("levels", "", "level-mnemonic CSV to import (columns level,mnemonic — LEVEL_MNE, 0v16 §4.1.4)")
-	check := fs.Bool("check", false, "dry-run: print the actions that would be sent; connect to nothing")
+	inDir := fs.String("in-dir", "", "directory holding an export set: <prefix>-xpoint.csv / -src.csv / -dst.csv / -level.csv (the exact files `export --out-dir` wrote; files absent from the dir are simply out of scope)")
+	prefix := fs.String("prefix", "cerebrum", "file prefix used with --in-dir (same default as export)")
+	check := fs.Bool("check", false, "dry-run: read live state, report would_change per cell, send nothing")
+	allowClear := fs.Bool("allow-clear", false, "an EMPTY cell in a managed label column CLEARS the live label (MNEMONIC=\"\" — clear form live-UNVERIFIED; always --check first)")
+	output := fs.String("output", "text", "output format: text|json — json emits the ADR-0007 {changed|would_change, diff[]} shape on stdout (per-action detail goes to stderr)")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
+	}
+	// In JSON mode stdout carries only the ensure result (Ansible parses it);
+	// per-change narration moves to stderr.
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
 	}
 	if *csvPath != "" && *xpointPath != "" {
 		return fmt.Errorf("cerebrum-nb import: --csv and --xpoint are the same input — pass one")
@@ -225,8 +245,28 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	if xp == "" {
 		xp = *csvPath
 	}
+	if *inDir != "" {
+		// Mirror export --out-dir: resolve every role not given explicitly to
+		// <in-dir>/<prefix>-<role>.csv, keeping only files that exist —
+		// missing files stay out of scope (partial-import semantics).
+		resolve := func(target *string, suffix string) {
+			if *target != "" {
+				return
+			}
+			p := filepath.Join(*inDir, *prefix+suffix)
+			if _, err := os.Stat(p); err == nil {
+				*target = p
+			}
+		}
+		resolve(&xp, "-xpoint.csv")
+		resolve(srcPath, "-src.csv")
+		resolve(dstPath, "-dst.csv")
+		resolve(lvlPath, "-level.csv")
+		fmt.Fprintf(os.Stderr, "cerebrum-nb import: --in-dir resolved xpoint=%s src=%s dst=%s levels=%s\n",
+			orDash(xp), orDash(*srcPath), orDash(*dstPath), orDash(*lvlPath))
+	}
 	if xp == "" && *srcPath == "" && *dstPath == "" && *lvlPath == "" {
-		return fmt.Errorf("cerebrum-nb import: nothing to import (pass --xpoint and/or --src/--dst/--levels)")
+		return fmt.Errorf("cerebrum-nb import: nothing to import (pass --xpoint and/or --src/--dst/--levels, or --in-dir DIR --prefix P)")
 	}
 
 	// Parse everything up front so a malformed file fails before any wire I/O.
@@ -247,58 +287,42 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		xpRows = len(rows)
 		routes = expandCerebrumXpoint(rows)
 	}
-	loadMne := func(path, keyCol string) ([]cerebrumMneRow, error) {
+	loadMne := func(path, keyCol string) ([]cerebrumMneRow, []int, error) {
 		if path == "" {
-			return nil, nil
+			return nil, nil, nil
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		rows, err := parseCerebrumMneCSV(data, keyCol, path)
+		rows, slots, err := parseCerebrumMneCSV(data, keyCol, path)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if len(rows) == 0 {
-			return nil, fmt.Errorf("cerebrum-nb import: %s has no mnemonics", path)
+			return nil, nil, fmt.Errorf("cerebrum-nb import: %s has no mnemonics", path)
 		}
-		return rows, nil
+		return rows, slots, nil
 	}
-	srcRows, err := loadMne(*srcPath, "srce")
+	srcRows, srcSlots, err := loadMne(*srcPath, "srce")
 	if err != nil {
 		return err
 	}
-	dstRows, err := loadMne(*dstPath, "dest")
+	dstRows, dstSlots, err := loadMne(*dstPath, "dest")
 	if err != nil {
 		return err
 	}
-	lvlRows, err := loadMne(*lvlPath, "level")
+	lvlRows, lvlSlots, err := loadMne(*lvlPath, "level")
 	if err != nil {
 		return err
 	}
 
-	// --check: offline dry-run, no connection.
-	if *check {
-		for _, r := range routes {
-			fmt.Printf("[would-route]    dst=%s src=%s lvl=%s\n", r.Dest, r.Srce, r.Level)
-		}
-		for _, m := range srcRows {
-			fmt.Printf("[would-srce-mne] src=%s mne=%q\n", m.ID, m.Mnemonic)
-		}
-		for _, m := range dstRows {
-			fmt.Printf("[would-dest-mne] dst=%s mne=%q\n", m.ID, m.Mnemonic)
-		}
-		for _, m := range lvlRows {
-			fmt.Printf("[would-level-mne] lvl=%s mne=%q\n", m.ID, m.Mnemonic)
-		}
-		fmt.Printf("cerebrum-nb import --check: %d crosspoint(s) across %d row(s), %d src-mne, %d dst-mne, %d level-mne — nothing sent\n",
-			len(routes), xpRows, len(srcRows), len(dstRows), len(lvlRows))
-		return nil
-	}
-
+	// Ensure semantics (ADR-0007): read live state, diff, converge only the
+	// differences. --check reports would_change and sends nothing. Both need
+	// the live state, so both need the host.
 	rest := fs.Args()
 	if len(rest) < 1 {
-		return fmt.Errorf("cerebrum-nb import: missing host[:port] argument (or pass --check for an offline dry-run)")
+		return fmt.Errorf("cerebrum-nb import: missing host[:port] argument (needed to read live state — ensure semantics)")
 	}
 	host, portArg, err := splitHostPort(rest[0], cf.port)
 	if err != nil {
@@ -314,52 +338,92 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	sess := p.Session()
 	target := routeTargetFromFlags(*router, *deviceName)
 
+	st, err := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 15*time.Second, cerebrumStateWant{
+		Routes: xp != "", SrcMne: *srcPath != "", DstMne: *dstPath != "", LvlMne: *lvlPath != "",
+		StrictMne: true, Verb: "import",
+	})
+	if err != nil {
+		return err
+	}
+
+	routeChanges := diffCerebrumRoutes(st.Routes, routes)
+	srcChanges := diffCerebrumMnemonics("SRCE_MNE", st.Src, srcRows, srcSlots, *allowClear)
+	dstChanges := diffCerebrumMnemonics("DEST_MNE", st.Dst, dstRows, dstSlots, *allowClear)
+	lvlChanges := diffCerebrumMnemonics("LEVEL_MNE", st.Lvl, lvlRows, lvlSlots, *allowClear)
+	mneChanges := append(append(srcChanges, dstChanges...), lvlChanges...)
+	total := len(routeChanges) + len(mneChanges)
+
+	// ADR-0007 diff[] — always built (even empty), one entry per converging
+	// cell: route.<dest>.<level> or <kind>.<id>.<slot>.
+	diffs := make([]ensureDiff, 0, total)
+	for _, c := range routeChanges {
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("route.%s.%s", c.Dest, c.Level), From: c.From, To: c.To})
+	}
+	for _, c := range mneChanges {
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("%s.%s.%d", strings.ToLower(c.Kind), c.ID, c.Slot), From: c.From, To: c.To})
+	}
+
+	if *check {
+		for _, c := range routeChanges {
+			_, _ = fmt.Fprintf(logw, "[would-route] dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.To)
+		}
+		for _, c := range mneChanges {
+			_, _ = fmt.Fprintf(logw, "[would-%s] id=%s slot=%d: %q -> %q\n", strings.ToLower(c.Kind), c.ID, c.Slot, c.From, c.To)
+		}
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb import --check: would_change=%d (%d route(s), %d label(s)) of %d crosspoint(s)/%d label row(s) desired — nothing sent\n",
+			total, len(routeChanges), len(mneChanges), len(routes), xpRows+len(srcRows)+len(dstRows)+len(lvlRows))
+		if jsonOut {
+			wc := total > 0
+			return emitEnsure(true, ensureResult{WouldChange: &wc, Diff: diffs})
+		}
+		return nil
+	}
+
 	fails := 0
-	for _, r := range routes {
+	for _, c := range routeChanges {
 		body := &codec.RoutingAction{
 			Type: "ROUTE", IPAddress: *router, DeviceName: *deviceName,
 			DeviceType: codec.DeviceType("ROUTER"),
-			DestID:     r.Dest, SrceID: r.Srce, LevelID: r.Level,
+			DestID:     c.Dest, SrceID: c.To, LevelID: c.Level,
 		}
 		if err := sess.Action(context.Background(), body); err != nil {
-			fmt.Printf("[route] NACK dst=%s src=%s lvl=%s reason=%s\n", r.Dest, r.Srce, r.Level, err)
+			_, _ = fmt.Fprintf(logw, "[route] NACK dst=%s src=%s lvl=%s reason=%s\n", c.Dest, c.To, c.Level, err)
 			fails++
 			continue
 		}
-		fmt.Printf("[route] OK   dst=%s src=%s lvl=%s\n", r.Dest, r.Srce, r.Level)
+		_, _ = fmt.Fprintf(logw, "[route] OK   dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.To)
 	}
 	// Router (Routemaster) mnemonics are per-ID (0v16 §4.1.5/§4.1.6: the LEVEL
-	// attr is for non-router devices only) — one action per row, no LEVEL_ID.
-	// Level names themselves go via LEVEL_MNE with the level as the target.
-	applyMne := func(kind string, rows []cerebrumMneRow) {
-		for _, m := range rows {
-			var srce, dest, lvl string
-			switch kind {
-			case "SRCE_MNE":
-				srce = m.ID
-			case "DEST_MNE":
-				dest = m.ID
-			case "LEVEL_MNE":
-				lvl = m.ID
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
-			err := sess.SetMnemonic(ctx, kind, target, srce, dest, lvl, m.Mnemonic, "")
-			cancel()
-			if err != nil {
-				fmt.Printf("[%s] NACK id=%s mne=%q reason=%s\n", strings.ToLower(kind), m.ID, m.Mnemonic, err)
-				fails++
-				continue
-			}
-			fmt.Printf("[%s] OK   id=%s mne=%q\n", strings.ToLower(kind), m.ID, m.Mnemonic)
+	// attr is for non-router devices only); alternate sets address by slot
+	// index (ALT_MNE=n). Level names go via LEVEL_MNE with the level as target.
+	for _, c := range mneChanges {
+		var srce, dest, lvl string
+		switch c.Kind {
+		case "SRCE_MNE":
+			srce = c.ID
+		case "DEST_MNE":
+			dest = c.ID
+		case "LEVEL_MNE":
+			lvl = c.ID
 		}
+		actx, cancel := context.WithTimeout(context.Background(), cf.timeout)
+		err := sess.SetMnemonic(actx, c.Kind, target, srce, dest, lvl, c.To, altSlotArg(c.Slot))
+		cancel()
+		if err != nil {
+			_, _ = fmt.Fprintf(logw, "[%s] NACK id=%s slot=%d mne=%q reason=%s\n", strings.ToLower(c.Kind), c.ID, c.Slot, c.To, err)
+			fails++
+			continue
+		}
+		_, _ = fmt.Fprintf(logw, "[%s] OK   id=%s slot=%d: %q -> %q\n", strings.ToLower(c.Kind), c.ID, c.Slot, c.From, c.To)
 	}
-	applyMne("SRCE_MNE", srcRows)
-	applyMne("DEST_MNE", dstRows)
-	applyMne("LEVEL_MNE", lvlRows)
 	if fails > 0 {
 		return fmt.Errorf("cerebrum-nb import: %d action(s) failed", fails)
 	}
-	fmt.Printf("cerebrum-nb import: applied %d crosspoint(s), %d src-mne, %d dst-mne, %d level-mne\n", len(routes), len(srcRows), len(dstRows), len(lvlRows))
+	_, _ = fmt.Fprintf(logw, "cerebrum-nb import: changed=%d (%d route(s), %d label(s)); run again to verify 0\n", total, len(routeChanges), len(mneChanges))
+	if jsonOut {
+		ch := total > 0
+		return emitEnsure(true, ensureResult{Changed: &ch, Diff: diffs})
+	}
 	return nil
 }
 
@@ -416,145 +480,19 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
-	sess := p.Session()
 
-	var mu sync.Mutex
-	var routes []routeSpec
-	var srcMne, dstMne, lvlMne []cerebrumMneRow
-	crossLevel := 0
-	completes := 0
-	tick := make(chan struct{}, 1)
-	kick := func() {
-		select {
-		case tick <- struct{}{}:
-		default:
-		}
-	}
-
-	sess.OnEvent(codec.KindRoutingChange, func(f *codec.Frame) {
-		rc := f.Routing
-		if rc == nil {
-			return
-		}
-		mu.Lock()
-		switch rc.Type {
-		case "ROUTE":
-			if rc.RouteSourceID == "" {
-				break
-			}
-			if crossLevelRoute(rc.LevelID, rc.RouteSourceLevelID) {
-				crossLevel++
-				break
-			}
-			routes = append(routes, routeSpec{Dest: rc.DestID, Srce: rc.RouteSourceID, Level: rc.LevelID})
-		case "SRCE_MNE":
-			// Mnemonic per-ID (0v16 §5.1.5); Levels = capability from the
-			// ASSOCIATION children (which levels the source exists on);
-			// dedupe merges per-level repeats.
-			if m := primaryMnemonic(rc); m != "" && rc.SrceID != "" {
-				srcMne = append(srcMne, cerebrumMneRow{ID: rc.SrceID, Mnemonic: m, Levels: mneLevelsFromChange(rc, rc.SrceID)})
-			}
-		case "DEST_MNE":
-			if m := primaryMnemonic(rc); m != "" && rc.DestID != "" {
-				dstMne = append(dstMne, cerebrumMneRow{ID: rc.DestID, Mnemonic: m, Levels: mneLevelsFromChange(rc, rc.DestID)})
-			}
-		case "LEVEL_MNE":
-			if m := primaryMnemonic(rc); m != "" && rc.LevelID != "" {
-				lvlMne = append(lvlMne, cerebrumMneRow{ID: rc.LevelID, Mnemonic: m})
-			}
-		}
-		mu.Unlock()
-		kick()
+	st, err := cerebrumObtainState(ctx, p.Session(), *router, *deviceType, *idle, cerebrumStateWant{
+		Routes: true, RouteLevel: *level,
+		SrcMne: trio, DstMne: trio, LvlMne: trio,
+		Verb: "export",
 	})
-	sess.OnEvent(codec.KindWildcardComplete, func(f *codec.Frame) {
-		// Live NOC Cerebrum (2026-08) emits a bare <wildcard_complete/> with NO
-		// MTID after every event — spec §1.6 defines exactly one per wildcard
-		// request, carrying the request's MTID. Count only the real ones so the
-		// spurious per-event sentinels can't end collection early.
-		if f.MTID == "" {
-			return
-		}
-		mu.Lock()
-		completes++
-		mu.Unlock()
-		kick()
-	})
-
-	// One-shot OBTAIN per row (0v16 §2.4) — no standing subscription, nothing
-	// to unsubscribe. One OBTAIN per item so a NACK on one cannot sink the
-	// others (the live server is known to NACK some wildcard rows).
-	type obtainItem struct {
-		name string
-		item codec.SubItem
+	if err != nil {
+		return err
 	}
-	routeLevel := *level
-	if routeLevel == "" {
-		routeLevel = "*"
+	if st.CrossLevel > 0 {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb export: WARNING — %d cross-level route(s) (src level != dst level) not exported: shuffle representation not yet supported\n", st.CrossLevel)
 	}
-	plan := []obtainItem{
-		{"ROUTE", &codec.RoutingChange{Type: "ROUTE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), DestID: "*", LevelID: routeLevel}},
-	}
-	if trio {
-		// LEVEL_ID="*" on the MNE filters is REQUIRED by live NOC Cerebrum
-		// (NACK 10 without it, 2026-08-15) and spec-harmless on routers.
-		plan = append(plan,
-			obtainItem{"SRCE_MNE", &codec.RoutingChange{Type: "SRCE_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), SrceID: "*", LevelID: "*"}},
-			obtainItem{"DEST_MNE", &codec.RoutingChange{Type: "DEST_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), DestID: "*", LevelID: "*"}},
-			obtainItem{"LEVEL_MNE", &codec.RoutingChange{Type: "LEVEL_MNE", IPAddress: *router, DeviceType: codec.DeviceType(*deviceType), LevelID: "*"}},
-		)
-	}
-	obtCtx, obtCancel := context.WithCancel(context.Background())
-	defer obtCancel()
-	okSubs := 0
-	for _, s := range plan {
-		if err := sess.Obtain(obtCtx, []codec.SubItem{s.item}); err != nil {
-			if s.name == "ROUTE" {
-				return fmt.Errorf("cerebrum-nb export: ROUTE obtain failed: %w", err)
-			}
-			fmt.Fprintf(os.Stderr, "cerebrum-nb export: %s obtain refused (%v) — %s CSV will be empty\n", s.name, err, strings.ToLower(s.name))
-			continue
-		}
-		okSubs++
-	}
-
-	// Collect until every granted subscription completed, or --idle of quiet.
-	idleTimer := time.NewTimer(*idle)
-	defer idleTimer.Stop()
-collect:
-	for {
-		mu.Lock()
-		doneAll := okSubs > 0 && completes >= okSubs
-		mu.Unlock()
-		if doneAll {
-			break collect
-		}
-		select {
-		case <-tick:
-			if !idleTimer.Stop() {
-				select {
-				case <-idleTimer.C:
-				default:
-				}
-			}
-			idleTimer.Reset(*idle)
-		case <-idleTimer.C:
-			break collect
-		case <-ctx.Done():
-			break collect
-		}
-	}
-
-	mu.Lock()
-	snap := append([]routeSpec(nil), routes...)
-	srcSnap := append([]cerebrumMneRow(nil), srcMne...)
-	dstSnap := append([]cerebrumMneRow(nil), dstMne...)
-	lvlSnap := append([]cerebrumMneRow(nil), lvlMne...)
-	skipped := crossLevel
-	mu.Unlock()
-
-	if skipped > 0 {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb export: WARNING — %d cross-level route(s) skipped (dest,srce,levels CSV cannot represent SRCE_LEVEL != DEST_LEVEL yet)\n", skipped)
-	}
+	snap, srcSnap, dstSnap, lvlSnap := st.Routes, st.Src, st.Dst, st.Lvl
 
 	xpCSV := formatCerebrumXpointCSV(collapseCerebrumRoutes(snap))
 	if !trio {
@@ -562,7 +500,7 @@ collect:
 			fmt.Print(xpCSV)
 			return nil
 		}
-		if err := os.WriteFile(*out, []byte(xpCSV), 0o644); err != nil {
+		if err := cerebrumWriteFile(*out, []byte(xpCSV)); err != nil {
 			return err
 		}
 		fmt.Fprintf(os.Stderr, "cerebrum-nb export: wrote %d crosspoint row(s) to %s\n", strings.Count(xpCSV, "\n")-1, *out)
@@ -572,12 +510,22 @@ collect:
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
 		return err
 	}
+	srcD, dstD, lvlD := dedupeCerebrumMnes(srcSnap), dedupeCerebrumMnes(dstSnap), dedupeCerebrumMnes(lvlSnap)
+	// Same alt_1..alt_N headers on all three files (plant-wide max), so an
+	// empty column is fillable on any resource kind.
+	nAlt := maxAltSlot(srcD)
+	if n := maxAltSlot(dstD); n > nAlt {
+		nAlt = n
+	}
+	if n := maxAltSlot(lvlD); n > nAlt {
+		nAlt = n
+	}
 	files := []struct {
 		name, content string
 	}{
-		{*prefix + "-src.csv", formatCerebrumMneCSV("srce", dedupeCerebrumMnes(srcSnap))},
-		{*prefix + "-dst.csv", formatCerebrumMneCSV("dest", dedupeCerebrumMnes(dstSnap))},
-		{*prefix + "-level.csv", formatCerebrumMneCSV("level", dedupeCerebrumMnes(lvlSnap))},
+		{*prefix + "-src.csv", formatCerebrumMneCSVN("srce", srcD, nAlt)},
+		{*prefix + "-dst.csv", formatCerebrumMneCSVN("dest", dstD, nAlt)},
+		{*prefix + "-level.csv", formatCerebrumMneCSVN("level", lvlD, nAlt)},
 		{*prefix + "-xpoint.csv", xpCSV},
 	}
 	for _, f := range files {
@@ -593,11 +541,10 @@ collect:
 // cerebrumDial builds a plugin from the common flags and connects (no LOGIN —
 // see connectAndLogin). Shared by import/export; the host is already split out.
 func cerebrumDial(cf *cerebrumFlags, host string) (*cerebrum.Plugin, error) {
-	logLevel := slog.LevelInfo
-	if cf.debug {
-		logLevel = slog.LevelDebug
+	logger, _, lerr := cf.newLogger()
+	if lerr != nil {
+		return nil, lerr
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
 	p := cerebrum.NewPlugin(logger)
 	p.Username = cf.user
 	p.Password = cf.pass

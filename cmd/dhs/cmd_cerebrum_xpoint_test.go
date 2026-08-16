@@ -5,19 +5,20 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
-// TestCerebrumImportXpointCheckOffline pins that `import --check` is a pure
-// offline dry-run: it parses + expands the CSV and returns nil WITHOUT a host or
-// any connection (no host arg is given here).
-func TestCerebrumImportXpointCheckOffline(t *testing.T) {
+// TestCerebrumImportXpointCheckNeedsHost pins the ensure contract for the
+// crosspoint leg: --check computes would_change against live state, so a
+// host is required even for the dry-run.
+func TestCerebrumImportXpointCheckNeedsHost(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "x.csv")
 	if err := os.WriteFile(p, []byte("dest,srce,levels\n60,60,1;2;3\n61,70,2\n"), 0o644); err != nil {
 		t.Fatalf("seed csv: %v", err)
 	}
-	if err := cerebrumImportXpoint(context.Background(), []string{"--csv", p, "--check"}); err != nil {
-		t.Fatalf("import --check offline: err = %v, want nil", err)
+	if err := cerebrumImportXpoint(context.Background(), []string{"--csv", p, "--check"}); err == nil {
+		t.Fatal("import --check without host: err = nil, want error (ensure reads live state)")
 	}
 }
 
@@ -36,11 +37,53 @@ func TestCerebrumImportXpointErrors(t *testing.T) {
 			t.Fatal("err = nil, want error (no level column)")
 		}
 	})
+	t.Run("unknown --output format", func(t *testing.T) {
+		p := filepath.Join(t.TempDir(), "x.csv")
+		_ = os.WriteFile(p, []byte("dest,srce,levels\n60,60,1\n"), 0o644)
+		err := cerebrumImportXpoint(context.Background(), []string{"--csv", p, "--output", "xml", "--check"})
+		if err == nil || !strings.Contains(err.Error(), "expected text | json") {
+			t.Fatalf("err = %v, want expected-text|json error", err)
+		}
+	})
 	t.Run("apply needs host", func(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "x.csv")
 		_ = os.WriteFile(p, []byte("dest,srce,levels\n60,60,1\n"), 0o644)
 		if err := cerebrumImportXpoint(context.Background(), []string{"--csv", p}); err == nil {
 			t.Fatal("err = nil, want error (apply mode requires host)")
+		}
+	})
+}
+
+// TestCerebrumImportInDir pins the export-mirror form: --in-dir DIR --prefix P
+// resolves <P>-xpoint/-src/-dst/-level.csv, keeps only files that exist
+// (partial scope), and an empty dir is "nothing to import".
+func TestCerebrumImportInDir(t *testing.T) {
+	t.Run("resolves existing files", func(t *testing.T) {
+		dir := t.TempDir()
+		// Only the src file exists — xpoint/dst/level stay out of scope.
+		_ = os.WriteFile(filepath.Join(dir, "noc-src.csv"), []byte("srce,mnemonic\n1,CAM1\n"), 0o644)
+		err := cerebrumImportXpoint(context.Background(), []string{"--in-dir", dir, "--prefix", "noc", "--check"})
+		// Files resolved + parsed fine, so the failure must be the missing
+		// host (ensure reads live state) — NOT "nothing to import".
+		if err == nil || !strings.Contains(err.Error(), "host") {
+			t.Fatalf("err = %v, want missing-host error", err)
+		}
+	})
+	t.Run("empty dir = nothing to import", func(t *testing.T) {
+		err := cerebrumImportXpoint(context.Background(), []string{"--in-dir", t.TempDir(), "--check"})
+		if err == nil || !strings.Contains(err.Error(), "nothing to import") {
+			t.Fatalf("err = %v, want nothing-to-import error", err)
+		}
+	})
+	t.Run("explicit flag wins over --in-dir", func(t *testing.T) {
+		dir := t.TempDir()
+		_ = os.WriteFile(filepath.Join(dir, "cerebrum-xpoint.csv"), []byte("dest,srce,levels\n1,2,1\n"), 0o644)
+		bad := filepath.Join(dir, "explicit.csv")
+		_ = os.WriteFile(bad, []byte("dest,srce\n1,2\n"), 0o644) // malformed: no level col
+		err := cerebrumImportXpoint(context.Background(), []string{"--in-dir", dir, "--xpoint", bad, "--check"})
+		// The malformed EXPLICIT file must be the one parsed (and rejected).
+		if err == nil || !strings.Contains(err.Error(), "explicit.csv") {
+			t.Fatalf("err = %v, want parse error on explicit.csv", err)
 		}
 	})
 }

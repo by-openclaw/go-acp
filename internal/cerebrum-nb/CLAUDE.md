@@ -46,7 +46,7 @@ internal/cerebrum-nb/
 ├── docs/
 │   ├── keys.md           wire-key catalogue (spec extract)
 │   ├── consumer.md       CLI walkthrough
-│   ├── verbs.md          12-section verb + sample reference (0v16)
+│   ├── verbs.md          13-section verb + sample reference (0v16)
 │   ├── runbook.md        operator quick-reference card
 │   ├── provider.md       provider rationale — consumer-only by design (N/A)
 │   └── README.md         one-page overview
