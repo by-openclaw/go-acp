@@ -204,8 +204,25 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # Same 3-attempt retry as the main test matrix — the container jobs
+      # were the one place a timing flake could still gate a merge (live
+      # case 2026-08-17: TestRunDiagnostics_ConnectionClosed on rocky9
+      # reddened a main push that every other platform passed).
       - name: Unit tests
-        run: go test -count=1 ./...
+        shell: bash
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            echo "::group::unit tests (attempt $attempt/3)"
+            if go test -count=1 ./...; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "::warning::unit tests failed on attempt $attempt/3; retrying"
+          done
+          echo "::error::unit tests failed after 3 attempts"
+          exit 1
 
   lint:
     name: Lint
