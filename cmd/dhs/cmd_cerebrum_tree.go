@@ -160,8 +160,12 @@ func cerebrumSalvoTreeObjects(sess *cerebrum.Session, timeout time.Duration) ([]
 // cerebrumCategoryTreeObjects walks §5.2 (CATEGORY_LIST → CATEGORY_DETAILS
 // per category) into canonical objects under the "Categories" root. Item
 // rows render exactly as the wire returns them (§3.3 ITEM_TYPE + VALUE):
-// SOURCE / DEST names, nested CATEGORY references, TEXT / FILE / CUSTOM.
-// The index prefix preserves the category's slot order in the sorted tree.
+// SOURCE / DEST rows carry the routable ID on this class of plant
+// (§1.8 name-or-ID), so the leaf is annotated with the primary mnemonic
+// joined from the SRCE_MNE / DEST_MNE catalogue (two wildcard OBTAINs —
+// the same reads list-sources / list-dests use). Nested CATEGORY, TEXT,
+// FILE, CUSTOM rows render verbatim. The index prefix preserves the
+// category's slot order in the sorted tree.
 func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration) ([]consumer.Object, error) {
 	list, err := obtainSingleCategoryChange(sess, timeout,
 		&codec.CategoryChange{Type: "CATEGORY_LIST"}, "CATEGORY_LIST")
@@ -170,6 +174,22 @@ func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration) 
 	}
 	if list == nil || list.Category == nil {
 		return nil, fmt.Errorf("cerebrum-nb tree: no CATEGORY_LIST reply within timeout")
+	}
+
+	// Mnemonic join: ID -> primary label for SOURCE and DEST item rows.
+	st, err := cerebrumObtainState(context.Background(), sess, "0.0.0.0", "ROUTER", 15*time.Second, cerebrumStateWant{
+		SrcMne: true, DstMne: true, Verb: "tree",
+	})
+	if err != nil {
+		return nil, err
+	}
+	srcName := map[string]string{}
+	for _, r := range st.Src {
+		srcName[r.ID] = r.Mnemonic
+	}
+	dstName := map[string]string{}
+	for _, r := range st.Dst {
+		dstName[r.ID] = r.Mnemonic
 	}
 
 	var objs []consumer.Object
@@ -192,11 +212,22 @@ func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration) 
 			continue
 		}
 		for _, it := range det.Category.Details.Items {
+			val := it.Value
+			switch it.Type {
+			case "SOURCE", "SRCE":
+				if mne, ok := srcName[it.Value]; ok && mne != "" {
+					val = fmt.Sprintf("%s %q", it.Value, mne)
+				}
+			case "DEST", "DESTINATION":
+				if mne, ok := dstName[it.Value]; ok && mne != "" {
+					val = fmt.Sprintf("%s %q", it.Value, mne)
+				}
+			}
 			objs = append(objs, consumer.Object{
 				Path:  []string{"Categories", cat, fmt.Sprintf("%04d %s", it.Index, it.Type)},
 				Label: it.Value, ID: it.Index,
 				Kind: consumer.KindString, Access: 1,
-				Value: consumer.Value{Kind: consumer.KindString, Str: it.Value},
+				Value: consumer.Value{Kind: consumer.KindString, Str: val},
 			})
 		}
 	}
