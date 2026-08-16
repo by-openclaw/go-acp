@@ -45,6 +45,23 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.14.0](https://github.com/by-openclaw/go-acp/compare/v0.13.0...v0.14.0) (2026-08-16)
+
+
+### Features
+
+* **cerebrum-nb:** capability levels on src/dst lists (associations) — shuffle-decision input ([#675](https://github.com/by-openclaw/go-acp/issues/675)) ([6c09f7f](https://github.com/by-openclaw/go-acp/commit/6c09f7f1ce9f3299594586bf2b0aae8affaaba29))
+* **cerebrum-nb:** crosspoint export/import with multi-level rows ([#668](https://github.com/by-openclaw/go-acp/issues/668)) ([ea3d4dd](https://github.com/by-openclaw/go-acp/commit/ea3d4dd22c135eb01e0ba881a58dd09e00bc039f)), closes [#667](https://github.com/by-openclaw/go-acp/issues/667)
+* **cerebrum-nb:** ensure import + Route-Master snapshot export (ADR-0007) ([0242ad7](https://github.com/by-openclaw/go-acp/commit/0242ad7d83e831d2c815d7a4d6687c0c06cd4c16))
+* **cerebrum-nb:** ensure import + Route-Master snapshot export (ADR-0007) ([ce35e24](https://github.com/by-openclaw/go-acp/commit/ce35e24e5ff191a00cc61be3f9c606fb27845bf0)), closes [#676](https://github.com/by-openclaw/go-acp/issues/676)
+* **cerebrum-nb:** list-sources / list-dests / list-levels inventory verbs ([#673](https://github.com/by-openclaw/go-acp/issues/673)) ([8927582](https://github.com/by-openclaw/go-acp/commit/89275827eff83407e040e53f3b5685c706290494)), closes [#670](https://github.com/by-openclaw/go-acp/issues/670)
+* **cerebrum-nb:** probel-parity export/import trio (src + dst mnemonics + xpoint, multi-level) ([#671](https://github.com/by-openclaw/go-acp/issues/671)) ([ab37f99](https://github.com/by-openclaw/go-acp/commit/ab37f994b9202625229b11635458081128f35a29))
+
+
+### Bug Fixes
+
+* **cerebrum-nb:** LEVEL_ID=* required on SRCE/DEST_MNE obtain filters ([#674](https://github.com/by-openclaw/go-acp/issues/674)) ([cc952fc](https://github.com/by-openclaw/go-acp/commit/cc952fcf7e23af6616535dda6d14cf894a85e37d)), closes [#670](https://github.com/by-openclaw/go-acp/issues/670)
+
 ## [0.13.0](https://github.com/by-openclaw/go-acp/compare/v0.12.0...v0.13.0) (2026-08-05)
 
 
