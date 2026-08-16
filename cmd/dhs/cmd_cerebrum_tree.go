@@ -35,8 +35,12 @@ func cerebrumTree(_ context.Context, args []string) error {
 	depth := fs.Int("depth", 0, "max render depth from the focus node (0 = unlimited)")
 	out := fs.String("out", "", "write to this file instead of stdout")
 	filter := fs.String("filter", "", "case-insensitive substring filter (drops non-matching lines)")
-	focus := fs.String("path", "", `focus subtree at this dotted path (e.g. "Salvos.Salvo Group 1" or "Categories.SRC-INTERPHONIE")`)
+	focus := fs.String("path", "", `focus subtree at this dotted path (e.g. "Salvos.Salvo Group 1" or "Categories.SRC-INTERPHONIE"; in --device mode: the start group, e.g. "PROCESSING AUDIO")`)
 	domain := fs.String("domain", "all", "which catalogue(s) to walk: salvos | categories | all")
+	device := fs.String("device", "", "DEVICE OBJECT TREE mode: walk one device's §5.4.3 object tree recursively (group obtains return children — live 2026-08-16). NAME with --by-name (exact string incl. whitespace!) or IP")
+	byName := fs.Bool("by-name", false, "--device is a DEVICE_NAME (exact, incl. trailing whitespace) instead of an IP")
+	subDev := fs.String("sub-device", "", "sub-device index for --device mode (from device-details, e.g. 1)")
+	maxReq := fs.Int("max-requests", 2000, "--device mode: cap on group obtains for the walk (safety against unexpected fan-out)")
 	alt := fs.Int("alt", 0, "label set for SOURCE/DEST item annotation: 0 = primary mnemonic, N = alternate set N (ALT_MNE, e.g. 1 = Panels on the NOC)")
 	noMne := fs.Bool("no-mne", false, "skip the mnemonic join — show raw item IDs only (also skips the two SRCE/DEST_MNE wildcard reads)")
 	if err := fs.Parse(args); err != nil {
@@ -75,23 +79,37 @@ func cerebrumTree(_ context.Context, args []string) error {
 	defer func() { _ = p.Disconnect() }()
 
 	var objs []consumer.Object
-	if *domain == "categories" || *domain == "all" {
-		catObjs, cerr := cerebrumCategoryTreeObjects(sess, cf.timeout, *alt, *noMne)
-		if cerr != nil {
-			return cerr
+	var renderFocus string
+	if *device != "" {
+		if *subDev == "" {
+			return fmt.Errorf("cerebrum-nb tree: --device mode needs --sub-device (index from device-details)")
 		}
-		objs = append(objs, catObjs...)
-	}
-	if *domain == "salvos" || *domain == "all" {
-		salvoObjs, serr := cerebrumSalvoTreeObjects(sess, cf.timeout)
-		if serr != nil {
-			return serr
+		devObjs, derr := cerebrumDeviceTreeObjects(sess, cf.timeout, *device, *byName, *subDev, *focus, *maxReq)
+		if derr != nil {
+			return derr
 		}
-		objs = append(objs, salvoObjs...)
+		objs = devObjs
+		renderFocus = "" // --path already scoped the walk itself
+	} else {
+		if *domain == "categories" || *domain == "all" {
+			catObjs, cerr := cerebrumCategoryTreeObjects(sess, cf.timeout, *alt, *noMne)
+			if cerr != nil {
+				return cerr
+			}
+			objs = append(objs, catObjs...)
+		}
+		if *domain == "salvos" || *domain == "all" {
+			salvoObjs, serr := cerebrumSalvoTreeObjects(sess, cf.timeout)
+			if serr != nil {
+				return serr
+			}
+			objs = append(objs, salvoObjs...)
+		}
+		renderFocus = cerebrumExpandFocus(objs, *focus)
 	}
 
 	opts := treeRenderOpts{
-		FromPath: cerebrumExpandFocus(objs, *focus),
+		FromPath: renderFocus,
 		Depth:    *depth,
 		ASCII:    *format == "ascii",
 		Filter:   *filter,
@@ -139,6 +157,104 @@ func cerebrumExpandFocus(objs []consumer.Object, focus string) string {
 		return focus
 	}
 	return strings.Join(best, ".")
+}
+
+// cerebrumDeviceTreeObjects walks one device's object tree over §5.4.3
+// VALUE obtains — the NB analogue of an acp2 walk (live 2026-08-16): a
+// GROUP path returns its CHILDREN as OBJECT_VALUE rows (sub-groups arrive
+// as available=0 empty rows, leaves carry the value), while a LEAF path
+// echoes itself as a single row. Recursion descends group candidates and
+// re-classifies "single self-echo" answers as unavailable leaves. start
+// "" (or the "." sentinel) walks from the device root; maxReq caps the
+// obtain count.
+func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, start string, maxReq int) ([]consumer.Object, error) {
+	if start == "." {
+		start = ""
+	}
+	rootLabel := strings.TrimSpace(device)
+	requests := 0
+	obtain := func(object string) ([]codec.DeviceObjectValue, error) {
+		requests++
+		dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: object}
+		if byName {
+			dc.DeviceName = device
+		} else {
+			dc.IPAddress = device
+		}
+		got, err := obtainSingleDeviceChange(sess, timeout, dc, "VALUE")
+		if err != nil {
+			return nil, err
+		}
+		if got == nil || got.Device == nil {
+			return nil, nil
+		}
+		return got.Device.ObjectValues, nil
+	}
+
+	var objs []consumer.Object
+	truncated := false
+	emitLeaf := func(ov codec.DeviceObjectValue) {
+		meta := fmt.Sprintf("available=%s", boolFlag(ov.Available))
+		if ov.Value != "" {
+			meta += fmt.Sprintf(" value=%q", ov.Value)
+		}
+		if ov.DataType != "" {
+			meta += " type=" + ov.DataType
+		}
+		if ov.Min != "" || ov.Max != "" {
+			meta += fmt.Sprintf(" range=%s..%s", ov.Min, ov.Max)
+		}
+		if len(ov.EnumList) > 0 {
+			meta += fmt.Sprintf(" enum=%s", strings.Join(ov.EnumList, "|"))
+		}
+		objs = append(objs, consumer.Object{
+			Path:  append([]string{rootLabel}, strings.Split(ov.Object, ".")...),
+			Label: ov.Object,
+			Kind:  consumer.KindString, Access: 1,
+			Value: consumer.Value{Kind: consumer.KindString, Str: meta},
+		})
+	}
+
+	var walk func(group string) error
+	walk = func(group string) error {
+		if requests >= maxReq {
+			truncated = true
+			return nil
+		}
+		rows, err := obtain(group)
+		if err != nil {
+			return err
+		}
+		// A single self-echo row = this path is a real LEAF (possibly
+		// unavailable), not a group.
+		if group != "" && len(rows) == 1 && rows[0].Object == group {
+			emitLeaf(rows[0])
+			return nil
+		}
+		for _, ov := range rows {
+			if ov.Object == group {
+				continue
+			}
+			// Group candidate: no value, not available, no descriptor —
+			// descend; the self-echo check above re-classifies real leaves.
+			if !ov.Available && ov.Value == "" && ov.DataType == "" {
+				if err := walk(ov.Object); err != nil {
+					return err
+				}
+				continue
+			}
+			emitLeaf(ov)
+		}
+		return nil
+	}
+	if err := walk(start); err != nil {
+		return nil, err
+	}
+	if truncated {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb tree: WARNING — walk truncated at --max-requests=%d obtains (raise it for the full tree)\n", maxReq)
+	}
+	fmt.Fprintf(os.Stderr, "cerebrum-nb tree: device walk used %d obtain(s), %d object(s)\n", requests, len(objs))
+	return objs, nil
 }
 
 // cerebrumSalvoTreeObjects walks §5.3 (GROUP_LIST → INSTANCE_LIST →

@@ -232,7 +232,7 @@ VERBS
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
   list-categories          OBTAIN <category_change type='CATEGORY_LIST'/>
   category-details         OBTAIN <category_change type='CATEGORY_DETAILS'/>  --category NAME
-  tree                     NB catalogue tree — canonical renderer (same as <proto> tree). Categories (§5.2: categories → SOURCE/DEST/CATEGORY items) + Salvos (§5.3: groups → instances → metadata)  [--domain salvos|categories|all] [--alt N | --no-mne] [--format ascii|plantuml] [--path P] [--depth N] [--filter S] [--out FILE]
+  tree                     NB catalogue tree — canonical renderer (same as <proto> tree). Categories (§5.2) + Salvos (§5.3)  [--domain salvos|categories|all] [--alt N | --no-mne]; DEVICE OBJECT TREE (acp2-walk analogue, §5.4.3 group obtains): --device NAME --by-name --sub-device N [--path GROUP] [--max-requests N]. Common: [--format ascii|plantuml] [--path P] [--depth N] [--filter S] [--out FILE]
   list-salvo-groups        OBTAIN <salvo_change type='GROUP_LIST'/>
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
@@ -764,7 +764,13 @@ func cerebrumDeviceValue(_ context.Context, args []string) error {
 		return fmt.Errorf("cerebrum-nb device-value: --device NAME is required (use --by-name)")
 	}
 	if subDev == "" || object == "" {
-		return fmt.Errorf("cerebrum-nb device-value: --sub-device and --object are both required")
+		return fmt.Errorf("cerebrum-nb device-value: --sub-device and --object are both required (use --object \".\" for the ROOT group listing)")
+	}
+	// Group paths return their CHILDREN (live 2026-08-16: a §5.4.3 obtain
+	// on "PROCESSING AUDIO" listed sub-groups as available=0 rows and leaf
+	// values inline) — "." is the CLI sentinel for the root listing.
+	if object == "." {
+		object = ""
 	}
 
 	p, sess, cf, _, err := connectAndLogin(rest, "device-value")
@@ -1201,7 +1207,10 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		return fmt.Errorf("cerebrum-nb watch: --device IP|NAME is required")
 	}
 	if (subDev == "") != (object == "") {
-		return fmt.Errorf("cerebrum-nb watch: --sub-device and --object go together (both = VALUE watch, neither = DETAILS watch)")
+		return fmt.Errorf("cerebrum-nb watch: --sub-device and --object go together (both = VALUE watch, neither = DETAILS watch; --object \".\" = root group)")
+	}
+	if object == "." {
+		object = "" // root-group sentinel, same as device-value
 	}
 
 	args = reorderFlagsFirst(rest)
