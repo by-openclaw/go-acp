@@ -26,8 +26,23 @@
 --     The RESULT VALUE (ACCEPTED/FAILED) and DEVICE_TYPE attrs are pulled
 --     into the Info column so a device-config round-trip is readable at a
 --     glance.
+--   * Live-wire facts (2026-08 production captures — docs/keys.md
+--     "wire-actual" notes):
+--       LOCK / LOCK_STATE / LOCKED_BY on routing actions + events —
+--         incl. LOCK_STATE="RELEASED", the undocumented sixth value that
+--         is the wire-actual clearing state;
+--       top-level VALUE attr on DEVICE_CHANGE value events (change
+--         events carry VALUE on the root, NOT an OBJECT_VALUE child);
+--       MIN/MAX/STEP descriptor attrs on VALUE rows;
+--       positional <DEVICE_N …> sub-device children in DETAILS replies
+--         (surfaced as a sub-device count);
+--       MTID-less WILDCARD_COMPLETE — the live NOC emits a spurious one
+--         after every event (only MTID-carrying ones end a wildcard
+--         request) — flagged with an expert NOTE, not an error.
 --   * Per-message Info column with direction arrow + verb + key attrs
---     so each frame is uniquely identifiable at a glance
+--     (DEST_ID/SRCE_ID/LEVEL_ID, DEVICE_NAME/SUB_DEVICE/OBJECT,
+--     CATEGORY/GROUP/INSTANCE, MNEMONIC) so each frame is uniquely
+--     identifiable at a glance
 --   * Any XML root NOT in the known-root catalogue fires a Wireshark
 --     expert WARNING (never a silent fallthrough), per the root CLAUDE.md
 --     dissector rule.
@@ -79,6 +94,31 @@ f.xml_error_code  = ProtoField.string("dhs_cerebrum_nb.xml.error_code",   "ERROR
 -- 0v16 additions
 f.xml_device_type = ProtoField.string("dhs_cerebrum_nb.xml.device_type",  "DEVICE_TYPE")
 f.xml_result      = ProtoField.string("dhs_cerebrum_nb.xml.result",       "RESULT VALUE")
+-- Routing identity attrs (per-command Info detail)
+f.xml_dest_id     = ProtoField.string("dhs_cerebrum_nb.xml.dest_id",      "DEST_ID")
+f.xml_srce_id     = ProtoField.string("dhs_cerebrum_nb.xml.srce_id",      "SRCE_ID")
+f.xml_level_id    = ProtoField.string("dhs_cerebrum_nb.xml.level_id",     "LEVEL_ID")
+f.xml_mnemonic    = ProtoField.string("dhs_cerebrum_nb.xml.mnemonic",     "MNEMONIC")
+-- Lock attrs (wire-actual: LOCK on actions, LOCK_STATE + LOCKED_BY on
+-- events; RELEASED is the undocumented clearing value — live 2026-08-16)
+f.xml_lock        = ProtoField.string("dhs_cerebrum_nb.xml.lock",         "LOCK")
+f.xml_lock_state  = ProtoField.string("dhs_cerebrum_nb.xml.lock_state",   "LOCK_STATE")
+f.xml_locked_by   = ProtoField.string("dhs_cerebrum_nb.xml.locked_by",    "LOCKED_BY")
+-- Device-object attrs (§5.4 VALUE rows; top-level VALUE is wire-actual on
+-- change events — no OBJECT_VALUE child)
+f.xml_device_name = ProtoField.string("dhs_cerebrum_nb.xml.device_name",  "DEVICE_NAME")
+f.xml_sub_device  = ProtoField.string("dhs_cerebrum_nb.xml.sub_device",   "SUB_DEVICE")
+f.xml_object      = ProtoField.string("dhs_cerebrum_nb.xml.object",       "OBJECT")
+f.xml_value       = ProtoField.string("dhs_cerebrum_nb.xml.value",        "VALUE (top-level)")
+f.xml_min         = ProtoField.string("dhs_cerebrum_nb.xml.min",          "MIN")
+f.xml_max         = ProtoField.string("dhs_cerebrum_nb.xml.max",          "MAX")
+f.xml_step        = ProtoField.string("dhs_cerebrum_nb.xml.step",         "STEP")
+-- Category / salvo identity attrs
+f.xml_category    = ProtoField.string("dhs_cerebrum_nb.xml.category",     "CATEGORY")
+f.xml_group       = ProtoField.string("dhs_cerebrum_nb.xml.group",        "GROUP")
+f.xml_instance    = ProtoField.string("dhs_cerebrum_nb.xml.instance",     "INSTANCE")
+-- §5.4.2 DETAILS: positional <DEVICE_N …> sub-device children (wire-actual)
+f.xml_sub_count   = ProtoField.uint32("dhs_cerebrum_nb.xml.sub_devices",  "Sub-device children (DEVICE_N)", base.DEC)
 f.xml_text        = ProtoField.string("dhs_cerebrum_nb.xml.text",         "XML payload")
 
 -- Close
@@ -91,6 +131,7 @@ local ef = {
   rsv_set      = ProtoExpert.new("dhs_cerebrum_nb.rsv_set",      "Reserved bits set",         expert.group.MALFORMED,  expert.severity.WARN),
   big_control  = ProtoExpert.new("dhs_cerebrum_nb.big_control",  "Control frame >125 bytes",  expert.group.MALFORMED,  expert.severity.ERROR),
   unknown_root = ProtoExpert.new("dhs_cerebrum_nb.unknown_root", "Unknown Cerebrum NB XML root (not in 0v16 catalogue)", expert.group.UNDECODED, expert.severity.WARN),
+  spurious_wc  = ProtoExpert.new("dhs_cerebrum_nb.spurious_wc",  "MTID-less WILDCARD_COMPLETE (live NOC deviation — only MTID-carrying ones end a wildcard request)", expert.group.PROTOCOL, expert.severity.NOTE),
 }
 p_cnb.experts = ef
 
@@ -191,7 +232,54 @@ local function extract_xml_attrs(s)
     err         = xml_attr(s, "ERROR"),
     err_code    = xml_attr(s, "ERROR_CODE"),
     device_type = xml_attr(s, "DEVICE_TYPE"), -- 0v16 §4.5 DEVICE_CONFIGURATION
+    -- Routing identity (first occurrence = root/first row attrs; ROUTE
+    -- children's SOURCE_ID is a different attribute name, so no clash)
+    dest_id     = xml_attr(s, "DEST_ID"),
+    srce_id     = xml_attr(s, "SRCE_ID"),
+    level_id    = xml_attr(s, "LEVEL_ID"),
+    mnemonic    = xml_attr(s, "MNEMONIC"),
+    -- Lock (wire-actual): LOCK on actions; LOCK_STATE + LOCKED_BY on
+    -- events. LOCK_STATE must be read before LOCK — xml_attr matches the
+    -- substring "LOCK" inside "LOCK_STATE" otherwise.
+    lock_state  = xml_attr(s, "LOCK_STATE"),
+    locked_by   = xml_attr(s, "LOCKED_BY"),
+    -- Device-object rows (§5.4)
+    device_name = xml_attr(s, "DEVICE_NAME"),
+    sub_device  = xml_attr(s, "SUB_DEVICE"),
+    object      = xml_attr(s, "OBJECT"),
+    min         = xml_attr(s, "MIN"),
+    max         = xml_attr(s, "MAX"),
+    step        = xml_attr(s, "STEP"),
+    -- Category / salvo identity
+    category    = xml_attr(s, "CATEGORY"),
+    group       = xml_attr(s, "GROUP"),
+    instance    = xml_attr(s, "INSTANCE"),
   }
+
+  -- LOCK: whitespace-anchored so only the attribute NAME "LOCK" matches —
+  -- LOCK_STATE= / LOCKED_BY= continue with '_' (not '='), and enum text
+  -- like TYPE="DEST_LOCK" continues with '"'. TX actions nest the row
+  -- under <ACTION>, so the match runs over the whole document.
+  r.lock = s:match("[%s][Ll][Oo][Cc][Kk]%s*=%s*\"([^\"]*)\"")
+      or s:match("[%s][Ll][Oo][Cc][Kk]%s*=%s*'([^']*)'")
+
+  -- VALUE: whitespace-anchored, document-wide — covers the wire-actual
+  -- top-level VALUE on DEVICE_CHANGE value events (no OBJECT_VALUE child
+  -- there), the OBJECT_VALUE child's VALUE in obtain replies, and the
+  -- SET_VALUE action's VALUE under <ACTION>. DEVICE_CONFIGURATION is
+  -- excluded — its <RESULT VALUE=…> verdict is surfaced as RESULT instead.
+  if root ~= "DEVICE_CONFIGURATION" then
+    r.value = s:match("[%s][Vv][Aa][Ll][Uu][Ee]%s*=%s*\"([^\"]*)\"")
+        or s:match("[%s][Vv][Aa][Ll][Uu][Ee]%s*=%s*'([^']*)'")
+  end
+
+  -- §5.4.2 DETAILS wire-actual: positional <DEVICE_1 …> <DEVICE_2 …>
+  -- sub-device children. Count them for the Info column.
+  local n = 0
+  for _ in s:gmatch("<%s*[Dd][Ee][Vv][Ii][Cc][Ee]_%d+[%s/>]") do
+    n = n + 1
+  end
+  if n > 0 then r.sub_count = n end
 
   -- 0v16 §4.5 RX: <DEVICE_CONFIGURATION …><RESULT VALUE="ACCEPTED|FAILED"/>.
   -- Pull the RESULT child's VALUE so the verdict shows in Info. Scope the
@@ -307,9 +395,39 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
       if x.mtid        then subtree:add(f.xml_mtid,        x.mtid);        info = info .. " mtid=" .. x.mtid end
       if x.typ         then subtree:add(f.xml_type,        x.typ);         info = info .. " TYPE=" .. x.typ end
       if x.device_type then subtree:add(f.xml_device_type, x.device_type); info = info .. " DEVICE_TYPE=" .. x.device_type end
+      -- Routing identity (the "which cell" half of every routing frame)
+      if x.dest_id     then subtree:add(f.xml_dest_id,     x.dest_id);     info = info .. " DEST=" .. x.dest_id end
+      if x.srce_id     then subtree:add(f.xml_srce_id,     x.srce_id);     info = info .. " SRCE=" .. x.srce_id end
+      if x.level_id    then subtree:add(f.xml_level_id,    x.level_id);    info = info .. " LVL=" .. x.level_id end
+      if x.mnemonic    then subtree:add(f.xml_mnemonic,    x.mnemonic);    info = info .. " MNE=" .. string.format("%q", x.mnemonic) end
+      -- Lock lifecycle (LOCK on actions; LOCK_STATE/LOCKED_BY on events —
+      -- RELEASED is the wire-actual clearing value, keys.md wire-actual)
+      if x.lock        then subtree:add(f.xml_lock,        x.lock);        info = info .. " LOCK=" .. x.lock end
+      if x.lock_state  then subtree:add(f.xml_lock_state,  x.lock_state);  info = info .. " LOCK_STATE=" .. x.lock_state end
+      if x.locked_by   then subtree:add(f.xml_locked_by,   x.locked_by);   info = info .. " BY=" .. string.format("%q", x.locked_by) end
+      -- Device-object rows (§5.4): identity + top-level VALUE + descriptor
+      if x.device_name then subtree:add(f.xml_device_name, x.device_name); info = info .. " DEV=" .. string.format("%q", x.device_name) end
+      if x.sub_device  then subtree:add(f.xml_sub_device,  x.sub_device);  info = info .. " SUB=" .. x.sub_device end
+      if x.object      then subtree:add(f.xml_object,      x.object);      info = info .. " OBJ=" .. string.format("%q", x.object) end
+      if x.value       then subtree:add(f.xml_value,       x.value);       info = info .. " VALUE=" .. string.format("%q", x.value) end
+      if x.min         then subtree:add(f.xml_min,  x.min)  end
+      if x.max         then subtree:add(f.xml_max,  x.max)  end
+      if x.step        then subtree:add(f.xml_step, x.step) end
+      if x.min and x.max then info = info .. string.format(" range=%s..%s", x.min, x.max) end
+      if x.sub_count   then subtree:add(f.xml_sub_count,   x.sub_count);   info = info .. " sub_devices=" .. x.sub_count end
+      -- Category / salvo identity
+      if x.category    then subtree:add(f.xml_category,    x.category);    info = info .. " CAT=" .. string.format("%q", x.category) end
+      if x.group       then subtree:add(f.xml_group,       x.group);       info = info .. " GRP=" .. string.format("%q", x.group) end
+      if x.instance    then subtree:add(f.xml_instance,    x.instance);    info = info .. " INST=" .. string.format("%q", x.instance) end
       if x.result      then subtree:add(f.xml_result,      x.result);      info = info .. " RESULT=" .. x.result end
       if x.err         then subtree:add(f.xml_error,       x.err);         info = info .. " ERROR=" .. x.err end
       if x.err_code    then subtree:add(f.xml_error_code,  x.err_code);    info = info .. " CODE=" .. x.err_code end
+      -- Live NOC deviation: a spurious MTID-less WILDCARD_COMPLETE follows
+      -- every event; only MTID-carrying ones end a wildcard request.
+      if x.root == "WILDCARD_COMPLETE" and not x.mtid then
+        root_item:add_proto_expert_info(ef.spurious_wc)
+        info = info .. " [spurious — no mtid]"
+      end
       -- Unknown root → expert WARNING (never a silent fallthrough).
       if not known_roots[x.root] then
         root_item:add_proto_expert_info(ef.unknown_root)
