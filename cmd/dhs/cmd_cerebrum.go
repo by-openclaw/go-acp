@@ -549,10 +549,11 @@ func cerebrumListen(ctx context.Context, args []string) error {
 			Type: "ROUTE", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
 			DestID: "*", LevelID: "*",
 		}},
-		{"ROUTING_CHANGE TYPE=SRCE_LOCK", &codec.RoutingChange{
-			Type: "SRCE_LOCK", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
-			SrceID: "*",
-		}},
+		// SRCE_LOCK deliberately NOT subscribed: every live Cerebrum tested
+		// (RT + per-router, 2026-04..2026-08) NACKs it, and source locks
+		// are unreal in this production. Skipped with a notice below so a
+		// clean run shows 0 failed — re-add the row if a server ever
+		// grants it.
 		{"ROUTING_CHANGE TYPE=DEST_LOCK", &codec.RoutingChange{
 			Type: "DEST_LOCK", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
 			DestID: "*", LevelID: "*",
@@ -582,7 +583,7 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		}
 		ok++
 	}
-	fmt.Fprintf(os.Stderr, "subscribed: %d ok, %d failed; listening for events; Ctrl+C to stop\n", ok, fail)
+	fmt.Fprintf(os.Stderr, "subscribed: %d ok, %d failed (SRCE_LOCK skipped — every live Cerebrum NACKs it; re-enable if a server ever grants it); listening for events; Ctrl+C to stop\n", ok, fail)
 	<-ctx.Done()
 	return nil
 }
