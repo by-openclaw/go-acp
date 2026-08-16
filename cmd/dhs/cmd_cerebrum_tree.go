@@ -211,7 +211,10 @@ func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, de
 		if ov.DataType != "" {
 			meta += " type=" + ov.DataType
 		}
-		if ov.Min != "" || ov.Max != "" {
+		// A degenerate MIN==MAX range carries no information (ENUMs report
+		// 0..0 — their real constraint is the enum list; Identifier-style
+		// INTEGERs likewise) — print range only when it constrains.
+		if (ov.Min != "" || ov.Max != "") && ov.Min != ov.Max {
 			meta += fmt.Sprintf(" range=%s..%s", ov.Min, ov.Max)
 		}
 		if len(ov.EnumList) > 0 {

@@ -819,10 +819,10 @@ func cerebrumDeviceValue(_ context.Context, args []string) error {
 		if ov.Label != "" {
 			line += fmt.Sprintf(" label=%q", ov.Label)
 		}
-		if ov.Min != "" || ov.Max != "" {
+		if (ov.Min != "" || ov.Max != "") && ov.Min != ov.Max {
 			line += fmt.Sprintf(" range=%s..%s", ov.Min, ov.Max)
 		}
-		if ov.Step != "" {
+		if ov.Step != "" && ov.Step != "0.000000" {
 			line += " step=" + ov.Step
 		}
 		if ov.Default != "" {
