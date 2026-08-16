@@ -34,6 +34,7 @@ EVS **Cerebrum Northbound API 0v16** (authoritative) — also branded
 | Reads | `list-devices` / `device-details` / `device-value` | device domain |
 | | `list-categories` / `category-details` | category domain (items = SOURCE/DEST names) |
 | | `list-salvo-groups` / `list-salvo-instances` / `salvo-instance-details` | salvo domain |
+| | `tree` | NB catalogue as the canonical ASCII / PlantUML tree — Categories (§5.2: categories → SOURCE/DEST/nested-CATEGORY items) + Salvos (§5.3: groups → instances → metadata; salvo item rows are not exposed over NB) — `--domain salvos\|categories\|all` |
 | | `obtain-datastore` | data store fetch |
 | Writes | `salvo` (run/save/rename/description/delete) · `category` (create/modify/delete) · `set-value` · `device-config` | §4 actions |
 
