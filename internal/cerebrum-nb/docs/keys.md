@@ -155,6 +155,19 @@ Three device classes:
 > re-emits the event. EVS follow-ups: confirm RELEASED is the
 > sanctioned clearing action; document the lock permission model.
 
+> **Wire-actual (live NOC 2026-08-16): NB DEST_LOCK ≠ device-native
+> module locks.** The DEST_LOCK table exists per addressing target —
+> route-master AND physical routers (obtain granted on a ROUTER-class
+> device, RELEASED baseline returned). But a lock set in the Cerebrum
+> UI on a device's own module view (Snell SW-P-08, shelf slot 00)
+> NEVER surfaces in NB: no DEST_LOCK event on `listen --router` while
+> toggling, and the cell reads RELEASED. Those locks are device-native
+> protect state driven through Cerebrum's device driver — read/write
+> them via the device's own protocol (SW-P-08 protect verbs), not NB.
+> Consequence: `-lock.csv` snapshots exactly the NB lock domain; a
+> whole-system snapshot needs the probel protect verbs for module
+> locks on SW-P-08-class devices.
+
 Valid values for the `LOCK` / `lock` attribute on routing
 actions/events. Observed from spec examples:
 
