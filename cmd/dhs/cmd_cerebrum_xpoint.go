@@ -244,6 +244,15 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	if *csvPath != "" && *xpointPath != "" {
 		return cerebrumValErr("import", "--csv and --xpoint are the same input — pass one")
 	}
+	// Categories are route-master-only (§5.2/§4.2 rows carry no device
+	// addressing) — a physical-router import must not silently converge the
+	// RM's categories. Explicit cat flags with a non-RM target are a caller
+	// fault; --in-dir auto-resolved cat files are skipped with a warning
+	// (the dir may simply hold a full RM export set).
+	nonRMTarget := !cerebrumRouterIsRM(*router) || *deviceName != ""
+	if nonRMTarget && (*catSrcPath != "" || *catDstPath != "" || *catMixedPath != "") {
+		return cerebrumValErr("import", "--cat-src/--cat-dst/--cat-mixed are route-master-only (categories carry no device addressing) — drop them or import against the RM (no --router/--device-name)")
+	}
 	xp := *xpointPath
 	if xp == "" {
 		xp = *csvPath
@@ -265,9 +274,17 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		resolve(srcPath, "-src.csv")
 		resolve(dstPath, "-dst.csv")
 		resolve(lvlPath, "-level.csv")
-		resolve(catSrcPath, "-cat-src.csv")
-		resolve(catDstPath, "-cat-dst.csv")
-		resolve(catMixedPath, "-cat-mixed.csv")
+		if nonRMTarget {
+			// The dir may hold a full RM export set — its cat files are out
+			// of scope for a physical-router import, never an error.
+			if _, err := os.Stat(filepath.Join(*inDir, *prefix+"-cat-src.csv")); err == nil {
+				fmt.Fprintf(os.Stderr, "cerebrum-nb import: physical-router target — %s-cat-*.csv in %s skipped (categories are route-master-only)\n", *prefix, *inDir)
+			}
+		} else {
+			resolve(catSrcPath, "-cat-src.csv")
+			resolve(catDstPath, "-cat-dst.csv")
+			resolve(catMixedPath, "-cat-mixed.csv")
+		}
 		fmt.Fprintf(os.Stderr, "cerebrum-nb import: --in-dir resolved xpoint=%s src=%s dst=%s levels=%s cat-src=%s cat-dst=%s cat-mixed=%s\n",
 			orDash(xp), orDash(*srcPath), orDash(*dstPath), orDash(*lvlPath), orDash(*catSrcPath), orDash(*catDstPath), orDash(*catMixedPath))
 	}
@@ -625,29 +642,36 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 	}
 	// Category navigation files (§5.2 walk): SRC and DST kept in separate
 	// files by owner rule; a category whose subtree carries both kinds is
-	// written to both and warned about.
-	catNames, catDetails, cerr := fetchCerebrumCategories(p.Session(), cf.timeout)
-	if cerr != nil {
-		return cerr
-	}
-	srcPick, dstPick, mixed := classifyCerebrumCategories(catNames, catDetails)
-	// Mixed-subtree categories get their OWN file so the src/dst files stay
-	// pure (their parsers reject the other kind — round-trip must hold).
-	mixedPick := map[string]bool{}
-	for _, m := range mixed {
-		mixedPick[m] = true
-		delete(srcPick, m)
-		delete(dstPick, m)
-	}
-	files = append(files,
-		struct{ name, content string }{*prefix + "-cat-src.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, srcPick, catDetails))},
-		struct{ name, content string }{*prefix + "-cat-dst.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, dstPick, catDetails))},
-	)
-	if len(mixed) > 0 {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb export: %d categor(ies) carry BOTH source and dest resources in their subtree — written to %s-cat-mixed.csv: %s\n", len(mixed), *prefix, strings.Join(mixed, ", "))
+	// written to both and warned about. Categories are ROUTE-MASTER-ONLY:
+	// the §5.2 rows carry no device addressing at all, so a physical-router
+	// export must skip them or it would silently write the RM's categories
+	// into a router snapshot set.
+	if cerebrumRouterIsRM(*router) {
+		catNames, catDetails, cerr := fetchCerebrumCategories(p.Session(), cf.timeout)
+		if cerr != nil {
+			return cerr
+		}
+		srcPick, dstPick, mixed := classifyCerebrumCategories(catNames, catDetails)
+		// Mixed-subtree categories get their OWN file so the src/dst files stay
+		// pure (their parsers reject the other kind — round-trip must hold).
+		mixedPick := map[string]bool{}
+		for _, m := range mixed {
+			mixedPick[m] = true
+			delete(srcPick, m)
+			delete(dstPick, m)
+		}
 		files = append(files,
-			struct{ name, content string }{*prefix + "-cat-mixed.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, mixedPick, catDetails))},
+			struct{ name, content string }{*prefix + "-cat-src.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, srcPick, catDetails))},
+			struct{ name, content string }{*prefix + "-cat-dst.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, dstPick, catDetails))},
 		)
+		if len(mixed) > 0 {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb export: %d categor(ies) carry BOTH source and dest resources in their subtree — written to %s-cat-mixed.csv: %s\n", len(mixed), *prefix, strings.Join(mixed, ", "))
+			files = append(files,
+				struct{ name, content string }{*prefix + "-cat-mixed.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, mixedPick, catDetails))},
+			)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb export: --router %s is a physical router — category files skipped (categories are route-master-only; IDs in this set are the router's device-native numbering, import back with the same --router)\n", *router)
 	}
 	for _, f := range files {
 		path := filepath.Join(*outDir, f.name)
@@ -657,6 +681,13 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 		fmt.Fprintf(os.Stderr, "cerebrum-nb export: wrote %s (%d row(s))\n", path, strings.Count(f.content, "\n")-1)
 	}
 	return nil
+}
+
+// cerebrumRouterIsRM reports whether the --router target is the central
+// route-master sentinel (§4.1: IP 0.0.0.0) as opposed to a physical
+// ROUTER-class device. RM-only legs (categories) key off this.
+func cerebrumRouterIsRM(router string) bool {
+	return router == "" || router == "0.0.0.0"
 }
 
 // cerebrumDial builds a plugin from the common flags and connects (no LOGIN —
