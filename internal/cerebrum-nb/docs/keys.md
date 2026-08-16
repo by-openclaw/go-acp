@@ -145,13 +145,15 @@ Three device classes:
 > RELEASED. `unlock` sends RELEASED by default. **All-level form
 > verified** (2026-08-16): omitting LEVEL locks every existing level in
 > one action (14 per-level events observed; nonexistent levels no-op
-> silently). **Ownership is INFORMATIONAL ONLY** (verified: an
-> Admin-owned lock was overwritten by YOB's LOCK action — LOCKED_BY
-> flipped — and then released; the server enforces nothing, LOCKED_BY
-> is display metadata, NB locks are advisory rather than protection).
-> RELEASED is also IDEMPOTENT: re-releasing a free cell ACKs and
+> silently). **Ownership between ADMIN-privileged actors is not
+> enforced** (verified: the XY panel's Admin lock was overwritten by
+> YOB's LOCK — LOCKED_BY flipped — and vice-versa; both actors carry
+> admin rights, so this proves admin-level override, NOT the absence
+> of enforcement in general — whether a NON-admin user can override /
+> release is untested, owner's TODO). LOCKED_BY is at minimum display
+> metadata. RELEASED is IDEMPOTENT: re-releasing a free cell ACKs and
 > re-emits the event. EVS follow-ups: confirm RELEASED is the
-> sanctioned clearing action; is ownership enforcement configurable?
+> sanctioned clearing action; document the lock permission model.
 
 Valid values for the `LOCK` / `lock` attribute on routing
 actions/events. Observed from spec examples:
