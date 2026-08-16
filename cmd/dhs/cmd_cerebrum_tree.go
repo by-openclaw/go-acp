@@ -217,10 +217,19 @@ func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, de
 		if len(ov.EnumList) > 0 {
 			meta += fmt.Sprintf(" enum=%s", strings.Join(ov.EnumList, "|"))
 		}
+		// Access bits from the wire descriptor (read=1, write=2 — the
+		// canonical access byte), so RW objects render as RW-, not R--.
+		var access uint8
+		if ov.Readable {
+			access |= 0x01
+		}
+		if ov.Writable {
+			access |= 0x02
+		}
 		objs = append(objs, consumer.Object{
 			Path:  append([]string{rootLabel}, strings.Split(ov.Object, ".")...),
 			Label: ov.Object,
-			Kind:  consumer.KindString, Access: 1,
+			Kind:  consumer.KindString, Access: access,
 			Value: consumer.Value{Kind: consumer.KindString, Str: meta},
 		})
 	}
