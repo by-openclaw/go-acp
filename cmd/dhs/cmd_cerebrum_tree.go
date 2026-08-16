@@ -203,26 +203,56 @@ func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration, 
 		}
 	}
 
-	var objs []consumer.Object
+	// Fetch every category's details once, then compose the FOREST:
+	// categories referenced as CATEGORY items nest under their parent
+	// (recursively — real sub-category subtrees, matching the UI Inherits/
+	// membership view) instead of duplicating at top level. Roots are the
+	// categories no other category references.
+	details := map[string]*codec.CategoryDetailsInfo{}
+	referenced := map[string]bool{}
 	for _, cat := range list.Category.Categories {
 		det, derr := obtainSingleCategoryChange(sess, timeout,
 			&codec.CategoryChange{Type: "CATEGORY_DETAILS", Category: cat}, "CATEGORY_DETAILS")
 		if derr != nil {
 			return nil, derr
 		}
-		if det == nil || det.Category == nil || det.Category.Details == nil || len(det.Category.Details.Items) == 0 {
+		if det != nil && det.Category != nil && det.Category.Details != nil {
+			details[cat] = det.Category.Details
+			for _, it := range det.Category.Details.Items {
+				if it.Type == "CATEGORY" {
+					referenced[it.Value] = true
+				}
+			}
+		} else {
+			details[cat] = nil
+		}
+	}
+
+	var objs []consumer.Object
+	var emit func(cat string, path []string, visited map[string]bool)
+	emit = func(cat string, path []string, visited map[string]bool) {
+		d := details[cat]
+		if d == nil || len(d.Items) == 0 {
 			meta := "(no items)"
-			if det != nil && det.Category != nil && det.Category.Details != nil && det.Category.Details.Label != "" {
-				meta = fmt.Sprintf("label=%q (no items)", det.Category.Details.Label)
+			if d != nil && d.Label != "" {
+				meta = fmt.Sprintf("label=%q (no items)", d.Label)
 			}
 			objs = append(objs, consumer.Object{
-				Path: []string{"Categories", cat}, Label: cat,
+				Path: path, Label: cat,
 				Kind: consumer.KindString, Access: 1,
 				Value: consumer.Value{Kind: consumer.KindString, Str: meta},
 			})
-			continue
+			return
 		}
-		for _, it := range det.Category.Details.Items {
+		for _, it := range d.Items {
+			if it.Type == "CATEGORY" {
+				if _, known := details[it.Value]; known && !visited[it.Value] {
+					visited[it.Value] = true
+					emit(it.Value, append(append([]string{}, path...), it.Value), visited)
+					continue
+				}
+				// Unknown target or cycle — render the reference verbatim.
+			}
 			val := it.Value
 			switch it.Type {
 			case "SOURCE", "SRCE":
@@ -235,12 +265,18 @@ func cerebrumCategoryTreeObjects(sess *cerebrum.Session, timeout time.Duration, 
 				}
 			}
 			objs = append(objs, consumer.Object{
-				Path:  []string{"Categories", cat, fmt.Sprintf("%04d %s", it.Index, it.Type)},
+				Path:  append(append([]string{}, path...), fmt.Sprintf("%04d %s", it.Index, it.Type)),
 				Label: it.Value, ID: it.Index,
 				Kind: consumer.KindString, Access: 1,
 				Value: consumer.Value{Kind: consumer.KindString, Str: val},
 			})
 		}
+	}
+	for _, cat := range list.Category.Categories {
+		if referenced[cat] {
+			continue // rendered under its parent(s)
+		}
+		emit(cat, []string{"Categories", cat}, map[string]bool{cat: true})
 	}
 	return objs, nil
 }
