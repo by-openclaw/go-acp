@@ -45,6 +45,14 @@ anywhere. Workflow:
   objects with stat=2 `invalid_idx`, per spec §4. Previously silently
   ignored.
 
+## [0.15.0](https://github.com/by-openclaw/go-acp/compare/v0.14.0...v0.15.0) (2026-08-16)
+
+
+### Features
+
+* **cerebrum-nb:** category MODIFY_ALL/MODIFY_DESC/DELETE_ITEM + item wiring ([#683](https://github.com/by-openclaw/go-acp/issues/683)) ([d1ddf9f](https://github.com/by-openclaw/go-acp/commit/d1ddf9fca23bec9842a6c7828522811e38773672)), closes [#680](https://github.com/by-openclaw/go-acp/issues/680)
+* **cerebrum-nb:** salvo unit + live NB exploration harvest ([#679](https://github.com/by-openclaw/go-acp/issues/679)) ([3bd28dd](https://github.com/by-openclaw/go-acp/commit/3bd28dda764609ed29b0320dc4c6600f96034529)), closes [#678](https://github.com/by-openclaw/go-acp/issues/678)
+
 ## [0.14.0](https://github.com/by-openclaw/go-acp/compare/v0.13.0...v0.14.0) (2026-08-16)
 
 
