@@ -242,7 +242,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		logw = os.Stderr
 	}
 	if *csvPath != "" && *xpointPath != "" {
-		return fmt.Errorf("cerebrum-nb import: --csv and --xpoint are the same input — pass one")
+		return cerebrumValErr("import", "--csv and --xpoint are the same input — pass one")
 	}
 	xp := *xpointPath
 	if xp == "" {
@@ -272,7 +272,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 			orDash(xp), orDash(*srcPath), orDash(*dstPath), orDash(*lvlPath), orDash(*catSrcPath), orDash(*catDstPath), orDash(*catMixedPath))
 	}
 	if xp == "" && *srcPath == "" && *dstPath == "" && *lvlPath == "" && *catSrcPath == "" && *catDstPath == "" && *catMixedPath == "" {
-		return fmt.Errorf("cerebrum-nb import: nothing to import (pass --xpoint / --src / --dst / --levels / --cat-src / --cat-dst / --cat-mixed, or --in-dir DIR --prefix P)")
+		return cerebrumValErr("import", "nothing to import (pass --xpoint / --src / --dst / --levels / --cat-src / --cat-dst / --cat-mixed, or --in-dir DIR --prefix P)")
 	}
 
 	// Parse everything up front so a malformed file fails before any wire I/O.
@@ -351,7 +351,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	// the live state, so both need the host.
 	rest := fs.Args()
 	if len(rest) < 1 {
-		return fmt.Errorf("cerebrum-nb import: missing host[:port] argument (needed to read live state — ensure semantics)")
+		return cerebrumValErr("import", "missing host[:port] argument (needed to read live state — ensure semantics)")
 	}
 	host, portArg, err := splitHostPort(rest[0], cf.port)
 	if err != nil {
@@ -558,11 +558,11 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 	}
 	trio := *outDir != ""
 	if trio && *out != "" {
-		return fmt.Errorf("cerebrum-nb export: --out and --out-dir are mutually exclusive")
+		return cerebrumValErr("export", "--out and --out-dir are mutually exclusive")
 	}
 	rest := fs.Args()
 	if len(rest) < 1 {
-		return fmt.Errorf("cerebrum-nb export: missing host[:port] argument")
+		return cerebrumValErr("export", "missing host[:port] argument")
 	}
 	host, portArg, err := splitHostPort(rest[0], cf.port)
 	if err != nil {
