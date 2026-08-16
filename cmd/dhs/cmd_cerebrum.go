@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -239,7 +240,8 @@ VERBS
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
   set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]
   set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --tags a,b,c
-  salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|description|delete --group G [--instance I] [--new-name N] [--description D]
+  salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|description|delete --group G [--instance I] [--new-name N] [--description D] [--check] [--output json]
+                           ENSURE (ADR-0007): description/rename/delete read live state first — already-converged = changed:false, nothing sent; run/save are events (always fire, always changed). --check sends nothing.
   category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|delete --category C [--index N] [--name N] [--label L] [--description D]
   set-value                ACTION <DEVICE TYPE='SET_VALUE'/>  --device NAME --sub-device X --object Y --value V
   obtain-datastore         OBTAIN <datastore_change name='…'/>  --name PATH
@@ -1497,12 +1499,18 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 	instance := fs.String("instance", "", "salvo instance")
 	newName := fs.String("new-name", "", "new name (rename)")
 	desc := fs.String("description", "", "description text (op=description; §4.3 DESCRIPTION)")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read live state, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	salvoType, err := salvoOpType(*op)
 	if err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	if *group == "" {
 		return fmt.Errorf("cerebrum-nb salvo: --group is required")
@@ -1518,10 +1526,84 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+
+	// Ensure read phase (ADR-0007, probel-style: the verb itself converges).
+	// Stateful ops read live state and diff; RUN/SAVE are events — they
+	// always fire and always report changed (Ansible command-module rule).
+	changed := true
+	diffs := []ensureDiff{}
+	switch salvoType {
+	case "DESCRIPTION":
+		got, oe := obtainSingleSalvoChange(sess, cf.timeout,
+			&codec.SalvoChange{Type: "INSTANCE_DETAILS", Group: *group, Instance: *instance}, "INSTANCE_DETAILS")
+		if oe != nil {
+			return oe
+		}
+		if got == nil || got.Salvo == nil || got.Salvo.InstanceDetails == nil {
+			return fmt.Errorf("cerebrum-nb salvo: no INSTANCE_DETAILS reply for %s/%s (unknown instance?)", *group, *instance)
+		}
+		cur := got.Salvo.InstanceDetails.Description
+		if cur == *desc {
+			changed = false
+		} else {
+			diffs = append(diffs, ensureDiff{Field: "description", From: cur, To: *desc})
+		}
+	case "DELETE", "RENAME":
+		got, oe := obtainSingleSalvoChange(sess, cf.timeout,
+			&codec.SalvoChange{Type: "INSTANCE_LIST", Group: *group}, "INSTANCE_LIST")
+		if oe != nil {
+			return oe
+		}
+		if got == nil || got.Salvo == nil {
+			return fmt.Errorf("cerebrum-nb salvo: no INSTANCE_LIST reply for group %s", *group)
+		}
+		has := slices.Contains(got.Salvo.Instances, *instance)
+		if salvoType == "DELETE" {
+			if !has {
+				changed = false // already absent — idempotent no-op
+			} else {
+				diffs = append(diffs, ensureDiff{Field: "instance." + *instance, From: "present", To: "absent"})
+			}
+		} else {
+			switch {
+			case has:
+				diffs = append(diffs, ensureDiff{Field: "instance." + *instance, From: *instance, To: *newName})
+			case slices.Contains(got.Salvo.Instances, *newName):
+				changed = false // already renamed — idempotent no-op
+			default:
+				return fmt.Errorf("cerebrum-nb salvo: neither %q nor %q exists in group %q", *instance, *newName, *group)
+			}
+		}
+	default: // RUN / SAVE
+		diffs = append(diffs, ensureDiff{Field: "salvo." + displayDash(*instance), From: "", To: salvoType})
+	}
+
+	if *check {
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Diff: diffs})
+		}
+		fmt.Printf("[salvo] --check %s group=%s instance=%s: would_change=%t — nothing sent\n",
+			salvoType, *group, displayDash(*instance), changed)
+		for _, d := range diffs {
+			fmt.Printf("  %s: %q -> %q\n", d.Field, d.From, d.To)
+		}
+		return nil
+	}
+	if !changed {
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Diff: diffs})
+		}
+		fmt.Printf("[salvo] OK %s group=%s instance=%s (already converged — nothing sent)\n",
+			salvoType, *group, displayDash(*instance))
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	if err := sess.Salvo(ctx, salvoType, *group, *instance, *newName, *desc); err != nil {
 		return fmt.Errorf("cerebrum-nb salvo: %w", err)
+	}
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Diff: diffs})
 	}
 	fmt.Printf("[salvo] OK %s group=%s instance=%s\n", salvoType, *group, displayDash(*instance))
 	return nil

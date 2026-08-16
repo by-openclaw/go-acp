@@ -71,7 +71,7 @@ device we serve (see [provider.md](provider.md)).
 | `device-config` | Add / modify / remove a device in the Cerebrum tree (0v16 §4.5) | `add\|modify\|remove --device-type generic\|panel\|router\|snmp --ip IP …` |
 | `set-mnemonic` | Set a level / source / dest mnemonic | `--kind LEVEL_MNE\|SRCE_MNE\|DEST_MNE --mnemonic TXT --level [--alt SLOT]` |
 | `set-tags` | Set Routemaster source / dest tags | `--kind RM_SRCE_TAGS\|RM_DEST_TAGS --tags a,b,c` |
-| `salvo` | Run / save / rename / set description / delete a salvo | `--op run\|save\|rename\|description\|delete --group [--instance --new-name --description]` |
+| `salvo` | Run / save / rename / set description / delete a salvo — ENSURE (ADR-0007): description/rename/delete read live state first (already converged = `changed:false`, nothing sent); run/save are events (always fire) | `--op run\|save\|rename\|description\|delete --group [--instance --new-name --description] [--check] [--output json]` |
 | `category` | Create / modify / delete a category | `--op create\|modify\|delete --category` |
 | `set-value` | Write a device object value | `--device --sub-device --object --value` |
 
