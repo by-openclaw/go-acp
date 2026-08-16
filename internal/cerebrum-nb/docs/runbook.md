@@ -72,7 +72,7 @@ device we serve (see [provider.md](provider.md)).
 | `set-mnemonic` | Set a level / source / dest mnemonic | `--kind LEVEL_MNE\|SRCE_MNE\|DEST_MNE --mnemonic TXT --level [--alt SLOT]` |
 | `set-tags` | Set Routemaster source / dest tags | `--kind RM_SRCE_TAGS\|RM_DEST_TAGS --tags a,b,c` |
 | `salvo` | Run / save / rename / set description / delete a salvo — ENSURE (ADR-0007): description/rename/delete read live state first (already converged = `changed:false`, nothing sent); run/save are events (always fire) | `--op run\|save\|rename\|description\|delete --group [--instance --new-name --description] [--check] [--output json]` |
-| `category` | Create / modify / delete a category | `--op create\|modify\|delete --category` |
+| `category` | Create / modify item(s) / set description / delete a category or item | `--op create\|modify\|modify-all\|modify-desc\|delete\|delete-item --category [--index --item-type --value --name --label --inherits --description]` |
 | `set-value` | Write a device object value | `--device --sub-device --object --value` |
 
 ## Logging

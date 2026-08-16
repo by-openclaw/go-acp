@@ -250,7 +250,7 @@ VERBS
   set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --tags a,b,c
   salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|description|delete --group G [--instance I] [--new-name N] [--description D] [--check] [--output json]
                            ENSURE (ADR-0007): description/rename/delete read live state first — already-converged = changed:false, nothing sent; run/save are events (always fire, always changed). --check sends nothing.
-  category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|delete --category C [--index N] [--name N] [--label L] [--description D]
+  category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|modify-all|modify-desc|delete|delete-item --category C [--index N] [--item-type T] [--value V] [--name N] [--label L] [--inherits P] [--description D]
   set-value                ACTION <DEVICE TYPE='SET_VALUE'/>  --device NAME --sub-device X --object Y --value V
   obtain-datastore         OBTAIN <datastore_change name='…'/>  --name PATH
 
@@ -1861,12 +1861,15 @@ func cerebrumCategory(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb category", flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
-	op := fs.String("op", "", "operation: create | modify | delete")
+	op := fs.String("op", "", "operation: create | modify | modify-all | modify-desc | delete | delete-item")
 	category := fs.String("category", "", "category name")
-	index := fs.String("index", "", "item index (modify)")
+	index := fs.String("index", "", "item index (modify / delete-item)")
+	itemType := fs.String("item-type", "", "§3.3 ITEM_TYPE (modify / modify-all): BLANK|SRCE|SOURCE|DEST|CATEGORY|SALVO|INHERIT|TEXT|FILE|CUSTOM")
+	value := fs.String("value", "", "item value (modify); comma-separated list (modify-all)")
 	name := fs.String("name", "", "name (create)")
-	label := fs.String("label", "", "label")
-	desc := fs.String("description", "", "description")
+	label := fs.String("label", "", "label (create)")
+	inherits := fs.String("inherits", "", "parent category (create)")
+	desc := fs.String("description", "", "description (create / modify-desc)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -1874,8 +1877,35 @@ func cerebrumCategory(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	it, err := categoryItemType(*itemType)
+	if err != nil {
+		return err
+	}
 	if *category == "" {
 		return fmt.Errorf("cerebrum-nb category: --category is required")
+	}
+	// Required attrs per the §4.2 table.
+	switch catType {
+	case "MODIFY_ITEM":
+		if *index == "" || it == "" || *value == "" {
+			return fmt.Errorf("cerebrum-nb category: --index, --item-type and --value are required for modify (§4.2 MODIFY_ITEM)")
+		}
+	case "MODIFY_ALL":
+		if it == "" || *value == "" {
+			return fmt.Errorf("cerebrum-nb category: --item-type and --value are required for modify-all (§4.2 MODIFY_ALL)")
+		}
+	case "MODIFY_DESC":
+		if *desc == "" {
+			return fmt.Errorf("cerebrum-nb category: --description is required for modify-desc (§4.2 MODIFY_DESC)")
+		}
+	case "DELETE_ITEM":
+		if *index == "" {
+			return fmt.Errorf("cerebrum-nb category: --index is required for delete-item (§4.2 DELETE_ITEM)")
+		}
+	case "CREATE":
+		if *name == "" {
+			return fmt.Errorf("cerebrum-nb category: --name is required for create (§4.2 CREATE)")
+		}
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "category")
 	if err != nil {
@@ -1888,8 +1918,11 @@ func cerebrumCategory(_ context.Context, args []string) error {
 		Type:        catType,
 		Category:    *category,
 		Index:       *index,
+		ItemType:    it,
+		Value:       *value,
 		Name:        *name,
 		Label:       *label,
+		Inherits:    *inherits,
 		Description: *desc,
 	}
 	if err := sess.Category(ctx, act); err != nil {
@@ -2219,18 +2252,40 @@ func salvoOpType(op string) (string, error) {
 	}
 }
 
-// categoryOpType maps the --op string to a §4.2 CATEGORY TYPE.
+// categoryOpType maps the --op string to a §4.2 CATEGORY TYPE (all six).
 func categoryOpType(op string) (string, error) {
 	switch strings.ToLower(op) {
 	case "create":
 		return "CREATE", nil
 	case "modify":
 		return "MODIFY_ITEM", nil
+	case "modify-all":
+		return "MODIFY_ALL", nil
+	case "modify-desc":
+		return "MODIFY_DESC", nil
 	case "delete":
 		return "DELETE", nil
+	case "delete-item":
+		return "DELETE_ITEM", nil
 	case "":
-		return "", fmt.Errorf("cerebrum-nb category: --op is required (create|modify|delete)")
+		return "", fmt.Errorf("cerebrum-nb category: --op is required (create|modify|modify-all|modify-desc|delete|delete-item)")
 	default:
-		return "", fmt.Errorf("cerebrum-nb category: unknown --op %q (want create|modify|delete)", op)
+		return "", fmt.Errorf("cerebrum-nb category: unknown --op %q (want create|modify|modify-all|modify-desc|delete|delete-item)", op)
 	}
+}
+
+// categoryItemType validates a --item-type against the §3.3 ITEM_TYPE enum
+// (empty is allowed — the attribute is simply omitted).
+func categoryItemType(s string) (codec.ItemType, error) {
+	if s == "" {
+		return "", nil
+	}
+	it := codec.ItemType(strings.ToUpper(s))
+	switch it {
+	case codec.ItemBlank, codec.ItemSrce, codec.ItemSource, codec.ItemDest,
+		codec.ItemCategory, codec.ItemSalvo, codec.ItemInherit,
+		codec.ItemText, codec.ItemFile, codec.ItemCustom:
+		return it, nil
+	}
+	return "", fmt.Errorf("cerebrum-nb category: unknown --item-type %q (§3.3: BLANK|SRCE|SOURCE|DEST|CATEGORY|SALVO|INHERIT|TEXT|FILE|CUSTOM)", s)
 }

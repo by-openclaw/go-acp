@@ -55,10 +55,17 @@ func TestCerebrumWriteVerbsValidateFlags(t *testing.T) {
 		{"salvo-no-group", []string{"salvo", "h", "--op", "run"}, "--group is required"},
 		{"salvo-rename-no-name", []string{"salvo", "h", "--op", "rename", "--group", "G"}, "--new-name is required"},
 		{"salvo-desc-no-text", []string{"salvo", "h", "--op", "description", "--group", "G"}, "--description is required"},
-		// category: missing/unknown op, missing category.
+		// category: missing/unknown op, missing category, per-op required attrs
+		// (§4.2 table), bad §3.3 item-type.
 		{"cat-no-op", []string{"category", "h", "--category", "C"}, "--op is required"},
 		{"cat-bad-op", []string{"category", "h", "--op", "frob", "--category", "C"}, "unknown --op"},
 		{"cat-no-category", []string{"category", "h", "--op", "create"}, "--category is required"},
+		{"cat-create-no-name", []string{"category", "h", "--op", "create", "--category", "C"}, "--name is required"},
+		{"cat-modify-missing", []string{"category", "h", "--op", "modify", "--category", "C", "--index", "1"}, "--index, --item-type and --value are required"},
+		{"cat-modify-all-missing", []string{"category", "h", "--op", "modify-all", "--category", "C"}, "--item-type and --value are required"},
+		{"cat-modify-desc-missing", []string{"category", "h", "--op", "modify-desc", "--category", "C"}, "--description is required"},
+		{"cat-delete-item-missing", []string{"category", "h", "--op", "delete-item", "--category", "C"}, "--index is required"},
+		{"cat-bad-item-type", []string{"category", "h", "--op", "modify-all", "--category", "C", "--item-type", "WAT", "--value", "V"}, "unknown --item-type"},
 		// set-value: missing required addressing.
 		{"setval-missing", []string{"set-value", "h", "--device", "D"}, "are required"},
 		// obtain-datastore: missing --name.
@@ -86,7 +93,7 @@ func TestCerebrumWriteVerbsRequireHost(t *testing.T) {
 		{"set-mnemonic", "--kind", "DEST_MNE", "--dest", "1", "--mnemonic", "X"},
 		{"set-tags", "--kind", "RM_DEST_TAGS", "--dest", "1", "--tags", "a"},
 		{"salvo", "--op", "run", "--group", "G"},
-		{"category", "--op", "create", "--category", "C"},
+		{"category", "--op", "create", "--category", "C", "--name", "N"},
 		{"set-value", "--device", "D", "--sub-device", "S", "--object", "O", "--value", "V"},
 		{"obtain-datastore", "--name", "p"},
 	}
@@ -135,7 +142,10 @@ func TestSalvoOpType(t *testing.T) {
 }
 
 func TestCategoryOpType(t *testing.T) {
-	cases := map[string]string{"create": "CREATE", "modify": "MODIFY_ITEM", "delete": "DELETE"}
+	cases := map[string]string{
+		"create": "CREATE", "modify": "MODIFY_ITEM", "modify-all": "MODIFY_ALL",
+		"modify-desc": "MODIFY_DESC", "delete": "DELETE", "delete-item": "DELETE_ITEM",
+	}
 	for in, want := range cases {
 		got, err := categoryOpType(in)
 		if err != nil || got != want {
