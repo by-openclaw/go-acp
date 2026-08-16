@@ -276,19 +276,33 @@ func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Se
 	if err := fs.Parse(args); err != nil {
 		return nil, nil, nil, nil, err
 	}
-	rest := fs.Args()
+	p, sess, rest, err := dialCerebrum(cf, fs.Args(), verb)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	return p, sess, cf, rest, nil
+}
+
+// dialCerebrum connects using ALREADY-PARSED connection flags. Verbs that
+// parse their own FlagSet (which registers the shared connection flags via
+// newCerebrumFlags) MUST call this with their cf + fs.Args() — handing
+// fs.Args() back to connectAndLogin re-parses only the leftover positionals,
+// silently dropping --port/--user/--pass/--log/--timeout (the bug that made
+// every §4 write verb dial the default port).
+func dialCerebrum(cf *cerebrumFlags, positionals []string, verb string) (*cerebrum.Plugin, *cerebrum.Session, []string, error) {
+	rest := positionals
 	if len(rest) < 1 {
-		return nil, nil, nil, nil, fmt.Errorf("cerebrum-nb %s: missing host[:port] argument", verb)
+		return nil, nil, nil, fmt.Errorf("cerebrum-nb %s: missing host[:port] argument", verb)
 	}
 	host, portArg, err := splitHostPort(rest[0], cf.port)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 	cf.port = portArg
 
 	logger, _, lerr := cf.newLogger()
 	if lerr != nil {
-		return nil, nil, nil, nil, lerr
+		return nil, nil, nil, lerr
 	}
 
 	p := cerebrum.NewPlugin(logger)
@@ -306,14 +320,32 @@ func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Se
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	if err := p.Connect(ctx, host, cf.port); err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 	if p.Session().LoggedIn() {
 		fmt.Fprintf(os.Stderr, "connected; logged in.\n")
 	} else {
 		fmt.Fprintf(os.Stderr, "connected (no LOGIN — set --user/--pass for verbs that act on data).\n")
 	}
-	return p, p.Session(), cf, rest[1:], nil
+	return p, p.Session(), rest[1:], nil
+}
+
+// dialCerebrumAuth is dialCerebrum + mandatory authenticated session (the
+// §4 write-verb requirement — mirrors connectAndAuth for pre-parsed flags).
+func dialCerebrumAuth(cf *cerebrumFlags, positionals []string, verb string) (*cerebrum.Plugin, *cerebrum.Session, []string, error) {
+	p, sess, rest, err := dialCerebrum(cf, positionals, verb)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if !sess.LoggedIn() {
+		loginCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
+		defer cancel()
+		if err := p.Login(loginCtx); err != nil {
+			_ = p.Disconnect()
+			return nil, nil, nil, fmt.Errorf("cerebrum-nb %s: LOGIN required (set --user/--pass): %w", verb, err)
+		}
+	}
+	return p, sess, rest, nil
 }
 
 // ----------------------------------------------------------------------
@@ -1298,24 +1330,6 @@ func cerebrumRoute(_ context.Context, args []string) error {
 // $DHS_CEREBRUM_USER / $DHS_CEREBRUM_PASS) before sending the action.
 // ----------------------------------------------------------------------
 
-// connectAndAuth is connectAndLogin plus an explicit LOGIN — write actions
-// are rejected with NOT_LOGGED_IN on an unauthenticated session.
-func connectAndAuth(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Session, *cerebrumFlags, []string, error) {
-	p, sess, cf, rest, err := connectAndLogin(args, verb)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	if !sess.LoggedIn() {
-		loginCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
-		defer cancel()
-		if err := p.Login(loginCtx); err != nil {
-			_ = p.Disconnect()
-			return nil, nil, nil, nil, fmt.Errorf("cerebrum-nb %s: LOGIN required (set --user/--pass): %w", verb, err)
-		}
-	}
-	return p, sess, cf, rest, nil
-}
-
 // routeTargetFromFlags builds the router-addressing tuple. Defaults to the
 // route-master sentinel (0.0.0.0 / ROUTER) unless --router / --device-name
 // override it.
@@ -1338,7 +1352,7 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	}
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb "+verb, flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	kind := fs.String("kind", "DEST_LOCK", "lock kind: SRCE_LOCK | DEST_LOCK")
 	router := fs.String("router", "0.0.0.0", "router IP target (route-master sentinel 0.0.0.0)")
 	deviceName := fs.String("device-name", "", "address by DEVICE_NAME instead of --router")
@@ -1365,12 +1379,12 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	if *srce == "" && *dest == "" {
 		return fmt.Errorf("cerebrum-nb %s: --srce or --dest is required", verb)
 	}
-	p, sess, cf2, _, err := connectAndAuth(fs.Args(), verb)
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), verb)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
-	ctx, cancel := context.WithTimeout(context.Background(), cf2.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	if err := sess.Lock(ctx, *kind, mode, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *level, *duration); err != nil {
 		return fmt.Errorf("cerebrum-nb %s: %w", verb, err)
@@ -1402,7 +1416,7 @@ func lockModeValue(mode string) (codec.LockKind, error) {
 func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb set-mnemonic", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	kind := fs.String("kind", "DEST_MNE", "mnemonic kind: LEVEL_MNE | SRCE_MNE | DEST_MNE")
 	router := fs.String("router", "0.0.0.0", "router IP target")
 	deviceName := fs.String("device-name", "", "address by DEVICE_NAME")
@@ -1420,7 +1434,7 @@ func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	if *mnemonic == "" {
 		return fmt.Errorf("cerebrum-nb set-mnemonic: --mnemonic is required")
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "set-mnemonic")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-mnemonic")
 	if err != nil {
 		return err
 	}
@@ -1437,7 +1451,7 @@ func cerebrumSetMnemonic(_ context.Context, args []string) error {
 func cerebrumSetTags(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb set-tags", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	kind := fs.String("kind", "RM_DEST_TAGS", "tags kind: RM_SRCE_TAGS | RM_DEST_TAGS")
 	router := fs.String("router", "0.0.0.0", "router IP target")
 	deviceName := fs.String("device-name", "", "address by DEVICE_NAME")
@@ -1453,7 +1467,7 @@ func cerebrumSetTags(_ context.Context, args []string) error {
 	if *tags == "" {
 		return fmt.Errorf("cerebrum-nb set-tags: --tags is required")
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "set-tags")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-tags")
 	if err != nil {
 		return err
 	}
@@ -1470,7 +1484,7 @@ func cerebrumSetTags(_ context.Context, args []string) error {
 func cerebrumSalvo(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb salvo", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	op := fs.String("op", "", "operation: run | save | rename | description | delete")
 	group := fs.String("group", "", "salvo group")
 	instance := fs.String("instance", "", "salvo instance")
@@ -1492,7 +1506,7 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 	if salvoType == "DESCRIPTION" && *desc == "" {
 		return fmt.Errorf("cerebrum-nb salvo: --description is required for description")
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "salvo")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "salvo")
 	if err != nil {
 		return err
 	}
@@ -1509,7 +1523,7 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 func cerebrumCategory(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb category", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	op := fs.String("op", "", "operation: create | modify | delete")
 	category := fs.String("category", "", "category name")
 	index := fs.String("index", "", "item index (modify)")
@@ -1526,7 +1540,7 @@ func cerebrumCategory(_ context.Context, args []string) error {
 	if *category == "" {
 		return fmt.Errorf("cerebrum-nb category: --category is required")
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "category")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "category")
 	if err != nil {
 		return err
 	}
@@ -1551,7 +1565,7 @@ func cerebrumCategory(_ context.Context, args []string) error {
 func cerebrumSetValue(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb set-value", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	device := fs.String("device", "", "device name (or use --ip)")
 	ip := fs.String("ip", "", "device IP address (alternative to --device, §4.4.1)")
 	subDevice := fs.String("sub-device", "", "sub-device")
@@ -1569,7 +1583,7 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "set-value")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-value")
 	if err != nil {
 		return err
 	}
@@ -1621,7 +1635,7 @@ func setValueModeValue(mode string) (string, error) {
 func cerebrumObtainDatastore(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb obtain-datastore", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	name := fs.String("name", "", "datastore path/name")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -1629,7 +1643,7 @@ func cerebrumObtainDatastore(_ context.Context, args []string) error {
 	if *name == "" {
 		return fmt.Errorf("cerebrum-nb obtain-datastore: --name is required")
 	}
-	p, sess, cf, _, err := connectAndLogin(fs.Args(), "obtain-datastore")
+	p, sess, _, err := dialCerebrum(cf, fs.Args(), "obtain-datastore")
 	if err != nil {
 		return err
 	}
@@ -1686,7 +1700,7 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 	}
 	rest := reorderFlagsFirst(args[1:])
 	fs := flag.NewFlagSet("cerebrum-nb device-config "+op, flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	deviceType := fs.String("device-type", "", "device type: generic | panel | router | snmp")
 	ip := fs.String("ip", "", "device IP_ADDRESS (required; the addressing key)")
 	dname := fs.String("device-name", "", "DEVICE_NAME (optional on add; with --ip identifies the device on modify)")
@@ -1739,7 +1753,7 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 		dc.DeviceType = dt
 	}
 
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "device-config")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "device-config")
 	if err != nil {
 		return err
 	}
