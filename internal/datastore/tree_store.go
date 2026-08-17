@@ -56,16 +56,34 @@ func (s *TreeStore) BaseDir() string {
 //   - otherwise (production, dropped binary), cache root is
 //     <binary-dir>/.cache/.
 func NewTreeStoreInProjectCache() (*TreeStore, error) {
+	root, err := ProjectRoot()
+	if err != nil {
+		return nil, err
+	}
+	return NewTreeStore(filepath.Join(root, ".cache")), nil
+}
+
+// ProjectRoot returns the directory every artifact bucket roots under
+// (ADR-0028): <X> when the binary lives at <X>/bin/ (dev / convention
+// layout — keeps artifacts OUT of bin/), else the binary's own dir.
+// .cache/, snapshots/ and captures/ are siblings under this root.
+func ProjectRoot() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
-		return nil, fmt.Errorf("storage: locate binary: %w", err)
+		return "", fmt.Errorf("storage: locate binary: %w", err)
 	}
 	parent := filepath.Dir(exe)
-	base := parent
 	if filepath.Base(parent) == "bin" {
-		base = filepath.Dir(parent)
+		return filepath.Dir(parent), nil
 	}
-	return NewTreeStore(filepath.Join(base, ".cache")), nil
+	return parent, nil
+}
+
+// SanitizePathSeg strips characters that are illegal in filenames on
+// Windows + POSIX — the shared sanitiser for ADR-0028 path segments
+// (IPs incl. IPv6 colons, protocol names, verb/scope labels).
+func SanitizePathSeg(s string) string {
+	return sanitizeSeg(s)
 }
 
 // IdentityPath returns the on-disk path a DM for (proto, identity)

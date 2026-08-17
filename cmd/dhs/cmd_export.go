@@ -29,9 +29,28 @@ func runExport(ctx context.Context, args []string) error {
 	prefix := fs.String("prefix", "matrix", "file prefix used with --out-dir")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> export <host> [--format json|yaml|csv] [--out FILE] [--slot N] [--path SEG.SEG] [--out-dir DIR --prefix P]")
+		return fmt.Errorf("usage: dhs consumer <proto> export <host> [--format json|yaml|csv] [--out FILE | --out -] [--slot N] [--path SEG.SEG] [--out-dir DIR --prefix P]")
 	}
 	_ = fs.Parse(rest)
+
+	// ADR-0028 default home: --out omitted → snapshots/<proto>/<host>/
+	// params.<fmt> (deterministic, never a cwd surprise). --out "-"
+	// keeps the explicit stdout stream.
+	stdoutOut := *out == "-"
+	if stdoutOut {
+		*out = ""
+	}
+	if !stdoutOut && *out == "" && *outDir == "" {
+		ext := "json"
+		switch *format {
+		case "yaml", "yml":
+			ext = "yaml"
+		case "csv":
+			ext = "csv"
+		}
+		*out = filepath.Join(snapshotDir(cf.protocol, host), "params."+ext)
+		fmt.Fprintf(os.Stderr, "export: default snapshot file %s (ADR-0028)\n", *out)
+	}
 
 	// Format resolution: --format wins; otherwise guess from --out extension.
 	fmtStr := *format
@@ -123,6 +142,11 @@ func runExport(ctx context.Context, args []string) error {
 	// Pick the output writer: file or stdout.
 	var w io.Writer = os.Stdout
 	if *out != "" {
+		if dir := filepath.Dir(*out); dir != "." {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return fmt.Errorf("create %s: %w", dir, err)
+			}
+		}
 		f, ferr := os.Create(*out)
 		if ferr != nil {
 			return fmt.Errorf("create %s: %w", *out, ferr)

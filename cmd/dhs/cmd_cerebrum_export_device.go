@@ -67,6 +67,11 @@ func cerebrumExportDevice(sess *cerebrum.Session, cf *cerebrumFlags, device stri
 
 	var w io.Writer = os.Stdout
 	if out != "" {
+		if dir := filepath.Dir(out); dir != "." {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return fmt.Errorf("create %s: %w", dir, err)
+			}
+		}
 		f, ferr := os.Create(out)
 		if ferr != nil {
 			return fmt.Errorf("create %s: %w", out, ferr)
