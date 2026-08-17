@@ -13,6 +13,7 @@ import (
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/transport"
 )
 
 func init() {
@@ -59,6 +60,11 @@ type Plugin struct {
 	// when UseTLS is true.
 	InsecureSkipVerify bool
 
+	// Capture, when set, records every TX/RX XML document (the ws text
+	// payload) to a JSONL wire-trace at this path — the same --capture
+	// contract every other connector honours (#242). Set before Connect.
+	Capture string
+
 	mu      sync.Mutex
 	session *Session
 }
@@ -103,8 +109,18 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 	}
 	url := fmt.Sprintf("%s://%s:%d/", scheme, host, port)
 
-	sess, err := newSession(ctx, p.logger, url, p.UseTLS, p.InsecureSkipVerify)
+	var rec *transport.Recorder
+	if p.Capture != "" {
+		r, rerr := transport.NewRecorder(p.Capture)
+		if rerr != nil {
+			return fmt.Errorf("cerebrum-nb: --capture: %w", rerr)
+		}
+		rec = r
+	}
+
+	sess, err := newSession(ctx, p.logger, url, p.UseTLS, p.InsecureSkipVerify, rec)
 	if err != nil {
+		_ = rec.Close() // nil-safe; don't leak the file on dial failure
 		return err
 	}
 
