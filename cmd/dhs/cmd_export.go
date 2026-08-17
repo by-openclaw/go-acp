@@ -24,10 +24,12 @@ func runExport(ctx context.Context, args []string) error {
 	format := fs.String("format", "", "output format: json | yaml | csv (default: json or from --out extension)")
 	out := fs.String("out", "", "output file path (default: stdout)")
 	slot := fs.Int("slot", -1, "export only this slot (-1 = all present slots)")
-	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
+	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1); with --out-dir: the matrix to export (dotted path or numeric OID)")
+	outDir := fs.String("out-dir", "", "canonical matrix file-set mode (#461): write <prefix>-matrix.csv / -xpoint.csv / -src.csv / -dst.csv for the matrix named by --path (same grammar as probel-sw08p / cerebrum-nb)")
+	prefix := fs.String("prefix", "matrix", "file prefix used with --out-dir")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> export <host> [--format json|yaml|csv] [--out FILE] [--slot N] [--path SEG.SEG]")
+		return fmt.Errorf("usage: dhs consumer <proto> export <host> [--format json|yaml|csv] [--out FILE] [--slot N] [--path SEG.SEG] [--out-dir DIR --prefix P]")
 	}
 	_ = fs.Parse(rest)
 
@@ -74,6 +76,21 @@ func runExport(ctx context.Context, args []string) error {
 		Generator: "acp " + version,
 		CreatedAt: time.Now().UTC(),
 	}
+	// Canonical matrix file-set mode (#461): walk, then write the
+	// -matrix/-xpoint/-src/-dst CSV set for the selected matrix instead
+	// of a snapshot. Same verbs + grammar as the levelled protocols.
+	if *outDir != "" {
+		var all []consumer.Object
+		for s := 0; s < info.NumSlots; s++ {
+			objs, werr := plug.Walk(ctx, s)
+			if werr != nil {
+				continue
+			}
+			all = append(all, objs...)
+		}
+		return runMatrixSetExport(plug, all, *pathFlag, *outDir, *prefix)
+	}
+
 	for s := 0; s < info.NumSlots; s++ {
 		if *slot >= 0 && s != *slot {
 			continue

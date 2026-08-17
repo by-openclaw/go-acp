@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"dhs/internal/consumer"
 	"dhs/internal/export"
 )
 
@@ -63,11 +64,46 @@ func runImport(ctx context.Context, args []string) error {
 	fs.Var(&filterPaths, "path",
 		"apply only objects with this dotted path (e.g. \"BOARD.Gain A\"). Repeat for multiple. Mutually exclusive with --id.")
 
+	// Canonical matrix converge leg (#461): --xpoint FILE converges one
+	// matrix per ADR-0007 (same CSV grammar + ensure semantics as
+	// probel-sw08p / cerebrum-nb). --matrix FILE carries the ADR-0023
+	// descriptor (matrix identity + behavior); absent = live descriptor.
+	xpointPath := fs.String("xpoint", "", "crosspoint CSV to converge (dest,srce,levels — levels \"0\" on tree matrices)")
+	matrixPath := fs.String("matrix", "", "matrix descriptor CSV from export (-matrix.csv); absent = live walked descriptor")
+	check := fs.Bool("check", false, "with --xpoint: dry-run — read live state, report would_change, send nothing")
+	output := fs.String("output", "text", "with --xpoint: stdout format text | json (ADR-0007 {changed|would_change, diff[]})")
+
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run]")
+		return fmt.Errorf("usage: dhs consumer <proto> import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] | --xpoint FILE [--matrix FILE] [--check] [--output json]")
 	}
 	_ = fs.Parse(rest)
+
+	if *xpointPath != "" {
+		jsonOut, oerr := resolveEnsureOutput(*output, false)
+		if oerr != nil {
+			return oerr
+		}
+		plug, cleanup, cerr := connect(ctx, host, cf)
+		if cerr != nil {
+			return cerr
+		}
+		defer cleanup()
+		info, ierr := plug.GetDeviceInfo(ctx)
+		if ierr != nil {
+			return fmt.Errorf("device info: %w", ierr)
+		}
+		var all []consumer.Object
+		for s := 0; s < info.NumSlots; s++ {
+			objs, werr := plug.Walk(ctx, s)
+			if werr != nil {
+				continue
+			}
+			all = append(all, objs...)
+		}
+		return runMatrixXpointImport(ctx, plug, all, *xpointPath, *matrixPath, *check, jsonOut)
+	}
+
 	if *file == "" {
 		return fmt.Errorf("--file is required")
 	}
