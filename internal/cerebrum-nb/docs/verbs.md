@@ -409,6 +409,60 @@ CSVs, sends **only the differences** (`ROUTE` actions / `*_MNE` writes via
   `route.<dest>.<level>` / `<kind>.<id>.<slot>`); per-change narration
   moves to stderr so Ansible can parse stdout.
 
+## 12b. Tree/DM domain — get / watch / extract / validate (D2, #700)
+
+Devices behind Cerebrum ride the **Tree/DM template** (the acp2/ember+
+model), while the RM/routers ride the Matrix template above. One dotted
+path grammar everywhere — `DEVICE.SUB.OBJECT…`, DEVICE_NAME taken
+verbatim (incl. the live trailing-whitespace quirk):
+
+```
+# canonical read of one object (§5.4.3 VALUE obtain):
+dhs consumer cerebrum-nb get HOST --user U --pass P \
+  --path "bm-n-nncvt-001 .1.PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay"
+
+# canonical subscribe (exact leaf — wildcards refused, live-verified):
+dhs consumer cerebrum-nb watch HOST --user U --pass P \
+  --device "bm-n-nncvt-001 " --by-name --sub-device 1 \
+  --object "PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay"
+```
+
+### extract — ADR-0022 card data model
+
+Walks one device's object tree (same walk contract as `tree --device`:
+seeded start groups, recursion, self-echo leaf re-classification) and
+persists the DM + manifest pair:
+
+```
+dhs consumer cerebrum-nb extract HOST --user U --pass P \
+  --device "bm-n-nncvt-001 " --by-name --sub-device 1 \
+  --path "PROCESSING AUDIO;INPUT;OUTPUT" --version 6.7.4
+#   → .cache/dm/cerebrum-nb/<Model@SwRev>.json   (flat canonical Objects)
+#   → .cache/manifest/<device-slug>.json         (device → sub-device → DM ref)
+```
+
+- **Model** auto-probes from the device DETAILS vendor type; `--product`
+  overrides. **`--version` is required** — the NB wire exposes no
+  firmware/software version anywhere.
+- A walk that hits `--max-requests` **fails** rather than persisting a
+  truncated DM (a partial model is not a device model).
+- The printed `sha256:` fingerprint is the evidence anchor; the DM +
+  manifest are committed under `testdata/integration-test/` like every
+  other connector's, so the acp2 extract of the same CONVERT is
+  diffable against the cerebrum one (dual-oracle, S9).
+
+### validate — offline decoder oracle
+
+```
+dhs consumer cerebrum-nb validate frames.jsonl --out-tree tree.json [--out-params p.csv]
+```
+
+Replays a `--capture` JSONL through the codec offline: per-document
+counts, NACKs, case deviations; `--out-tree` aggregates the observed
+§5.4.3 VALUE rows into the same canonical tree shape `extract` writes —
+capture-derived and live-extracted views of one device stay
+byte-comparable.
+
 ## 13. See also
 
 - [`../CLAUDE.md`](../CLAUDE.md) — wire format, mtid, quirks, "what NOT to do"

@@ -220,6 +220,14 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumKeepaliveProbe(ctx, rest)
 	case "tree":
 		return cerebrumTree(ctx, rest)
+	case "get":
+		// Canonical read (D2 unit a, #700): one dotted
+		// DEVICE.SUB.OBJECT… path through Plugin.GetValue.
+		return cerebrumGet(ctx, rest)
+	case "extract":
+		// ADR-0022 card data model (D2 unit b, #700): device walk →
+		// .cache/dm/cerebrum-nb/<Model@SwRev>.json + manifest.
+		return cerebrumExtract(ctx, rest)
 	case "watch":
 		return cerebrumWatch(ctx, rest)
 	case "route":
@@ -285,6 +293,8 @@ VERBS
   list-salvo-groups        OBTAIN <salvo_change type='GROUP_LIST'/>
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
+  get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
+  extract                  ADR-0022 card data model — device walk (same contract as tree --device) → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json: --device NAME --by-name --sub-device N --path "GROUP[;GROUP…]" --version V [--product X (default: DETAILS vendor type)] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch (object path must be known — wildcards refused, live-verified)

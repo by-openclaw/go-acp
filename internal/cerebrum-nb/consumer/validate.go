@@ -55,25 +55,9 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 		if _, seen := objects[key]; !seen {
 			order = append(order, key)
 		}
-		segs := append([]string{devName, sub}, strings.Split(ov.Object, ".")...)
-		obj := consumer.Object{
-			ID:     len(order) - 1,
-			Path:   segs,
-			Label:  ov.Object,
-			Access: deviceAccessBits(ov),
-			Unit:   ov.Units,
-			Meta: map[string]any{
-				"data_type": ov.DataType,
-				"available": ov.Available,
-			},
-		}
+		obj := CanonicalDeviceObject(devName, sub, ov, len(order)-1)
 		if o, seen := objects[key]; seen {
 			obj.ID = o.ID // first-seen ID stays stable
-		}
-		v := deviceValueToCanonical(ov)
-		obj.Kind, obj.Value = v.Kind, v
-		if len(ov.EnumList) > 0 {
-			obj.EnumItems = ov.EnumList
 		}
 		objects[key] = obj
 	}

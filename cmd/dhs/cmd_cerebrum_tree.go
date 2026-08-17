@@ -236,27 +236,12 @@ func cerebrumExpandFocus(objs []consumer.Object, focus string) string {
 // obtain count.
 func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev string, starts []string, maxReq int) ([]consumer.Object, error) {
 	rootLabel := strings.TrimSpace(device)
-	requests := 0
-	obtain := func(object string) ([]codec.DeviceObjectValue, error) {
-		requests++
-		dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: object}
-		if byName {
-			dc.DeviceName = device
-		} else {
-			dc.IPAddress = device
-		}
-		got, err := obtainSingleDeviceChange(sess, timeout, dc, "VALUE")
-		if err != nil {
-			return nil, err
-		}
-		if got == nil || got.Device == nil {
-			return nil, nil
-		}
-		return got.Device.ObjectValues, nil
+	rows, requests, truncated, err := cerebrumDeviceWalkValues(sess, timeout, device, byName, subDev, starts, maxReq)
+	if err != nil {
+		return nil, err
 	}
 
 	var objs []consumer.Object
-	truncated := false
 	emitLeaf := func(ov codec.DeviceObjectValue) {
 		meta := fmt.Sprintf("available=%s", boolFlag(ov.Available))
 		if ov.Value != "" {
@@ -290,7 +275,44 @@ func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, de
 			Value: consumer.Value{Kind: consumer.KindString, Str: meta},
 		})
 	}
+	for _, ov := range rows {
+		emitLeaf(ov)
+	}
+	if truncated {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb tree: WARNING — walk truncated at --max-requests=%d obtains (raise it for the full tree)\n", maxReq)
+	}
+	fmt.Fprintf(os.Stderr, "cerebrum-nb tree: device walk used %d obtain(s), %d object(s)\n", requests, len(objs))
+	return objs, nil
+}
 
+// cerebrumDeviceWalkValues is the wire core of the §5.4.3 device walk,
+// shared by `tree --device` (renderer rows) and `extract` (DM rows):
+// seeded group obtains, recursion into group candidates (no value, not
+// available, no descriptor), and re-classification of a single
+// self-echo answer as a real leaf. Returns the LEAF rows in walk
+// order, the obtain count, and whether the walk hit maxReq.
+func cerebrumDeviceWalkValues(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev string, starts []string, maxReq int) ([]codec.DeviceObjectValue, int, bool, error) {
+	requests := 0
+	obtain := func(object string) ([]codec.DeviceObjectValue, error) {
+		requests++
+		dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: object}
+		if byName {
+			dc.DeviceName = device
+		} else {
+			dc.IPAddress = device
+		}
+		got, err := obtainSingleDeviceChange(sess, timeout, dc, "VALUE")
+		if err != nil {
+			return nil, err
+		}
+		if got == nil || got.Device == nil {
+			return nil, nil
+		}
+		return got.Device.ObjectValues, nil
+	}
+
+	var leaves []codec.DeviceObjectValue
+	truncated := false
 	var walk func(group string) error
 	walk = func(group string) error {
 		if requests >= maxReq {
@@ -304,7 +326,7 @@ func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, de
 		// A single self-echo row = this path is a real LEAF (possibly
 		// unavailable), not a group.
 		if group != "" && len(rows) == 1 && rows[0].Object == group {
-			emitLeaf(rows[0])
+			leaves = append(leaves, rows[0])
 			return nil
 		}
 		for _, ov := range rows {
@@ -319,20 +341,16 @@ func cerebrumDeviceTreeObjects(sess *cerebrum.Session, timeout time.Duration, de
 				}
 				continue
 			}
-			emitLeaf(ov)
+			leaves = append(leaves, ov)
 		}
 		return nil
 	}
 	for _, start := range starts {
 		if err := walk(start); err != nil {
-			return nil, err
+			return nil, requests, truncated, err
 		}
 	}
-	if truncated {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb tree: WARNING — walk truncated at --max-requests=%d obtains (raise it for the full tree)\n", maxReq)
-	}
-	fmt.Fprintf(os.Stderr, "cerebrum-nb tree: device walk used %d obtain(s), %d object(s)\n", requests, len(objs))
-	return objs, nil
+	return leaves, requests, truncated, nil
 }
 
 // cerebrumMneTreeObjects renders the resource inventory PER ROUTER (owner

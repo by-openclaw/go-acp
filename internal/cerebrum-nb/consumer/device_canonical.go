@@ -199,6 +199,37 @@ func deviceAccessBits(ov *codec.DeviceObjectValue) uint8 {
 	return a
 }
 
+// CanonicalDeviceObject maps one §5.4.3 OBJECT_VALUE row onto the
+// canonical Object shape. Shared by `validate --out-tree` (capture-
+// derived tree) and `extract` (live DM walk, D2 unit b) so the two
+// views of the same device stay byte-comparable — the S9 dual-oracle
+// diff depends on that.
+func CanonicalDeviceObject(deviceLabel, subDevice string, ov *codec.DeviceObjectValue, id int) consumer.Object {
+	obj := consumer.Object{
+		ID:     id,
+		Path:   append([]string{deviceLabel, subDevice}, strings.Split(ov.Object, ".")...),
+		Label:  ov.Object,
+		Access: deviceAccessBits(ov),
+		Unit:   ov.Units,
+		Meta: map[string]any{
+			"data_type": ov.DataType,
+			"available": ov.Available,
+		},
+	}
+	// A degenerate MIN==MAX range carries no information (live: ENUMs
+	// report 0..0; their real constraint is the enum list) — record
+	// the range only when it constrains.
+	if (ov.Min != "" || ov.Max != "") && ov.Min != ov.Max {
+		obj.Meta["min"], obj.Meta["max"] = ov.Min, ov.Max
+	}
+	v := deviceValueToCanonical(ov)
+	obj.Kind, obj.Value = v.Kind, v
+	if len(ov.EnumList) > 0 {
+		obj.EnumItems = ov.EnumList
+	}
+	return obj
+}
+
 // deviceValueToCanonical maps one OBJECT_VALUE onto the canonical Value
 // model by its wire DATA_TYPE. Unparsable numerics degrade to the raw
 // string (KindString) rather than fabricating a zero.

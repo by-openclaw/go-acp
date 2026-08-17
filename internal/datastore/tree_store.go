@@ -68,6 +68,17 @@ func NewTreeStoreInProjectCache() (*TreeStore, error) {
 	return NewTreeStore(filepath.Join(base, ".cache")), nil
 }
 
+// IdentityPath returns the on-disk path a DM for (proto, identity)
+// is written to — the exported face of identityPath, so CLI verbs
+// can print / fingerprint the exact file WriteDM produced (extract
+// evidence lines) without re-implementing the sanitisation.
+func (s *TreeStore) IdentityPath(proto, identity string) string {
+	if s == nil {
+		return ""
+	}
+	return s.identityPath(proto, identity)
+}
+
 // slotPath returns the file path for a cached slot.
 // Keyed by {ip}_{protocol} to avoid collisions when multiple protocols
 // serve on the same host (e.g. ACP1 on :2071, Ember+ on :9092).

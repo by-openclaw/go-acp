@@ -127,3 +127,21 @@ func TestValidate(t *testing.T) {
 		t.Error("nil snapshot should not validate")
 	}
 }
+
+// TestTreeStore_IdentityPath pins the exported DM-path accessor used
+// by the extract verbs for evidence lines (print + fingerprint): it
+// must match where WriteDM actually lands the file, and be nil-safe.
+func TestTreeStore_IdentityPath(t *testing.T) {
+	s := NewTreeStore(t.TempDir())
+	if err := s.WriteDM("cerebrum-nb", "SHPRM1@5.3.5", DM{Protocol: "cerebrum-nb"}); err != nil {
+		t.Fatalf("WriteDM: %v", err)
+	}
+	p := s.IdentityPath("cerebrum-nb", "SHPRM1@5.3.5")
+	if _, err := os.Stat(p); err != nil {
+		t.Fatalf("IdentityPath %q does not match WriteDM output: %v", p, err)
+	}
+	var nilStore *TreeStore
+	if got := nilStore.IdentityPath("p", "i"); got != "" {
+		t.Fatalf("nil store path = %q, want empty", got)
+	}
+}
