@@ -294,7 +294,7 @@ VERBS
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
   get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
-  extract                  ADR-0022 card data model — device walk (same contract as tree --device) → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json: --device NAME --by-name --sub-device N --path "GROUP[;GROUP…]" --version V [--product X (default: DETAILS vendor type)] [--max-requests N]
+  extract                  ADR-0022 card data model — device walk (same contract as tree --device) → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version, BOARD.Hardware Version fallback): --device NAME --by-name --sub-device N --path "GROUP[;GROUP…]" [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch (object path must be known — wildcards refused, live-verified)

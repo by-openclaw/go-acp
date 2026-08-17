@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -29,10 +28,15 @@ import (
 // (cerebrum.CanonicalDeviceObject) — so a live extract and a
 // capture-derived tree of the same device stay byte-comparable.
 //
-// Identity: Model is auto-probed from the device DETAILS reply
-// (vendor type), overridable with --product. The NB wire exposes NO
-// firmware / software version anywhere (DETAILS carries ip/name/
-// vendor only), so --version is required from the operator.
+// Identity: the SAME discovery as acp2's IdentityProbe, over NB —
+// the device object tree exposes the identical identity objects
+// (owner-confirmed 2026-08-17), addressed by the acp2 tree labels
+// root-stripped: "IDENTITY.Card Name" + "IDENTITY.Product Version"
+// (fallback "BOARD.Hardware Version"). So a cerebrum extract of a
+// CONVERT lands under the same <Model@SwRev>.json name as the acp2
+// extract of that card — the S9 dual-oracle diff needs zero renames.
+// --product / --version are overrides for devices whose tree carries
+// no identity objects.
 func cerebrumExtract(ctx context.Context, args []string) error {
 	_ = ctx
 	args = reorderFlagsFirst(args)
@@ -43,8 +47,8 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	subDev := fs.String("sub-device", "", "sub-device index (from device-details, e.g. 1)")
 	focus := fs.String("path", "", "start group(s) for the walk, ';'-separated — the server refuses an empty OBJECT, so the root must be seeded (top folders from the device's Object Browser)")
 	maxReq := fs.Int("max-requests", 2000, "cap on group obtains for the walk (safety against unexpected fan-out)")
-	product := fs.String("product", "", "product / model identifier for the DM identity (default: probed from the device DETAILS vendor type)")
-	version := fs.String("version", "", "firmware / software version for the DM identity (REQUIRED — the NB wire exposes no version)")
+	product := fs.String("product", "", `override the DM Model (default: "IDENTITY.Card Name" obtained from the device tree — same identity object acp2's probe reads)`)
+	version := fs.String("version", "", `override the DM SwRev (default: "IDENTITY.Product Version" from the device tree, falling back to "BOARD.Hardware Version")`)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -63,9 +67,6 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	if len(starts) == 0 {
 		return cerebrumValErr("extract", "--path is required with one or more start groups (';'-separated) — the server refuses an empty OBJECT, so the walk must be seeded")
 	}
-	if *version == "" {
-		return cerebrumValErr("extract", "--version is required — the NB wire exposes no firmware/software version, the DM identity needs it from you (e.g. --version 6.7.4)")
-	}
 
 	rest := fs.Args()
 	if len(rest) < 1 {
@@ -82,46 +83,30 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 
-	// DETAILS probe: manifest device name (exact wire NAME) + Model
-	// default. Lenient — a refused DETAILS only matters if --product
-	// was not given. §5.4 DETAILS is IP-addressed on the wire: the
-	// by-name form NACKs 10 on the live NOC (2026-08-17), so NAME
-	// addressing resolves NAME → IP via LIST + per-IP DETAILS first.
+	// Identity probe — acp2's IdentityProbe over NB: the device tree
+	// exposes the same identity objects, addressed by the acp2 labels
+	// root-stripped. Card Name is the Model; Product Version is the
+	// SwRev (Hardware Version fallback, same preference order as
+	// acp2). Overrides skip their obtain.
 	deviceName := *device
 	model := *product
-	var probeErr error
-	if *byName {
-		if ip, m, ok := cerebrumResolveDeviceByName(sess, cf.timeout, *device); ok {
-			fmt.Fprintf(os.Stderr, "cerebrum-nb extract: resolved %q → %s (LIST + DETAILS join)\n", *device, ip)
-			if m.Name != "" {
-				deviceName = m.Name
-			}
-			if model == "" && m.VendorType != "" {
-				model = m.VendorType
-			}
-		} else {
-			probeErr = fmt.Errorf("device NAME %q not found in the LIST + DETAILS join", *device)
-		}
-	} else {
-		dc := &codec.DeviceChange{Type: "DETAILS", IPAddress: *device}
-		if got, derr := obtainSingleDeviceChange(sess, cf.timeout, dc, "DETAILS"); derr == nil && got != nil && got.Device != nil && got.Device.Details != nil {
-			d := got.Device.Details
-			if d.Name != "" {
-				deviceName = d.Name
-			}
-			if model == "" && d.VendorType != "" {
-				model = d.VendorType
-			}
-		} else if derr != nil {
-			probeErr = derr
-		}
+	swRev := *version
+	if model == "" {
+		model = cerebrumObtainIdentityLeaf(sess, cf.timeout, *device, *byName, *subDev, "IDENTITY.Card Name")
 	}
-	if probeErr != nil {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: WARNING — DETAILS probe failed (%v); using --device/--product as-is\n", probeErr)
+	if swRev == "" {
+		swRev = cerebrumObtainIdentityLeaf(sess, cf.timeout, *device, *byName, *subDev, "IDENTITY.Product Version")
+	}
+	if swRev == "" {
+		swRev = cerebrumObtainIdentityLeaf(sess, cf.timeout, *device, *byName, *subDev, "BOARD.Hardware Version")
 	}
 	if model == "" {
-		return cerebrumValErr("extract", "no Model for the DM identity — the DETAILS probe carried no vendor type, pass --product explicitly (e.g. --product \"CONVERT Hybrid\")")
+		return fmt.Errorf("cerebrum-nb extract: no Model — the device tree answered neither \"IDENTITY.Card Name\" nor an override; pass --product explicitly")
 	}
+	if swRev == "" {
+		return fmt.Errorf("cerebrum-nb extract: no SwRev — the device tree answered neither \"IDENTITY.Product Version\" nor \"BOARD.Hardware Version\"; pass --version explicitly")
+	}
+	fmt.Printf("identity: %s@%s (from the device tree — same objects as the acp2 probe)\n", model, swRev)
 
 	rows, requests, truncated, err := cerebrumDeviceWalkValues(sess, cf.timeout, *device, *byName, *subDev, starts, *maxReq)
 	if err != nil {
@@ -141,7 +126,7 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 		objs = append(objs, cerebrum.CanonicalDeviceObject(deviceName, *subDev, &rows[i], i))
 	}
 
-	identity := model + "@" + *version
+	identity := model + "@" + swRev
 	dmPath, mfPath, err := writeCerebrumExtract(identity, deviceName, host, port, *subDev, objs)
 	if err != nil {
 		return err
@@ -157,37 +142,28 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	return nil
 }
 
-// cerebrumResolveDeviceByName resolves a verbatim DEVICE_NAME to its
-// IP + DETAILS meta via one §5.4.1 LIST obtain (single frame) and the
-// per-IP DETAILS join — the same join list-devices --names uses.
-// Exact-name match first (names are verbatim incl. trailing
-// whitespace); a trimmed-space match second, so a copy-paste that
-// lost the trailing blank still resolves.
-func cerebrumResolveDeviceByName(sess *cerebrum.Session, timeout time.Duration, name string) (string, cerebrumDeviceMeta, bool) {
-	got, err := obtainSingleDeviceChange(sess, timeout, &codec.DeviceChange{Type: "LIST"}, "LIST")
+// cerebrumObtainIdentityLeaf reads one identity object via a single
+// §5.4.3 VALUE obtain (the leaf self-echo shape). Empty string on any
+// refusal / unavailable / missing row — the caller decides whether an
+// override or an error takes over. Addressing mirrors the walk
+// (DEVICE_NAME verbatim or IP).
+func cerebrumObtainIdentityLeaf(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object string) string {
+	dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: object}
+	if byName {
+		dc.DeviceName = device
+	} else {
+		dc.IPAddress = device
+	}
+	got, err := obtainSingleDeviceChange(sess, timeout, dc, "VALUE")
 	if err != nil || got == nil || got.Device == nil {
-		return "", cerebrumDeviceMeta{}, false
+		return ""
 	}
-	seen := map[string]bool{}
-	var ips []string
-	for _, e := range got.Device.Devices {
-		if e.IPAddress != "" && !seen[e.IPAddress] {
-			seen[e.IPAddress] = true
-			ips = append(ips, e.IPAddress)
+	for _, ov := range got.Device.ObjectValues {
+		if ov.Object == object && ov.Available {
+			return strings.TrimSpace(ov.Value)
 		}
 	}
-	meta := cerebrumDeviceNameJoin(sess, timeout, ips)
-	for _, ip := range ips {
-		if m, ok := meta[ip]; ok && m.Name == name {
-			return ip, m, true
-		}
-	}
-	for _, ip := range ips {
-		if m, ok := meta[ip]; ok && strings.TrimSpace(m.Name) == strings.TrimSpace(name) {
-			return ip, m, true
-		}
-	}
-	return "", cerebrumDeviceMeta{}, false
+	return ""
 }
 
 // writeCerebrumExtract persists the ADR-0022 pair for one extracted

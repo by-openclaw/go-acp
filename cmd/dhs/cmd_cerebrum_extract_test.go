@@ -25,8 +25,7 @@ func TestCerebrumExtractValidateFlags(t *testing.T) {
 		{"no-subdev", []string{"extract", "h", "--device", "D", "--by-name"}, "--sub-device is required"},
 		{"no-path", []string{"extract", "h", "--device", "D", "--by-name", "--sub-device", "1"}, "--path is required"},
 		{"dot-path", []string{"extract", "h", "--device", "D", "--by-name", "--sub-device", "1", "--path", " . "}, "--path is required"},
-		{"no-version", []string{"extract", "h", "--device", "D", "--by-name", "--sub-device", "1", "--path", "G"}, "--version is required"},
-		{"no-host", []string{"extract", "--device", "D", "--by-name", "--sub-device", "1", "--path", "G", "--version", "1.0"}, "missing host"},
+		{"no-host", []string{"extract", "--device", "D", "--by-name", "--sub-device", "1", "--path", "G"}, "missing host"},
 		{"get-no-path", []string{"get", "h"}, "--path is required"},
 		{"get-no-host", []string{"get", "--path", "d.1.O"}, "missing host"},
 	}

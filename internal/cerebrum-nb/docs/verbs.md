@@ -436,14 +436,20 @@ persists the DM + manifest pair:
 ```
 dhs consumer cerebrum-nb extract HOST --user U --pass P \
   --device "bm-n-nncvt-001 " --by-name --sub-device 1 \
-  --path "PROCESSING AUDIO;INPUT;OUTPUT" --version 6.7.4
+  --path "PROCESSING AUDIO;INPUT;OUTPUT"
+#   identity: CONVERT Hybrid@6.7.4 (from the device tree)
 #   → .cache/dm/cerebrum-nb/<Model@SwRev>.json   (flat canonical Objects)
 #   → .cache/manifest/<device-slug>.json         (device → sub-device → DM ref)
 ```
 
-- **Model** auto-probes from the device DETAILS vendor type; `--product`
-  overrides. **`--version` is required** — the NB wire exposes no
-  firmware/software version anywhere.
+- **Identity is auto-probed from the device tree** — the same objects
+  acp2's IdentityProbe reads, reachable over NB as root-stripped
+  paths: Model = `IDENTITY.Card Name`, SwRev = `IDENTITY.Product
+  Version` (fallback `BOARD.Hardware Version`). A cerebrum extract of
+  a CONVERT therefore lands under the **same `<Model@SwRev>.json`
+  name** as the acp2 extract of that card — the dual-oracle diff
+  needs zero renames. `--product` / `--version` override for devices
+  whose tree carries no identity objects.
 - A walk that hits `--max-requests` **fails** rather than persisting a
   truncated DM (a partial model is not a device model).
 - The printed `sha256:` fingerprint is the evidence anchor; the DM +
