@@ -409,6 +409,91 @@ CSVs, sends **only the differences** (`ROUTE` actions / `*_MNE` writes via
   `route.<dest>.<level>` / `<kind>.<id>.<slot>`); per-change narration
   moves to stderr so Ansible can parse stdout.
 
+## 12b. Tree/DM domain — get / watch / extract / validate (D2, #700)
+
+Devices behind Cerebrum ride the **Tree/DM template** (the acp2/ember+
+model), while the RM/routers ride the Matrix template above. One dotted
+path grammar everywhere — `DEVICE.SUB.OBJECT…`, DEVICE_NAME taken
+verbatim (incl. the live trailing-whitespace quirk):
+
+```
+# canonical read of one object (§5.4.3 VALUE obtain):
+dhs consumer cerebrum-nb get HOST --user U --pass P \
+  --path "bm-n-nncvt-001 .1.PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay"
+
+# canonical subscribe (exact leaf — wildcards refused, live-verified):
+dhs consumer cerebrum-nb watch HOST --user U --pass P \
+  --device "bm-n-nncvt-001 " --by-name --sub-device 1 \
+  --object "PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay"
+```
+
+### extract — ADR-0022 card data model
+
+Walks one device's object tree (same walk contract as `tree --device`:
+seeded start groups, recursion, self-echo leaf re-classification) and
+persists the DM + manifest pair:
+
+```
+dhs consumer cerebrum-nb extract HOST --user U --pass P \
+  --device "bm-n-nncvt-001 " --by-name --sub-device 1
+#   root discovered via OBJECT="…": N top group(s): …
+#   identity: CONVERT IP@6.7.4 (from the device tree)
+#   → .cache/dm/cerebrum-nb/<Model@SwRev>.json   (flat canonical Objects)
+#   → .cache/manifest/<device-slug>.json         (device → sub-device → DM ref)
+```
+
+- **Zero prior knowledge required** (acp2/ember parity): with no
+  `--path`, the root is discovered by the probe ladder — `OBJECT=""`
+  literal, `OBJECT="ROOT-NODE-V2"` (the acp2 root name; NB paths are
+  that tree root-stripped), `OBJECT="*"`, then the bare no-attribute
+  form — and the walk seeds itself from whatever the server
+  enumerates. `--path "GROUP[;GROUP…]"` remains as manual scope (a
+  partial extract of one folder is legitimate).
+
+- **Identity is auto-probed from the device tree** — the same objects
+  acp2's IdentityProbe reads, reachable over NB as root-stripped
+  paths: Model = `IDENTITY.Card Name`, SwRev = `IDENTITY.Product
+  Version` (fallback `BOARD.Hardware Version`). A cerebrum extract of
+  a CONVERT therefore lands under the **same `<Model@SwRev>.json`
+  name** as the acp2 extract of that card — the dual-oracle diff
+  needs zero renames. `--product` / `--version` override for devices
+  whose tree carries no identity objects.
+- A walk that hits `--max-requests` **fails** rather than persisting a
+  truncated DM (a partial model is not a device model).
+- The printed `sha256:` fingerprint is the evidence anchor; the DM +
+  manifest are committed under `testdata/integration-test/` like every
+  other connector's, so the acp2 extract of the same CONVERT is
+  diffable against the cerebrum one (dual-oracle, S9).
+
+### export --device — parameter snapshot to ONE file (acp2 parity)
+
+```
+dhs consumer cerebrum-nb export HOST --user U --pass P \
+  --device 10.44.72.28 --sub-device 1 \
+  --path "PROCESSING AUDIO;PROCESSING VIDEO;…" --out cvt-params.csv
+```
+
+Same walk as `extract`, but the result goes to a snapshot FILE instead
+of the DM store: json | yaml | csv picked by `--format` then the
+`--out` extension (stdout when `--out` is omitted) — the exact file
+shape `dhs consumer acp2 export` produces for a slot. One facet
+(parameters) → one file; the multi-file `--out-dir` set remains the
+Matrix domain's shape (xpoint/src/dst/level/lock facets). The future
+device-ensure `import` reads this same file back (diff-first,
+run-twice = 0).
+
+### validate — offline decoder oracle
+
+```
+dhs consumer cerebrum-nb validate frames.jsonl --out-tree tree.json [--out-params p.csv]
+```
+
+Replays a `--capture` JSONL through the codec offline: per-document
+counts, NACKs, case deviations; `--out-tree` aggregates the observed
+§5.4.3 VALUE rows into the same canonical tree shape `extract` writes —
+capture-derived and live-extracted views of one device stay
+byte-comparable.
+
 ## 13. See also
 
 - [`../CLAUDE.md`](../CLAUDE.md) — wire format, mtid, quirks, "what NOT to do"

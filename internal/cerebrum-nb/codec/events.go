@@ -245,6 +245,13 @@ type DeviceChange struct {
 	SubDevice  string
 	Object     string
 
+	// ExplicitEmptyObject makes the encoder emit a literal OBJECT=""
+	// attribute when Object is empty (Add() otherwise drops empty
+	// attrs entirely). Used by the extract root-discovery ladder —
+	// "no OBJECT attr" and OBJECT="" are DIFFERENT frames to the
+	// server. TX-only; never set on decode.
+	ExplicitEmptyObject bool
+
 	// Devices is populated on RX for TYPE=LIST. Live Cerebrum nests
 	// one <DEVICE IP="..."> per entry, each containing an
 	// <INSTANCE DEVICE_TYPE="..."/> child (verified 2026-04-27 — the
@@ -354,8 +361,16 @@ func (d *DeviceChange) encodeSubItem(b *strings.Builder) {
 		Add("IP_ADDRESS", d.IPAddress).
 		Add("DEVICE_TYPE", string(d.DeviceType)).
 		Add("DEVICE_NAME", d.DeviceName).
-		Add("SUB_DEVICE", d.SubDevice).
-		Add("OBJECT", d.Object)
+		Add("SUB_DEVICE", d.SubDevice)
+	if d.Object == "" && d.ExplicitEmptyObject {
+		// Root-discovery probe: emit a literal OBJECT="" attribute.
+		// Add() drops empty values, so without this flag an empty
+		// Object means NO attribute on the wire — a different frame
+		// the server may treat differently (root enumeration ladder).
+		a = a.ForceAdd("OBJECT", "")
+	} else {
+		a = a.Add("OBJECT", d.Object)
+	}
 	emitElement(b, "DEVICE_CHANGE", a, nil)
 }
 

@@ -220,6 +220,14 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumKeepaliveProbe(ctx, rest)
 	case "tree":
 		return cerebrumTree(ctx, rest)
+	case "get":
+		// Canonical read (D2 unit a, #700): one dotted
+		// DEVICE.SUB.OBJECT… path through Plugin.GetValue.
+		return cerebrumGet(ctx, rest)
+	case "extract":
+		// ADR-0022 card data model (D2 unit b, #700): device walk →
+		// .cache/dm/cerebrum-nb/<Model@SwRev>.json + manifest.
+		return cerebrumExtract(ctx, rest)
 	case "watch":
 		return cerebrumWatch(ctx, rest)
 	case "route":
@@ -274,7 +282,7 @@ VERBS
   list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE]
   list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE]
   list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--id N] [--out FILE]
-  export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router)
+  export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router). DEVICE snapshot (Tree/DM, acp2 parity — ONE file): --device NAME|IP [--by-name] --sub-device N --path "GROUP[;GROUP…]" --out FILE.json|yaml|csv [--format F] [--max-requests N]
   import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device] [--names: join DEVICE_NAME + PRIMARY/SECONDARY state via one DETAILS obtain per IP — LIST itself never carries names (§5.4.1)]
   device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
@@ -285,6 +293,8 @@ VERBS
   list-salvo-groups        OBTAIN <salvo_change type='GROUP_LIST'/>
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
+  get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
+  extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch (object path must be known — wildcards refused, live-verified)
@@ -731,6 +741,7 @@ func cerebrumListDevices(_ context.Context, args []string) error {
 // never fails the verb.
 type cerebrumDeviceMeta struct {
 	Name           string
+	VendorType     string
 	PrimaryState   string
 	SecondaryState string
 }
@@ -745,6 +756,7 @@ func cerebrumDeviceNameJoin(sess *cerebrum.Session, timeout time.Duration, ips [
 		var m cerebrumDeviceMeta
 		if got.Device.Details != nil {
 			m.Name = got.Device.Details.Name
+			m.VendorType = got.Device.Details.VendorType
 		}
 		if got.Device.Connection != nil {
 			m.PrimaryState = got.Device.Connection.PrimaryState
