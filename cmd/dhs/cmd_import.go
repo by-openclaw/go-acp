@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -105,7 +107,21 @@ func runImport(ctx context.Context, args []string) error {
 	}
 
 	if *file == "" {
-		return fmt.Errorf("--file is required")
+		// ADR-0028 default home: import reads exactly where the
+		// defaulted export writes — snapshots/<proto>/<host>/params.*
+		// (first existing of json/yaml/csv).
+		dir := snapshotDir(cf.protocol, host)
+		for _, name := range []string{"params.json", "params.yaml", "params.csv"} {
+			p := filepath.Join(dir, name)
+			if _, statErr := os.Stat(p); statErr == nil {
+				*file = p
+				fmt.Fprintf(os.Stderr, "import: default snapshot file %s (ADR-0028)\n", *file)
+				break
+			}
+		}
+		if *file == "" {
+			return fmt.Errorf("--file is required (no params.json/yaml/csv found in the default snapshot folder %s)", dir)
+		}
 	}
 	if len(filterIDs) > 0 && len(filterPaths) > 0 {
 		return fmt.Errorf("--id and --path are mutually exclusive; pick one addressing scheme")

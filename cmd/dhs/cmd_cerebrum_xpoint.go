@@ -258,34 +258,45 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	if xp == "" {
 		xp = *csvPath
 	}
+	// ADR-0028 default home: no per-file flags and no --in-dir → read
+	// from the router's snapshot folder (exactly where the defaulted
+	// export writes, plain facet names). Import reads where export
+	// writes — neither picks a location.
+	if *inDir == "" && *deviceName == "" &&
+		xp == "" && *srcPath == "" && *dstPath == "" && *lvlPath == "" && *lockPath == "" &&
+		*catSrcPath == "" && *catDstPath == "" && *catMixedPath == "" {
+		*inDir = snapshotDir("cerebrum-nb", *router)
+		*prefix = ""
+		fmt.Fprintf(os.Stderr, "cerebrum-nb import: default snapshot folder %s (ADR-0028)\n", *inDir)
+	}
 	if *inDir != "" {
 		// Mirror export --out-dir: resolve every role not given explicitly to
-		// <in-dir>/<prefix>-<role>.csv, keeping only files that exist —
+		// <in-dir>/<facet file>, keeping only files that exist —
 		// missing files stay out of scope (partial-import semantics).
-		resolve := func(target *string, suffix string) {
+		resolve := func(target *string, facet string) {
 			if *target != "" {
 				return
 			}
-			p := filepath.Join(*inDir, *prefix+suffix)
+			p := facetFile(*inDir, *prefix, facet)
 			if _, err := os.Stat(p); err == nil {
 				*target = p
 			}
 		}
-		resolve(&xp, "-xpoint.csv")
-		resolve(srcPath, "-src.csv")
-		resolve(dstPath, "-dst.csv")
-		resolve(lvlPath, "-level.csv")
-		resolve(lockPath, "-lock.csv")
+		resolve(&xp, "xpoint")
+		resolve(srcPath, "src")
+		resolve(dstPath, "dst")
+		resolve(lvlPath, "level")
+		resolve(lockPath, "lock")
 		if nonRMTarget {
 			// The dir may hold a full RM export set — its cat files are out
 			// of scope for a physical-router import, never an error.
-			if _, err := os.Stat(filepath.Join(*inDir, *prefix+"-cat-src.csv")); err == nil {
-				fmt.Fprintf(os.Stderr, "cerebrum-nb import: physical-router target — %s-cat-*.csv in %s skipped (categories are route-master-only)\n", *prefix, *inDir)
+			if _, err := os.Stat(facetFile(*inDir, *prefix, "cat-src")); err == nil {
+				fmt.Fprintf(os.Stderr, "cerebrum-nb import: physical-router target — cat-*.csv in %s skipped (categories are route-master-only)\n", *inDir)
 			}
 		} else {
-			resolve(catSrcPath, "-cat-src.csv")
-			resolve(catDstPath, "-cat-dst.csv")
-			resolve(catMixedPath, "-cat-mixed.csv")
+			resolve(catSrcPath, "cat-src")
+			resolve(catDstPath, "cat-dst")
+			resolve(catMixedPath, "cat-mixed")
 		}
 		fmt.Fprintf(os.Stderr, "cerebrum-nb import: --in-dir resolved xpoint=%s src=%s dst=%s levels=%s lock=%s cat-src=%s cat-dst=%s cat-mixed=%s\n",
 			orDash(xp), orDash(*srcPath), orDash(*dstPath), orDash(*lvlPath), orDash(*lockPath), orDash(*catSrcPath), orDash(*catDstPath), orDash(*catMixedPath))
@@ -388,6 +399,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		return err
 	}
 	cf.port = portArg
+	cerebrumExpandAutoPaths(cf, "import", host)
 
 	p, err := cerebrumDial(cf, host)
 	if err != nil {
@@ -617,13 +629,34 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	trio := *outDir != ""
-	if trio && *out != "" {
+	if *outDir != "" && *out != "" {
 		return cerebrumValErr("export", "--out and --out-dir are mutually exclusive")
 	}
-	if *device != "" && trio {
+	if *device != "" && *outDir != "" {
 		return cerebrumValErr("export", "--device (one snapshot file) and --out-dir (matrix file-set) are mutually exclusive — the Tree/DM domain has one facet, one file")
 	}
+	// ADR-0028 default homes: flags omitted → the deterministic
+	// snapshot folder, never a cwd surprise. --out "-" keeps the
+	// explicit stdout stream.
+	stdoutOut := *out == "-"
+	if stdoutOut {
+		*out = ""
+	}
+	if !stdoutOut && *out == "" && *outDir == "" {
+		if *device != "" {
+			// Device (Tree/DM) leg: one params file, keyed by the
+			// device's own identity (IP, or trimmed name fallback).
+			*out = filepath.Join(snapshotDir("cerebrum-nb", strings.TrimSpace(*device)), "params.csv")
+			fmt.Fprintf(os.Stderr, "cerebrum-nb export: default snapshot file %s (ADR-0028)\n", *out)
+		} else {
+			// Matrix leg: the FULL facet set into the router's folder,
+			// plain facet names (the folder identifies the target).
+			*outDir = snapshotDir("cerebrum-nb", *router)
+			*prefix = ""
+			fmt.Fprintf(os.Stderr, "cerebrum-nb export: default snapshot folder %s (ADR-0028)\n", *outDir)
+		}
+	}
+	trio := *outDir != ""
 	// Device-mode flag validation fires PRE-dial like every verb.
 	var deviceStarts []string
 	if *device != "" {
@@ -648,6 +681,7 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 		return err
 	}
 	cf.port = portArg
+	cerebrumExpandAutoPaths(cf, "export", host)
 
 	p, err := cerebrumDial(cf, host)
 	if err != nil {
@@ -702,13 +736,13 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 	files := []struct {
 		name, content string
 	}{
-		{*prefix + "-src.csv", formatCerebrumMneCSVN("srce", srcD, nAlt)},
-		{*prefix + "-dst.csv", formatCerebrumMneCSVN("dest", dstD, nAlt)},
-		{*prefix + "-level.csv", formatCerebrumMneCSVN("level", lvlD, nAlt)},
-		{*prefix + "-xpoint.csv", xpCSV},
+		{facetName(*prefix, "src"), formatCerebrumMneCSVN("srce", srcD, nAlt)},
+		{facetName(*prefix, "dst"), formatCerebrumMneCSVN("dest", dstD, nAlt)},
+		{facetName(*prefix, "level"), formatCerebrumMneCSVN("level", lvlD, nAlt)},
+		{facetName(*prefix, "xpoint"), xpCSV},
 		// DEST_LOCK snapshot — set cells only (unlocked = absent). Written on
 		// RM and physical routers alike (same grant as ROUTE, live-proven).
-		{*prefix + "-lock.csv", formatCerebrumLockCSV(st.Locks)},
+		{facetName(*prefix, "lock"), formatCerebrumLockCSV(st.Locks)},
 	}
 	// Category navigation files (§5.2 walk): SRC and DST kept in separate
 	// files by owner rule; a category whose subtree carries both kinds is
@@ -731,13 +765,13 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 			delete(dstPick, m)
 		}
 		files = append(files,
-			struct{ name, content string }{*prefix + "-cat-src.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, srcPick, catDetails))},
-			struct{ name, content string }{*prefix + "-cat-dst.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, dstPick, catDetails))},
+			struct{ name, content string }{facetName(*prefix, "cat-src"), formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, srcPick, catDetails))},
+			struct{ name, content string }{facetName(*prefix, "cat-dst"), formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, dstPick, catDetails))},
 		)
 		if len(mixed) > 0 {
-			fmt.Fprintf(os.Stderr, "cerebrum-nb export: %d categor(ies) carry BOTH source and dest resources in their subtree — written to %s-cat-mixed.csv: %s\n", len(mixed), *prefix, strings.Join(mixed, ", "))
+			fmt.Fprintf(os.Stderr, "cerebrum-nb export: %d categor(ies) carry BOTH source and dest resources in their subtree — written to %s: %s\n", len(mixed), facetName(*prefix, "cat-mixed"), strings.Join(mixed, ", "))
 			files = append(files,
-				struct{ name, content string }{*prefix + "-cat-mixed.csv", formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, mixedPick, catDetails))},
+				struct{ name, content string }{facetName(*prefix, "cat-mixed"), formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, mixedPick, catDetails))},
 			)
 		}
 	} else {
