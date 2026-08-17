@@ -1,0 +1,27 @@
+{
+  "device": {
+    "name": "bm-n-nncvt-001",
+    "protocol": "cerebrum-nb",
+    "endpoints": [
+      {
+        "ip": "10.44.55.39",
+        "port": 40009,
+        "transport": "tcp"
+      }
+    ]
+  },
+  "frames": [
+    {
+      "name": "device",
+      "slots": [
+        {
+          "addr": {
+            "device": "bm-n-nncvt-001 ",
+            "sub_device": "1"
+          },
+          "dm": "CONVERT IP@6.7.4.json"
+        }
+      ]
+    }
+  ]
+}
