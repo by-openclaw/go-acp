@@ -31,7 +31,10 @@ func init() {
 // commonFlags holds the flags every subcommand accepts. Parsed per
 // subcommand so positional args (the host) stay in position 1.
 type commonFlags struct {
-	protocol  string
+	// verb is the FlagSet name ("export", "walk", …) — labels the
+	// ADR-0028 default capture folder; never user-visible otherwise.
+	verb              string
+	protocol          string
 	transport         string
 	port              int
 	timeout           time.Duration
@@ -62,7 +65,7 @@ type commonFlags struct {
 }
 
 func addCommonFlags(fs *flag.FlagSet) *commonFlags {
-	cf := &commonFlags{}
+	cf := &commonFlags{verb: fs.Name()}
 	fs.StringVar(&cf.protocol, "protocol", "acp1", "protocol plugin name")
 	fs.StringVar(&cf.transport, "transport", "auto",
 		"transport: auto (default, TCP-first with UDP fallback like real "+
@@ -83,7 +86,8 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"capture traffic. Path ending in .jsonl → single-file raw frame log "+
 			"(ACP1/ACP2/Ember+). Any other path → directory mode: writes "+
 			"raw.<transport>.jsonl (raw.acp1 / raw.an2 / raw.s101 per protocol) "+
-			"+ tree.json (all 3 protocols) + glow.json (Ember+ only).")
+			"+ tree.json (all 3 protocols) + glow.json (Ember+ only). "+
+			"Literal \"auto\" = directory mode at captures/<proto>/<host>/<verb>-<utcstamp>/ (ADR-0028).")
 	fs.StringVar(&cf.canonTemplates, "templates", "pointer",
 		"canonical export mode for templateReference (Ember+ only): "+
 			"pointer (wire-faithful), inline (absorb template into element), "+
@@ -158,8 +162,17 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	}
 	logger := logging.NewTextLogger(lvl)
 
-	// Optional traffic capture for test data generation.
+	// Optional traffic capture for test data generation. The literal
+	// "auto" resolves to the ADR-0028 evidence home as a capture DIR
+	// (raw frames + tree.json land inside): captures/<proto>/<host>/
+	// <verb>-<utcstamp>/.
 	var recorder *transport.Recorder
+	if cf.capture == "auto" {
+		cf.capture = filepath.Join(artifactRoot(), "captures",
+			datastore.SanitizePathSeg(cf.protocol), datastore.SanitizePathSeg(hostOnly(host)),
+			datastore.SanitizePathSeg(cf.verb)+"-"+time.Now().UTC().Format("20060102T1504Z"))
+		fmt.Fprintf(os.Stderr, "%s: --capture auto → %s (ADR-0028)\n", cf.protocol, cf.capture)
+	}
 	if cf.capture != "" {
 		recorderPath := cf.capture
 		if isDirectoryCapture(cf.capture) {
