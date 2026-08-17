@@ -57,6 +57,7 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0025](0025-per-connector-definition-of-done.md) | Per-connector definition of done (six deliverables) | accepted |
 | [0026](0026-agent-communication-style.md) | Agent communication style | proposed |
 | [0027](0027-workflow-contract-dod-windows.md) | Workflow contract during DOD windows | proposed |
+| [0028](0028-artifact-layout.md) | Artifact layout — one deterministic home per artifact, keyed by IP | proposed |
 
 ## ADR-0017 parking note
 
