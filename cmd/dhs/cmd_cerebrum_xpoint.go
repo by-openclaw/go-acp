@@ -401,7 +401,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	cf.port = portArg
 	cerebrumExpandAutoPaths(cf, "import", host)
 
-	p, err := cerebrumDial(cf, host)
+	p, err := cerebrumDial(cf, host, "import")
 	if err != nil {
 		return err
 	}
@@ -683,7 +683,7 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 	cf.port = portArg
 	cerebrumExpandAutoPaths(cf, "export", host)
 
-	p, err := cerebrumDial(cf, host)
+	p, err := cerebrumDial(cf, host, "export")
 	if err != nil {
 		return err
 	}
@@ -795,8 +795,9 @@ func cerebrumRouterIsRM(router string) bool {
 }
 
 // cerebrumDial builds a plugin from the common flags and connects (no LOGIN —
-// see connectAndLogin). Shared by import/export; the host is already split out.
-func cerebrumDial(cf *cerebrumFlags, host string) (*cerebrum.Plugin, error) {
+// see connectAndLogin). Shared by import/export; the host is already split
+// out. verb labels the ADR-0028 capture meta record.
+func cerebrumDial(cf *cerebrumFlags, host, verb string) (*cerebrum.Plugin, error) {
 	logger, _, lerr := cf.newLogger()
 	if lerr != nil {
 		return nil, lerr
@@ -807,6 +808,7 @@ func cerebrumDial(cf *cerebrumFlags, host string) (*cerebrum.Plugin, error) {
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
 	p.Capture = cf.capture
+	p.CaptureMeta = captureMeta("cerebrum-nb", host, verb)
 	dialCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	if err := p.Connect(dialCtx, host, cf.port); err != nil {

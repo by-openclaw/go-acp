@@ -54,6 +54,11 @@ func ReadTrames(r io.Reader) ([]Trame, error) {
 		if t.SchemaVersion > SchemaVersion {
 			return nil, fmt.Errorf("wiretrace: line %d: schema_version %d exceeds reader's %d", lineNo, t.SchemaVersion, SchemaVersion)
 		}
+		// ADR-0028 meta record (self-description, no wire bytes) —
+		// provenance, not traffic: skipped from the trame stream.
+		if t.Meta != nil && t.Hex == "" {
+			continue
+		}
 		if t.Hex == "" {
 			return nil, fmt.Errorf("wiretrace: line %d: required field `hex` missing", lineNo)
 		}
