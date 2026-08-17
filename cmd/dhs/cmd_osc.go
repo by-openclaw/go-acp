@@ -48,8 +48,13 @@ func runOSCConsumer(ctx context.Context, proto string, args []string) error {
 	switch verb {
 	case "watch":
 		return runOSCWatch(ctx, proto, rest)
+	case "validate":
+		// Canonical offline validate (#243): decode a captured
+		// frames.jsonl through the OSC codec; --out-tree aggregates the
+		// observed address space into a canonical tree.json.
+		return runValidate(ctx, append([]string{"--protocol", proto}, rest...))
 	}
-	return fmt.Errorf("consumer %s: unknown verb %q (expected: watch)", proto, verb)
+	return fmt.Errorf("consumer %s: unknown verb %q (expected: watch, validate)", proto, verb)
 }
 
 // runOSCProducer dispatches `dhs producer osc-vXX <verb> [args]`.
