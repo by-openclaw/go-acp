@@ -465,6 +465,23 @@ dhs consumer cerebrum-nb extract HOST --user U --pass P \
   other connector's, so the acp2 extract of the same CONVERT is
   diffable against the cerebrum one (dual-oracle, S9).
 
+### export --device — parameter snapshot to ONE file (acp2 parity)
+
+```
+dhs consumer cerebrum-nb export HOST --user U --pass P \
+  --device 10.44.72.28 --sub-device 1 \
+  --path "PROCESSING AUDIO;PROCESSING VIDEO;…" --out cvt-params.csv
+```
+
+Same walk as `extract`, but the result goes to a snapshot FILE instead
+of the DM store: json | yaml | csv picked by `--format` then the
+`--out` extension (stdout when `--out` is omitted) — the exact file
+shape `dhs consumer acp2 export` produces for a slot. One facet
+(parameters) → one file; the multi-file `--out-dir` set remains the
+Matrix domain's shape (xpoint/src/dst/level/lock facets). The future
+device-ensure `import` reads this same file back (diff-first,
+run-twice = 0).
+
 ### validate — offline decoder oracle
 
 ```

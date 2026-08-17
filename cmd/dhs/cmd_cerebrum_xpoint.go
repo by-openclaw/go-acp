@@ -608,12 +608,36 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 	outDir := fs.String("out-dir", "", "full-set mode: directory for <prefix>-src.csv / -dst.csv / -level.csv / -xpoint.csv")
 	prefix := fs.String("prefix", "cerebrum", "full-set mode: file prefix")
 	idle := fs.Duration("idle", 3*time.Second, "stop collecting this long after the last snapshot frame if no WILDCARD_COMPLETE arrives")
+	device := fs.String("device", "", "DEVICE snapshot mode (Tree/DM domain, acp2-export parity): device NAME (--by-name) or IP — walk the object tree, write ONE snapshot file to --out (json|yaml|csv)")
+	byName := fs.Bool("by-name", false, "--device is a DEVICE_NAME (exact, incl. trailing whitespace) instead of an IP")
+	subDev := fs.String("sub-device", "", "device mode: sub-device index (from device-details)")
+	seeds := fs.String("path", "", "device mode: start group(s), ';'-separated (Object Browser top folders)")
+	format := fs.String("format", "", "device mode: json | yaml | csv (default from the --out extension, else json)")
+	maxReq := fs.Int("max-requests", 20000, "device mode: cap on walk obtains")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	trio := *outDir != ""
 	if trio && *out != "" {
 		return cerebrumValErr("export", "--out and --out-dir are mutually exclusive")
+	}
+	if *device != "" && trio {
+		return cerebrumValErr("export", "--device (one snapshot file) and --out-dir (matrix file-set) are mutually exclusive — the Tree/DM domain has one facet, one file")
+	}
+	// Device-mode flag validation fires PRE-dial like every verb.
+	var deviceStarts []string
+	if *device != "" {
+		if *subDev == "" {
+			return cerebrumValErr("export", "--device mode needs --sub-device (index from device-details)")
+		}
+		for _, s := range strings.Split(*seeds, ";") {
+			if s = strings.TrimSpace(s); s != "" && s != "." {
+				deviceStarts = append(deviceStarts, s)
+			}
+		}
+		if len(deviceStarts) == 0 {
+			return cerebrumValErr("export", "--device mode needs --path with the start group(s) (';'-separated top folders from the device's Object Browser — the NB API exposes no root enumeration)")
+		}
 	}
 	rest := fs.Args()
 	if len(rest) < 1 {
@@ -630,6 +654,10 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+
+	if *device != "" {
+		return cerebrumExportDevice(p.Session(), cf, *device, *byName, *subDev, deviceStarts, *format, *out, *maxReq)
+	}
 
 	st, err := cerebrumObtainState(ctx, p.Session(), *router, *deviceType, *idle, cerebrumStateWant{
 		Routes: true, RouteLevel: *level,

@@ -118,34 +118,9 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 			spelling, len(starts), strings.Join(starts, "; "))
 	}
 
-	// Walk seed-by-seed: a card variant may lack one of the seeded top
-	// folders (CONVERT IP vs Hybrid), and one missing group must not
-	// abort the whole model — it is skipped LOUDLY and listed in the
-	// summary. All-seeds-failed still errors.
-	var rows []codec.DeviceObjectValue
-	requests := 0
-	var failedSeeds []string
-	for _, start := range starts {
-		r, req, truncated, werr := cerebrumDeviceWalkValues(sess, cf.timeout, *device, *byName, *subDev, []string{start}, *maxReq-requests)
-		requests += req
-		if werr != nil {
-			fmt.Fprintf(os.Stderr, "cerebrum-nb extract: WARNING — start group %q failed (%v); continuing with the remaining groups\n", start, werr)
-			failedSeeds = append(failedSeeds, start)
-			continue
-		}
-		if truncated {
-			return fmt.Errorf("cerebrum-nb extract: walk truncated at --max-requests=%d obtains — a truncated DM is not a device model; raise --max-requests and re-run", *maxReq)
-		}
-		rows = append(rows, r...)
-	}
-	if len(failedSeeds) == len(starts) {
-		return fmt.Errorf("cerebrum-nb extract: every start group failed — nothing to persist (check --path against the device's Object Browser)")
-	}
-	if len(failedSeeds) > 0 {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: %d start group(s) SKIPPED: %s — the DM covers the remaining groups only\n", len(failedSeeds), strings.Join(failedSeeds, "; "))
-	}
-	if len(rows) == 0 {
-		return fmt.Errorf("cerebrum-nb extract: walk returned 0 objects — nothing to persist (check --path start groups against the device's Object Browser)")
+	rows, requests, err := cerebrumWalkSeeds(sess, cf.timeout, *device, *byName, *subDev, starts, *maxReq, "extract")
+	if err != nil {
+		return err
 	}
 	fmt.Printf("extracted %d object(s) from %q sub-device %s in %d obtain(s)\n",
 		len(rows), deviceName, *subDev, requests)
@@ -172,6 +147,41 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	fmt.Printf("  fingerprint:    %s\n", fingerprint)
 	fmt.Printf("manifest written: %s\n", mfPath)
 	return nil
+}
+
+// cerebrumWalkSeeds is the per-seed lenient walk shared by extract and
+// export --device: a card variant may lack one of the seeded top
+// folders, and one missing group must not abort the whole read — it is
+// skipped LOUDLY and listed in a SKIPPED summary (never silent).
+// All-seeds-failed and truncation still error; a truncated read is
+// refused outright (a partial model is not a device model).
+func cerebrumWalkSeeds(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev string, starts []string, maxReq int, verb string) ([]codec.DeviceObjectValue, int, error) {
+	var rows []codec.DeviceObjectValue
+	requests := 0
+	var failedSeeds []string
+	for _, start := range starts {
+		r, req, truncated, werr := cerebrumDeviceWalkValues(sess, timeout, device, byName, subDev, []string{start}, maxReq-requests)
+		requests += req
+		if werr != nil {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb %s: WARNING — start group %q failed (%v); continuing with the remaining groups\n", verb, start, werr)
+			failedSeeds = append(failedSeeds, start)
+			continue
+		}
+		if truncated {
+			return nil, requests, fmt.Errorf("cerebrum-nb %s: walk truncated at --max-requests=%d obtains — refusing a partial read; raise --max-requests and re-run", verb, maxReq)
+		}
+		rows = append(rows, r...)
+	}
+	if len(failedSeeds) == len(starts) {
+		return nil, requests, fmt.Errorf("cerebrum-nb %s: every start group failed — nothing read (check --path against the device's Object Browser)", verb)
+	}
+	if len(failedSeeds) > 0 {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb %s: %d start group(s) SKIPPED: %s — the result covers the remaining groups only\n", verb, len(failedSeeds), strings.Join(failedSeeds, "; "))
+	}
+	if len(rows) == 0 {
+		return nil, requests, fmt.Errorf("cerebrum-nb %s: walk returned 0 objects (check --path start groups against the device's Object Browser)", verb)
+	}
+	return rows, requests, nil
 }
 
 // cerebrumDiscoverRootGroups probes the §5.4.3 root-handle spellings
