@@ -150,9 +150,12 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	fmt.Printf("extracted %d object(s) from %q sub-device %s in %d obtain(s)\n",
 		len(rows), deviceName, *subDev, requests)
 
+	// DM paths are device-agnostic (ADR-0022: the schema of one card
+	// type, acp2 parity — slot/host never persisted): no device-name
+	// or sub-device prefix. The manifest carries the binding.
 	objs := make([]consumer.Object, 0, len(rows))
 	for i := range rows {
-		objs = append(objs, cerebrum.CanonicalDeviceObject(deviceName, *subDev, &rows[i], i))
+		objs = append(objs, cerebrum.CanonicalDeviceObject("", "", &rows[i], i))
 	}
 
 	identity := model + "@" + swRev

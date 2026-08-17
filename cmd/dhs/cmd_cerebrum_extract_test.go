@@ -46,8 +46,10 @@ func TestWriteCerebrumExtract(t *testing.T) {
 	treeStore = datastore.NewTreeStore(t.TempDir())
 	t.Cleanup(func() { treeStore = prev })
 
+	// Device-agnostic DM paths (no device/sub prefix) — the binding
+	// lives in the manifest.
 	objs := []consumer.Object{{
-		ID: 0, Path: []string{"cvt 1", "1", "A", "Delay"},
+		ID: 0, Path: []string{"A", "Delay"},
 		Label: "A.Delay", Kind: consumer.KindFloat,
 		Value: consumer.Value{Kind: consumer.KindFloat, Float: 5.5},
 	}}

@@ -44,4 +44,11 @@ func TestCanonicalDeviceObject(t *testing.T) {
 	if len(o2.EnumItems) != 2 || o2.Kind != consumer.KindEnum {
 		t.Fatalf("enum mapping = %+v", o2)
 	}
+
+	// DM mode (extract): no device/sub prefix — the path is the object
+	// segments alone, so the DM stays device-agnostic per ADR-0022.
+	dm := CanonicalDeviceObject("", "", ov, 7)
+	if got := strings.Join(dm.Path, "/"); got != "A/Delay" {
+		t.Fatalf("device-agnostic path = %q", got)
+	}
 }

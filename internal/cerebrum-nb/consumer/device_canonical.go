@@ -204,10 +204,23 @@ func deviceAccessBits(ov *codec.DeviceObjectValue) uint8 {
 // derived tree) and `extract` (live DM walk, D2 unit b) so the two
 // views of the same device stay byte-comparable — the S9 dual-oracle
 // diff depends on that.
+//
+// deviceLabel / subDevice prefix the path ONLY when non-empty: a
+// capture tree spans devices (validate passes both), while a DM is
+// the device-agnostic schema of one card type per ADR-0022 (extract
+// passes neither — the device binding lives in the manifest, and a
+// same-Model@SwRev extract from another unit is the same schema).
 func CanonicalDeviceObject(deviceLabel, subDevice string, ov *codec.DeviceObjectValue, id int) consumer.Object {
+	segs := make([]string, 0, 2)
+	if deviceLabel != "" {
+		segs = append(segs, deviceLabel)
+	}
+	if subDevice != "" {
+		segs = append(segs, subDevice)
+	}
 	obj := consumer.Object{
 		ID:     id,
-		Path:   append([]string{deviceLabel, subDevice}, strings.Split(ov.Object, ".")...),
+		Path:   append(segs, strings.Split(ov.Object, ".")...),
 		Label:  ov.Object,
 		Access: deviceAccessBits(ov),
 		Unit:   ov.Units,
