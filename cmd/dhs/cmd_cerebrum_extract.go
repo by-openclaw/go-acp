@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
 	cerebrum "dhs/internal/cerebrum-nb/consumer"
@@ -83,28 +84,43 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 
 	// DETAILS probe: manifest device name (exact wire NAME) + Model
 	// default. Lenient — a refused DETAILS only matters if --product
-	// was not given.
+	// was not given. §5.4 DETAILS is IP-addressed on the wire: the
+	// by-name form NACKs 10 on the live NOC (2026-08-17), so NAME
+	// addressing resolves NAME → IP via LIST + per-IP DETAILS first.
 	deviceName := *device
 	model := *product
-	dc := &codec.DeviceChange{Type: "DETAILS"}
+	var probeErr error
 	if *byName {
-		dc.DeviceName = *device
+		if ip, m, ok := cerebrumResolveDeviceByName(sess, cf.timeout, *device); ok {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb extract: resolved %q → %s (LIST + DETAILS join)\n", *device, ip)
+			if m.Name != "" {
+				deviceName = m.Name
+			}
+			if model == "" && m.VendorType != "" {
+				model = m.VendorType
+			}
+		} else {
+			probeErr = fmt.Errorf("device NAME %q not found in the LIST + DETAILS join", *device)
+		}
 	} else {
-		dc.IPAddress = *device
+		dc := &codec.DeviceChange{Type: "DETAILS", IPAddress: *device}
+		if got, derr := obtainSingleDeviceChange(sess, cf.timeout, dc, "DETAILS"); derr == nil && got != nil && got.Device != nil && got.Device.Details != nil {
+			d := got.Device.Details
+			if d.Name != "" {
+				deviceName = d.Name
+			}
+			if model == "" && d.VendorType != "" {
+				model = d.VendorType
+			}
+		} else if derr != nil {
+			probeErr = derr
+		}
 	}
-	if got, derr := obtainSingleDeviceChange(sess, cf.timeout, dc, "DETAILS"); derr == nil && got != nil && got.Device != nil && got.Device.Details != nil {
-		d := got.Device.Details
-		if d.Name != "" {
-			deviceName = d.Name
-		}
-		if model == "" && d.VendorType != "" {
-			model = d.VendorType
-		}
-	} else if derr != nil {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: WARNING — DETAILS probe failed (%v); using --device/--product as-is\n", derr)
+	if probeErr != nil {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: WARNING — DETAILS probe failed (%v); using --device/--product as-is\n", probeErr)
 	}
 	if model == "" {
-		return cerebrumValErr("extract", "no Model for the DM identity — the DETAILS reply carried no vendor type, pass --product explicitly")
+		return cerebrumValErr("extract", "no Model for the DM identity — the DETAILS probe carried no vendor type, pass --product explicitly (e.g. --product \"CONVERT Hybrid\")")
 	}
 
 	rows, requests, truncated, err := cerebrumDeviceWalkValues(sess, cf.timeout, *device, *byName, *subDev, starts, *maxReq)
@@ -139,6 +155,39 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	fmt.Printf("  fingerprint:    %s\n", fingerprint)
 	fmt.Printf("manifest written: %s\n", mfPath)
 	return nil
+}
+
+// cerebrumResolveDeviceByName resolves a verbatim DEVICE_NAME to its
+// IP + DETAILS meta via one §5.4.1 LIST obtain (single frame) and the
+// per-IP DETAILS join — the same join list-devices --names uses.
+// Exact-name match first (names are verbatim incl. trailing
+// whitespace); a trimmed-space match second, so a copy-paste that
+// lost the trailing blank still resolves.
+func cerebrumResolveDeviceByName(sess *cerebrum.Session, timeout time.Duration, name string) (string, cerebrumDeviceMeta, bool) {
+	got, err := obtainSingleDeviceChange(sess, timeout, &codec.DeviceChange{Type: "LIST"}, "LIST")
+	if err != nil || got == nil || got.Device == nil {
+		return "", cerebrumDeviceMeta{}, false
+	}
+	seen := map[string]bool{}
+	var ips []string
+	for _, e := range got.Device.Devices {
+		if e.IPAddress != "" && !seen[e.IPAddress] {
+			seen[e.IPAddress] = true
+			ips = append(ips, e.IPAddress)
+		}
+	}
+	meta := cerebrumDeviceNameJoin(sess, timeout, ips)
+	for _, ip := range ips {
+		if m, ok := meta[ip]; ok && m.Name == name {
+			return ip, m, true
+		}
+	}
+	for _, ip := range ips {
+		if m, ok := meta[ip]; ok && strings.TrimSpace(m.Name) == strings.TrimSpace(name) {
+			return ip, m, true
+		}
+	}
+	return "", cerebrumDeviceMeta{}, false
 }
 
 // writeCerebrumExtract persists the ADR-0022 pair for one extracted

@@ -741,6 +741,7 @@ func cerebrumListDevices(_ context.Context, args []string) error {
 // never fails the verb.
 type cerebrumDeviceMeta struct {
 	Name           string
+	VendorType     string
 	PrimaryState   string
 	SecondaryState string
 }
@@ -755,6 +756,7 @@ func cerebrumDeviceNameJoin(sess *cerebrum.Session, timeout time.Duration, ips [
 		var m cerebrumDeviceMeta
 		if got.Device.Details != nil {
 			m.Name = got.Device.Details.Name
+			m.VendorType = got.Device.Details.VendorType
 		}
 		if got.Device.Connection != nil {
 			m.PrimaryState = got.Device.Connection.PrimaryState
