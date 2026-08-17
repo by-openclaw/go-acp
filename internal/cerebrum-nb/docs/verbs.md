@@ -435,12 +435,20 @@ persists the DM + manifest pair:
 
 ```
 dhs consumer cerebrum-nb extract HOST --user U --pass P \
-  --device "bm-n-nncvt-001 " --by-name --sub-device 1 \
-  --path "PROCESSING AUDIO;INPUT;OUTPUT"
-#   identity: CONVERT Hybrid@6.7.4 (from the device tree)
+  --device "bm-n-nncvt-001 " --by-name --sub-device 1
+#   root discovered via OBJECT="…": N top group(s): …
+#   identity: CONVERT IP@6.7.4 (from the device tree)
 #   → .cache/dm/cerebrum-nb/<Model@SwRev>.json   (flat canonical Objects)
 #   → .cache/manifest/<device-slug>.json         (device → sub-device → DM ref)
 ```
+
+- **Zero prior knowledge required** (acp2/ember parity): with no
+  `--path`, the root is discovered by the probe ladder — `OBJECT=""`
+  literal, `OBJECT="ROOT-NODE-V2"` (the acp2 root name; NB paths are
+  that tree root-stripped), `OBJECT="*"`, then the bare no-attribute
+  form — and the walk seeds itself from whatever the server
+  enumerates. `--path "GROUP[;GROUP…]"` remains as manual scope (a
+  partial extract of one folder is legitimate).
 
 - **Identity is auto-probed from the device tree** — the same objects
   acp2's IdentityProbe reads, reachable over NB as root-stripped

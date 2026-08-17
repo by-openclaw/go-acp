@@ -72,6 +72,29 @@ func TestEncodeObtain_DeviceList(t *testing.T) {
 	}
 }
 
+// TestEncodeObtain_ExplicitEmptyObject pins the root-discovery frame:
+// OBJECT="" is EMITTED literally with the flag set (Add() would drop
+// it), and stays absent without the flag — the two spellings are
+// different frames to the server.
+func TestEncodeObtain_ExplicitEmptyObject(t *testing.T) {
+	withFlag := []SubItem{
+		&DeviceChange{Type: "VALUE", DeviceName: "d", SubDevice: "1", ExplicitEmptyObject: true},
+	}
+	got := string(EncodeObtain(4, withFlag))
+	want := `<OBTAIN MTID="4"><DEVICE_CHANGE TYPE="VALUE" DEVICE_NAME="d" SUB_DEVICE="1" OBJECT=""/></OBTAIN>`
+	if got != want {
+		t.Fatalf("EncodeObtain explicit-empty\n got %s\nwant %s", got, want)
+	}
+	without := []SubItem{
+		&DeviceChange{Type: "VALUE", DeviceName: "d", SubDevice: "1"},
+	}
+	got = string(EncodeObtain(5, without))
+	want = `<OBTAIN MTID="5"><DEVICE_CHANGE TYPE="VALUE" DEVICE_NAME="d" SUB_DEVICE="1"/></OBTAIN>`
+	if got != want {
+		t.Fatalf("EncodeObtain no-attr\n got %s\nwant %s", got, want)
+	}
+}
+
 func TestDecodeAck(t *testing.T) {
 	f, err := Decode([]byte(`<ack mtid="1"/>`))
 	if err != nil {

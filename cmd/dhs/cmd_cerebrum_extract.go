@@ -46,7 +46,7 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	device := fs.String("device", "", "device to extract: NAME with --by-name (exact string incl. whitespace!) or IP")
 	byName := fs.Bool("by-name", false, "--device is a DEVICE_NAME (exact, incl. trailing whitespace) instead of an IP")
 	subDev := fs.String("sub-device", "", "sub-device index (from device-details, e.g. 1)")
-	focus := fs.String("path", "", "start group(s) for the walk, ';'-separated — the server refuses an empty OBJECT, so the root must be seeded (top folders from the device's Object Browser)")
+	focus := fs.String("path", "", "optional start group(s) for the walk, ';'-separated. Omitted (or \".\"): the root is DISCOVERED automatically — the probe ladder tries the §5.4.3 root spellings and seeds the walk from whatever the server enumerates")
 	maxReq := fs.Int("max-requests", 2000, "cap on group obtains for the walk (safety against unexpected fan-out)")
 	product := fs.String("product", "", `override the DM Model (default: "IDENTITY.Card Name" obtained from the device tree — same identity object acp2's probe reads)`)
 	version := fs.String("version", "", `override the DM SwRev (default: "IDENTITY.Product Version" from the device tree, falling back to "BOARD.Hardware Version")`)
@@ -64,9 +64,6 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 		if s = strings.TrimSpace(s); s != "" && s != "." {
 			starts = append(starts, s)
 		}
-	}
-	if len(starts) == 0 {
-		return cerebrumValErr("extract", "--path is required with one or more start groups (';'-separated) — the server refuses an empty OBJECT, so the walk must be seeded")
 	}
 
 	rest := fs.Args()
@@ -108,6 +105,18 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 		return fmt.Errorf("cerebrum-nb extract: no SwRev — the device tree answered neither \"IDENTITY.Product Version\" nor \"BOARD.Hardware Version\"; pass --version explicitly")
 	}
 	fmt.Printf("identity: %s@%s (from the device tree — same objects as the acp2 probe)\n", model, swRev)
+
+	// No seeds given → discover the root (acp2/ember parity: nobody
+	// should need to know the DM structure up front).
+	if len(starts) == 0 {
+		discovered, spelling, derr := cerebrumDiscoverRootGroups(sess, cf.timeout, *device, *byName, *subDev)
+		if derr != nil {
+			return fmt.Errorf("cerebrum-nb extract: root discovery failed (%w) — seed the walk manually with --path \"GROUP[;GROUP…]\" (top folders from the device's Object Browser) and report which root spelling your server wants", derr)
+		}
+		starts = discovered
+		fmt.Printf("root discovered via %s: %d top group(s): %s\n",
+			spelling, len(starts), strings.Join(starts, "; "))
+	}
 
 	// Walk seed-by-seed: a card variant may lack one of the seeded top
 	// folders (CONVERT IP vs Hybrid), and one missing group must not
@@ -160,6 +169,70 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	fmt.Printf("  fingerprint:    %s\n", fingerprint)
 	fmt.Printf("manifest written: %s\n", mfPath)
 	return nil
+}
+
+// cerebrumDiscoverRootGroups probes the §5.4.3 root-handle spellings
+// until one enumerates the device's top groups — the NB analogue of
+// acp2 walking children from object 1 and ember GetDirectory on root.
+// Only "no OBJECT attribute" was ever tried live (NACK 10,
+// 2026-08-16); the ladder covers the spellings never sent:
+//
+//	OBJECT=""        literal empty attribute (Add() drops empties, so
+//	                 this frame differs from the no-attr form)
+//	OBJECT="ROOT-NODE-V2"  the acp2 root's own name — NB paths are
+//	                 that tree root-stripped, so the root itself is
+//	                 the natural handle
+//	OBJECT="*"       the wildcard form §5.4.3 uses for table paths
+//	no OBJECT attr   the known-NACK form, retried last for the record
+//
+// Returns the child group names + the winning spelling. Every rung's
+// failure is collected so the error names what was refused.
+func cerebrumDiscoverRootGroups(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev string) ([]string, string, error) {
+	type rung struct {
+		object   string
+		explicit bool
+		label    string
+	}
+	ladder := []rung{
+		{"", true, `OBJECT=""`},
+		{"ROOT-NODE-V2", false, `OBJECT="ROOT-NODE-V2"`},
+		{"*", false, `OBJECT="*"`},
+		{"", false, "no OBJECT attribute"},
+	}
+	var trail []string
+	for _, r := range ladder {
+		dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: r.object, ExplicitEmptyObject: r.explicit}
+		if byName {
+			dc.DeviceName = device
+		} else {
+			dc.IPAddress = device
+		}
+		got, err := obtainSingleDeviceChange(sess, timeout, dc, "VALUE")
+		if err != nil {
+			trail = append(trail, fmt.Sprintf("%s → %v", r.label, err))
+			continue
+		}
+		if got == nil || got.Device == nil {
+			trail = append(trail, r.label+" → empty reply")
+			continue
+		}
+		var groups []string
+		seen := map[string]bool{}
+		for _, ov := range got.Device.ObjectValues {
+			// Children only: skip a self-echo of the probe object and
+			// blank rows. The walk re-classifies group vs leaf itself.
+			if ov.Object == "" || ov.Object == r.object || seen[ov.Object] {
+				continue
+			}
+			seen[ov.Object] = true
+			groups = append(groups, ov.Object)
+		}
+		if len(groups) > 0 {
+			return groups, r.label, nil
+		}
+		trail = append(trail, r.label+" → no children")
+	}
+	return nil, "", fmt.Errorf("every root spelling refused: %s", strings.Join(trail, " | "))
 }
 
 // cerebrumObtainIdentityLeaf reads one identity object via a single
