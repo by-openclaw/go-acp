@@ -48,8 +48,8 @@ var probelReadNameSizes = []codec.NameLength{codec.NameLen4, codec.NameLen8, cod
 func runProbelExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-export", flag.ContinueOnError)
 	matrix := fs.Int("matrix", 0, "matrix id (0-255)")
-	outDir := fs.String("out", ".", "output directory for the three CSV files")
-	prefix := fs.String("prefix", "sw08p", "CSV filename prefix")
+	outDir := fs.String("out", "", "output directory for the three CSV files (omitted = snapshots/probel-sw08p/<host>/ with plain facet names, ADR-0028)")
+	prefix := fs.String("prefix", "sw08p", "CSV filename prefix (ignored in the default snapshot folder — plain facet names there)")
 	timeout := fs.Duration("timeout", 120*time.Second, "overall timeout")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
@@ -57,6 +57,13 @@ func runProbelExport(ctx context.Context, args []string) error {
 	}
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
+	}
+	// ADR-0028 default home: --out omitted → the host's snapshot
+	// folder, plain facet names (never a cwd surprise).
+	if *outDir == "" {
+		*outDir = snapshotDir("probel-sw08p", hostOnly(addr))
+		*prefix = ""
+		fmt.Fprintf(os.Stderr, "probel-sw08p export: default snapshot folder %s (ADR-0028)\n", *outDir)
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
@@ -82,7 +89,7 @@ func runProbelExport(ctx context.Context, args []string) error {
 		srcLabels[nl] = r.Names
 		srcFirst = int(r.FirstSourceID)
 	}
-	srcPath := filepath.Join(*outDir, *prefix+"-src.csv")
+	srcPath := facetFile(*outDir, *prefix, "src")
 	if err := writeProbelNameCSV(srcPath, "src_id", mtx, level, srcFirst, srcLabels); err != nil {
 		return err
 	}
@@ -98,7 +105,7 @@ func runProbelExport(ctx context.Context, args []string) error {
 		dstLabels[nl] = r.Names
 		dstFirst = int(r.FirstDestAssociationID)
 	}
-	dstPath := filepath.Join(*outDir, *prefix+"-dst.csv")
+	dstPath := facetFile(*outDir, *prefix, "dst")
 	if err := writeProbelNameCSV(dstPath, "dst_id", mtx, level, dstFirst, dstLabels); err != nil {
 		return err
 	}
@@ -108,7 +115,7 @@ func runProbelExport(ctx context.Context, args []string) error {
 	if rerr != nil {
 		return fmt.Errorf("tally-dump: %w", rerr)
 	}
-	xpPath := filepath.Join(*outDir, *prefix+"-xpoint.csv")
+	xpPath := facetFile(*outDir, *prefix, "xpoint")
 	nXP, err := writeProbelXpointCSV(xpPath, mtx, level, res)
 	if err != nil {
 		return err
@@ -223,8 +230,8 @@ func labelColumnForSize(size int) (int, error) {
 // without sending.
 func runProbelImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-import", flag.ContinueOnError)
-	inDir := fs.String("in", ".", "directory containing the CSV files")
-	prefix := fs.String("prefix", "sw08p", "CSV filename prefix")
+	inDir := fs.String("in", "", "directory containing the CSV files (omitted = snapshots/probel-sw08p/<host>/ — import reads where export writes, ADR-0028)")
+	prefix := fs.String("prefix", "sw08p", "CSV filename prefix (ignored in the default snapshot folder — plain facet names there)")
 	size := fs.Int("size", 8, "which label width column to import: 4 | 8 | 12 | 16")
 	dryRun := fs.Bool("dry-run", false, "preview the would-send actions without sending")
 	check := fs.Bool("check", false, "dry-run alias (ADR-0007): preview would_change, send nothing")
@@ -240,6 +247,13 @@ func runProbelImport(ctx context.Context, args []string) error {
 	}
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
+	}
+	// ADR-0028 default home: --in omitted → the host's snapshot folder
+	// (exactly where the defaulted export wrote, plain facet names).
+	if *inDir == "" {
+		*inDir = snapshotDir("probel-sw08p", hostOnly(addr))
+		*prefix = ""
+		fmt.Fprintf(os.Stderr, "probel-sw08p import: default snapshot folder %s (ADR-0028)\n", *inDir)
 	}
 	// No selector → default to labels only (never auto-reroute crosspoints/protect).
 	if !*doSrc && !*doDst && !*doXpoints && !*doProtect {
@@ -268,22 +282,22 @@ func runProbelImport(ctx context.Context, args []string) error {
 	defer closer()
 
 	if *doSrc {
-		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-src.csv"), "source", col, width, dry, jsonOut); err != nil {
+		if err := applyProbelNameCSV(cctx, p, facetFile(*inDir, *prefix, "src"), "source", col, width, dry, jsonOut); err != nil {
 			return err
 		}
 	}
 	if *doDst {
-		if err := applyProbelNameCSV(cctx, p, filepath.Join(*inDir, *prefix+"-dst.csv"), "dest-assoc", col, width, dry, jsonOut); err != nil {
+		if err := applyProbelNameCSV(cctx, p, facetFile(*inDir, *prefix, "dst"), "dest-assoc", col, width, dry, jsonOut); err != nil {
 			return err
 		}
 	}
 	if *doXpoints {
-		if err := applyProbelXpointCSV(cctx, p, filepath.Join(*inDir, *prefix+"-xpoint.csv"), dry, jsonOut); err != nil {
+		if err := applyProbelXpointCSV(cctx, p, facetFile(*inDir, *prefix, "xpoint"), dry, jsonOut); err != nil {
 			return err
 		}
 	}
 	if *doProtect {
-		if err := applyProbelProtectCSV(cctx, p, filepath.Join(*inDir, *prefix+"-protect.csv"), dry, jsonOut); err != nil {
+		if err := applyProbelProtectCSV(cctx, p, facetFile(*inDir, *prefix, "protect"), dry, jsonOut); err != nil {
 			return err
 		}
 	}

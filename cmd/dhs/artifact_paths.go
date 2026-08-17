@@ -14,12 +14,22 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"time"
 
 	"dhs/internal/datastore"
 )
+
+// hostOnly strips an optional :port from an addr so the host alone
+// keys the artifact folders (ports are reachability, not identity).
+func hostOnly(addr string) string {
+	if h, _, err := net.SplitHostPort(addr); err == nil {
+		return h
+	}
+	return addr
+}
 
 // artifactRoot resolves the ADR-0028 bucket root (the directory
 // .cache/, snapshots/ and captures/ are siblings under). Falls back
