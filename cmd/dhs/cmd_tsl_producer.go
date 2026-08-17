@@ -24,7 +24,9 @@ import (
 //
 // `proto` is one of `tsl-v31` / `tsl-v40` / `tsl-v50`.
 func runTSLProducer(ctx context.Context, proto string, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
+	// the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printTSLProducerHelp(os.Stdout, proto)
 		return nil
 	}

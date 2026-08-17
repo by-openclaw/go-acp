@@ -30,6 +30,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -204,6 +205,21 @@ func main() {
 		os.Exit(0)
 	}
 
+	// A verb-level `--help` is answered by the verb's own FlagSet (it
+	// prints that verb's usage + flags and Parse returns flag.ErrHelp).
+	// Help is success, not an error — exit 0 silently instead of the
+	// "error: flag: help requested" + catalogue fallback (#462).
+	exitOnErr := func(err error) {
+		if err == nil {
+			return
+		}
+		if errors.Is(err, flag.ErrHelp) {
+			os.Exit(0)
+		}
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(exitCode(err))
+	}
+
 	switch args[0] {
 	case "help", "-h", "--h", "--help":
 		printTopHelp()
@@ -230,28 +246,16 @@ func main() {
 		}
 		return
 	case "consumer":
-		if err := dispatchConsumer(ctx, args[1:]); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(exitCode(err))
-		}
+		exitOnErr(dispatchConsumer(ctx, args[1:]))
 		return
 	case "producer":
-		if err := dispatchProducer(ctx, args[1:]); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(exitCode(err))
-		}
+		exitOnErr(dispatchProducer(ctx, args[1:]))
 		return
 	case "registry":
-		if err := dispatchRegistry(ctx, args[1:]); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(exitCode(err))
-		}
+		exitOnErr(dispatchRegistry(ctx, args[1:]))
 		return
 	case "metrics":
-		if err := runMetrics(ctx, args[1:]); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(exitCode(err))
-		}
+		exitOnErr(runMetrics(ctx, args[1:]))
 		return
 	}
 
@@ -298,7 +302,11 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		return runNMOSConsumer(ctx, rest)
 	}
 
-	if len(rest) == 0 || hasHelpFlag(rest) {
+	// Catalogue help ONLY when help is asked in place of a verb — a help
+	// flag AFTER the verb belongs to the verb (#462: hasHelpFlag over the
+	// whole argv made `walk --help` print this catalogue and shadowed the
+	// per-verb help below).
+	if len(rest) == 0 || isHelpToken(rest[0]) {
 		printConsumerHelp()
 		return nil
 	}
@@ -340,7 +348,9 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	if proto == "nmos" {
 		return runNMOSProducer(ctx, rest)
 	}
-	if len(rest) == 0 || hasHelpFlag(rest) {
+	// Same rule as dispatchConsumer (#462): help IN PLACE of a verb =
+	// catalogue; help after the verb belongs to the verb's own FlagSet.
+	if len(rest) == 0 || isHelpToken(rest[0]) {
 		printProducerHelp()
 		return nil
 	}
