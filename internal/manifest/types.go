@@ -14,8 +14,19 @@ type Manifest struct {
 
 // Device identifies one physical unit + its network endpoints.
 type Device struct {
-	Name      string     `json:"name"`
-	Protocol  string     `json:"protocol"`
+	Name     string `json:"name"`
+	Protocol string `json:"protocol"`
+	// IP is the device's own identity IP — the manifest FILE KEY per
+	// ADR-0028 (unique + static in the plant; rename-proof where
+	// names are not). Distinct from Endpoints (reachability): a
+	// device behind a control plane (cerebrum-nb) is reached via the
+	// server endpoint but keyed by its own IP. Empty IP falls back to
+	// the slugified Name (the ADR's IP-less edge case — callers warn).
+	IP string `json:"ip,omitempty"`
+	// FQDN is optional metadata only (ADR-0028: the devops direction,
+	// recorded now so a later DNS migration is a re-key script, not a
+	// schema change). NEVER a key.
+	FQDN      string     `json:"fqdn,omitempty"`
 	Endpoints []Endpoint `json:"endpoints"`
 }
 

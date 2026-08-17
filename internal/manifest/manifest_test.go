@@ -142,7 +142,35 @@ func TestWrite(t *testing.T) {
 			t.Fatal("expected error for empty device name")
 		}
 	})
-	t.Run("success and slugify", func(t *testing.T) {
+	t.Run("empty protocol", func(t *testing.T) {
+		m := validManifest()
+		m.Device.Protocol = ""
+		if _, err := Write(t.TempDir(), m); err == nil {
+			t.Fatal("expected error for empty protocol (ADR-0028 key)")
+		}
+	})
+	t.Run("ip key (ADR-0028)", func(t *testing.T) {
+		cache := t.TempDir()
+		m := validManifest()
+		m.Device.IP = "10.100.0.103"
+		m.Device.FQDN = "neuron-test.plant.example"
+		path, err := Write(cache, m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := filepath.Join(cache, "manifest", "acp2", "10.100.0.103.json")
+		if path != want {
+			t.Fatalf("path = %q, want %q", path, want)
+		}
+		got, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Device.IP != "10.100.0.103" || got.Device.FQDN != "neuron-test.plant.example" {
+			t.Fatalf("ip/fqdn round-trip: %+v", got.Device)
+		}
+	})
+	t.Run("name-slug fallback when no IP", func(t *testing.T) {
 		cache := t.TempDir()
 		m := validManifest()
 		m.Device.Name = "Tiny Ember+ Router"
@@ -150,12 +178,43 @@ func TestWrite(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		want := filepath.Join(cache, "manifest", "tiny-ember-router.json")
+		want := filepath.Join(cache, "manifest", "acp2", "tiny-ember-router.json")
 		if path != want {
 			t.Fatalf("path = %q, want %q", path, want)
 		}
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("file not written: %v", err)
+		}
+	})
+	t.Run("legacy name-keyed manifest migrated", func(t *testing.T) {
+		cache := t.TempDir()
+		// Old layout: manifest/<name-slug>.json with a different endpoint.
+		legacyDir := filepath.Join(cache, "manifest")
+		if err := os.MkdirAll(legacyDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		legacy := validManifest()
+		legacy.Device.Endpoints = []Endpoint{{IP: "10.100.0.109", Port: 2072, Transport: "tcp"}}
+		b, _ := json.Marshal(legacy)
+		legacyPath := filepath.Join(legacyDir, "neuron-test.json")
+		if err := os.WriteFile(legacyPath, b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		m := validManifest()
+		m.Device.IP = "10.100.0.103"
+		path, err := Write(cache, m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Device.Endpoints) != 2 {
+			t.Fatalf("legacy endpoints not merged: %+v", got.Device.Endpoints)
+		}
+		if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+			t.Fatalf("legacy file not retired: %v", err)
 		}
 	})
 	t.Run("merge unions endpoints", func(t *testing.T) {
@@ -193,7 +252,7 @@ func TestWrite(t *testing.T) {
 	})
 	t.Run("create error", func(t *testing.T) {
 		cache := t.TempDir()
-		dir := filepath.Join(cache, "manifest")
+		dir := filepath.Join(cache, "manifest", "acp2")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +266,7 @@ func TestWrite(t *testing.T) {
 	})
 	t.Run("rename error", func(t *testing.T) {
 		cache := t.TempDir()
-		dir := filepath.Join(cache, "manifest")
+		dir := filepath.Join(cache, "manifest", "acp2")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
