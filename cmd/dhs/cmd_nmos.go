@@ -33,7 +33,9 @@ import (
 
 // runNMOSConsumer dispatches `dhs consumer nmos <verb> [args]`.
 func runNMOSConsumer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
+	// the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSConsumerHelp()
 		return nil
 	}
@@ -54,7 +56,7 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
 func runNMOSProducer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSProducerHelp()
 		return nil
 	}
@@ -71,7 +73,7 @@ func runNMOSProducer(ctx context.Context, args []string) error {
 
 // runNMOSRegistry dispatches `dhs registry nmos <verb> [args]`.
 func runNMOSRegistry(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSRegistryHelp()
 		return nil
 	}

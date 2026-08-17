@@ -49,7 +49,9 @@ func runProbelsw02p(ctx context.Context, args []string) error {
 	if mcSet {
 		ctx = context.WithValue(ctx, probelSW02MatrixConfigKey{}, mc)
 	}
-	if len(args) == 0 || hasHelpFlag(args) {
+	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
+	// the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		helpProbelSW02()
 		return nil
 	}

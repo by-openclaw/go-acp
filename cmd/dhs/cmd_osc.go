@@ -37,7 +37,9 @@ import (
 
 // runOSCConsumer dispatches `dhs consumer osc-vXX <verb> [args]`.
 func runOSCConsumer(ctx context.Context, proto string, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
+	// the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printOSCConsumerHelp(proto)
 		return nil
 	}
@@ -52,7 +54,7 @@ func runOSCConsumer(ctx context.Context, proto string, args []string) error {
 
 // runOSCProducer dispatches `dhs producer osc-vXX <verb> [args]`.
 func runOSCProducer(ctx context.Context, proto string, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printOSCProducerHelp(proto)
 		return nil
 	}

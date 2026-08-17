@@ -22,7 +22,9 @@ import (
 
 // runNMOSEventsConsumer dispatches `dhs consumer nmos events <verb>`.
 func runNMOSEventsConsumer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
+	// the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSEventsConsumerHelp()
 		return nil
 	}
@@ -37,7 +39,7 @@ func runNMOSEventsConsumer(ctx context.Context, args []string) error {
 
 // runNMOSEventsProducer dispatches `dhs producer nmos events <verb>`.
 func runNMOSEventsProducer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSEventsProducerHelp()
 		return nil
 	}
