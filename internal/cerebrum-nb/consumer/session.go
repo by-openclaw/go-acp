@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 
 	"dhs/internal/cerebrum-nb/codec"
+	"dhs/internal/transport"
 	"dhs/internal/cerebrum-nb/codec/ws"
 )
 
@@ -30,6 +31,11 @@ type Session struct {
 	host       string
 	port       int
 	compliance *Profile
+	// rec, when non-nil, records every TX/RX XML document (the ws text
+	// payload — the wire truth above the RFC 6455 framing) to the
+	// standard JSONL wire-trace, same shape as every other connector's
+	// --capture (#242). transport.Recorder methods are nil-safe.
+	rec *transport.Recorder
 
 	mtidNext atomic.Uint32
 
@@ -88,8 +94,9 @@ func (p *Profile) Counts() map[string]int {
 }
 
 // newSession dials the Cerebrum WebSocket and starts the RX goroutine.
-// Login is performed by the caller via session.login.
-func newSession(ctx context.Context, logger *slog.Logger, urlStr string, useTLS, insecure bool) (*Session, error) {
+// Login is performed by the caller via session.login. rec may be nil
+// (no capture).
+func newSession(ctx context.Context, logger *slog.Logger, urlStr string, useTLS, insecure bool, rec *transport.Recorder) (*Session, error) {
 	opts := &ws.DialOptions{}
 	if useTLS && insecure {
 		opts.TLSConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
@@ -105,6 +112,7 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, useTLS,
 		host:       host,
 		port:       port,
 		compliance: &Profile{},
+		rec:        rec,
 		pending:    map[string]chan *codec.Frame{},
 		stopRX:     make(chan struct{}),
 	}
@@ -184,6 +192,7 @@ func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*
 	// Raw TX at debug level — the wire truth for diagnostics; --debug on the
 	// CLI promises "verbose RX/TX XML logging" and this is that promise.
 	s.logger.Debug("tx", slog.String("xml", string(payload)))
+	s.rec.Record("cerebrum-nb", "tx", payload)
 	if err := s.conn.WriteText(ctx, payload); err != nil {
 		return nil, fmt.Errorf("cerebrum-nb: write: %w", err)
 	}
@@ -372,6 +381,7 @@ func (s *Session) readLoop() {
 		}
 		// Raw RX at debug level — see the tx twin in roundTrip.
 		s.logger.Debug("rx", slog.String("xml", string(payload)))
+		s.rec.Record("cerebrum-nb", "rx", payload)
 		f, err := codec.Decode(payload)
 		if err != nil {
 			s.logger.Warn("decode failed",
@@ -464,6 +474,7 @@ func (s *Session) close() error {
 	s.closeOnce.Do(func() {
 		close(s.stopRX)
 		s.closeErr = s.conn.Close(1000, "client closing")
+		_ = s.rec.Close() // nil-safe; flush the --capture wire-trace
 	})
 	return s.closeErr
 }

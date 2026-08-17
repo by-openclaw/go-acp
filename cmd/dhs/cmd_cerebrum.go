@@ -68,6 +68,7 @@ type cerebrumFlags struct {
 	insecure bool
 	debug    bool
 	logPath  string
+	capture  string
 	timeout  time.Duration
 }
 
@@ -80,6 +81,7 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.BoolVar(&c.insecure, "insecure-skip-verify", false, "with --tls, skip TLS cert verification")
 	fs.BoolVar(&c.debug, "debug", false, "verbose RX/TX XML logging")
 	fs.StringVar(&c.logPath, "log", "", "write the diagnostic log (incl. RX/TX XML at full debug verbosity) to this file — clean UTF-8, no PowerShell 2> stderr wrapping; stderr stays silent")
+	fs.StringVar(&c.capture, "capture", "", "record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret)")
 	fs.DurationVar(&c.timeout, "timeout", 5*time.Second, "per-request timeout")
 	return c
 }
@@ -302,6 +304,9 @@ FLAGS (order doesn't matter — flags can come before OR after the host)
   --insecure-skip-verify    with --tls, skip cert validation
   --debug                   verbose RX/TX XML logging (stderr)
   --log FILE                full debug log incl. RX/TX XML to FILE (clean UTF-8; stderr stays quiet)
+  --capture FILE            record every TX/RX XML document to a JSONL wire-trace — same contract as
+                            every other connector; replayable as an offline decoder oracle
+                            (WARNING: contains the LOGIN frame in cleartext — treat as secret)
   --timeout DUR             per-request timeout (default 5s — fail fast)
   --output text|json        structured stdout — every read verb emits one JSON document,
                             every write verb the ADR-0007 {changed|would_change, previous,
@@ -368,6 +373,7 @@ func dialCerebrum(cf *cerebrumFlags, positionals []string, verb string) (*cerebr
 	p.Password = cf.pass
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
+	p.Capture = cf.capture
 
 	scheme := "ws"
 	if cf.tls {
@@ -1856,6 +1862,7 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	p.Password = cf.pass
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
+	p.Capture = cf.capture
 
 	dialCtx, dialCancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer dialCancel()

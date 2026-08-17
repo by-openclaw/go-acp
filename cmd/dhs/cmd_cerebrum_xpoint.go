@@ -744,6 +744,7 @@ func cerebrumDial(cf *cerebrumFlags, host string) (*cerebrum.Plugin, error) {
 	p.Password = cf.pass
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
+	p.Capture = cf.capture
 	dialCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	if err := p.Connect(dialCtx, host, cf.port); err != nil {
