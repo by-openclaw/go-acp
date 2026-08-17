@@ -193,6 +193,11 @@ func runCerebrum(ctx context.Context, args []string) error {
 	switch verb {
 	case "connect":
 		return cerebrumConnect(ctx, rest)
+	case "validate":
+		// Canonical offline validate (D2 #700, #243 residual): decode a
+		// --capture frames.jsonl through the codec; --out-tree = the
+		// observed DEVICE objects as a canonical tree.
+		return runValidate(ctx, append([]string{"--protocol", "cerebrum-nb"}, rest...))
 	case "listen":
 		return cerebrumListen(ctx, rest)
 	case "list-devices":
@@ -280,6 +285,7 @@ VERBS
   list-salvo-groups        OBTAIN <salvo_change type='GROUP_LIST'/>
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
+  validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch (object path must be known — wildcards refused, live-verified)
 

@@ -67,6 +67,12 @@ type Plugin struct {
 
 	mu      sync.Mutex
 	session *Session
+
+	// devSubs tracks canonical DEVICE VALUE subscriptions by dotted
+	// path (D2 — device_canonical.go) so Unsubscribe can cancel both
+	// the local dispatch and the wire row.
+	devSubMu sync.Mutex
+	devSubs  map[string]*deviceSub
 }
 
 // NewPlugin constructs a Plugin with the given logger. Credentials
@@ -223,9 +229,8 @@ func (p *Plugin) Walk(_ context.Context, _ int) ([]consumer.Object, error) {
 	return nil, fmt.Errorf("cerebrum-nb: walk not applicable; use Session.WalkAll")
 }
 
-func (p *Plugin) GetValue(_ context.Context, _ consumer.ValueRequest) (consumer.Value, error) {
-	return consumer.Value{}, fmt.Errorf("cerebrum-nb: get-value not applicable; use Session.Obtain")
-}
+// GetValue is implemented in device_canonical.go (D2 — the DEVICE
+// domain on the canonical Tree/DM contract).
 
 func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
 	sess := p.Session()
@@ -255,13 +260,7 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 	return val, nil
 }
 
-// Subscribe / Unsubscribe through the generic interface aren't wired —
-// CLI verbs use Session.Subscribe<X> directly to express the §5
-// addressing precisely.
-func (p *Plugin) Subscribe(_ consumer.ValueRequest, _ consumer.EventFunc) error {
-	return fmt.Errorf("cerebrum-nb: consumer.Subscribe not implemented; use Session.Subscribe<Routing|Category|Salvo|Device|Datastore>")
-}
-
-func (p *Plugin) Unsubscribe(_ consumer.ValueRequest) error {
-	return fmt.Errorf("cerebrum-nb: consumer.Unsubscribe not implemented; use Session.UnsubscribeAll")
-}
+// Subscribe / Unsubscribe are implemented in device_canonical.go (D2):
+// canonical DEVICE.SUB.OBJECT… paths onto §5.4 VALUE subscriptions.
+// Routing/category/salvo subscriptions keep their precise §5 addressing
+// through Session.Subscribe<X> (the Matrix-template half).
