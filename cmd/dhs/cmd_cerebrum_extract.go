@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -108,12 +109,31 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	}
 	fmt.Printf("identity: %s@%s (from the device tree — same objects as the acp2 probe)\n", model, swRev)
 
-	rows, requests, truncated, err := cerebrumDeviceWalkValues(sess, cf.timeout, *device, *byName, *subDev, starts, *maxReq)
-	if err != nil {
-		return err
+	// Walk seed-by-seed: a card variant may lack one of the seeded top
+	// folders (CONVERT IP vs Hybrid), and one missing group must not
+	// abort the whole model — it is skipped LOUDLY and listed in the
+	// summary. All-seeds-failed still errors.
+	var rows []codec.DeviceObjectValue
+	requests := 0
+	var failedSeeds []string
+	for _, start := range starts {
+		r, req, truncated, werr := cerebrumDeviceWalkValues(sess, cf.timeout, *device, *byName, *subDev, []string{start}, *maxReq-requests)
+		requests += req
+		if werr != nil {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb extract: WARNING — start group %q failed (%v); continuing with the remaining groups\n", start, werr)
+			failedSeeds = append(failedSeeds, start)
+			continue
+		}
+		if truncated {
+			return fmt.Errorf("cerebrum-nb extract: walk truncated at --max-requests=%d obtains — a truncated DM is not a device model; raise --max-requests and re-run", *maxReq)
+		}
+		rows = append(rows, r...)
 	}
-	if truncated {
-		return fmt.Errorf("cerebrum-nb extract: walk truncated at --max-requests=%d obtains — a truncated DM is not a device model; raise --max-requests and re-run", *maxReq)
+	if len(failedSeeds) == len(starts) {
+		return fmt.Errorf("cerebrum-nb extract: every start group failed — nothing to persist (check --path against the device's Object Browser)")
+	}
+	if len(failedSeeds) > 0 {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: %d start group(s) SKIPPED: %s — the DM covers the remaining groups only\n", len(failedSeeds), strings.Join(failedSeeds, "; "))
 	}
 	if len(rows) == 0 {
 		return fmt.Errorf("cerebrum-nb extract: walk returned 0 objects — nothing to persist (check --path start groups against the device's Object Browser)")
