@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -54,10 +55,14 @@ func TestWriteCerebrumExtract(t *testing.T) {
 		Value: consumer.Value{Kind: consumer.KindFloat, Float: 5.5},
 	}}
 	// Trailing space on the wire name — the manifest Name is trimmed,
-	// the Addr keeps the verbatim form for addressing.
-	dmPath, mfPath, err := writeCerebrumExtract("SHPRM1@5.3.5", "cvt 1 ", "10.44.55.39", 40009, "1", objs)
+	// the Addr keeps the verbatim form for addressing. The manifest
+	// file key is the DEVICE's own IP (ADR-0028), not the NB endpoint.
+	dmPath, mfPath, err := writeCerebrumExtract("SHPRM1@5.3.5", "cvt 1 ", "10.44.72.28", "10.44.55.39", 40009, "1", objs)
 	if err != nil {
 		t.Fatalf("writeCerebrumExtract: %v", err)
+	}
+	if !strings.HasSuffix(mfPath, filepath.Join("manifest", "cerebrum-nb", "10.44.72.28.json")) {
+		t.Fatalf("manifest not IP-keyed per ADR-0028: %s", mfPath)
 	}
 
 	dm, err := os.ReadFile(dmPath)
@@ -73,7 +78,7 @@ func TestWriteCerebrumExtract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("manifest file: %v", err)
 	}
-	for _, want := range []string{`"cvt 1"`, `"cvt 1 "`, `"sub_device": "1"`, `"SHPRM1@5.3.5.json"`, `"10.44.55.39"`, `40009`} {
+	for _, want := range []string{`"cvt 1"`, `"cvt 1 "`, `"sub_device": "1"`, `"SHPRM1@5.3.5.json"`, `"10.44.55.39"`, `40009`, `"ip": "10.44.72.28"`} {
 		if !strings.Contains(string(mf), want) {
 			t.Fatalf("manifest missing %s:\n%s", want, mf)
 		}
@@ -87,15 +92,15 @@ func TestWriteCerebrumExtract_Errors(t *testing.T) {
 	t.Cleanup(func() { treeStore = prev })
 
 	treeStore = nil
-	if _, _, err := writeCerebrumExtract("X@1", "d", "h", 1, "1", nil); err == nil || !strings.Contains(err.Error(), "not initialised") {
+	if _, _, err := writeCerebrumExtract("X@1", "d", "", "h", 1, "1", nil); err == nil || !strings.Contains(err.Error(), "not initialised") {
 		t.Fatalf("nil store: %v", err)
 	}
 
 	treeStore = datastore.NewTreeStore(t.TempDir())
-	if _, _, err := writeCerebrumExtract("", "d", "h", 1, "1", nil); err == nil || !strings.Contains(err.Error(), "write DM") {
+	if _, _, err := writeCerebrumExtract("", "d", "", "h", 1, "1", nil); err == nil || !strings.Contains(err.Error(), "write DM") {
 		t.Fatalf("empty identity: %v", err)
 	}
-	if _, _, err := writeCerebrumExtract("X@1", "", "h", 1, "1", nil); err == nil || !strings.Contains(err.Error(), "write manifest") {
+	if _, _, err := writeCerebrumExtract("X@1", "", "", "h", 1, "1", nil); err == nil || !strings.Contains(err.Error(), "write manifest") {
 		t.Fatalf("empty device name: %v", err)
 	}
 }

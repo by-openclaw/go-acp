@@ -763,8 +763,9 @@ func fallbackIdentity(host string) string {
 // acp* / probel; emberplus uses splitDMByMatrix directly because its
 // "slots" are derived from a single Walk's canonical tree.
 //
-// deviceName is the human-readable label that becomes the manifest
-// slug (.cache/manifest/<slug>.json); when empty, derives from the
+// deviceName is the human-readable device label stored in the
+// manifest (the file itself is IP-keyed per ADR-0028:
+// .cache/manifest/<proto>/<ip>.json); when empty, derives from the
 // first identity's Model part.
 type slotBinding struct {
 	Slot     int
@@ -786,6 +787,9 @@ func writeSlotManifest(deviceName, proto, host string, port int, bindings []slot
 		Device: manifest.Device{
 			Name:     deviceName,
 			Protocol: proto,
+			// Direct protocols: the device IS the endpoint — its host
+			// IP is the ADR-0028 identity key.
+			IP: host,
 			Endpoints: []manifest.Endpoint{
 				{IP: host, Port: port, Transport: defaultTransportFor(proto)},
 			},
@@ -882,7 +886,7 @@ func saveIdentityCache(store *datastore.TreeStore, identity, host, proto string,
 // walkSlotAndCache after the full provider DM lands; emits one
 // additional DM per slot-worthy root child so each matrix / function
 // subtree gets its own file under .cache/dm/emberplus/. Also writes
-// a manifest at .cache/manifest/<device-slug>.json so a future
+// a manifest at .cache/manifest/<proto>/<ip>.json (ADR-0028) so a future
 // consumer can resolve host:port → slot DMs without re-walking.
 // Quiet on success; warns on per-slot save errors.
 type dmSplitter interface {
@@ -916,6 +920,7 @@ func splitDMByMatrix(ctx context.Context, plug consumer.Protocol, host string, p
 		Device: manifest.Device{
 			Name:     deviceName,
 			Protocol: "emberplus",
+			IP:       host, // direct protocol: device == endpoint (ADR-0028 key)
 			Endpoints: []manifest.Endpoint{
 				{IP: host, Port: port, Transport: "tcp"},
 			},

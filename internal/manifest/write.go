@@ -5,19 +5,27 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-// Write serialises a Manifest to .cache/manifest/<device-slug>.json
-// atomically (tmp file + rename). Protocol-agnostic — same writer
-// serves emberplus, acp1, acp2, probel, future TSL / OSC.
+// Write serialises a Manifest to .cache/manifest/<proto>/<key>.json
+// atomically (tmp file + rename), where key is the device's identity
+// IP (ADR-0028), falling back to the slugified device name when no IP
+// is known (the IP-less edge case — callers warn loudly). Protocol-
+// agnostic — same writer serves emberplus, acp1, acp2, probel,
+// cerebrum-nb, future TSL / OSC.
 //
-// Merge behaviour: if a manifest already exists for this device slug,
+// Merge behaviour: if a manifest already exists for this key,
 // endpoints from the existing file are unioned with m.Device.Endpoints
 // (dedup by ip+port+transport). This is the redundant-controller path
 // — running `dhs watch` against the device's primary IP, then again
 // against the backup IP, accumulates both endpoints in one manifest.
 // Frames and slots are replaced wholesale by the new write (the
 // schema authority is the most recent walk).
+//
+// Legacy migration (pre-ADR-0028 layout, manifest/<name-slug>.json
+// with no proto subfolder): read once, endpoints merged in, legacy
+// file removed after the new write succeeds.
 //
 // Test seams for the two I/O arms that cannot be provoked through the
 // filesystem: a Manifest is always JSON-encodable so enc.Encode never
@@ -34,12 +42,26 @@ func Write(cacheDir string, m *Manifest) (string, error) {
 	if m == nil || m.Device.Name == "" {
 		return "", fmt.Errorf("manifest: Write: device name required")
 	}
-	slug := slugifyDeviceName(m.Device.Name)
-	dir := filepath.Join(cacheDir, "manifest")
+	if m.Device.Protocol == "" {
+		return "", fmt.Errorf("manifest: Write: device protocol required (the ADR-0028 key is manifest/<proto>/<ip>.json)")
+	}
+	key := m.Device.IP
+	if key == "" {
+		key = slugifyDeviceName(m.Device.Name)
+	}
+	dir := filepath.Join(cacheDir, "manifest", sanitizeKeySeg(m.Device.Protocol))
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("manifest: mkdir %s: %w", dir, err)
 	}
-	path := filepath.Join(dir, slug+".json")
+	path := filepath.Join(dir, sanitizeKeySeg(key)+".json")
+
+	// Legacy migration: the pre-ADR-0028 name-keyed file (no proto
+	// subfolder). Its endpoints join the union; the file is removed
+	// after the new write lands.
+	legacy := filepath.Join(cacheDir, "manifest", slugifyDeviceName(m.Device.Name)+".json")
+	if prior, perr := Load(legacy); perr == nil && prior != nil {
+		m.Device.Endpoints = mergeEndpoints(prior.Device.Endpoints, m.Device.Endpoints)
+	}
 
 	// Endpoint merge: load existing if present, union with new.
 	if prior, perr := Load(path); perr == nil && prior != nil {
@@ -66,7 +88,23 @@ func Write(cacheDir string, m *Manifest) (string, error) {
 		_ = os.Remove(tmp)
 		return "", fmt.Errorf("manifest: rename: %w", err)
 	}
+	// New write landed — retire the legacy name-keyed file (read-once-
+	// rewritten per ADR-0028). Best-effort: a leftover legacy file is
+	// re-merged on the next write, never lost.
+	if legacy != path {
+		_ = os.Remove(legacy)
+	}
 	return path, nil
+}
+
+// sanitizeKeySeg strips characters that are illegal in filenames on
+// Windows + POSIX so IPs (IPv6 colons), protocol names and name-slug
+// fallbacks go to disk safely.
+func sanitizeKeySeg(s string) string {
+	for _, ch := range []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|"} {
+		s = strings.ReplaceAll(s, ch, "_")
+	}
+	return s
 }
 
 // mergeEndpoints unions prior + incoming, dedup by (ip, port,

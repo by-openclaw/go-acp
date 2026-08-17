@@ -20,7 +20,7 @@ import (
 // obtains and persist the ADR-0022 card data model + manifest:
 //
 //	.cache/dm/cerebrum-nb/<Model@SwRev>.json   flat canonical Objects
-//	.cache/manifest/<device-slug>.json         device → sub-device → DM ref
+//	.cache/manifest/cerebrum-nb/<ip>.json      device → sub-device → DM ref (ADR-0028 IP key)
 //
 // The walk contract is `tree --device`'s, verbatim (seeded start
 // groups, recursion into group candidates, self-echo leaf
@@ -133,8 +133,18 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 		objs = append(objs, cerebrum.CanonicalDeviceObject("", "", &rows[i], i))
 	}
 
+	// ADR-0028 manifest key = the device's OWN IP (never the NB server
+	// endpoint — every device behind one Cerebrum would collide on it).
+	// Known only when --device was addressed by IP; the by-name form
+	// falls back to the name slug, loudly.
+	deviceIP := ""
+	if !*byName {
+		deviceIP = *device
+	} else {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: NOTE — manifest keyed by name slug (device IP unknown when addressing --by-name); address --device by IP for the IP-keyed manifest (ADR-0028)\n")
+	}
 	identity := model + "@" + swRev
-	dmPath, mfPath, err := writeCerebrumExtract(identity, deviceName, host, port, *subDev, objs)
+	dmPath, mfPath, err := writeCerebrumExtract(identity, deviceName, deviceIP, host, port, *subDev, objs)
 	if err != nil {
 		return err
 	}
@@ -281,7 +291,7 @@ func cerebrumObtainIdentityLeaf(sess *cerebrum.Session, timeout time.Duration, d
 //
 // Pure persistence — no wire I/O — so tests drive it with fabricated
 // rows against a temp store.
-func writeCerebrumExtract(identity, deviceName, host string, port int, subDev string, objs []consumer.Object) (dmPath, mfPath string, err error) {
+func writeCerebrumExtract(identity, deviceName, deviceIP, host string, port int, subDev string, objs []consumer.Object) (dmPath, mfPath string, err error) {
 	if treeStore == nil {
 		return "", "", fmt.Errorf("cerebrum-nb extract: tree store not initialised (.cache unavailable)")
 	}
@@ -296,10 +306,12 @@ func writeCerebrumExtract(identity, deviceName, host string, port int, subDev st
 	mf := &manifest.Manifest{
 		Device: manifest.Device{
 			// Name is the exact wire DEVICE_NAME (incl. the live
-			// trailing-whitespace quirk); the slug sanitises it for
-			// the filename, Addr keeps it verbatim for addressing.
+			// trailing-whitespace quirk) trimmed for display; Addr
+			// keeps it verbatim for addressing. IP is the ADR-0028
+			// file key — the device's own IP, not the NB endpoint.
 			Name:     strings.TrimSpace(deviceName),
 			Protocol: "cerebrum-nb",
+			IP:       deviceIP,
 			Endpoints: []manifest.Endpoint{
 				// The endpoint is the Cerebrum NB server we consume
 				// through — devices are reached via the control
