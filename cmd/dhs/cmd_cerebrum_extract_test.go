@@ -85,6 +85,30 @@ func TestWriteCerebrumExtract(t *testing.T) {
 	}
 }
 
+// TestCerebrumDMCacheHit pins the ADR-0028 §6 skip: an existing
+// Model@SwRev file = hit (zero walk); missing file or nil store = miss.
+func TestCerebrumDMCacheHit(t *testing.T) {
+	prev := treeStore
+	t.Cleanup(func() { treeStore = prev })
+
+	treeStore = nil
+	if _, hit := cerebrumDMCacheHit("X@1"); hit {
+		t.Fatal("nil store must miss")
+	}
+
+	treeStore = datastore.NewTreeStore(t.TempDir())
+	if _, hit := cerebrumDMCacheHit("CONVERT IP@6.7.4"); hit {
+		t.Fatal("missing file must miss")
+	}
+	if err := treeStore.WriteDM("cerebrum-nb", "CONVERT IP@6.7.4", datastore.DM{Protocol: "cerebrum-nb"}); err != nil {
+		t.Fatal(err)
+	}
+	p, hit := cerebrumDMCacheHit("CONVERT IP@6.7.4")
+	if !hit || p == "" {
+		t.Fatalf("existing DM must hit (p=%q)", p)
+	}
+}
+
 // Error arms: nil store, WriteDM refusal (empty identity), manifest
 // refusal (empty device name).
 func TestWriteCerebrumExtract_Errors(t *testing.T) {

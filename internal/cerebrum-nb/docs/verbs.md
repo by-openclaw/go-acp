@@ -450,6 +450,11 @@ dhs consumer cerebrum-nb extract HOST --user U --pass P \
   enumerates. `--path "GROUP[;GROUP…]"` remains as manual scope (a
   partial extract of one folder is legitimate).
 
+- **DM cache: schema once, state on demand** (ADR-0028 §6) — the
+  identity probe costs 2–3 obtains; when `dm/cerebrum-nb/
+  <Model@SwRev>.json` already exists, extract stops there (zero walk)
+  and still writes THIS unit's manifest binding. `--refresh` forces a
+  re-walk. A second unit of a known card costs 3 obtains, not 38,353.
 - **Identity is auto-probed from the device tree** — the same objects
   acp2's IdentityProbe reads, reachable over NB as root-stripped
   paths: Model = `IDENTITY.Card Name`, SwRev = `IDENTITY.Product
