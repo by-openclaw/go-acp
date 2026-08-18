@@ -65,6 +65,12 @@ type Plugin struct {
 	// contract every other connector honours (#242). Set before Connect.
 	Capture string
 
+	// CaptureMeta, when non-nil, is written as LINE ONE of the capture
+	// (ADR-0028 self-description: CLI, binary identity, wire context).
+	// Typically a wiretrace.MetaRecord built by the CLI; opaque here.
+	// Set before Connect.
+	CaptureMeta any
+
 	mu      sync.Mutex
 	session *Session
 
@@ -122,6 +128,7 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 			return fmt.Errorf("cerebrum-nb: --capture: %w", rerr)
 		}
 		rec = r
+		rec.WriteMeta(p.CaptureMeta) // nil-safe; ADR-0028 line one
 	}
 
 	sess, err := newSession(ctx, p.logger, url, p.UseTLS, p.InsecureSkipVerify, rec)

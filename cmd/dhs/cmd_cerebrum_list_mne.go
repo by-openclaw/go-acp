@@ -50,7 +50,7 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 	cf.port = portArg
 	cerebrumExpandAutoPaths(cf, "list-mne", host)
 
-	p, err := cerebrumDial(cf, host)
+	p, err := cerebrumDial(cf, host, "list-mne")
 	if err != nil {
 		return err
 	}

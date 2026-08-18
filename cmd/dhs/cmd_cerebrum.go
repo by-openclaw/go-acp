@@ -391,6 +391,7 @@ func dialCerebrum(cf *cerebrumFlags, positionals []string, verb string) (*cerebr
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
 	p.Capture = cf.capture
+	p.CaptureMeta = captureMeta("cerebrum-nb", host, verb)
 
 	scheme := "ws"
 	if cf.tls {
@@ -1882,6 +1883,7 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
 	p.Capture = cf.capture
+	p.CaptureMeta = captureMeta("cerebrum-nb", host, "route")
 
 	dialCtx, dialCancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer dialCancel()

@@ -187,6 +187,8 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		if recErr != nil {
 			return nil, nil, fmt.Errorf("capture: %w", recErr)
 		}
+		// ADR-0028 line one: the capture explains itself forever.
+		recorder.WriteMeta(captureMeta(cf.protocol, host, cf.verb))
 	}
 
 	factory, err := consumer.Get(cf.protocol)

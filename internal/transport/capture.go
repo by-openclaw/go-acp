@@ -59,6 +59,26 @@ func NewRecorder(path string) (*Recorder, error) {
 	}, nil
 }
 
+// WriteMeta writes the ADR-0028 self-description record — intended as
+// LINE ONE of the capture, before any traffic. meta is typically a
+// wiretrace.MetaRecord; kept as any so transport stays free of a
+// wiretrace import. Nil-safe like Record.
+func (r *Recorder) WriteMeta(meta any) {
+	if r == nil || r.file == nil || meta == nil {
+		return
+	}
+	rec := struct {
+		SchemaVersion int    `json:"schema_version"`
+		Timestamp     string `json:"ts"`
+		Meta          any    `json:"meta"`
+	}{1, time.Now().UTC().Format(time.RFC3339Nano), meta}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err := r.enc.Encode(rec); err != nil {
+		fmt.Fprintf(os.Stderr, "capture meta write error: %v\n", err)
+	}
+}
+
 // Record writes one capture record. proto is "acp1" or "acp2".
 // dir is "tx" or "rx". data is the raw wire bytes.
 func (r *Recorder) Record(proto, dir string, data []byte) {

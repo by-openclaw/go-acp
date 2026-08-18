@@ -42,4 +42,24 @@ type Trame struct {
 	Session       string    `json:"session,omitempty"`
 	DhsVersion    string    `json:"dhs_version,omitempty"`
 	Note          string    `json:"note,omitempty"`
+
+	// Meta marks the ADR-0028 self-description record — line one of a
+	// capture, carrying no wire bytes. ReadTrames skips meta records
+	// (they are provenance, not traffic); ReadTramesMeta surfaces the
+	// first one to callers that want it.
+	Meta *MetaRecord `json:"meta,omitempty"`
+}
+
+// MetaRecord is the ADR-0028 capture self-description: the exact CLI
+// invocation (credentials redacted by the writer), the binary that
+// produced it, and the wire context — so an evidence file explains
+// itself forever.
+type MetaRecord struct {
+	CLI           string `json:"cli"`
+	BinaryVersion string `json:"binary_version,omitempty"`
+	BinarySHA256  string `json:"binary_sha256,omitempty"`
+	Proto         string `json:"proto,omitempty"`
+	Target        string `json:"target,omitempty"`
+	Verb          string `json:"verb,omitempty"`
+	StartedUTC    string `json:"started_utc,omitempty"`
 }
