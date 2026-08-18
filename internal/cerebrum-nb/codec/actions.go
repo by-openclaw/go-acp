@@ -234,11 +234,20 @@ type CategoryAction struct {
 }
 
 func (c *CategoryAction) encodeAction(b *strings.Builder) {
+	// Wire-actual TX normalisation (live staging RM 2026-08-18): the
+	// server WRITES accept ITEM_TYPE="SRCE" and NACK 8 on "SOURCE",
+	// yet READS report the item back as TYPE="SOURCE" — an asymmetric
+	// enum. Emit the accepted spelling; the decoder keeps accepting
+	// both, and CSVs/round-trips keep the read shape (SOURCE).
+	itemType := c.ItemType
+	if itemType == ItemSource {
+		itemType = ItemSrce
+	}
 	a := AttrsBuilder{}.
 		ForceAdd("TYPE", c.Type).
 		Add("CATEGORY", c.Category).
 		Add("INDEX", c.Index).
-		Add("ITEM_TYPE", string(c.ItemType)).
+		Add("ITEM_TYPE", string(itemType)).
 		Add("VALUE", c.Value).
 		Add("NAME", c.Name).
 		Add("LABEL", c.Label).

@@ -72,6 +72,28 @@ func TestEncodeObtain_DeviceList(t *testing.T) {
 	}
 }
 
+// TestEncodeCategoryAction_SourceSpelling pins the asymmetric §3.3
+// enum found live (staging RM 2026-08-18): WRITES accept only
+// ITEM_TYPE="SRCE" (SOURCE NACKs 8) while READS report "SOURCE".
+// The encoder emits the accepted spelling for either input.
+func TestEncodeCategoryAction_SourceSpelling(t *testing.T) {
+	for _, in := range []ItemType{ItemSource, ItemSrce} {
+		got := string(EncodeAction(5, &CategoryAction{
+			Type: "MODIFY_ITEM", Category: "C", Index: "2", ItemType: in, Value: "1",
+		}))
+		if !strings.Contains(got, `ITEM_TYPE="SRCE"`) {
+			t.Fatalf("input %s: want ITEM_TYPE=SRCE on the wire, got %s", in, got)
+		}
+	}
+	// DEST is symmetric — passes through unchanged.
+	got := string(EncodeAction(6, &CategoryAction{
+		Type: "MODIFY_ITEM", Category: "C", Index: "3", ItemType: ItemDest, Value: "1",
+	}))
+	if !strings.Contains(got, `ITEM_TYPE="DEST"`) {
+		t.Fatalf("DEST must pass through, got %s", got)
+	}
+}
+
 // TestEncodeObtain_ExplicitEmptyObject pins the root-discovery frame:
 // OBJECT="" is EMITTED literally with the flag set (Add() would drop
 // it), and stays absent without the flag — the two spellings are

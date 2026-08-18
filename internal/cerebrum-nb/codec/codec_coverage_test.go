@@ -67,7 +67,11 @@ func TestFrameKindString_All(t *testing.T) {
 // ----------------------------------------------------------------------
 
 func TestEncodeAction_Category(t *testing.T) {
-	// §4.2.1 p16 Modify Item worked example.
+	// §4.2.1 p16 Modify Item worked example — EXCEPT the item type:
+	// the spec example writes ITEM_TYPE="SOURCE", but the live server
+	// NACKs 8 on it and accepts only "SRCE" (staging RM 2026-08-18;
+	// reads still report "SOURCE"). The encoder emits the wire-actual
+	// spelling — see TestEncodeCategoryAction_SourceSpelling.
 	body := &CategoryAction{
 		Type:     "MODIFY_ITEM",
 		Category: "SERVERS",
@@ -76,7 +80,7 @@ func TestEncodeAction_Category(t *testing.T) {
 		Value:    "SRVR-1",
 	}
 	got := string(EncodeAction(1, body))
-	want := `<ACTION MTID="1"><CATEGORY TYPE="MODIFY_ITEM" CATEGORY="SERVERS" INDEX="4" ITEM_TYPE="SOURCE" VALUE="SRVR-1"/></ACTION>`
+	want := `<ACTION MTID="1"><CATEGORY TYPE="MODIFY_ITEM" CATEGORY="SERVERS" INDEX="4" ITEM_TYPE="SRCE" VALUE="SRVR-1"/></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
