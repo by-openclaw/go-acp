@@ -50,6 +50,7 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	maxReq := fs.Int("max-requests", 2000, "cap on group obtains for the walk (safety against unexpected fan-out)")
 	product := fs.String("product", "", `override the DM Model (default: "IDENTITY.Card Name" obtained from the device tree — same identity object acp2's probe reads)`)
 	version := fs.String("version", "", `override the DM SwRev (default: "IDENTITY.Product Version" from the device tree, falling back to "BOARD.Hardware Version")`)
+	refresh := fs.Bool("refresh", false, "re-walk even when the DM for this Model@SwRev already exists (default: cache hit = zero walk — schema is captured once per card+firmware, ADR-0028)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -106,6 +107,35 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	}
 	fmt.Printf("identity: %s@%s (from the device tree — same objects as the acp2 probe)\n", model, swRev)
 
+	// ADR-0028 manifest key = the device's OWN IP (never the NB server
+	// endpoint — every device behind one Cerebrum would collide on it).
+	// Known only when --device was addressed by IP; the by-name form
+	// falls back to the name slug, loudly.
+	deviceIP := ""
+	if !*byName {
+		deviceIP = *device
+	} else {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: NOTE — manifest keyed by name slug (device IP unknown when addressing --by-name); address --device by IP for the IP-keyed manifest (ADR-0028)\n")
+	}
+	identity := model + "@" + swRev
+
+	// DM-cache skip (ADR-0028 §6: schema once, state on demand): the
+	// identity probe cost 2–3 obtains; if this Model@SwRev is already
+	// cached, a 38k-object walk buys nothing. The manifest binding for
+	// THIS unit is still written (a second unit of a known card is new
+	// inventory, not a new schema).
+	if !*refresh {
+		if dmPath, hit := cerebrumDMCacheHit(identity); hit {
+			fmt.Printf("DM cache hit:     %s — zero walk (--refresh forces a re-walk)\n", dmPath)
+			mfPath, merr := writeCerebrumManifest(identity, deviceName, deviceIP, host, port, *subDev)
+			if merr != nil {
+				return merr
+			}
+			fmt.Printf("manifest written: %s\n", mfPath)
+			return nil
+		}
+	}
+
 	// No seeds given → discover the root (acp2/ember parity: nobody
 	// should need to know the DM structure up front).
 	if len(starts) == 0 {
@@ -133,17 +163,6 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 		objs = append(objs, cerebrum.CanonicalDeviceObject("", "", &rows[i], i))
 	}
 
-	// ADR-0028 manifest key = the device's OWN IP (never the NB server
-	// endpoint — every device behind one Cerebrum would collide on it).
-	// Known only when --device was addressed by IP; the by-name form
-	// falls back to the name slug, loudly.
-	deviceIP := ""
-	if !*byName {
-		deviceIP = *device
-	} else {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: NOTE — manifest keyed by name slug (device IP unknown when addressing --by-name); address --device by IP for the IP-keyed manifest (ADR-0028)\n")
-	}
-	identity := model + "@" + swRev
 	dmPath, mfPath, err := writeCerebrumExtract(identity, deviceName, deviceIP, host, port, *subDev, objs)
 	if err != nil {
 		return err
@@ -303,6 +322,20 @@ func writeCerebrumExtract(identity, deviceName, deviceIP, host string, port int,
 	}
 	dmPath = treeStore.IdentityPath("cerebrum-nb", identity)
 
+	mfPath, err = writeCerebrumManifest(identity, deviceName, deviceIP, host, port, subDev)
+	if err != nil {
+		return "", "", err
+	}
+	return dmPath, mfPath, nil
+}
+
+// writeCerebrumManifest writes ONLY the manifest binding — used by the
+// DM-cache-hit path too, where a second unit of a known card is new
+// inventory (its own manifest) but not a new schema (no DM write).
+func writeCerebrumManifest(identity, deviceName, deviceIP, host string, port int, subDev string) (string, error) {
+	if treeStore == nil {
+		return "", fmt.Errorf("cerebrum-nb extract: tree store not initialised (.cache unavailable)")
+	}
 	mf := &manifest.Manifest{
 		Device: manifest.Device{
 			// Name is the exact wire DEVICE_NAME (incl. the live
@@ -327,9 +360,26 @@ func writeCerebrumExtract(identity, deviceName, deviceIP, host string, port int,
 			}},
 		}},
 	}
-	mfPath, err = manifest.Write(treeStore.BaseDir(), mf)
+	mfPath, err := manifest.Write(treeStore.BaseDir(), mf)
 	if err != nil {
-		return "", "", fmt.Errorf("cerebrum-nb extract: write manifest: %w", err)
+		return "", fmt.Errorf("cerebrum-nb extract: write manifest: %w", err)
 	}
-	return dmPath, mfPath, nil
+	return mfPath, nil
+}
+
+// cerebrumDMCacheHit reports whether the DM for identity already
+// exists in the store (ADR-0028 §6: schema captured once per
+// card+firmware — an existing file means zero walk).
+func cerebrumDMCacheHit(identity string) (string, bool) {
+	if treeStore == nil {
+		return "", false
+	}
+	p := treeStore.IdentityPath("cerebrum-nb", identity)
+	if p == "" {
+		return "", false
+	}
+	if _, err := os.Stat(p); err != nil {
+		return "", false
+	}
+	return p, true
 }
