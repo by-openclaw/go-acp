@@ -82,28 +82,34 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 
-	// Identity probe — acp2's IdentityProbe over NB: the device tree
-	// exposes the same identity objects, addressed by the acp2 labels
-	// root-stripped. Card Name is the Model; Product Version is the
-	// SwRev (Hardware Version fallback, same preference order as
-	// acp2). Overrides skip their obtain.
+	// Identity probe — the same discovery acp2's IdentityProbe does,
+	// over NB. Object labels are DRIVER-exact (case included): the
+	// Neuron family exposes "IDENTITY.Card Name" / "IDENTITY.Product
+	// Version", the Synapse family "Identity.Card name" / "Identity.
+	// Software rev" (both live-verified 2026-08-18). The ladder tries
+	// each family in turn; --product/--version skip their obtains.
 	deviceName := *device
 	model := *product
 	swRev := *version
+	probe := func(candidates ...string) string {
+		for _, obj := range candidates {
+			if v := cerebrumObtainIdentityLeaf(sess, cf.timeout, *device, *byName, *subDev, obj); v != "" {
+				return v
+			}
+		}
+		return ""
+	}
 	if model == "" {
-		model = cerebrumObtainIdentityLeaf(sess, cf.timeout, *device, *byName, *subDev, "IDENTITY.Card Name")
+		model = probe("IDENTITY.Card Name", "Identity.Card name")
 	}
 	if swRev == "" {
-		swRev = cerebrumObtainIdentityLeaf(sess, cf.timeout, *device, *byName, *subDev, "IDENTITY.Product Version")
-	}
-	if swRev == "" {
-		swRev = cerebrumObtainIdentityLeaf(sess, cf.timeout, *device, *byName, *subDev, "BOARD.Hardware Version")
+		swRev = probe("IDENTITY.Product Version", "Identity.Software rev", "BOARD.Hardware Version", "Identity.Hardware rev")
 	}
 	if model == "" {
-		return fmt.Errorf("cerebrum-nb extract: no Model — the device tree answered neither \"IDENTITY.Card Name\" nor an override; pass --product explicitly")
+		return fmt.Errorf("cerebrum-nb extract: no Model — the device tree answered no known Card-Name spelling (Neuron or Synapse family); pass --product explicitly")
 	}
 	if swRev == "" {
-		return fmt.Errorf("cerebrum-nb extract: no SwRev — the device tree answered neither \"IDENTITY.Product Version\" nor \"BOARD.Hardware Version\"; pass --version explicitly")
+		return fmt.Errorf("cerebrum-nb extract: no SwRev — the device tree answered no known version spelling (Neuron or Synapse family); pass --version explicitly")
 	}
 	fmt.Printf("identity: %s@%s (from the device tree — same objects as the acp2 probe)\n", model, swRev)
 

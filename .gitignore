@@ -89,6 +89,11 @@ ansible/secrets/*.vault
 /captures/*
 !/captures/README.md
 
+# ADR-0028 operator bucket: state snapshots written by the defaulted
+# export verbs (snapshots/<proto>/<ip>/<facet>). Working artifacts stay
+# local; CURATED copies live under internal/<proto>/testdata/.
+/snapshots/
+
 # Root-level assets/ is reserved as a scratch dir for ad-hoc debug /
 # validation runs. Real spec assets live under internal/<proto>/assets/.
 /assets/

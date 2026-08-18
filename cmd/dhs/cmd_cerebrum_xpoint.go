@@ -258,6 +258,11 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	if xp == "" {
 		xp = *csvPath
 	}
+	// Explicit-vs-resolved: a category file the OPERATOR named must
+	// parse strictly; one auto-resolved from a snapshot dir may be the
+	// empty file a zero-category export legitimately wrote (staging
+	// 2026-08-18) — that one is out of scope, not an error.
+	explicitCat := *catSrcPath != "" || *catDstPath != "" || *catMixedPath != ""
 	// ADR-0028 default home: no per-file flags and no --in-dir → read
 	// from the router's snapshot folder (exactly where the defaulted
 	// export writes, plain facet names). Import reads where export
@@ -371,7 +376,15 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		if rerr != nil {
 			return nil, rerr
 		}
-		return parseCerebrumCatCSV(data, kind, path)
+		defs, perr := parseCerebrumCatCSV(data, kind, path)
+		if perr != nil && !explicitCat && strings.Contains(perr.Error(), "no category rows") {
+			// Round-trip contract: export on a zero-category plant
+			// writes a header-only file; importing that same set back
+			// must not fail. Skipped LOUDLY, never silently.
+			fmt.Fprintf(os.Stderr, "cerebrum-nb import: %s is empty — categories out of scope\n", path)
+			return nil, nil
+		}
+		return defs, perr
 	}
 	catSrcDefs, err := loadCat(*catSrcPath, "src")
 	if err != nil {

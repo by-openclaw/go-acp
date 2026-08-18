@@ -85,6 +85,31 @@ func TestWriteCerebrumExtract(t *testing.T) {
 	}
 }
 
+// TestCerebrumImportEmptyCatFile pins the staging-found round-trip
+// contract (2026-08-18): a header-only category file AUTO-RESOLVED
+// from a snapshot dir is out of scope (import proceeds to the
+// missing-host error), while an EXPLICIT --cat-src with no rows keeps
+// the strict parse error.
+func TestCerebrumImportEmptyCatFile(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"cat-src.csv", "cat-dst.csv"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("category,type,value\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Resolved from --in-dir: empty cats skipped; the NEXT error is the
+	// missing host (files parsed fine).
+	err := runCerebrum(context.Background(), []string{"import", "--in-dir", dir, "--prefix", ""})
+	if err == nil || !strings.Contains(err.Error(), "missing host") {
+		t.Fatalf("dir-resolved empty cat must be skipped, got %v", err)
+	}
+	// Explicit flag: strict error stays.
+	err = runCerebrum(context.Background(), []string{"import", "--cat-src", filepath.Join(dir, "cat-src.csv")})
+	if err == nil || !strings.Contains(err.Error(), "no category rows") {
+		t.Fatalf("explicit empty cat must error, got %v", err)
+	}
+}
+
 // TestCerebrumDMCacheHit pins the ADR-0028 §6 skip: an existing
 // Model@SwRev file = hit (zero walk); missing file or nil store = miss.
 func TestCerebrumDMCacheHit(t *testing.T) {
