@@ -1,0 +1,135 @@
+# ADR-0028 layout verification (#703 unit 6) — the tier-2/3 layer of
+# the three-layer plan: drive the CLI against a live oracle (vendor
+# emulator / real device / staging Cerebrum) and assert that every
+# artifact lands EXACTLY where the ADR table says, that captures are
+# self-describing, that import reads where export writes (run-twice =
+# 0), and that a second extract of a known card is a DM cache hit.
+#
+# CI (unit 5) already pins the path composer; this play proves the
+# WIRED behaviour end-to-end. No PowerShell; CLI-in-a-role, run from
+# the Linux control node (.103) per the Ansible-only rule.
+#
+#   # Matrix domain (cerebrum RM on staging):
+#   ansible-playbook -i inventory/staging.ini playbooks/adr0028-layout-verify.yml \
+#     -e 'proto=cerebrum-nb addr=10.100.0.105:40007 artifact_root=/opt/dhs'
+#
+#   # Tree/DM domain (cerebrum device leg + extract cache hit):
+#   ansible-playbook ... -e 'proto=cerebrum-nb addr=... device_ip=10.100.0.120
+#     sub_device=1 device_paths="IDENTITY;GENERAL" artifact_root=/opt/dhs'
+#
+# Credentials via environment (never inventory plaintext):
+#   DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS on the control node.
+#
+- name: ADR-0028 layout verification
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ conn | default('local') }}"
+  gather_facts: false
+  vars:
+    dhs_bin: dhs
+    proto: cerebrum-nb
+    addr: 127.0.0.1:40007
+    # Snapshot folder key for the MATRIX leg: the router target
+    # (RM sentinel by default). The host part of addr keys captures.
+    router: 0.0.0.0
+    # Optional DEVICE leg (Tree/DM): set device_ip + sub_device +
+    # device_paths to enable it.
+    device_ip: ""
+    sub_device: "1"
+    device_paths: ""
+    # The bucket root the binary composes under (ProjectRoot: next to
+    # the binary, or its parent when the binary lives in bin/).
+    artifact_root: /opt/dhs
+  vars_prompt: []
+  tasks:
+    - name: capture host key (addr without port)
+      ansible.builtin.set_fact:
+        cap_host: "{{ addr | regex_replace(':\\d+$', '') }}"
+        snap_dir: "{{ artifact_root }}/snapshots/{{ proto }}/{{ router }}"
+
+    # ---- Matrix leg: defaulted export → facet files at the ADR home ----
+    - name: defaulted export (no --out/--out-dir) with --capture auto
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer {{ proto }} export {{ addr }}
+        --router {{ router }} --capture auto
+      register: exp
+      changed_when: true
+
+    - name: stat the ADR facet files
+      ansible.builtin.stat:
+        path: "{{ snap_dir }}/{{ item }}"
+      loop: [xpoint.csv, src.csv, dst.csv, level.csv]
+      register: facets
+
+    - name: ASSERT facet files landed at snapshots/{{ proto }}/{{ router }}/
+      ansible.builtin.assert:
+        that: item.stat.exists
+        fail_msg: "missing {{ item.invocation.module_args.path }} — layout drift"
+      loop: "{{ facets.results }}"
+      loop_control: { label: "{{ item.invocation.module_args.path }}" }
+
+    - name: find the capture written by --capture auto
+      ansible.builtin.find:
+        paths: "{{ artifact_root }}/captures/{{ proto }}/{{ cap_host }}"
+        patterns: "export-*.jsonl"
+      register: caps
+
+    - name: read capture line one
+      ansible.builtin.command: head -n1 {{ (caps.files | sort(attribute='mtime') | last).path }}
+      register: capline
+      changed_when: false
+
+    - name: ASSERT the capture is self-describing (meta record, redacted CLI)
+      ansible.builtin.assert:
+        that:
+          - caps.matched >= 1
+          - "'\"meta\"' in capline.stdout"
+          - "'\"binary_sha256\"' in capline.stdout"
+          - "'--pass ***' in capline.stdout or '--pass' not in capline.stdout"
+        fail_msg: "capture meta contract FAIL: {{ capline.stdout }}"
+
+    # ---- Ensure loop: import reads where export writes, zero flags ----
+    - name: defaulted import --check right after export (run-twice = 0)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer {{ proto }} import {{ addr }}
+        --router {{ router }} --check --output json
+      register: chk
+      changed_when: false
+
+    - name: ASSERT would_change == false
+      ansible.builtin.assert:
+        that: not ((chk.stdout | from_json).would_change | bool)
+        fail_msg: "export→import --check not clean: {{ chk.stdout }}"
+
+    # ---- Device leg (Tree/DM): extract twice → second is a cache hit ----
+    - name: first extract (walk + DM + manifest)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer {{ proto }} extract {{ addr }}
+        --device {{ device_ip }} --sub-device {{ sub_device }}
+        --path "{{ device_paths }}"
+      register: ex1
+      when: device_ip | length > 0
+      changed_when: true
+
+    - name: second extract (must be a DM cache hit, zero walk)
+      ansible.builtin.command: >-
+        {{ dhs_bin }} consumer {{ proto }} extract {{ addr }}
+        --device {{ device_ip }} --sub-device {{ sub_device }}
+        --path "{{ device_paths }}"
+      register: ex2
+      when: device_ip | length > 0
+      changed_when: false
+
+    - name: ASSERT the schema-once contract
+      ansible.builtin.assert:
+        that:
+          - "'DM written' in ex1.stdout"
+          - "'DM cache hit' in ex2.stdout"
+        fail_msg: "extract cache contract FAIL: {{ ex2.stdout }}"
+      when: device_ip | length > 0
+
+    - name: ASSERT the IP-keyed manifest exists
+      ansible.builtin.stat:
+        path: "{{ artifact_root }}/.cache/manifest/{{ proto }}/{{ device_ip }}.json"
+      register: mf
+      failed_when: not mf.stat.exists
+      when: device_ip | length > 0
