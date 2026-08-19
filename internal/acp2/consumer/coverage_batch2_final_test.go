@@ -691,15 +691,16 @@ func TestKeepAliveProber_CtxCanceled(t *testing.T) {
 	p.ka.stopped.Wait()
 }
 
-// TestRunDiagnostics_ConnectionClosed covers the "connection closed"
-// (sess.done) arms of all three probe closures plus the announce-listen
-// loop: the server completes the AN2 + ACP2 handshake, then closes the
-// connection, so every subsequent probe's select takes the <-sess.done case
-// (and the announce loop breaks on sess.done). Skipped under -short.
+// TestRunDiagnostics_ConnectionClosed covers the connection-closed probe
+// outcomes plus the announce-listen loop's done arm: the server completes
+// the AN2 + ACP2 handshake, then closes the connection, so every probe
+// deterministically reports "error: connection closed" — the first probe
+// via either the nil sentinel or the addWaiter fail-fast (whichever side
+// of the readLoop exit it lands on), every later probe via fail-fast
+// (once one probe has observed the death, waitersDead is already set).
+// The announce window (1s) is longer than the probes take, so its select
+// deterministically takes the already-closed sess.done arm.
 func TestRunDiagnostics_ConnectionClosed(t *testing.T) {
-	if testing.Short() {
-		t.Skip("RunDiagnostics has multi-second probe timeouts; skipped in -short")
-	}
 	host, port, stop := handshakeListener(t, 5, func(c net.Conn, f *codec.AN2Frame) {
 		// First ACP2 frame is the handshake get_version. Answer it, then
 		// close so all RunDiagnostics probes see a dead session.
@@ -712,31 +713,32 @@ func TestRunDiagnostics_ConnectionClosed(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	results, err := RunDiagnostics(ctx, host, port, 1, testLogger())
+	// probe is generous: no probe in this test ever waits it out (each
+	// resolves via sentinel/fail-fast) — a short value here would let a
+	// stalled CI runner turn a pending sentinel into a spurious timeout.
+	results, err := runDiagnostics(ctx, host, port, 1, testLogger(),
+		diagTimings{probe: 2 * time.Second, announce: time.Second})
 	if err != nil {
-		t.Fatalf("RunDiagnostics: %v", err)
+		t.Fatalf("runDiagnostics: %v", err)
 	}
-	var sawClosed bool
+	if len(results) == 0 {
+		t.Fatal("runDiagnostics returned no results")
+	}
 	for _, r := range results {
-		if r.Status == "error: connection closed" {
-			sawClosed = true
-			break
+		if r.Status != "error: connection closed" {
+			t.Errorf("probe %q status = %q, want 'error: connection closed'", r.Name, r.Status)
 		}
-	}
-	if !sawClosed {
-		t.Error("expected at least one 'connection closed' probe result")
 	}
 }
 
-// TestRunDiagnostics_CloseDuringACMP covers the sess.done arms of the
-// sendACMP + sendProto4 closures: the server handshakes, answers ACP2 data
-// probes with errors, then closes the connection the moment it receives the
-// first ACMP (proto=3) frame — so that probe's select (its sendFrame already
-// succeeded into the socket buffer) observes sess.done. Skipped under -short.
+// TestRunDiagnostics_CloseDuringACMP deterministically covers BOTH
+// connection-death probe paths: the server handshakes, answers ACP2 data
+// probes with errors, then closes the connection the moment it receives
+// the first ACMP (proto=3) frame. That probe registered its waiter before
+// sending, so it resolves via the nil sentinel ("connection closed"); the
+// probes after it start with waitersDead already set, so they resolve via
+// the addWaiter fail-fast path.
 func TestRunDiagnostics_CloseDuringACMP(t *testing.T) {
-	if testing.Short() {
-		t.Skip("RunDiagnostics has multi-second probe timeouts; skipped in -short")
-	}
 	host, port, stop := rawListener(t, func(c net.Conn) {
 		defer func() { _ = c.Close() }()
 		_ = c.SetDeadline(time.Now().Add(10 * time.Second))
@@ -777,8 +779,8 @@ func TestRunDiagnostics_CloseDuringACMP(t *testing.T) {
 					MTID: 0, Type: codec.AN2TypeData,
 					Payload: []byte{byte(codec.ACP2TypeError), f.Payload[1], byte(codec.ErrInvalidObjID), 0}})
 			default:
-				// First ACMP (proto=3) or proto=4 frame → close so the probe's
-				// select hits <-sess.done (its sendFrame already succeeded).
+				// First ACMP (proto=3) or proto=4 frame → close so that
+				// probe (already registered + sent) gets the nil sentinel.
 				return
 			}
 		}
@@ -787,19 +789,30 @@ func TestRunDiagnostics_CloseDuringACMP(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if _, err := RunDiagnostics(ctx, host, port, 1, testLogger()); err != nil {
-		t.Fatalf("RunDiagnostics: %v", err)
+	results, err := runDiagnostics(ctx, host, port, 1, testLogger(),
+		diagTimings{probe: 2 * time.Second, announce: time.Second})
+	if err != nil {
+		t.Fatalf("runDiagnostics: %v", err)
+	}
+	// The three ACMP probes + the proto=4 probe follow the close: all four
+	// must report the connection death, never a timeout.
+	var closed int
+	for _, r := range results {
+		if r.Status == "error: connection closed" {
+			closed++
+		}
+	}
+	if closed < 4 {
+		t.Errorf("got %d 'connection closed' probes, want >= 4; results=%+v", closed, results)
 	}
 }
 
-// TestRunDiagnostics_CloseDuringProto4 covers sendProto4's sess.done arm:
-// the server handshakes, lets the ACP2 + ACMP probes run to completion
-// (ACMP replies are dropped → 3 s timeouts), then closes the connection on
-// the first proto=4 frame so that probe's select observes sess.done.
+// TestRunDiagnostics_CloseDuringProto4 covers the probe timeout arm (the
+// ACMP replies are dropped while the connection stays alive, so those
+// probes deterministically wait out the injected probe timeout) and the
+// late connection death: the server closes on the first proto=4 frame,
+// so that probe resolves via the nil sentinel.
 func TestRunDiagnostics_CloseDuringProto4(t *testing.T) {
-	if testing.Short() {
-		t.Skip("RunDiagnostics has multi-second probe timeouts; skipped in -short")
-	}
 	host, port, stop := rawListener(t, func(c net.Conn) {
 		defer func() { _ = c.Close() }()
 		_ = c.SetDeadline(time.Now().Add(30 * time.Second))
@@ -839,9 +852,9 @@ func TestRunDiagnostics_CloseDuringProto4(t *testing.T) {
 					MTID: 0, Type: codec.AN2TypeData,
 					Payload: []byte{byte(codec.ACP2TypeError), f.Payload[1], byte(codec.ErrInvalidObjID), 0}})
 			case 3:
-				// ACMP probe — drop (no reply) so it runs to its 3 s timeout.
+				// ACMP probe — drop (no reply) so it waits out the probe timeout.
 			default:
-				// proto=4 probe → close so its select hits <-sess.done.
+				// proto=4 probe → close so it resolves via the nil sentinel.
 				return
 			}
 		}
@@ -850,34 +863,40 @@ func TestRunDiagnostics_CloseDuringProto4(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if _, err := RunDiagnostics(ctx, host, port, 1, testLogger()); err != nil {
-		t.Fatalf("RunDiagnostics: %v", err)
+	results, err := runDiagnostics(ctx, host, port, 1, testLogger(),
+		diagTimings{probe: 300 * time.Millisecond, announce: 50 * time.Millisecond})
+	if err != nil {
+		t.Fatalf("runDiagnostics: %v", err)
+	}
+	// The three dropped-reply ACMP probes must report the timeout arm.
+	var timeouts int
+	for _, r := range results {
+		if r.Status == "timeout (300ms)" {
+			timeouts++
+		}
+	}
+	if timeouts < 3 {
+		t.Errorf("got %d timeout probes, want >= 3; results=%+v", timeouts, results)
 	}
 }
 
 // TestRunDiagnostics_ErrorReplies covers the ACP2 error-reply status arm
-// (msg.Type == error) in the sendRaw probe path: the server answers every
-// ACP2 data probe with an error frame. Skipped under -short because the
-// ACMP / proto=4 probes still run to their 3 s timeout.
+// (msg.Type == error) in the probe path: the server answers every ACP2
+// data probe with an error frame. The ACMP / proto=4 probes (replies
+// dropped by the readLoop) wait out the short injected probe timeout.
 func TestRunDiagnostics_ErrorReplies(t *testing.T) {
-	if testing.Short() {
-		t.Skip("RunDiagnostics has multi-second probe timeouts; skipped in -short")
-	}
 	srv, host, port := newFakeServer(t)
 	srv.onACP2 = func(slot uint8, req *codec.ACP2Message) *codec.ACP2Message {
 		return errorReply(codec.ErrInvalidObjID) // every ACP2 probe → fast error reply
 	}
 	defer srv.stop()
 
-	// Generous ctx so it stays live through the ACMP / proto=4 probes (whose
-	// replies the session readLoop drops → they run to their 3 s timeout,
-	// covering the sendACMP / sendProto4 timeout arms). A short ctx would
-	// expire mid-run and shunt later probes into the allocMTID-error path.
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	results, err := RunDiagnostics(ctx, host, port, 1, testLogger())
+	results, err := runDiagnostics(ctx, host, port, 1, testLogger(),
+		diagTimings{probe: 300 * time.Millisecond, announce: 50 * time.Millisecond})
 	if err != nil {
-		t.Fatalf("RunDiagnostics: %v", err)
+		t.Fatalf("runDiagnostics: %v", err)
 	}
 	var sawErr bool
 	for _, r := range results {

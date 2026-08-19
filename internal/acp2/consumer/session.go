@@ -45,9 +45,13 @@ type Session struct {
 	mtidPool [255]bool // mtidPool[i] true = mtid (i+1) is in use
 	mtidCond *sync.Cond
 
-	// Pending request waiters: keyed by ACP2 mtid.
-	waitMu  sync.Mutex
-	waiters map[uint8]chan *codec.ACP2Message
+	// Pending request waiters: keyed by ACP2 mtid. waitersDead flips to
+	// true (under waitMu) when the read loop exits — after that no reply
+	// can ever arrive, so addWaiter refuses new registrations and
+	// failWaiters has already delivered the nil sentinel to existing ones.
+	waitMu      sync.Mutex
+	waiters     map[uint8]chan *codec.ACP2Message
+	waitersDead bool
 
 	// Announce listeners.
 	annMu     sync.Mutex
@@ -160,7 +164,10 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 	s.host = ip
 	s.port = port
 	s.done = make(chan struct{})
+	s.waitMu.Lock()
 	s.waiters = make(map[uint8]chan *codec.ACP2Message)
+	s.waitersDead = false
+	s.waitMu.Unlock()
 
 	// Start the reader goroutine before the handshake so replies are routed.
 	// Pass conn explicitly: the loop must read from the exact connection this
@@ -298,15 +305,11 @@ func (s *Session) an2Request(ctx context.Context, funcID uint8, slot uint8, payl
 	// with a convention: AN2 internal replies come back with proto=0 and
 	// AN2 mtid matching. The reader goroutine routes them to a synthetic
 	// ACP2Message with MTID=an2MTID.
-	ch := make(chan *codec.ACP2Message, 1)
-	s.waitMu.Lock()
-	s.waiters[an2MTID] = ch
-	s.waitMu.Unlock()
-	defer func() {
-		s.waitMu.Lock()
-		delete(s.waiters, an2MTID)
-		s.waitMu.Unlock()
-	}()
+	ch, err := s.addWaiter(an2MTID)
+	if err != nil {
+		return nil, err
+	}
+	defer s.removeWaiter(an2MTID)
 
 	if err := s.sendFrame(ctx, frame); err != nil {
 		return nil, err
@@ -315,11 +318,11 @@ func (s *Session) an2Request(ctx context.Context, funcID uint8, slot uint8, payl
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-s.done:
-		return nil, fmt.Errorf("acp2: connection closed")
 	case msg := <-ch:
-		// unreachable nil check: routeReply only ever sends a non-nil
-		// *ACP2Message into the waiter channel, so msg is never nil here.
+		if msg == nil {
+			// failWaiters' sentinel: the connection died before a reply.
+			return nil, fmt.Errorf("acp2: connection closed")
+		}
 		return msg.Body, nil
 	}
 }
@@ -353,15 +356,11 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *codec.ACP2Message
 		Payload: payload,
 	}
 
-	ch := make(chan *codec.ACP2Message, 1)
-	s.waitMu.Lock()
-	s.waiters[mtid] = ch
-	s.waitMu.Unlock()
-	defer func() {
-		s.waitMu.Lock()
-		delete(s.waiters, mtid)
-		s.waitMu.Unlock()
-	}()
+	ch, err := s.addWaiter(mtid)
+	if err != nil {
+		return nil, err
+	}
+	defer s.removeWaiter(mtid)
 
 	s.logger.Debug("acp2: sending request",
 		"slot", slot, "mtid", mtid, "func", req.Func,
@@ -375,11 +374,11 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *codec.ACP2Message
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-s.done:
-		return nil, fmt.Errorf("acp2: connection closed while waiting for reply mtid=%d", mtid)
 	case reply := <-ch:
-		// unreachable nil check: routeReply only ever sends a non-nil
-		// *ACP2Message into the waiter channel, so reply is never nil here.
+		if reply == nil {
+			// failWaiters' sentinel: the connection died before a reply.
+			return nil, fmt.Errorf("acp2: connection closed while waiting for reply mtid=%d", mtid)
+		}
 		if reply.Type == codec.ACP2TypeError {
 			// Fire the per-stat-code compliance event so the session
 			// profile reflects spec-listed error frequencies. Status
@@ -442,6 +441,7 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 // pattern of capturing the conn locally and tolerating a closed socket.
 func (s *Session) readLoop(conn net.Conn) {
 	defer close(s.done)
+	defer s.failWaiters() // LIFO: waiters are swept before done closes
 
 	for {
 		frame, err := codec.ReadAN2Frame(conn)
@@ -596,6 +596,52 @@ func (s *Session) routeReply(mtid uint8, msg *codec.ACP2Message) {
 	} else {
 		s.logger.Debug("acp2: no waiter for mtid", "mtid", mtid)
 		s.note(OrphanReplyMtid)
+	}
+}
+
+// addWaiter registers a buffered reply channel for a mtid. It refuses
+// once the read loop has exited: after that point no reply can ever
+// arrive, and failWaiters' nil-sentinel sweep has already run, so a
+// late registrant would block until its context expired.
+func (s *Session) addWaiter(mtid uint8) (chan *codec.ACP2Message, error) {
+	ch := make(chan *codec.ACP2Message, 1)
+	s.waitMu.Lock()
+	defer s.waitMu.Unlock()
+	if s.waitersDead {
+		return nil, fmt.Errorf("acp2: connection closed")
+	}
+	s.waiters[mtid] = ch
+	return ch, nil
+}
+
+// removeWaiter drops the reply channel registered for a mtid.
+func (s *Session) removeWaiter(mtid uint8) {
+	s.waitMu.Lock()
+	delete(s.waiters, mtid)
+	s.waitMu.Unlock()
+}
+
+// failWaiters marks the waiter table dead and delivers a nil sentinel to
+// every registered waiter. It runs from readLoop's exit path, before done
+// is closed. waitMu serialises the sweep against addWaiter, so every
+// waiter deterministically receives exactly one value: the real reply
+// when routeReply delivered it before the connection died (the buffered
+// channel is already full, so the sentinel send is skipped), or nil.
+//
+// This is what makes "reply then immediate close" deterministic: waiters
+// used to select on s.done next to the reply channel, and when the peer
+// replied and hung up in one burst both arms were ready — Go picks a
+// ready select arm pseudo-randomly, so the outcome (and the statement
+// coverage) was a coin flip (issue #694 flake class).
+func (s *Session) failWaiters() {
+	s.waitMu.Lock()
+	defer s.waitMu.Unlock()
+	s.waitersDead = true
+	for _, ch := range s.waiters {
+		select {
+		case ch <- nil:
+		default: // real reply already buffered — the waiter takes that
+		}
 	}
 }
 
