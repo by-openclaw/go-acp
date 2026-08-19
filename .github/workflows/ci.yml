@@ -97,6 +97,7 @@ jobs:
             awk -v pkg="$1" '
               BEGIN { re = "^dhs/" pkg "/[^/]+\\.go:" }
               $0 !~ re { next }
+              $2+0 == 0 { next }   # zero-statement blocks cannot affect the pct
               { stmts[$1]=$2; if ($3+0>0) covered[$1]=1 }
               END { for (k in stmts) if (!(k in covered)) print "    " k "  (" stmts[k] " stmt)" }
             ' coverage.out | sort
