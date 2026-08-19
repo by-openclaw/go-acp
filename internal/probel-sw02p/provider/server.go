@@ -120,6 +120,17 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	return s.serveListener(ctx, ln)
 }
 
+// ServeListener accepts client sessions on a pre-bound listener until
+// ctx is cancelled. Exported on the concrete type (not part of the
+// neutral provider.Provider interface) so external-package tests can
+// bind "127.0.0.1:0" themselves and skip the close-then-rebind window
+// of the addr-based path — in a parallel test sweep another process
+// can steal the port between the probe listener's Close and Serve's
+// re-listen (issue #694 flake class).
+func (s *server) ServeListener(ctx context.Context, ln net.Listener) error {
+	return s.serveListener(ctx, ln)
+}
+
 // serveListener accepts client sessions on a pre-bound listener until
 // ctx is cancelled. Used by Serve once the listener is open and by
 // in-process tests that want to skip the close-then-rebind race
