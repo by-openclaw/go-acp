@@ -1871,6 +1871,7 @@ func cerebrumRoute(_ context.Context, args []string) error {
 		return err
 	}
 	cf.port = portArg
+	cerebrumExpandAutoPaths(cf, "route", host)
 
 	logger, _, lerr := cf.newLogger()
 	if lerr != nil {
