@@ -777,15 +777,18 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 			delete(srcPick, m)
 			delete(dstPick, m)
 		}
+		// cat-mixed is ALWAYS written (header-only when no mixed
+		// categories exist): the full-set export defines the folder's
+		// desired state, and a stale cat-mixed.csv from an earlier
+		// snapshot would otherwise survive every refresh and haunt the
+		// ensure loop forever (live staging 2026-08-18).
 		files = append(files,
 			struct{ name, content string }{facetName(*prefix, "cat-src"), formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, srcPick, catDetails))},
 			struct{ name, content string }{facetName(*prefix, "cat-dst"), formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, dstPick, catDetails))},
+			struct{ name, content string }{facetName(*prefix, "cat-mixed"), formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, mixedPick, catDetails))},
 		)
 		if len(mixed) > 0 {
 			fmt.Fprintf(os.Stderr, "cerebrum-nb export: %d categor(ies) carry BOTH source and dest resources in their subtree — written to %s: %s\n", len(mixed), facetName(*prefix, "cat-mixed"), strings.Join(mixed, ", "))
-			files = append(files,
-				struct{ name, content string }{facetName(*prefix, "cat-mixed"), formatCerebrumCatCSV(cerebrumCatDefsFromLive(catNames, mixedPick, catDetails))},
-			)
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "cerebrum-nb export: --router %s is a physical router — category files skipped (categories are route-master-only; IDs in this set are the router's device-native numbering, import back with the same --router)\n", *router)
