@@ -128,6 +128,16 @@ to investigate, not a budget to raise silently.
   checks pending on docs-only PRs. The single-pass speed work makes
   full runs cheap enough that the exemption is not worth its edge
   cases.
+
+  One narrow exception (revision 2026-08-19): the **pull_request**
+  trigger ignores `CHANGELOG.md` + `.release-please-manifest.json` —
+  the two bot-owned files that are the release-please PR's entire
+  diff. That PR is force-pushed on every merge to main, and each
+  force-push spawned a CI run that parked at `action_required`
+  (bot-authored PR + workflow approval policy): permanent noise in
+  the Actions list, never a real verification. The `push` trigger is
+  untouched, so the release merge commit itself still gets its own
+  complete run — the owner rule holds.
 - **Keeping the union "just in case"** — rejected. With p the
   per-run miss probability, the union passes with ~1−p⁵ even when a
   line is missed 80% of runs — that is exactly the masking the owner
@@ -148,3 +158,7 @@ to investigate, not a budget to raise silently.
 ## Revisions
 
 - 2026-08-19 — initial version (issue #694).
+- 2026-08-19 — pull_request trigger ignores the two release-please
+  bot files (CHANGELOG.md, .release-please-manifest.json) so the
+  release PR stops spawning permanently-action_required runs on
+  every merge; push-to-main verification unchanged.

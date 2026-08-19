@@ -5,6 +5,16 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # The release-please PR touches ONLY these two bot-owned files and is
+    # re-force-pushed on every merge to main; each force-push spawned a CI
+    # run that parked at action_required (bot-authored PR + workflow
+    # approval policy) — pure noise, never green (ADR-0029 revision
+    # 2026-08-19). Skipping the PR event for exactly these files kills
+    # that. Push-to-main verification is untouched: the release merge
+    # commit still gets its own complete run.
+    paths-ignore:
+      - CHANGELOG.md
+      - .release-please-manifest.json
 
 # One live run per ref: a new push to a PR branch cancels the in-progress
 # run on the outdated commit (no more two same-titled rows per PR). Runs on
@@ -87,6 +97,7 @@ jobs:
             awk -v pkg="$1" '
               BEGIN { re = "^dhs/" pkg "/[^/]+\\.go:" }
               $0 !~ re { next }
+              $2+0 == 0 { next }   # zero-statement blocks cannot affect the pct
               { stmts[$1]=$2; if ($3+0>0) covered[$1]=1 }
               END { for (k in stmts) if (!(k in covered)) print "    " k "  (" stmts[k] " stmt)" }
             ' coverage.out | sort

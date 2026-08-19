@@ -136,6 +136,51 @@ func TestKeepAliveLoop_Tick(t *testing.T) {
 	}
 }
 
+// TestKeepAliveLoop_ClosedSession deterministically covers the tick arm's
+// closed-session return: the session is marked closed BEFORE the loop
+// starts and keepAliveDone stays open, so the first tick is the only
+// possible wake-up and must exit through the closed check. (Previously
+// this arm was only hit when a tick raced Disconnect inside the
+// tick-vs-done window — #694 coverage class, named by the CI floor.)
+func TestKeepAliveLoop_ClosedSession(t *testing.T) {
+	s, _, _, cleanup := wireSession(t, 5*time.Millisecond, time.Hour)
+	defer cleanup()
+
+	s.mu.Lock()
+	s.closed = true
+	s.mu.Unlock()
+
+	done := make(chan struct{})
+	go func() { s.keepAliveLoop(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Error("keepAliveLoop did not exit on the closed-session check")
+	}
+}
+
+// TestKeepAliveLoop_WriteError deterministically covers the tick arm's
+// write-failure return: the underlying pipe is closed before the loop
+// starts (session NOT marked closed, keepAliveDone open), so the first
+// tick reaches WriteFrame and gets an immediate ErrClosedPipe.
+func TestKeepAliveLoop_WriteError(t *testing.T) {
+	s, _, _, cleanup := wireSession(t, 5*time.Millisecond, time.Hour)
+	defer cleanup()
+
+	s.mu.Lock()
+	c := s.conn
+	s.mu.Unlock()
+	_ = c.Close() // writer now fails instantly; closed flag stays false
+
+	done := make(chan struct{})
+	go func() { s.keepAliveLoop(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Error("keepAliveLoop did not exit on the keep-alive write error")
+	}
+}
+
 // TestDeadManLoop_Fires drives deadManLoop with a tiny threshold and a
 // backdated lastRX so it declares the session dead and fires the
 // disconnected state change.
