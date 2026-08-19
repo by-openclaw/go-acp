@@ -219,13 +219,26 @@ func TestReadLoop_ZeroByteDatagram(t *testing.T) {
 	s := newTestServer(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	// Bind an ephemeral UDP port via Serve.
-	ln, _ := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
-	addr := ln.LocalAddr().String()
-	_ = ln.Close()
-	go func() { done <- s.Serve(ctx, addr) }()
-	// Wait until the server is up, then send a zero-byte datagram.
-	time.Sleep(80 * time.Millisecond)
+	// Serve on an ephemeral port directly and read the bound address off
+	// the server — no probe-socket close-then-rebind (the freed port can
+	// be stolen by a parallel test process, #694 flake class).
+	go func() { done <- s.Serve(ctx, "127.0.0.1:0") }()
+	var addr string
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		s.mu.Lock()
+		if s.conn != nil {
+			addr = s.conn.LocalAddr().String()
+		}
+		s.mu.Unlock()
+		if addr != "" {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if addr == "" {
+		t.Fatal("server socket never bound")
+	}
 	c, err := net.Dial("udp4", addr)
 	if err == nil {
 		_, _ = c.Write([]byte{})

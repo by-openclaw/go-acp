@@ -66,6 +66,23 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	if err != nil {
 		return fmt.Errorf("listen %s: %w", addr, err)
 	}
+	return s.serveListener(ctx, ln)
+}
+
+// ServeListener serves on a pre-bound listener. Exported on the concrete
+// type (not part of the neutral provider.Provider interface) so tests in
+// other packages can bind "127.0.0.1:0" themselves and skip the
+// close-then-rebind window of the addr-based path — in a parallel test
+// sweep another process can steal the freed port (issue #694 flake class).
+func (s *server) ServeListener(ctx context.Context, ln net.Listener) error {
+	if s.tree == nil {
+		_ = ln.Close()
+		return fmt.Errorf("emberplus-provider: tree not loaded")
+	}
+	return s.serveListener(ctx, ln)
+}
+
+func (s *server) serveListener(ctx context.Context, ln net.Listener) error {
 	s.mu.Lock()
 	s.listener = ln
 	s.mu.Unlock()
