@@ -216,7 +216,11 @@ func renderCerebrumUsageChain(w io.Writer, dest string, rows []cerebrumUsageRow,
 			branch = "└──"
 		}
 		chain := cerebrumUsageName(r.Srce, srcNames)
-		if len(r.Via) > 1 {
+		if len(r.Via) > 0 {
+			// The literal feed itself is the chain's first virtual hop
+			// — its marker sits next to ITS name, then each further
+			// hop upstream carries its own.
+			chain += " [virtual]"
 			for _, hop := range r.Via[1:] {
 				chain += "  ← " + cerebrumUsageName(hop, srcNames) + " [virtual]"
 			}
@@ -227,7 +231,6 @@ func renderCerebrumUsageChain(w io.Writer, dest string, rows []cerebrumUsageRow,
 			suffix = fmt.Sprintf("  [%s!]", r.Mark)
 		case len(r.Via) > 0:
 			suffix = fmt.Sprintf("  ← effective %s", cerebrumUsageName(r.Effective, srcNames))
-			chain += " [virtual]"
 		}
 		_, _ = fmt.Fprintf(w, "%s levels %s : fed by %s%s\n", branch, strings.Join(r.Levels, ";"), chain, suffix)
 	}

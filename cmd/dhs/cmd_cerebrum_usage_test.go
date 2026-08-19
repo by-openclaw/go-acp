@@ -106,8 +106,14 @@ func TestCerebrumUsageAsciiRenders(t *testing.T) {
 	var chain bytes.Buffer
 	renderCerebrumUsageChain(&chain, "1", rows, srcNames, dstNames)
 	c := chain.String()
-	if !strings.Contains(c, "effective Src 2 (2)") || !strings.Contains(c, "[virtual]") {
+	// Exact hop markers (live-found display bug 2026-08-19: the literal
+	// feed's [virtual] tag landed at the END, printing "[virtual]
+	// [virtual]"): each virtual name carries its own marker, once.
+	if !strings.Contains(c, "fed by Proc 2 (4) [virtual]  ← Proc 1 (3) [virtual]  ← effective Src 2 (2)") {
 		t.Fatalf("chain:\n%s", c)
+	}
+	if strings.Contains(c, "[virtual] [virtual]") {
+		t.Fatalf("doubled marker:\n%s", c)
 	}
 
 	// A dest fed by a PHYSICAL source (empty Via) must render without
