@@ -3,8 +3,11 @@ package acp2
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -73,6 +76,64 @@ func TestAN2Request_FailFastAfterDeath(t *testing.T) {
 	_, err := s.an2Request(context.Background(), codec.AN2FuncGetVersion, 0, nil)
 	if err == nil || !strings.Contains(err.Error(), "connection closed") {
 		t.Fatalf("an2Request on dead session: got %v, want connection-closed error", err)
+	}
+}
+
+// msgWaiter is a slog.Handler that signals a channel the first time a
+// record with the wanted message is handled. It lets a test observe
+// "this code path executed" without polling or sleeping.
+type msgWaiter struct {
+	want string
+	ch   chan struct{}
+	once sync.Once
+}
+
+func (h *msgWaiter) Enabled(context.Context, slog.Level) bool { return true }
+func (h *msgWaiter) Handle(_ context.Context, r slog.Record) error {
+	if r.Message == h.want {
+		h.once.Do(func() { close(h.ch) })
+	}
+	return nil
+}
+func (h *msgWaiter) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h *msgWaiter) WithGroup(string) slog.Handler      { return h }
+
+// TestRunReconnectBackoff_FailureArm deterministically covers the
+// backoff loop's attempt-failed arm (warn + delay doubling). The loop
+// dials a dead port, so the first attempt always fails; the test waits
+// for the logged failure (msgWaiter — no timing guess) before closing
+// rc.done to stop the loop. Previously this arm was only covered when
+// TestReconnect_BackoffRetries' relisten goroutine happened to lose an
+// 850 ms scheduling race (#694 coverage class, named by the CI floor).
+func TestRunReconnectBackoff_FailureArm(t *testing.T) {
+	// A dead port: bind, close. Even if another process grabs it, the
+	// reconnect attempt still fails (an AN2 handshake against a stranger
+	// errors), which is all this test needs.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	host, portStr, _ := net.SplitHostPort(ln.Addr().String())
+	port, _ := strconv.Atoi(portStr)
+	_ = ln.Close()
+
+	failed := &msgWaiter{want: "acp2 reconnect: attempt failed", ch: make(chan struct{})}
+	p := &Plugin{logger: slog.New(failed)}
+	p.rc = &reconnectState{done: make(chan struct{})}
+
+	loopDone := make(chan struct{})
+	go func() { p.runReconnectBackoff(host, port); close(loopDone) }()
+
+	select {
+	case <-failed.ch: // the failure arm ran
+	case <-time.After(15 * time.Second):
+		t.Fatal("backoff loop never logged a failed attempt")
+	}
+	close(p.rc.done)
+	select {
+	case <-loopDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("backoff loop did not stop on rc.done")
 	}
 }
 
