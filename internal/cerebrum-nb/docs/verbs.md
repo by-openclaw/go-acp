@@ -357,6 +357,34 @@ unbound and shows no levels. Alternate labels print as `1=Black 4=ENG`
 config and not exposed over NB. `--id N` narrows to one resource, `--out`
 writes CSV instead of the table.
 
+### usage / replace — source-side pair (reverse tally + substitution)
+
+```
+# where is a source assigned (fan-out, virtuals resolved):
+dhs consumer cerebrum-nb usage HOST --user U --pass P --srce 2 --resolve --format ascii
+# what feeds a dest (upstream chain through virtuals):
+dhs consumer cerebrum-nb usage HOST --user U --pass P --dest 1 --resolve --format ascii
+# machine form (default file snapshots/<proto>/<router>/usage.csv; "-" = stdout):
+dhs consumer cerebrum-nb usage HOST --user U --pass P --resolve --out -
+#   srce,dest,levels[,effective_srce,via]
+
+# replace source A with B on every LITERAL cell carrying A:
+dhs consumer cerebrum-nb replace HOST --user U --pass P --srce A --with B [--level L] --check
+```
+
+- A VIRTUAL resource registers on both faces (same ID + same mnemonic —
+  the detection heuristic; the wire carries no flag). `--resolve`
+  follows chains upstream (virtual→virtual included), loop-guarded;
+  an unfed virtual or a cycle is marked, never silently resolved.
+- Owner-confirmed semantics (2026-08-19): a dst's own crosspoint does
+  NOT change when a virtual upstream is re-fed — the NB correctly does
+  not notify subscriber dests, and snapshots stay literal. `usage
+  --resolve` is the client-side correlation; `replace` touches literal
+  cells only, so virtual subscribers inherit through their own chains.
+- `replace` is ADR-0007: `--check` dry-run, diff-only apply, run-twice
+  = 0 (nothing carries A afterwards); every touched dest notifies
+  naturally. Matrix domain only (RM + physical routers via --router).
+
 ### export — full snapshot
 
 ```
