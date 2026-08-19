@@ -94,15 +94,18 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]DiscoverResult, error)
 	go func() {
 		defer close(done)
 		for {
-			remaining := time.Until(deadline)
-			if remaining <= 0 {
-				return
-			}
-			rxCtx, cancel := context.WithTimeout(ctx, remaining)
+			// Per-iteration ctx capped at the discovery deadline: once the
+			// deadline passes, Receive fails immediately (the transport maps
+			// an expired read deadline to context.DeadlineExceeded), so the
+			// err arm below is the loop's single exit path. A separate
+			// loop-top remaining<=0 check would only ever execute when a
+			// datagram lands right at the deadline — a scheduling-dependent
+			// branch (#694 coverage class).
+			rxCtx, cancel := context.WithDeadline(ctx, deadline)
 			raw, addr, err := listener.Receive(rxCtx, codec.MaxPacket)
 			cancel()
 			if err != nil {
-				// Timeout or ctx cancel → exit loop.
+				// Deadline expiry or ctx cancel → exit loop.
 				return
 			}
 			// unreachable type-assert guard elided: transport.UDPListener.

@@ -274,6 +274,46 @@ func TestServe_TreeNotLoaded(t *testing.T) {
 	}
 }
 
+// TestServeListener covers the pre-bound-listener entry point (#694):
+// the happy path serves on the handed-over listener, and the nil-tree
+// guard closes it before erroring.
+func TestServeListener(t *testing.T) {
+	srv := newServer(nil, buildRichExport())
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	errc := make(chan error, 1)
+	go func() { errc <- srv.ServeListener(ctx, ln) }()
+
+	conn, err := net.Dial("tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	_ = conn.Close()
+
+	cancel()
+	select {
+	case <-errc:
+	case <-time.After(2 * time.Second):
+		t.Error("ServeListener did not return after ctx cancel")
+	}
+
+	// Nil-tree guard: the listener must be closed on refusal.
+	bad := newServer(nil, &canonical.Export{})
+	ln2, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	if err := bad.ServeListener(context.Background(), ln2); err == nil {
+		t.Error("ServeListener with no tree should error")
+	}
+	if _, err := ln2.Accept(); err == nil {
+		t.Error("listener should be closed after the nil-tree refusal")
+	}
+}
+
 // TestServe_BadAddr covers the listen error path.
 func TestServe_BadAddr(t *testing.T) {
 	srv := newServer(nil, buildRichExport())

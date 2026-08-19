@@ -9,18 +9,11 @@ import (
 	"dhs/internal/acp2/codec"
 )
 
-// diag_loopback_test.go drives RunDiagnostics against the loopback peer.
-//
-// The happy path (TestRunDiagnostics) answers ACP2 data probes and is
-// gated behind -short being OFF because RunDiagnostics has hard-coded
-// 3 s per-probe timeouts plus a 2 s announce-listen window, and the
-// session readLoop drops proto=3 (ACMP) / proto=4 frames, so those
-// probes always run to their full 3 s timeout. Total ~15 s — kept out
-// of the fast path. The cheap dial-error path always runs.
+// diag_loopback_test.go drives the diagnostics run against the loopback
+// peer. The happy path answers ACP2 data probes; the session readLoop
+// drops proto=3 (ACMP) / proto=4 frames, so those probes wait out the
+// short injected probe timeout (production keeps the 3 s default).
 func TestRunDiagnostics(t *testing.T) {
-	if testing.Short() {
-		t.Skip("RunDiagnostics has hard-coded multi-second probe timeouts; skipped in -short")
-	}
 	srv, host, port := newFakeServer(t)
 
 	// Answer every ACP2 data request with a generic reply echoing mtid.
@@ -56,9 +49,10 @@ func TestRunDiagnostics(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	results, err := RunDiagnostics(ctx, host, port, 1, testLogger())
+	results, err := runDiagnostics(ctx, host, port, 1, testLogger(),
+		diagTimings{probe: 300 * time.Millisecond, announce: 50 * time.Millisecond})
 	if err != nil {
-		t.Fatalf("RunDiagnostics: %v", err)
+		t.Fatalf("runDiagnostics: %v", err)
 	}
 	if len(results) == 0 {
 		t.Fatal("RunDiagnostics returned no results")

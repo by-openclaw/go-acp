@@ -281,22 +281,21 @@ func startStreamMatrixProvider(t *testing.T) (string, func()) {
 		Access: canonical.AccessRead, Children: []canonical.Element{meter, mtx},
 	}}
 	srv := (&provider.Factory{}).New(nil, &canonical.Export{Root: root})
+	// Pre-bound listener: no close-then-rebind port-steal window and no
+	// dial-poll (#694 flake class).
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
 	addr := ln.Addr().String()
-	_ = ln.Close()
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() { _ = srv.Serve(ctx, addr) }()
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if c, derr := net.DialTimeout("tcp", addr, 100*time.Millisecond); derr == nil {
-			_ = c.Close()
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
+	sl, ok := srv.(interface {
+		ServeListener(context.Context, net.Listener) error
+	})
+	if !ok {
+		t.Fatal("provider does not expose ServeListener")
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { _ = sl.ServeListener(ctx, ln) }()
 	return addr, func() { cancel(); _ = srv.Stop() }
 }
 

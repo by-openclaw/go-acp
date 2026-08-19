@@ -54,27 +54,23 @@ func startLoopbackProvider(t *testing.T) (string, func()) {
 
 	srv := (&provider.Factory{}).New(nil, &canonical.Export{Root: root})
 
-	// Grab a free port.
+	// Pre-bind the listener and hand it to the provider: no
+	// close-then-rebind window (port-steal race, #694 flake class) and
+	// no dial-poll — the kernel backlog queues connects from Listen on.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
 	addr := ln.Addr().String()
-	_ = ln.Close()
+	sl, ok := srv.(interface {
+		ServeListener(context.Context, net.Listener) error
+	})
+	if !ok {
+		t.Fatal("provider does not expose ServeListener")
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go func() { _ = srv.Serve(ctx, addr) }()
-
-	// Wait until the provider accepts connections.
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		c, derr := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-		if derr == nil {
-			_ = c.Close()
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	go func() { _ = sl.ServeListener(ctx, ln) }()
 	return addr, func() { cancel(); _ = srv.Stop() }
 }
 

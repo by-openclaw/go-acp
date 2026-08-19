@@ -169,13 +169,13 @@ func (l *Listener) loop(ctx context.Context) {
 			// errors.Is(err, net.ErrClosed) check was therefore unreachable.)
 
 			// Transient error — log at debug and keep looping. A short
-			// sleep avoids tight-spin if the same error recurs.
+			// sleep avoids tight-spin if the same error recurs; the
+			// loop-top ctx check bounds shutdown latency to one sleep.
+			// (A ctx.Done arm inside a select here only ever executed
+			// when cancellation landed inside the 10 ms window — a
+			// scheduling-dependent branch, #694 coverage class.)
 			l.logger.Debug("acp1 listener receive error (retrying)", "err", err)
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(10 * time.Millisecond):
-			}
+			time.Sleep(10 * time.Millisecond)
 			continue
 		}
 
