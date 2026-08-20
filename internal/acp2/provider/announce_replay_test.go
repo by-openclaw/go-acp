@@ -85,7 +85,19 @@ func TestRunAnnounceReplay_LoopsAndFansOut(t *testing.T) {
 				return
 			}
 			if f.Proto == codec.AN2ProtoACP2 && len(f.Payload) > 0 && f.Payload[0] == 0x02 {
-				got <- struct{}{}
+				// Non-blocking post: the reader must NEVER stall. The
+				// zero-delay replay pumps frames continuously; if this
+				// channel fills while the main goroutine is between its
+				// 3rd receive and cancel() (a scheduler pause on a loaded
+				// runner), a blocking send wedges the whole machine —
+				// reader stops draining the pipe, sess.write blocks
+				// mid-frame inside broadcastAnnounce, and replayPass
+				// never re-checks ctx. That was the rocky9 main red
+				// (run 32427993735; ADR-0029 determinism rule).
+				select {
+				case got <- struct{}{}:
+				default:
+				}
 			}
 		}
 	}()
