@@ -181,6 +181,45 @@ func TestParamTypeAndFormat_ACP2Meta(t *testing.T) {
 	}
 }
 
+// TestEnumEntriesFromMeta pins the real-option-map path: acp2 walks
+// store the wire value -> name map (arbitrary u32 values, NOT 0..n-1)
+// in meta acp2.optionsMap; the EnumMap must carry those values sorted,
+// skipping unparseable entries, and return nil when absent.
+func TestEnumEntriesFromMeta(t *testing.T) {
+	entries := enumEntriesFromMeta(map[string]any{"acp2.optionsMap": map[string]any{
+		"1271": "Manual", "66": "2SI", "801": "SQD", "bogus": "X", "7": 3.14,
+	}})
+	if len(entries) != 3 {
+		t.Fatalf("entries = %+v, want 3", entries)
+	}
+	if entries[0].Key != "2SI" || entries[0].Value != 66 ||
+		entries[2].Key != "Manual" || entries[2].Value != 1271 {
+		t.Fatalf("entries = %+v", entries)
+	}
+	if enumEntriesFromMeta(map[string]any{}) != nil {
+		t.Error("absent map must return nil")
+	}
+	if enumEntriesFromMeta(map[string]any{"acp2.optionsMap": map[string]any{"x": "y"}}) != nil {
+		t.Error("no parseable entries must return nil")
+	}
+}
+
+// TestUnwrapValue_EnumRawPreferred pins the enum truncation fix: the
+// envelope's `enum` field is a u8 and loses the upper bytes of real
+// acp2 option values (u32 on the wire); the raw bytes win.
+func TestUnwrapValue_EnumRawPreferred(t *testing.T) {
+	// raw AAAE9w== = 0x000004F7 = 1271; enum field says 247.
+	v, ok := unwrapValue([]byte(`{"kind":"enum","raw":"AAAE9w==","enum":247}`))
+	if !ok || v != int64(1271) {
+		t.Fatalf("raw-preferred = %v %v, want 1271", v, ok)
+	}
+	// No raw → u8 fallback unchanged.
+	v, ok = unwrapValue([]byte(`{"kind":"enum","enum":247}`))
+	if !ok || v != int64(247) {
+		t.Fatalf("fallback = %v %v, want 247", v, ok)
+	}
+}
+
 func TestDMPath(t *testing.T) {
 	if got, want := DMPath(".cache", "acp2", "SHPRM1@5.3.5"),
 		filepath.Join(".cache", "dm", "acp2", "SHPRM1@5.3.5.json"); got != want {

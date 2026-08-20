@@ -375,12 +375,23 @@ func buildSlotNode(slotNum int, sl Slot, dm *dmFile, devName string) (*canonical
 			f := formatHint
 			param.Format = &f
 		}
-		if typeStr == "enum" && len(o.EnumItems) > 0 {
-			entries := make([]canonical.EnumEntry, len(o.EnumItems))
-			for i, name := range o.EnumItems {
-				entries[i] = canonical.EnumEntry{Key: name, Value: int64(i)}
+		if typeStr == "enum" {
+			// acp2 walks store the REAL option map (wire value -> name)
+			// in meta acp2.optionsMap — real cards use arbitrary u32
+			// option values (e.g. CONVERT Hybrid "Manual"=1271), not
+			// 0..n-1 indexes. Serving index-valued options broke every
+			// enum on replay (9,774 wrong values on the real tree,
+			// live 2026-08-20). Fall back to sequential indexes only
+			// when no real map exists.
+			if entries := enumEntriesFromMeta(o.Meta); len(entries) > 0 {
+				param.EnumMap = entries
+			} else if len(o.EnumItems) > 0 {
+				entries := make([]canonical.EnumEntry, len(o.EnumItems))
+				for i, name := range o.EnumItems {
+					entries[i] = canonical.EnumEntry{Key: name, Value: int64(i)}
+				}
+				param.EnumMap = entries
 			}
-			param.EnumMap = entries
 		}
 		// Unwrap the consumer.Value envelope into a scalar the
 		// provider's tree builder accepts. The DM stores values as
@@ -626,6 +637,35 @@ func sanitiseScalar(typeStr, formatHint string, v any) any {
 	return v
 }
 
+// enumEntriesFromMeta builds the canonical EnumMap from an acp2 walk's
+// meta acp2.optionsMap ({"1271":"Manual", ...} — JSON object keys are
+// the wire values as decimal strings). Entries are sorted by wire
+// value for deterministic output. Returns nil when the meta is absent
+// or carries no parseable entries.
+func enumEntriesFromMeta(meta map[string]any) []canonical.EnumEntry {
+	m, ok := meta["acp2.optionsMap"].(map[string]any)
+	if !ok || len(m) == 0 {
+		return nil
+	}
+	entries := make([]canonical.EnumEntry, 0, len(m))
+	for k, v := range m {
+		val, err := strconv.ParseInt(k, 10, 64)
+		if err != nil {
+			continue
+		}
+		name, ok := v.(string)
+		if !ok {
+			continue
+		}
+		entries = append(entries, canonical.EnumEntry{Key: name, Value: val})
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Value < entries[j].Value })
+	return entries
+}
+
 // unwrapValue pulls the scalar out of a serialised consumer.Value
 // envelope:  {"kind":"int","int":42} → int64(42).
 // Returns (nil, false) on null, empty, or unsupported envelopes; the
@@ -648,9 +688,18 @@ func unwrapValue(raw []byte) (any, bool) {
 		Str   *string `json:"str"`
 		IP    string  `json:"ip"`
 		Enum  *uint8  `json:"enum"`
+		Raw   []byte  `json:"raw"` // base64 wire bytes (acp2 walks)
 	}
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return nil, false
+	}
+	// Enum envelopes: the `enum` field is a u8 and TRUNCATES real acp2
+	// option values (u32 on the wire — CONVERT Hybrid "Manual"=1271
+	// became 247 on replay, live 2026-08-20). The raw wire bytes carry
+	// the full value; prefer them.
+	if env.Kind == "enum" && len(env.Raw) == 4 {
+		return int64(env.Raw[0])<<24 | int64(env.Raw[1])<<16 |
+			int64(env.Raw[2])<<8 | int64(env.Raw[3]), true
 	}
 	switch env.Kind {
 	case "string":
