@@ -143,32 +143,40 @@ func TestConsumerReconnect(t *testing.T) {
 		t.Fatalf("initial Walk: %v", err)
 	}
 
-	// Sever the link â€” consumer should observe the disconnect and
+	// Remember the pre-sever session object. reconnectLoop builds a
+	// FRESH session on success, so a changed pointer is a MONOTONIC
+	// proof that the disconnect was observed (onSessionStateChange
+	// false fired, the loop launched) AND the redial succeeded. The
+	// old two-phase poll sampled the transient sessionConnected=false
+	// window — with a 5 ms backoff the whole sever→redial cycle can
+	// complete between two polls, so the false state was never seen
+	// (rocky9, run 32428699670; ADR-0029 determinism rule).
+	p.mu.Lock()
+	oldSess := p.session
+	p.mu.Unlock()
+
+	// Sever the link — consumer should observe the disconnect and
 	// auto-reconnect.
 	proxy.sever()
 
-	// First, wait for the disconnect to register (sessionConnected
-	// false). This guarantees onSessionStateChange(false) fired and the
-	// reconnect goroutine launched.
-	disconnectSeen := false
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
+	replaced := false
 	for time.Now().Before(deadline) {
 		p.mu.Lock()
-		connected := p.sessionConnected
+		replaced = p.session != oldSess
 		p.mu.Unlock()
-		if !connected {
-			disconnectSeen = true
+		if replaced {
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	if !disconnectSeen {
-		t.Fatal("consumer never observed the unsolicited disconnect")
+	if !replaced {
+		t.Fatal("reconnect never replaced the severed session")
 	}
 
-	// Now wait for the reconnect: session live again AND the tree
-	// re-walked. refreshAfterReconnect clears the tree then re-walks, so
-	// a populated numIndex after the disconnect proves the refresh ran.
+	// Now wait for the refresh: session live AND the tree re-walked.
+	// refreshAfterReconnect clears the tree then re-walks, so a
+	// populated numIndex after the session swap proves the refresh ran.
 	deadline = time.Now().Add(5 * time.Second)
 	reconnected := false
 	for time.Now().Before(deadline) {
