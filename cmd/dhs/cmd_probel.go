@@ -109,6 +109,10 @@ func runProbelsw08p(ctx context.Context, args []string) error {
 		return runProbelImport(ctx, rest)
 	case "salvo-connect":
 		return runProbelSalvoConnect(ctx, rest)
+	case "usage":
+		return runProbelUsage(ctx, rest)
+	case "replace":
+		return runProbelReplace(ctx, rest)
 	}
 	return fmt.Errorf("unknown probel subcommand %q", sub)
 }
@@ -154,6 +158,11 @@ SUBCOMMANDS
                             + -xpoint.csv (crosspoints, dst <- src)
   import                    apply CSVs back, each file selectable: --src / --dst
                             (labels, --size picks width) / --xpoints; --dry-run
+  usage                     reverse tally on (matrix, level): where is each
+                            source assigned; --srce/--dest filter, --protect
+                            joins protect state, csv (ADR-0028 snapshot) | ascii
+  replace                   substitute source A with B on every crosspoint
+                            carrying A; --check dry-run (ADR-0007 ensure)
 
 EXAMPLES
   dhs consumer probel-sw08p interrogate         127.0.0.1:2008 --matrix 0 --level 0 --dst 5
@@ -161,6 +170,8 @@ EXAMPLES
   dhs consumer probel-sw08p bench 127.0.0.1:2008 --matrix 0,1 --size 65535 \
     --csv bench.csv --md bench.md
   dhs consumer probel-sw08p tally-dump          127.0.0.1:2008 --matrix 0 --level 0
+  dhs consumer probel-sw08p usage               127.0.0.1:2008 --matrix 0 --level 0 --srce 12 --format ascii
+  dhs consumer probel-sw08p replace             127.0.0.1:2008 --matrix 0 --level 0 --srce 12 --with 14 --check
   dhs consumer probel-sw08p watch               127.0.0.1:2008
 
 All commands log wire bytes (post-escape, post-framing) on stderr as a
