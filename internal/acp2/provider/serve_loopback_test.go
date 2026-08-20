@@ -422,9 +422,13 @@ func TestServe_SetProperty_AnnounceFanout(t *testing.T) {
 	if ann.PID != codec.PIDValue {
 		t.Fatalf("announce pid=%d want %d", ann.PID, codec.PIDValue)
 	}
-	// The unsubscribed client must receive zero announces.
-	if n := unsub.announceCount(); n != 0 {
-		t.Fatalf("unsubscribed client got %d announces, want 0", n)
+	// The unsubscribed client receives the announce too — real Neurons
+	// deliver announces regardless of the EnableProtocolEvents gate
+	// (spec §3.3.4 says otherwise, but Lawo VSM's gadgetserver never
+	// sends the enable and depends on receiving announces; documented
+	// ecosystem exception, see broadcastAnnounce).
+	if !waitFor(t, time.Second, func() bool { return unsub.announceCount() >= 1 }) {
+		t.Fatal("unsubscribed client got no announce (ecosystem delivery)")
 	}
 
 	// Tree was actually mutated.
