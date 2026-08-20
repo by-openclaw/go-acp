@@ -11,8 +11,8 @@
     {
       "name": "neuron-chassis",
       "slots": [
-        { "addr": { "slot": 0 }, "dm": "SHPRM1@5.3.5" },
-        { "addr": { "slot": 1 }, "dm": "CONVERT IP@6.7.4" }
+        { "addr": { "slot": 0 }, "dm": "SHPRM1@5.3.5", "protos": [2, 3, 4] },
+        { "addr": { "slot": 1 }, "dm": "CONVERT Hybrid@6.7.4", "protos": [2, 3] }
       ]
     }
   ]

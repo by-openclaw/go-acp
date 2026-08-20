@@ -204,6 +204,48 @@ func TestAN2Handshake_GetSlotInfo_CardSlot(t *testing.T) {
 	}
 }
 
+// TestAN2Handshake_GetSlotInfo_ManifestProtos pins the fixture-declared
+// advertisement override (manifest slot "protos"): Cerebrum's Neuron
+// driver polls GetSlotInfo and refuses to proceed past a [2]-only reply
+// where the real card advertises [2,3,4] / [2,3] (wire-proven
+// 2026-08-20, staging capture). A slot without an override keeps the
+// default [ACP2] advertisement.
+func TestAN2Handshake_GetSlotInfo_ManifestProtos(t *testing.T) {
+	sess, peer := newTestSession(t)
+	defer func() { _ = sess.conn.Close() }()
+	defer func() { _ = peer.Close() }()
+
+	sess.srv.SetSlotProtos(map[uint8][]uint8{0: {2, 3, 4}})
+
+	req := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoInternal,
+		Slot:    0,
+		MTID:    6,
+		Type:    codec.AN2TypeRequest,
+		Payload: []byte{codec.AN2FuncGetSlotInfo},
+	}
+	rep := roundtrip(t, sess, peer, req)
+	want := []byte{codec.AN2FuncGetSlotInfo, slotStatusPresent, 3, 2, 3, 4}
+	if !bytesEq(rep.Payload, want) {
+		t.Fatalf("slot 0 info=%x want %x", rep.Payload, want)
+	}
+
+	// Slot 1 has no override → default [ACP2].
+	req2 := &codec.AN2Frame{
+		Proto:   codec.AN2ProtoInternal,
+		Slot:    1,
+		MTID:    7,
+		Type:    codec.AN2TypeRequest,
+		Payload: []byte{codec.AN2FuncGetSlotInfo},
+	}
+	rep2 := roundtrip(t, sess, peer, req2)
+	want2 := []byte{codec.AN2FuncGetSlotInfo, slotStatusPresent, 1,
+		uint8(codec.AN2ProtoACP2)}
+	if !bytesEq(rep2.Payload, want2) {
+		t.Fatalf("slot 1 info=%x want %x", rep2.Payload, want2)
+	}
+}
+
 func TestAN2Handshake_GetSlotInfo_OutOfRange(t *testing.T) {
 	sess, peer := newTestSession(t)
 	defer func() { _ = sess.conn.Close() }()

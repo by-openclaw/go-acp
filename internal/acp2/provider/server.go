@@ -33,6 +33,11 @@ type server struct {
 	logger *slog.Logger
 	tree   *tree
 
+	// slotProtos overrides the GetSlotInfo proto advertisement per slot
+	// (manifest slot "protos"; see SetSlotProtos). Guarded by tree.mu —
+	// slotInfo reads it under the same lock as perSlot.
+	slotProtos map[uint8][]uint8
+
 	mu       sync.Mutex
 	listener net.Listener
 	sessions map[*session]struct{}
