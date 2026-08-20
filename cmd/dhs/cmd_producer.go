@@ -68,6 +68,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		playEvery     = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
 		playMode      = fs.String("play-mode", "walk", "acp1 only: --play value strategy — `walk` (mean-reverting drift, realistic) or `random` (force a uniform value across the object's full [min,max] each tick)")
 		pidfile       = fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer <proto> stop --pidfile PATH` can signal it")
+		announceReplay = fs.String("announce-replay", "", "acp2: loop a recorded announce stream (.jsonl from a real-device capture) to subscribed sessions — real cards announce continuously and controllers derive module liveness from it")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -236,6 +237,24 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		cancel()
 		_ = srv.Stop()
 	}()
+
+	// --announce-replay: loop a real-device announce recording (acp2).
+	// Optional concrete-type interface; providers without it warn.
+	if *announceReplay != "" {
+		type announceReplayer interface {
+			RunAnnounceReplay(ctx context.Context, items []acp2provider.AnnounceItem)
+		}
+		if ar, ok := srv.(announceReplayer); ok {
+			items, err := acp2provider.LoadAnnounceReplay(*announceReplay)
+			if err != nil {
+				return fmt.Errorf("announce replay: %w", err)
+			}
+			go ar.RunAnnounceReplay(srvCtx, items)
+		} else {
+			logger.Warn("--announce-replay set but provider does not support it — skipping",
+				slog.String("protocol", protoName))
+		}
+	}
 
 	if *announceDemo {
 		switch s := srv.(type) {
