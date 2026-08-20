@@ -61,6 +61,13 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		return s
 	}
 	s.tree = t
+	if t.labelDeviations > 0 {
+		// Absorb-and-surface: the emulated device's labels violate the
+		// spec charset (real Neuron uses underscores). Served VERBATIM —
+		// controllers bind by exact labels — and reported here.
+		logger.Warn("acp2 provider: labels outside the spec charset served verbatim",
+			slog.Int("count", t.labelDeviations))
+	}
 	return s
 }
 
