@@ -2,47 +2,45 @@ package acp2
 
 import "testing"
 
-// TestSanitizeLabel pins the spec invariant from acp2_protocol.docx
-// §"Versions" line 357: object labels MUST contain only characters
-// from `[A-Za-z0-9 \-]`. Any other character is replaced with `-`
-// before the label hits the wire (pid=2). The unmodified label stays
-// on the canonical element so other tooling can see the original.
-func TestSanitizeLabel(t *testing.T) {
+// TestWireLabel pins the emulation-fidelity contract: labels are served
+// VERBATIM (pid=2), even when they violate the spec charset of
+// acp2_protocol.docx §"Versions" line 357 — the real EVS Neuron emits
+// "ROOT_NODE_V2" with an underscore, and controllers (Cerebrum's Neuron
+// driver, live-proven 2026-08-20) bind their default object model by
+// exact label paths. The 2026-05-08 rewrite-to-charset behaviour
+// orphaned the whole tree behind a renamed root. The deviation is
+// surfaced via labelDeviatesSpec + the newTree counter instead of a
+// silent mutation. Empty labels still default to "obj" (spec mandates
+// non-empty).
+func TestWireLabel(t *testing.T) {
 	cases := []struct {
-		name  string
-		in    string
-		out   string
-		dirty bool // whether the function should have changed the input
+		name string
+		in   string
+		out  string
 	}{
-		// Compliant labels round-trip identity.
-		{"all-lower", "abcdef", "abcdef", false},
-		{"mixed-case-digits", "Card1234", "Card1234", false},
-		{"with-space", "User Label 1", "User Label 1", false},
-		{"with-dash", "Slot-A", "Slot-A", false},
-		{"compound", "PSU - NPU0500-B", "PSU - NPU0500-B", false},
-		{"channel-N", "CHANNEL 01", "CHANNEL 01", false},
-
-		// Real-Neuron deviations — spec violations sanitised.
-		{"underscore", "ROOT_NODE_V2", "ROOT-NODE-V2", true},
-		{"dot", "Sample.Rate", "Sample-Rate", true},
-		{"colon", "MAC:01:23", "MAC-01-23", true},
-		{"slash", "A/B", "A-B", true},
-		{"equal-sign", "Mode=Auto", "Mode-Auto", true},
-
-		// Non-ASCII gets stripped.
-		{"non-ascii", "Café", "Caf-", true},
-
-		// Edge cases.
-		{"empty", "", "obj", true},
-		{"all-invalid", "___", "obj", true},
+		{"compliant", "User Label 1", "User Label 1"},
+		{"underscore-verbatim", "ROOT_NODE_V2", "ROOT_NODE_V2"},
+		{"dot-verbatim", "Sample.Rate", "Sample.Rate"},
+		{"non-ascii-verbatim", "Café", "Café"},
+		{"empty", "", "obj"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := sanitizeLabel(c.in)
-			if got != c.out {
-				t.Errorf("sanitizeLabel(%q) = %q; want %q", c.in, got, c.out)
+			if got := wireLabel(c.in); got != c.out {
+				t.Errorf("wireLabel(%q) = %q; want %q", c.in, got, c.out)
 			}
 		})
+	}
+}
+
+// TestLabelDeviatesSpec pins the deviation predicate used for the
+// absorb-and-surface count.
+func TestLabelDeviatesSpec(t *testing.T) {
+	if labelDeviatesSpec("PSU - NPU0500-B") {
+		t.Error("compliant label flagged as deviating")
+	}
+	if !labelDeviatesSpec("ROOT_NODE_V2") {
+		t.Error("underscore label not flagged")
 	}
 }
 
