@@ -101,8 +101,10 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	}
 
 	var tree *canonical.Export
+	var mf *manifest.Manifest
 	if *manifestPath != "" {
-		mf, err := manifest.Load(*manifestPath)
+		var err error
+		mf, err = manifest.Load(*manifestPath)
 		if err != nil {
 			return fmt.Errorf("load manifest: %w", err)
 		}
@@ -134,6 +136,19 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	addr := fmt.Sprintf("%s:%d", *host, listenPort)
 
 	srv := factory.New(logger, tree)
+	// Manifest slots may declare per-slot GetSlotInfo proto lists
+	// (emulation fidelity — e.g. the real Neuron advertises [2,3,4]/[2,3]
+	// and Cerebrum's driver gates on it). Providers that support the
+	// override expose SetSlotProtos on the concrete type.
+	if mf != nil {
+		if sp := mf.SlotProtos(); len(sp) > 0 {
+			if o, ok := srv.(interface{ SetSlotProtos(map[uint8][]uint8) }); ok {
+				o.SetSlotProtos(sp)
+				logger.Info("slot proto advertisements from manifest",
+					slog.Int("slots", len(sp)))
+			}
+		}
+	}
 	// Initialise the rack-controller frame-status from the served tree so a
 	// multi-card frame (via --tree OR --manifest) reports its populated slots
 	// as present from the first walk, instead of an empty rack. Derived from

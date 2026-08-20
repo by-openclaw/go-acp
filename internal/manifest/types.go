@@ -55,4 +55,31 @@ type Frame struct {
 type Slot struct {
 	Addr map[string]any `json:"addr"`
 	DM   string         `json:"dm"`
+	// Protos optionally overrides the AN2 GetSlotInfo payload-protocol
+	// advertisement for this slot (acp2 emulation fidelity). The real
+	// EVS Neuron advertises [2,3,4] on slot 0 and [2,3] on slot 1, and
+	// Cerebrum's Neuron driver refuses to proceed past a [2]-only reply
+	// (wire-proven 2026-08-20) — the fixture must be able to state what
+	// the emulated hardware states. Empty = the provider's default.
+	Protos []uint8 `json:"protos,omitempty"`
+}
+
+// SlotProtos collects the per-slot proto advertisements declared in the
+// manifest, keyed by the numeric slot index from Addr. Slots without a
+// protos list (or without a numeric slot addr) are absent from the map.
+func (m *Manifest) SlotProtos() map[uint8][]uint8 {
+	out := map[uint8][]uint8{}
+	for _, fr := range m.Frames {
+		for _, sl := range fr.Slots {
+			if len(sl.Protos) == 0 {
+				continue
+			}
+			n, ok := slotIndex(sl.Addr)
+			if !ok || n < 0 || n > 254 {
+				continue
+			}
+			out[uint8(n)] = sl.Protos
+		}
+	}
+	return out
 }

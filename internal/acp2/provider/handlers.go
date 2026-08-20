@@ -442,9 +442,31 @@ func (s *server) slotInfo(slot uint8) (status uint8, protos []uint8) {
 	s.tree.mu.RLock()
 	defer s.tree.mu.RUnlock()
 	if _, ok := s.tree.perSlot[slot]; ok {
+		// Fixture-declared advertisement wins (manifest slot "protos"):
+		// emulation fidelity requires stating what the emulated hardware
+		// states — Cerebrum's Neuron driver polls GetSlotInfo and refuses
+		// to proceed past a [2]-only reply where the real card says
+		// [2,3,4] / [2,3] (wire-proven 2026-08-20, staging capture).
+		// Frames on the advertised-but-unimplemented protos (ACMP,
+		// vendor proto 4) are ignored by the session read loop, exactly
+		// like a real card ignores protocols the peer never speaks.
+		if p, ok := s.slotProtos[slot]; ok {
+			return slotStatusPresent, p
+		}
 		return slotStatusPresent, []uint8{uint8(codec.AN2ProtoACP2)}
 	}
 	return slotStatusEmpty, nil
+}
+
+// SetSlotProtos installs per-slot GetSlotInfo proto advertisements
+// (from the manifest's slot "protos" lists). Exported on the concrete
+// type — the neutral provider.Provider interface is untouched; the
+// producer command wires it when serving from a manifest. Call before
+// Serve; nil/empty clears back to the default advertisement.
+func (s *server) SetSlotProtos(protos map[uint8][]uint8) {
+	s.tree.mu.Lock()
+	defer s.tree.mu.Unlock()
+	s.slotProtos = protos
 }
 
 // -----------------------------------------------------------------
