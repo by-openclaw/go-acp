@@ -111,6 +111,8 @@ Global flag: `--capture FILE.jsonl`. Coordinates: `--matrix --level --dst --src`
 | `tally-dump` | dump every crosspoint on (matrix, level) | bulk read (streaming) |
 | `all/single-source-names`, `all/single-dest-names`, `all/single-source-assoc-names` | fetch labels | read |
 | `protect-interrogate/connect/disconnect/name/dump`, `master-protect` | protect (write-lock) family | owner-only authority |
+| `usage` | reverse tally: where is each source assigned (`--srce`/`--dest` filter, `--protect` joins protect state) | bulk read (#722) |
+| `replace` | substitute source A with B on every crosspoint carrying A (`--check` dry-run, ADR-0007) | bulk write (#722) |
 | `bench` | scale benchmark (interrogate-all + connect-all) | perf |
 
 ### probel-sw02p (SW-P-02)
@@ -238,6 +240,8 @@ acp2 diag → `dhs consumer acp2 diag <host> --port 2072`.
 | `connect` | route source → destination | `dhs consumer probel-sw08p connect <host> --port 2008 --matrix 0 --level 0 --dst 5 --src 12` |
 | `tally-dump` | stream every crosspoint on a level | `dhs consumer probel-sw08p tally-dump <host> --port 2008 --matrix 0 --level 0` |
 | `protect-connect` | owner-locked route | `dhs consumer probel-sw08p protect-connect <host> --port 2008 --matrix 0 --level 0 --dst 5 --src 12` |
+| `usage` | reverse tally (source-side view) | `dhs consumer probel-sw08p usage <host>:2008 --matrix 0 --level 0 --srce 12 --format ascii` |
+| `replace` | substitute src A → B everywhere | `dhs consumer probel-sw08p replace <host>:2008 --matrix 0 --level 0 --srce 12 --with 14 --check` |
 
 probel-sw02p is **watch-only** today (interrogate/connect/protect gated behind `approve seq N`): `dhs consumer probel-sw02p watch <host> --mtx-id 0 --level 0 --dsts 1-32`.
 
