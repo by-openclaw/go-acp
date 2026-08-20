@@ -71,6 +71,10 @@ ansible/secrets/*.vault
 !internal/**/testdata/protocol_types/**/*.jsonl
 !internal/**/testdata/scenarios/**/*.jsonl
 !internal/**/testdata/replay/**/*.jsonl
+# Real-device announce recordings the producer loops via
+# --announce-replay (liveness emulation; extracted from a walk capture,
+# LOGIN-free ACP2 payloads only).
+!internal/**/testdata/**/announces/*.jsonl
 !tests/fixtures/**/*.jsonl
 # ADR-0020 Bucket 5 (amendment 2026-06-24): one full real-device decoder
 # oracle per protocol is committed under
