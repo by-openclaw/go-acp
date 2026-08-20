@@ -171,6 +171,8 @@ var commands = []command{
 	{"convert", "translate a snapshot file between json / yaml / csv (offline)", helpConvert, runConvert},
 	{"discover", "passive + active scan for devices on the local subnet", helpDiscover, runDiscover},
 	{"matrix", "set matrix crosspoint connections (Ember+ only)", helpMatrix, runMatrix},
+	{"usage", "matrix reverse tally: where is each source assigned (Ember+ only)", helpEmberUsage, runEmberUsage},
+	{"replace", "substitute matrix source A with B everywhere (Ember+ only; --check dry-run)", helpEmberReplace, runEmberReplace},
 	{"invoke", "invoke an Ember+ function (RPC)", helpInvoke, runInvoke},
 	{"stream", "subscribe to Ember+ stream parameters", helpStream, runStream},
 	{"profile", "classify Ember+ provider compliance (strict / partial)", helpProfile, runProfile},
