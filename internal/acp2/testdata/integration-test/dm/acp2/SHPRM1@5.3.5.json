@@ -1,1 +1,5607 @@
-{"model": "SHPRM1", "sw_rev": "5.3.5", "protocol": "acp2", "objects": [{"slot": 0, "path": ["ROOT-NODE-V2"], "id": 1, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "ROOT-NODE-V2", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU"], "id": 10258, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "PSU", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1"], "id": 15362, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "1", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Type"], "id": 15208, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Type", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "UFNVIC0gTlBVMDUwMC1CAA==", "str": "PSU - NPU0500-B"}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Version"], "id": 15210, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Version", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MS4xLjEA", "str": "1.1.1"}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Fan Speed"], "id": 15211, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Fan Speed", "unit": "%", "kind": "int", "access": 1, "min": 0, "max": 100, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAACg==", "int": 10}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Temperature"], "id": 15212, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": -40, "max": 140, "default": 0, "value": {"kind": "int", "raw": "AAAAFQ==", "int": 21}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Present"], "id": 15239, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Power"], "id": 15849, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Power", "kind": "enum", "access": 1, "default": 18, "value": {"kind": "enum", "raw": "AAAAEg==", "enum": 18}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Fan Health 1"], "id": 21502, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Fan Health 1", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Fan Health 2"], "id": 21503, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Fan Health 2", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Fan Health 3"], "id": 21504, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Fan Health 3", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Fan Health 4"], "id": 21505, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Fan Health 4", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Temperature Measurement Mode"], "id": 47489, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Temperature Measurement Mode", "kind": "enum", "access": 1, "default": 156, "value": {"kind": "enum", "raw": "AAAAnA==", "enum": 156}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Operation Mode"], "id": 47490, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Operation Mode", "kind": "enum", "access": 1, "default": 154, "value": {"kind": "enum", "raw": "AAAAmg==", "enum": 154}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "1", "Status"], "id": 47495, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Status", "kind": "enum", "access": 1, "default": 18, "value": {"kind": "enum", "raw": "AAAAEg==", "enum": 18}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2"], "id": 15363, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "2", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Type"], "id": 15216, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Type", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "UFNVIC0gTlBVMDUwMC1CAA==", "str": "PSU - NPU0500-B"}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Version"], "id": 15218, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Version", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MS4xLjEA", "str": "1.1.1"}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Fan Speed"], "id": 15219, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Fan Speed", "unit": "%", "kind": "int", "access": 1, "min": 0, "max": 100, "default": 0, "value": {"kind": "int", "raw": "AAAACw==", "int": 11}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Temperature"], "id": 15220, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": -40, "max": 140, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAFA==", "int": 20}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Present"], "id": 15240, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Power"], "id": 15850, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Power", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Fan Health 1"], "id": 21506, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Fan Health 1", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Fan Health 2"], "id": 21507, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Fan Health 2", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Fan Health 3"], "id": 21508, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Fan Health 3", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Fan Health 4"], "id": 21509, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Fan Health 4", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Temperature Measurement Mode"], "id": 47491, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Temperature Measurement Mode", "kind": "enum", "access": 1, "default": 156, "value": {"kind": "enum", "raw": "AAAAnA==", "enum": 156}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Operation Mode"], "id": 47492, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Operation Mode", "kind": "enum", "access": 1, "default": 154, "value": {"kind": "enum", "raw": "AAAAmg==", "enum": 154}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "2", "Status"], "id": 47496, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Status", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "BOARD"], "id": 15528, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "BOARD", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "BOARD", "Power Consumption"], "id": 11911, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Power Consumption", "unit": "W", "kind": "int", "access": 1, "min": 0, "max": 250, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "BOARD", "Temperature"], "id": 15529, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": -40, "max": 140, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "PSU", "path": ["ROOT-NODE-V2", "PSU", "Fan Control"], "id": 21127, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Fan Control", "kind": "enum", "access": 3, "default": 18, "value": {"kind": "enum", "raw": "AAAAEg==", "enum": 18}}, {"slot": 0, "group": "TEMPERATURE", "path": ["ROOT-NODE-V2", "TEMPERATURE"], "id": 15223, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "TEMPERATURE", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "TEMPERATURE", "path": ["ROOT-NODE-V2", "TEMPERATURE", "USP"], "id": 15224, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "USP", "unit": "C", "kind": "int", "access": 1, "min": -40, "max": 140, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "TEMPERATURE", "path": ["ROOT-NODE-V2", "TEMPERATURE", "ZYNQ"], "id": 15225, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "ZYNQ", "unit": "C", "kind": "int", "access": 1, "min": -40, "max": 140, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD"], "id": 15237, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "BOARD", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Card Name"], "id": 2, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Card Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "U0hQUk0xAA==", "str": "SHPRM1"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Hardware Version"], "id": 6, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Hardware Version", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MC43AA==", "str": "0.7"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Product Code"], "id": 7, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Product Code", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkVVOTUyMDAyMDAxMAA=", "str": "NEU9520020010"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Serial Number"], "id": 8, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "UFIxMTM5NTEA", "str": "PR113951"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Card ID"], "id": 9, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Card ID", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MDFhZDM2MzcxZjAwMDBlOAA=", "str": "01ad36371f0000e8"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Subcomponent Version"], "id": 2996, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Subcomponent Version", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "AA==", "str": ""}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Product Version"], "id": 13673, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Product Version", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "NS4zLjUA", "str": "5.3.5"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Position"], "id": 15238, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Position", "kind": "enum", "access": 1, "default": 138, "value": {"kind": "enum", "raw": "AAAAig==", "enum": 138}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Hardware UFP"], "id": 15524, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Hardware UFP", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MC42LjAA", "str": "0.6.0"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Uboot Version"], "id": 15525, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Uboot Version", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MS4xLjEA", "str": "1.1.1"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Recovery Version"], "id": 15526, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Recovery Version", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "Mi4wLjEzAA==", "str": "2.0.13"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "EEPROM Version"], "id": 15527, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "EEPROM Version", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MQA=", "str": "1"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "NPF Status"], "id": 15530, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "NPF Status", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "AA==", "str": ""}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Mode"], "id": 15531, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Mode", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "QXBwbGljYXRpb24A", "str": "Application"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Neighbor IP"], "id": 15828, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Neighbor IP", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MTAuNDEuNDAuMgA=", "str": "10.41.40.2"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Announcement Rate"], "id": 17382, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Announcement Rate", "kind": "enum", "access": 3, "default": 198, "value": {"kind": "enum", "raw": "AAAAxg==", "enum": 198}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "IO Board"], "id": 17671, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "IO Board", "kind": "enum", "access": 1, "default": 120, "value": {"kind": "enum", "raw": "AAAAeA==", "enum": 120}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Find my Neuron"], "id": 21137, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Find my Neuron", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Front Panel LED"], "id": 47427, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Front Panel LED", "kind": "enum", "access": 3, "default": 150, "value": {"kind": "enum", "raw": "AAAAlg==", "enum": 150}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "eMMC Status"], "id": 47428, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "eMMC Status", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "T2sA", "str": "Ok"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Debug Mode"], "id": 47429, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Debug Mode", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Download Log"], "id": 47430, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Download Log", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "ACP Trace"], "id": 47431, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "ACP Trace", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Download Log Status"], "id": 47432, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Download Log Status", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "SWRsZQA=", "str": "Idle"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Neighbor Netmask"], "id": 47493, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Neighbor Netmask", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MjU1LjI1NS4yNTUuMAA=", "str": "255.255.255.0"}}, {"slot": 0, "group": "BOARD", "path": ["ROOT-NODE-V2", "BOARD", "Neighbor Gateway"], "id": 47494, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Neighbor Gateway", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MTAuNDEuNDAuMQA=", "str": "10.41.40.1"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT"], "id": 15364, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "MANAGEMENT PORT", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "DNS Primary Server"], "id": 10023, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "DNS Primary Server", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "DNS Secondary Server"], "id": 10024, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "DNS Secondary Server", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "DNS Primary Server Status"], "id": 10025, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "DNS Primary Server Status", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "DNS Secondary Server Status"], "id": 10026, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "DNS Secondary Server Status", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Ethernet IP Address"], "id": 15246, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Ethernet IP Address", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MTAuNDEuNDAuMTk1AA==", "str": "10.41.40.195"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Ethernet IP Address Status"], "id": 15247, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Ethernet IP Address Status", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MTAuNDEuNDAuMTk1AA==", "str": "10.41.40.195"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Ethernet IP Mask"], "id": 15248, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Ethernet IP Mask", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MjU1LjI1NS4yNTUuMAA=", "str": "255.255.255.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Ethernet IP Mask Status"], "id": 15249, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Ethernet IP Mask Status", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MjU1LjI1NS4yNTUuMAA=", "str": "255.255.255.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Ethernet IP Gateway"], "id": 15250, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Ethernet IP Gateway", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MTAuNDEuNDAuMQA=", "str": "10.41.40.1"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Ethernet IP Gateway Status"], "id": 15251, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Ethernet IP Gateway Status", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MTAuNDEuNDAuMQA=", "str": "10.41.40.1"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Ethernet Configuration"], "id": 15252, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Ethernet Configuration", "kind": "enum", "access": 3, "default": 1, "value": {"kind": "enum", "raw": "AAAAAQ==", "enum": 1}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Ethernet Configuration Status"], "id": 15253, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Ethernet Configuration Status", "kind": "enum", "access": 1, "default": 1, "value": {"kind": "enum", "raw": "AAAAAQ==", "enum": 1}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Ethernet MAC Address"], "id": 15365, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Ethernet MAC Address", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MDA6MDM6NDE6MjA6OWE6ZjAA", "str": "00:03:41:20:9a:f0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "Take"], "id": 19378, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Take", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "DNS Domain"], "id": 23714, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "DNS Domain", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "AA==", "str": ""}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "DNS Domain Status"], "id": 23716, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "DNS Domain Status", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "AA==", "str": ""}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES"], "id": 47433, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "ROUTES", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 1"], "id": 47434, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "ROUTE 1", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 1", "Enable"], "id": 47435, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Enable", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 1", "IP Address"], "id": 47436, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Address", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 1", "IP Mask"], "id": 47437, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Mask", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 1", "IP Gateway"], "id": 47454, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Gateway", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 2"], "id": 47438, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "ROUTE 2", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 2", "Enable"], "id": 47439, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Enable", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 2", "IP Address"], "id": 47440, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Address", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 2", "IP Mask"], "id": 47441, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Mask", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 2", "IP Gateway"], "id": 47455, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Gateway", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 3"], "id": 47442, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "ROUTE 3", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 3", "Enable"], "id": 47443, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Enable", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 3", "IP Address"], "id": 47444, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Address", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 3", "IP Mask"], "id": 47445, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Mask", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 3", "IP Gateway"], "id": 47456, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Gateway", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 4"], "id": 47446, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "ROUTE 4", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 4", "Enable"], "id": 47447, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Enable", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 4", "IP Address"], "id": 47448, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Address", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 4", "IP Mask"], "id": 47449, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Mask", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 4", "IP Gateway"], "id": 47457, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Gateway", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 5"], "id": 47450, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "ROUTE 5", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 5", "Enable"], "id": 47451, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Enable", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 5", "IP Address"], "id": 47452, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Address", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 5", "IP Mask"], "id": 47453, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Mask", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "MANAGEMENT PORT", "path": ["ROOT-NODE-V2", "MANAGEMENT PORT", "ROUTES", "ROUTE 5", "IP Gateway"], "id": 47458, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "IP Gateway", "kind": "string", "access": 3, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjAuMAA=", "str": "0.0.0.0"}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1"], "id": 15605, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "QSFP 1", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Temperature"], "id": 17564, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": 0, "max": 0, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAPg==", "int": 62}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Vendor Name"], "id": 17565, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "Q0lTQ09TT0xJRE9QVElDUwA=", "str": "CISCOSOLIDOPTICS"}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Vendor Part Number"], "id": 17566, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Part Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "Q0lTLVFTRlAxMDBHLURSMQA=", "str": "CIS-QSFP100G-DR1"}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Vendor Serial Number"], "id": 17567, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "U09aMTMxR0cwODA3AA==", "str": "SOZ131GG0807"}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Present"], "id": 17568, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Power Rx 1"], "id": 47397, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 1", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "P32yLQ==", "float": 0.9909999966621399}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Power Tx 1"], "id": 47403, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 1", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "P9peNQ==", "float": 1.7059999704360962}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Power Rx 2"], "id": 47409, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 2", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Power Rx 3"], "id": 47410, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 3", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Power Rx 4"], "id": 47411, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 4", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Power Tx 2"], "id": 47412, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 2", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Power Tx 3"], "id": 47413, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 3", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Power Tx 4"], "id": 47414, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 4", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 1", "path": ["ROOT-NODE-V2", "QSFP 1", "Announcement Rate"], "id": 47421, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Announcement Rate", "kind": "enum", "access": 3, "default": 203, "value": {"kind": "enum", "raw": "AAAAyw==", "enum": 203}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2"], "id": 15606, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "QSFP 2", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Present"], "id": 19754, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 17, "value": {"kind": "enum", "raw": "AAAAEQ==", "enum": 17}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Vendor Name"], "id": 19758, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "Q0lTQ09TT0xJRE9QVElDUwA=", "str": "CISCOSOLIDOPTICS"}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Vendor Serial Number"], "id": 19762, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "U09aMTMxR0cwODA2AA==", "str": "SOZ131GG0806"}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Vendor Part Number"], "id": 19766, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Part Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "Q0lTLVFTRlAxMDBHLURSMQA=", "str": "CIS-QSFP100G-DR1"}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Temperature"], "id": 19770, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": 0, "max": 0, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAPA==", "int": 60}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Power Rx 1"], "id": 47398, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 1", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "P3ItDg==", "float": 0.9459999799728394}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Power Tx 1"], "id": 47404, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 1", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "P9OVgQ==", "float": 1.652999997138977}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Power Rx 2"], "id": 47415, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 2", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Power Rx 3"], "id": 47416, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 3", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Power Rx 4"], "id": 47417, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 4", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Power Tx 2"], "id": 47418, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 2", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Power Tx 3"], "id": 47419, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 3", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Power Tx 4"], "id": 47420, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 4", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 2", "path": ["ROOT-NODE-V2", "QSFP 2", "Announcement Rate"], "id": 47422, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Announcement Rate", "kind": "enum", "access": 3, "default": 203, "value": {"kind": "enum", "raw": "AAAAyw==", "enum": 203}}, {"slot": 0, "group": "IO BOARD", "path": ["ROOT-NODE-V2", "IO BOARD"], "id": 19742, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "IO BOARD", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "IO BOARD", "path": ["ROOT-NODE-V2", "IO BOARD", "Serial Number"], "id": 10181, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkVVOTUxMDA0MDAxMC1IQTA0NDYzOQA=", "str": "NEU9510040010-HA044639"}}, {"slot": 0, "group": "IO BOARD", "path": ["ROOT-NODE-V2", "IO BOARD", "Card Name"], "id": 10189, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Card Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "U0hQSU8A", "str": "SHPIO"}}, {"slot": 0, "group": "IO BOARD", "path": ["ROOT-NODE-V2", "IO BOARD", "Number of Inputs"], "id": 19743, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Number of Inputs", "kind": "int", "access": 1, "min": 0, "max": 0, "default": 0, "value": {"kind": "int", "raw": "AAAACA==", "int": 8}}, {"slot": 0, "group": "IO BOARD", "path": ["ROOT-NODE-V2", "IO BOARD", "Number of Outputs"], "id": 19744, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Number of Outputs", "kind": "int", "access": 1, "min": 0, "max": 0, "default": 0, "value": {"kind": "int", "raw": "AAAACA==", "int": 8}}, {"slot": 0, "group": "IO BOARD", "path": ["ROOT-NODE-V2", "IO BOARD", "Number of Bi-directionals"], "id": 19745, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Number of Bi-directionals", "kind": "int", "access": 1, "min": 0, "max": 0, "default": 0, "value": {"kind": "int", "raw": "AAAAGA==", "int": 24}}, {"slot": 0, "group": "IO BOARD", "path": ["ROOT-NODE-V2", "IO BOARD", "Version"], "id": 19746, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Version", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "MC4wLjEA", "str": "0.0.1"}}, {"slot": 0, "group": "IO BOARD", "path": ["ROOT-NODE-V2", "IO BOARD", "Type"], "id": 19747, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Type", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "U0RJAA==", "str": "SDI"}}, {"slot": 0, "group": "SFP 1", "path": ["ROOT-NODE-V2", "SFP 1"], "id": 19750, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "SFP 1", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "SFP 1", "path": ["ROOT-NODE-V2", "SFP 1", "Present"], "id": 19755, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 16, "value": {"kind": "enum", "raw": "AAAAEA==", "enum": 16}}, {"slot": 0, "group": "SFP 1", "path": ["ROOT-NODE-V2", "SFP 1", "Vendor Name"], "id": 19759, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 1", "path": ["ROOT-NODE-V2", "SFP 1", "Vendor Serial Number"], "id": 19763, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 1", "path": ["ROOT-NODE-V2", "SFP 1", "Vendor Part Number"], "id": 19767, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Part Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 1", "path": ["ROOT-NODE-V2", "SFP 1", "Temperature"], "id": 19771, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": 0, "max": 0, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "SFP 1", "path": ["ROOT-NODE-V2", "SFP 1", "Power Rx"], "id": 47399, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "SFP 1", "path": ["ROOT-NODE-V2", "SFP 1", "Power Tx"], "id": 47405, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "SFP 1", "path": ["ROOT-NODE-V2", "SFP 1", "Announcement Rate"], "id": 47423, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Announcement Rate", "kind": "enum", "access": 3, "default": 203, "value": {"kind": "enum", "raw": "AAAAyw==", "enum": 203}}, {"slot": 0, "group": "SFP 2", "path": ["ROOT-NODE-V2", "SFP 2"], "id": 19751, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "SFP 2", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "SFP 2", "path": ["ROOT-NODE-V2", "SFP 2", "Present"], "id": 19756, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 16, "value": {"kind": "enum", "raw": "AAAAEA==", "enum": 16}}, {"slot": 0, "group": "SFP 2", "path": ["ROOT-NODE-V2", "SFP 2", "Vendor Name"], "id": 19760, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 2", "path": ["ROOT-NODE-V2", "SFP 2", "Vendor Serial Number"], "id": 19764, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 2", "path": ["ROOT-NODE-V2", "SFP 2", "Vendor Part Number"], "id": 19768, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Part Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 2", "path": ["ROOT-NODE-V2", "SFP 2", "Temperature"], "id": 19772, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": 0, "max": 0, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "SFP 2", "path": ["ROOT-NODE-V2", "SFP 2", "Power Rx"], "id": 47400, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "SFP 2", "path": ["ROOT-NODE-V2", "SFP 2", "Power Tx"], "id": 47406, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "SFP 2", "path": ["ROOT-NODE-V2", "SFP 2", "Announcement Rate"], "id": 47424, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Announcement Rate", "kind": "enum", "access": 3, "default": 203, "value": {"kind": "enum", "raw": "AAAAyw==", "enum": 203}}, {"slot": 0, "group": "SFP 3", "path": ["ROOT-NODE-V2", "SFP 3"], "id": 19752, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "SFP 3", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "SFP 3", "path": ["ROOT-NODE-V2", "SFP 3", "Present"], "id": 19757, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 16, "value": {"kind": "enum", "raw": "AAAAEA==", "enum": 16}}, {"slot": 0, "group": "SFP 3", "path": ["ROOT-NODE-V2", "SFP 3", "Vendor Name"], "id": 19761, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 3", "path": ["ROOT-NODE-V2", "SFP 3", "Vendor Serial Number"], "id": 19765, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 3", "path": ["ROOT-NODE-V2", "SFP 3", "Vendor Part Number"], "id": 19769, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Part Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 3", "path": ["ROOT-NODE-V2", "SFP 3", "Temperature"], "id": 19773, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": 0, "max": 0, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "SFP 3", "path": ["ROOT-NODE-V2", "SFP 3", "Power Rx"], "id": 47401, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "SFP 3", "path": ["ROOT-NODE-V2", "SFP 3", "Power Tx"], "id": 47407, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "SFP 3", "path": ["ROOT-NODE-V2", "SFP 3", "Announcement Rate"], "id": 47425, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Announcement Rate", "kind": "enum", "access": 3, "default": 203, "value": {"kind": "enum", "raw": "AAAAyw==", "enum": 203}}, {"slot": 0, "group": "SFP 4", "path": ["ROOT-NODE-V2", "SFP 4"], "id": 19753, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "SFP 4", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "SFP 4", "path": ["ROOT-NODE-V2", "SFP 4", "Vendor Serial Number"], "id": 20778, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 4", "path": ["ROOT-NODE-V2", "SFP 4", "Present"], "id": 20779, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 16, "value": {"kind": "enum", "raw": "AAAAEA==", "enum": 16}}, {"slot": 0, "group": "SFP 4", "path": ["ROOT-NODE-V2", "SFP 4", "Vendor Name"], "id": 20780, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 4", "path": ["ROOT-NODE-V2", "SFP 4", "Vendor Part Number"], "id": 20781, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Part Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "SFP 4", "path": ["ROOT-NODE-V2", "SFP 4", "Temperature"], "id": 20787, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": 0, "max": 0, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "SFP 4", "path": ["ROOT-NODE-V2", "SFP 4", "Power Rx"], "id": 47402, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "SFP 4", "path": ["ROOT-NODE-V2", "SFP 4", "Power Tx"], "id": 47408, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "SFP 4", "path": ["ROOT-NODE-V2", "SFP 4", "Announcement Rate"], "id": 47426, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Announcement Rate", "kind": "enum", "access": 3, "default": 203, "value": {"kind": "enum", "raw": "AAAAyw==", "enum": 203}}, {"slot": 0, "group": "SMARC", "path": ["ROOT-NODE-V2", "SMARC"], "id": 35910, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "SMARC", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "SMARC", "path": ["ROOT-NODE-V2", "SMARC", "Present"], "id": 20783, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 16, "value": {"kind": "enum", "raw": "AAAAEA==", "enum": 16}}, {"slot": 0, "group": "SMARC", "path": ["ROOT-NODE-V2", "SMARC", "Reboot Smarc"], "id": 35911, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Reboot Smarc", "kind": "enum", "access": 3, "default": 7, "value": {"kind": "enum", "raw": "AAAABw==", "enum": 7}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3"], "id": 47459, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "QSFP 3", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Announcement Rate"], "id": 47460, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Announcement Rate", "kind": "enum", "access": 3, "default": 203, "value": {"kind": "enum", "raw": "AAAAyw==", "enum": 203}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Present"], "id": 47461, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 16, "value": {"kind": "enum", "raw": "AAAAEA==", "enum": 16}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Vendor Name"], "id": 47462, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Vendor Part Number"], "id": 47463, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Part Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Vendor Serial Number"], "id": 47464, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Temperature"], "id": 47465, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": 0, "max": 0, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Power Rx 1"], "id": 47466, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 1", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Power Rx 2"], "id": 47467, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 2", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Power Rx 3"], "id": 47468, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 3", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Power Rx 4"], "id": 47469, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 4", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Power Tx 1"], "id": 47470, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 1", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Power Tx 2"], "id": 47471, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 2", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Power Tx 3"], "id": 47472, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 3", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 3", "path": ["ROOT-NODE-V2", "QSFP 3", "Power Tx 4"], "id": 47473, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 4", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4"], "id": 47474, "meta": {"acp2.numType": 0, "acp2.objType": 0}, "label": "QSFP 4", "kind": "raw", "access": 0, "value": null}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Announcement Rate"], "id": 47475, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Announcement Rate", "kind": "enum", "access": 3, "default": 203, "value": {"kind": "enum", "raw": "AAAAyw==", "enum": 203}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Present"], "id": 47476, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 2}, "label": "Present", "kind": "enum", "access": 1, "default": 16, "value": {"kind": "enum", "raw": "AAAAEA==", "enum": 16}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Vendor Name"], "id": 47477, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Name", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Vendor Part Number"], "id": 47478, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Part Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Vendor Serial Number"], "id": 47479, "meta": {"acp2.announceDelay": 0, "acp2.numType": 0, "acp2.objType": 5}, "label": "Vendor Serial Number", "kind": "string", "access": 1, "max_len": 256, "value": {"kind": "string", "raw": "TkEA", "str": "NA"}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Temperature"], "id": 47480, "meta": {"acp2.announceDelay": 0, "acp2.numType": 2, "acp2.objType": 3}, "label": "Temperature", "unit": "C", "kind": "int", "access": 1, "min": 0, "max": 0, "step": 1, "default": 0, "value": {"kind": "int", "raw": "AAAAAA==", "int": 0}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Power Rx 1"], "id": 47481, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 1", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Power Rx 2"], "id": 47482, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 2", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Power Rx 3"], "id": 47483, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 3", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Power Rx 4"], "id": 47484, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Rx 4", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Power Tx 1"], "id": 47485, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 1", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Power Tx 2"], "id": 47486, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 2", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Power Tx 3"], "id": 47487, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 3", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}, {"slot": 0, "group": "QSFP 4", "path": ["ROOT-NODE-V2", "QSFP 4", "Power Tx 4"], "id": 47488, "meta": {"acp2.announceDelay": 0, "acp2.numType": 8, "acp2.objType": 3}, "label": "Power Tx 4", "unit": "mW", "kind": "float", "access": 1, "min": 0, "max": 6.553500175476074, "default": 0, "value": {"kind": "float", "raw": "AAAAAA==", "float": 0}}]}
+{
+  "model": "SHPRM1",
+  "sw_rev": "5.3.5",
+  "protocol": "acp2",
+  "objects": [
+    {
+      "path": [
+        "ROOT_NODE_V2"
+      ],
+      "id": 1,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "ROOT_NODE_V2",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD"
+      ],
+      "id": 15237,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "BOARD",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Card Name"
+      ],
+      "id": 2,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Card Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 17,
+      "value": {
+        "kind": "string",
+        "raw": "U0hQUk0xAA==",
+        "str": "SHPRM1"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Card ID"
+      ],
+      "id": 9,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Card ID",
+      "kind": "string",
+      "access": 1,
+      "max_len": 17,
+      "value": {
+        "kind": "string",
+        "raw": "MDFkZjVkNmIxZTAwMDAxZQA=",
+        "str": "01df5d6b1e00001e"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Product Version"
+      ],
+      "id": 13673,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Product Version",
+      "kind": "string",
+      "access": 1,
+      "max_len": 129,
+      "value": {
+        "kind": "string",
+        "raw": "NS4zLjUA",
+        "str": "5.3.5"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Product Code"
+      ],
+      "id": 7,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Product Code",
+      "kind": "string",
+      "access": 1,
+      "max_len": 14,
+      "value": {
+        "kind": "string",
+        "raw": "TkVVOTUyMDAyMDAxMAA=",
+        "str": "NEU9520020010"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Serial Number"
+      ],
+      "id": 8,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 17,
+      "value": {
+        "kind": "string",
+        "raw": "VEIwMDAzNTEA",
+        "str": "TB000351"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Hardware UFP"
+      ],
+      "id": 15524,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Hardware UFP",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "MC42LjAA",
+        "str": "0.6.0"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Hardware Version"
+      ],
+      "id": 6,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Hardware Version",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "MC43AA==",
+        "str": "0.7"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Uboot Version"
+      ],
+      "id": 15525,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Uboot Version",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "MS4xLjEA",
+        "str": "1.1.1"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Recovery Version"
+      ],
+      "id": 15526,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Recovery Version",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "Mi4wLjEzAA==",
+        "str": "2.0.13"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "EEPROM Version"
+      ],
+      "id": 15527,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "EEPROM Version",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "MQA=",
+        "str": "1"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Position"
+      ],
+      "id": 15238,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "136": "0",
+          "137": "1",
+          "138": "2"
+        }
+      },
+      "label": "Position",
+      "kind": "enum",
+      "access": 1,
+      "default": "0",
+      "enum_items": [
+        "0",
+        "1",
+        "2"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAiQ==",
+        "str": "1",
+        "enum": 137
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Mode"
+      ],
+      "id": 15531,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Mode",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "QXBwbGljYXRpb24A",
+        "str": "Application"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "NPF Status"
+      ],
+      "id": 15530,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "NPF Status",
+      "kind": "string",
+      "access": 1,
+      "max_len": 64,
+      "value": {
+        "kind": "string",
+        "raw": "AA==",
+        "str": ""
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Subcomponent Version"
+      ],
+      "id": 2996,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Subcomponent Version",
+      "kind": "string",
+      "access": 3,
+      "max_len": 65,
+      "value": {
+        "kind": "string",
+        "raw": "AA==",
+        "str": ""
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Neighbor IP"
+      ],
+      "id": 15828,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "Neighbor IP",
+      "kind": "ipaddr",
+      "access": 1,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "CixIEw==",
+        "ip": "10.44.72.19"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Neighbor Netmask"
+      ],
+      "id": 47493,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "Neighbor Netmask",
+      "kind": "ipaddr",
+      "access": 1,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "////AA==",
+        "ip": "255.255.255.0"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Neighbor Gateway"
+      ],
+      "id": 47494,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "Neighbor Gateway",
+      "kind": "ipaddr",
+      "access": 1,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "CixIAQ==",
+        "ip": "10.44.72.1"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Announcement Rate"
+      ],
+      "id": 17382,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "710": "Off",
+          "711": "1 s",
+          "712": "3 s",
+          "713": "10 s",
+          "714": "30 s",
+          "715": "60 s"
+        }
+      },
+      "label": "Announcement Rate",
+      "kind": "enum",
+      "access": 3,
+      "default": "60 s",
+      "enum_items": [
+        "Off",
+        "1 s",
+        "3 s",
+        "10 s",
+        "30 s",
+        "60 s"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAACyw==",
+        "str": "60 s",
+        "enum": 203
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "IO Board"
+      ],
+      "id": 17671,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "120": "Present",
+          "16": "NA"
+        }
+      },
+      "label": "IO Board",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "Present"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAeA==",
+        "str": "Present",
+        "enum": 120
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Find my Neuron"
+      ],
+      "id": 21137,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Find my Neuron",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Front Panel LED"
+      ],
+      "id": 47427,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "1174": "Normal",
+          "1175": "Pulse Per Second",
+          "1176": "Heartbeat"
+        }
+      },
+      "label": "Front Panel LED",
+      "kind": "enum",
+      "access": 3,
+      "default": "Normal",
+      "enum_items": [
+        "Normal",
+        "Pulse Per Second",
+        "Heartbeat"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAElg==",
+        "str": "Normal",
+        "enum": 150
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "eMMC Status"
+      ],
+      "id": 47428,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "eMMC Status",
+      "kind": "string",
+      "access": 1,
+      "max_len": 51,
+      "value": {
+        "kind": "string",
+        "raw": "T2sA",
+        "str": "Ok"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Debug Mode"
+      ],
+      "id": 47429,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Debug Mode",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Download Log"
+      ],
+      "id": 47430,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Download Log",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "Download Log Status"
+      ],
+      "id": 47432,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Download Log Status",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "SWRsZQA=",
+        "str": "Idle"
+      }
+    },
+    {
+      "group": "BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "BOARD",
+        "ACP Trace"
+      ],
+      "id": 47431,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "ACP Trace",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "IO BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "IO BOARD"
+      ],
+      "id": 19742,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "IO BOARD",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "IO BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "IO BOARD",
+        "Card Name"
+      ],
+      "id": 10189,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Card Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 17,
+      "value": {
+        "kind": "string",
+        "raw": "U0hQSU8A",
+        "str": "SHPIO"
+      }
+    },
+    {
+      "group": "IO BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "IO BOARD",
+        "Type"
+      ],
+      "id": 19747,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Type",
+      "kind": "string",
+      "access": 1,
+      "max_len": 8,
+      "value": {
+        "kind": "string",
+        "raw": "U0RJAA==",
+        "str": "SDI"
+      }
+    },
+    {
+      "group": "IO BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "IO BOARD",
+        "Version"
+      ],
+      "id": 19746,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Version",
+      "kind": "string",
+      "access": 1,
+      "max_len": 6,
+      "value": {
+        "kind": "string",
+        "raw": "MC4wLjEA",
+        "str": "0.0.1"
+      }
+    },
+    {
+      "group": "IO BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "IO BOARD",
+        "Serial Number"
+      ],
+      "id": 10181,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkVVOTUxMDA0MDAxMC1QUjExMjUzNgA=",
+        "str": "NEU9510040010-PR112536"
+      }
+    },
+    {
+      "group": "IO BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "IO BOARD",
+        "Number of Inputs"
+      ],
+      "id": 19743,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 4,
+        "acp2.objType": 3
+      },
+      "label": "Number of Inputs",
+      "kind": "uint",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "raw": "AAAACA==",
+        "uint": 8
+      }
+    },
+    {
+      "group": "IO BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "IO BOARD",
+        "Number of Outputs"
+      ],
+      "id": 19744,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 4,
+        "acp2.objType": 3
+      },
+      "label": "Number of Outputs",
+      "kind": "uint",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "raw": "AAAACA==",
+        "uint": 8
+      }
+    },
+    {
+      "group": "IO BOARD",
+      "path": [
+        "ROOT_NODE_V2",
+        "IO BOARD",
+        "Number of Bi-directionals"
+      ],
+      "id": 19745,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 4,
+        "acp2.objType": 3
+      },
+      "label": "Number of Bi-directionals",
+      "kind": "uint",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "raw": "AAAAGA==",
+        "uint": 24
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU"
+      ],
+      "id": 10258,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "PSU",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "Fan Control"
+      ],
+      "id": 21127,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "786": "Automatic",
+          "791": "Full Speed"
+        }
+      },
+      "label": "Fan Control",
+      "kind": "enum",
+      "access": 3,
+      "default": "Automatic",
+      "enum_items": [
+        "Automatic",
+        "Full Speed"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAADEg==",
+        "str": "Automatic",
+        "enum": 18
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1"
+      ],
+      "id": 15362,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "1",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Present"
+      ],
+      "id": 15239,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Status"
+      ],
+      "id": 47495,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Status",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Warning",
+        "Error"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Type"
+      ],
+      "id": 15208,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Type",
+      "kind": "string",
+      "access": 1,
+      "max_len": 64,
+      "value": {
+        "kind": "string",
+        "raw": "UFNVIC0gTlBVMDUwMC1CAA==",
+        "str": "PSU - NPU0500-B"
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Version"
+      ],
+      "id": 15210,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Version",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "MS4xLjEA",
+        "str": "1.1.1"
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Power"
+      ],
+      "id": 15849,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error"
+        }
+      },
+      "label": "Power",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Operation Mode"
+      ],
+      "id": 47490,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "1177": "Standalone",
+          "1178": "Controlled",
+          "1179": "NA"
+        }
+      },
+      "label": "Operation Mode",
+      "kind": "enum",
+      "access": 1,
+      "default": "Standalone",
+      "enum_items": [
+        "Standalone",
+        "Controlled",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAEmg==",
+        "str": "Controlled",
+        "enum": 154
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Fan Speed"
+      ],
+      "id": 15211,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 4,
+        "acp2.objType": 3
+      },
+      "label": "Fan Speed",
+      "unit": "%",
+      "kind": "uint",
+      "access": 1,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "raw": "AAAACw==",
+        "uint": 11
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Temperature"
+      ],
+      "id": 15212,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": -40,
+      "max": 140,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAFg==",
+        "int": 22
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Temperature Measurement Mode"
+      ],
+      "id": 47489,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "1180": "Intake",
+          "1181": "Exhaust",
+          "1182": "NA"
+        }
+      },
+      "label": "Temperature Measurement Mode",
+      "kind": "enum",
+      "access": 1,
+      "default": "Intake",
+      "enum_items": [
+        "Intake",
+        "Exhaust",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAEnA==",
+        "str": "Intake",
+        "enum": 156
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Fan Health 1"
+      ],
+      "id": 21502,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Fan Health 1",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error",
+        "Warning"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Fan Health 2"
+      ],
+      "id": 21503,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Fan Health 2",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error",
+        "Warning"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Fan Health 3"
+      ],
+      "id": 21504,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Fan Health 3",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error",
+        "Warning"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "1",
+        "Fan Health 4"
+      ],
+      "id": 21505,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Fan Health 4",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error",
+        "Warning"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2"
+      ],
+      "id": 15363,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "2",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Present"
+      ],
+      "id": 15240,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Status"
+      ],
+      "id": 47496,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Status",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Warning",
+        "Error"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Type"
+      ],
+      "id": 15216,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Type",
+      "kind": "string",
+      "access": 1,
+      "max_len": 64,
+      "value": {
+        "kind": "string",
+        "raw": "UFNVIC0gTlBVMDUwMC1CAA==",
+        "str": "PSU - NPU0500-B"
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Version"
+      ],
+      "id": 15218,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Version",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "MS4xLjEA",
+        "str": "1.1.1"
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Power"
+      ],
+      "id": 15850,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error"
+        }
+      },
+      "label": "Power",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Operation Mode"
+      ],
+      "id": 47492,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "1177": "Standalone",
+          "1178": "Controlled",
+          "1179": "NA"
+        }
+      },
+      "label": "Operation Mode",
+      "kind": "enum",
+      "access": 1,
+      "default": "Standalone",
+      "enum_items": [
+        "Standalone",
+        "Controlled",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAEmg==",
+        "str": "Controlled",
+        "enum": 154
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Fan Speed"
+      ],
+      "id": 15219,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 4,
+        "acp2.objType": 3
+      },
+      "label": "Fan Speed",
+      "unit": "%",
+      "kind": "uint",
+      "access": 1,
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "raw": "AAAACg==",
+        "uint": 10
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Temperature"
+      ],
+      "id": 15220,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": -40,
+      "max": 140,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAFQ==",
+        "int": 21
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Temperature Measurement Mode"
+      ],
+      "id": 47491,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "1180": "Intake",
+          "1181": "Exhaust",
+          "1182": "NA"
+        }
+      },
+      "label": "Temperature Measurement Mode",
+      "kind": "enum",
+      "access": 1,
+      "default": "Intake",
+      "enum_items": [
+        "Intake",
+        "Exhaust",
+        "NA"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAEnA==",
+        "str": "Intake",
+        "enum": 156
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Fan Health 1"
+      ],
+      "id": 21506,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Fan Health 1",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error",
+        "Warning"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Fan Health 2"
+      ],
+      "id": 21507,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Fan Health 2",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error",
+        "Warning"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Fan Health 3"
+      ],
+      "id": 21508,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Fan Health 3",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error",
+        "Warning"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "2",
+        "Fan Health 4"
+      ],
+      "id": 21509,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK",
+          "18": "Error",
+          "785": "Warning"
+        }
+      },
+      "label": "Fan Health 4",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK",
+        "Error",
+        "Warning"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "BOARD"
+      ],
+      "id": 15528,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "BOARD",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "BOARD",
+        "Power Consumption"
+      ],
+      "id": 11911,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 6,
+        "acp2.objType": 3
+      },
+      "label": "Power Consumption",
+      "unit": "W",
+      "kind": "uint",
+      "access": 1,
+      "min": 0,
+      "max": 250,
+      "default": 0,
+      "value": {
+        "kind": "uint",
+        "raw": "AAAAbw==",
+        "uint": 111
+      }
+    },
+    {
+      "group": "PSU",
+      "path": [
+        "ROOT_NODE_V2",
+        "PSU",
+        "BOARD",
+        "Temperature"
+      ],
+      "id": 15529,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": -40,
+      "max": 140,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAIg==",
+        "int": 34
+      }
+    },
+    {
+      "group": "TEMPERATURE",
+      "path": [
+        "ROOT_NODE_V2",
+        "TEMPERATURE"
+      ],
+      "id": 15223,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "TEMPERATURE",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "TEMPERATURE",
+      "path": [
+        "ROOT_NODE_V2",
+        "TEMPERATURE",
+        "USP"
+      ],
+      "id": 15224,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 2,
+        "acp2.objType": 3
+      },
+      "label": "USP",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": -40,
+      "max": 140,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAQg==",
+        "int": 66
+      }
+    },
+    {
+      "group": "TEMPERATURE",
+      "path": [
+        "ROOT_NODE_V2",
+        "TEMPERATURE",
+        "ZYNQ"
+      ],
+      "id": 15225,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 2,
+        "acp2.objType": 3
+      },
+      "label": "ZYNQ",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": -40,
+      "max": 140,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAPA==",
+        "int": 60
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT"
+      ],
+      "id": 15364,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "MANAGEMENT PORT",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Take"
+      ],
+      "id": 19378,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Take",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Ethernet Configuration"
+      ],
+      "id": 15252,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "1": "Manual",
+          "2": "DHCP"
+        }
+      },
+      "label": "Ethernet Configuration",
+      "kind": "enum",
+      "access": 3,
+      "default": "Manual",
+      "enum_items": [
+        "Manual",
+        "DHCP"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAAQ==",
+        "str": "Manual",
+        "enum": 1
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Ethernet IP Address"
+      ],
+      "id": 15246,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "Ethernet IP Address",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "CixIEg==",
+        "ip": "10.44.72.18"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Ethernet IP Mask"
+      ],
+      "id": 15248,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "Ethernet IP Mask",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "////AA==",
+        "ip": "255.255.255.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Ethernet IP Gateway"
+      ],
+      "id": 15250,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "Ethernet IP Gateway",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "CixIAQ==",
+        "ip": "10.44.72.1"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "DNS Primary Server"
+      ],
+      "id": 10023,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "DNS Primary Server",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "DNS Secondary Server"
+      ],
+      "id": 10024,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "DNS Secondary Server",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "DNS Domain"
+      ],
+      "id": 23714,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "DNS Domain",
+      "kind": "string",
+      "access": 3,
+      "max_len": 255,
+      "value": {
+        "kind": "string",
+        "raw": "AA==",
+        "str": ""
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Ethernet Configuration Status"
+      ],
+      "id": 15253,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "1": "Manual",
+          "3": "DHCP Asking",
+          "4": "DHCP Leased"
+        }
+      },
+      "label": "Ethernet Configuration Status",
+      "kind": "enum",
+      "access": 1,
+      "default": "DHCP Asking",
+      "enum_items": [
+        "Manual",
+        "DHCP Asking",
+        "DHCP Leased"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAAQ==",
+        "str": "Manual",
+        "enum": 1
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Ethernet IP Address Status"
+      ],
+      "id": 15247,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "Ethernet IP Address Status",
+      "kind": "ipaddr",
+      "access": 1,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "CixIEg==",
+        "ip": "10.44.72.18"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Ethernet IP Mask Status"
+      ],
+      "id": 15249,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "Ethernet IP Mask Status",
+      "kind": "ipaddr",
+      "access": 1,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "////AA==",
+        "ip": "255.255.255.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Ethernet IP Gateway Status"
+      ],
+      "id": 15251,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "Ethernet IP Gateway Status",
+      "kind": "ipaddr",
+      "access": 1,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "CixIAQ==",
+        "ip": "10.44.72.1"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "Ethernet MAC Address"
+      ],
+      "id": 15365,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Ethernet MAC Address",
+      "kind": "string",
+      "access": 1,
+      "max_len": 18,
+      "value": {
+        "kind": "string",
+        "raw": "MDA6MDM6NDE6MjA6YjQ6YzAA",
+        "str": "00:03:41:20:b4:c0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "DNS Primary Server Status"
+      ],
+      "id": 10025,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "DNS Primary Server Status",
+      "kind": "ipaddr",
+      "access": 1,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "DNS Secondary Server Status"
+      ],
+      "id": 10026,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "DNS Secondary Server Status",
+      "kind": "ipaddr",
+      "access": 1,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "DNS Domain Status"
+      ],
+      "id": 23716,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "DNS Domain Status",
+      "kind": "string",
+      "access": 1,
+      "max_len": 255,
+      "value": {
+        "kind": "string",
+        "raw": "AA==",
+        "str": ""
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES"
+      ],
+      "id": 47433,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "ROUTES",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 1"
+      ],
+      "id": 47434,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "ROUTE 1",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 1",
+        "Enable"
+      ],
+      "id": 47435,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Enable",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 1",
+        "IP Address"
+      ],
+      "id": 47436,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Address",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 1",
+        "IP Mask"
+      ],
+      "id": 47437,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Mask",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 1",
+        "IP Gateway"
+      ],
+      "id": 47454,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Gateway",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 2"
+      ],
+      "id": 47438,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "ROUTE 2",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 2",
+        "Enable"
+      ],
+      "id": 47439,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Enable",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 2",
+        "IP Address"
+      ],
+      "id": 47440,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Address",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 2",
+        "IP Mask"
+      ],
+      "id": 47441,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Mask",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 2",
+        "IP Gateway"
+      ],
+      "id": 47455,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Gateway",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 3"
+      ],
+      "id": 47442,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "ROUTE 3",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 3",
+        "Enable"
+      ],
+      "id": 47443,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Enable",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 3",
+        "IP Address"
+      ],
+      "id": 47444,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Address",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 3",
+        "IP Mask"
+      ],
+      "id": 47445,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Mask",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 3",
+        "IP Gateway"
+      ],
+      "id": 47456,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Gateway",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 4"
+      ],
+      "id": 47446,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "ROUTE 4",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 4",
+        "Enable"
+      ],
+      "id": 47447,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Enable",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 4",
+        "IP Address"
+      ],
+      "id": 47448,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Address",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 4",
+        "IP Mask"
+      ],
+      "id": 47449,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Mask",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 4",
+        "IP Gateway"
+      ],
+      "id": 47457,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Gateway",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 5"
+      ],
+      "id": 47450,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "ROUTE 5",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 5",
+        "Enable"
+      ],
+      "id": 47451,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Enable",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 5",
+        "IP Address"
+      ],
+      "id": 47452,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Address",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 5",
+        "IP Mask"
+      ],
+      "id": 47453,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Mask",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "MANAGEMENT PORT",
+      "path": [
+        "ROOT_NODE_V2",
+        "MANAGEMENT PORT",
+        "ROUTES",
+        "ROUTE 5",
+        "IP Gateway"
+      ],
+      "id": 47458,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 4
+      },
+      "label": "IP Gateway",
+      "kind": "ipaddr",
+      "access": 3,
+      "value": {
+        "kind": "ipaddr",
+        "raw": "AAAAAA==",
+        "ip": "0.0.0.0"
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1"
+      ],
+      "id": 15605,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "QSFP 1",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Announcement Rate"
+      ],
+      "id": 47421,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "710": "Off",
+          "711": "1 s",
+          "712": "3 s",
+          "713": "10 s",
+          "714": "30 s",
+          "715": "60 s"
+        }
+      },
+      "label": "Announcement Rate",
+      "kind": "enum",
+      "access": 3,
+      "default": "60 s",
+      "enum_items": [
+        "Off",
+        "1 s",
+        "3 s",
+        "10 s",
+        "30 s",
+        "60 s"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAACyw==",
+        "str": "60 s",
+        "enum": 203
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Present"
+      ],
+      "id": 17568,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Vendor Name"
+      ],
+      "id": 17565,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "Q0lTQ09TT0xJRE9QVElDUwA=",
+        "str": "CISCOSOLIDOPTICS"
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Vendor Part Number"
+      ],
+      "id": 17566,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Part Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "Q0lTLVFTRlAxMDBHLURSMQA=",
+        "str": "CIS-QSFP100G-DR1"
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Vendor Serial Number"
+      ],
+      "id": 17567,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "U09aMTMxR0cyNDYA",
+        "str": "SOZ131GG246"
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Temperature"
+      ],
+      "id": 17564,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAOQ==",
+        "int": 57
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Power Rx 1"
+      ],
+      "id": 47397,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 1",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "P6i0OQ==",
+        "float": 1.3179999589920044
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Power Rx 2"
+      ],
+      "id": 47409,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 2",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Power Rx 3"
+      ],
+      "id": 47410,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 3",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Power Rx 4"
+      ],
+      "id": 47411,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 4",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Power Tx 1"
+      ],
+      "id": 47403,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 1",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "P7O2Rg==",
+        "float": 1.4040000438690186
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Power Tx 2"
+      ],
+      "id": 47412,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 2",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Power Tx 3"
+      ],
+      "id": 47413,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 3",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 1",
+        "Power Tx 4"
+      ],
+      "id": 47414,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 4",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2"
+      ],
+      "id": 15606,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "QSFP 2",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Announcement Rate"
+      ],
+      "id": 47422,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "710": "Off",
+          "711": "1 s",
+          "712": "3 s",
+          "713": "10 s",
+          "714": "30 s",
+          "715": "60 s"
+        }
+      },
+      "label": "Announcement Rate",
+      "kind": "enum",
+      "access": 3,
+      "default": "60 s",
+      "enum_items": [
+        "Off",
+        "1 s",
+        "3 s",
+        "10 s",
+        "30 s",
+        "60 s"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAACyw==",
+        "str": "60 s",
+        "enum": 203
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Present"
+      ],
+      "id": 19754,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEQ==",
+        "str": "OK",
+        "enum": 17
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Vendor Name"
+      ],
+      "id": 19758,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "Q0lTQ09TT0xJRE9QVElDUwA=",
+        "str": "CISCOSOLIDOPTICS"
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Vendor Part Number"
+      ],
+      "id": 19766,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Part Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "Q0lTLVFTRlAxMDBHLURSMQA=",
+        "str": "CIS-QSFP100G-DR1"
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Vendor Serial Number"
+      ],
+      "id": 19762,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "U09aMTMxR0cyNDcA",
+        "str": "SOZ131GG247"
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Temperature"
+      ],
+      "id": 19770,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAANw==",
+        "int": 55
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Power Rx 1"
+      ],
+      "id": 47398,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 1",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "P43S8g==",
+        "float": 1.1080000400543213
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Power Rx 2"
+      ],
+      "id": 47415,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 2",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Power Rx 3"
+      ],
+      "id": 47416,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 3",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Power Rx 4"
+      ],
+      "id": 47417,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 4",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Power Tx 1"
+      ],
+      "id": 47404,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 1",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "P9/fOw==",
+        "float": 1.7489999532699585
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Power Tx 2"
+      ],
+      "id": 47418,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 2",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Power Tx 3"
+      ],
+      "id": 47419,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 3",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 2",
+        "Power Tx 4"
+      ],
+      "id": 47420,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 4",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3"
+      ],
+      "id": 47459,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "QSFP 3",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Announcement Rate"
+      ],
+      "id": 47460,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "710": "Off",
+          "711": "1 s",
+          "712": "3 s",
+          "713": "10 s",
+          "714": "30 s",
+          "715": "60 s"
+        }
+      },
+      "label": "Announcement Rate",
+      "kind": "enum",
+      "access": 3,
+      "default": "60 s",
+      "enum_items": [
+        "Off",
+        "1 s",
+        "3 s",
+        "10 s",
+        "30 s",
+        "60 s"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAACyw==",
+        "str": "60 s",
+        "enum": 203
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Present"
+      ],
+      "id": 47461,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEA==",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Vendor Name"
+      ],
+      "id": 47462,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Vendor Part Number"
+      ],
+      "id": 47463,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Part Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Vendor Serial Number"
+      ],
+      "id": 47464,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Temperature"
+      ],
+      "id": 47465,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAAA==",
+        "int": 0
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Power Rx 1"
+      ],
+      "id": 47466,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 1",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Power Rx 2"
+      ],
+      "id": 47467,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 2",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Power Rx 3"
+      ],
+      "id": 47468,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 3",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Power Rx 4"
+      ],
+      "id": 47469,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 4",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Power Tx 1"
+      ],
+      "id": 47470,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 1",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Power Tx 2"
+      ],
+      "id": 47471,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 2",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Power Tx 3"
+      ],
+      "id": 47472,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 3",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 3",
+        "Power Tx 4"
+      ],
+      "id": 47473,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 4",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4"
+      ],
+      "id": 47474,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "QSFP 4",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Announcement Rate"
+      ],
+      "id": 47475,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "710": "Off",
+          "711": "1 s",
+          "712": "3 s",
+          "713": "10 s",
+          "714": "30 s",
+          "715": "60 s"
+        }
+      },
+      "label": "Announcement Rate",
+      "kind": "enum",
+      "access": 3,
+      "default": "60 s",
+      "enum_items": [
+        "Off",
+        "1 s",
+        "3 s",
+        "10 s",
+        "30 s",
+        "60 s"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAACyw==",
+        "str": "60 s",
+        "enum": 203
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Present"
+      ],
+      "id": 47476,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEA==",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Vendor Name"
+      ],
+      "id": 47477,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Vendor Part Number"
+      ],
+      "id": 47478,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Part Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Vendor Serial Number"
+      ],
+      "id": 47479,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Temperature"
+      ],
+      "id": 47480,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAAA==",
+        "int": 0
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Power Rx 1"
+      ],
+      "id": 47481,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 1",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Power Rx 2"
+      ],
+      "id": 47482,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 2",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Power Rx 3"
+      ],
+      "id": 47483,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 3",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Power Rx 4"
+      ],
+      "id": 47484,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx 4",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Power Tx 1"
+      ],
+      "id": 47485,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 1",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Power Tx 2"
+      ],
+      "id": 47486,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 2",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Power Tx 3"
+      ],
+      "id": 47487,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 3",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "QSFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "QSFP 4",
+        "Power Tx 4"
+      ],
+      "id": 47488,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx 4",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "SFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 1"
+      ],
+      "id": 19750,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "SFP 1",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "SFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 1",
+        "Announcement Rate"
+      ],
+      "id": 47423,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "710": "Off",
+          "711": "1 s",
+          "712": "3 s",
+          "713": "10 s",
+          "714": "30 s",
+          "715": "60 s"
+        }
+      },
+      "label": "Announcement Rate",
+      "kind": "enum",
+      "access": 3,
+      "default": "60 s",
+      "enum_items": [
+        "Off",
+        "1 s",
+        "3 s",
+        "10 s",
+        "30 s",
+        "60 s"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAACyw==",
+        "str": "60 s",
+        "enum": 203
+      }
+    },
+    {
+      "group": "SFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 1",
+        "Present"
+      ],
+      "id": 19755,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEA==",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "SFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 1",
+        "Vendor Name"
+      ],
+      "id": 19759,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 1",
+        "Vendor Part Number"
+      ],
+      "id": 19767,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Part Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 1",
+        "Vendor Serial Number"
+      ],
+      "id": 19763,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 1",
+        "Temperature"
+      ],
+      "id": 19771,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAAA==",
+        "int": 0
+      }
+    },
+    {
+      "group": "SFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 1",
+        "Power Rx"
+      ],
+      "id": 47399,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "SFP 1",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 1",
+        "Power Tx"
+      ],
+      "id": 47405,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "SFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 2"
+      ],
+      "id": 19751,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "SFP 2",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "SFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 2",
+        "Announcement Rate"
+      ],
+      "id": 47424,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "710": "Off",
+          "711": "1 s",
+          "712": "3 s",
+          "713": "10 s",
+          "714": "30 s",
+          "715": "60 s"
+        }
+      },
+      "label": "Announcement Rate",
+      "kind": "enum",
+      "access": 3,
+      "default": "60 s",
+      "enum_items": [
+        "Off",
+        "1 s",
+        "3 s",
+        "10 s",
+        "30 s",
+        "60 s"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAACyw==",
+        "str": "60 s",
+        "enum": 203
+      }
+    },
+    {
+      "group": "SFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 2",
+        "Present"
+      ],
+      "id": 19756,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEA==",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "SFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 2",
+        "Vendor Name"
+      ],
+      "id": 19760,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 2",
+        "Vendor Part Number"
+      ],
+      "id": 19768,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Part Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 2",
+        "Vendor Serial Number"
+      ],
+      "id": 19764,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 2",
+        "Temperature"
+      ],
+      "id": 19772,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAAA==",
+        "int": 0
+      }
+    },
+    {
+      "group": "SFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 2",
+        "Power Rx"
+      ],
+      "id": 47400,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "SFP 2",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 2",
+        "Power Tx"
+      ],
+      "id": 47406,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "SFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 3"
+      ],
+      "id": 19752,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "SFP 3",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "SFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 3",
+        "Announcement Rate"
+      ],
+      "id": 47425,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "710": "Off",
+          "711": "1 s",
+          "712": "3 s",
+          "713": "10 s",
+          "714": "30 s",
+          "715": "60 s"
+        }
+      },
+      "label": "Announcement Rate",
+      "kind": "enum",
+      "access": 3,
+      "default": "60 s",
+      "enum_items": [
+        "Off",
+        "1 s",
+        "3 s",
+        "10 s",
+        "30 s",
+        "60 s"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAACyw==",
+        "str": "60 s",
+        "enum": 203
+      }
+    },
+    {
+      "group": "SFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 3",
+        "Present"
+      ],
+      "id": 19757,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEA==",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "SFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 3",
+        "Vendor Name"
+      ],
+      "id": 19761,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 3",
+        "Vendor Part Number"
+      ],
+      "id": 19769,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Part Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 3",
+        "Vendor Serial Number"
+      ],
+      "id": 19765,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 3",
+        "Temperature"
+      ],
+      "id": 19773,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAAA==",
+        "int": 0
+      }
+    },
+    {
+      "group": "SFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 3",
+        "Power Rx"
+      ],
+      "id": 47401,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "SFP 3",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 3",
+        "Power Tx"
+      ],
+      "id": 47407,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "SFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 4"
+      ],
+      "id": 19753,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "SFP 4",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "SFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 4",
+        "Announcement Rate"
+      ],
+      "id": 47426,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "710": "Off",
+          "711": "1 s",
+          "712": "3 s",
+          "713": "10 s",
+          "714": "30 s",
+          "715": "60 s"
+        }
+      },
+      "label": "Announcement Rate",
+      "kind": "enum",
+      "access": 3,
+      "default": "60 s",
+      "enum_items": [
+        "Off",
+        "1 s",
+        "3 s",
+        "10 s",
+        "30 s",
+        "60 s"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAACyw==",
+        "str": "60 s",
+        "enum": 203
+      }
+    },
+    {
+      "group": "SFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 4",
+        "Present"
+      ],
+      "id": 20779,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEA==",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "SFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 4",
+        "Vendor Name"
+      ],
+      "id": 20780,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Name",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 4",
+        "Vendor Part Number"
+      ],
+      "id": 20781,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Part Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 32,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 4",
+        "Vendor Serial Number"
+      ],
+      "id": 20778,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 5
+      },
+      "label": "Vendor Serial Number",
+      "kind": "string",
+      "access": 1,
+      "max_len": 16,
+      "value": {
+        "kind": "string",
+        "raw": "TkEA",
+        "str": "NA"
+      }
+    },
+    {
+      "group": "SFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 4",
+        "Temperature"
+      ],
+      "id": 20787,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 1,
+        "acp2.objType": 3
+      },
+      "label": "Temperature",
+      "unit": "C",
+      "kind": "int",
+      "access": 1,
+      "min": 0,
+      "max": 0,
+      "step": 1,
+      "default": 0,
+      "value": {
+        "kind": "int",
+        "raw": "AAAAAA==",
+        "int": 0
+      }
+    },
+    {
+      "group": "SFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 4",
+        "Power Rx"
+      ],
+      "id": 47402,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Rx",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "SFP 4",
+      "path": [
+        "ROOT_NODE_V2",
+        "SFP 4",
+        "Power Tx"
+      ],
+      "id": 47408,
+      "meta": {
+        "acp2.announceDelay": 60000,
+        "acp2.numType": 8,
+        "acp2.objType": 3
+      },
+      "label": "Power Tx",
+      "unit": "mW",
+      "kind": "float",
+      "access": 1,
+      "min": 0,
+      "max": 6.553500175476074,
+      "default": 0,
+      "value": {
+        "kind": "float",
+        "raw": "AAAAAA==",
+        "float": 0
+      }
+    },
+    {
+      "group": "SMARC",
+      "path": [
+        "ROOT_NODE_V2",
+        "SMARC"
+      ],
+      "id": 35910,
+      "meta": {
+        "acp2.numType": 0,
+        "acp2.objType": 0
+      },
+      "label": "SMARC",
+      "kind": "raw",
+      "access": 0,
+      "value": null
+    },
+    {
+      "group": "SMARC",
+      "path": [
+        "ROOT_NODE_V2",
+        "SMARC",
+        "Present"
+      ],
+      "id": 20783,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "16": "NA",
+          "17": "OK"
+        }
+      },
+      "label": "Present",
+      "kind": "enum",
+      "access": 1,
+      "default": "NA",
+      "enum_items": [
+        "NA",
+        "OK"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAAEA==",
+        "str": "NA",
+        "enum": 16
+      }
+    },
+    {
+      "group": "SMARC",
+      "path": [
+        "ROOT_NODE_V2",
+        "SMARC",
+        "Reboot Smarc"
+      ],
+      "id": 35911,
+      "meta": {
+        "acp2.announceDelay": 0,
+        "acp2.numType": 0,
+        "acp2.objType": 2,
+        "acp2.optionsMap": {
+          "7": "Off",
+          "8": "On"
+        }
+      },
+      "label": "Reboot Smarc",
+      "kind": "enum",
+      "access": 3,
+      "default": "Off",
+      "enum_items": [
+        "Off",
+        "On"
+      ],
+      "value": {
+        "kind": "enum",
+        "raw": "AAAABw==",
+        "str": "Off",
+        "enum": 7
+      }
+    }
+  ]
+}

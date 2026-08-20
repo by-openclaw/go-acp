@@ -143,6 +143,44 @@ func TestSlotProtos(t *testing.T) {
 	}
 }
 
+// TestParamTypeAndFormat_ACP2Meta pins the acp2 wire-type mapping: DM
+// objects from acp2 walks carry meta acp2.objType/acp2.numType, and the
+// emitted format hints must be the acp2 provider's vocabulary
+// (s8..u64 | float | ipv4 | preset). The generic kind fallback mapped
+// "uint" to "uint8", which the acp2 tree builder rejects — a real
+// CONVERT Hybrid walk then served an EMPTY tree (live 2026-08-20).
+func TestParamTypeAndFormat_ACP2Meta(t *testing.T) {
+	cases := []struct {
+		objType, numType float64
+		wantType, wantF  string
+	}{
+		{3, 4, "integer", "u8"},   // number u8 (the live failure)
+		{3, 2, "integer", "s32"},
+		{3, 7, "integer", "u64"},
+		{3, 8, "real", ""},        // float
+		{2, 0, "enum", ""},
+		{4, 10, "string", "ipv4"},
+		{5, 11, "string", ""},
+		{1, 5, "integer", "preset,u16"},
+		{1, 99, "integer", "preset"}, // preset with unknown numType
+	}
+	for _, c := range cases {
+		o := dmObject{Kind: "uint", Meta: map[string]any{
+			"acp2.objType": c.objType, "acp2.numType": c.numType,
+		}}
+		gotT, gotF := paramTypeAndFormat(o)
+		if gotT != c.wantType || gotF != c.wantF {
+			t.Errorf("objType=%v numType=%v = (%q,%q), want (%q,%q)",
+				c.objType, c.numType, gotT, gotF, c.wantType, c.wantF)
+		}
+	}
+	// Unknown objType falls through to the generic kind mapping.
+	o := dmObject{Kind: "int", Meta: map[string]any{"acp2.objType": float64(9)}}
+	if gotT, _ := paramTypeAndFormat(o); gotT != "integer" {
+		t.Errorf("fallthrough type = %q, want integer", gotT)
+	}
+}
+
 func TestDMPath(t *testing.T) {
 	if got, want := DMPath(".cache", "acp2", "SHPRM1@5.3.5"),
 		filepath.Join(".cache", "dm", "acp2", "SHPRM1@5.3.5.json"); got != want {

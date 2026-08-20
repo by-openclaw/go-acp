@@ -450,6 +450,57 @@ func isContainerKind(k string) bool {
 //     6=frame, 7=alarm, 8=file, 9=int32, 10=uint8).
 //  2. o.Kind  — falls back to the ValueKind enum (cross-protocol).
 func paramTypeAndFormat(o dmObject) (string, string) {
+	// acp2 walks store the exact wire types (meta acp2.objType +
+	// acp2.numType, spec §5.1 / §"Number types"). Emit the acp2
+	// provider's format-hint vocabulary (s8..u64 | float | ipv4 |
+	// preset — comma-joined tokens) so replay is byte-faithful. The
+	// generic kind fallback below mapped kind "uint" to hint "uint8",
+	// which the acp2 tree builder rejects — a real CONVERT Hybrid walk
+	// then served an EMPTY tree (found live 2026-08-20, fleet
+	// emulation).
+	if ot, ok := o.Meta["acp2.objType"]; ok {
+		numHint := ""
+		switch toUint8(o.Meta["acp2.numType"]) {
+		case 0:
+			numHint = "s8"
+		case 1:
+			numHint = "s16"
+		case 2:
+			numHint = "s32"
+		case 3:
+			numHint = "s64"
+		case 4:
+			numHint = "u8"
+		case 5:
+			numHint = "u16"
+		case 6:
+			numHint = "u32"
+		case 7:
+			numHint = "u64"
+		case 8:
+			numHint = "float"
+		}
+		switch toUint8(ot) {
+		case 1: // preset — numeric wire type rides the same hints
+			if numHint == "" {
+				return "integer", "preset"
+			}
+			return "integer", "preset," + numHint
+		case 2:
+			return "enum", ""
+		case 3: // number
+			if numHint == "float" {
+				return "real", ""
+			}
+			return "integer", numHint
+		case 4:
+			return "string", "ipv4"
+		case 5:
+			return "string", ""
+		}
+		// objType 0 (node) leaves reaching here (kind != raw) and
+		// unknown objTypes fall through to the generic mapping.
+	}
 	if v, ok := o.Meta["acp1_type"]; ok {
 		switch toUint8(v) {
 		case 1:
