@@ -201,9 +201,15 @@ func TestDispatch_ChannelFull(t *testing.T) {
 }
 
 // TestReadLoop_DebugLogOnError exercises the non-EOF read-error debug-log
-// branch in readLoop by aborting the TCP connection mid-stream.
+// branch in readLoop by aborting the TCP connection mid-stream. The abort
+// is gated on a channel the test closes only AFTER Connect succeeded —
+// an unconditional abort raced the client's WS-upgrade read on loaded
+// runners and made dialFake fatal before the branch under test ever ran
+// (windows-latest, run 32422888171; ADR-0029 determinism rule).
 func TestReadLoop_DebugLogOnError(t *testing.T) {
+	release := make(chan struct{})
 	fs := newFakeCerebrum(t, func(fc *fakeConn) {
+		<-release
 		// Write a partial frame header then RST the socket so the client's
 		// next ReadFull returns a non-EOF error.
 		_, _ = fc.c.Write([]byte{0x81, 0x05}) // declares 5-byte text, sends none
@@ -213,6 +219,7 @@ func TestReadLoop_DebugLogOnError(t *testing.T) {
 		_ = fc.c.Close()
 	})
 	p, _ := dialFake(t, fs)
+	close(release) // client fully connected — abort mid-frame now
 	// The readLoop will exit on the error; give it a moment. We can't assert
 	// the log line directly, but exercising the branch is the goal and the
 	// session must remain usable for Disconnect.
