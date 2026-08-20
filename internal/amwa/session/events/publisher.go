@@ -169,6 +169,28 @@ func (p *Publisher) SubscriberCount() int {
 	return len(p.clients)
 }
 
+// SubscribedTo reports whether any connected client currently has an
+// APPLIED subscription filter for the given source-id. This is the
+// observable state a caller must wait on before publishing:
+// SubscriberCount only proves a socket connected — the filter lands
+// later, when the client's command_subscription frame is read by
+// serve(). A publish in that window matches nothing (empty source
+// set), which is exactly the scheduling-dependent gap behind
+// TestSubscriberReceivesMatchingEvents flaking on loaded runners
+// (windows-latest, run 32421791860; ADR-0029 determinism rule).
+// Content-aware (not a count) so a full-replacement re-subscribe
+// (IS-07 semantics, A → B) is observable too.
+func (p *Publisher) SubscribedTo(srcID string) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	for _, c := range p.clients {
+		if c.matches(srcID) {
+			return true
+		}
+	}
+	return false
+}
+
 // serve runs the per-connection message loop until the client closes
 // or sends an unrecognised frame.
 func (p *Publisher) serve(ctx context.Context, ws *httpsession.WebSocket, remote string) {

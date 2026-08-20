@@ -53,19 +53,19 @@ func TestSubscriberReceivesMatchingEvents(t *testing.T) {
 		t.Fatalf("Subscribe: %v", err)
 	}
 
-	// Wait until publisher registered our subscription.
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if pub.SubscriberCount() == 1 {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
+	// Wait until the publisher has APPLIED our subscription filter —
+	// not merely accepted the socket. SubscriberCount()==1 plus a fixed
+	// sleep was a timing guess: on a loaded runner the publish landed
+	// before serve() read the command_subscription frame, matched an
+	// empty source set, and the test saw 0 frames (windows-latest flake,
+	// ADR-0029 determinism rule).
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) && !pub.SubscribedTo(srcA) {
+		time.Sleep(10 * time.Millisecond)
 	}
-	if pub.SubscriberCount() != 1 {
-		t.Fatalf("publisher never registered subscriber")
+	if !pub.SubscribedTo(srcA) {
+		t.Fatalf("publisher never applied the subscription filter")
 	}
-	// Allow the publisher one tick to process the subscribe command.
-	time.Sleep(100 * time.Millisecond)
 
 	got := make(chan is07.Message, 4)
 	var runErr error
@@ -250,16 +250,29 @@ func TestSubscriberReplaceSubscriptionSet(t *testing.T) {
 	if err := sub.Subscribe([]string{srcA}); err != nil {
 		t.Fatalf("Subscribe A: %v", err)
 	}
-	deadline := time.Now().Add(1 * time.Second)
-	for time.Now().Before(deadline) && pub.SubscriberCount() == 0 {
-		time.Sleep(20 * time.Millisecond)
+	// Wait for the A filter to be APPLIED (content-aware — see
+	// SubscribedTo), then replace with B and wait for the swap. Fixed
+	// sleeps here were the same scheduling guess as the
+	// ReceivesMatchingEvents flake: an emit racing the un-applied
+	// replacement drops the frame.
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) && !pub.SubscribedTo(srcA) {
+		time.Sleep(10 * time.Millisecond)
 	}
-	time.Sleep(100 * time.Millisecond)
+	if !pub.SubscribedTo(srcA) {
+		t.Fatal("subscription A never applied")
+	}
 
 	if err := sub.Subscribe([]string{srcB}); err != nil {
 		t.Fatalf("Subscribe B: %v", err)
 	}
-	time.Sleep(100 * time.Millisecond)
+	deadline = time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) && (!pub.SubscribedTo(srcB) || pub.SubscribedTo(srcA)) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !pub.SubscribedTo(srcB) || pub.SubscribedTo(srcA) {
+		t.Fatal("subscription replacement A→B never applied")
+	}
 
 	emitB := is07.EventBoolean{
 		EventCommon: is07.EventCommon{
