@@ -177,20 +177,33 @@ func (s *server) broadcastAnnounce(slot uint8, ann *codec.ACP2Message) {
 		Payload: raw,
 	}
 
+	// Deliver to EVERY session, not only those that sent AN2
+	// EnableProtocolEvents([2]). The spec gates announces on the enable
+	// (§3.3.4), but the shipping ecosystem contradicts it: Lawo VSM's
+	// gadgetserver never sends EnableProtocolEvents on its acp2 session
+	// and still expects value announces (live-verified against staging
+	// 2026-08-20 — VSM connected, no enable, values froze), so the real
+	// Neuron necessarily announces regardless of the gate. Same
+	// documented-exception pattern as SW-P-08 salvo cmd-04 (root
+	// CLAUDE.md "Spec-strict, no-workaround posture"): follow the wire
+	// reality every field controller depends on, keep both counts in
+	// the log so the deviation stays observable per fanout.
 	s.mu.Lock()
 	totalSessions := len(s.sessions)
+	subscribed := 0
 	targets := make([]*session, 0, len(s.sessions))
 	for sess := range s.sessions {
 		if sess.enabled[codec.AN2ProtoACP2] {
-			targets = append(targets, sess)
+			subscribed++
 		}
+		targets = append(targets, sess)
 	}
 	s.mu.Unlock()
 
 	s.logger.Info("acp2 announce fanout",
 		slog.Int("slot", int(slot)),
 		slog.Int("sessions_total", totalSessions),
-		slog.Int("sessions_subscribed", len(targets)),
+		slog.Int("sessions_subscribed", subscribed),
 		slog.Int("frame_bytes", len(raw)+8),
 	)
 
