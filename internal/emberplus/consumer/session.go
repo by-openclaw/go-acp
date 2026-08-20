@@ -546,7 +546,13 @@ func (s *Session) readLoop() {
 		// device's Glow DTD revision without walking the tree. Refs
 		// #470.
 		s.noteDtd(frame.DTDMinor, frame.DTDMajor)
-		if len(frame.Payload) == 0 {
+		// NOTE: an empty payload must NOT short-circuit here. Lawo VSM
+		// Studio's gadgetserver terminates multi-packet messages with a
+		// payload-LESS last packet (flags 0x60) — skipping empty frames
+		// before the reassembly switch left the buffered document
+		// incomplete forever, so a whole VSM reply decoded to nothing
+		// ("connected, 0 objects", issue #728, live capture 2026-08-20).
+		if len(frame.Payload) == 0 && frame.Flags == s101.FlagSingle {
 			continue
 		}
 
