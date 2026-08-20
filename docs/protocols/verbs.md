@@ -120,10 +120,13 @@ Global flags: `--mtx-id --level --dsts --srcs` (`--dsts` enables bootstrap rx01 
 
 | Verb | Description | Scope |
 |---|---|---|
+| `interrogate` / `connect` | one crosspoint read / write (rx 01/02; `--extended` → rx 65/66) | single dst |
+| `connect-on-go` / `go` / `salvo-connect` | staged crosspoints + commit (rx 05/06/35/36) | salvo |
+| `protect-interrogate/connect/disconnect/name/dump` | protect family (rx 101-105) | owner-only authority |
+| `dual-status` / `lock-status` / `status` / `router-config` | controller state reads (rx 050/014/07/075) | read |
+| `usage` | reverse tally: one interrogate per dst (rx 01/65 sweep; size from `--dsts` or rx 075) | bulk read (#722) |
+| `replace` | substitute source A with B on every dst carrying A (`--check` dry-run, ADR-0007) | bulk write (#722) |
 | `watch` | subscribe to async tallies (`--timeout`) | until Ctrl-C / timeout |
-
-> sw02p consumer is **watch-only today**; interrogate/connect/protect are gated
-> behind `approve seq N` (per-command queue). Most commands not yet wired.
 
 ---
 

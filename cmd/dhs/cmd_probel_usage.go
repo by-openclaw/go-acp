@@ -65,6 +65,11 @@ func probelBuildUsage(firstDst int, srcs []int, level int, protect map[int]strin
 		dst := firstDst + i
 		rows = append(rows, probelUsageRow{Src: src, Dst: dst, Level: level, Protect: protect[dst]})
 	}
+	return sortProbelUsage(rows)
+}
+
+// sortProbelUsage orders rows source-keyed: by (src, dst).
+func sortProbelUsage(rows []probelUsageRow) []probelUsageRow {
 	sort.SliceStable(rows, func(i, j int) bool {
 		if rows[i].Src != rows[j].Src {
 			return rows[i].Src < rows[j].Src

@@ -88,6 +88,10 @@ func runProbelsw02p(ctx context.Context, args []string) error {
 		return runProbelsw02pRouterConfig(ctx, rest)
 	case "watch":
 		return runProbelsw02pWatch(ctx, rest)
+	case "usage":
+		return runProbelSW02Usage(ctx, rest)
+	case "replace":
+		return runProbelSW02Replace(ctx, rest)
 	}
 	return fmt.Errorf("unknown probel-sw02p subcommand %q", sub)
 }
@@ -126,6 +130,11 @@ SUBCOMMANDS
   lock-status         read source-lock bitmap, GET only (rx 014; SW-P-02 lock is read-only)
   status              read controller status — 2 (rx 07)
   router-config       read router configuration / level map (rx 075)
+  usage               reverse tally: one interrogate per dst (rx 01/65 sweep;
+                      size from --dsts or rx 075); --srce/--dest filter,
+                      csv (ADR-0028 snapshot) | ascii
+  replace             substitute source A with B on every dst carrying A
+                      (rx 02/66); --check dry-run (ADR-0007 ensure)
   watch               subscribe to async tallies until Ctrl-C / --timeout
 
 EXAMPLES
