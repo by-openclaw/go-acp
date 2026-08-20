@@ -91,7 +91,10 @@ The canonical generic set (dispatched in `cmd/dhs/main.go`):
 | `replay` | re-emit a captured `frames.jsonl` on the wire | — | (deferred, ADR-0021) |
 
 Per-protocol additions (Tree/DM): **emberplus** adds `matrix`, `invoke`, `stream`,
-`bench`; **acp2** adds `diag` (AN2 diagnostic probes).
+`bench`, `usage` (matrix reverse tally: where is each source assigned; #722) and
+`replace` (substitute matrix source A with B everywhere, `--check` dry-run,
+ADR-0007; behavior-aware — 1to1/1toN absolute take, NtoM connect+disconnect);
+**acp2** adds `diag` (AN2 diagnostic probes).
 
 ---
 
