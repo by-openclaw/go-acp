@@ -149,7 +149,7 @@ func runProbelExport(ctx context.Context, args []string) error {
 
 	fmt.Printf("exported matrix=%d level=%d:\n  %s  (descriptor)\n  %s  (%d sources)\n  %s  (%d dests)\n  %s  (%d crosspoints)\n  %s  (%d protect row(s))\n  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
 		mtx, level, descPath, srcPath, len(srcLabels[codec.NameLen12]), dstPath, len(dstLabels[codec.NameLen12]), xpPath, nXP, protPath, nProt)
-	return nil
+	return writePackMeta(*outDir, "probel-sw08p", hostOnly(addr))
 }
 
 // writeProbelProtectCSV emits the protect dump as

@@ -275,8 +275,9 @@ func formatMatrixLabelCSV(keyCol string, groups []string, byGroup map[string]map
 // ---------------------------------------------------------------------
 
 // runMatrixSetExport writes the canonical matrix file set for ONE
-// matrix selected by --path/--oid (or the only matrix in the tree).
-func runMatrixSetExport(plug consumer.Protocol, objs []consumer.Object, addr, outDir, prefix string) error {
+// matrix selected by --path/--oid (or the only matrix in the tree),
+// plus the pack meta.json (#738).
+func runMatrixSetExport(plug consumer.Protocol, objs []consumer.Object, addr, outDir, prefix, proto, target string) error {
 	mc, ok := plug.(matrixXpointConn)
 	if !ok {
 		return fmt.Errorf("%w: this protocol has no matrix surface — --out-dir matrix export unsupported", consumer.ErrValidationFailed)
@@ -330,7 +331,7 @@ func runMatrixSetExport(plug consumer.Protocol, objs []consumer.Object, addr, ou
 		}
 		fmt.Fprintf(os.Stderr, "export: wrote %s (%d row(s))\n", p, strings.Count(f.content, "\n")-1)
 	}
-	return nil
+	return writePackMeta(outDir, proto, target)
 }
 
 // ---------------------------------------------------------------------

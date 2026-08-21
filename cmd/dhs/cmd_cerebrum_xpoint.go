@@ -800,7 +800,7 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 		}
 		fmt.Fprintf(os.Stderr, "cerebrum-nb export: wrote %s (%d row(s))\n", path, strings.Count(f.content, "\n")-1)
 	}
-	return nil
+	return writePackMeta(*outDir, "cerebrum-nb", host+" router="+*router)
 }
 
 // cerebrumRouterIsRM reports whether the --router target is the central
