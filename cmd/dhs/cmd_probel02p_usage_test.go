@@ -52,6 +52,41 @@ func TestSW02RouterConfigDsts(t *testing.T) {
 	}
 }
 
+func TestSW02RouterConfigSizes(t *testing.T) {
+	r1 := probelsw02proto.RouterConfigResponse{Response1: &codec.RouterConfigResponse1Params{
+		LevelMap: 0b1010,
+		Levels: []codec.RouterConfigResponse1LevelEntry{
+			{NumDestinations: 64, NumSources: 32},
+			{NumDestinations: 128, NumSources: 96},
+		},
+	}}
+	if d, s := sw02RouterConfigSizes(r1, 3); d != 128 || s != 96 {
+		t.Fatalf("level 3 = (%d,%d), want (128,96)", d, s)
+	}
+	if d, s := sw02RouterConfigSizes(r1, 0); d != 0 || s != 0 {
+		t.Fatalf("absent level = (%d,%d), want zeros", d, s)
+	}
+	if d, s := sw02RouterConfigSizes(r1, 28); d != 0 || s != 0 {
+		t.Fatalf("out-of-range level = (%d,%d), want zeros", d, s)
+	}
+	r2 := probelsw02proto.RouterConfigResponse{Response2: &codec.RouterConfigResponse2Params{
+		LevelMap: 0b1,
+		Levels:   []codec.RouterConfigResponse2LevelEntry{{NumDestinations: 16, NumSources: 8}},
+	}}
+	if d, s := sw02RouterConfigSizes(r2, 0); d != 16 || s != 8 {
+		t.Fatalf("r2 level 0 = (%d,%d), want (16,8)", d, s)
+	}
+	if d, s := sw02RouterConfigSizes(probelsw02proto.RouterConfigResponse{}, 0); d != 0 || s != 0 {
+		t.Fatalf("empty union = (%d,%d), want zeros", d, s)
+	}
+}
+
+func TestRunProbelSW02Export_Validation(t *testing.T) {
+	if err := runProbelSW02Export(context.Background(), []string{"--extended"}); err == nil || !strings.Contains(err.Error(), "missing <host:port>") {
+		t.Fatalf("err = %v, want missing host", err)
+	}
+}
+
 func TestSortProbelUsage(t *testing.T) {
 	rows := sortProbelUsage([]probelUsageRow{
 		{Src: 7, Dst: 2}, {Src: 3, Dst: 9}, {Src: 3, Dst: 1},
