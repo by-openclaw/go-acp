@@ -283,11 +283,24 @@ func TestWrite(t *testing.T) {
 func TestCloseIdempotentAndWakesPending(t *testing.T) {
 	a, b := net.Pipe()
 	defer func() { _ = b.Close() }()
+	// The peer signals after its FIRST successful read: Send registers
+	// c.pending BEFORE conn.Write, so pending != nil alone does not
+	// prove the write finished — Close racing the in-flight write made
+	// the parked Send return a pipe-write error instead of the EOF
+	// wakeup (macOS main red, run 32537698497; ADR-0029 determinism
+	// rule). net.Pipe delivers one Write to one Read, so the first
+	// read = the whole frame is out of Send's hands.
+	frameRead := make(chan struct{})
 	go func() {
 		buf := make([]byte, 256)
+		first := true
 		for {
 			if _, err := b.Read(buf); err != nil {
 				return
+			}
+			if first {
+				first = false
+				close(frameRead)
 			}
 		}
 	}()
@@ -307,6 +320,11 @@ func TestCloseIdempotentAndWakesPending(t *testing.T) {
 		defer cli.mu.Unlock()
 		return cli.pending != nil
 	})
+	select {
+	case <-frameRead:
+	case <-time.After(2 * time.Second):
+		t.Fatal("peer never read the parked Send's frame")
+	}
 
 	if err := cli.Close(); err != nil {
 		t.Errorf("first Close: %v", err)
