@@ -145,3 +145,30 @@ func TestParseXpointRows(t *testing.T) {
 		t.Errorf("parsed = %+v, want [{0 0 0 3} {1 0 7 9}]", got)
 	}
 }
+
+// TestParseXpointRows_CanonicalGrammar pins the header-keyed canonical
+// shape (#738): dest,srce,levels[,matrix_id], with multi-level cells
+// expanded to one row per level and an absent matrix column = matrix 0.
+func TestParseXpointRows_CanonicalGrammar(t *testing.T) {
+	rows := [][]string{
+		{"dest", "srce", "levels", "matrix_id"},
+		{"5", "12", "0", "1"},
+		{"6", "3", "1;2", "1"}, // expands to two rows
+		{"x", "3", "0", "1"},   // non-int dest -> dropped
+	}
+	got := parseXpointRows(rows)
+	want := []xpointRow{{1, 0, 5, 12}, {1, 1, 6, 3}, {1, 2, 6, 3}}
+	if len(got) != len(want) {
+		t.Fatalf("parsed %d rows, want %d: %+v", len(got), len(want), got)
+	}
+	for i, w := range want {
+		if got[i] != w {
+			t.Fatalf("row %d = %+v, want %+v", i, got[i], w)
+		}
+	}
+	// No matrix_id column -> matrix 0; "level" singular accepted.
+	got = parseXpointRows([][]string{{"dest", "srce", "level"}, {"2", "9", "3"}})
+	if len(got) != 1 || got[0] != (xpointRow{0, 3, 2, 9}) {
+		t.Fatalf("no-matrix parse = %+v", got)
+	}
+}
