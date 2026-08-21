@@ -53,6 +53,16 @@ func TestWalk_VSMGadgetserverDialect(t *testing.T) {
 				continue
 			}
 			if f.IsEmBER() {
+				// An empty SINGLE-packet EmBER frame precedes the real
+				// reply: the read loop must skip it (the #729 guard —
+				// empty-skip applies ONLY to FlagSingle) and still
+				// decode what follows. Deterministic pin for the skip
+				// branch: live sessions only hit it when a keepalive-ish
+				// empty frame happens to race in (coverage floor red,
+				// PR #742 run 32536961316).
+				_, _ = conn.Write(s101.Encode(&s101.Frame{
+					MsgType: s101.MsgEmBER, Command: s101.CmdEmBER, Flags: s101.FlagSingle,
+				}))
 				// Reply exactly like VSM: first + empty last packet.
 				_, _ = conn.Write(vsmRootFirst)
 				_, _ = conn.Write(vsmRootLast)

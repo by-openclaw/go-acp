@@ -121,9 +121,70 @@ func runProbelExport(ctx context.Context, args []string) error {
 		return err
 	}
 
-	fmt.Printf("exported matrix=%d level=%d:\n  %s  (%d sources)\n  %s  (%d dests)\n  %s  (%d crosspoints)\n  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
-		mtx, level, srcPath, len(srcLabels[codec.NameLen12]), dstPath, len(dstLabels[codec.NameLen12]), xpPath, nXP)
+	// -matrix.csv — ADR-0023 descriptor (#738 unit 2). SW-P-08 routes
+	// one source per destination: behavior 1toN. Sizes come from what
+	// the wire just answered: crosspoint count + source-name count.
+	desc := matrixDesc{
+		Matrix:   strconv.Itoa(int(mtx)),
+		Behavior: "1toN",
+		Targets:  nXP,
+		Sources:  len(srcLabels[codec.NameLen12]),
+	}
+	descPath := facetFile(*outDir, *prefix, "matrix")
+	if err := os.WriteFile(descPath, []byte(formatMatrixDescCSV([]matrixDesc{desc})), 0o644); err != nil {
+		return err
+	}
+
+	// -protect.csv — per-dst protect state (rx 019 / tx 020), in the
+	// exact shape `import --protect` consumes.
+	pres, perr := p.ProtectTallyDump(cctx, mtx, level, 0)
+	if perr != nil {
+		return fmt.Errorf("protect-dump: %w", perr)
+	}
+	protPath := facetFile(*outDir, *prefix, "protect")
+	nProt, err := writeProbelProtectCSV(protPath, mtx, level, pres)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("exported matrix=%d level=%d:\n  %s  (descriptor)\n  %s  (%d sources)\n  %s  (%d dests)\n  %s  (%d crosspoints)\n  %s  (%d protect row(s))\n  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
+		mtx, level, descPath, srcPath, len(srcLabels[codec.NameLen12]), dstPath, len(dstLabels[codec.NameLen12]), xpPath, nXP, protPath, nProt)
 	return nil
+}
+
+// writeProbelProtectCSV emits the protect dump as
+// matrix_id,level_id,dst_id,state,device — the shape applyProbelProtectCSV
+// reads back. States outside the none/probel pair are written numerically
+// (import skips them — honest, never coerced).
+func writeProbelProtectCSV(path string, mtx, level uint8, res codec.ProtectTallyDumpParams) (int, error) {
+	f, err := os.Create(path)
+	if err != nil {
+		return 0, fmt.Errorf("create %s: %w", path, err)
+	}
+	defer func() { _ = f.Close() }()
+	w := csv.NewWriter(f)
+	defer w.Flush()
+	if err := w.Write([]string{"matrix_id", "level_id", "dst_id", "state", "device"}); err != nil {
+		return 0, err
+	}
+	n := 0
+	for i, it := range res.Items {
+		state := strconv.Itoa(int(it.State))
+		switch it.State {
+		case codec.ProtectNone:
+			state = "none"
+		case codec.ProtectProbel:
+			state = "probel"
+		}
+		if err := w.Write([]string{
+			strconv.Itoa(int(mtx)), strconv.Itoa(int(level)),
+			strconv.Itoa(int(res.FirstDestinationID) + i), state, strconv.Itoa(int(it.DeviceID)),
+		}); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, w.Error()
 }
 
 func trimProbelName(s string) string { return strings.TrimRight(s, "\x00 ") }
@@ -167,8 +228,13 @@ func writeProbelNameCSV(path, idCol string, mtx, level uint8, first int, sizeLab
 	return w.Error()
 }
 
-// writeProbelXpointCSV emits the crosspoint tally as matrix,level,dst,src
-// (dst <- src). Returns the number of crosspoints written.
+// writeProbelXpointCSV emits the crosspoint tally in the CANONICAL
+// family grammar (dest,srce,levels — cerebrum-nb / ember+ / sw02p
+// shape) with matrix_id appended as an extra header-keyed column
+// (#738 rule 2: new attribute = appended column; the family parsers
+// index by header name and ignore extras). Import accepts this shape
+// AND the legacy matrix_id,level_id,dst_id,src_id files. Returns the
+// number of crosspoints written.
 func writeProbelXpointCSV(path string, mtx, level uint8, res probelproto.TallyDumpResult) (int, error) {
 	f, err := os.Create(path)
 	if err != nil {
@@ -177,11 +243,11 @@ func writeProbelXpointCSV(path string, mtx, level uint8, res probelproto.TallyDu
 	defer func() { _ = f.Close() }()
 	w := csv.NewWriter(f)
 	defer w.Flush()
-	if err := w.Write([]string{"matrix_id", "level_id", "dst_id", "src_id"}); err != nil {
+	if err := w.Write([]string{"dest", "srce", "levels", "matrix_id"}); err != nil {
 		return 0, err
 	}
 	row := func(dst, src int) error {
-		return w.Write([]string{strconv.Itoa(int(mtx)), strconv.Itoa(int(level)), strconv.Itoa(dst), strconv.Itoa(src)})
+		return w.Write([]string{strconv.Itoa(dst), strconv.Itoa(src), strconv.Itoa(int(level)), strconv.Itoa(int(mtx))})
 	}
 	n := 0
 	if res.IsWord {
@@ -580,7 +646,57 @@ type xpointRow struct {
 // silently dropping short (<4 field) or non-integer rows — same leniency as the
 // original importer.
 func parseXpointRows(rows [][]string) []xpointRow {
+	if len(rows) == 0 {
+		return nil
+	}
+	// Header-keyed (#738): accept the canonical family grammar
+	// (dest,srce,levels[,matrix_id]) AND the legacy probel shape
+	// (matrix_id,level_id,dst_id,src_id) by sniffing the header.
+	idx := map[string]int{}
+	for i, h := range rows[0] {
+		idx[strings.ToLower(strings.TrimSpace(h))] = i
+	}
+	cell := func(rec []string, col int) (int, bool) {
+		if col < 0 || col >= len(rec) {
+			return 0, false
+		}
+		n, err := strconv.Atoi(strings.TrimSpace(rec[col]))
+		return n, err == nil
+	}
+	colOr := func(name string, def int) int {
+		if i, ok := idx[name]; ok {
+			return i
+		}
+		return def
+	}
+
 	var out []xpointRow
+	if _, canonical := idx["dest"]; canonical {
+		destCol, srceCol := idx["dest"], idx["srce"]
+		lvlCol := colOr("levels", colOr("level", -1))
+		mtxCol := colOr("matrix_id", -1)
+		for _, rec := range rows[1:] {
+			dst, ok1 := cell(rec, destCol)
+			src, ok2 := cell(rec, srceCol)
+			if !ok1 || !ok2 {
+				continue
+			}
+			mtx, _ := cell(rec, mtxCol) // absent column = matrix 0
+			levels := []string{"0"}
+			if lvlCol >= 0 && lvlCol < len(rec) {
+				levels = strings.Split(strings.TrimSpace(rec[lvlCol]), ";")
+			}
+			for _, ls := range levels {
+				lvl, err := strconv.Atoi(strings.TrimSpace(ls))
+				if err != nil {
+					continue
+				}
+				out = append(out, xpointRow{uint8(mtx), uint8(lvl), uint16(dst), uint16(src)})
+			}
+		}
+		return out
+	}
+	// Legacy positional shape.
 	for _, rec := range rows[1:] {
 		if len(rec) < 4 {
 			continue
