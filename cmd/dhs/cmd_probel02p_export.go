@@ -131,5 +131,5 @@ func runProbelSW02Export(ctx context.Context, args []string) error {
 
 	fmt.Printf("exported matrix=%d level=%d:\n  %s  (descriptor %dx%d)\n  %s  (%d crosspoint(s))\n  (no label/category files — SW-P-02 has no name or category commands)\n",
 		mc.MatrixID, level, descPath, count, srcs, xpPath, len(xrows))
-	return nil
+	return writePackMeta(*outDir, "probel-sw02p", hostOnly(addr))
 }

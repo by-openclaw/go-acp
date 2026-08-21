@@ -107,7 +107,7 @@ func runExport(ctx context.Context, args []string) error {
 			}
 			all = append(all, objs...)
 		}
-		return runMatrixSetExport(plug, all, *pathFlag, *outDir, *prefix)
+		return runMatrixSetExport(plug, all, *pathFlag, *outDir, *prefix, cf.protocol, host)
 	}
 
 	for s := 0; s < info.NumSlots; s++ {

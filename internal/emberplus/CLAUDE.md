@@ -182,6 +182,15 @@ S101 layer. Respond to every request promptly.
   `TestReal_EcosystemBytes` (50.0 → `80 05 19`, 100.0 → `80 06 19`,
   0.1 → `80 fc 0c cc cc cc cc cc cd`). Verified live against EmberViewer
   v2.40.0.35 + Lawo VSM Studio.
+- VSM multi-packet dialect (#728/#729): Lawo VSM's gadgetserver
+  terminates multi-packet S101 messages with a payload-LESS last
+  packet (flags 0x60). This dialect is NOT universally supported —
+  Cerebrum-as-consumer rejects it (owner-observed 2026-08-22). Our
+  consumer ACCEPTS both terminations (empty last packet completes
+  reassembly; empty-frame skip applies only to FlagSingle — pinned by
+  `consumer/vsm_dialect_test.go`), but our provider EMITS only the
+  spec dialect: `provider/session.go writeEmBERChunks` always puts
+  payload in the last chunk. Never emit the VSM form.
 - S101 reader resyncs on a second BOF mid-frame (`codec/s101/reader.go`).
   Spec mandates 0xFE escape-stuffing; Lawo VSM-as-consumer emits a 15-byte
   non-S101 preamble before its first real frame on every reconnect, and
