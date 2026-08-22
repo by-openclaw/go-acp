@@ -94,12 +94,13 @@ signing belongs to the parked hardening topic).
 
 Avahi 0.8 is installed, active and pinned by the `dhs_mdns` role on all
 four LXCs (Docker hosts exclude `docker0` from Avahi). On `win11` the
-role stages Apple's `BonjourPSSetup.exe` at `C:\dhs\installers\` and
-manages the service, but the silent install hangs in non-interactive
-sessions on Windows 11 — install it ONCE interactively at the VM
-console (double-click the staged installer); the role then keeps
-"Bonjour Service" running. dhs uses the stdlib mDNS fallback on Windows
-until the Bonjour backend (#195) lands, so this is not load-bearing yet.
+role installs Apple Bonjour unattended: it stages `BonjourPSSetup.exe`
+at `C:\dhs\installers\`, carves the embedded CAB, expands it and
+installs the core `Bonjour64.msi` with `msiexec /qn` (the bootstrapper's
+own silent mode only installs the Print-Services MSI, which fails
+without the core — #797), then keeps "Bonjour Service" running /
+automatic. dhs uses the stdlib mDNS fallback on Windows until the
+Bonjour backend (#195) lands.
 
 ## Host baseline (`dhs_host` role, #800)
 
