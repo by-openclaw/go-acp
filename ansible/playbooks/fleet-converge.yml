@@ -1,0 +1,17 @@
+---
+# Converge the test fleet (epic #780). Run from the control node
+# (dhs-debian .103, repo clone ~/acp):
+#
+#   cd ~/acp/ansible
+#   ansible-playbook playbooks/fleet-converge.yml          # apply
+#   ansible-playbook playbooks/fleet-converge.yml          # again -> changed=0
+#   ansible-playbook playbooks/fleet-converge.yml --check  # dry-run
+#
+# Roles land one per task issue: dhs_access (#782) · dhs_hostname (#783)
+# · dhs_mdns (#784) · dhs_firewall (#785). fleet-verify.yml (#786) asserts
+# the result without changing anything.
+- name: Converge fleet access, names, mDNS and firewall
+  hosts: dhs_clients
+  gather_facts: true
+  roles:
+    - dhs_access
