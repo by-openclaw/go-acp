@@ -27,6 +27,7 @@ import (
 // docs generation).
 func runTree(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("tree", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpTree) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number (default 0)")
 	format := fs.String("format", "ascii", `output format: "ascii" (default) or "plantuml"`)

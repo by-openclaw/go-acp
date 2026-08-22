@@ -37,6 +37,7 @@ func canonicalDirection(d string) (string, error) {
 // output directory using the schema locked in #43.
 func runExtract(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("extract", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpExtract) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 
 	manufacturer := fs.String("manufacturer", "",

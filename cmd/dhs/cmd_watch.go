@@ -43,6 +43,7 @@ import (
 // walks; opt in via --slot, --slots, or --auto-walk-on-plug.
 func runWatch(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("watch", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpWatch) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", -1, "slot filter (-1 = any); also walks this slot at startup")
 	slotsArg := fs.String("slots", "",

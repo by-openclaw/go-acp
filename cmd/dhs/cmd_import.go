@@ -44,6 +44,7 @@ func (m *multiString) Set(s string) error {
 
 func runImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpImport) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	file := fs.String("file", "", "snapshot file (.json, .yaml, .csv)")
 	dry := fs.Bool("dry-run", false, "validate and list would-write actions without sending")

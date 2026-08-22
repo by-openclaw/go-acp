@@ -31,6 +31,7 @@ func ensureValErr(reason string) *consumer.ValidationError {
 // producer/registry concern and is rejected for the consumer value-ensure.
 func runEnsure(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("ensure", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpEnsure) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number (default 0)")
 	group := fs.String("group", "", "object group name")

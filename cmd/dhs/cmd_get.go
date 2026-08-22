@@ -11,6 +11,7 @@ import (
 
 func runGet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("get", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpGet) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number (default 0)")
 	group := fs.String("group", "", "object group (optional when --label is unique across groups)")

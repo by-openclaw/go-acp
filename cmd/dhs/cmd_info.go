@@ -8,6 +8,7 @@ import (
 
 func runInfo(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("info", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpInfo) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	host, rest, err := popHost(args)

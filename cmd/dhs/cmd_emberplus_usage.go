@@ -182,6 +182,7 @@ EXAMPLES
 // runEmberUsage drives `dhs consumer emberplus usage`.
 func runEmberUsage(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("emberplus-usage", flag.ContinueOnError)
+	fs.Usage = verbUsageFn(fs, helpEmberUsage) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number")
 	matrixPath := fs.String("path", "", "matrix path: dotted label OR numeric OID (omitted = the only matrix in the tree)")
@@ -275,6 +276,7 @@ func runEmberUsage(ctx context.Context, args []string) error {
 // runEmberReplace drives `dhs consumer emberplus replace`.
 func runEmberReplace(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("emberplus-replace", flag.ContinueOnError)
+	fs.Usage = verbUsageFn(fs, helpEmberReplace) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number")
 	matrixPath := fs.String("path", "", "matrix path: dotted label OR numeric OID (omitted = the only matrix in the tree)")
