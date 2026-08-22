@@ -1,0 +1,88 @@
+---
+# The installer is Git-LFS tracked: a clone without git-lfs holds a 132-byte
+# pointer file, which Windows rejects as "not compatible". Refuse to ship a
+# pointer — the control-node play (playbooks/control-node.yml) pulls LFS.
+- name: Installer on the control node is the real binary, not an LFS pointer
+  ansible.builtin.stat:
+    path: "{{ dhs_mdns_bonjour_installer_src }}"
+  delegate_to: localhost
+  run_once: true
+  register: dhs_mdns_installer_stat
+
+- name: Assert installer size (LFS pointer guard)
+  ansible.builtin.assert:
+    that:
+      - dhs_mdns_installer_stat.stat.exists
+      - dhs_mdns_installer_stat.stat.size > 1000000
+    fail_msg: >-
+      {{ dhs_mdns_bonjour_installer_src }} is {{ dhs_mdns_installer_stat.stat.size | default(0) }}
+      bytes — a Git LFS pointer. Run playbooks/control-node.yml (git-lfs + lfs pull) first.
+  run_once: true
+
+- name: Installer drop directory
+  ansible.windows.win_file:
+    path: "{{ dhs_mdns_bonjour_installer_dst | win_dirname }}"
+    state: directory
+
+- name: Stage the Bonjour installer from the repo assets
+  ansible.windows.win_copy:
+    src: "{{ dhs_mdns_bonjour_installer_src }}"
+    dest: "{{ dhs_mdns_bonjour_installer_dst }}"
+
+- name: Is Bonjour installed? (dnssd.dll present)
+  ansible.windows.win_stat:
+    path: C:\Windows\System32\dnssd.dll
+  register: dhs_mdns_dnssd
+
+# Silent install of Apple's InstallShield bootstrapper hangs in a
+# non-interactive SSH session on Windows 11 (verified 2026-08-23: both
+# `/quiet` and `/s /v"/qn"` — MSI 1603 or an invisible dialog, 25+ min).
+# Default is therefore: stage + report, and the operator installs once at
+# the console (double-click C:\dhs\installers\BonjourPSSetup.exe). Set
+# dhs_mdns_bonjour_silent_install: true to retry the bounded silent path.
+- name: Bonjour silent install attempt (bounded, opt-in)
+  ansible.windows.win_command:
+    argv:
+      - cmd.exe
+      - /c
+      - 'start /wait "" {{ dhs_mdns_bonjour_installer_dst }} /s /v"/qn /norestart"'
+  async: 600
+  poll: 15
+  register: dhs_mdns_silent
+  failed_when: false
+  changed_when: dhs_mdns_silent.rc | default(1) == 0
+  when:
+    - not dhs_mdns_dnssd.stat.exists
+    - dhs_mdns_bonjour_silent_install | bool
+
+# Separate register: a skipped task would otherwise overwrite the first
+# stat result with a {skipped: true} dict that has no .stat.
+- name: Re-check Bonjour after the silent attempt
+  ansible.windows.win_stat:
+    path: C:\Windows\System32\dnssd.dll
+  register: dhs_mdns_dnssd_after
+  when:
+    - not dhs_mdns_dnssd.stat.exists
+    - dhs_mdns_bonjour_silent_install | bool
+
+- name: Resolve Bonjour presence
+  ansible.builtin.set_fact:
+    dhs_mdns_bonjour_present: >-
+      {{ dhs_mdns_dnssd.stat.exists
+         or (dhs_mdns_dnssd_after.stat.exists | default(false)) }}
+
+- name: Bonjour not installed — operator action required (not a failure)
+  ansible.builtin.debug:
+    msg: >-
+      Bonjour is NOT installed on {{ inventory_hostname }}. Installer is staged at
+      {{ dhs_mdns_bonjour_installer_dst }} — run it once interactively at the
+      console; this role then keeps the service enabled (#784). dhs uses the
+      stdlib mDNS fallback meanwhile (#195).
+  when: not (dhs_mdns_bonjour_present | bool)
+
+- name: Bonjour Service running and automatic
+  ansible.windows.win_service:
+    name: "{{ dhs_mdns_bonjour_service }}"
+    state: started
+    start_mode: auto
+  when: dhs_mdns_bonjour_present | bool
