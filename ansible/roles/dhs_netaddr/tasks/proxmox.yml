@@ -1,0 +1,89 @@
+---
+# Read the CT config, rewrite each netX line's ip=/gw= from the inventory
+# (keeping name/bridge/hwaddr/tag/type as they are), set nameserver and
+# searchdomain, PUT only what differs, then reboot the CT once.
+- name: Read the CT config from Proxmox
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/lxc/{{ pve_vmid }}/config"
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+    return_content: true
+  delegate_to: localhost
+  register: dhs_netaddr_ct
+
+# Proxmox normalizes the key order of a netX string (e.g. gw= before
+# hwaddr=), so compare the SET of key=value pairs, never the raw string —
+# otherwise every run looks different and reboots the CT.
+- name: Build the desired netX values (pairs, order-independent)
+  ansible.builtin.set_fact:
+    dhs_netaddr_desired: >-
+      {{ dhs_netaddr_desired | default({}) | combine({
+           ('net' ~ idx): (
+             ((dhs_netaddr_ct.json.data['net' ~ idx] | default('')) | split(',')
+               | reject('match', '^(ip|gw)=') | reject('equalto', '') | list)
+             + ['ip=' ~ item.ip ~ '/' ~ dhs_netaddr_prefix]
+             + (['gw=' ~ dhs_netaddr_gateway] if idx == 0 else [])
+           ) }) }}
+  loop: "{{ nics }}"
+  loop_control:
+    index_var: idx
+    label: "net{{ idx }}={{ item.ip }}"
+
+- name: Delta — netX lines whose pair-set differs
+  ansible.builtin.set_fact:
+    dhs_netaddr_changes: >-
+      {{ dhs_netaddr_changes | default({}) | combine(
+           {item.key: (item.value | join(','))}
+           if ((dhs_netaddr_ct.json.data[item.key] | default('')) | split(',') | reject('equalto', '') | sort | list)
+              != (item.value | sort | list)
+           else {}) }}
+  loop: "{{ dhs_netaddr_desired | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Delta — nameserver / searchdomain
+  ansible.builtin.set_fact:
+    dhs_netaddr_changes: >-
+      {{ dhs_netaddr_changes | default({})
+         | combine({'nameserver': dhs_netaddr_dns | join(' ')} if (dhs_netaddr_ct.json.data.nameserver | default('')) != (dhs_netaddr_dns | join(' ')) else {})
+         | combine({'searchdomain': dhs_netaddr_searchdomain} if (dhs_netaddr_ct.json.data.searchdomain | default('')) != dhs_netaddr_searchdomain else {}) }}
+
+- name: "Proxmox CT {{ pve_vmid }} network config -> static ({{ dhs_netaddr_changes | default({}) | dict2items | map(attribute='key') | join(',') }})"
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/lxc/{{ pve_vmid }}/config"
+    method: PUT
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    body_format: form-urlencoded
+    body: "{{ dhs_netaddr_changes }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+  delegate_to: localhost
+  when: (dhs_netaddr_changes | default({})) | length > 0
+  changed_when: true
+  register: dhs_netaddr_put
+
+- name: "Reboot CT {{ pve_vmid }} so the static config is live"
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/lxc/{{ pve_vmid }}/status/reboot"
+    method: POST
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+  delegate_to: localhost
+  when:
+    - dhs_netaddr_put is changed
+    - dhs_netaddr_reboot_ct | bool
+  changed_when: true
+
+- name: Wait for the CT to answer on its (new) address
+  ansible.builtin.wait_for:
+    host: "{{ nics[0].ip }}"
+    port: 22
+    delay: 5
+    timeout: 180
+  delegate_to: localhost
+  when:
+    - dhs_netaddr_put is changed
+    - dhs_netaddr_reboot_ct | bool
+    - "'control' not in group_names"

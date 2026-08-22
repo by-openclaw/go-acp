@@ -1,13 +1,13 @@
 ---
 # win11 — Proxmox VM 654 "dhs.win11", Windows 11 Pro (10.0.26200),
-# guest hostname DHS_WIN11, single NIC 10.100.0.107 (NOT .106 — that is
-# dhs-tools). Windows producer-parity row (ADR-0016), reached over SSH
-# as `by-rune` (local Administrators group).
+# guest hostname dhs-win11, single NIC 10.100.0.105 (static, #786; the old
+# DHCP lease was .107). Windows producer-parity row (ADR-0016), reached over
+# SSH as `by-rune` (local Administrators group).
 pve_vmid: 654
 pve_name: dhs.win11
 os_label: "Windows 11 Pro"
 nics:
-  - { name: "Ethernet 2", mac: "BC:24:11:10:AE:F8", ip: 10.100.0.107 }
+  - { name: "Ethernet 2", mac: "BC:24:11:10:AE:F8", ip: 10.100.0.105 }
 fleet_hostname: dhs-win11
 
 # Ember+ producer: our integration DM (matrix + salvo/lock functions).
