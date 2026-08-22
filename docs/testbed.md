@@ -101,6 +101,25 @@ console (double-click the staged installer); the role then keeps
 "Bonjour Service" running. dhs uses the stdlib mDNS fallback on Windows
 until the Bonjour backend (#195) lands, so this is not load-bearing yet.
 
+## Host baseline (`dhs_host` role, #800)
+
+Every fleet host gets the same dhs baseline, per OS, from the
+`dhs_host` role (first role in `fleet-converge.yml`):
+
+| | Linux (LXCs) | win11 |
+| --- | --- | --- |
+| binary | `/usr/local/bin/dhs` from the pinned GitHub release `dhs_version` (tar.gz, sha256 checked against `SHA256SUMS.txt`) | `C:\dhs\dhs.exe` (zip, same checksum rule) |
+| PATH / env | `/etc/profile.d/dhs.sh` (PATH, `DHS_DATA_DIR=/var/lib/dhs`) | machine `PATH += C:\dhs`, `DHS_DATA_DIR=C:\ProgramData\dhs\data` |
+| directories | `/etc/dhs` (trees/packs), `/var/lib/dhs` (data), `/var/log/dhs` | `C:\dhs`, `C:\ProgramData\dhs\{data,logs}` |
+| packages | tshark/wireshark-cli, curl, jq, ca-certificates, unzip, tar | — |
+
+Roll the fleet to a new release by bumping `dhs_version` and converging
+(run-twice = 0 changes). Layering: hypervisor = `infra-terraform-proxmox`
+(import of the dhs guests tracked there), OS baseline/hardening =
+`ansible-platform` (sshd 22222 / `by-systems`; applies when hardening
+un-parks — the inventory then switches port/user), dhs application layer
+= this repo's roles.
+
 ## Producer launch and stop
 
 ### Linux LXC (Debian / Ubuntu / Rocky)

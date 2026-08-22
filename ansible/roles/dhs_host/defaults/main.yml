@@ -1,0 +1,38 @@
+---
+# dhs_host — the dhs host baseline on every fleet OS (#800):
+#   environment (PATH / DHS_DATA_DIR), dhs directories, base packages,
+#   and the dhs binary from a PINNED GitHub release (checksum-verified).
+# Layering: hypervisor = infra-terraform-proxmox, OS baseline/hardening =
+# ansible-platform, dhs application layer = this role + siblings.
+
+# Release to deploy on the whole fleet (tag name). Bump here, converge.
+dhs_version: "v0.18.0"
+dhs_release_repo: by-openclaw/go-acp
+dhs_release_base: "https://github.com/{{ dhs_release_repo }}/releases/download/{{ dhs_version }}"
+
+# Linux layout (dhs_bin / dhs_dir come from group_vars/linux.yml).
+dhs_host_linux_dirs:
+  - /etc/dhs          # trees, packs, manifests the producers serve
+  - /var/lib/dhs      # DHS_DATA_DIR (cache/dm, captures) — per-OS data dir
+  - /var/log/dhs      # producer logs
+dhs_host_linux_data_dir: /var/lib/dhs
+dhs_host_linux_profile: /etc/profile.d/dhs.sh
+
+# Windows layout (dhs_bin / dhs_dir come from group_vars/windows.yml).
+dhs_host_windows_dirs:
+  - 'C:\dhs'
+  - 'C:\ProgramData\dhs\data'
+  - 'C:\ProgramData\dhs\logs'
+dhs_host_windows_data_dir: 'C:\ProgramData\dhs\data'
+
+# Base packages dhs needs on a host (captures, HTTP probes, JSON shaping).
+dhs_host_packages:
+  Debian: [tshark, curl, jq, ca-certificates, unzip, tar]
+  RedHat: [wireshark-cli, curl, jq, ca-certificates, unzip, tar]
+
+# GOARCH mapping for the release asset name.
+dhs_host_goarch:
+  x86_64: amd64
+  amd64: amd64
+  aarch64: arm64
+  arm64: arm64
