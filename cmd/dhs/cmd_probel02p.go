@@ -96,6 +96,8 @@ func runProbelsw02p(ctx context.Context, args []string) error {
 		return runProbelSW02Export(ctx, rest)
 	case "import":
 		return runProbelSW02Import(ctx, rest)
+	case "discover":
+		return runProbelSW02Discover(ctx, rest)
 	}
 	return fmt.Errorf("unknown probel-sw02p subcommand %q", sub)
 }
@@ -120,6 +122,8 @@ GLOBAL FLAGS (apply to every subcommand)
   + rotating keep-alive ping at (re)connect.
 
 SUBCOMMANDS
+  discover            one-shot survey: dual-status + status + router-config +
+                      full crosspoint sweep (--output json = one document)
   interrogate         query current source on one dst (rx 01; --extended → rx 65)
   connect             route a source to a destination (rx 02; --extended → rx 66)
   connect-on-go       stage one crosspoint into the pending salvo buffer (rx 05)
