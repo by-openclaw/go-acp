@@ -442,6 +442,7 @@ func parseProbelFlags(args []string, want struct{ dst, src bool }) (probelFlags,
 	fs.IntVar(&pf.dst, "dst", 0, "destination id (0-65535)")
 	fs.IntVar(&pf.src, "src", 0, "source id (0-65535)")
 	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
+	fs.StringVar(&pf.output, "output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return pf, fmt.Errorf("missing <host:port>")
@@ -481,6 +482,14 @@ func runProbelInterrogate(ctx context.Context, args []string) error {
 	reply, err := p.CrosspointInterrogate(cctx, matrix, level, uint16(pf.dst))
 	if err != nil {
 		return err
+	}
+	if jsonOut, oerr := resolveEnsureOutput(pf.output, false); oerr != nil {
+		return oerr
+	} else if jsonOut {
+		return emitReadJSON(probelInterrogateJSON{
+			Matrix: int(reply.MatrixID), Level: int(reply.LevelID),
+			Dest: int(reply.DestinationID), Srce: int(reply.SourceID),
+		})
 	}
 	fmt.Printf("crosspoint tally  matrix=%d level=%d dst=%d <- src=%d\n",
 		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.SourceID)
@@ -589,12 +598,17 @@ func runProbelMaintenance(ctx context.Context, args []string) error {
 func runProbelDualStatus(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-dual-status", flag.ContinueOnError)
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
@@ -610,6 +624,12 @@ func runProbelDualStatus(ctx context.Context, args []string) error {
 	who := "MASTER"
 	if r.SlaveActive {
 		who = "SLAVE"
+	}
+	if jsonOut {
+		return emitReadJSON(probelDualStatusJSON{
+			Who: who, Active: r.Active,
+			IdleFaulty: r.IdleControllerFaulty, SlaveActive: r.SlaveActive,
+		})
 	}
 	fmt.Printf("dual-controller  who=%s active=%v idle_faulty=%v\n",
 		who, r.Active, r.IdleControllerFaulty)
@@ -631,6 +651,11 @@ func runProbelTallyDump(ctx context.Context, args []string) error {
 	res, err := p.CrosspointTallyDump(cctx, matrix, level)
 	if err != nil {
 		return err
+	}
+	if jsonOut, oerr := resolveEnsureOutput(pf.output, false); oerr != nil {
+		return oerr
+	} else if jsonOut {
+		return emitReadJSON(probelTallyDumpToJSON(res))
 	}
 	if res.IsWord {
 		fmt.Printf("tally-dump (word) matrix=%d level=%d first_dst=%d tallies=%d\n",
@@ -693,6 +718,14 @@ func runProbelProtectInterrogate(ctx context.Context, args []string) error {
 		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
 	if err != nil {
 		return err
+	}
+	if jsonOut, oerr := resolveEnsureOutput(pf.output, false); oerr != nil {
+		return oerr
+	} else if jsonOut {
+		return emitReadJSON(probelProtectJSON{
+			Matrix: int(reply.MatrixID), Level: int(reply.LevelID),
+			Dest: int(reply.DestinationID), State: int(reply.State), Device: int(reply.DeviceID),
+		})
 	}
 	fmt.Printf("protect tally  matrix=%d level=%d dst=%d -> state=%d device=%d\n",
 		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.State, reply.DeviceID)
@@ -825,12 +858,17 @@ func runProbelProtectDump(ctx context.Context, args []string) error {
 	level := fs.Int("level", 0, "level id (0-255)")
 	firstDst := fs.Int("first-dst", 0, "first destination id to dump")
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
@@ -842,6 +880,9 @@ func runProbelProtectDump(ctx context.Context, args []string) error {
 	res, err := p.ProtectTallyDump(cctx, uint8(*matrix), uint8(*level), uint16(*firstDst))
 	if err != nil {
 		return err
+	}
+	if jsonOut {
+		return emitReadJSON(probelProtectDumpToJSON(res))
 	}
 	fmt.Printf("protect tally-dump matrix=%d level=%d first_dst=%d items=%d\n",
 		res.MatrixID, res.LevelID, res.FirstDestinationID, len(res.Items))
