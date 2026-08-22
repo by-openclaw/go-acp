@@ -94,6 +94,8 @@ func runProbelsw02p(ctx context.Context, args []string) error {
 		return runProbelSW02Replace(ctx, rest)
 	case "export":
 		return runProbelSW02Export(ctx, rest)
+	case "import":
+		return runProbelSW02Import(ctx, rest)
 	}
 	return fmt.Errorf("unknown probel-sw02p subcommand %q", sub)
 }
@@ -141,6 +143,9 @@ SUBCOMMANDS
                       descriptor) + -xpoint.csv (dest,srce,levels canonical
                       grammar, from the rx 01/65 sweep); no label files —
                       SW-P-02 has no name commands
+  import              converge crosspoints to -xpoint.csv (rx 02/66, one
+                      connect per differing dst); --check dry-run (ADR-0007);
+                      rows for other levels reported, never applied
   watch               subscribe to async tallies until Ctrl-C / --timeout
 
 EXAMPLES
