@@ -1,0 +1,39 @@
+---
+# dhs_verb — run ONE dhs consumer verb against a REAL device or a
+# long-lived producer, from any managed host (#751 G7). This is the
+# ops-facing sibling of dhs_verbtest (which serves its own ephemeral
+# producer for CI): dhs_verb assumes the binary is installed
+# (dhs_acp1 / dhs_verbtest deploy it) and the target device is live.
+#
+# JSON is the default contract (--output json landed on every point
+# read + ensure-shaped write in #751 G1): the parsed result is
+# registered as dv_result_json for downstream tasks, and change
+# reporting comes from the verb's OWN {changed} field — Ansible's
+# changed status mirrors ADR-0007, not a guess.
+#
+# Binary paths come from inventory group_vars (linux.yml/windows.yml);
+# fallbacks mirror dhs_verbtest.
+dhs_bin: /usr/local/bin/dhs
+
+# ---- Role parameters ------------------------------------------------------
+# Protocol registry name (acp1, acp2, emberplus, probel-sw08p,
+# probel-sw02p, cerebrum-nb, tsl-v50, ...).
+dv_proto: ""
+
+# Global argv BEFORE the verb (dispatcher-level flags, e.g. probel's
+# --mtx-id/--level/--dsts or --capture FILE.jsonl).
+dv_global_argv: []
+
+# The verb and everything after it: target host[:port] + per-verb
+# flags, e.g. [get, "10.100.0.104:2072", --slot, "1", --path, "..."].
+dv_argv: []
+
+# Append `--output json` and parse stdout into dv_result_json.
+# Disable only for verbs without machine output (watch, tree ascii).
+dv_output_json: true
+
+# ADR-0007 idempotency assert: run the verb a SECOND time and fail
+# unless the second run reports changed=false / would_change=false.
+# Use on ensure-shaped writes (ensure, connect, import, replace,
+# protect-connect, ...). Requires dv_output_json.
+dv_ensure_assert: false

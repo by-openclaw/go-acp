@@ -1,0 +1,7 @@
+---
+- name: "dhs consumer {{ dv_proto }} {{ dv_argv | join(' ') }}"
+  ansible.builtin.command:
+    argv: "{{ dv_full_argv }}"
+  register: dv_run
+  changed_when: false # real change status is set from the JSON verdict
+  failed_when: dv_run.rc != 0

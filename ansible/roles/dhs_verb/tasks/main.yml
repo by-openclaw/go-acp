@@ -1,0 +1,53 @@
+---
+# One consumer verb, OS-dispatched. The full argv is assembled once so
+# both paths run the identical command.
+- name: Validate role parameters
+  ansible.builtin.assert:
+    that:
+      - dv_proto | length > 0
+      - dv_argv | length > 0
+      - not dv_ensure_assert or dv_output_json
+    fail_msg: >-
+      dhs_verb needs dv_proto + dv_argv; dv_ensure_assert requires
+      dv_output_json (the assert reads the ADR-0007 {changed} field).
+
+- name: Assemble the verb argv
+  ansible.builtin.set_fact:
+    dv_full_argv: >-
+      {{ [dhs_bin, 'consumer', dv_proto] + dv_global_argv + dv_argv
+         + (['--output', 'json'] if dv_output_json else []) }}
+
+- name: Run the verb (POSIX)
+  ansible.builtin.include_tasks: run_posix.yml
+  when: ansible_os_family != "Windows"
+
+- name: Run the verb (Windows)
+  ansible.builtin.include_tasks: run_windows.yml
+  when: ansible_os_family == "Windows"
+
+- name: Parse the JSON result
+  ansible.builtin.set_fact:
+    dv_result_json: "{{ dv_run.stdout | from_json }}"
+  when: dv_output_json
+
+# Ansible change status = the verb's OWN ADR-0007 verdict, never a
+# guess. Read-only verbs (no changed field) report unchanged.
+- name: Report change per the verb's ADR-0007 field
+  ansible.builtin.set_fact:
+    dv_changed: "{{ dv_output_json and (dv_result_json.changed | default(false)) }}"
+
+- name: Idempotency assert — second run must be a no-op (ADR-0007)
+  when: dv_ensure_assert
+  block:
+    - name: Re-run the verb
+      ansible.builtin.include_tasks: "{{ 'run_windows.yml' if ansible_os_family == 'Windows' else 'run_posix.yml' }}"
+
+    - name: Assert run-twice = 0
+      ansible.builtin.assert:
+        that:
+          - not ((dv_run.stdout | from_json).changed | default(false))
+          - not ((dv_run.stdout | from_json).would_change | default(false))
+        fail_msg: >-
+          {{ dv_proto }} {{ dv_argv | join(' ') }}: second run still
+          reports changes — the verb is NOT idempotent (ADR-0007
+          violation): {{ dv_run.stdout }}
