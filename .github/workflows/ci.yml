@@ -42,9 +42,26 @@ jobs:
           # binaries are not read during the build.
           lfs: false
 
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Go mod tidy
         run: go mod tidy
@@ -180,9 +197,26 @@ jobs:
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Build
         run: go build -buildvcs=false ./...
@@ -209,9 +243,26 @@ jobs:
           # binaries are not read during the build.
           lfs: false
 
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
@@ -230,9 +281,26 @@ jobs:
           # binaries are not read during the build.
           lfs: false
 
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Build all targets
         run: |
@@ -277,7 +345,7 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release
         with:
           release-type: go
@@ -293,9 +361,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
 
       # Embed the Windows .exe version resource (CompanyName / ProductName /
       # FileVersion / LegalCopyright shown in the Properties dialog) from
