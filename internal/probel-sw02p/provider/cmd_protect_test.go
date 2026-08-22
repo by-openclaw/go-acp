@@ -18,6 +18,10 @@ func TestExtendedProtectEmitFanout(t *testing.T) {
 	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
 	defer func() { _ = srv.Stop() }()
 
+	// Pre-bound listener handed straight to serveListener — the old
+	// close-then-rebind ("hand port to Serve") left a window where any
+	// parallel process could steal the port (#694 class; 3-platform red
+	// on PR #754 run 32574964395, port 37711 taken on ubuntu).
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
@@ -25,11 +29,10 @@ func TestExtendedProtectEmitFanout(t *testing.T) {
 	go func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		if serr := srv.Serve(ctx, ln.Addr().String()); serr != nil {
+		if serr := srv.serveListener(ctx, ln); serr != nil {
 			t.Logf("server: %v", serr)
 		}
 	}()
-	_ = ln.Close() // hand port to Serve
 
 	// Wait for listener to come up.
 	deadline := time.Now().Add(2 * time.Second)
