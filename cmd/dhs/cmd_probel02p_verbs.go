@@ -78,10 +78,20 @@ func runProbelsw02pInterrogate(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
+	jsonOut, oerr := resolveEnsureOutput(pf.output, false)
+	if oerr != nil {
+		return oerr
+	}
 	if pf.extended {
 		reply, err := p.SendExtendedInterrogate(cctx, uint16(pf.dst))
 		if err != nil {
 			return err
+		}
+		if jsonOut {
+			return emitReadJSON(sw02InterrogateJSON{
+				Form: "extended", Dest: int(reply.Destination), Srce: int(reply.Source),
+				BadSource: reply.BadSource, UpdateOff: reply.UpdateOff,
+			})
 		}
 		fmt.Printf("extended tally  dst=%d → src=%d bad_source=%v update_off=%v\n",
 			reply.Destination, reply.Source, reply.BadSource, reply.UpdateOff)
@@ -91,9 +101,51 @@ func runProbelsw02pInterrogate(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	if jsonOut {
+		return emitReadJSON(sw02InterrogateJSON{
+			Form: "narrow", Dest: int(reply.Destination), Srce: int(reply.Source),
+			BadSource: reply.BadSource,
+		})
+	}
 	fmt.Printf("tally  dst=%d → src=%d bad_source=%v\n",
 		reply.Destination, reply.Source, reply.BadSource)
 	return nil
+}
+
+// JSON shapes for the SW-P-02 point reads (#751 G1b) — canonical
+// grammar vocabulary (dest/srce), matching the sw08p shapes and the
+// pack files.
+type sw02InterrogateJSON struct {
+	Form      string `json:"form"` // narrow | extended
+	Dest      int    `json:"dest"`
+	Srce      int    `json:"srce"`
+	BadSource bool   `json:"bad_source"`
+	UpdateOff bool   `json:"update_off,omitempty"`
+}
+
+type sw02DualStatusJSON struct {
+	Who        string `json:"who"` // MASTER | SLAVE
+	IdleFaulty bool   `json:"idle_faulty"`
+}
+
+type sw02StatusJSON struct {
+	Controller string `json:"controller"`
+	Idle       bool   `json:"idle"`
+	BusFault   bool   `json:"bus_fault"`
+	Overheat   bool   `json:"overheat"`
+}
+
+type sw02LockStatusJSON struct {
+	Controller string `json:"controller"`
+	Sources    int    `json:"sources"`
+	Locked     []int  `json:"locked"` // ids with the lock bit set
+}
+
+type sw02ProtectJSON struct {
+	Dest      int    `json:"dest"`
+	State     int    `json:"state"`
+	StateName string `json:"state_name"`
+	Device    int    `json:"device"`
 }
 
 // runProbelsw02pConnect converges dst to carry --src, idempotently (ADR-0007):
@@ -389,6 +441,14 @@ func runProbelsw02pProtectInterrogate(ctx context.Context, args []string) error 
 	if err != nil {
 		return err
 	}
+	if jsonOut, oerr := resolveEnsureOutput(pf.output, false); oerr != nil {
+		return oerr
+	} else if jsonOut {
+		return emitReadJSON(sw02ProtectJSON{
+			Dest: int(reply.Destination), State: int(reply.Protect),
+			StateName: protectStateName(reply.Protect), Device: int(reply.Device),
+		})
+	}
 	fmt.Printf("protect tally  dst=%d → state=%s device=%d\n",
 		reply.Destination, protectStateName(reply.Protect), reply.Device)
 	return nil
@@ -488,7 +548,7 @@ func runProbelsw02pProtectName(ctx context.Context, args []string) error {
 }
 
 func runProbelsw02pDualStatus(ctx context.Context, args []string) error {
-	addr, timeout, err := parseProbelSW02AddrOnly(args, "probel-sw02p-dual-status")
+	addr, timeout, jsonOut, err := parseProbelSW02AddrOutput(args, "probel-sw02p-dual-status")
 	if err != nil {
 		return err
 	}
@@ -507,6 +567,11 @@ func runProbelsw02pDualStatus(ctx context.Context, args []string) error {
 	if r.Active == codec02.ActiveControllerSlave {
 		who = "SLAVE"
 	}
+	if jsonOut {
+		return emitReadJSON(sw02DualStatusJSON{
+			Who: who, IdleFaulty: r.IdleStatus == codec02.IdleControllerFaulty,
+		})
+	}
 	fmt.Printf("dual-controller  active=%s idle_faulty=%v\n",
 		who, r.IdleStatus == codec02.IdleControllerFaulty)
 	return nil
@@ -516,12 +581,17 @@ func runProbelsw02pLockStatus(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-sw02p-lock-status", flag.ContinueOnError)
 	controller := fs.String("controller", "lh", "controller to query: lh | rh")
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	ctrl, err := parseController(*controller)
 	if err != nil {
@@ -539,10 +609,17 @@ func runProbelsw02pLockStatus(ctx context.Context, args []string) error {
 		return err
 	}
 	locked := 0
-	for _, ok := range resp.Locked {
+	lockedIDs := []int{}
+	for i, ok := range resp.Locked {
 		if ok {
 			locked++
+			lockedIDs = append(lockedIDs, i)
 		}
+	}
+	if jsonOut {
+		return emitReadJSON(sw02LockStatusJSON{
+			Controller: *controller, Sources: len(resp.Locked), Locked: lockedIDs,
+		})
 	}
 	fmt.Printf("source-lock (read-only)  controller=%s sources=%d locked=%d\n",
 		*controller, len(resp.Locked), locked)
@@ -556,12 +633,17 @@ func runProbelsw02pStatus(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-sw02p-status", flag.ContinueOnError)
 	controller := fs.String("controller", "lh", "controller to query: lh | rh")
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	ctrl, err := parseController(*controller)
 	if err != nil {
@@ -577,6 +659,11 @@ func runProbelsw02pStatus(ctx context.Context, args []string) error {
 	s, err := p.SendStatusRequest(cctx, ctrl)
 	if err != nil {
 		return err
+	}
+	if jsonOut {
+		return emitReadJSON(sw02StatusJSON{
+			Controller: *controller, Idle: s.Idle, BusFault: s.BusFault, Overheat: s.Overheat,
+		})
 	}
 	fmt.Printf("status  controller=%s idle=%v bus_fault=%v overheat=%v\n",
 		*controller, s.Idle, s.BusFault, s.Overheat)
@@ -653,16 +740,28 @@ func parseProbelSW02ProtectFlags(args []string) (probelSW02Flags, int, error) {
 // parseProbelSW02AddrOnly handles the zero-arg verbs (dual-status,
 // router-config) that take only <host:port> + --timeout.
 func parseProbelSW02AddrOnly(args []string, name string) (string, time.Duration, error) {
+	addr, timeout, _, err := parseProbelSW02AddrOutput(args, name)
+	return addr, timeout, err
+}
+
+// parseProbelSW02AddrOutput is the addr-only tuple plus the --output
+// selector for read verbs (#751 G1b). jsonOut is pre-validated.
+func parseProbelSW02AddrOutput(args []string, name string) (string, time.Duration, bool, error) {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
-		return "", 0, fmt.Errorf("missing <host:port>")
+		return "", 0, false, fmt.Errorf("missing <host:port>")
 	}
 	if err := fs.Parse(flagArgs); err != nil {
-		return "", 0, err
+		return "", 0, false, err
 	}
-	return addr, *timeout, nil
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return "", 0, false, oerr
+	}
+	return addr, *timeout, jsonOut, nil
 }
 
 func parseGoOp(s string) (codec02.GoOperation, error) {
