@@ -39,7 +39,9 @@ func runTSLConsumer(ctx context.Context, proto string, args []string) error {
 	verb := args[0]
 	rest := args[1:]
 	switch verb {
-	case "listen":
+	case "listen", "watch":
+		// watch = canonical family spelling (osc/tree protos); listen
+		// kept as the historical TSL alias (#751 G3 parity).
 		return runTSLListen(ctx, proto, rest)
 	case "validate":
 		// The tsl plugin implements consumer.Validator; route to the generic
@@ -47,7 +49,7 @@ func runTSLConsumer(ctx context.Context, proto string, args []string) error {
 		// acp1/acp2/emberplus dispatch (main.go dispatchConsumer).
 		return runValidate(ctx, append([]string{"--protocol", proto}, rest...))
 	}
-	return fmt.Errorf("consumer %s: unknown verb %q (expected: listen | validate)", proto, verb)
+	return fmt.Errorf("consumer %s: unknown verb %q (expected: watch | listen | validate)", proto, verb)
 }
 
 // runTSLListen binds a UDP (or v5.0 TCP) listener and prints every
@@ -225,11 +227,13 @@ func printTSLConsumerHelp(w io.Writer, proto string) {
 dhs consumer `+proto+` — TSL UMD listener (push protocol from a switcher / VSM / Kaleido)
 
 USAGE
-  dhs consumer `+proto+` listen [--bind HOST:PORT] [--tcp]
+  dhs consumer `+proto+` watch [--bind HOST:PORT] [--tcp]
 
 VERBS
-  listen          bind a UDP listener (or v5.0 TCP listener with --tcp)
+  watch           bind a UDP listener (or v5.0 TCP listener with --tcp)
                   and print every decoded frame until Ctrl-C
+                  (alias: listen — historical TSL spelling)
+  validate        decode a captured frames.jsonl offline (ADR-0021)
 
 DEFAULT PORTS
   tsl-v31, tsl-v40   UDP 4000
