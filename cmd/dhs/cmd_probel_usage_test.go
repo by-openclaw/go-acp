@@ -43,8 +43,8 @@ func TestProbelBuildUsage_SortedBySrcThenDst(t *testing.T) {
 	// Expected order: src 0 (dst 6), src 3 (dst 5), src 9 (dst 9),
 	// src 12 (dsts 4, 7, 8).
 	want := []probelUsageRow{
-		{Src: 0, Dst: 6, Level: 2}, {Src: 3, Dst: 5, Level: 2}, {Src: 9, Dst: 9, Level: 2},
-		{Src: 12, Dst: 4, Level: 2}, {Src: 12, Dst: 7, Level: 2}, {Src: 12, Dst: 8, Level: 2},
+		{Src: 0, Dst: 6, Levels: "2"}, {Src: 3, Dst: 5, Levels: "2"}, {Src: 9, Dst: 9, Levels: "2"},
+		{Src: 12, Dst: 4, Levels: "2"}, {Src: 12, Dst: 7, Levels: "2"}, {Src: 12, Dst: 8, Levels: "2"},
 	}
 	for i, w := range want {
 		if rows[i] != w {
@@ -93,17 +93,17 @@ func TestProbelFilterUsage(t *testing.T) {
 
 func TestFormatProbelUsageCSV(t *testing.T) {
 	rows := []probelUsageRow{
-		{Src: 3, Dst: 5, Level: 2},
-		{Src: 12, Dst: 7, Level: 2, Protect: "state=1 device=9"},
+		{Src: 3, Dst: 5, Levels: "2"},
+		{Src: 12, Dst: 7, Levels: "2", Protect: "state=1 device=9"},
 	}
-	plain := formatProbelUsageCSV(rows, false)
+	plain := formatProbelUsageCSV(rows, false, false)
 	if !strings.HasPrefix(plain, "srce,dest,levels\n") {
 		t.Fatalf("plain header: %q", plain)
 	}
 	if !strings.Contains(plain, "3,5,2\n") || strings.Contains(plain, "state=1") {
 		t.Fatalf("plain body: %q", plain)
 	}
-	prot := formatProbelUsageCSV(rows, true)
+	prot := formatProbelUsageCSV(rows, true, false)
 	if !strings.HasPrefix(prot, "srce,dest,levels,protect\n") {
 		t.Fatalf("protect header: %q", prot)
 	}
@@ -119,8 +119,8 @@ func TestRenderProbelUsageASCII(t *testing.T) {
 	renderProbelUsageASCII(&buf, rows)
 	out := buf.String()
 	for _, want := range []string{
-		"src 0\n└── dst 6  level 2\n",
-		"src 12\n├── dst 4  level 2\n├── dst 7  level 2  [state=1 device=9]\n└── dst 8  level 2\n",
+		"src 0\n└── dst 6  levels 2\n",
+		"src 12\n├── dst 4  levels 2\n├── dst 7  levels 2  [state=1 device=9]\n└── dst 8  levels 2\n",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("ascii missing %q in:\n%s", want, out)

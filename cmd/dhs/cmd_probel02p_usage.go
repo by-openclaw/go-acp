@@ -22,6 +22,7 @@ import (
 	"math/bits"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	probelsw02proto "dhs/internal/probel-sw02p/consumer"
@@ -104,7 +105,7 @@ func runProbelSW02Usage(ctx context.Context, args []string) error {
 		renderProbelUsageASCII(os.Stdout, rows)
 		return nil
 	}
-	csv := formatProbelUsageCSV(rows, false)
+	csv := formatProbelUsageCSV(rows, false, false)
 	if *out == "-" {
 		fmt.Print(csv)
 		return nil
@@ -157,7 +158,7 @@ func sw02Interrogations(ctx context.Context, p *probelsw02proto.Plugin, count, l
 			if err != nil {
 				return nil, fmt.Errorf("extended interrogate dst %d: %w", dst, err)
 			}
-			rows = append(rows, probelUsageRow{Src: int(t.Source), Dst: int(t.Destination), Level: level})
+			rows = append(rows, probelUsageRow{Src: int(t.Source), Dst: int(t.Destination), Levels: strconv.Itoa(level)})
 			continue
 		}
 		t, err := p.SendInterrogate(ctx, uint16(dst))
@@ -167,7 +168,7 @@ func sw02Interrogations(ctx context.Context, p *probelsw02proto.Plugin, count, l
 		if t.Source == sw02NarrowOutOfRange {
 			continue
 		}
-		rows = append(rows, probelUsageRow{Src: int(t.Source), Dst: int(t.Destination), Level: level})
+		rows = append(rows, probelUsageRow{Src: int(t.Source), Dst: int(t.Destination), Levels: strconv.Itoa(level)})
 	}
 	return rows, nil
 }
@@ -225,14 +226,14 @@ func runProbelSW02Replace(ctx context.Context, args []string) error {
 	diffs := make([]ensureDiff, 0, len(cells))
 	for _, c := range cells {
 		diffs = append(diffs, ensureDiff{
-			Field: fmt.Sprintf("route.%d.%d", c.Dst, c.Level),
+			Field: fmt.Sprintf("route.%d.%s", c.Dst, c.Levels),
 			From:  fmt.Sprintf("%d", *from), To: fmt.Sprintf("%d", *with),
 		})
 	}
 
 	if *check {
 		for _, c := range cells {
-			_, _ = fmt.Fprintf(logw, "[would-replace] level=%d dst=%d: src %d -> %d\n", c.Level, c.Dst, *from, *with)
+			_, _ = fmt.Fprintf(logw, "[would-replace] level=%s dst=%d: src %d -> %d\n", c.Levels, c.Dst, *from, *with)
 		}
 		_, _ = fmt.Fprintf(logw, "probel-sw02p replace --check: would_change=%d destination(s) carrying src %d — nothing sent\n", len(cells), *from)
 		if jsonOut {
@@ -250,11 +251,11 @@ func runProbelSW02Replace(ctx context.Context, args []string) error {
 			_, cerr = p.SendConnect(cctx, uint16(c.Dst), uint16(*with), false)
 		}
 		if cerr != nil {
-			_, _ = fmt.Fprintf(logw, "[replace] FAIL level=%d dst=%d reason=%s\n", c.Level, c.Dst, cerr)
+			_, _ = fmt.Fprintf(logw, "[replace] FAIL level=%s dst=%d reason=%s\n", c.Levels, c.Dst, cerr)
 			fails++
 			continue
 		}
-		_, _ = fmt.Fprintf(logw, "[replace] OK   level=%d dst=%d: src %d -> %d\n", c.Level, c.Dst, *from, *with)
+		_, _ = fmt.Fprintf(logw, "[replace] OK   level=%s dst=%d: src %d -> %d\n", c.Levels, c.Dst, *from, *with)
 	}
 	if fails > 0 {
 		return fmt.Errorf("%d/%d replace connect(s) failed", fails, len(cells))

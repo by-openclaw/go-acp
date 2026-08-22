@@ -9,6 +9,30 @@ import (
 	"dhs/internal/emberplus/codec/matrix"
 )
 
+func TestEmberUsageLabelMap(t *testing.T) {
+	o := consumer.Object{Meta: map[string]any{
+		"sourceLabels": map[string]map[string]string{
+			"primary": {"3": "SDI In 1", "bogus": "X", "9": ""},
+			"alt":     {"3": "Alt 3"},
+		},
+	}}
+	// Default group = first alphabetically ("alt").
+	if m := emberUsageLabelMap(o, "sourceLabels", ""); m[3] != "Alt 3" || len(m) != 1 {
+		t.Fatalf("default group map = %v", m)
+	}
+	// Explicit group; non-int ids and empty labels dropped.
+	if m := emberUsageLabelMap(o, "sourceLabels", "primary"); m[3] != "SDI In 1" || len(m) != 1 {
+		t.Fatalf("primary map = %v", m)
+	}
+	// Unknown group / missing meta → nil.
+	if m := emberUsageLabelMap(o, "sourceLabels", "nope"); m != nil {
+		t.Fatalf("unknown group = %v", m)
+	}
+	if m := emberUsageLabelMap(consumer.Object{Meta: map[string]any{}}, "sourceLabels", ""); m != nil {
+		t.Fatalf("no meta = %v", m)
+	}
+}
+
 func TestEmberValidSourceIDs(t *testing.T) {
 	o := consumer.Object{Meta: map[string]any{
 		"sourceLabels": map[string]map[string]string{
@@ -38,7 +62,8 @@ func emberUsageFixture() []matrix.TargetState {
 func TestEmberUsageRows(t *testing.T) {
 	rows := emberUsageRows(emberUsageFixture())
 	want := []probelUsageRow{
-		{Src: 3, Dst: 0}, {Src: 3, Dst: 2}, {Src: 7, Dst: 2}, {Src: 9, Dst: 5},
+		{Src: 3, Dst: 0, Levels: "0"}, {Src: 3, Dst: 2, Levels: "0"},
+		{Src: 7, Dst: 2, Levels: "0"}, {Src: 9, Dst: 5, Levels: "0"},
 	}
 	if len(rows) != len(want) {
 		t.Fatalf("rows = %+v", rows)

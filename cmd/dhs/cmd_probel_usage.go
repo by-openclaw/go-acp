@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,11 +33,16 @@ import (
 )
 
 // probelUsageRow is one reverse-tally assignment: src feeds dst on the
-// queried level. Protect carries the dst's protect state when the
-// caller joined it (--protect), else "".
+// listed levels (";"-joined display string — a multi-level sweep
+// collapses identical (src, dst) rows). Protect carries the dst's
+// protect state when the caller joined it (--protect); SrcLabel /
+// DstLabel carry resolved names when the caller joined them
+// (--labels). Shared by every matrix connector's usage view (#746).
 type probelUsageRow struct {
-	Src, Dst, Level int
-	Protect         string
+	Src, Dst           int
+	Levels             string
+	Protect            string
+	SrcLabel, DstLabel string
 }
 
 // probelTallyTable flattens the byte/word dual-form TallyDumpResult
@@ -63,9 +69,48 @@ func probelBuildUsage(firstDst int, srcs []int, level int, protect map[int]strin
 	rows := make([]probelUsageRow, 0, len(srcs))
 	for i, src := range srcs {
 		dst := firstDst + i
-		rows = append(rows, probelUsageRow{Src: src, Dst: dst, Level: level, Protect: protect[dst]})
+		rows = append(rows, probelUsageRow{Src: src, Dst: dst, Levels: strconv.Itoa(level), Protect: protect[dst]})
 	}
 	return sortProbelUsage(rows)
+}
+
+// collapseProbelUsage merges rows identical in everything but level
+// into one row with a ";"-joined levels column (cerebrum-nb grammar).
+// Input order is preserved for the first occurrence of each group.
+func collapseProbelUsage(rows []probelUsageRow) []probelUsageRow {
+	type key struct {
+		src, dst                    int
+		protect, srcLabel, dstLabel string
+	}
+	idx := map[key]int{}
+	out := make([]probelUsageRow, 0, len(rows))
+	for _, r := range rows {
+		k := key{r.Src, r.Dst, r.Protect, r.SrcLabel, r.DstLabel}
+		if i, ok := idx[k]; ok {
+			out[i].Levels += ";" + r.Levels
+			continue
+		}
+		idx[k] = len(out)
+		out = append(out, r)
+	}
+	return out
+}
+
+// applyProbelUsageLabels resolves src/dst ids to names in place.
+// Missing ids stay unlabeled — never invented.
+func applyProbelUsageLabels(rows []probelUsageRow, srcNames, dstNames map[int]string) {
+	for i := range rows {
+		rows[i].SrcLabel = srcNames[rows[i].Src]
+		rows[i].DstLabel = dstNames[rows[i].Dst]
+	}
+}
+
+// usageName renders "id (Label)" or the bare id when no label is known.
+func usageName(kind string, id int, label string) string {
+	if label != "" {
+		return fmt.Sprintf("%s %d (%s)", kind, id, label)
+	}
+	return fmt.Sprintf("%s %d", kind, id)
 }
 
 // sortProbelUsage orders rows source-keyed: by (src, dst).
@@ -95,20 +140,29 @@ func probelFilterUsage(rows []probelUsageRow, src, dst int) []probelUsageRow {
 }
 
 // formatProbelUsageCSV renders rows with the canonical usage columns
-// (srce,dest,levels — same as cerebrum-nb usage); --protect appends a
-// protect column.
-func formatProbelUsageCSV(rows []probelUsageRow, withProtect bool) string {
+// (srce,dest,levels — same as cerebrum-nb usage); --protect and
+// --labels append their columns (header-keyed, #738 rule 2).
+func formatProbelUsageCSV(rows []probelUsageRow, withProtect, withLabels bool) string {
 	var b strings.Builder
+	b.WriteString("srce,dest,levels")
 	if withProtect {
-		b.WriteString("srce,dest,levels,protect\n")
-	} else {
-		b.WriteString("srce,dest,levels\n")
+		b.WriteString(",protect")
 	}
+	if withLabels {
+		b.WriteString(",srce_label,dest_label")
+	}
+	b.WriteByte('\n')
 	for _, r := range rows {
-		fmt.Fprintf(&b, "%d,%d,%d", r.Src, r.Dst, r.Level)
+		fmt.Fprintf(&b, "%d,%d,%s", r.Src, r.Dst, r.Levels)
 		if withProtect {
 			b.WriteByte(',')
 			b.WriteString(r.Protect)
+		}
+		if withLabels {
+			b.WriteByte(',')
+			b.WriteString(r.SrcLabel)
+			b.WriteByte(',')
+			b.WriteString(r.DstLabel)
 		}
 		b.WriteByte('\n')
 	}
@@ -116,7 +170,8 @@ func formatProbelUsageCSV(rows []probelUsageRow, withProtect bool) string {
 }
 
 // renderProbelUsageASCII prints the fan-out view: one block per
-// feeding source, every dst it feeds nested under it.
+// feeding source, every dst it feeds nested under it, labels in
+// parentheses when resolved.
 func renderProbelUsageASCII(w io.Writer, rows []probelUsageRow) {
 	var lastSrc = -1
 	var block []probelUsageRow
@@ -130,7 +185,7 @@ func renderProbelUsageASCII(w io.Writer, rows []probelUsageRow) {
 			if r.Protect != "" {
 				suffix = "  [" + r.Protect + "]"
 			}
-			_, _ = fmt.Fprintf(w, "%s dst %d  level %d%s\n", branch, r.Dst, r.Level, suffix)
+			_, _ = fmt.Fprintf(w, "%s %s  levels %s%s\n", branch, usageName("dst", r.Dst, r.DstLabel), r.Levels, suffix)
 		}
 		block = block[:0]
 	}
@@ -138,7 +193,7 @@ func renderProbelUsageASCII(w io.Writer, rows []probelUsageRow) {
 		if r.Src != lastSrc {
 			flush()
 			lastSrc = r.Src
-			_, _ = fmt.Fprintf(w, "src %d\n", r.Src)
+			_, _ = fmt.Fprintf(w, "%s\n", usageName("src", r.Src, r.SrcLabel))
 		}
 		block = append(block, r)
 	}
@@ -172,16 +227,47 @@ func probelUsageProtectMap(res codec.ProtectTallyDumpParams) map[int]string {
 	return out
 }
 
+// parseLevelList parses a --levels CSV ("0,1,2") into wire level ids.
+func parseLevelList(s string) ([]uint8, error) {
+	var out []uint8
+	for _, part := range strings.Split(s, ",") {
+		n, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil || n < 0 || n > 255 {
+			return nil, fmt.Errorf("--levels: %q is not a level id (0-255)", part)
+		}
+		out = append(out, uint8(n))
+	}
+	return out, nil
+}
+
+// probelFetchUsageLabels reads the source names for one (matrix,
+// level) — cmd 100 is level-scoped — as id → trimmed label.
+func probelFetchUsageLabels(ctx context.Context, p *probelproto.Plugin, mtx, level uint8) (map[int]string, error) {
+	r, err := p.AllSourceNames(ctx, mtx, level, codec.NameLen12)
+	if err != nil {
+		return nil, fmt.Errorf("all-source-names level %d: %w", level, err)
+	}
+	out := map[int]string{}
+	for i, n := range r.Names {
+		if n = trimLabel(n); n != "" {
+			out[int(r.FirstSourceID)+i] = n
+		}
+	}
+	return out, nil
+}
+
 // runProbelUsage drives `dhs consumer probel-sw08p usage`.
 func runProbelUsage(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-usage", flag.ContinueOnError)
 	matrix := fs.Int("matrix", 0, "matrix id (0-255; global --mtx-id wins when set)")
 	srce := fs.Int("srce", -1, "filter: only this source's assignments")
 	dest := fs.Int("dest", -1, "filter: only this destination's feed")
-	withProtect := fs.Bool("protect", false, "join per-dst protect state (protect tally dump) as an extra column")
+	withProtect := fs.Bool("protect", false, "join per-dst protect state (protect tally dump) as an extra column (single-level runs only)")
+	withLabels := fs.Bool("names", false, "resolve src/dst names (cmd 100/102) — ascii shows \"id (Label)\", csv appends srce_label,dest_label (same flag name on every connector's usage; --labels is the tree-proto canonical-labels mode)")
+	levelsFlag := fs.String("levels", "", "comma-separated level sweep (e.g. 0,1,2); omitted = the single global --level; rows collapse per (src,dst) with a combined levels column")
 	format := fs.String("format", "csv", "output format: csv | ascii")
 	out := fs.String("out", "", "csv output file (omitted = snapshots/probel-sw08p/<host>/usage.csv per ADR-0028; \"-\" = stdout)")
-	timeout := fs.Duration("timeout", 15*time.Second, "operation timeout")
+	timeout := fs.Duration("timeout", 30*time.Second, "operation timeout")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
@@ -195,6 +281,16 @@ func runProbelUsage(ctx context.Context, args []string) error {
 	if *srce >= 0 && *dest >= 0 {
 		return fmt.Errorf("--srce and --dest are mutually exclusive")
 	}
+	var levels []uint8
+	if *levelsFlag != "" {
+		var lerr error
+		if levels, lerr = parseLevelList(*levelsFlag); lerr != nil {
+			return lerr
+		}
+	}
+	if *withProtect && len(levels) > 1 {
+		return fmt.Errorf("--protect needs a single level (protect state is per (dst, level) — a collapsed multi-level row cannot carry it)")
+	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
 	p, closer, err := dialProbel(cctx, addr)
@@ -202,27 +298,59 @@ func runProbelUsage(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
-	mtx, level := probelTarget(p, *matrix)
-	res, err := p.CrosspointTallyDump(cctx, mtx, level)
-	if err != nil {
-		return err
+	mtx, globalLevel := probelTarget(p, *matrix)
+	if len(levels) == 0 {
+		levels = []uint8{globalLevel}
 	}
-	var protect map[int]string
-	if *withProtect {
-		pres, perr := p.ProtectTallyDump(cctx, mtx, level, 0)
-		if perr != nil {
-			return perr
+
+	// Dest assoc names are matrix-scoped — one fetch covers the sweep.
+	var dstNames map[int]string
+	if *withLabels {
+		r, derr := p.AllDestAssocNames(cctx, mtx, codec.NameLen12)
+		if derr != nil {
+			return fmt.Errorf("all-dest-names: %w", derr)
 		}
-		protect = probelUsageProtectMap(pres)
+		dstNames = map[int]string{}
+		for i, n := range r.Names {
+			if n = trimLabel(n); n != "" {
+				dstNames[int(r.FirstDestAssociationID)+i] = n
+			}
+		}
 	}
-	firstDst, srcs := probelTallyTable(res)
-	rows := probelFilterUsage(probelBuildUsage(firstDst, srcs, int(level), protect), *srce, *dest)
+
+	var rows []probelUsageRow
+	for _, lvl := range levels {
+		res, derr := p.CrosspointTallyDump(cctx, mtx, lvl)
+		if derr != nil {
+			return fmt.Errorf("tally-dump level %d: %w", lvl, derr)
+		}
+		var protect map[int]string
+		if *withProtect {
+			pres, perr := p.ProtectTallyDump(cctx, mtx, lvl, 0)
+			if perr != nil {
+				return perr
+			}
+			protect = probelUsageProtectMap(pres)
+		}
+		firstDst, srcs := probelTallyTable(res)
+		lvlRows := probelBuildUsage(firstDst, srcs, int(lvl), protect)
+		if *withLabels {
+			// Source names are LEVEL-scoped (cmd 100) — fetch per level.
+			srcNames, serr := probelFetchUsageLabels(cctx, p, mtx, lvl)
+			if serr != nil {
+				return serr
+			}
+			applyProbelUsageLabels(lvlRows, srcNames, dstNames)
+		}
+		rows = append(rows, lvlRows...)
+	}
+	rows = probelFilterUsage(collapseProbelUsage(sortProbelUsage(rows)), *srce, *dest)
 
 	if *format == "ascii" {
 		renderProbelUsageASCII(os.Stdout, rows)
 		return nil
 	}
-	csv := formatProbelUsageCSV(rows, *withProtect)
+	csv := formatProbelUsageCSV(rows, *withProtect, *withLabels)
 	if *out == "-" {
 		fmt.Print(csv)
 		return nil
@@ -296,14 +424,14 @@ func runProbelReplace(ctx context.Context, args []string) error {
 	diffs := make([]ensureDiff, 0, len(cells))
 	for _, c := range cells {
 		diffs = append(diffs, ensureDiff{
-			Field: fmt.Sprintf("route.%d.%d", c.Dst, c.Level),
+			Field: fmt.Sprintf("route.%d.%s", c.Dst, c.Levels),
 			From:  fmt.Sprintf("%d", *from), To: fmt.Sprintf("%d", *with),
 		})
 	}
 
 	if *check {
 		for _, c := range cells {
-			_, _ = fmt.Fprintf(logw, "[would-replace] matrix=%d level=%d dst=%d: src %d -> %d\n", mtx, c.Level, c.Dst, *from, *with)
+			_, _ = fmt.Fprintf(logw, "[would-replace] matrix=%d level=%s dst=%d: src %d -> %d\n", mtx, c.Levels, c.Dst, *from, *with)
 		}
 		_, _ = fmt.Fprintf(logw, "probel-sw08p replace --check: would_change=%d crosspoint(s) carrying src %d — nothing sent\n", len(cells), *from)
 		if jsonOut {
@@ -315,11 +443,11 @@ func runProbelReplace(ctx context.Context, args []string) error {
 	fails := 0
 	for _, c := range cells {
 		if _, err := p.CrosspointConnect(cctx, mtx, level, uint16(c.Dst), uint16(*with)); err != nil {
-			_, _ = fmt.Fprintf(logw, "[replace] FAIL matrix=%d level=%d dst=%d reason=%s\n", mtx, c.Level, c.Dst, err)
+			_, _ = fmt.Fprintf(logw, "[replace] FAIL matrix=%d level=%s dst=%d reason=%s\n", mtx, c.Levels, c.Dst, err)
 			fails++
 			continue
 		}
-		_, _ = fmt.Fprintf(logw, "[replace] OK   matrix=%d level=%d dst=%d: src %d -> %d\n", mtx, c.Level, c.Dst, *from, *with)
+		_, _ = fmt.Fprintf(logw, "[replace] OK   matrix=%d level=%s dst=%d: src %d -> %d\n", mtx, c.Levels, c.Dst, *from, *with)
 	}
 	if fails > 0 {
 		return fmt.Errorf("%d/%d replace connect(s) failed", fails, len(cells))

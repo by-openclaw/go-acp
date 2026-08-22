@@ -121,7 +121,7 @@ func runProbelSW02Export(ctx context.Context, args []string) error {
 		xrows = append(xrows, cerebrumXpointRow{
 			Dest:   strconv.Itoa(r.Dst),
 			Srce:   strconv.Itoa(r.Src),
-			Levels: []string{strconv.Itoa(r.Level)},
+			Levels: []string{r.Levels},
 		})
 	}
 	xpPath := facetFile(*outDir, *prefix, "xpoint")
