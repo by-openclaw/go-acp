@@ -86,10 +86,14 @@ signing belongs to the parked hardening topic).
 
 ## mDNS daemons
 
-Avahi 0.8 is installed and active on all four LXCs. Bonjour is NOT yet
-installed on `win11` (installers staged in `internal/amwa/assets/`);
-the `dhs_mdns` role (#784) installs it. dhs uses the stdlib mDNS
-fallback on Windows until the Bonjour backend (#195) lands.
+Avahi 0.8 is installed, active and pinned by the `dhs_mdns` role on all
+four LXCs (Docker hosts exclude `docker0` from Avahi). On `win11` the
+role stages Apple's `BonjourPSSetup.exe` at `C:\dhs\installers\` and
+manages the service, but the silent install hangs in non-interactive
+sessions on Windows 11 — install it ONCE interactively at the VM
+console (double-click the staged installer); the role then keeps
+"Bonjour Service" running. dhs uses the stdlib mDNS fallback on Windows
+until the Bonjour backend (#195) lands, so this is not load-bearing yet.
 
 ## Producer launch and stop
 

@@ -1,0 +1,42 @@
+---
+# Control-node prerequisites (dhs-debian .103), self-applied. Run once after a
+# fresh clone and whenever requirements change:
+#
+#   cd ~/acp/ansible && ansible-playbook playbooks/control-node.yml
+#
+# - git-lfs + `git lfs pull` for the LFS-tracked assets the fleet roles ship
+#   (Bonjour installer, PDFs) — without it a clone holds 132-byte pointers.
+# - the Ansible collections from requirements.yml.
+- name: Control node prerequisites
+  hosts: control
+  gather_facts: true
+  tasks:
+    - name: git + git-lfs present
+      ansible.builtin.package:
+        name: [git, git-lfs]
+        state: present
+
+    - name: git-lfs filters installed for root
+      ansible.builtin.command: git lfs install --skip-repo
+      register: cn_lfs_install
+      changed_when: "'Git LFS initialized' in cn_lfs_install.stdout and 'already' not in cn_lfs_install.stdout"
+
+    - name: LFS objects for the amwa assets pulled
+      ansible.builtin.command:
+        cmd: git lfs pull --include "internal/amwa/assets/*"
+        chdir: "{{ playbook_dir }}/../.."
+      register: cn_lfs_pull
+      changed_when: "'Downloading' in cn_lfs_pull.stdout or (cn_lfs_pull.stderr is search('Downloading'))"
+
+    - name: Bonjour installer is a real binary (> 1 MB)
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../../internal/amwa/assets/BonjourPSSetup.exe"
+      register: cn_bonjour
+      failed_when: not cn_bonjour.stat.exists or cn_bonjour.stat.size < 1000000
+
+    - name: Ansible collections from requirements.yml
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection install -r requirements.yml
+        chdir: "{{ playbook_dir }}/.."
+      register: cn_galaxy
+      changed_when: "'Installing' in cn_galaxy.stdout"

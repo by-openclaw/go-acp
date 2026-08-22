@@ -1,0 +1,21 @@
+---
+# dhs_mdns — the system mDNS daemon every fleet host must run so dhs's
+# DNS-SD backends (Avahi-via-DBus on Linux, Bonjour on Windows — #194/#195)
+# and the AMWA NMOS Testing tool see the same names on the wire.
+#
+# Linux: avahi-daemon + tools (apt: Debian/Ubuntu, dnf: Rocky/EL).
+# Windows: Apple Bonjour Print Services (installs "Bonjour Service" +
+# C:\Windows\System32\dnssd.dll) from the repo-staged installer
+# internal/amwa/assets/BonjourPSSetup.exe (the SDK is a dev-machine
+# concern for building the CGo backend, not a fleet host requirement).
+dhs_mdns_linux_packages:
+  Debian: [avahi-daemon, avahi-utils, libnss-mdns]
+  RedHat: [avahi, avahi-tools]
+dhs_mdns_linux_service: avahi-daemon
+
+dhs_mdns_bonjour_installer_src: "{{ playbook_dir }}/../../internal/amwa/assets/BonjourPSSetup.exe"
+dhs_mdns_bonjour_installer_dst: 'C:\dhs\installers\BonjourPSSetup.exe'
+dhs_mdns_bonjour_service: Bonjour Service
+# Silent install hangs in non-interactive SSH sessions on Win11 (2026-08-23);
+# default = stage + report + manage the service once installed interactively.
+dhs_mdns_bonjour_silent_install: false
