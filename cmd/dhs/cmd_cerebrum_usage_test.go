@@ -78,14 +78,22 @@ func TestCerebrumBuildUsage_ResolveAndCollapse(t *testing.T) {
 		t.Fatalf("dest2 row = %+v", r)
 	}
 
-	csv := formatCerebrumUsageCSV(rows, true)
+	csv := formatCerebrumUsageCSV(rows, true, nil, nil)
 	if !strings.Contains(csv, "srce,dest,levels,effective_srce,via\n") ||
 		!strings.Contains(csv, "4,1,1;2;3,2,4;3\n") {
 		t.Fatalf("resolved csv:\n%s", csv)
 	}
-	plain := formatCerebrumUsageCSV(cerebrumBuildUsage(routes, virtuals, false), false)
+	plain := formatCerebrumUsageCSV(cerebrumBuildUsage(routes, virtuals, false), false, nil, nil)
 	if strings.Contains(plain, "effective") || !strings.Contains(plain, "2,3,1;2;3\n") {
 		t.Fatalf("literal csv:\n%s", plain)
+	}
+	// --names appends the mnemonic columns (#751 G4), header-keyed and
+	// composable with --resolve.
+	named := formatCerebrumUsageCSV(rows, true,
+		map[string]string{"4": "Proc 2"}, map[string]string{"1": "Dest 1"})
+	if !strings.Contains(named, "srce,dest,levels,effective_srce,via,srce_label,dest_label\n") ||
+		!strings.Contains(named, "4,1,1;2;3,2,4;3,Proc 2,Dest 1\n") {
+		t.Fatalf("named csv:\n%s", named)
 	}
 }
 

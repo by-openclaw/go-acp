@@ -134,13 +134,19 @@ func cerebrumBuildUsage(routes []routeSpec, virtuals map[string]bool, resolve bo
 // columns appear only in resolve mode: effective_srce is the chain's
 // physical end ("" on loop/unfed — always loud in ascii, silent-empty
 // here so machine parsing stays simple), via lists the virtual hops.
-func formatCerebrumUsageCSV(rows []cerebrumUsageRow, resolve bool) string {
+// --names appends srce_label,dest_label (mnemonics — header-keyed,
+// #751 G4: same columns as the probel/ember+ usage CSVs).
+func formatCerebrumUsageCSV(rows []cerebrumUsageRow, resolve bool, srcNames, dstNames map[string]string) string {
+	withNames := srcNames != nil || dstNames != nil
 	var b strings.Builder
+	b.WriteString("srce,dest,levels")
 	if resolve {
-		b.WriteString("srce,dest,levels,effective_srce,via\n")
-	} else {
-		b.WriteString("srce,dest,levels\n")
+		b.WriteString(",effective_srce,via")
 	}
+	if withNames {
+		b.WriteString(",srce_label,dest_label")
+	}
+	b.WriteByte('\n')
 	for _, r := range rows {
 		b.WriteString(r.Srce)
 		b.WriteByte(',')
@@ -152,6 +158,12 @@ func formatCerebrumUsageCSV(rows []cerebrumUsageRow, resolve bool) string {
 			b.WriteString(r.Effective)
 			b.WriteByte(',')
 			b.WriteString(strings.Join(r.Via, ";"))
+		}
+		if withNames {
+			b.WriteByte(',')
+			b.WriteString(srcNames[r.Srce])
+			b.WriteByte(',')
+			b.WriteString(dstNames[r.Dest])
 		}
 		b.WriteByte('\n')
 	}
@@ -246,6 +258,7 @@ func cerebrumUsage(_ context.Context, args []string) error {
 	dest := fs.String("dest", "", "filter: only this dest's feeds (upstream-chain view in ascii)")
 	level := fs.String("level", "", "filter: one level only")
 	resolveFlag := fs.Bool("resolve", false, "resolve VIRTUAL chains: add effective_srce + via columns (csv) / render the full chain (ascii)")
+	withNames := fs.Bool("names", false, "csv: append srce_label,dest_label mnemonic columns (#751 G4 — same flag on every connector's usage; ascii always shows names)")
 	format := fs.String("format", "csv", "output format: csv | ascii")
 	out := fs.String("out", "", "csv output file (omitted = snapshots/<proto>/<router>/usage.csv per ADR-0028; \"-\" = stdout)")
 	idle := fs.Duration("idle", 3*time.Second, "stop collecting this long after the last snapshot frame if no WILDCARD_COMPLETE arrives")
@@ -330,7 +343,11 @@ func cerebrumUsage(_ context.Context, args []string) error {
 		return nil
 	}
 
-	csv := formatCerebrumUsageCSV(rows, *resolveFlag)
+	var csvSrcNames, csvDstNames map[string]string
+	if *withNames {
+		csvSrcNames, csvDstNames = srcNames, dstNames
+	}
+	csv := formatCerebrumUsageCSV(rows, *resolveFlag, csvSrcNames, csvDstNames)
 	if *out == "-" {
 		fmt.Print(csv)
 		return nil
