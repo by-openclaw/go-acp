@@ -1,0 +1,69 @@
+---
+# dhs_verb example plays (#751 G7) — the patterns for driving ANY
+# consumer verb from Ansible with JSON results and ADR-0007 asserts.
+# Run from the Linux control node (docs/user.md); targets need the dhs
+# binary installed (dhs_acp1 / dhs_verbtest deploy it).
+#
+#   ansible-playbook -i inventory/hosts.yml playbooks/dhs-verb-examples.yml \
+#     -e device=10.100.0.104:2072
+#
+# Pattern 1 — point read, result as a fact:
+- name: Read one value (get, JSON parsed)
+  hosts: dhs_clients
+  gather_facts: true
+  tasks:
+    - name: acp2 get via dhs_verb
+      ansible.builtin.include_role:
+        name: dhs_verb
+      vars:
+        dv_proto: acp2
+        dv_argv: [get, "{{ device }}", --slot, "1", --id, "18"]
+
+    - name: Show the parsed value
+      ansible.builtin.debug:
+        msg: "value = {{ dv_result_json.value }}"
+
+# Pattern 2 — survey a router, JSON document:
+- name: Survey a SW-P-02 router (discover)
+  hosts: dhs_clients
+  gather_facts: true
+  tasks:
+    - name: discover via dhs_verb
+      ansible.builtin.include_role:
+        name: dhs_verb
+      vars:
+        dv_proto: probel-sw02p
+        dv_global_argv: [--dsts, "16"]
+        dv_argv: [discover, "{{ device }}"]
+
+    - name: Routed crosspoints
+      ansible.builtin.debug:
+        msg: "{{ dv_result_json.xpoints }}"
+
+# Pattern 3 — ensure-shaped write with the run-twice assert:
+- name: Converge one crosspoint idempotently (ADR-0007 assert)
+  hosts: dhs_clients
+  gather_facts: true
+  tasks:
+    - name: sw02p connect via dhs_verb (asserted idempotent)
+      ansible.builtin.include_role:
+        name: dhs_verb
+      vars:
+        dv_proto: probel-sw02p
+        dv_argv: [connect, "{{ device }}", --dst, "4", --src, "6"]
+        dv_ensure_assert: true
+
+# Pattern 4 — extract the router pack (export; file-set on the client,
+# meta.json included per #738):
+- name: Export the router pack
+  hosts: dhs_clients
+  gather_facts: true
+  tasks:
+    - name: export via dhs_verb (no JSON — export writes files)
+      ansible.builtin.include_role:
+        name: dhs_verb
+      vars:
+        dv_proto: probel-sw02p
+        dv_global_argv: [--dsts, "16"]
+        dv_argv: [export, "{{ device }}"]
+        dv_output_json: false
