@@ -35,14 +35,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -149,7 +149,7 @@ jobs:
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage.out
@@ -170,7 +170,7 @@ jobs:
       - name: Install git + git-lfs
         run: dnf install -y git git-lfs
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
@@ -180,7 +180,7 @@ jobs:
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -202,19 +202,19 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.1.6
 
@@ -223,14 +223,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, test-rhel, lint]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -253,7 +253,7 @@ jobs:
           done
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: binaries
           path: dist/
@@ -291,9 +291,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -376,7 +376,7 @@ jobs:
           cat SHA256SUMS.txt
 
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: |
