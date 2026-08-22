@@ -1,0 +1,19 @@
+---
+# dhs-debian — Proxmox LXC 651 "dhs.debian12", Debian 12 (bookworm).
+# Dual-NIC: eth0 10.100.0.103 (ansible_host) / eth1 10.100.0.108.
+# Roles: Ansible CONTROL NODE for the whole fleet; Docker host.
+# Never bring eth1/.108 down — it is part of the access path.
+# This host IS the control node: run local, no SSH loop-back needed.
+ansible_connection: local
+
+pve_vmid: 651
+pve_name: dhs.debian12
+os_label: "Debian 12"
+nics:
+  - { name: eth0, mac: "BC:24:11:80:E3:AC", ip: 10.100.0.103 }
+  - { name: eth1, mac: "BC:24:11:91:97:7C", ip: 10.100.0.108 }
+fleet_hostname: dhs-debian
+
+# Ember+ producer: our integration DM — the synthetic tree that carries the
+# n-to-n matrix plus the salvo/lock/protect builtin functions.
+ember_tree_src: "{{ playbook_dir }}/../files/trees/our-dm.tree.json"

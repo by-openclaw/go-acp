@@ -1,0 +1,11 @@
+---
+# dhs-tools — Proxmox LXC 655 "dhs.tools", Ubuntu, single NIC 10.100.0.106.
+# Tooling host: Docker + the AMWA NMOS Testing tool (scripts/amwa/*),
+# tshark / Wireshark dissector validation. Not a dhs producer host by
+# default (no ember_tree_src).
+pve_vmid: 655
+pve_name: dhs.tools
+os_label: "Ubuntu"
+nics:
+  - { name: eth0, mac: "BC:24:11:C1:92:FF", ip: 10.100.0.106 }
+fleet_hostname: dhs-tools

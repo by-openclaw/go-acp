@@ -1,25 +1,38 @@
-# docs/testbed.md — Test fleet inventory and SSH access mesh
+# docs/testbed.md — Test fleet inventory and access
 
 Tracked, repo-local source of truth for the test fleet on the DMZ VLAN
-(`10.100.0.0/24`, routed via pfSense).
+(`10.100.0.0/24`, VLAN 100 on Proxmox bridge `vmbrAPPS`, gateway
+pfSense `10.100.0.1`). The facts below were re-verified against the
+Proxmox API (pve01, `10.6.224.5`) and the live guests on 2026-08-23;
+the Ansible inventory (`ansible/inventory/`) carries the SAME facts per
+host (`pve_vmid`, `nics`, `os_label`) — when one changes, both change
+in the same PR (epic #780).
 
 ## Fleet
 
-| Hostname | IP | Role | OS | Notes |
-| --- | --- | --- | --- | --- |
-| `dhs-debian` | `10.100.0.102` | dhs producer host | Debian 12 | OS-compat row, all four producers concurrently |
-| `dhs-ubuntu` | `10.100.0.103` | dhs producer host + Ansible controller | Ubuntu 24.04 | Current ACP2 reconnect/keepalive test target |
-| `dhs-rocky` | `10.100.0.104` | dhs producer host | Rocky 9.4 | OS-compat row |
-| `dhs-tools` | `10.100.0.105` | tooling host | Ubuntu 24.04 | Docker, AMWA NMOS Testing tool, tshark, Wireshark dissector validator |
-| `dhs-win11` | `10.100.0.106` | Windows producer host | Windows 11 Pro | Multi-OS matrix per ADR-0016; producer parity check for the Windows row |
-| `cerebrum` | `10.100.0.5` | external reference peer | (vendor appliance) | NMOS Registry + Node — not part of the test fleet, used as a real-peer integration target |
+| Inventory name | Proxmox | Guest OS | eth0 (`ansible_host`) | eth1 | Role |
+| --- | --- | --- | --- | --- | --- |
+| `dhs-debian` | LXC 651 `dhs.debian12` | Debian 12 | `10.100.0.103` | `10.100.0.108` | **Ansible control node**; dhs producer host; Docker |
+| `dhs-ubuntu` | LXC 652 `dhs.ubuntu24` | Ubuntu 24.04 | `10.100.0.102` | `10.100.0.101` | dhs producer host |
+| `dhs-rocky` | LXC 653 `dhs.rocky9` | Rocky 9.4 | `10.100.0.105` | `10.100.0.104` | dhs producer host (`.104` and `.105` are ONE host) |
+| `dhs-tools` | LXC 655 `dhs.tools` | Ubuntu | `10.100.0.106` | — | tooling: Docker, AMWA NMOS Testing tool (`scripts/amwa/`), tshark |
+| `win11` | VM 654 `dhs.win11` | Windows 11 Pro | `10.100.0.107` | — | Windows producer-parity row (ADR-0016); guest name `DHS_WIN11` |
+| `cerebrum` | VM 601 `vm-cerebrum-stg-01` | Windows 11 | `10.100.0.5` | — | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
 
-The three `dhs-*` Linux producer hosts validate the OS-compat axis from
-ADR-0016 without requiring vendor hardware. `dhs-tools` hosts the AMWA
-Testing tool peer + isolated Docker bridge. `dhs-win11` covers the
-Windows producer parity row required by ADR-0016.
+All LXCs are unprivileged with `nesting=1`. MAC addresses per NIC live
+in `ansible/inventory/host_vars/<name>.yml` (`nics:`).
 
-## Producer port plan (every Linux LXC + dhs-win11)
+Addressing: every guest is configured `ip=dhcp` in Proxmox; addresses
+are pinned as **pfSense static DHCP mappings keyed by MAC** (#786) so a
+rebuilt guest keeps its address with zero guest-side configuration.
+`ansible/playbooks/fleet-verify.yml` asserts live IP == inventory IP per
+NIC and fails loudly on drift.
+
+Guest hostnames are being made unique (`dhs-debian`, `dhs-ubuntu`,
+`dhs-rocky`, `dhs-tools`, `dhs-win11` = `fleet_hostname`, #783);
+today three LXCs still answer `dhs`, which collides in Avahi.
+
+## Producer port plan (every Linux LXC + win11)
 
 | Connector | Wire | Port |
 | --- | --- | --- |
@@ -27,66 +40,59 @@ Windows producer parity row required by ADR-0016.
 | ACP2 | TCP (AN2) | `2072` |
 | Ember+ | TCP (S101) | `9000` |
 | Probel SW-P-08 | TCP (DLE) | `2008` |
+| Probel SW-P-02 | TCP | `2002` |
 | AMWA NMOS Node | HTTP | `18080` |
+| mDNS (Avahi / Bonjour) | UDP | `5353` |
+| metrics (`--metrics-addr`) | HTTP | `9100` |
+| SSH / WinRM (mgmt) | TCP | `22` / `5985` |
 
 All producers run concurrently on the same host; one port per
 connector. The same producer binary is driven by `dhs consumer` and by
-external peers (Cerebrum @ `.5`, AMWA Testing tool in Docker on `.105`)
-so wire behaviour can be compared across drivers.
+external peers (Cerebrum @ `.5`, AMWA Testing tool in Docker on
+`dhs-tools` `.106`) so wire behaviour can be compared across drivers.
+Host firewalls are managed by the `dhs_firewall` role (#785).
 
-## SSH access mesh
+## Control node
 
-The agent (Claude, git author `by-rune`) needs passwordless SSH to and
-from every node in the fleet so it can launch / restart / probe
-producers from any host.
+`dhs-debian` (`.103`) runs every Ansible play — Linux hosts over SSH as
+`root`, the Windows VM over SSH as `by-rune` (key auth; WinRM/NTLM +
+password file is retired). It holds a clone of this (public) repo at
+`~/acp` and its own ed25519 key (`root@dhs`), which is one of the three
+fleet actor keys below. Never drive the fleet from a Windows
+workstation (PowerShell) — see ADR-0025 step 5.
 
-### Key material
+## Access — actor keys, not per-host keys
 
-- Single ed25519 keypair, no passphrase: `id_dhs_testbed` (private),
-  `id_dhs_testbed.pub` (public).
-- Generated once on `BY-DESK-03`, then distributed to every node so the
-  same `~/.ssh/id_dhs_testbed` exists on every Linux LXC and on the
-  Windows host. This makes the mesh symmetric — any node can SSH any
-  other node with the same key.
-- The agent shell on `BY-DESK-03` continues to use the existing key
-  `~/.ssh/by-rune_lxc` for outbound SSH (already present and working).
-  The new `id_dhs_testbed` mesh is for fleet-internal SSH and replaces
-  the desk-03-only path.
+Exactly three ed25519 identities are authorized on every host, managed
+by the `dhs_access` role (#782); anything else is removed:
 
-### Account
+| Actor | Key comment | Purpose |
+| --- | --- | --- |
+| by-rune (agent, desk-03) | `by-rune-dhs-lxc` | agent SSH to every host |
+| control node `.103` | `root@dhs` | Ansible → fleet |
+| codeowner | (owner's ed25519) | direct SSH |
 
-Login user is `root` on every Linux LXC (the `by-rune` user is
-rejected by sshd config on the LXCs; only `root` accepts the key —
-verified 2026-05-10). On `dhs-win11` the equivalent is the local
-Administrator user with OpenSSH server enabled.
+Linux: `/root/.ssh/authorized_keys` (login user is `root`; `by-rune` is
+rejected by sshd on the LXCs). Windows: `by-rune` is in the local
+Administrators group, so sshd reads
+`C:\ProgramData\ssh\administrators_authorized_keys` (strict ACL:
+SYSTEM + Administrators only) — the per-profile `authorized_keys` is
+ignored for admin users, which is why earlier key installs "did
+nothing". No GPG keys and no per-host keypairs are generated (commit
+signing belongs to the parked hardening topic).
 
-### Authorised destinations (mesh)
+## mDNS daemons
 
-| Source → | dhs-debian | dhs-ubuntu | dhs-rocky | dhs-tools | dhs-win11 | desk-03 |
-| --- | --- | --- | --- | --- | --- | --- |
-| dhs-debian | self | yes | yes | yes | yes | (pull only) |
-| dhs-ubuntu | yes | self | yes | yes | yes | (pull only) |
-| dhs-rocky | yes | yes | self | yes | yes | (pull only) |
-| dhs-tools | yes | yes | yes | self | yes | (pull only) |
-| dhs-win11 | yes | yes | yes | yes | self | (pull only) |
-| desk-03 | yes | yes | yes | yes | yes | self |
-
-`desk-03` initiates SSH outbound. The fleet does not SSH back into
-`desk-03` (the codeowner's workstation is on the OOB VLAN behind
-pfSense and is not reachable from the DMZ).
-
-### Distribution status
-
-- desk-03 → fleet: working via `~/.ssh/by-rune_lxc` (legacy key).
-- Fleet ↔ fleet: **NOT YET DISTRIBUTED.** The new `id_dhs_testbed`
-  keypair has not been generated or pushed. Tracked as a separate
-  infra task — see "Open work" below.
+Avahi 0.8 is installed and active on all four LXCs. Bonjour is NOT yet
+installed on `win11` (installers staged in `internal/amwa/assets/`);
+the `dhs_mdns` role (#784) installs it. dhs uses the stdlib mDNS
+fallback on Windows until the Bonjour backend (#195) lands.
 
 ## Producer launch and stop
 
 ### Linux LXC (Debian / Ubuntu / Rocky)
 
-Launch the four producers nohup-detached, writing logs to
+Launch the producers nohup-detached, writing logs to
 `/var/log/dhs-<proto>.log`. Example for ACP2:
 
 ```sh
@@ -100,39 +106,28 @@ Hard-stop by walking `/proc/*/exe` symlinks pointing to
 `/usr/local/bin/dhs` and killing each PID. Helper script at
 `bin/stop-dhs.sh`.
 
-### dhs-win11
+### win11
 
-OpenSSH server on the Windows host, `dhs.exe` placed under
-`C:\Program Files\dhs\dhs.exe`. Producer launch via PowerShell
-`Start-Process` with `-WindowStyle Hidden` and a redirect of
-stdout/stderr to log files under `C:\ProgramData\dhs\logs\`.
+OpenSSH Server on the VM, `dhs.exe` under `C:\dhs\dhs.exe` (see
+`ansible/inventory/group_vars/windows.yml`). Producer launch via
+`Start-Process -WindowStyle Hidden` with stdout/stderr redirected to
+`C:\ProgramData\dhs\logs\`.
 
 ## Caveats
 
 - `amwa/nmos-testing:latest` upstream regressed to the "Controller
   Testing Façade" on port 5001 after 2026-04-30. Pin to a pre-Façade
-  tag or run from source.
-- Win11 desk-03 (the codeowner's workstation) sits on the OOB VLAN and
-  cannot reach the DMZ via mDNS. `dhs-win11` (`.106`) on the DMZ
-  provides the Bonjour live test surface instead.
+  tag or run from source (#173).
+- desk-03 (the codeowner's workstation) sits on the OOB VLAN and cannot
+  reach the DMZ via mDNS. `win11` (`.107`) on the DMZ provides the
+  Windows mDNS live test surface instead.
 - Cerebrum drops `v1.0` from `api.versions` on registration — real-peer
   fact, not our bug.
-
-## Pending rig changes
-
-- Add `eth1` second NIC per `dhs-*` Linux LXC for dual-controller
-  redundancy testing per ADR-0022 (N-endpoints/Frame). Planned
-  pairings: `.102/.108`, `.103/.109`, `.104/.107`.
-- Bring `dhs-win11` (`.106`) online with the four producers running
-  to complete the multi-OS coverage matrix.
+- The Synapse ACP1 emulator referenced by `ansible/inventory/group_vars/all.yml`
+  (`10.6.239.113`) is on the office network, not the DMZ.
 
 ## Open work
 
-- Generate `id_dhs_testbed` keypair on `BY-DESK-03`.
-- Distribute private + public to every node in the fleet (LXCs +
-  Windows) and add the public to every `authorized_keys`.
-- Verify the mesh: from each node, `ssh -i ~/.ssh/id_dhs_testbed
-  <every-other-node>` succeeds without prompting.
-
-These are infra actions that require codeowner-side execution (key
-distribution touches credentials and is therefore not autonomous).
+Tracked in epic #780: fixed IPs (#786, pfSense mappings = owner action),
+unique hostnames (#783), actor-key convergence (#782), mDNS (#784),
+firewall (#785).
