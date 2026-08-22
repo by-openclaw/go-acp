@@ -14,6 +14,7 @@ import (
 
 func runMatrix(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("matrix", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpMatrix) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number")
 	matrixPath := fs.String("path", "", "matrix path: dotted label OR numeric OID (e.g. router.oneToN.matrix or 1.1)")

@@ -18,6 +18,7 @@ import (
 
 func runWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("walk", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpWalk) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number (default 0; combine with --all to walk every present slot)")
 	all := fs.Bool("all", false, "walk every present slot on the device")

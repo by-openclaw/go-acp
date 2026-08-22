@@ -20,6 +20,7 @@ import (
 // the --out filename extension second, defaulting to json.
 func runExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("export", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpExport) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	format := fs.String("format", "", "output format: json | yaml | csv (default: json or from --out extension)")
 	out := fs.String("out", "", "output file path (default: stdout)")
