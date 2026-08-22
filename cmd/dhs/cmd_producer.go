@@ -49,7 +49,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		host          = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
 		bind          = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
 		logLevel      = fs.String("log-level", "info", "log level: debug, info, warn, error")
-		logFormat     = fs.String("log-format", "text", "log format: text | json (json for Loki/Promtail)")
+		logFormat     = fs.String("log-format", "text", "log format: text | json (Loki/Promtail) | syslog (RFC 5424 lines, severity mapped incl. critical — #751 G6)")
 		announceDemo  = fs.Bool("announce-demo", false, "oscillate a target value every --announce-demo-interval and broadcast announces (acp1/acp2 only)")
 		announceSlot  = fs.Int("announce-demo-slot", 1, "slot for --announce-demo target")
 		announceGroup = fs.Int("announce-demo-group", 2, "acp1: object group for --announce-demo target (2=Control)")
@@ -494,12 +494,18 @@ func newLogger(level, format string) *slog.Logger {
 		lvl = slog.LevelWarn
 	case "error":
 		lvl = slog.LevelError
+	case "critical":
+		lvl = LevelCritical
 	default:
 		lvl = slog.LevelInfo
 	}
 	opts := &slog.HandlerOptions{Level: lvl}
-	if format == "json" {
+	switch format {
+	case "json":
 		return slog.New(slog.NewJSONHandler(os.Stderr, opts))
+	case "syslog":
+		// RFC 5424 lines for rsyslog/syslog-ng/promtail (#751 G6).
+		return slog.New(newSyslogHandler(os.Stderr, lvl))
 	}
 	return slog.New(slog.NewTextHandler(os.Stderr, opts))
 }
