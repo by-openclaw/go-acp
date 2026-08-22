@@ -1,0 +1,20 @@
+---
+- name: "hostname = {{ fleet_hostname }}"
+  ansible.builtin.hostname:
+    name: "{{ fleet_hostname }}"
+  notify: restart avahi
+
+- name: /etc/hosts maps 127.0.1.1 to the fleet name
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s'
+    line: "127.0.1.1 {{ fleet_hostname }}"
+    insertafter: '^127\.0\.0\.1\s'
+  notify: restart avahi
+
+- name: Avahi announces the system hostname (no host-name override)
+  ansible.builtin.lineinfile:
+    path: /etc/avahi/avahi-daemon.conf
+    regexp: '^\s*host-name\s*='
+    state: absent
+  notify: restart avahi

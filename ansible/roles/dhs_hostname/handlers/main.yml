@@ -1,0 +1,6 @@
+---
+- name: restart avahi
+  ansible.builtin.service:
+    name: avahi-daemon
+    state: restarted
+  failed_when: false   # hosts without Avahi (none today) must not fail the rename
