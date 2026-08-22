@@ -7,6 +7,27 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.18.0](https://github.com/by-openclaw/go-acp/compare/v0.17.0...v0.18.0) (2026-08-22)
+
+
+### Features
+
+* **ansible:** generic dhs_verb role - JSON results + ADR-0007 assert ([#751](https://github.com/by-openclaw/go-acp/issues/751) G7) ([#772](https://github.com/by-openclaw/go-acp/issues/772)) ([89104ec](https://github.com/by-openclaw/go-acp/commit/89104ecbb17f962fed3fc3a9f70f80d24e7b8e7b)), closes [#771](https://github.com/by-openclaw/go-acp/issues/771)
+* **cli:** --log-format syslog - RFC 5424 with full severity ladder ([#751](https://github.com/by-openclaw/go-acp/issues/751) G6) ([#768](https://github.com/by-openclaw/go-acp/issues/768)) ([bea20d1](https://github.com/by-openclaw/go-acp/commit/bea20d1e4c0b95c98ff3b4b57fee50bc29ed803c)), closes [#767](https://github.com/by-openclaw/go-acp/issues/767)
+* **cli:** cerebrum-nb usage --names CSV parity ([#751](https://github.com/by-openclaw/go-acp/issues/751) G4) ([#764](https://github.com/by-openclaw/go-acp/issues/764)) ([0c720c5](https://github.com/by-openclaw/go-acp/commit/0c720c5b27bfc1dcd0f8dfeea6a7a9e3806b7a73)), closes [#763](https://github.com/by-openclaw/go-acp/issues/763)
+* **cli:** probel-sw02p discover survey ([#751](https://github.com/by-openclaw/go-acp/issues/751) G8) ([#770](https://github.com/by-openclaw/go-acp/issues/770)) ([ff52fc0](https://github.com/by-openclaw/go-acp/commit/ff52fc0a158334c51aa98076e19cba9eb3990c0d)), closes [#769](https://github.com/by-openclaw/go-acp/issues/769)
+* **cli:** probel-sw02p import closes the round-trip ([#751](https://github.com/by-openclaw/go-acp/issues/751) G2) ([#754](https://github.com/by-openclaw/go-acp/issues/754)) ([df51746](https://github.com/by-openclaw/go-acp/commit/df517463f3629ae752d98dc5a4b1933533e9a205))
+* **cli:** probel-sw02p point reads speak --output json ([#751](https://github.com/by-openclaw/go-acp/issues/751) G1b) ([#760](https://github.com/by-openclaw/go-acp/issues/760)) ([29785f8](https://github.com/by-openclaw/go-acp/commit/29785f8081269a85cf3f16683ab4d10448bf23ae)), closes [#759](https://github.com/by-openclaw/go-acp/issues/759)
+* **cli:** probel-sw08p point reads speak --output json ([#751](https://github.com/by-openclaw/go-acp/issues/751) G1a) ([#758](https://github.com/by-openclaw/go-acp/issues/758)) ([7958a7b](https://github.com/by-openclaw/go-acp/commit/7958a7becded4d2d06db175d55d636380277fa88)), closes [#757](https://github.com/by-openclaw/go-acp/issues/757)
+* **cli:** tree-proto get/info speak --output json ([#751](https://github.com/by-openclaw/go-acp/issues/751) G1c) ([#766](https://github.com/by-openclaw/go-acp/issues/766)) ([3f6d988](https://github.com/by-openclaw/go-acp/commit/3f6d988c5234c3c49b893e21d9f622f7b2943838)), closes [#765](https://github.com/by-openclaw/go-acp/issues/765)
+* **cli:** verb -h shows rich help + all flags ([#751](https://github.com/by-openclaw/go-acp/issues/751) G5) ([#774](https://github.com/by-openclaw/go-acp/issues/774)) ([9cca674](https://github.com/by-openclaw/go-acp/commit/9cca674a6d9b4b27d9fd952104189c102a11879e)), closes [#773](https://github.com/by-openclaw/go-acp/issues/773)
+* **cli:** watch-listen alias parity on the push connectors ([#751](https://github.com/by-openclaw/go-acp/issues/751) G3) ([#756](https://github.com/by-openclaw/go-acp/issues/756)) ([3d94cbd](https://github.com/by-openclaw/go-acp/commit/3d94cbd36d6c7294e8d8f3f912b53876b260ab48)), closes [#755](https://github.com/by-openclaw/go-acp/issues/755)
+
+
+### Bug Fixes
+
+* **ci:** setup-go tracks go.mod everywhere (release binaries broke) ([#749](https://github.com/by-openclaw/go-acp/issues/749)) ([c581a2c](https://github.com/by-openclaw/go-acp/commit/c581a2cc8c6c8ef7e4362f4c50a12fcdac6c0f2c))
+
 ## [0.17.0](https://github.com/by-openclaw/go-acp/compare/v0.16.0...v0.17.0) (2026-08-22)
 
 
