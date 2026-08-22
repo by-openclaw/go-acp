@@ -44,7 +44,11 @@ names matter: three LXCs used to answer `dhs`, which collides in Avahi.
 | Ember+ | TCP (S101) | `9000` |
 | Probel SW-P-08 | TCP (DLE) | `2008` |
 | Probel SW-P-02 | TCP | `2002` |
-| AMWA NMOS Node | HTTP | `18080` |
+| AMWA NMOS Node | HTTP | `8080` (CLI default) / `18080` (fleet plan) |
+| AMWA NMOS Registry (Registration/Query) | HTTP + WS | `8235` |
+| AMWA NMOS IS-07 events | WS | `8090` |
+| AMWA NMOS IS-09 System | HTTP | `10641` |
+| Cerebrum NB | TCP | `40007` |
 | mDNS (Avahi / Bonjour) | UDP | `5353` |
 | metrics (`--metrics-addr`) | HTTP | `9100` |
 | SSH / WinRM (mgmt) | TCP | `22` / `5985` |
@@ -53,7 +57,7 @@ All producers run concurrently on the same host; one port per
 connector. The same producer binary is driven by `dhs consumer` and by
 external peers (Cerebrum @ `.5`, AMWA Testing tool in Docker on
 `dhs-tools` `.106`) so wire behaviour can be compared across drivers.
-Host firewalls are managed by the `dhs_firewall` role (#785).
+Host firewalls are managed by the `dhs_firewall` role (#785): each host opens exactly the rule groups of the connectors it declares in `dhs_connectors` (host_vars) plus ssh/metrics(/winrm); other `dhs-*` rules are removed; Windows connector rules are scoped to `C:\dhs\dhs.exe`; the `nmos` group includes mDNS and requires `dhs_mdns`.
 
 ## Control node
 

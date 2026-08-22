@@ -1,0 +1,44 @@
+---
+- name: firewalld present
+  ansible.builtin.package:
+    name: firewalld
+    state: present
+
+# Rules are written to the permanent config offline when firewalld is not
+# running (enforce=false), and applied live + permanent when it is.
+- name: Is firewalld running?
+  ansible.builtin.command: systemctl is-active firewalld
+  register: dhs_firewall_fwd
+  changed_when: false
+  failed_when: false
+
+- name: "firewalld ports per connector group (enabled/disabled)"
+  ansible.posix.firewalld:
+    port: "{{ item.port }}/{{ item.proto }}"
+    permanent: true
+    immediate: "{{ dhs_firewall_fwd.stdout == 'active' }}"
+    offline: "{{ dhs_firewall_fwd.stdout != 'active' }}"
+    state: "{{ 'enabled' if item.state == 'present' else 'disabled' }}"
+  loop: "{{ dhs_firewall_rules }}"
+  loop_control:
+    label: "{{ item.name }} {{ item.state }}"
+
+# Legacy ports that are no longer in the catalogue at all (firewalld has
+# no rule names — ports not covered by the catalogue are disabled here).
+- name: "firewalld legacy-only ports disabled"
+  ansible.posix.firewalld:
+    port: "{{ item.port }}/{{ item.proto }}"
+    permanent: true
+    immediate: "{{ dhs_firewall_fwd.stdout == 'active' }}"
+    offline: "{{ dhs_firewall_fwd.stdout != 'active' }}"
+    state: disabled
+  loop: "{{ dhs_firewall_legacy | rejectattr('port', 'in', dhs_firewall_rules | map(attribute='port') | list) | list }}"
+  loop_control:
+    label: "{{ item.name }} {{ item.port }}/{{ item.proto }}"
+
+- name: firewalld enabled and running (enforce mode only)
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when: dhs_firewall_enforce | bool

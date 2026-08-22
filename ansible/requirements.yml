@@ -2,4 +2,6 @@
 # Install on the control node:  ansible-galaxy collection install -r requirements.yml
 collections:
   - name: ansible.windows   # win_command / win_copy / win_acl / win_service for the Windows client
-  - name: ansible.posix     # authorized_key (exclusive) for the Linux hosts
+  - name: ansible.posix     # authorized_key (exclusive), firewalld
+  - name: community.general # ufw
+  - name: community.windows # win_firewall_rule / win_firewall

@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: dhs_firewall
+  author: by-rune
+  description: >-
+    Converge the per-protocol transport port rules on every fleet host
+    (ufw / firewalld / Windows Defender Firewall). Rules are always present;
+    enforcement (enable + default-deny) is one variable, dhs_firewall_enforce,
+    so the hardening flip is a reviewable one-liner. Idempotent.
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Windows
+      versions: [all]
+dependencies: []

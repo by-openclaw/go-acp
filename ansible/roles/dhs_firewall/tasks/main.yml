@@ -1,0 +1,39 @@
+---
+# Desired groups = management base (+ Windows base) + this host's connectors.
+# Every catalogue rule is then either present (group desired) or absent —
+# so the open surface always equals the deployed connectors.
+- name: Resolve the desired rule groups for this host
+  ansible.builtin.set_fact:
+    dhs_firewall_groups: >-
+      {{ (dhs_firewall_base_groups
+          + (dhs_firewall_windows_base_groups if ansible_os_family == 'Windows' else [])
+          + (dhs_connectors | default([]))) | unique }}
+
+- name: Assert every desired group has a catalogue entry
+  ansible.builtin.assert:
+    that: item in dhs_firewall_catalogue
+    fail_msg: "dhs_firewall: no rule group for connector '{{ item }}' — add it to dhs_firewall_catalogue"
+  loop: "{{ dhs_firewall_groups }}"
+
+- name: Build the full rule list (present for desired groups, absent otherwise)
+  ansible.builtin.set_fact:
+    dhs_firewall_rules: >-
+      {{ (dhs_firewall_rules | default([])) + [ item.1 | combine({
+           'group': item.0.key,
+           'name': 'dhs-' ~ item.0.key ~ '-' ~ item.1.port ~ '-' ~ item.1.proto,
+           'state': ('present' if item.0.key in dhs_firewall_groups else 'absent') }) ] }}
+  loop: "{{ dhs_firewall_catalogue | dict2items | subelements('value') }}"
+  loop_control:
+    label: "{{ item.0.key }}:{{ item.1.port }}/{{ item.1.proto }}"
+
+- name: Converge (Debian/Ubuntu — ufw)
+  ansible.builtin.include_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- name: Converge (EL — firewalld)
+  ansible.builtin.include_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Converge (Windows — Defender Firewall)
+  ansible.builtin.include_tasks: windows.yml
+  when: ansible_os_family == "Windows"

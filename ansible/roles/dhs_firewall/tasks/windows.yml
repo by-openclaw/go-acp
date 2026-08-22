@@ -1,0 +1,34 @@
+---
+# Connector rules are scoped to the dhs program (authorized app + port);
+# management rules (ssh / winrm) and mDNS are port rules. Rules are named
+# dhs-<group>-<port>-<proto>; absent groups are removed by name.
+- name: "Defender inbound rules per connector group (present/absent)"
+  community.windows.win_firewall_rule:
+    name: "{{ item.name }}"
+    localport: "{{ item.port }}"
+    protocol: "{{ item.proto }}"
+    program: "{{ dhs_firewall_windows_program if (item.program | default(false)) else omit }}"
+    direction: in
+    action: allow
+    profiles: [domain, private, public]
+    enabled: true
+    state: "{{ item.state }}"
+  loop: "{{ dhs_firewall_rules }}"
+  loop_control:
+    label: "{{ item.name }} {{ item.state }}"
+
+# Legacy rule names from the first role version (dhs-<group> without
+# port/proto, catalogue-wide) — removed so only the per-group names remain.
+- name: Remove legacy un-scoped dhs-* rules
+  community.windows.win_firewall_rule:
+    name: "{{ item.name }}"
+    state: absent
+  loop: "{{ dhs_firewall_legacy }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Firewall profiles ON (enforce mode only)
+  community.windows.win_firewall:
+    profiles: [Domain, Private, Public]
+    state: enabled
+  when: dhs_firewall_enforce | bool
