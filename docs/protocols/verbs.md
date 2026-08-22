@@ -138,7 +138,7 @@ Global flags: `--mtx-id --level --dsts --srcs` (`--dsts` enables bootstrap rx01 
 | Protocol | Verb | Description | Scope |
 |---|---|---|---|
 | osc-v10 / osc-v11 | `watch` | bind a port, print every received OSC message (`--listen <transport>:<port> [--pattern]`) | listener/monitor |
-| tsl-v31 / v40 / v50 | `listen` | bind UDP (or v5.0 TCP `--tcp`) listener, print every decoded tally frame | one-way receiver |
+| tsl-v31 / v40 / v50 | `watch` (alias `listen`) | bind UDP (or v5.0 TCP `--tcp`) listener, print every decoded tally frame — `watch` is the canonical family spelling, accepted on osc too (#751 G3) | one-way receiver |
 
 ---
 

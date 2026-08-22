@@ -46,7 +46,9 @@ func runOSCConsumer(ctx context.Context, proto string, args []string) error {
 	verb := args[0]
 	rest := args[1:]
 	switch verb {
-	case "watch":
+	case "watch", "listen":
+		// watch = canonical; listen accepted for family parity with
+		// TSL's historical spelling (#751 G3).
 		return runOSCWatch(ctx, proto, rest)
 	case "validate":
 		// Canonical offline validate (#243): decode a captured
