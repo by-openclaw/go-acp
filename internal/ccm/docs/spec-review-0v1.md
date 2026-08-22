@@ -6,8 +6,17 @@ Reviewed 2026-08-22 against the checklist in ../CLAUDE.md. Source:
 **Verdict: STRONG FIT. Every dhs canonical verb has a natural CCM
 backing, the no-polling doctrine is EVS's own (§13.3), and the stack
 aligns with our dhs-srv standards choice (OAS 3.1 + problem details +
-WS). One blocking spec gap: the matrix WRITE operation is not
-defined. Build estimate: medium — heavy reuse of existing dhs parts.**
+WS). Build estimate: medium — heavy reuse of existing dhs parts.**
+
+**SCOPE (owner, 2026-08-22): CCM's job in dhs is the acp2 successor —
+Tree/DM device control/config/monitoring of Neuron cards. It is NOT a
+router protocol for us: routing stays with the Route Master
+(Cerebrum) and the router protocols (probel sw08/…), and salvos live
+inside Cerebrum. The §17 matrix section is therefore OUT OF SCOPE for
+the dhs connector (read-only consumption at most, if ever); the
+undefined matrix-write is downgraded from blocking to informational.
+An acp2↔CCM diff report is nice-to-have only — no differences
+expected, not a deliverable.**
 
 ## 1. Transport, spec, auth
 
@@ -46,26 +55,40 @@ defined. Build estimate: medium — heavy reuse of existing dhs parts.**
 Wireshark: `dhs_ccm.lua` dissects HTTP+JSON and WS frames; TLS
 captures need lab http mode or SSLKEYLOGFILE — noted for the runbook.
 
-## 4. Questions for EVS (spec gaps found)
+## 4. Questions for EVS (re-prioritized per the dhs scope: Tree/DM
+## device control — routing/salvos stay with Cerebrum/probel)
 
-1. **BLOCKING: how is a route SET?** §17 defines only GET info/state.
-   Implied `PATCH /matrix/{id}/state` with `{dstUuid: srcUuid}` (fits
-   §11.2 maps-not-arrays) — confirm verb, body shape, and per-level
-   addressing (extended-form PATCH vs `/state/main`? — their own open
-   Q in §17.2).
-2. Matrix salvos / locks / protects — absent; planned components or
-   out of scope?
+1. §5.2 IO endpoint minimum expectations — "Paul to specify" (open in
+   their doc). This is now our TOP question: the IO/config resources
+   ARE the acp2-successor surface.
+2. Auth §23 is PROPOSAL — confirm the on-site Neuron firmware's actual
+   state (and whether lab http is enabled on it).
 3. Which error schema governs non-auth mutations — §12
    GenericApiMessage or RFC 7807 (§23.6)? (Recommend 7807/9457
    everywhere — matches their own auth section.)
-4. §5.2 IO endpoint minimum expectations — "Paul to specify" (open in
-   their doc).
-5. §8 by-name alias routes (`/senders/by-name/...`) — their own open Q;
+4. §8 by-name alias routes (`/senders/by-name/...`) — their own open Q;
    we'd consume it gladly (names-first UX).
-6. Auth §23 is PROPOSAL — confirm the on-site Neuron firmware's actual
-   state (and whether lab http is enabled on it).
-7. Rate limiting per subscription "future" (§13.3.2) — any current
+5. Rate limiting per subscription "future" (§13.3.2) — any current
    server-side caps we should respect?
+6. Informational only (matrix is out of dhs scope — owner decision):
+   §17 defines no matrix WRITE (GET info/state only), and salvos/
+   locks/protects are absent — consistent with routing being the
+   control system's job, worth confirming that reading of intent.
+
+## 4b. Oracles (owner facts, 2026-08-22)
+
+- **Cerebrum implements a CCM client driver** (owner's installed
+  version). Consequences:
+  - Tier-3 oracle for a future `dhs producer ccm serve`: emulate a
+    Neuron (or any device) over CCM and the objects appear in the
+    Cerebrum UI — the emulate-before-hardware pillar on a protocol
+    designed for discovery, expected to avoid the acp2
+    browser-partial-subtree class entirely.
+  - Cerebrum-side wire captures of CCM (Cerebrum ↔ real Neuron)
+    become a second spec source alongside the PDF, exactly like the
+    NB/acp2 methodology.
+- Tier-2 oracle for the consumer: the on-site real Neuron (arriving
+  week of 2026-08-24).
 
 ## 5. Day-1 plan when the on-site Neuron arrives
 
