@@ -59,11 +59,9 @@ Closes #
 
 ## Device tested
 
-- [ ] ACP1 producer 10.100.0.102
-- [ ] ACP2 producer 10.100.0.103
-- [ ] ACP1 emulator 10.6.239.113
-- [ ] ACP2 real device 10.41.40.195
-- [ ] Other (specify)
+- [ ] Fleet producer — which host per `docs/testbed.md` (dhs-ubuntu .102 / dhs-debian .103 / dhs-rocky .105 / win11 .107)
+- [ ] Vendor emulator — Synapse ACP1 (office net 10.6.239.113) / TinyEmber+ (desk-03) / AMWA NMOS Testing tool (dhs-tools .106)
+- [ ] Real device — Neuron (ACP2 / CCM) / Cerebrum staging (.5) / other (specify)
 - [ ] No device needed (pure codec / doc change)
 
 **Live-LXC command + observed output** (paste verbatim):

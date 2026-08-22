@@ -4,7 +4,8 @@ Idempotent ACP1 device configuration by wrapping the `dhs` CLI `ensure` verb in
 an Ansible role. The same role runs on **Linux (SSH)** and **Windows (WinRM)**
 clients, so you prove the multi-OS `dhs` binary (ADR-0016) and the `ensure`
 idempotency contract behave identically on every platform in the Proxmox lab
-(lxc-debian / lxc-ubuntu / lxc-rocky / win11).
+(dhs-debian / dhs-ubuntu / dhs-rocky / dhs-tools / win11 — see
+`docs/testbed.md`; every play runs from the control node dhs-debian).
 
 This is the **authoritative idempotency layer**. The PowerShell scripts under
 `scripts/acp1/` are the fast smoke layer; here a real `ansible-playbook` run

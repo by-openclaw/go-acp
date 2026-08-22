@@ -1,17 +1,19 @@
 ---
-# Windows clients (win11, winsrv) — reached over WinRM (Linux/macOS use SSH).
-# Requires the ansible.windows collection + pywinrm on the control node
-# (Debian/Ubuntu: `apt-get install python3-winrm`).
-ansible_connection: winrm
-# Auth (user `by-rune`, NOT Administrator) comes from the gitignored secrets
-# file, loaded at runtime so nothing secret hits git or shell history:
-#   ansible-playbook -i inventory/win.ini playbooks/site.yml -e @secrets/credentials.json
-# Same JSON structure migrates into ansible-vault later (see secrets/README.md).
-ansible_user: "{{ creds[inventory_hostname].ansible_user | default('by-rune') }}"
-ansible_password: "{{ creds[inventory_hostname].ansible_password | default('') }}"
-ansible_winrm_transport: ntlm
-ansible_winrm_server_cert_validation: ignore
-ansible_port: 5985
+# Windows clients (win11) — reached over SSH with key auth, exactly like the
+# Linux hosts (one actor-key model, #782). The WinRM/NTLM path
+# (windows/configure-winrm.ps1 + a password file) is retired: pywinrm is not
+# on the control node, the credentials file no longer exists, and OpenSSH
+# Server is installed + running on the VM.
+#
+# `by-rune` is in the local Administrators group, so sshd reads its keys
+# from C:\ProgramData\ssh\administrators_authorized_keys (NOT the profile
+# authorized_keys) — the dhs_access role manages that file.
+ansible_connection: ssh
+ansible_user: by-rune
+# sshd DefaultShell on the VM is cmd.exe today; dhs_access switches it to
+# PowerShell and flips this to `powershell` in the same change.
+ansible_shell_type: cmd
+ansible_become: false
 
 # Where the dhs binary is installed on the target and which local artifact to
 # deploy. Build it from the repo root before running:

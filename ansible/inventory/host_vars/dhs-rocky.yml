@@ -1,0 +1,15 @@
+---
+# dhs-rocky — Proxmox LXC 653 "dhs.rocky9", Rocky Linux 9.4.
+# Dual-NIC: eth0 10.100.0.105 (ansible_host) / eth1 10.100.0.104.
+# (.104 and .105 are the SAME host — older docs listed them as two.)
+pve_vmid: 653
+pve_name: dhs.rocky9
+os_label: "Rocky 9.4"
+nics:
+  - { name: eth0, mac: "BC:24:11:2B:F7:C7", ip: 10.100.0.105 }
+  - { name: eth1, mac: "BC:24:11:33:74:4A", ip: 10.100.0.104 }
+fleet_hostname: dhs-rocky
+
+# Ember+ producer: the Lawo PowerCore tree (1024-target matrix), rebuilt from
+# the committed real-device capture (internal/emberplus/testdata/fixtures/powercore).
+ember_tree_src: "{{ playbook_dir }}/../files/trees/powercore.tree.json"
