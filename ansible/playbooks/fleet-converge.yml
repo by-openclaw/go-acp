@@ -17,3 +17,4 @@
     - dhs_access
     - dhs_hostname
     - dhs_mdns
+    - dhs_firewall

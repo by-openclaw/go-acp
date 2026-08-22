@@ -1,0 +1,82 @@
+---
+# dhs_firewall — per-PROTOCOL host-firewall rules, on every OS (ufw on
+# Debian/Ubuntu, firewalld on EL, Windows Defender Firewall on win11).
+#
+# A host opens exactly the rule groups for the connectors it serves
+# (`dhs_connectors`, declared in host_vars — add `emberplus` when you deploy
+# the Ember+ producer there, remove it when you don't) plus the management
+# groups below; every other dhs-* rule from the catalogue is REMOVED. So the
+# open surface always equals the deployed connectors — never "everything".
+#
+# Windows: connector rules are scoped to the dhs program (authorized app +
+# port), not bare ports; management rules (ssh/winrm) stay port rules.
+#
+# Two modes, on purpose:
+#   dhs_firewall_enforce: false  (default today) — rules PRESENT/ABSENT per
+#       the lists, enforcement state left as found (ufw inactive, firewalld
+#       stored offline, win11 profiles as they are). Nothing working today
+#       gets blocked; the rule set is converged and reviewable.
+#   dhs_firewall_enforce: true   — additionally enable ufw / firewalld and
+#       turn the win11 profiles ON (default-deny inbound except the rules).
+#       That flip IS the hardening step (parked topic) — one variable.
+dhs_firewall_enforce: false
+
+# Management groups every host gets (Windows adds winrm).
+dhs_firewall_base_groups: [ssh, metrics]
+dhs_firewall_windows_base_groups: [winrm]
+
+# Connectors this host serves — override per host in host_vars.
+dhs_connectors: []
+
+# Catalogue: group -> rules. Ports come from the producers' CLI defaults
+# (cmd_nmos.go binds) and the testbed port plan; `nmos` includes mDNS and
+# REQUIRES the dhs_mdns role (Avahi / Bonjour) on the same host.
+dhs_firewall_catalogue:
+  ssh:
+    - { port: 22,    proto: tcp }
+  winrm:
+    - { port: 5985,  proto: tcp }
+  metrics:
+    - { port: 9100,  proto: tcp, program: true }
+  acp1:
+    - { port: 2071,  proto: udp, program: true }
+    - { port: 2071,  proto: tcp, program: true }
+  acp2:
+    - { port: 2072,  proto: tcp, program: true }
+  emberplus:
+    - { port: 9000,  proto: tcp, program: true }
+  probel-sw08p:
+    - { port: 2008,  proto: tcp, program: true }
+  probel-sw02p:
+    - { port: 2002,  proto: tcp, program: true }
+  nmos:
+    - { port: 8080,  proto: tcp, program: true }   # Node API (CLI default bind)
+    - { port: 18080, proto: tcp, program: true }   # Node API (fleet port plan)
+    - { port: 8235,  proto: tcp, program: true }   # Registration/Query API + WS
+    - { port: 8090,  proto: tcp, program: true }   # IS-07 events WS
+    - { port: 10641, proto: tcp, program: true }   # IS-09 System API
+    - { port: 5353,  proto: udp }                  # mDNS (Avahi/Bonjour/stdlib)
+
+# Program the Windows connector rules are scoped to.
+dhs_firewall_windows_program: "{{ dhs_bin | default('C:\\dhs\\dhs.exe') }}"
+
+# Legacy rules from the first role version (catalogue-wide, un-scoped names
+# `dhs-<group>`; cerebrum-nb 40007 which is Cerebrum's port, not ours).
+# Always removed: ufw matches by comment, firewalld by port, Windows by name.
+dhs_firewall_legacy:
+  - { name: dhs-ssh,           port: 22,    proto: tcp }
+  - { name: dhs-acp1-udp,      port: 2071,  proto: udp }
+  - { name: dhs-acp1-tcp,      port: 2071,  proto: tcp }
+  - { name: dhs-acp2,          port: 2072,  proto: tcp }
+  - { name: dhs-emberplus,     port: 9000,  proto: tcp }
+  - { name: dhs-probel-sw08p,  port: 2008,  proto: tcp }
+  - { name: dhs-probel-sw02p,  port: 2002,  proto: tcp }
+  - { name: dhs-nmos-node,     port: 8080,  proto: tcp }
+  - { name: dhs-nmos-node-alt, port: 18080, proto: tcp }
+  - { name: dhs-nmos-events,   port: 8090,  proto: tcp }
+  - { name: dhs-nmos-registry, port: 8235,  proto: tcp }
+  - { name: dhs-nmos-system,   port: 10641, proto: tcp }
+  - { name: dhs-cerebrum-nb,   port: 40007, proto: tcp }
+  - { name: dhs-mdns,          port: 5353,  proto: udp }
+  - { name: dhs-metrics,       port: 9100,  proto: tcp }
+  - { name: dhs-winrm,         port: 5985,  proto: tcp }

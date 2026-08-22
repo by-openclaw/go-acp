@@ -9,3 +9,6 @@ os_label: "Ubuntu"
 nics:
   - { name: eth0, mac: "BC:24:11:C1:92:FF", ip: 10.100.0.106 }
 fleet_hostname: dhs-tools
+
+# Tooling host: no dhs producers -> only management rules (ssh, metrics).
+dhs_connectors: []

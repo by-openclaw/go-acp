@@ -17,3 +17,7 @@ fleet_hostname: dhs-debian
 # Ember+ producer: our integration DM — the synthetic tree that carries the
 # n-to-n matrix plus the salvo/lock/protect builtin functions.
 ember_tree_src: "{{ playbook_dir }}/../files/trees/our-dm.tree.json"
+
+# Connectors this host serves -> dhs_firewall opens exactly these rule groups
+# (nmos also needs the dhs_mdns daemon). Add/remove with the producer deploy.
+dhs_connectors: [acp1, acp2, emberplus, probel-sw08p, probel-sw02p, nmos]
