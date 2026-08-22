@@ -15,3 +15,4 @@
   gather_facts: true
   roles:
     - dhs_access
+    - dhs_hostname

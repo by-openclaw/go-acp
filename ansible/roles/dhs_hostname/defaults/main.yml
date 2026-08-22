@@ -1,0 +1,18 @@
+---
+# dhs_hostname — every fleet host is named after its inventory entry
+# (`fleet_hostname` in host_vars), in BOTH layers that own a name:
+#
+#   1. the guest (hostnamectl / Rename-Computer + /etc/hosts, Avahi re-announce)
+#   2. the Proxmox CT config (`hostname=`), because Proxmox rewrites the
+#      guest's /etc/hostname from that field at every container start —
+#      a guest-only rename silently reverts on reboot.
+#
+# Layer 2 needs the Proxmox API token; it is read from a control-node-only
+# vars file that never enters git:
+#   ansible-playbook playbooks/fleet-converge.yml -e @/root/.secrets/proxmox.yml
+# When the token vars are absent the Proxmox step is skipped (and reported),
+# the guest layer still converges.
+dhs_hostname_proxmox_enabled: "{{ proxmox_token_id is defined and proxmox_token_secret is defined }}"
+proxmox_api_host: 10.6.224.5:8006
+proxmox_node: pve01
+proxmox_validate_certs: false

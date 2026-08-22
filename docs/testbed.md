@@ -28,9 +28,12 @@ rebuilt guest keeps its address with zero guest-side configuration.
 `ansible/playbooks/fleet-verify.yml` asserts live IP == inventory IP per
 NIC and fails loudly on drift.
 
-Guest hostnames are being made unique (`dhs-debian`, `dhs-ubuntu`,
-`dhs-rocky`, `dhs-tools`, `dhs-win11` = `fleet_hostname`, #783);
-today three LXCs still answer `dhs`, which collides in Avahi.
+Guest hostnames equal the inventory name (`fleet_hostname`:
+`dhs-debian`, `dhs-ubuntu`, `dhs-rocky`, `dhs-tools`, `dhs-win11`),
+converged by the `dhs_hostname` role (#783) in BOTH layers — the guest
+and the Proxmox CT config (Proxmox rewrites `/etc/hostname` from its
+config at every CT start, so a guest-only rename would revert). Unique
+names matter: three LXCs used to answer `dhs`, which collides in Avahi.
 
 ## Producer port plan (every Linux LXC + win11)
 
