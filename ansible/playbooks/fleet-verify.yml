@@ -1,0 +1,40 @@
+---
+# Read-only drift check for the test fleet (#786, epic #780). Fails loudly
+# when a host's live state no longer matches the inventory truth:
+#   - every NIC IP declared in host_vars `nics:` is actually configured
+#   - the guest hostname equals `fleet_hostname`
+# Run from the control node:
+#   ansible-playbook playbooks/fleet-verify.yml
+# It also prints the MAC -> IP table for the pfSense static mappings.
+- name: Verify fleet addressing and names against the inventory
+  hosts: dhs_clients
+  gather_facts: true
+  tasks:
+    - name: Collect live IPv4 addresses
+      ansible.builtin.set_fact:
+        fv_live_ips: >-
+          {{ (ansible_ip_addresses | default([]) | select('match', '^\d+\.\d+\.\d+\.\d+$') | list)
+             if ansible_os_family == 'Windows'
+             else (ansible_all_ipv4_addresses | default([])) }}
+
+    - name: "Every inventory NIC IP is live on {{ inventory_hostname }}"
+      ansible.builtin.assert:
+        that: item.ip in fv_live_ips
+        fail_msg: >-
+          DRIFT: {{ inventory_hostname }} {{ item.name }} ({{ item.mac }}) should be
+          {{ item.ip }} but live IPv4s are {{ fv_live_ips | join(', ') }} —
+          check the pfSense static mapping (#786).
+        quiet: true
+      loop: "{{ nics }}"
+      loop_control:
+        label: "{{ item.name }}={{ item.ip }}"
+
+    - name: "Guest hostname equals fleet_hostname on {{ inventory_hostname }}"
+      ansible.builtin.assert:
+        that: (ansible_hostname | lower) == fleet_hostname
+        fail_msg: "DRIFT: {{ inventory_hostname }} hostname is {{ ansible_hostname }}, expected {{ fleet_hostname }} (#783)"
+        quiet: true
+
+    - name: pfSense static-mapping table (MAC -> IP) for this host
+      ansible.builtin.debug:
+        msg: "{{ nics | map(attribute='mac') | zip(nics | map(attribute='ip')) | map('join', ' -> ') | list }}"

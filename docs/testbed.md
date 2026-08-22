@@ -65,8 +65,10 @@ Host firewalls are managed by the `dhs_firewall` role (#785): each host opens ex
 `root`, the Windows VM over SSH as `by-rune` (key auth; WinRM/NTLM +
 password file is retired). It holds a clone of this (public) repo at
 `~/acp` and its own ed25519 key (`root@dhs`), which is one of the three
-fleet actor keys below. Never drive the fleet from a Windows
-workstation (PowerShell) — see ADR-0025 step 5.
+fleet actor keys below. After a fresh clone run
+`ansible-playbook playbooks/control-node.yml` (git-lfs + LFS pull of the
+shipped assets, Ansible collections). Never drive the fleet from a
+Windows workstation (PowerShell) — see ADR-0025 step 5.
 
 ## Access — actor keys, not per-host keys
 
