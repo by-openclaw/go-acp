@@ -1,0 +1,26 @@
+---
+# dhs_access — the fleet's authorized_keys are EXACTLY this list, on every
+# host (exclusive: anything else is removed). Per-actor keys, never
+# per-host keys; public keys are committed under files/keys/ (public
+# material only — private keys never enter the repo).
+#
+#   agent        by-rune-dhs-lxc            desk-03 agent session (by-rune)
+#   control node control-node-dhs-debian    dhs-debian (.103) -> fleet, for Ansible
+#   owner        owner-yboujraf-personal    codeowner (personal workstation)
+#   owner        owner-by-systems-ws        codeowner (by-systems workstation)
+#
+# To rotate or add an actor: drop/replace the .pub file and list it here —
+# the next converge removes what is no longer listed.
+dhs_access_keys:
+  - by-rune-dhs-lxc.pub
+  - control-node-dhs-debian.pub
+  - owner-yboujraf-personal.pub
+  - owner-by-systems-ws.pub
+
+# Linux login user on the fleet (LXC sshd only accepts root).
+dhs_access_linux_user: root
+
+# Windows: the managed account is in the local Administrators group, so
+# OpenSSH reads its keys from the admin file (the per-profile
+# authorized_keys is IGNORED for admin-group users by default).
+dhs_access_windows_admin_keys: 'C:\ProgramData\ssh\administrators_authorized_keys'

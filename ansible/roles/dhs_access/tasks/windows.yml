@@ -1,0 +1,46 @@
+---
+# Admin-group user -> keys live in administrators_authorized_keys with the
+# strict ACL sshd demands (SYSTEM + Administrators only, no inheritance);
+# a looser ACL makes sshd silently ignore the file. Order matters: grant
+# the explicit ACEs first, THEN drop inheritance, so the file is never
+# left without an allow entry.
+- name: administrators_authorized_keys = the fleet actor keys (exclusive)
+  ansible.windows.win_copy:
+    dest: "{{ dhs_access_windows_admin_keys }}"
+    content: "{{ dhs_access_key_lines | join('\n') }}\n"
+
+- name: Grant SYSTEM + Administrators full control
+  ansible.windows.win_acl:
+    path: "{{ dhs_access_windows_admin_keys }}"
+    user: "{{ item }}"
+    rights: FullControl
+    type: allow
+    state: present
+  loop:
+    - NT AUTHORITY\SYSTEM
+    - BUILTIN\Administrators
+
+- name: Disable ACL inheritance on the admin keys file (drop inherited ACEs)
+  ansible.windows.win_acl_inheritance:
+    path: "{{ dhs_access_windows_admin_keys }}"
+    state: absent
+    reorganize: false
+
+- name: Remove any other principal from the admin keys file ACL
+  ansible.windows.win_shell: |
+    $acl = Get-Acl -Path '{{ dhs_access_windows_admin_keys }}'
+    $keep = @('NT AUTHORITY\SYSTEM', 'BUILTIN\Administrators')
+    $removed = 0
+    foreach ($ace in @($acl.Access)) {
+      if ($keep -notcontains $ace.IdentityReference.Value) { $null = $acl.RemoveAccessRule($ace); $removed++ }
+    }
+    if ($removed -gt 0) { Set-Acl -Path '{{ dhs_access_windows_admin_keys }}' -AclObject $acl }
+    Write-Output $removed
+  register: dhs_access_acl_prune
+  changed_when: (dhs_access_acl_prune.stdout | trim | int) > 0
+
+- name: sshd service running and automatic
+  ansible.windows.win_service:
+    name: sshd
+    state: started
+    start_mode: auto

@@ -10,8 +10,8 @@
 # authorized_keys) — the dhs_access role manages that file.
 ansible_connection: ssh
 ansible_user: by-rune
-# sshd DefaultShell on the VM is cmd.exe today; dhs_access switches it to
-# PowerShell and flips this to `powershell` in the same change.
+# sshd DefaultShell on the VM is cmd.exe (Windows OpenSSH default); the
+# ansible.windows modules work over it as-is, so it stays cmd.
 ansible_shell_type: cmd
 ansible_become: false
 
