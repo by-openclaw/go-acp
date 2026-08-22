@@ -7,6 +7,51 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.17.0](https://github.com/by-openclaw/go-acp/compare/v0.16.0...v0.17.0) (2026-08-22)
+
+
+### Features
+
+* **acp2:** announce replay - the emulated card chatters like the real one ([#726](https://github.com/by-openclaw/go-acp/issues/726)) ([73f6f07](https://github.com/by-openclaw/go-acp/commit/73f6f07a50326c0cd11de99792b382f8897bbfe2))
+* **acp2:** manifest-declared slot proto advertisements + full Neuron DMs ([#723](https://github.com/by-openclaw/go-acp/issues/723)) ([7bb1ec0](https://github.com/by-openclaw/go-acp/commit/7bb1ec0ca109c8ee8d8f67253cc4b64129f54ed8))
+* **ansible:** ADR-0028 layout-verify play ([#703](https://github.com/by-openclaw/go-acp/issues/703) unit 6, authored) ([#712](https://github.com/by-openclaw/go-acp/issues/712)) ([82c4d65](https://github.com/by-openclaw/go-acp/commit/82c4d65068f85dc6382d663275d8365e05970a64))
+* **capture:** ADR-0028 meta record - line one of every capture ([#703](https://github.com/by-openclaw/go-acp/issues/703) unit 3) ([#709](https://github.com/by-openclaw/go-acp/issues/709)) ([2573086](https://github.com/by-openclaw/go-acp/commit/25730866e91c1537b3653b2cc4ed113b50338df8))
+* **cerebrum-nb:** --capture JSONL wire-trace on every verb ([#697](https://github.com/by-openclaw/go-acp/issues/697)) ([6cb53a5](https://github.com/by-openclaw/go-acp/commit/6cb53a5e3cb832e65851f06374f478e8d4e8999b))
+* **cerebrum-nb:** DEVICE domain on the canonical Tree/DM contract - D2 unit a ([#701](https://github.com/by-openclaw/go-acp/issues/701)) ([007741d](https://github.com/by-openclaw/go-acp/commit/007741ddd5e0a388bae3cd10b518c733029339fd))
+* **cerebrum-nb:** extract -&gt; ADR-0022 DM + manifest + canonical get face - D2 unit b ([#700](https://github.com/by-openclaw/go-acp/issues/700)) ([#702](https://github.com/by-openclaw/go-acp/issues/702)) ([8a52b69](https://github.com/by-openclaw/go-acp/commit/8a52b6959d840cdc29a3a9f087425bba7d36e59b))
+* **cerebrum-nb:** extract DM-cache skip - schema once, state on demand ([#703](https://github.com/by-openclaw/go-acp/issues/703) unit 4) ([#710](https://github.com/by-openclaw/go-acp/issues/710)) ([d90a226](https://github.com/by-openclaw/go-acp/commit/d90a22654cb47a81e24c33ce38ecf29e65733734))
+* **cerebrum-nb:** usage + replace - the source-side pair ([#714](https://github.com/by-openclaw/go-acp/issues/714)) ([#718](https://github.com/by-openclaw/go-acp/issues/718)) ([07903e3](https://github.com/by-openclaw/go-acp/commit/07903e362244ed3a03a45463d4ebc5f51bffb64f))
+* **cli:** emberplus usage + replace verbs ([#722](https://github.com/by-openclaw/go-acp/issues/722) unit 3) ([#737](https://github.com/by-openclaw/go-acp/issues/737)) ([b2a0818](https://github.com/by-openclaw/go-acp/commit/b2a081802cf99b36dd38aa42ffee4ea0e4c74332)), closes [#736](https://github.com/by-openclaw/go-acp/issues/736)
+* **cli:** probel-sw02p export verb ([#738](https://github.com/by-openclaw/go-acp/issues/738) unit 1) ([#740](https://github.com/by-openclaw/go-acp/issues/740)) ([9ce6f7e](https://github.com/by-openclaw/go-acp/commit/9ce6f7eb608cfecc59990e133c507c01bf2b18f0)), closes [#739](https://github.com/by-openclaw/go-acp/issues/739)
+* **cli:** probel-sw02p usage + replace verbs ([#722](https://github.com/by-openclaw/go-acp/issues/722) unit 2) ([#734](https://github.com/by-openclaw/go-acp/issues/734)) ([bfc51bf](https://github.com/by-openclaw/go-acp/commit/bfc51bf5646967f4f60a62df20d3f25c7998f91c)), closes [#733](https://github.com/by-openclaw/go-acp/issues/733)
+* **cli:** probel-sw08p router pack - descriptor, protect, canonical grammar ([#738](https://github.com/by-openclaw/go-acp/issues/738) unit 2) ([#742](https://github.com/by-openclaw/go-acp/issues/742)) ([92c7f71](https://github.com/by-openclaw/go-acp/commit/92c7f71eca225dc9dc1db30a46d00c39fc3c173b))
+* **cli:** probel-sw08p usage + replace verbs ([#722](https://github.com/by-openclaw/go-acp/issues/722) unit 1) ([#732](https://github.com/by-openclaw/go-acp/issues/732)) ([0c4ef29](https://github.com/by-openclaw/go-acp/commit/0c4ef29c3f46c6aecf0392a8482c8a878afb3483)), closes [#731](https://github.com/by-openclaw/go-acp/issues/731)
+* **cli:** router pack meta.json + format doc ([#738](https://github.com/by-openclaw/go-acp/issues/738) units 3-4) ([#745](https://github.com/by-openclaw/go-acp/issues/745)) ([8a0d314](https://github.com/by-openclaw/go-acp/commit/8a0d3141de4da76136e1794c4a69b0fd3d5db0d6)), closes [#744](https://github.com/by-openclaw/go-acp/issues/744)
+* **cli:** rtree - labels + levels in every usage view ([#746](https://github.com/by-openclaw/go-acp/issues/746)) ([#747](https://github.com/by-openclaw/go-acp/issues/747)) ([cbb9b7d](https://github.com/by-openclaw/go-acp/commit/cbb9b7d8ebd28f10e7e99f41eb46c383302132e8))
+* **cmd:** ADR-0028 default homes for probel + generic --capture auto ([#703](https://github.com/by-openclaw/go-acp/issues/703) unit 2b) ([#708](https://github.com/by-openclaw/go-acp/issues/708)) ([42166b8](https://github.com/by-openclaw/go-acp/commit/42166b87dea4945663d664648e656e539a3a1f4e))
+* **cmd:** ADR-0028 deterministic default homes ([#703](https://github.com/by-openclaw/go-acp/issues/703) unit 2a) ([#707](https://github.com/by-openclaw/go-acp/issues/707)) ([ac77234](https://github.com/by-openclaw/go-acp/commit/ac77234b6292d9352278956f1efcb33c843e935a))
+* **emberplus:** canonical matrix xpoint export/import with ensure converge ([#698](https://github.com/by-openclaw/go-acp/issues/698)) ([ab06692](https://github.com/by-openclaw/go-acp/commit/ab06692afeeff59d603e5a6b3151ecdda3684c71))
+* **manifest:** IP-keyed manifests per ADR-0028 - manifest/&lt;proto&gt;/&lt;ip&gt;.json ([#703](https://github.com/by-openclaw/go-acp/issues/703) unit 1) ([#705](https://github.com/by-openclaw/go-acp/issues/705)) ([44a7b6e](https://github.com/by-openclaw/go-acp/commit/44a7b6e4d37952e0cdc00933abf0f888326faee0))
+* **osc:** validate verb with --out-tree address-space capture ([#699](https://github.com/by-openclaw/go-acp/issues/699)) ([b91b984](https://github.com/by-openclaw/go-acp/commit/b91b984b6e940f77a4c12fb50a6eda2435124ead))
+
+
+### Bug Fixes
+
+* **acp2:** announces deliver to every session - ecosystem exception ([#714](https://github.com/by-openclaw/go-acp/issues/714)) ([#730](https://github.com/by-openclaw/go-acp/issues/730)) ([15021fe](https://github.com/by-openclaw/go-acp/commit/15021fea6877233eb1fa2b6bdaf7320049df1ceb))
+* **acp2:** serve object labels verbatim - absorb the device's charset deviation ([#714](https://github.com/by-openclaw/go-acp/issues/714)) ([#725](https://github.com/by-openclaw/go-acp/issues/725)) ([d287f0a](https://github.com/by-openclaw/go-acp/commit/d287f0a8a0c6c14357bd83949300c79d125a24da))
+* **cerebrum-nb:** category item writes emit the wire-actual SRCE spelling ([#714](https://github.com/by-openclaw/go-acp/issues/714)) ([#715](https://github.com/by-openclaw/go-acp/issues/715)) ([f03d0fd](https://github.com/by-openclaw/go-acp/commit/f03d0fdace8a64d717353d5ae4c9d166b70568fe))
+* **cerebrum-nb:** empty category CSV from snapshot dir = out of scope ([#703](https://github.com/by-openclaw/go-acp/issues/703)) ([#713](https://github.com/by-openclaw/go-acp/issues/713)) ([3c1a9dd](https://github.com/by-openclaw/go-acp/commit/3c1a9dda759794b9e562e57df8f689764a451c00))
+* **cerebrum-nb:** full-set export always writes cat-mixed.csv ([#714](https://github.com/by-openclaw/go-acp/issues/714)) ([#716](https://github.com/by-openclaw/go-acp/issues/716)) ([c751ae9](https://github.com/by-openclaw/go-acp/commit/c751ae9b2eac4a2beb7d27fa460f0f14f1e541a3))
+* **cerebrum-nb:** route verb expands --capture auto / --log auto ([#714](https://github.com/by-openclaw/go-acp/issues/714)) ([#717](https://github.com/by-openclaw/go-acp/issues/717)) ([628fbc3](https://github.com/by-openclaw/go-acp/commit/628fbc353a15e34578cf0bdb05c387a5f7c10041))
+* **cerebrum-nb:** usage chain places each virtual marker on its own hop ([#714](https://github.com/by-openclaw/go-acp/issues/714)) ([#719](https://github.com/by-openclaw/go-acp/issues/719)) ([a9c84fc](https://github.com/by-openclaw/go-acp/commit/a9c84fc14b057fe0903cb12928388dfdad66b0d5))
+* **cli:** verb --help prints the verb's usage, not the catalogue ([#695](https://github.com/by-openclaw/go-acp/issues/695)) ([10c224e](https://github.com/by-openclaw/go-acp/commit/10c224ea3a6e61c9c1e9924462342afa69da6d4f))
+* **emberplus:** empty last packet completes multi-frame reassembly ([#728](https://github.com/by-openclaw/go-acp/issues/728)) ([#729](https://github.com/by-openclaw/go-acp/issues/729)) ([c6d1dd0](https://github.com/by-openclaw/go-acp/commit/c6d1dd0c5427f81b118cfafa64a38d72e0bef89f))
+* **manifest:** acp2 DM replay honors the walk's exact wire types ([#724](https://github.com/by-openclaw/go-acp/issues/724)) ([ccd8a55](https://github.com/by-openclaw/go-acp/commit/ccd8a55069303e681691de3416c7cec598c31a84))
+* **manifest:** enum replay serves the real option values ([#714](https://github.com/by-openclaw/go-acp/issues/714)) ([#727](https://github.com/by-openclaw/go-acp/issues/727)) ([2c030a3](https://github.com/by-openclaw/go-acp/commit/2c030a35894b4708d5a9561634ee90c9cbaacee3))
+* **probel-sw02p:** close test waits for the parked write to land ([#743](https://github.com/by-openclaw/go-acp/issues/743)) ([cf1ff25](https://github.com/by-openclaw/go-acp/commit/cf1ff25a8c6a96f54f839d8f94546bcd7447b92f))
+* root-cause CI timing flakes; ADR-0029 event-step matrix; drop retries + coverage union ([#694](https://github.com/by-openclaw/go-acp/issues/694)) ([#720](https://github.com/by-openclaw/go-acp/issues/720)) ([94a730b](https://github.com/by-openclaw/go-acp/commit/94a730b8ffb3e1d377004ac1a3420cf402270a73))
+* **tests:** flake extermination round 1 - replay wedge, reconnect poll, registry idempotence ([#735](https://github.com/by-openclaw/go-acp/issues/735)) ([a7c41fc](https://github.com/by-openclaw/go-acp/commit/a7c41fce5860ef777648721a8519130c7ab536e7))
+
 ## [0.16.0](https://github.com/by-openclaw/go-acp/compare/v0.15.0...v0.16.0) (2026-08-16)
 
 
