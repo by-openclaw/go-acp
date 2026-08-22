@@ -34,9 +34,35 @@
       register: cn_bonjour
       failed_when: not cn_bonjour.stat.exists or cn_bonjour.stat.size < 1000000
 
+    # Debian 12 ships ansible-core 2.14, which cannot drive Python 3.12
+    # targets (Ubuntu 24.04: get_url/uri die with "HTTPSConnection ...
+    # cert_file") and is below what ansible.windows supports. Install a
+    # supported core via pipx (isolated venv) and put it first on PATH.
+    - name: pipx present
+      ansible.builtin.package:
+        name: [pipx, python3-venv]
+        state: present
+
+    - name: "ansible-core {{ cn_ansible_core_spec }} via pipx"
+      ansible.builtin.command:
+        cmd: pipx install --force "ansible-core{{ cn_ansible_core_spec }}"
+      register: cn_pipx
+      changed_when: "'installed package' in cn_pipx.stdout"
+      environment:
+        PIPX_HOME: /opt/pipx
+        PIPX_BIN_DIR: /usr/local/bin
+      vars:
+        cn_ansible_core_spec: ">=2.17,<2.18"
+
+    - name: ansible --version (must be the pipx one)
+      ansible.builtin.command: ansible --version
+      register: cn_ansver
+      changed_when: false
+      failed_when: "'ansible [core 2.17' not in cn_ansver.stdout"
+
     - name: Ansible collections from requirements.yml
       ansible.builtin.command:
-        cmd: ansible-galaxy collection install -r requirements.yml
+        cmd: ansible-galaxy collection install -r requirements.yml --upgrade
         chdir: "{{ playbook_dir }}/.."
       register: cn_galaxy
       changed_when: "'Installing' in cn_galaxy.stdout"

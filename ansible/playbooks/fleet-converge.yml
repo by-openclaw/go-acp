@@ -14,6 +14,7 @@
   hosts: dhs_clients
   gather_facts: true
   roles:
+    - dhs_host
     - dhs_access
     - dhs_hostname
     - dhs_mdns
