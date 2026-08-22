@@ -40,7 +40,7 @@ func emberUsageRows(snap []matrix.TargetState) []probelUsageRow {
 	var rows []probelUsageRow
 	for _, ts := range snap {
 		for _, src := range ts.Sources {
-			rows = append(rows, probelUsageRow{Src: int(src), Dst: int(ts.Target), Level: 0})
+			rows = append(rows, probelUsageRow{Src: int(src), Dst: int(ts.Target), Levels: "0"})
 		}
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
@@ -94,6 +94,36 @@ func emberReplacePlan(behavior string, snap []matrix.TargetState, from, to int32
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Target < out[j].Target })
+	return out
+}
+
+// emberUsageLabelMap flattens one label group of a walked matrix into
+// id → label. group "" selects the first group alphabetically (the
+// primary). Labels are FREE on ember+ — they ride in the walked tree.
+func emberUsageLabelMap(o consumer.Object, metaKey, group string) map[int]string {
+	groups, byGroup := labelGroups(o, metaKey)
+	if len(groups) == 0 {
+		return nil
+	}
+	pick := groups[0]
+	if group != "" {
+		found := false
+		for _, g := range groups {
+			if g == group {
+				pick, found = g, true
+				break
+			}
+		}
+		if !found {
+			return nil
+		}
+	}
+	out := map[int]string{}
+	for idx, label := range byGroup[pick] {
+		if n, err := strconv.Atoi(idx); err == nil && label != "" {
+			out[n] = label
+		}
+	}
 	return out
 }
 
@@ -157,6 +187,8 @@ func runEmberUsage(ctx context.Context, args []string) error {
 	matrixPath := fs.String("path", "", "matrix path: dotted label OR numeric OID (omitted = the only matrix in the tree)")
 	srce := fs.Int("srce", -1, "filter: only this source's assignments")
 	dest := fs.Int("dest", -1, "filter: only this target's feed")
+	withLabels := fs.Bool("names", false, "resolve src/dst names from the matrix label groups (free — no extra wire traffic); csv appends srce_label,dest_label. (--labels is taken by the canonical-labels mode)")
+	labelGroup := fs.String("name-group", "", "which label group to use with --names (omitted = the first group)")
 	format := fs.String("format", "csv", "output format: csv | ascii")
 	out := fs.String("out", "", "csv output file (omitted = snapshots/emberplus/<host>/usage.csv per ADR-0028; \"-\" = stdout)")
 	dmIdentity := fs.String("dm", "", "identity-keyed DM hot-load (ADR-0022): seed the tree from cache, skip the walk")
@@ -198,7 +230,7 @@ func runEmberUsage(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, dotted, found := findMatrixObject(objs, *matrixPath)
+	obj, dotted, found := findMatrixObject(objs, *matrixPath)
 	if !found {
 		avail := listMatrixPaths(objs)
 		if len(avail) == 0 {
@@ -206,13 +238,19 @@ func runEmberUsage(ctx context.Context, args []string) error {
 		}
 		return fmt.Errorf("matrix %q not found; available:\n  %s", *matrixPath, strings.Join(avail, "\n  "))
 	}
-	rows := probelFilterUsage(emberUsageRows(ep.MatrixSnapshot(dotted)), *srce, *dest)
+	rows := emberUsageRows(ep.MatrixSnapshot(dotted))
+	if *withLabels {
+		applyProbelUsageLabels(rows,
+			emberUsageLabelMap(obj, "sourceLabels", *labelGroup),
+			emberUsageLabelMap(obj, "targetLabels", *labelGroup))
+	}
+	rows = probelFilterUsage(rows, *srce, *dest)
 
 	if *format == "ascii" {
 		renderProbelUsageASCII(os.Stdout, rows)
 		return nil
 	}
-	csv := formatProbelUsageCSV(rows, false)
+	csv := formatProbelUsageCSV(rows, false, *withLabels)
 	if *out == "-" {
 		fmt.Print(csv)
 		return nil
