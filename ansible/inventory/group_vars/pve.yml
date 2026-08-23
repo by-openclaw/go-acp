@@ -1,0 +1,7 @@
+---
+# Proxmox node hosting the dhs fleet (LXC 651/652/653/655 + VM 654). Reached
+# over SSH as root on the OOB address — only the node-level plays
+# (pve-time.yml) target it; guests are managed through the Proxmox API.
+ansible_connection: ssh
+ansible_user: root
+ansible_port: 22
