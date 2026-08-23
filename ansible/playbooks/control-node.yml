@@ -60,6 +60,17 @@
       changed_when: false
       failed_when: "'ansible [core 2.17' not in cn_ansver.stdout"
 
+    # PSRP transport for the Windows host (#812) — pypsrp must live inside the
+    # pipx venv that runs ansible, not in the system python.
+    - name: pypsrp in the ansible-core venv (Windows PSRP transport)
+      ansible.builtin.command: pipx inject ansible-core "pypsrp[credssp]>=0.5.0"
+      register: cn_pypsrp
+      changed_when: "'injected package' in cn_pypsrp.stdout"
+      failed_when: cn_pypsrp.rc != 0 and 'already' not in (cn_pypsrp.stdout ~ cn_pypsrp.stderr)
+      environment:
+        PIPX_HOME: /opt/pipx
+        PIPX_BIN_DIR: /usr/local/bin
+
     - name: Ansible collections from requirements.yml
       ansible.builtin.command:
         cmd: ansible-galaxy collection install -r requirements.yml --upgrade
