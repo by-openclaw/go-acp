@@ -8,7 +8,7 @@ ansible_connection: local
 
 pve_vmid: 651
 pve_name: dhs.debian12
-pve_cores: 4          # P1 sizing (#817): binary-test host (control node moved to .104)
+pve_cores: 2          # P1 sizing (#817): binary-test host - SAME size as .102/.103 so cross-distro binary perf is comparable
 os_label: "Debian 12"
 nics:
   - { name: eth0, mac: "BC:24:11:80:E3:AC", ip: 10.100.0.101 }
