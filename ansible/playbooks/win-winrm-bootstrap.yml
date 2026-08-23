@@ -1,0 +1,172 @@
+---
+# One-time WinRM/PSRP bootstrap for the Windows fleet host (#812).
+#
+# WHY: over SSH every Ansible task spawns a fresh PowerShell on the target —
+# measured 2026-08-23 on win11: 37-task no-op converge = 481 s (~13 s/task),
+# and connection reuse (ControlPersist) was already on, so the cost is process
+# spawn per task, not connect time. PSRP keeps ONE runspace for the whole play.
+#
+# RUN IT YOURSELF (the password is prompted, never stored, never logged):
+#
+#   ssh -t root@10.100.0.101
+#   cd ~/acp/ansible && git pull
+#   ansible-playbook playbooks/win-winrm-bootstrap.yml
+#
+# It asks for the Windows password of `by-rune` on dhs-win11 (10.100.0.105) —
+# the local admin account Ansible already uses over SSH. It is needed ONLY to
+# register the client-certificate mapping; afterwards PSRP authenticates with
+# the certificate and no password is used at runtime.
+#
+# This play drives the host over the EXISTING SSH connection, so it works
+# before WinRM exists. Idempotent: second run = 0 changes.
+- name: Windows — WinRM HTTPS listener + client-certificate auth for PSRP
+  hosts: windows
+  gather_facts: true
+  vars_prompt:
+    - name: win_admin_password
+      prompt: "Windows password for {{ hostvars[groups['windows'][0]].ansible_user | default('by-rune') }} on the fleet Windows host (only used to map the client certificate)"
+      private: true
+      confirm: true
+  vars:
+    psrp_cert_dir: /etc/dhs/psrp
+    psrp_cert_cn: "{{ ansible_user }}@localhost"
+  tasks:
+    # ---- client certificate (lives on the control node) --------------------
+    - name: Certificate directory on the control node
+      ansible.builtin.file:
+        path: "{{ psrp_cert_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+      delegate_to: "{{ groups['control'][0] }}"
+      run_once: true
+
+    # UPN in subjectAltName is what WinRM maps to a local account.
+    - name: Client certificate + key (self-signed, UPN {{ psrp_cert_cn }})
+      ansible.builtin.shell: |
+        set -euo pipefail
+        cd {{ psrp_cert_dir }}
+        cat > openssl-psrp.cnf <<'CNF'
+        [req]
+        distinguished_name = dn
+        req_extensions = v3_req
+        prompt = no
+        [dn]
+        CN = {{ ansible_user }}
+        [v3_req]
+        subjectAltName = otherName:1.3.6.1.4.1.311.20.2.3;UTF8:{{ psrp_cert_cn }}
+        extendedKeyUsage = clientAuth
+        CNF
+        openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+          -keyout dhs-psrp.key -out dhs-psrp.pem \
+          -config openssl-psrp.cnf -extensions v3_req >/dev/null 2>&1
+        chmod 600 dhs-psrp.key
+        openssl x509 -in dhs-psrp.pem -noout -fingerprint -sha1 | sed 's/.*=//; s/://g'
+      args:
+        creates: "{{ psrp_cert_dir }}/dhs-psrp.pem"
+        executable: /bin/bash
+      delegate_to: "{{ groups['control'][0] }}"
+      run_once: true
+      register: wwb_cert_created
+
+    - name: Read the client certificate (public part)
+      ansible.builtin.slurp:
+        src: "{{ psrp_cert_dir }}/dhs-psrp.pem"
+      delegate_to: "{{ groups['control'][0] }}"
+      run_once: true
+      register: wwb_cert_pem
+
+    # ---- Windows side ------------------------------------------------------
+    - name: WinRM service running and automatic
+      ansible.windows.win_service:
+        name: WinRM
+        state: started
+        start_mode: auto
+
+    # Local (non-domain) admin accounts get their token stripped on network
+    # logon without this — the exact blocker documented in windows/configure-winrm.ps1.
+    - name: LocalAccountTokenFilterPolicy = 1
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+        name: LocalAccountTokenFilterPolicy
+        data: 1
+        type: dword
+        state: present
+
+    - name: Stage the client certificate on the host
+      ansible.windows.win_copy:
+        content: "{{ wwb_cert_pem.content | b64decode }}"
+        dest: C:\dhs\installers\dhs-psrp.pem
+
+    - name: HTTPS listener + certificate auth + client-cert mapping
+      ansible.windows.win_shell: |
+        $ErrorActionPreference = 'Stop'
+        $changed = @()
+
+        # --- server cert + HTTPS listener (5986) ---
+        $listener = Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue |
+          Where-Object { (Get-ChildItem $_.PSPath | Where-Object Name -eq 'Transport').Value -eq 'HTTPS' }
+        if (-not $listener) {
+          $srv = Get-ChildItem Cert:\LocalMachine\My |
+                 Where-Object { $_.Subject -eq "CN=$env:COMPUTERNAME" -and $_.NotAfter -gt (Get-Date) } |
+                 Select-Object -First 1
+          if (-not $srv) { $srv = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\LocalMachine\My }
+          New-Item -Path WSMan:\localhost\Listener -Transport HTTPS -Address * -CertificateThumbPrint $srv.Thumbprint -Force | Out-Null
+          $changed += 'listener'
+        }
+
+        # --- certificate authentication on the service ---
+        if ((Get-Item WSMan:\localhost\Service\Auth\Certificate).Value -ne 'true') {
+          Set-Item WSMan:\localhost\Service\Auth\Certificate $true
+          $changed += 'auth'
+        }
+
+        # --- trust the client certificate (Root + TrustedPeople) ---
+        $pem = 'C:\dhs\installers\dhs-psrp.pem'
+        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $pem
+        foreach ($store in 'Root','TrustedPeople') {
+          $s = New-Object System.Security.Cryptography.X509Certificates.X509Store($store,'LocalMachine')
+          $s.Open('ReadWrite')
+          if (-not ($s.Certificates | Where-Object Thumbprint -eq $cert.Thumbprint)) {
+            $s.Add($cert); $changed += "store:$store"
+          }
+          $s.Close()
+        }
+
+        # --- map the certificate to the local account ---
+        $subject = '{{ psrp_cert_cn }}'
+        $existing = Get-ChildItem WSMan:\localhost\ClientCertificate -ErrorAction SilentlyContinue |
+          Where-Object { (Get-ChildItem $_.PSPath | Where-Object Name -eq 'Subject').Value -eq $subject }
+        if (-not $existing) {
+          $sec = ConvertTo-SecureString '{{ win_admin_password }}' -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\{{ ansible_user }}", $sec)
+          New-Item -Path WSMan:\localhost\ClientCertificate -Subject $subject -URI * `
+                   -Issuer $cert.Thumbprint -Credential $cred -Force | Out-Null
+          $changed += 'mapping'
+        }
+
+        if ($changed.Count) { "CHANGED: $($changed -join ',')" } else { 'OK' }
+      register: wwb_winrm
+      changed_when: "'CHANGED' in wwb_winrm.stdout"
+      no_log: true          # the password is interpolated into this script
+
+    - name: Firewall — WinRM HTTPS (5986) inbound
+      community.windows.win_firewall_rule:
+        name: dhs-winrm-https-5986-tcp
+        localport: 5986
+        protocol: tcp
+        direction: in
+        action: allow
+        profiles: [domain, private, public]
+        enabled: true
+        state: present
+
+    - name: Result
+      ansible.builtin.debug:
+        msg: >-
+          WinRM HTTPS + certificate auth bootstrapped on {{ inventory_hostname }}
+          ({{ wwb_winrm.stdout | default('') | trim }}). Client cert:
+          {{ psrp_cert_dir }}/dhs-psrp.pem on the control node. Next: flip
+          group_vars/windows.yml to ansible_connection=psrp (#812) — no password
+          is used at runtime from here on.

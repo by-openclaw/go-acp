@@ -35,7 +35,8 @@ dhs_firewall_catalogue:
   ssh:
     - { port: 22,    proto: tcp }
   winrm:
-    - { port: 5985,  proto: tcp }
+    - { port: 5985,  proto: tcp }   # HTTP (legacy)
+    - { port: 5986,  proto: tcp }   # HTTPS — PSRP transport (#812)
   metrics:
     - { port: 9100,  proto: tcp, program: true }
   acp1:
