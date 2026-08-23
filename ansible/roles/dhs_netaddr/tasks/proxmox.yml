@@ -49,6 +49,26 @@
          | combine({'nameserver': dhs_netaddr_dns | join(' ')} if (dhs_netaddr_ct.json.data.nameserver | default('')) != (dhs_netaddr_dns | join(' ')) else {})
          | combine({'searchdomain': dhs_netaddr_searchdomain} if (dhs_netaddr_ct.json.data.searchdomain | default('')) != dhs_netaddr_searchdomain else {}) }}
 
+# The inventory is the SOURCE OF TRUTH, not an overlay: a netX that exists on
+# the CT but is not declared in `nics:` is removed. Without this, dropping a
+# NIC from host_vars silently leaves it configured and live — which is how
+# mgmt-B (.110+) kept answering mDNS for <host>.local after it was retired
+# (#822). Proxmox takes a comma-separated `delete` list.
+- name: Delta — netX on the CT that the inventory does not declare
+  ansible.builtin.set_fact:
+    dhs_netaddr_prune: >-
+      {{ dhs_netaddr_ct.json.data | dict2items | map(attribute='key')
+         | select('match', '^net[0-9]+$')
+         | reject('in', (dhs_netaddr_desired | default({})).keys() | list)
+         | list }}
+
+- name: Add the prune list to the pending changes
+  ansible.builtin.set_fact:
+    dhs_netaddr_changes: >-
+      {{ dhs_netaddr_changes | default({})
+         | combine({'delete': dhs_netaddr_prune | join(',')}) }}
+  when: dhs_netaddr_prune | length > 0
+
 - name: "Proxmox CT {{ pve_vmid }} network config -> static ({{ dhs_netaddr_changes | default({}) | dict2items | map(attribute='key') | join(',') }})"
   ansible.builtin.uri:
     url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/lxc/{{ pve_vmid }}/config"

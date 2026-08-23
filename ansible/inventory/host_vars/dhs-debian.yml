@@ -12,7 +12,6 @@ pve_cores: 2          # P1 sizing (#817): binary-test host - SAME size as .102/.
 os_label: "Debian 12"
 nics:
   - { name: eth0, mac: "BC:24:11:80:E3:AC", ip: 10.100.0.101 }
-  - { name: eth1, mac: "BC:24:11:91:97:7C", ip: 10.100.0.111 }
 fleet_hostname: dhs-debian
 
 # Ember+ producer: our integration DM — the synthetic tree that carries the

@@ -8,7 +8,6 @@ pve_cores: 2          # P1 sizing (#817): LXC cores are a cgroup ceiling, not a 
 os_label: "Rocky 9.4"
 nics:
   - { name: eth0, mac: "BC:24:11:2B:F7:C7", ip: 10.100.0.103 }
-  - { name: eth1, mac: "BC:24:11:33:74:4A", ip: 10.100.0.113 }
 fleet_hostname: dhs-rocky
 
 # Ember+ producer: the Lawo PowerCore tree (1024-target matrix), rebuilt from
