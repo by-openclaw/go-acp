@@ -1,0 +1,106 @@
+---
+# Read the guest config, compare vCPU/RAM against the inventory truth, PUT
+# only what differs. LXC applies live; QEMU is reported, never power-cycled.
+- name: Guest kind (lxc unless the host declares otherwise)
+  ansible.builtin.set_fact:
+    dhs_guestsize_kind: "{{ pve_type | default('qemu' if ansible_os_family == 'Windows' else 'lxc') }}"
+
+- name: Read the node's CPU capacity
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/status"
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+    return_content: true
+  delegate_to: localhost
+  check_mode: false          # read-only GET: must run in --check too
+  register: dhs_guestsize_node
+
+- name: Read every guest on the node (containers + VMs)
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/{{ item }}"
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+    return_content: true
+  delegate_to: localhost
+  loop: [lxc, qemu]
+  check_mode: false          # read-only GET: must run in --check too
+  register: dhs_guestsize_all
+
+# pve01 is a PRODUCTION node (pfSense, Cerebrum staging, Odoo). Refuse to
+# push total allocated vCPU past the ceiling rather than discover it later.
+- name: Overcommit guard — allocated vCPU for running guests after this change
+  ansible.builtin.set_fact:
+    dhs_guestsize_alloc: >-
+      {{ (dhs_guestsize_all.results | map(attribute='json.data') | flatten
+          | selectattr('status', 'equalto', 'running')
+          | rejectattr('vmid', 'equalto', pve_vmid | int)
+          | map(attribute='cpus') | map('int') | sum)
+         + (pve_cores | default(0) | int) }}
+    dhs_guestsize_node_cores: "{{ dhs_guestsize_node.json.data.cpuinfo.cpus | int }}"
+
+- name: Assert the node stays inside the overcommit ceiling
+  ansible.builtin.assert:
+    that:
+      - (dhs_guestsize_alloc | int) <= (dhs_guestsize_node_cores | int) * (dhs_guestsize_max_overcommit | float)
+    fail_msg: >-
+      dhs_guestsize: {{ inventory_hostname }} -> {{ pve_cores | default('n/a') }} vCPU would take
+      pve01 to {{ dhs_guestsize_alloc }} allocated vCPU on {{ dhs_guestsize_node_cores }} cores
+      (ceiling {{ dhs_guestsize_max_overcommit }}x). Lower pve_cores or raise
+      dhs_guestsize_max_overcommit deliberately.
+    success_msg: >-
+      {{ dhs_guestsize_alloc }} vCPU allocated on {{ dhs_guestsize_node_cores }} cores
+      ({{ ((dhs_guestsize_alloc | float) / (dhs_guestsize_node_cores | float)) | round(2) }}x,
+      ceiling {{ dhs_guestsize_max_overcommit }}x)
+
+- name: Read the guest config from Proxmox
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/{{ dhs_guestsize_kind }}/{{ pve_vmid }}/config"
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+    return_content: true
+  delegate_to: localhost
+  check_mode: false          # read-only GET: must run in --check too
+  register: dhs_guestsize_cfg
+
+- name: Delta — cores / memory that differ from the inventory
+  ansible.builtin.set_fact:
+    dhs_guestsize_changes: >-
+      {{ {}
+         | combine({'cores': pve_cores | int}
+                   if (pve_cores is defined and (dhs_guestsize_cfg.json.data.cores | default(0) | int) != (pve_cores | int))
+                   else {})
+         | combine({'memory': pve_memory | int}
+                   if (pve_memory is defined and (dhs_guestsize_cfg.json.data.memory | default(0) | int) != (pve_memory | int))
+                   else {}) }}
+
+- name: "Proxmox {{ dhs_guestsize_kind }} {{ pve_vmid }} size -> {{ dhs_guestsize_changes | dict2items | map(attribute='key') | join(',') | default('no change', true) }}"
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/{{ dhs_guestsize_kind }}/{{ pve_vmid }}/config"
+    method: PUT
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    body_format: form-urlencoded
+    body: "{{ dhs_guestsize_changes }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+  delegate_to: localhost
+  when:
+    - dhs_guestsize_changes | length > 0
+    - dhs_guestsize_kind == 'lxc' or (dhs_guestsize_vm_apply | bool)
+  changed_when: true
+
+# A QEMU config change needs a hypervisor stop/start: win_reboot restarts the
+# guest OS only, the QEMU process survives and keeps the old cores/maxmem.
+- name: VM resize pending an operator power cycle
+  ansible.builtin.debug:
+    msg: >-
+      dhs_guestsize: {{ inventory_hostname }} (VM {{ pve_vmid }}) wants
+      {{ dhs_guestsize_changes }} — not applied. Set dhs_guestsize_vm_apply=true
+      to write the config, then STOP and START the VM (a guest reboot keeps the
+      old QEMU process and the change will not take effect).
+  when:
+    - dhs_guestsize_changes | length > 0
+    - dhs_guestsize_kind != 'lxc'
+    - not (dhs_guestsize_vm_apply | bool)

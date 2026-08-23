@@ -14,6 +14,9 @@
   hosts: dhs_clients
   gather_facts: true
   roles:
+    # first: guest vCPU/RAM from the inventory truth (#817 P1). LXC changes
+    # apply live; a VM delta is reported, never power-cycled.
+    - dhs_guestsize
     - dhs_host
     - dhs_access
     - dhs_hostname
