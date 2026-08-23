@@ -1,0 +1,7 @@
+v=0
+o=- 1 1 IN IP4 192.0.2.7
+s=unprotected
+t=0 0
+m=video 5004 RTP/AVP 96
+c=IN IP4 233.252.0.5/64/2
+a=rtpmap:96 raw/90000

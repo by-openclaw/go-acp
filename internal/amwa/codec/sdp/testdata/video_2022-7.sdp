@@ -1,0 +1,21 @@
+v=0
+o=- 1892839283 3200968197 IN IP4 192.0.2.42
+s=VTX-01
+t=0 0
+a=group:DUP primary secondary
+m=video 20000 RTP/AVP 96
+c=IN IP4 233.252.0.27/32
+a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:127
+a=mediaclk:direct=0
+a=source-filter: incl IN IP4 233.252.0.27 192.0.2.42
+a=rtpmap:96 raw/90000
+a=fmtp:96 width=1920; height=1080; exactframerate=50; sampling=YCbCr-4:2:2; depth=10; colorimetry=BT709; TCS=SDR; PM=2110GPM; SSN=ST2110-20:2017; TP=2110TPN;
+a=mid:primary
+m=video 20000 RTP/AVP 96
+c=IN IP4 233.252.1.27/32
+a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:127
+a=mediaclk:direct=0
+a=source-filter: incl IN IP4 233.252.1.27 198.51.100.42
+a=rtpmap:96 raw/90000
+a=fmtp:96 width=1920; height=1080; exactframerate=50; sampling=YCbCr-4:2:2; depth=10; colorimetry=BT709; TCS=SDR; PM=2110GPM; SSN=ST2110-20:2017; TP=2110TPN;
+a=mid:secondary

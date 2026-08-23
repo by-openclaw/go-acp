@@ -1,0 +1,17 @@
+v=0
+o=- 1712345678 3200964341 IN IP4 192.0.2.42
+s=DTX-03
+t=0 0
+a=group:DUP primary secondary
+m=video 40000 RTP/AVP 100
+c=IN IP4 233.252.0.99/32
+a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:127
+a=mediaclk:direct=0
+a=rtpmap:100 smpte291/90000
+a=mid:primary
+m=video 40000 RTP/AVP 100
+c=IN IP4 233.252.1.99/32
+a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:127
+a=mediaclk:direct=0
+a=rtpmap:100 smpte291/90000
+a=mid:secondary

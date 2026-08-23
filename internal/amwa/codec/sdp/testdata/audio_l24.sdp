@@ -1,0 +1,23 @@
+v=0
+o=- 1992998563 3996293031 IN IP4 192.0.2.34
+s=ATX-01
+t=0 0
+a=group:DUP primary secondary
+m=audio 30000 RTP/AVP 97
+c=IN IP4 233.252.0.10/32
+a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:100
+a=mediaclk:direct=0
+a=source-filter: incl IN IP4 233.252.0.10 192.0.2.34
+a=rtpmap:97 L24/48000/8
+a=ptime:0.125
+a=fmtp:97 channel-order=SMPTE2110.(U08)
+a=mid:primary
+m=audio 30000 RTP/AVP 97
+c=IN IP4 233.252.1.10/32
+a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:100
+a=mediaclk:direct=0
+a=source-filter: incl IN IP4 233.252.1.10 198.51.100.34
+a=rtpmap:97 L24/48000/8
+a=ptime:0.125
+a=fmtp:97 channel-order=SMPTE2110.(U08)
+a=mid:secondary
