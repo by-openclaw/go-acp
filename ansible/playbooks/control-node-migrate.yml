@@ -1,0 +1,101 @@
+---
+# One-time control-node migration (#820): copy the credentials the OUTGOING
+# control node holds to the INCOMING one, so the new controller can reach the
+# fleet, the Proxmox API and win11 without re-bootstrapping anything.
+#
+# RUN IT FROM THE CURRENT CONTROL NODE, BEFORE the inventory flips:
+#
+#   cd ~/acp/ansible
+#   ansible-playbook playbooks/control-node.yml -e cn_target=dhs-tools
+#   ansible-playbook playbooks/control-node-migrate.yml -e cnm_target=dhs-tools
+#
+# Then commit the inventory flip ([control] + ansible_connection: local) and
+# run everything from the new node.
+#
+# WHY COPY RATHER THAN RE-CREATE:
+#   - The SSH key is `root@dhs`, already present in every fleet host's
+#     authorized_keys (dhs_access, #782). A fresh key would need distributing
+#     to every host first, and win11's admin key file has strict ACLs.
+#   - The PSRP client certificate is already trusted by win11 (Root +
+#     TrustedPeople) and mapped to the local account. Re-running
+#     win-winrm-bootstrap.yml would prompt for the Windows password again and
+#     create a SECOND mapping for no gain (#812).
+#
+# Idempotent: second run = 0 changes. Secrets never print (no_log).
+- name: Migrate control-node credentials to the incoming control node
+  hosts: "{{ cnm_target | default('dhs-tools') }}"
+  gather_facts: false
+  vars:
+    cnm_source: "{{ groups['control'][0] }}"
+    cnm_items:
+      - { src: /root/.ssh/id_ed25519,          dest: /root/.ssh/id_ed25519,          mode: "0600" }
+      - { src: /root/.ssh/id_ed25519.pub,      dest: /root/.ssh/id_ed25519.pub,      mode: "0644" }
+      - { src: /root/.secrets/proxmox.yml,     dest: /root/.secrets/proxmox.yml,     mode: "0600" }
+      - { src: /etc/dhs/psrp/dhs-psrp.pem,     dest: /etc/dhs/psrp/dhs-psrp.pem,     mode: "0644" }
+      - { src: /etc/dhs/psrp/dhs-psrp.key,     dest: /etc/dhs/psrp/dhs-psrp.key,     mode: "0600" }
+  tasks:
+    - name: Directories with the same modes as on {{ cnm_source }}
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: /root/.ssh, mode: "0700" }
+        - { path: /root/.secrets, mode: "0700" }
+        - { path: /etc/dhs/psrp, mode: "0700" }
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Read each credential from {{ cnm_source }}
+      ansible.builtin.slurp:
+        src: "{{ item.src }}"
+      delegate_to: "{{ cnm_source }}"
+      loop: "{{ cnm_items }}"
+      loop_control:
+        label: "{{ item.src }}"
+      register: cnm_read
+      no_log: true
+
+    - name: Place them on {{ inventory_hostname }}
+      ansible.builtin.copy:
+        content: "{{ item.content | b64decode }}"
+        dest: "{{ item.item.dest }}"
+        owner: root
+        group: root
+        mode: "{{ item.item.mode }}"
+      loop: "{{ cnm_read.results }}"
+      loop_control:
+        label: "{{ item.item.dest }}"
+      no_log: true
+
+    # Proves the copy actually works before the inventory flips — a migration
+    # that only *looks* done is worse than one that failed loudly.
+    - name: Verify — the new node can reach every fleet host over SSH
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -i
+          - /root/.ssh/id_ed25519
+          - -o
+          - BatchMode=yes
+          - -o
+          - StrictHostKeyChecking=no
+          - "root@{{ hostvars[item].ansible_host }}"
+          - hostname
+      loop: "{{ groups['linux'] | reject('equalto', inventory_hostname) | list }}"
+      loop_control:
+        label: "{{ item }}"
+      register: cnm_ssh
+      changed_when: false
+      failed_when: cnm_ssh.rc != 0
+
+    - name: Result
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} holds the fleet SSH key, the Proxmox secrets
+          and the PSRP client certificate, and reached
+          {{ cnm_ssh.results | map(attribute='stdout') | join(', ') }}.
+          Next: flip [control] and ansible_connection: local in the inventory,
+          then run fleet-converge.yml from here.

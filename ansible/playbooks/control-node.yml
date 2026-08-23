@@ -1,20 +1,40 @@
 ---
-# Control-node prerequisites (dhs-debian .103), self-applied. Run once after a
-# fresh clone and whenever requirements change:
+# Control-node prerequisites. Normally self-applied on the current control
+# node; also used to PREPARE a new one before the inventory flips to it:
 #
 #   cd ~/acp/ansible && ansible-playbook playbooks/control-node.yml
+#   ansible-playbook playbooks/control-node.yml -e cn_target=dhs-tools   # prepare .104 (#820)
+#
+# `cn_target` exists because the flip cannot be atomic: while .101 is still
+# the controller, the incoming node must be reached over SSH as an ordinary
+# host. Only after this play AND control-node-migrate.yml does the inventory
+# move `[control]` and `ansible_connection: local` to the new node.
 #
 # - git-lfs + `git lfs pull` for the LFS-tracked assets the fleet roles ship
 #   (Bonjour installer, PDFs) — without it a clone holds 132-byte pointers.
 # - the Ansible collections from requirements.yml.
 - name: Control node prerequisites
-  hosts: control
+  hosts: "{{ cn_target | default('control') }}"
   gather_facts: true
+  vars:
+    cn_repo_dir: /root/acp
+    cn_repo_url: https://github.com/by-openclaw/go-acp.git
   tasks:
     - name: git + git-lfs present
       ansible.builtin.package:
         name: [git, git-lfs]
         state: present
+
+    # The repo is PUBLIC, so no credentials are needed. `playbook_dir` is a
+    # path on the CONTROLLER, so every chdir below uses cn_repo_dir instead —
+    # otherwise preparing a remote node would run git in the wrong tree.
+    - name: Repository cloned on the target
+      ansible.builtin.git:
+        repo: "{{ cn_repo_url }}"
+        dest: "{{ cn_repo_dir }}"
+        version: main
+        update: false          # never move someone's working branch
+      register: cn_clone
 
     - name: git-lfs filters installed for root
       ansible.builtin.command: git lfs install --skip-repo
@@ -24,13 +44,13 @@
     - name: LFS objects for the amwa assets pulled
       ansible.builtin.command:
         cmd: git lfs pull --include "internal/amwa/assets/*"
-        chdir: "{{ playbook_dir }}/../.."
+        chdir: "{{ cn_repo_dir }}"
       register: cn_lfs_pull
       changed_when: "'Downloading' in cn_lfs_pull.stdout or (cn_lfs_pull.stderr is search('Downloading'))"
 
     - name: Bonjour installer is a real binary (> 1 MB)
       ansible.builtin.stat:
-        path: "{{ playbook_dir }}/../../internal/amwa/assets/BonjourPSSetup.exe"
+        path: "{{ cn_repo_dir }}/internal/amwa/assets/BonjourPSSetup.exe"
       register: cn_bonjour
       failed_when: not cn_bonjour.stat.exists or cn_bonjour.stat.size < 1000000
 
@@ -74,6 +94,6 @@
     - name: Ansible collections from requirements.yml
       ansible.builtin.command:
         cmd: ansible-galaxy collection install -r requirements.yml --upgrade
-        chdir: "{{ playbook_dir }}/.."
+        chdir: "{{ cn_repo_dir }}/ansible"
       register: cn_galaxy
       changed_when: "'Installing' in cn_galaxy.stdout"
