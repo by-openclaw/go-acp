@@ -30,6 +30,10 @@ dhs_host_packages:
   Debian: [tshark, curl, jq, ca-certificates, unzip, tar]
   RedHat: [wireshark-cli, curl, jq, ca-certificates, unzip, tar]
 
+# NTP peers for win11 (w32time). LXCs inherit the Proxmox host clock and
+# cannot set time themselves — the pve node is chrony's job (ansible-platform#168).
+dhs_host_ntp_peers: ["10.100.0.1,0x8", "pool.ntp.org,0x8"]
+
 # GOARCH mapping for the release asset name.
 dhs_host_goarch:
   x86_64: amd64

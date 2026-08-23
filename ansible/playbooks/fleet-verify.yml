@@ -35,6 +35,31 @@
         fail_msg: "DRIFT: {{ inventory_hostname }} hostname is {{ ansible_hostname }}, expected {{ fleet_hostname }} (#783)"
         quiet: true
 
+    # IPv6 exists on the platform (owner 2026-08-23); VLAN 100 offers no
+    # RA/DHCPv6 yet, so hosts hold link-local only. Until the fleet's static
+    # ip6 scheme lands in the inventory (dhs_netaddr, needs the VLAN-100
+    # prefix), REPORT global IPv6 per host — it is not a drift (#804).
+    - name: Collect live global IPv6 addresses
+      ansible.builtin.set_fact:
+        fv_live_v6: >-
+          {{ (ansible_ip_addresses | default([]) | select('search', ':') | reject('match', '^fe80') | list)
+             if ansible_os_family == 'Windows'
+             else (ansible_all_ipv6_addresses | default([]) | reject('match', '^fe80') | list) }}
+
+    - name: "Global IPv6 on {{ inventory_hostname }} (report; static ip6 scheme pending)"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} global IPv6: {{ (fv_live_v6 | join(', ')) if fv_live_v6 else 'none (link-local only)' }}"
+
+    # Windows facts render epoch with the locale decimal separator
+    # ("1787444435,083") — normalise before casting.
+    - name: Clock offset vs the control node (LXCs inherit the pve host clock)
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} offset vs control node =
+          {{ ((ansible_date_time.epoch | string | replace(',', '.') | float) | int)
+             - ((hostvars[groups['control'][0]].ansible_date_time.epoch | string | replace(',', '.') | float) | int) }}s
+          (host epoch {{ ansible_date_time.epoch }}, control {{ hostvars[groups['control'][0]].ansible_date_time.epoch }})
+
     - name: pfSense static-mapping table (MAC -> IP) for this host
       ansible.builtin.debug:
         msg: "{{ nics | map(attribute='mac') | zip(nics | map(attribute='ip')) | map('join', ' -> ') | list }}"

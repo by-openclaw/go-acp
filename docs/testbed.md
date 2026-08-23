@@ -121,6 +121,18 @@ Every fleet host gets the same dhs baseline, per OS, from the
 | directories | `/etc/dhs` (trees/packs), `/var/lib/dhs` (data), `/var/log/dhs` | `C:\dhs`, `C:\ProgramData\dhs\{data,logs}` |
 | packages | tshark/wireshark-cli, curl, jq, ca-certificates, unzip, tar | — |
 
+Time and IPv6 (#804): `win11` syncs w32time to the DMZ gateway
+`10.100.0.1` + `pool.ntp.org` (set by `dhs_host`); the LXCs cannot set
+their own clock — they inherit the Proxmox node's, which was measured
+~9 min ahead on 2026-08-23 (pve01 NTP = `ansible-platform#168`);
+`fleet-verify.yml` prints each host's offset vs the control node. IPv6:
+the platform is dual-stack, but VLAN 100 currently offers no RA/DHCPv6,
+so fleet NICs hold link-local IPv6 only; `fleet-verify.yml` reports
+global IPv6 per host. The static IPv6 scheme (same shape as IPv4:
+`<vlan-100 prefix>::101/::111` etc., set by `dhs_netaddr` in the Proxmox
+`ip6=` field and guest-side on win11) lands as soon as the VLAN-100
+prefix is known.
+
 Roll the fleet to a new release by bumping `dhs_version` and converging
 (run-twice = 0 changes). Layering: hypervisor = `infra-terraform-proxmox`
 (import of the dhs guests tracked there), OS baseline/hardening =
