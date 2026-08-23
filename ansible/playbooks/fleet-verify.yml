@@ -50,15 +50,55 @@
       ansible.builtin.debug:
         msg: "{{ inventory_hostname }} global IPv6: {{ (fv_live_v6 | join(', ')) if fv_live_v6 else 'none (link-local only)' }}"
 
-    # Windows facts render epoch with the locale decimal separator
-    # ("1787444435,083") — normalise before casting.
-    - name: Clock offset vs the control node (LXCs inherit the pve host clock)
+    # NEVER use ansible_date_time here: facts are cached (ansible.cfg, #790),
+    # so a cached epoch is stale by construction and the offset is nonsense.
+    # Sample the clock LIVE on every host in the same task batch.
+    - name: Live epoch (Linux)
+      ansible.builtin.command: date -u +%s
+      register: fv_epoch_posix
+      changed_when: false
+      when: ansible_os_family != 'Windows'
+
+    - name: Live epoch (Windows)
+      ansible.windows.win_shell: "[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()"
+      register: fv_epoch_win
+      changed_when: false
+      when: ansible_os_family == 'Windows'
+
+    # A Windows task costs ~15 s (#790), so its sample lands that much later in
+    # wall-clock than the Linux batch. Take a FRESH control-node reading right
+    # after the Windows sample, otherwise the skew looks like clock drift.
+    - name: Reference epoch on the control node (paired with the Windows sample)
+      ansible.builtin.command: date -u +%s
+      register: fv_ref_after_win
+      changed_when: false
+      delegate_to: "{{ groups['control'][0] }}"
+      when: ansible_os_family == 'Windows'
+
+    - name: Resolve live epoch
+      ansible.builtin.set_fact:
+        fv_epoch: >-
+          {{ (fv_epoch_win.stdout if ansible_os_family == 'Windows' else fv_epoch_posix.stdout)
+             | trim | int }}
+
+    # Separate task: every host's fv_epoch (incl. the control node's) must
+    # exist before any host reads it out of hostvars.
+    - name: Resolve the reference epoch for this host
+      ansible.builtin.set_fact:
+        fv_ref_epoch: >-
+          {{ (fv_ref_after_win.stdout | trim | int)
+             if ansible_os_family == 'Windows'
+             else (hostvars[groups['control'][0]].fv_epoch | int) }}
+
+    # The LXCs (control node included) inherit the Proxmox node clock — see
+    # playbooks/pve-time.yml (#810) and the PTP decision (#813).
+    - name: Clock offset vs the control node (live, seconds)
       ansible.builtin.debug:
         msg: >-
           {{ inventory_hostname }} offset vs control node =
-          {{ ((ansible_date_time.epoch | string | replace(',', '.') | float) | int)
-             - ((hostvars[groups['control'][0]].ansible_date_time.epoch | string | replace(',', '.') | float) | int) }}s
-          (host epoch {{ ansible_date_time.epoch }}, control {{ hostvars[groups['control'][0]].ansible_date_time.epoch }})
+          {{ (fv_epoch | int) - (fv_ref_epoch | int) }}s
+          (host {{ fv_epoch }}, control {{ fv_ref_epoch }}) — resolution ~1 s,
+          minutes-scale drift is what matters
 
     - name: pfSense static-mapping table (MAC -> IP) for this host
       ansible.builtin.debug:

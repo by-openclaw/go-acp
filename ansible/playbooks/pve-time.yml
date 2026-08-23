@@ -1,0 +1,323 @@
+---
+# Time on the Proxmox node that hosts the dhs fleet (#810). Unprivileged
+# LXCs cannot set their own clock — they inherit the node's, so a wrong
+# node clock is a wrong fleet clock (fleet-verify prints the offsets).
+#
+#   cd ~/acp/ansible && ansible-playbook playbooks/pve-time.yml
+#
+# ROOT CAUSE found on pve01 (measured 2026-08-23), in order of discovery:
+#   1. The node ran ~9 min ahead and chrony could not fix it: Frequency was
+#      pinned at 100019 ppm (the kernel's 10 % clamp) with a huge residual.
+#   2. NOT the NTP source — pfSense served fine (reach 377, ±51 ms) — and
+#      NOT the TSC: with the real culprit stopped, chrony holds
+#      0.000000000 s at 12.5 ppm on clocksource=tsc.
+#   3. The culprit was PTP: `ptp4l -i ens3` runs as a FREE-RUNNING grand
+#      master (clockClass 248) so its PHC drifts on its own (measured 518 s
+#      away from real time), and `phc2sys -s /dev/ptp0 -c CLOCK_REALTIME`
+#      force-fed that PHC into the system clock while chrony pulled the
+#      other way. Two daemons steering one clock, one of them from a bad
+#      reference — hence the ±10 % clamp.
+#
+# This play therefore: keeps chrony the single steward of CLOCK_REALTIME,
+# makes a large offset step (not slew), sanitises a poisoned drift file, and
+# ASSERTS that nothing else steers the clock. The PTP role of the node
+# (grandmaster for the Arista fabric vs client of a fabric/GPS GM) is a
+# fabric-design decision — see `pve_ptp_role` below and issue #813.
+#
+# Needs the agent key authorized for root@pve01 (group `pve`). Idempotent:
+# second run = 0 changes. Platform-layer twin: ansible-platform#168.
+- name: Proxmox node clock — chrony is the single steward, PTP must not fight it
+  hosts: pve
+  gather_facts: true
+  vars:
+    # pve01 sits on the OOB VLAN; its own gateway (pfSense) is the surest
+    # source — it is what the node already tracks. DMZ side + pool follow.
+    pve_time_sources:
+      - "10.6.224.1 iburst"
+      - "10.100.0.1 iburst"
+      - "pool.ntp.org iburst"
+    # A stored frequency beyond this (ppm) is not a real crystal error —
+    # the kernel clamps adjustments at 100000 ppm (10 %).
+    pve_time_max_sane_ppm: 50000
+    # PTP role of this node, pending the fabric decision (#813):
+    #   none    — phc2sys stopped+disabled; chrony alone owns CLOCK_REALTIME.
+    #             ptp4l is left as-is (it may be the fabric's only GM today).
+    #   gm_ntp  — node is GM for the fabric: PHC follows the NTP-disciplined
+    #             system clock (phc2sys -c <iface> -s CLOCK_REALTIME -w).
+    #   client  — node is a PTP client of a fabric/GPS GM: ptp4l clientOnly,
+    #             PHC -> system (phc2sys -s <iface> -c CLOCK_REALTIME -w) and
+    #             chrony must NOT discipline the clock (refclock PHC instead).
+    pve_ptp_role: gm_ntp
+    pve_ptp_iface: ens3
+    # PTP runs on the TAI timescale (ptp4l defaults ptpTimescale=1 and
+    # announces currentUtcOffset=37), so the PHC must be UTC + 37.
+    # phc2sys -O is documented as "sink - source": sink = PHC, source =
+    # CLOCK_REALTIME (UTC) -> -O 37. Verified live: phc2sys applied a
+    # 37.000021 s step then held rms 30 ns.
+    pve_ptp_utc_offset: 37
+    # The igb driver on ens3 misses the 1 ms default tx-timestamp deadline, so
+    # ptp4l flaps MASTER -> FAULTY ("send sync failed") and the fabric loses its
+    # GM for ~20 s each time (baseline 2026-08-23: 4 faults/24 h, 3 in 2 h).
+    # linuxptp's documented remedy is a longer timeout. Owner approved.
+    pve_ptp_tx_timestamp_timeout: 50
+    # Journal hygiene (owner 2026-08-23: "don't charge the pve"). phc2sys with
+    # `-m` logs to syslog AND stdout -> journald stores every line twice, and
+    # `-u 16` summarised every ~16 s = ~11 000 lines/day (measured). Drop `-m`
+    # and summarise every 900 updates (1 Hz -> 15 min) = ~96 lines/day, still
+    # enough for the rms health check below.
+    pve_ptp_summary_updates: 900
+    # journald cap on the node (owner 2026-08-23: "reduce journal too"). It had
+    # grown to 3.9 GB. 1 GB total / 128 MB per file keeps weeks of history at
+    # the reduced PTP log rate, and vacuum applies the cap immediately.
+    pve_journal_max_use: 1G
+    pve_journal_max_file: 128M
+    pve_journal_max_retention: 30day
+  tasks:
+    - name: chrony present
+      ansible.builtin.apt:
+        name: chrony
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: chrony sources + step-anytime
+      ansible.builtin.copy:
+        dest: /etc/chrony/conf.d/dhs-fleet.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # managed by go-acp ansible (pve-time.yml, #810)
+          {% for s in pve_time_sources %}
+          server {{ s }}
+          {% endfor %}
+          # step (not slew) whenever the offset exceeds 1 s — unlimited, so a
+          # late jump is corrected too. The stock "makestep 1 3" only covers
+          # the first 3 updates after start.
+          makestep 1 -1
+      notify: restart chrony
+
+    # An earlier bad estimate persists in the drift file and is re-applied on
+    # every start; on pve01 it held -100000 ppm (the clamp) while the real
+    # crystal error is ~13 ppm.
+    - name: Read the stored drift (ppm)
+      ansible.builtin.slurp:
+        src: /var/lib/chrony/chrony.drift
+      register: pve_time_drift
+      failed_when: false
+
+    - name: Reset a poisoned drift file (> {{ pve_time_max_sane_ppm }} ppm)
+      ansible.builtin.copy:
+        dest: /var/lib/chrony/chrony.drift
+        owner: _chrony
+        group: _chrony
+        mode: "0644"
+        content: "0.0 0.0\n"
+      when:
+        - pve_time_drift.content is defined
+        - ((pve_time_drift.content | b64decode).split() | first | float) | abs > (pve_time_max_sane_ppm | float)
+      notify: restart chrony
+
+    - name: timesyncd off (chrony owns the clock)
+      ansible.builtin.systemd:
+        name: systemd-timesyncd
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    # ---- PTP must not steer CLOCK_REALTIME behind chrony's back -----------
+    - name: "phc2sys stopped + disabled (pve_ptp_role={{ pve_ptp_role }})"
+      ansible.builtin.systemd:
+        name: phc2sys
+        state: stopped
+        enabled: false
+      when: pve_ptp_role == 'none'
+      failed_when: false
+
+    # gm_ntp: this node is the fabric grandmaster (ptp4l domain 77, L2,
+    # priority1 1 — see /etc/ptp4l.conf, owner's design). The PHC must
+    # therefore FOLLOW the NTP-disciplined system clock. The shipped unit had
+    # it backwards (-s /dev/ptp0 -c CLOCK_REALTIME = PHC -> system), which fed
+    # an undisciplined PHC into the OS clock and pinned it at the kernel's
+    # ±10 % clamp; the PHC itself had drifted 518 s, so the fabric's GM was
+    # serving badly wrong time. Chain: pfSense NTP -> chrony -> system clock
+    # -> PHC (here) -> ptp4l GM -> Arista boundary clocks.
+    # NOTE: NTP-derived => sub-millisecond, not the sub-µs GPS-traceable time
+    # ST 2110 media wants; put a GNSS GM at the head for production media.
+    - name: "phc2sys direction = system -> PHC on {{ pve_ptp_iface }} (TAI +{{ pve_ptp_utc_offset }})"
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/phc2sys.service.d/dhs-direction.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # managed by go-acp ansible (pve-time.yml, #810/#813)
+          [Service]
+          ExecStart=
+          ExecStart=/usr/sbin/phc2sys -c {{ pve_ptp_iface }} -s CLOCK_REALTIME -O {{ pve_ptp_utc_offset }} -u {{ pve_ptp_summary_updates }}
+      when: pve_ptp_role == 'gm_ntp'
+      register: pve_ptp_dropin
+
+    - name: systemd daemon-reload after the drop-in change
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: pve_ptp_dropin is changed
+
+    - name: phc2sys running + enabled (grandmaster mode)
+      ansible.builtin.systemd:
+        name: phc2sys
+        state: "{{ 'restarted' if pve_ptp_dropin is changed else 'started' }}"
+        enabled: true
+      when: pve_ptp_role == 'gm_ntp'
+
+    # Only this one line is managed in the owner's hand-written ptp4l.conf —
+    # domain/transport/intervals/priorities are their design and stay untouched.
+    - name: "ptp4l tx_timestamp_timeout = {{ pve_ptp_tx_timestamp_timeout }} ms (igb misses the 1 ms default)"
+      ansible.builtin.lineinfile:
+        path: /etc/ptp4l.conf
+        regexp: '^\s*tx_timestamp_timeout\s'
+        line: "tx_timestamp_timeout {{ pve_ptp_tx_timestamp_timeout }}"
+        insertafter: '^\[global\]'
+        backup: true
+      when: pve_ptp_role == 'gm_ntp'
+      notify: restart ptp4l
+
+    # ---- journald hygiene on the node -------------------------------------
+    - name: journald drop-in directory
+      ansible.builtin.file:
+        path: /etc/systemd/journald.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: journald size caps (drop-in, node-wide)
+      ansible.builtin.copy:
+        dest: /etc/systemd/journald.conf.d/dhs-limits.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # managed by go-acp ansible (pve-time.yml, #810)
+          [Journal]
+          SystemMaxUse={{ pve_journal_max_use }}
+          SystemMaxFileSize={{ pve_journal_max_file }}
+          MaxRetentionSec={{ pve_journal_max_retention }}
+      register: pve_journal_conf
+
+    - name: Restart journald when the caps changed
+      ansible.builtin.systemd:
+        name: systemd-journald
+        state: restarted
+      when: pve_journal_conf is changed
+
+    # Always run; journalctl reports what it freed, so "freed 0B" == already
+    # within the cap == not changed. Simpler and unit-safe versus parsing sizes.
+    - name: Vacuum the journal down to {{ pve_journal_max_use }}
+      ansible.builtin.command: "journalctl --vacuum-size={{ pve_journal_max_use }}"
+      register: pve_journal_vacuum
+      changed_when: "'freed 0B' not in (pve_journal_vacuum.stdout | default('') ~ pve_journal_vacuum.stderr | default(''))"
+
+    - name: Journal size after vacuum
+      ansible.builtin.command: journalctl --disk-usage
+      register: pve_journal_size
+      changed_when: false
+
+    - name: Fault rate in the last 24 h (informational)
+      ansible.builtin.shell: |
+        set -o pipefail
+        journalctl -u ptp4l --since '24 hours ago' --no-pager | grep -c FAULT_DETECTED || true
+      args:
+        executable: /bin/bash
+      register: pve_ptp_faults
+      changed_when: false
+      when: pve_ptp_role == 'gm_ntp'
+
+    - name: chrony enabled and running
+      ansible.builtin.service:
+        name: chrony
+        state: started
+        enabled: true
+
+    - name: Flush handlers so a config/drift change is live before checking
+      ansible.builtin.meta: flush_handlers
+
+    - name: Current offset vs NTP (seconds)
+      ansible.builtin.shell: |
+        set -o pipefail
+        chronyc tracking | awk '/System time/{print $4}'
+      args:
+        executable: /bin/bash
+      register: pve_time_offset
+      changed_when: false
+
+    - name: Step the clock when it is more than 1 s out
+      ansible.builtin.command: chronyc makestep
+      register: pve_time_step
+      when: (pve_time_offset.stdout | default('0') | float) | abs > 1.0
+      changed_when: pve_time_step is not skipped
+
+    - name: Wait for chrony to be synchronised (offset < 0.5 s)
+      ansible.builtin.shell: |
+        set -o pipefail
+        chronyc tracking | awk '/System time/{print $4}'
+      args:
+        executable: /bin/bash
+      register: pve_time_check
+      changed_when: false
+      retries: 12
+      delay: 5
+      until: ((pve_time_check.stdout | default('99') | float) | abs) < 0.5
+
+    # Guard against the exact regression that caused this: something else
+    # steering CLOCK_REALTIME while chrony does.
+    - name: Who else steers CLOCK_REALTIME?
+      ansible.builtin.shell: "ps -eo args | grep -c '[p]hc2sys.*-c CLOCK_REALTIME' || true"
+      register: pve_time_stewards
+      changed_when: false
+
+    - name: Assert chrony is the only steward of CLOCK_REALTIME
+      ansible.builtin.assert:
+        that: (pve_time_stewards.stdout | trim | int) == 0
+        fail_msg: >-
+          phc2sys is steering CLOCK_REALTIME while chrony is active — that is
+          the failure mode that put this node 9 minutes out (#810/#813). Set
+          pve_ptp_role appropriately or stop phc2sys.
+        quiet: true
+
+    # In gm_ntp mode the PHC must sit exactly utc_offset seconds ahead of the
+    # system clock (TAI). phc2sys reports its own tracking error; use it.
+    - name: PHC tracking error (gm_ntp)
+      ansible.builtin.shell: |
+        set -o pipefail
+        journalctl -u phc2sys -n 200 --no-pager -o cat | grep -oE 'rms +[0-9]+' | tail -1 | awk '{print $2}'
+      args:
+        executable: /bin/bash
+      register: pve_ptp_rms
+      changed_when: false
+      failed_when: false
+      when: pve_ptp_role == 'gm_ntp'
+
+    - name: Report node clock + PTP state
+      ansible.builtin.debug:
+        msg: >-
+          pve01 offset vs NTP = {{ pve_time_check.stdout }} s ·
+          sources {{ pve_time_sources | join(', ') }} ·
+          ptp role {{ pve_ptp_role }} (iface {{ pve_ptp_iface }}{{
+            ', PHC rms ' ~ (pve_ptp_rms.stdout | default('?')) ~ ' ns, TAI +' ~ pve_ptp_utc_offset
+              ~ ', tx_timestamp_timeout ' ~ pve_ptp_tx_timestamp_timeout ~ ' ms'
+              ~ ', faults/24h ' ~ (pve_ptp_faults.stdout | default('?'))
+            if pve_ptp_role == 'gm_ntp' else '' }}) ·
+          {{ pve_journal_size.stdout | default('journal size unknown') | trim }}
+
+  handlers:
+    - name: restart chrony
+      ansible.builtin.service:
+        name: chrony
+        state: restarted
+
+    # Brief (seconds) GM interruption while ptp4l re-assumes the master role.
+    - name: restart ptp4l
+      ansible.builtin.service:
+        name: ptp4l
+        state: restarted
