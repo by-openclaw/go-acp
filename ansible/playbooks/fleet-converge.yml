@@ -19,3 +19,6 @@
     - dhs_hostname
     - dhs_mdns
     - dhs_firewall
+    # last: may reboot the CT to apply static addressing (#786); the control
+    # node's own reboot ends the play — re-run afterwards = 0 changes.
+    - dhs_netaddr

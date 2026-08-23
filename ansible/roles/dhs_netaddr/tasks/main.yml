@@ -1,0 +1,26 @@
+---
+- name: Assert nics are declared
+  ansible.builtin.assert:
+    that:
+      - nics is defined
+      - nics | length > 0
+    fail_msg: "dhs_netaddr: {{ inventory_hostname }} needs nics: in host_vars"
+
+- name: Converge (Proxmox CT network config)
+  ansible.builtin.include_tasks: proxmox.yml
+  when:
+    - pve_vmid is defined
+    - ansible_os_family != "Windows"
+    - dhs_netaddr_proxmox_enabled | bool
+
+- name: Proxmox layer skipped (no token vars)
+  ansible.builtin.debug:
+    msg: "dhs_netaddr: pass -e @/root/.secrets/proxmox.yml to converge the CT network config"
+  when:
+    - pve_vmid is defined
+    - ansible_os_family != "Windows"
+    - not (dhs_netaddr_proxmox_enabled | bool)
+
+- name: Converge (Windows guest static IPv4)
+  ansible.builtin.include_tasks: windows.yml
+  when: ansible_os_family == "Windows"

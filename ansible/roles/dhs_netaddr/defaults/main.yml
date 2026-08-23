@@ -1,0 +1,29 @@
+---
+# dhs_netaddr — STATIC addressing from the inventory truth (#786):
+#   LXCs: Proxmox CT config `netX: ...,ip=<addr>/24[,gw=<gw>]` (+ nameserver /
+#         searchdomain) written via the API from host_vars `nics:`; applied
+#         with a CT reboot (Proxmox re-renders the guest network config at
+#         start). Declarative at the hypervisor, Terraform-importable.
+#   win11: guest-side static IPv4 (New-NetIPAddress + DNS) = same source.
+# No DHCP dependency; pfSense only needs the range excluded from its pool as
+# hygiene. fleet-verify.yml keeps asserting live IP == inventory IP.
+#
+# Scheme (owner 2026-08-23, "reorganize per LXC two mgmt ports"):
+#   eth0 = mgmt-A (ansible_host, default gateway), eth1 = eth0 + 10 (mgmt-B,
+#   no default route). 101..105 / 111..113. Cerebrum staging stays .5.
+dhs_netaddr_prefix: 24
+dhs_netaddr_gateway: 10.100.0.1
+dhs_netaddr_dns: [10.100.0.1]
+dhs_netaddr_searchdomain: by-systems.arpa
+
+# Proxmox API (token vars come from the control-node-only secrets file,
+# -e @/root/.secrets/proxmox.yml — same as dhs_hostname).
+dhs_netaddr_proxmox_enabled: "{{ proxmox_token_id is defined and proxmox_token_secret is defined }}"
+proxmox_api_host: 10.6.224.5:8006
+proxmox_node: pve01
+proxmox_validate_certs: false
+
+# Reboot the CT after a config change so the static config is live (the old
+# DHCP lease would otherwise linger until expiry). The control node itself is
+# rebooted LAST and ends the play (re-run afterwards -> 0 changes).
+dhs_netaddr_reboot_ct: true

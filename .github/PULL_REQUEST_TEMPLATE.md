@@ -59,8 +59,8 @@ Closes #
 
 ## Device tested
 
-- [ ] Fleet producer — which host per `docs/testbed.md` (dhs-ubuntu .102 / dhs-debian .103 / dhs-rocky .105 / win11 .107)
-- [ ] Vendor emulator — Synapse ACP1 (office net 10.6.239.113) / TinyEmber+ (desk-03) / AMWA NMOS Testing tool (dhs-tools .106)
+- [ ] Fleet producer — which host per `docs/testbed.md` (dhs-debian .101 / dhs-ubuntu .102 / dhs-rocky .103 / win11 .105)
+- [ ] Vendor emulator — Synapse ACP1 (office net 10.6.239.113) / TinyEmber+ (desk-03) / AMWA NMOS Testing tool (dhs-tools .104)
 - [ ] Real device — Neuron (ACP2 / CCM) / Cerebrum staging (.5) / other (specify)
 - [ ] No device needed (pure codec / doc change)
 
