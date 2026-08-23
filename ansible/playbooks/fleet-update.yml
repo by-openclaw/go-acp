@@ -1,0 +1,127 @@
+---
+# OS updates for the test fleet, with reboot-if-required and continuation
+# (epic #780). Proves in the lab what prod needs: Ansible patches the OS,
+# reboots only when the OS asks for it, regains access over the same SSH
+# path, and completes the remaining tasks.
+#
+#   cd ~/acp/ansible
+#   ansible-playbook playbooks/fleet-update.yml            # apply (may reboot hosts)
+#   ansible-playbook playbooks/fleet-update.yml            # again -> 0 updates, 0 changes
+#   ansible-playbook playbooks/fleet-update.yml -l win11   # one host
+#
+# The control node (group `control`) is never rebooted mid-play: it is
+# upgraded and a pending reboot is REPORTED; reboot it by hand between runs.
+
+- name: Windows — Windows Update via Ansible, reboot if required, continue
+  hosts: windows
+  gather_facts: true
+  tasks:
+    - name: Install Windows updates (security, critical, rollups, updates); reboot when required
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+          - CriticalUpdates
+          - UpdateRollups
+          - Updates
+        state: installed
+        reboot: true
+        reboot_timeout: 1800
+      register: fu_win
+
+    - name: Windows update summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: found={{ fu_win.found_update_count | default(0) }}
+          installed={{ fu_win.installed_update_count | default(0) }}
+          rebooted={{ fu_win.reboot_required | default(false) | ternary('pending', 'done/none') }}
+          titles={{ (fu_win.updates | default({})).values() | map(attribute='title') | list }}
+
+    # Continuation proof: these run AFTER any reboot win_updates performed.
+    - name: Post-update — host answers over SSH
+      ansible.windows.win_ping:
+
+    - name: Post-update — fleet services still running (sshd, Bonjour if installed)
+      ansible.windows.win_service_info:
+        name: "{{ item }}"
+      loop: [sshd, "Bonjour Service"]
+      register: fu_svc
+      failed_when: false
+
+    - name: Post-update — service states
+      ansible.builtin.debug:
+        msg: "{{ item.item }}: {{ (item.services | default([{'state':'absent'}]))[0].state }}"
+      loop: "{{ fu_svc.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+- name: "Linux — package upgrade, reboot if the OS requires it (control node reports only)"
+  hosts: linux
+  gather_facts: true
+  tasks:
+    - name: Upgrade packages (Debian/Ubuntu)
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        autoremove: true
+      when: ansible_os_family == "Debian"
+      register: fu_apt
+
+    # `needs-restarting` (used below) ships in dnf-utils — a minimal Rocky
+    # image does not have it, and the reboot check then fails with rc=2.
+    - name: dnf-utils present (provides needs-restarting)
+      ansible.builtin.dnf:
+        name: dnf-utils
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Upgrade packages (EL)
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+      when: ansible_os_family == "RedHat"
+      register: fu_dnf
+
+    - name: Reboot required? (Debian/Ubuntu flag file)
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: fu_rr_deb
+      when: ansible_os_family == "Debian"
+
+    - name: Reboot required? (EL needs-restarting)
+      ansible.builtin.command: needs-restarting -r
+      register: fu_rr_el
+      changed_when: false
+      failed_when: fu_rr_el.rc not in [0, 1]
+      when: ansible_os_family == "RedHat"
+
+    - name: Resolve reboot requirement
+      ansible.builtin.set_fact:
+        fu_reboot_required: >-
+          {{ (ansible_os_family == 'Debian' and (fu_rr_deb.stat.exists | default(false)))
+             or (ansible_os_family == 'RedHat' and (fu_rr_el.rc | default(0)) == 1) }}
+
+    - name: Reboot (not the control node) and wait for SSH to return
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+        test_command: systemctl is-system-running --wait || true
+      when:
+        - fu_reboot_required | bool
+        - "'control' not in group_names"
+
+    - name: Control node needs a reboot — report only (never mid-play)
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} (control node) requires a reboot — do it between runs"
+      when:
+        - fu_reboot_required | bool
+        - "'control' in group_names"
+
+    # Continuation proof after a reboot.
+    - name: Post-update — host answers
+      ansible.builtin.ping:
+
+    - name: Post-update — avahi + sshd running
+      ansible.builtin.service_facts:
+
+    - name: Post-update — service states
+      ansible.builtin.debug:
+        msg: "avahi-daemon={{ ansible_facts.services['avahi-daemon.service'].state | default('absent') }} ssh={{ (ansible_facts.services['ssh.service'] | default(ansible_facts.services['sshd.service'] | default({'state':'absent'}))).state }}"

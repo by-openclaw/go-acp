@@ -176,6 +176,18 @@ OpenSSH Server on the VM, `dhs.exe` under `C:\dhs\dhs.exe` (see
 `Start-Process -WindowStyle Hidden` with stdout/stderr redirected to
 `C:\ProgramData\dhs\logs\`.
 
+## OS updates (reboot-if-required, then continue)
+
+`ansible/playbooks/fleet-update.yml` (#799) patches the fleet the way
+production will: Windows Update on `win11` through `win_updates`
+(security/critical/rollups/updates) with `reboot: true` — Ansible
+performs the reboot only when Windows requires it, waits for SSH to
+return on the same path and **continues** with the post-update tasks;
+`apt`/`dnf` upgrades on the LXCs with `reboot` only when the OS flags it
+(`/var/run/reboot-required`, `needs-restarting -r`). The control node is
+never rebooted mid-play (reported instead — reboot it between runs).
+Second run = 0 updates / 0 changes.
+
 ## Caveats
 
 - `amwa/nmos-testing:latest` upstream regressed to the "Controller
@@ -194,5 +206,5 @@ OpenSSH Server on the VM, `dhs.exe` under `C:\dhs\dhs.exe` (see
 Tracked in epic #780: static addressing (#786, `dhs_netaddr`), unique
 hostnames (#783), actor-key convergence (#782), mDNS (#784, #797),
 firewall (#785), host baseline (#800), OS updates + reboot (#799),
-win11 Ansible latency (#790). pfSense hygiene (owner, any time): exclude
-`10.100.0.100–120` from the DHCP pool.
+time sync + IPv6 (#804), win11 Ansible latency (#790). pfSense hygiene
+(owner, any time): exclude `10.100.0.100–120` from the DHCP pool.
