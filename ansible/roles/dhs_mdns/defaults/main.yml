@@ -16,6 +16,7 @@ dhs_mdns_linux_service: avahi-daemon
 dhs_mdns_bonjour_installer_src: "{{ playbook_dir }}/../../internal/amwa/assets/BonjourPSSetup.exe"
 dhs_mdns_bonjour_installer_dst: 'C:\dhs\installers\BonjourPSSetup.exe'
 dhs_mdns_bonjour_service: Bonjour Service
-# Silent install hangs in non-interactive SSH sessions on Win11 (2026-08-23);
-# default = stage + report + manage the service once installed interactively.
-dhs_mdns_bonjour_silent_install: false
+# Where the embedded CAB is carved/expanded to (Bonjour64.msi = the core
+# package dhs needs; the bootstrapper's own silent mode only installs the
+# Print Services MSI, which fails without the core — #797).
+dhs_mdns_bonjour_extract_dir: 'C:\dhs\installers\bonjour'

@@ -29,60 +29,43 @@
     src: "{{ dhs_mdns_bonjour_installer_src }}"
     dest: "{{ dhs_mdns_bonjour_installer_dst }}"
 
-- name: Is Bonjour installed? (dnssd.dll present)
-  ansible.windows.win_stat:
-    path: C:\Windows\System32\dnssd.dll
-  register: dhs_mdns_dnssd
+# Apple's BonjourPSSetup.exe is a bootstrapper around an embedded CAB with
+# six MSIs; in silent mode it installs only BonjourPS64.msi (Print
+# Services) which fails "requires Bonjour 2.0 ... install the Bonjour core
+# package first" (MSI 1603 / hang). dhs needs only the core: carve the CAB
+# at the MSCF header whose cbCabinet fits the file, expand it, and install
+# Bonjour64.msi with msiexec /qn. Idempotent: skipped once the MSI exists.
+- name: Extract Bonjour64.msi from the bootstrapper (carve CAB + expand)
+  ansible.windows.win_shell: |
+    $ErrorActionPreference = 'Stop'
+    $exe = '{{ dhs_mdns_bonjour_installer_dst }}'
+    $out = '{{ dhs_mdns_bonjour_extract_dir }}'
+    New-Item -ItemType Directory -Force -Path $out | Out-Null
+    $bytes = [IO.File]::ReadAllBytes($exe)
+    $off = -1; $len = 0
+    for ($i = 0; $i -lt $bytes.Length - 16; $i++) {
+      if ($bytes[$i] -eq 0x4D -and $bytes[$i+1] -eq 0x53 -and $bytes[$i+2] -eq 0x43 -and $bytes[$i+3] -eq 0x46) {
+        $l = [BitConverter]::ToUInt32($bytes, $i + 8)
+        if ($l -gt 1000000 -and ($i + $l) -le $bytes.Length) { $off = $i; $len = $l; break }
+      }
+    }
+    if ($off -lt 0) { throw "no embedded cabinet found in $exe" }
+    $cab = Join-Path $out 'bonjour.cab'
+    $fs = [IO.File]::Create($cab); $fs.Write($bytes, $off, [int]$len); $fs.Close()
+    & expand.exe -F:* $cab $out | Out-Null
+    if (-not (Test-Path (Join-Path $out 'Bonjour64.msi'))) { throw "Bonjour64.msi not found after expand" }
+    "extracted cabinet @$off len=$len"
+  args:
+    creates: "{{ dhs_mdns_bonjour_extract_dir }}\\Bonjour64.msi"
 
-# Silent install of Apple's InstallShield bootstrapper hangs in a
-# non-interactive SSH session on Windows 11 (verified 2026-08-23: both
-# `/quiet` and `/s /v"/qn"` — MSI 1603 or an invisible dialog, 25+ min).
-# Default is therefore: stage + report, and the operator installs once at
-# the console (double-click C:\dhs\installers\BonjourPSSetup.exe). Set
-# dhs_mdns_bonjour_silent_install: true to retry the bounded silent path.
-- name: Bonjour silent install attempt (bounded, opt-in)
-  ansible.windows.win_command:
-    argv:
-      - cmd.exe
-      - /c
-      - 'start /wait "" {{ dhs_mdns_bonjour_installer_dst }} /s /v"/qn /norestart"'
-  async: 600
-  poll: 15
-  register: dhs_mdns_silent
-  failed_when: false
-  changed_when: dhs_mdns_silent.rc | default(1) == 0
-  when:
-    - not dhs_mdns_dnssd.stat.exists
-    - dhs_mdns_bonjour_silent_install | bool
-
-# Separate register: a skipped task would otherwise overwrite the first
-# stat result with a {skipped: true} dict that has no .stat.
-- name: Re-check Bonjour after the silent attempt
-  ansible.windows.win_stat:
-    path: C:\Windows\System32\dnssd.dll
-  register: dhs_mdns_dnssd_after
-  when:
-    - not dhs_mdns_dnssd.stat.exists
-    - dhs_mdns_bonjour_silent_install | bool
-
-- name: Resolve Bonjour presence
-  ansible.builtin.set_fact:
-    dhs_mdns_bonjour_present: >-
-      {{ dhs_mdns_dnssd.stat.exists
-         or (dhs_mdns_dnssd_after.stat.exists | default(false)) }}
-
-- name: Bonjour not installed — operator action required (not a failure)
-  ansible.builtin.debug:
-    msg: >-
-      Bonjour is NOT installed on {{ inventory_hostname }}. Installer is staged at
-      {{ dhs_mdns_bonjour_installer_dst }} — run it once interactively at the
-      console; this role then keeps the service enabled (#784). dhs uses the
-      stdlib mDNS fallback meanwhile (#195).
-  when: not (dhs_mdns_bonjour_present | bool)
+- name: Install Bonjour core (Bonjour64.msi) silently
+  ansible.windows.win_package:
+    path: "{{ dhs_mdns_bonjour_extract_dir }}\\Bonjour64.msi"
+    arguments: /qn /norestart
+    state: present
 
 - name: Bonjour Service running and automatic
   ansible.windows.win_service:
     name: "{{ dhs_mdns_bonjour_service }}"
     state: started
     start_mode: auto
-  when: dhs_mdns_bonjour_present | bool
