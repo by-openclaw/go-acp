@@ -1,23 +1,34 @@
 ---
-# Windows clients (win11) — reached over SSH with key auth, exactly like the
-# Linux hosts (one actor-key model, #782). The WinRM/NTLM path
-# (windows/configure-winrm.ps1 + a password file) is retired: pywinrm is not
-# on the control node, the credentials file no longer exists, and OpenSSH
-# Server is installed + running on the VM.
+# Windows clients (win11).
 #
-# `by-rune` is in the local Administrators group, so sshd reads its keys
-# from C:\ProgramData\ssh\administrators_authorized_keys (NOT the profile
-# authorized_keys) — the dhs_access role manages that file.
-ansible_connection: ssh
+# TRANSPORT: PSRP over WinRM-HTTPS with CLIENT-CERTIFICATE auth (#812).
+# One PowerShell runspace is kept for the whole play, instead of SSH spawning a
+# fresh powershell.exe per task — measured over SSH on 2026-08-23: a 37-task
+# no-op converge took 481 s (~13 s/task) even with ControlPersist + pipelining.
+# No password at runtime: the cert was mapped once by
+# playbooks/win-winrm-bootstrap.yml; the private key lives on the control node
+# at /etc/dhs/psrp/ (mode 600) and never enters git.
+ansible_connection: psrp
+ansible_port: 5986
+ansible_psrp_protocol: https
+ansible_psrp_auth: certificate
+ansible_psrp_certificate_pem: /etc/dhs/psrp/dhs-psrp.pem
+ansible_psrp_certificate_key_pem: /etc/dhs/psrp/dhs-psrp.key
+# Self-signed server cert created during bootstrap — the fleet is a closed lab
+# VLAN; swap for a CA-issued cert if this ever leaves the lab.
+ansible_psrp_cert_validation: ignore
+
+# `by-rune` is the local Administrators-group account the certificate maps to;
+# roles still reference ansible_user (e.g. the admin authorized_keys path).
 ansible_user: by-rune
-# sshd DefaultShell on the VM is PowerShell (set by dhs_access, #790): every
-# module then runs in one process instead of cmd.exe spawning powershell.exe
-# — roughly halves per-task latency. BOOTSTRAP of a fresh VM (DefaultShell
-# still cmd): run playbooks/win-shell-bootstrap.yml once (play-scoped cmd
-# shell; never pass ansible_shell_type as a global -e — it also hits tasks
-# delegated to the Linux control node).
-ansible_shell_type: powershell
 ansible_become: false
+
+# FALLBACK — SSH still works and is the bootstrap path (win-shell-bootstrap.yml,
+# win-winrm-bootstrap.yml run over it). To use it:
+#   ansible-playbook ... -e ansible_connection=ssh -e ansible_port=22 \
+#                        -e ansible_shell_type=powershell
+# sshd's DefaultShell is PowerShell (set by dhs_access, #790); a fresh VM needs
+# playbooks/win-shell-bootstrap.yml first (play-scoped cmd shell).
 
 # Where the dhs binary is installed on the target and which local artifact to
 # deploy. Build it from the repo root before running:
