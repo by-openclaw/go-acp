@@ -13,6 +13,7 @@
     validate_certs: "{{ proxmox_validate_certs }}"
     return_content: true
   delegate_to: localhost
+  check_mode: false          # read-only GET: must run in --check too
   register: dhs_guestsize_node
 
 - name: Read every guest on the node (containers + VMs)
@@ -24,6 +25,7 @@
     return_content: true
   delegate_to: localhost
   loop: [lxc, qemu]
+  check_mode: false          # read-only GET: must run in --check too
   register: dhs_guestsize_all
 
 # pve01 is a PRODUCTION node (pfSense, Cerebrum staging, Odoo). Refuse to
@@ -60,6 +62,7 @@
     validate_certs: "{{ proxmox_validate_certs }}"
     return_content: true
   delegate_to: localhost
+  check_mode: false          # read-only GET: must run in --check too
   register: dhs_guestsize_cfg
 
 - name: Delta — cores / memory that differ from the inventory
