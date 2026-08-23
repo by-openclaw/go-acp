@@ -50,10 +50,12 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSWalk(ctx, rest)
 	case "events":
 		return runNMOSEventsConsumer(ctx, rest)
+	case "export":
+		return runNMOSExport(ctx, rest)
 	case "audit":
 		return runNMOSAudit(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, events, audit)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, events, export, audit)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -576,6 +578,21 @@ JSON Schema, prints the parsed fields.
   --direct host:port    Skip discovery; fetch /global directly from this peer
   --api-ver V           Requested IS-09 version (default v1.0)
   --api-proto P         Requested protocol filter (default http)
+
+export — capture a device, or a registry and every node it lists, into the
+layout the audit verb reads. Failures are recorded, never worked around: a
+502, a stuck paging cursor or an unreachable node all land in report.txt and
+the walk continues.
+  --target host:port    Device or registry to capture (required)
+  --out DIR             Output directory (default nmos-export)
+  --https               Use TLS
+  --deep                Also fetch staged / constraints / transporttype per IS-05 endpoint
+  --all-versions        Walk every minor of every API
+  --no-sdp              Skip SDP retrieval
+  --max-nodes N         Cap how many registered nodes to follow (0 = no cap)
+  --timeout DURATION    Per-request deadline (default 10s)
+  --no-stamp            Name folders without a timestamp
+  --quiet / --json      Suppress progress / print the summary as JSON
 
 audit — compliance-audit a captured plant, offline. Reads an export directory
 (device.json + tree.json + report.txt + raw/ + sdp/ per device, nested under
