@@ -50,8 +50,10 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSWalk(ctx, rest)
 	case "events":
 		return runNMOSEventsConsumer(ctx, rest)
+	case "audit":
+		return runNMOSAudit(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, events)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, events, audit)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -573,7 +575,18 @@ JSON Schema, prints the parsed fields.
   (any of the discovery flags above)
   --direct host:port    Skip discovery; fetch /global directly from this peer
   --api-ver V           Requested IS-09 version (default v1.0)
-  --api-proto P         Requested protocol filter (default http)`)
+  --api-proto P         Requested protocol filter (default http)
+
+audit — compliance-audit a captured plant, offline. Reads an export directory
+(device.json + tree.json + report.txt + raw/ + sdp/ per device, nested under
+nodes/ for a registry export) and reports what each device exposes and where it
+deviates from IS-04, IS-05, BCP-002-01 and BCP-004-01. No network access; the
+same bytes always produce the same report.
+  --dir PATH            Export directory to audit (required)
+  --format FORMAT       text (default) | json | jsonl
+  --min-severity SEV    info (default) | warn | error | critical
+  --out FILE            Write the report to FILE instead of stdout
+  --fail-on SEV         Exit non-zero when a finding at or above SEV is present`)
 }
 
 func printNMOSProducerHelp() {
