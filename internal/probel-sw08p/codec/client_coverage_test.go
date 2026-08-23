@@ -520,17 +520,30 @@ func TestReadLoopRoutesACKNAKAndFrames(t *testing.T) {
 		t.Errorf("onRx fired %d; want >= 3", rxCount.Load())
 	}
 
+	// The malformed frame is the LAST element of the stream and its DLE NAK
+	// is emitted by the reader after the data-frame dispatch above. Wait for
+	// that terminal observable before tearing down — closing right after
+	// gotFrame raced the reader's NAK write against Close (ADR-0029: wait on
+	// the monotonic observable, never on "the frame before it").
+	sawNAK := false
+	nakDeadline := time.After(2 * time.Second)
+	for !sawNAK {
+		mu.Lock()
+		sawNAK = containsNAK(back)
+		mu.Unlock()
+		if sawNAK {
+			break
+		}
+		select {
+		case <-nakDeadline:
+			t.Fatal("reader never emitted DLE NAK for the malformed frame")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+
 	_ = c.Close()
 	_ = b.Close()
 	<-readerDone
-
-	// The reader must have emitted at least one DLE NAK for the bad frame.
-	mu.Lock()
-	sawNAK := containsNAK(back)
-	mu.Unlock()
-	if !sawNAK {
-		t.Error("reader never emitted DLE NAK for the malformed frame")
-	}
 }
 
 // containsNAK reports whether buf contains a DLE NAK sequence.
