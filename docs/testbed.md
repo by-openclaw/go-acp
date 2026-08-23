@@ -12,10 +12,10 @@ in the same PR (epic #780).
 
 | Inventory name | Proxmox | Guest OS | mgmt (`ansible_host`) | Role |
 | --- | --- | --- | --- | --- |
-| `dhs-debian` | LXC 651 | Debian 12 | `10.100.0.101` | **Ansible control node** (moving to `dhs-tools`, #820); dhs producer host; binary-test target; Docker |
+| `dhs-debian` | LXC 651 | Debian 12 | `10.100.0.101` | dhs producer host; binary-test target (2 vCPU, same as .102/.103); Docker |
 | `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.100.0.102` | dhs producer host; binary-test target |
 | `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.100.0.103` | dhs producer host; binary-test target |
-| `dhs-tools` | LXC 655 | Ubuntu | `10.100.0.104` | tooling: Docker, AMWA NMOS Testing tool (`scripts/amwa/`), tshark |
+| `dhs-tools` | LXC 655 | Ubuntu | `10.100.0.104` | **Ansible control node** (#820, 6 vCPU); tooling: Docker, AMWA NMOS Testing tool (`scripts/amwa/`), tshark |
 | `win11` | VM 654 | Windows 11 Pro | `10.100.0.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11` |
 | `cerebrum` | VM 601 `vm-cerebrum-stg-01` | Windows 11 | `10.100.0.5` | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
 
@@ -76,14 +76,33 @@ Host firewalls are managed by the `dhs_firewall` role (#785): each host opens ex
 
 ## Control node
 
-`dhs-debian` (`.101`) runs every Ansible play — Linux hosts over SSH as
-`root`, the Windows VM over SSH as `by-rune` (key auth; WinRM/NTLM +
-password file is retired). It holds a clone of this (public) repo at
-`~/acp` and its own ed25519 key (`root@dhs`), which is one of the three
-fleet actor keys below. After a fresh clone run
-`ansible-playbook playbooks/control-node.yml` (git-lfs + LFS pull of the
-shipped assets, Ansible collections). Never drive the fleet from a
-Windows workstation (PowerShell) — see ADR-0025 step 5.
+`dhs-tools` (`.104`) runs every Ansible play — Linux hosts over SSH as
+`root`, the Windows VM over PSRP with certificate auth (#812). It holds a
+clone of this (public) repo at `~/acp`, ansible-core 2.17 via pipx, and the
+fleet key `root@dhs`, which is one of the actor keys below.
+
+It took over from `dhs-debian` (`.101`) on 2026-08-23 (#820), so that .101
+can stay a binary-test target sized identically to .102/.103. The move is
+two steps because it cannot be atomic — while the old node is still the
+controller, the new one must be an ordinary SSH target, and the moment
+`ansible_connection: local` moves, tasks for that host run locally:
+
+```bash
+ansible-playbook playbooks/control-node.yml -e cn_target=dhs-tools     # prepare
+ansible-playbook playbooks/control-node-migrate.yml -e cnm_target=dhs-tools
+```
+
+`control-node-migrate.yml` copies the fleet SSH key, the Proxmox secrets
+and the PSRP client certificate, then PROVES the new node can SSH to every
+fleet host before the inventory flips. Copying beats re-creating: the key is
+already in every host's `authorized_keys`, and win11 already trusts and maps
+that certificate — re-bootstrapping would prompt for the Windows password
+again and add a second mapping. Only then do `[control]` and
+`ansible_connection: local` move in the inventory.
+
+After a fresh clone run `ansible-playbook playbooks/control-node.yml`
+(git-lfs + LFS pull of the shipped assets, Ansible collections). Never drive
+the fleet from a Windows workstation (PowerShell) — see ADR-0025 step 5.
 
 Monitoring a run (#790): every play logs to `/tmp/ansible-fleet.log`
 on the control node (`tail -f` it) and prints per-task timings

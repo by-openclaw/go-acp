@@ -4,6 +4,12 @@
 # Tooling host: Docker + the AMWA NMOS Testing tool (scripts/amwa/*),
 # tshark / Wireshark dissector validation. Not a dhs producer host by
 # default (no ember_tree_src).
+#
+# ANSIBLE CONTROL NODE since 2026-08-23 (#820), moved here from dhs-debian
+# so .101 can stay a binary-test target sized like .102/.103. Runs local —
+# no SSH loop-back to itself.
+ansible_connection: local
+
 pve_vmid: 655
 pve_name: dhs.tools
 pve_cores: 6          # P1 sizing (#817): ANSIBLE CONTROL NODE - forking, templating, module assembly and SSH/TLS crypto all run here

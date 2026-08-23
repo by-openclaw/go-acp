@@ -1,6 +1,6 @@
 ---
 # Converge the test fleet (epic #780). Run from the control node
-# (dhs-debian .103, repo clone ~/acp):
+# (dhs-tools .104 since #820, repo clone ~/acp):
 #
 #   cd ~/acp/ansible
 #   ansible-playbook playbooks/fleet-converge.yml          # apply
