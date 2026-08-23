@@ -19,6 +19,30 @@
   register: dhs_host_power
   changed_when: "'CHANGED' in dhs_host_power.stdout"
 
+# ---- time: NTP from the DMZ gateway + pool, w32time synchronized ----------
+# 2026-08-23: w32time was "not synchronized" (peer time.windows.com, Local
+# type). pfSense 10.100.0.1 and pool.ntp.org answer NTP from the DMZ.
+- name: w32time peers + manual sync flags (idempotent on the configured peer list)
+  ansible.windows.win_shell: |
+    $want = '{{ dhs_host_ntp_peers | join(" ") }}'
+    $cur = (w32tm /query /configuration | Select-String '^NtpServer:' | Select-Object -First 1)
+    $curPeers = if ($cur) { ($cur.ToString() -replace '^NtpServer:\s*','' -replace '\s*\(Local\)\s*$','').Trim() } else { '' }
+    $type = ((w32tm /query /configuration | Select-String '^Type:' | Select-Object -First 1).ToString() -replace '^Type:\s*','' -replace '\s*\(Local\)\s*$','').Trim()
+    if ($curPeers -eq $want -and $type -eq 'NTP') { 'OK' } else {
+      w32tm /config /manualpeerlist:"$want" /syncfromflags:manual /reliable:no /update | Out-Null
+      Restart-Service w32time
+      w32tm /resync /nowait | Out-Null
+      'CHANGED'
+    }
+  register: dhs_host_w32
+  changed_when: "'CHANGED' in dhs_host_w32.stdout"
+
+- name: w32time service running and automatic
+  ansible.windows.win_service:
+    name: w32time
+    state: started
+    start_mode: auto
+
 # ---- directories + environment -------------------------------------------
 - name: dhs directories
   ansible.windows.win_file:
