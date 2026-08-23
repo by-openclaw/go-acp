@@ -15,6 +15,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -25,11 +26,13 @@ import (
 	"time"
 
 	codec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is09"
 	"dhs/internal/amwa/codec/spec"
 	"dhs/internal/amwa/consumer"
 	"dhs/internal/amwa/provider"
 	session "dhs/internal/amwa/session/dnssd"
+	"dhs/internal/amwa/session/query"
 	registryslot "dhs/internal/registry"
 )
 
@@ -50,6 +53,8 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSSystem(ctx, rest)
 	case "walk":
 		return runNMOSWalk(ctx, rest)
+	case "watch":
+		return runNMOSWatch(ctx, rest)
 	case "connect":
 		return runNMOSConnect(ctx, rest)
 	case "set":
@@ -59,7 +64,7 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 	case "events":
 		return runNMOSEventsConsumer(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, connect, set, facade, events)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, facade, events)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -707,6 +712,127 @@ announce of _nmos-register._tcp + _nmos-query._tcp.
 }
 
 // ---- consumer walk (IS-04 Controller) ---------------------------------------
+
+// runNMOSWatch streams live resource changes from a Registry's Query API
+// WebSocket subscription (IS-04 §5.2).
+//
+// This is the ONLY push surface IS-04 defines. A Node publishes no resource
+// changes of its own, so "watch what is happening in the plant" means
+// subscribing to a Registry — not polling a Node.
+func runNMOSWatch(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("watch", flag.ContinueOnError)
+	registry := fs.String("registry", "", "Registry origin (Mode B unicast — http://host:port). When empty, --mdns or --unicast triggers DNS-SD discovery.")
+	mdns := fs.Bool("mdns", true, "discover the Registry via mDNS (Mode A); ignored if --registry is set")
+	unicast := fs.Bool("unicast", false, "discover via unicast DNS-SD (Mode B); requires --resolver")
+	resolver := fs.String("resolver", "", "unicast DNS resolver IP")
+	domain := fs.String("domain", "by-systems.arpa", "unicast DNS-SD discovery domain")
+	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor (v1.1 / v1.2 / v1.3); empty = highest mutual")
+	discTimeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
+	resource := fs.String("resource", "/nodes", "resource path to subscribe to: /nodes /devices /sources /flows /senders /receivers (IS-04 spells these without a trailing slash)")
+	params := fs.String("params", "", "subscription filter as k=v[,k=v...] (e.g. label=CAM1)")
+	persist := fs.Bool("persist", false, "ask the Registry to keep the subscription after the socket closes")
+	rate := fs.Int("rate", 0, "max_update_rate_ms; 0 lets the Registry choose")
+	duration := fs.Duration("duration", 0, "stop after this long; 0 = until interrupted")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *registry == "" && !*mdns && !*unicast {
+		return fmt.Errorf("nmos watch: pick exactly one of --registry / --mdns / --unicast")
+	}
+
+	mode := ""
+	switch {
+	case *unicast:
+		if *resolver == "" {
+			return fmt.Errorf("nmos watch --unicast: --resolver is required")
+		}
+		mode = "unicast"
+	case *mdns:
+		mode = "mdns"
+	}
+
+	rep := &spec.SliceReporter{}
+	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
+		Logger:           slog.Default(),
+		Reporter:         rep,
+		RegistryURL:      *registry,
+		DiscoveryMode:    mode,
+		DiscoveryTimeout: *discTimeout,
+		UnicastResolver:  *resolver,
+		UnicastDomain:    *domain,
+		APIVer:           *apiVer,
+	})
+	if err != nil {
+		return fmt.Errorf("nmos watch: %w", err)
+	}
+
+	qc, err := query.NewClient(c.BaseURL(), c.Codec())
+	if err != nil {
+		return fmt.Errorf("nmos watch: %w", err)
+	}
+
+	filter := map[string]string{}
+	for _, kv := range strings.Split(*params, ",") {
+		kv = strings.TrimSpace(kv)
+		if kv == "" {
+			continue
+		}
+		i := strings.IndexByte(kv, '=')
+		if i < 0 {
+			return fmt.Errorf("nmos watch: --params entry %q is not k=v", kv)
+		}
+		filter[strings.TrimSpace(kv[:i])] = strings.TrimSpace(kv[i+1:])
+	}
+
+	sub, err := qc.Subscribe(ctx, query.SubscribeRequest{
+		ResourcePath:  *resource,
+		Params:        filter,
+		Persist:       *persist,
+		MaxUpdateRate: *rate,
+	})
+	if err != nil {
+		return fmt.Errorf("nmos watch: subscribe: %w", err)
+	}
+
+	fmt.Printf("Registry %s (api_ver=%s, spec=%s)\n", c.BaseURL(), c.Codec().APIVer(), c.Codec().SpecPatch())
+	fmt.Printf("Subscribed %s -> %s (id=%s, persist=%v, max_update_rate_ms=%d)\n",
+		sub.ResourcePath, sub.WSHref, sub.ID, sub.Persist, sub.MaxUpdateRate)
+	fmt.Println("Watching. The first grain is the current state; later grains are changes.")
+
+	if *duration > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *duration)
+		defer cancel()
+	}
+
+	var grains, changes int
+	err = query.Watch(ctx, sub.WSHref, func(g *is04.Grain) error {
+		grains++
+		for _, row := range g.Grain.Data {
+			changes++
+			label := row.Label()
+			if label != "" {
+				label = " " + label
+			}
+			fmt.Printf("%-8s %-12s %s%s\n",
+				row.Kind(), strings.Trim(g.Grain.Topic, "/"), row.Path, label)
+		}
+		return nil
+	}, query.WatchOptions{})
+
+	fmt.Fprintf(os.Stderr, "\n%d grain(s), %d change row(s)\n", grains, changes)
+	if events := rep.Snapshot(); len(events) > 0 {
+		fmt.Fprintf(os.Stderr, "%d compliance event(s) fired:\n", len(events))
+		for _, ev := range events {
+			fmt.Fprintf(os.Stderr, "  [%s] %s/%s %s: %s\n", ev.Severity, ev.SpecID, ev.APIVer, ev.Code, ev.Detail)
+		}
+	}
+	// A deadline or interrupt is how a watch normally ends, not a failure.
+	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("nmos watch: %w", err)
+	}
+	return nil
+}
 
 func runNMOSWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("walk", flag.ContinueOnError)
