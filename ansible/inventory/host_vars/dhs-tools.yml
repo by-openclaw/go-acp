@@ -6,6 +6,7 @@
 # default (no ember_tree_src).
 pve_vmid: 655
 pve_name: dhs.tools
+pve_cores: 6          # P1 sizing (#817): ANSIBLE CONTROL NODE - forking, templating, module assembly and SSH/TLS crypto all run here
 os_label: "Ubuntu"
 nics:
   - { name: eth0, mac: "BC:24:11:C1:92:FF", ip: 10.100.0.104 }

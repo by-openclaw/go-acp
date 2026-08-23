@@ -1,0 +1,19 @@
+---
+# NOTE: never `meta: end_host` here — this role runs FIRST in
+# fleet-converge.yml, and end_host would skip every later role for any host
+# that declares no desired size. Guard with `when:` instead.
+- name: Proxmox layer skipped (no token vars)
+  ansible.builtin.debug:
+    msg: >-
+      dhs_guestsize: pass -e @/root/.secrets/proxmox.yml to converge
+      {{ inventory_hostname }}'s vCPU/RAM
+  when:
+    - pve_cores is defined or pve_memory is defined
+    - not (dhs_guestsize_enabled | bool)
+
+- name: Converge guest size
+  ansible.builtin.include_tasks: proxmox.yml
+  when:
+    - pve_cores is defined or pve_memory is defined
+    - dhs_guestsize_enabled | bool
+    - pve_vmid is defined

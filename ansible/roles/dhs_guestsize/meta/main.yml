@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: dhs_guestsize
+  author: by-rune
+  description: >-
+    vCPU / RAM of each fleet guest converged from the inventory truth via the
+    Proxmox API. LXC changes apply live (cgroup); QEMU deltas are reported,
+    never power-cycled. Idempotent: run-twice = 0 changes.
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Windows
+      versions: [all]
+dependencies: []
