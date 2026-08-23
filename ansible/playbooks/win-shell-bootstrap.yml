@@ -1,0 +1,28 @@
+---
+# One-time bootstrap for a fresh Windows VM whose sshd DefaultShell is still
+# cmd.exe (#790). Runs the Windows group with the cmd shell type (play-scoped,
+# so tasks delegated to the control node are untouched), sets DefaultShell =
+# PowerShell and restarts sshd. Afterwards the inventory default
+# (`ansible_shell_type: powershell`) works and this play is a no-op.
+#
+#   cd ~/acp/ansible && ansible-playbook playbooks/win-shell-bootstrap.yml
+- name: Windows — sshd DefaultShell = PowerShell (bootstrap from cmd)
+  hosts: windows
+  gather_facts: false
+  vars:
+    ansible_shell_type: cmd
+  tasks:
+    - name: sshd DefaultShell = PowerShell
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\OpenSSH
+        name: DefaultShell
+        data: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        type: string
+        state: present
+      register: wsb_defshell
+
+    - name: Restart sshd so the new default shell applies
+      ansible.windows.win_service:
+        name: sshd
+        state: restarted
+      when: wsb_defshell is changed
