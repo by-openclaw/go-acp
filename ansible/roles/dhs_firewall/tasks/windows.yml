@@ -16,8 +16,23 @@
     '@ | ConvertFrom-Json
     $program = '{{ dhs_firewall_windows_program }}'
     $changed = 0
+
+    # Query the firewall ONCE and join in memory. Per-rule Get-NetFirewallRule +
+    # Get-NetFirewall*Filter costs ~3 s each; with ~30 rules that was 111 s of a
+    # 305 s pass (measured 2026-08-23). Filters key back to the rule by
+    # InstanceID == rule .Name.
+    $rules = @{}
+    Get-NetFirewallRule -DisplayName 'dhs-*' -ErrorAction SilentlyContinue |
+      ForEach-Object { $rules[$_.DisplayName] = $_ }
+    $portOf = @{}
+    Get-NetFirewallPortFilter -ErrorAction SilentlyContinue |
+      ForEach-Object { $portOf[$_.InstanceID] = $_ }
+    $appOf = @{}
+    Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue |
+      ForEach-Object { $appOf[$_.InstanceID] = $_ }
+
     foreach ($r in $desired) {
-      $rule = Get-NetFirewallRule -DisplayName $r.name -ErrorAction SilentlyContinue
+      $rule = $rules[$r.name]
       if ($r.state -eq 'absent') {
         if ($rule) { $rule | Remove-NetFirewallRule; $changed++ }
         continue
@@ -25,11 +40,12 @@
       $wantProg = if ($r.program) { $program } else { 'Any' }
       $ok = $false
       if ($rule) {
-        $pf = $rule | Get-NetFirewallPortFilter
-        $af = $rule | Get-NetFirewallApplicationFilter
+        $pf = $portOf[$rule.Name]
+        $af = $appOf[$rule.Name]
         $ok = ($rule.Enabled -eq 'True') -and ($rule.Direction -eq 'Inbound') -and ($rule.Action -eq 'Allow') `
-              -and ($pf.Protocol -eq $r.proto.ToUpper()) -and ("$($pf.LocalPort)" -eq "$($r.port)") `
-              -and ($af.Program -eq $wantProg) -and ($rule.Profile -eq 'Domain, Private, Public' -or $rule.Profile -eq 'Any')
+              -and ($pf -and $pf.Protocol -eq $r.proto.ToUpper()) -and ("$($pf.LocalPort)" -eq "$($r.port)") `
+              -and ($af -and $af.Program -eq $wantProg) `
+              -and ($rule.Profile -eq 'Domain, Private, Public' -or $rule.Profile -eq 'Any')
       }
       if (-not $ok) {
         if ($rule) { $rule | Remove-NetFirewallRule }
@@ -40,8 +56,7 @@
       }
     }
     foreach ($n in $legacy) {
-      $rule = Get-NetFirewallRule -DisplayName $n -ErrorAction SilentlyContinue
-      if ($rule) { $rule | Remove-NetFirewallRule; $changed++ }
+      if ($rules.ContainsKey($n)) { $rules[$n] | Remove-NetFirewallRule; $changed++ }
     }
     "CHANGED=$changed"
   register: dhs_firewall_win
