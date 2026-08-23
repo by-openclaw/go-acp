@@ -153,6 +153,36 @@ Roll the fleet to a new release by bumping `dhs_version` and converging
 un-parks — the inventory then switches port/user), dhs application layer
 = this repo's roles.
 
+### win11 Ansible latency (#790, #812, #815)
+
+A no-op `fleet-converge.yml -l win11` pass, measured 2026-08-23 from the
+control node:
+
+| Configuration | Duration |
+| --- | ---: |
+| SSH transport, one `win_firewall_rule` task per rule | 481 s |
+| PSRP over WinRM-HTTPS, client-certificate auth (#812) | 305 s |
+| + `dhs_firewall` single-pass reconcile, bulk query + in-memory join (#790) | 236 s |
+| + Defender path exclusions, VM 654 at 8 GB (#815) | 139-156 s |
+
+What each lever fixed. Over SSH every task spawns a fresh PowerShell on
+the target - connection reuse (`ControlPersist`) was already on, so the
+cost is process spawn, not connect; PSRP keeps one runspace for the
+whole play. Per-rule `Get-NetFirewallRule` + `Get-NetFirewall*Filter`
+cost ~3 s each, so ~30 rules were 111 s of the pass - one bulk query
+joined in memory removes it. Defender scanned every module written to
+`ansible-tmp-*`; the exclusions (`dhs_host_defender_exclusions`) are
+narrow by design - `C:\dhs`, `C:\ProgramData\dhs`, and the
+`ansible-tmp-*` pattern only, never a blanket `%TEMP%` or a system-wide
+exclusion, and real-time protection stays on. A memory change on the VM
+needs a hypervisor stop/start: `win_reboot` restarts the guest only, the
+QEMU process survives and keeps the old `maxmem`.
+
+The floor is now per-task, not per-role - the twelve slowest tasks are
+all 4.0-5.7 s of pure module round-trip. The next lever is task-count
+consolidation (one idempotent script per role's Windows path, as
+`dhs_firewall` already does), not transport.
+
 ## Producer launch and stop
 
 ### Linux LXC (Debian / Ubuntu / Rocky)
@@ -208,5 +238,5 @@ Second run = 0 updates / 0 changes.
 Tracked in epic #780: static addressing (#786, `dhs_netaddr`), unique
 hostnames (#783), actor-key convergence (#782), mDNS (#784, #797),
 firewall (#785), host baseline (#800), OS updates + reboot (#799),
-time sync + IPv6 (#804), win11 Ansible latency (#790). pfSense hygiene
+time sync + IPv6 (#804), win11 Ansible latency (#790, #812, #815). pfSense hygiene
 (owner, any time): exclude `10.100.0.100–120` from the DHCP pool.

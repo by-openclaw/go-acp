@@ -19,6 +19,21 @@
   register: dhs_host_power
   changed_when: "'CHANGED' in dhs_host_power.stdout"
 
+# ---- Defender exclusions for the automation working folders (#815) --------
+- name: Defender exclusions for the dhs + ansible-tmp paths
+  ansible.windows.win_shell: |
+    $want = @('{{ dhs_host_defender_exclusions | join("','") }}')
+    $cur = @((Get-MpPreference).ExclusionPath)
+    $added = @()
+    foreach ($p in $want) {
+      if ($cur -notcontains $p) { Add-MpPreference -ExclusionPath $p; $added += $p }
+    }
+    if ($added.Count) { "CHANGED: $($added -join ';')" } else { 'OK' }
+  register: dhs_host_defender
+  changed_when: "'CHANGED' in dhs_host_defender.stdout"
+  failed_when: false          # Defender may be absent/managed by policy
+  when: dhs_host_defender_exclusions | length > 0
+
 # ---- time: NTP from the DMZ gateway + pool, w32time synchronized ----------
 # 2026-08-23: w32time was "not synchronized" (peer time.windows.com, Local
 # type). pfSense 10.100.0.1 and pool.ntp.org answer NTP from the DMZ.
