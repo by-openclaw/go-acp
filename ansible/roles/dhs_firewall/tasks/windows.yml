@@ -1,31 +1,51 @@
 ---
-# Connector rules are scoped to the dhs program (authorized app + port);
-# management rules (ssh / winrm) and mDNS are port rules. Rules are named
-# dhs-<group>-<port>-<proto>; absent groups are removed by name.
-- name: "Defender inbound rules per connector group (present/absent)"
-  community.windows.win_firewall_rule:
-    name: "{{ item.name }}"
-    localport: "{{ item.port }}"
-    protocol: "{{ item.proto }}"
-    program: "{{ dhs_firewall_windows_program if (item.program | default(false)) else omit }}"
-    direction: in
-    action: allow
-    profiles: [domain, private, public]
-    enabled: true
-    state: "{{ item.state }}"
-  loop: "{{ dhs_firewall_rules }}"
-  loop_control:
-    label: "{{ item.name }} {{ item.state }}"
-
-# Legacy rule names from the first role version (dhs-<group> without
-# port/proto, catalogue-wide) — removed so only the per-group names remain.
-- name: Remove legacy un-scoped dhs-* rules
-  community.windows.win_firewall_rule:
-    name: "{{ item.name }}"
-    state: absent
-  loop: "{{ dhs_firewall_legacy }}"
-  loop_control:
-    label: "{{ item.name }}"
+# One reconciliation pass for ALL dhs-* rules in a single PowerShell run
+# (#790): 30+ win_firewall_rule tasks at ~15 s each became one task.
+# Desired rules come from dhs_firewall_rules (state present|absent, program
+# scoping for connector rules); legacy un-scoped names are removed; the
+# task is idempotent — it reports CHANGED only when a rule was created,
+# corrected or removed.
+- name: "Defender inbound rules — reconcile all dhs-* rules in one pass"
+  ansible.windows.win_shell: |
+    $ErrorActionPreference = 'Stop'
+    $desired = @'
+    {{ dhs_firewall_rules | to_json }}
+    '@ | ConvertFrom-Json
+    $legacy = @'
+    {{ dhs_firewall_legacy | map(attribute='name') | list | to_json }}
+    '@ | ConvertFrom-Json
+    $program = '{{ dhs_firewall_windows_program }}'
+    $changed = 0
+    foreach ($r in $desired) {
+      $rule = Get-NetFirewallRule -DisplayName $r.name -ErrorAction SilentlyContinue
+      if ($r.state -eq 'absent') {
+        if ($rule) { $rule | Remove-NetFirewallRule; $changed++ }
+        continue
+      }
+      $wantProg = if ($r.program) { $program } else { 'Any' }
+      $ok = $false
+      if ($rule) {
+        $pf = $rule | Get-NetFirewallPortFilter
+        $af = $rule | Get-NetFirewallApplicationFilter
+        $ok = ($rule.Enabled -eq 'True') -and ($rule.Direction -eq 'Inbound') -and ($rule.Action -eq 'Allow') `
+              -and ($pf.Protocol -eq $r.proto.ToUpper()) -and ("$($pf.LocalPort)" -eq "$($r.port)") `
+              -and ($af.Program -eq $wantProg) -and ($rule.Profile -eq 'Domain, Private, Public' -or $rule.Profile -eq 'Any')
+      }
+      if (-not $ok) {
+        if ($rule) { $rule | Remove-NetFirewallRule }
+        $params = @{ DisplayName=$r.name; Direction='Inbound'; Action='Allow'; Enabled='True'; Profile='Domain,Private,Public'; Protocol=$r.proto.ToUpper(); LocalPort=$r.port }
+        if ($r.program) { $params.Program = $program }
+        New-NetFirewallRule @params | Out-Null
+        $changed++
+      }
+    }
+    foreach ($n in $legacy) {
+      $rule = Get-NetFirewallRule -DisplayName $n -ErrorAction SilentlyContinue
+      if ($rule) { $rule | Remove-NetFirewallRule; $changed++ }
+    }
+    "CHANGED=$changed"
+  register: dhs_firewall_win
+  changed_when: "'CHANGED=0' not in dhs_firewall_win.stdout"
 
 - name: Firewall profiles ON (enforce mode only)
   community.windows.win_firewall:

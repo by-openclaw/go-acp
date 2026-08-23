@@ -39,6 +39,27 @@
   register: dhs_access_acl_prune
   changed_when: (dhs_access_acl_prune.stdout | trim | int) > 0
 
+# sshd DefaultShell = PowerShell (#790): with `ansible_shell_type: powershell`
+# every module runs directly in PowerShell instead of cmd.exe spawning it —
+# measured 8–20 s/task over the cmd path. sshd picks the new shell up only
+# after a restart (verified 2026-08-23); the restart drops the current SSH
+# session, Ansible reconnects on the next task. First-time bootstrap of a
+# fresh VM (shell still cmd): playbooks/win-shell-bootstrap.yml.
+- name: sshd DefaultShell = PowerShell
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: DefaultShell
+    data: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+    type: string
+    state: present
+  register: dhs_access_defshell
+
+- name: Restart sshd so the new default shell applies (only when it changed)
+  ansible.windows.win_service:
+    name: sshd
+    state: restarted
+  when: dhs_access_defshell is changed
+
 - name: sshd service running and automatic
   ansible.windows.win_service:
     name: sshd

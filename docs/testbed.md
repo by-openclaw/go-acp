@@ -77,6 +77,17 @@ fleet actor keys below. After a fresh clone run
 shipped assets, Ansible collections). Never drive the fleet from a
 Windows workstation (PowerShell) — see ADR-0025 step 5.
 
+Monitoring a run (#790): every play logs to `/tmp/ansible-fleet.log`
+on the control node (`tail -f` it) and prints per-task timings
+(`profile_tasks`); `ps -eo pid,lstart,etimes,args | grep ansible-playbook`
+shows which pass is running and for how long. Windows tasks run with
+`ansible_shell_type: powershell` against an sshd `DefaultShell` of
+PowerShell (set by `dhs_access`, sshd restarted when it changes) — a
+fresh VM needs `playbooks/win-shell-bootstrap.yml` once (play-scoped cmd
+shell; never a global `-e ansible_shell_type`, it would hit tasks delegated
+to the control node). Facts are cached for an hour (`/tmp/ansible-facts`).
+Ad-hoc `ssh by-rune@win11 '<cmd>'` now lands in PowerShell, not cmd.
+
 ## Access — actor keys, not per-host keys
 
 Exactly three ed25519 identities are authorized on every host, managed

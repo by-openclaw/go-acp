@@ -10,9 +10,13 @@
 # authorized_keys) — the dhs_access role manages that file.
 ansible_connection: ssh
 ansible_user: by-rune
-# sshd DefaultShell on the VM is cmd.exe (Windows OpenSSH default); the
-# ansible.windows modules work over it as-is, so it stays cmd.
-ansible_shell_type: cmd
+# sshd DefaultShell on the VM is PowerShell (set by dhs_access, #790): every
+# module then runs in one process instead of cmd.exe spawning powershell.exe
+# — roughly halves per-task latency. BOOTSTRAP of a fresh VM (DefaultShell
+# still cmd): run playbooks/win-shell-bootstrap.yml once (play-scoped cmd
+# shell; never pass ansible_shell_type as a global -e — it also hits tasks
+# delegated to the Linux control node).
+ansible_shell_type: powershell
 ansible_become: false
 
 # Where the dhs binary is installed on the target and which local artifact to
