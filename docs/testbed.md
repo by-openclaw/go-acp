@@ -10,26 +10,34 @@ in the same PR (epic #780).
 
 ## Fleet
 
-| Inventory name | Proxmox | Guest OS | eth0 mgmt-A (`ansible_host`) | eth1 mgmt-B | Role |
-| --- | --- | --- | --- | --- | --- |
-| `dhs-debian` | LXC 651 | Debian 12 | `10.100.0.101` | `10.100.0.111` | **Ansible control node**; dhs producer host; Docker |
-| `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.100.0.102` | `10.100.0.112` | dhs producer host |
-| `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.100.0.103` | `10.100.0.113` | dhs producer host |
-| `dhs-tools` | LXC 655 | Ubuntu | `10.100.0.104` | — | tooling: Docker, AMWA NMOS Testing tool (`scripts/amwa/`), tshark |
-| `win11` | VM 654 | Windows 11 Pro | `10.100.0.105` | — | Windows producer-parity row (ADR-0016); guest name `dhs-win11` |
-| `cerebrum` | VM 601 `vm-cerebrum-stg-01` | Windows 11 | `10.100.0.5` | — | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
+| Inventory name | Proxmox | Guest OS | mgmt (`ansible_host`) | Role |
+| --- | --- | --- | --- | --- |
+| `dhs-debian` | LXC 651 | Debian 12 | `10.100.0.101` | **Ansible control node** (moving to `dhs-tools`, #820); dhs producer host; binary-test target; Docker |
+| `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.100.0.102` | dhs producer host; binary-test target |
+| `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.100.0.103` | dhs producer host; binary-test target |
+| `dhs-tools` | LXC 655 | Ubuntu | `10.100.0.104` | tooling: Docker, AMWA NMOS Testing tool (`scripts/amwa/`), tshark |
+| `win11` | VM 654 | Windows 11 Pro | `10.100.0.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11` |
+| `cerebrum` | VM 601 `vm-cerebrum-stg-01` | Windows 11 | `10.100.0.5` | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
 
 All LXCs are unprivileged with `nesting=1`. MAC addresses per NIC live
 in `ansible/inventory/host_vars/<name>.yml` (`nics:`).
 
 Addressing is **static, from the inventory** (`dhs_netaddr` role, #786):
-one scheme across the fleet — eth0 = mgmt-A (`ansible_host`, default
-gateway `10.100.0.1`), eth1 = eth0 + 10 = mgmt-B (no default route);
-`.101–.105` / `.111–.113`, no overlaps, Cerebrum staging stays `.5`.
+one management NIC per host — `eth0` = `ansible_host`, default gateway
+`10.100.0.1`; `.101`–`.105`, no overlaps, Cerebrum staging stays `.5`.
 LXCs get it in the Proxmox CT config (`netX: …,ip=<addr>/24[,gw=…]`,
 `nameserver`, `searchdomain`, written via the API, applied by a CT
 reboot); the Windows VM gets it guest-side. No DHCP dependency (pfSense
-only needs `.100–.120` excluded from its pool as hygiene).
+only needs `.100–.120` excluded from its pool as hygiene). The inventory
+is the source of truth, not an overlay: a `netX` on the CT that `nics:`
+does not declare is REMOVED (`delete=netN`).
+
+A second management NIC (`eth1` = eth0 + 10, `.111`–`.113`, no default
+route) existed until 2026-08-23 and is **parked, not deleted** — re-adding
+it is a `host_vars` edit. It was retired because both NICs sat on the same
+L2, so `<host>.local` resolved to whichever answered first: `dhs-debian.local`
+returned `.111` instead of `.101` (#822). IPv6 is **out of scope for this
+fleet** — dual stack lives on the new Proxmox node.
 `ansible/playbooks/fleet-verify.yml` asserts live IP == inventory IP per
 NIC and fails loudly on drift. Before 2026-08-23 the fleet ran on DHCP
 leases (`.101–.108`, win11 drifted `.106`→`.107`) — never reuse those
@@ -132,19 +140,19 @@ Every fleet host gets the same dhs baseline, per OS, from the
 | directories | `/etc/dhs` (trees/packs), `/var/lib/dhs` (data), `/var/log/dhs` | `C:\dhs`, `C:\ProgramData\dhs\{data,logs}` |
 | packages | tshark/wireshark-cli, curl, jq, ca-certificates, unzip, tar | — |
 
-Time and IPv6 (#804): `win11` syncs w32time to the DMZ gateway
+Time (#804): `win11` syncs w32time to the DMZ gateway
 `10.100.0.1` + `pool.ntp.org` (set by `dhs_host`); the LXCs cannot set
 their own clock — they inherit the Proxmox node's, which was measured
 ~9 min ahead on 2026-08-23 → `ansible/playbooks/pve-time.yml` (#810,
 group `pve` = pve01 over SSH as root; chrony + `makestep`; platform twin
 `ansible-platform#168`);
-`fleet-verify.yml` prints each host's offset vs the control node. IPv6:
-the platform is dual-stack, but VLAN 100 currently offers no RA/DHCPv6,
-so fleet NICs hold link-local IPv6 only; `fleet-verify.yml` reports
-global IPv6 per host. The static IPv6 scheme (same shape as IPv4:
-`<vlan-100 prefix>::101/::111` etc., set by `dhs_netaddr` in the Proxmox
-`ip6=` field and guest-side on win11) lands as soon as the VLAN-100
-prefix is known.
+`fleet-verify.yml` prints each host's offset vs the control node.
+
+IPv6: this fleet is **IPv4-only** (owner, 2026-08-23). VLAN 100 offers no
+RA/DHCPv6 — a 20 s capture for `icmpv6.type==134` saw nothing — so NICs
+hold link-local IPv6 only and nothing autoconfigures. Dual stack belongs
+to the NEW Proxmox node, not here; do not reintroduce an IPv6 scheme for
+this fleet without the owner asking.
 
 Roll the fleet to a new release by bumping `dhs_version` and converging
 (run-twice = 0 changes). Layering: hypervisor = `infra-terraform-proxmox`

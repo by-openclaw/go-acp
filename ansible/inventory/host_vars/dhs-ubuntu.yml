@@ -6,7 +6,6 @@ pve_name: dhs.ubuntu24
 os_label: "Ubuntu 24.04"
 nics:
   - { name: eth0, mac: "BC:24:11:28:78:25", ip: 10.100.0.102 }
-  - { name: eth1, mac: "BC:24:11:B2:50:A5", ip: 10.100.0.112 }
 fleet_hostname: dhs-ubuntu
 
 # Ember+ producer: the DHD audio console tree, rebuilt from the committed

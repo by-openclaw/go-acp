@@ -7,7 +7,6 @@ pve_name: dhs.rocky9
 os_label: "Rocky 9.4"
 nics:
   - { name: eth0, mac: "BC:24:11:2B:F7:C7", ip: 10.100.0.103 }
-  - { name: eth1, mac: "BC:24:11:33:74:4A", ip: 10.100.0.113 }
 fleet_hostname: dhs-rocky
 
 # Ember+ producer: the Lawo PowerCore tree (1024-target matrix), rebuilt from
