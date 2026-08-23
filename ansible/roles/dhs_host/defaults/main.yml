@@ -30,6 +30,16 @@ dhs_host_packages:
   Debian: [tshark, curl, jq, ca-certificates, unzip, tar]
   RedHat: [wireshark-cli, curl, jq, ca-certificates, unzip, tar]
 
+# Defender exclusions for the automation working folders (#815). Measured on
+# win11: a bare PowerShell invocation costs ~6 s, and Defender scanning every
+# Ansible module written to the remote tmp dir is a large part of it. Scope is
+# deliberately narrow — the dhs install/data dirs and the ansible-tmp pattern
+# only; never a blanket %TEMP% or system-wide exclusion.
+dhs_host_defender_exclusions:
+  - 'C:\dhs'
+  - 'C:\ProgramData\dhs'
+  - 'C:\Users\{{ ansible_user }}\AppData\Local\Temp\ansible-tmp-*'
+
 # NTP peers for win11 (w32time). LXCs inherit the Proxmox host clock and
 # cannot set time themselves — the pve node is chrony's job (ansible-platform#168).
 dhs_host_ntp_peers: ["10.100.0.1,0x8", "pool.ntp.org,0x8"]
