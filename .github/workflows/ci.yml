@@ -4,7 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # No branch filter, deliberately. A stacked PR targets its parent
+    # branch rather than main, and a filtered trigger gives those PRs no
+    # CI at all - so the unit under active review is the one running
+    # unverified, which is exactly backwards. Stacked units are how a
+    # dependent change stays reviewable on its own; they must be gated
+    # the same as any other.
     # The release-please PR touches ONLY these two bot-owned files and is
     # re-force-pushed on every merge to main; each force-push spawned a CI
     # run that parked at action_required (bot-authored PR + workflow
