@@ -307,7 +307,7 @@ VERBS
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
-  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch (object path must be known — wildcards refused, live-verified)
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, or "GROUP.*" = every leaf under GROUP (a group subscribe only LISTS its children; change events come from leaf rows). Paths must be known — the wire refuses wildcards, so ".*" is expanded client-side by one obtain
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
@@ -1596,26 +1596,39 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 
-	dc := &codec.DeviceChange{}
-	if subDev != "" {
-		dc.Type = "VALUE"
-		dc.SubDevice = subDev
-		dc.Object = object
-		if byName {
-			dc.DeviceName = device
+	newRow := func(obj string) *codec.DeviceChange {
+		dc := &codec.DeviceChange{}
+		if subDev != "" {
+			dc.Type = "VALUE"
+			dc.SubDevice = subDev
+			dc.Object = obj
+			if byName {
+				dc.DeviceName = device
+			} else {
+				dc.IPAddress = device
+			}
 		} else {
+			// DETAILS addressing is IP-only (by-name NACKs — spec-conform).
+			dc.Type = "DETAILS"
 			dc.IPAddress = device
+			if deviceType == "" {
+				deviceType = "DEVICE"
+			}
 		}
-	} else {
-		// DETAILS addressing is IP-only (by-name NACKs — spec-conform).
-		dc.Type = "DETAILS"
-		dc.IPAddress = device
-		if deviceType == "" {
-			deviceType = "DEVICE"
+		if deviceType != "" {
+			dc.DeviceType = codec.DeviceType(strings.ToUpper(deviceType))
 		}
+		return dc
 	}
-	if deviceType != "" {
-		dc.DeviceType = codec.DeviceType(strings.ToUpper(deviceType))
+
+	// Resolve the object list BEFORE subscribing, so an expansion that
+	// finds nothing fails loudly instead of quietly watching one row.
+	objects := []string{object}
+	if subDev != "" {
+		objects, err = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object)
+		if err != nil {
+			return err
+		}
 	}
 
 	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
@@ -1627,16 +1640,150 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		}
 		printEventLabeled(f, nil)
 	})
-	if err := sess.Subscribe(ctx, []codec.SubItem{dc}); err != nil {
-		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
-			return nil // Ctrl+C during subscribe — clean exit, not an error
-		}
-		return fmt.Errorf("cerebrum-nb watch: subscribe %s: %w", dc.Type, byNameHint(err, device, byName))
+
+	// One row per object. NACK 9 is ONE_OR_MORE_EVENTS_INVALID — a
+	// batch fails WHOLESALE if any row is bad, and then names none of
+	// them. So a failed batch is retried row by row: the cost falls on
+	// the run that already has a problem, and the operator learns which
+	// path was refused instead of being told the batch was.
+	rows := make([]codec.SubItem, 0, len(objects))
+	for _, o := range objects {
+		rows = append(rows, newRow(o))
 	}
-	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE TYPE=%s on %s — Ctrl+C to stop\n", dc.Type, device)
+	okRows, bad, err := cerebrumSubscribeRows(ctx, sess, rows, objects, device, byName)
+	if err != nil {
+		return err
+	}
+	if okRows == 0 {
+		return fmt.Errorf("cerebrum-nb watch: no object could be subscribed (%d refused)", len(bad))
+	}
+	for _, b := range bad {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb watch: REFUSED %s\n", b)
+	}
+
+	what := "TYPE=" + rows[0].(*codec.DeviceChange).Type
+	if okRows > 1 {
+		what = fmt.Sprintf("%s on %d object(s)", what, okRows)
+	}
+	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE %s on %s — Ctrl+C to stop\n", what, device)
 	<-ctx.Done()
 	fmt.Fprintln(os.Stderr, "watch stopped.")
 	return nil
+}
+
+// cerebrumWatchObjects turns the --object argument into the concrete
+// list of paths to subscribe.
+//
+//	"a"          one path, as before
+//	"a;b;c"      an explicit list — same ';' grammar --path already uses
+//	             in export/extract
+//	"GROUP.*"    every LEAF under GROUP, discovered by one obtain
+//
+// The expansion exists because a group SUBSCRIBE does not watch its
+// children. Subscribing to "Nodes" on a live NOC returns the 68 child
+// handles as available=0 rows and then delivers nothing when a child
+// changes (live-verified 2026-08-26) — the listing is the whole
+// response, not a recursive registration. Change events come from leaf
+// rows only, so watching a subtree means enumerating it first and
+// subscribing to each leaf.
+func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object string) ([]string, error) {
+	var out []string
+	for _, part := range strings.Split(object, ";") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		group, expand := strings.CutSuffix(part, ".*")
+		if !expand {
+			out = append(out, part)
+			continue
+		}
+		leaves, err := cerebrumGroupLeaves(sess, timeout, device, byName, subDev, group)
+		if err != nil {
+			return nil, fmt.Errorf("cerebrum-nb watch: expanding %q: %w", part, byNameHint(err, device, byName))
+		}
+		if len(leaves) == 0 {
+			return nil, fmt.Errorf("cerebrum-nb watch: %q expanded to no leaf objects — a group obtain lists child GROUPS as available=0; expand one level deeper, e.g. %q", part, group+".<child>.*")
+		}
+		out = append(out, leaves...)
+	}
+	if len(out) == 0 {
+		return nil, cerebrumValErr("watch", "--object resolved to nothing")
+	}
+	return out, nil
+}
+
+// cerebrumGroupLeaves obtains one group and returns the paths of the
+// rows that carry a value.
+//
+// A §5.4.3 group obtain answers with BOTH kinds of row: child groups
+// come back available=0 with an empty value, leaves come back
+// available=1 with theirs. Only leaves can be subscribed, so the
+// available flag is the filter.
+func cerebrumGroupLeaves(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string) ([]string, error) {
+	dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: group}
+	if group == "" {
+		dc.ExplicitEmptyObject = true
+	}
+	if byName {
+		dc.DeviceName = device
+	} else {
+		dc.IPAddress = device
+	}
+	got, err := obtainSingleDeviceChange(sess, timeout, dc, "VALUE")
+	if err != nil {
+		return nil, err
+	}
+	if got == nil || got.Device == nil {
+		return nil, fmt.Errorf("no response within timeout")
+	}
+	var leaves []string
+	for _, ov := range got.Device.ObjectValues {
+		if ov.Available {
+			leaves = append(leaves, ov.Object)
+		}
+	}
+	return leaves, nil
+}
+
+// cerebrumSubscribeRows registers every row, batching first and
+// falling back to one-at-a-time only when the batch is refused.
+//
+// Returns how many rows the server accepted and a description of each
+// one it did not.
+func cerebrumSubscribeRows(ctx context.Context, sess *cerebrum.Session, rows []codec.SubItem, labels []string, device string, byName bool) (int, []string, error) {
+	if len(rows) == 1 {
+		if err := sess.Subscribe(ctx, rows); err != nil {
+			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return 0, nil, nil
+			}
+			return 0, nil, fmt.Errorf("cerebrum-nb watch: subscribe: %w", byNameHint(err, device, byName))
+		}
+		return 1, nil, nil
+	}
+
+	if err := sess.Subscribe(ctx, rows); err == nil {
+		return len(rows), nil, nil
+	} else if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+		return 0, nil, nil
+	}
+
+	// The batch was refused as a whole. Find out which rows the server
+	// actually objects to rather than reporting all of them as bad.
+	fmt.Fprintf(os.Stderr, "cerebrum-nb watch: batch of %d refused — retrying row by row to find the offender(s)\n", len(rows))
+	ok := 0
+	var bad []string
+	for i, row := range rows {
+		if err := sess.Subscribe(ctx, []codec.SubItem{row}); err != nil {
+			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return ok, bad, nil
+			}
+			bad = append(bad, fmt.Sprintf("%s: %v", labels[i], err))
+			continue
+		}
+		ok++
+	}
+	return ok, bad, nil
 }
 
 // printEventLabeled renders one dispatched frame; srcNames (optional) joins

@@ -416,3 +416,41 @@ func TestByNameHintNamesTheSuspect(t *testing.T) {
 		t.Error("nil error must stay nil")
 	}
 }
+// TestWatchObjectListGrammar: --object accepts one path, a
+// ';'-separated list (the same grammar --path already uses in
+// export/extract), or "GROUP.*" for every leaf under a group.
+//
+// Only the non-expanding forms are exercised here; ".*" needs a live
+// obtain and is covered by the consumer package's fake-WS tests.
+func TestWatchObjectListGrammar(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{"single path", "Nodes.[u].SubID", []string{"Nodes.[u].SubID"}},
+		{"list", "Nodes.[u].SubID;Nodes.[u].Connected", []string{"Nodes.[u].SubID", "Nodes.[u].Connected"}},
+		{"whitespace around separators is ignored", " a ; b ", []string{"a", "b"}},
+		{"empty entries are dropped", "a;;b;", []string{"a", "b"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", tc.in)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Errorf("got %v, want %v", got, tc.want)
+					break
+				}
+			}
+		})
+	}
+	// A list of nothing is a usage error, not an empty subscription.
+	if _, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", " ; ; "); err == nil {
+		t.Error("an all-empty --object should be refused")
+	}
+}
