@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"io"
+	"os"
+	"time"
 	"strings"
 	"testing"
 
@@ -452,5 +455,78 @@ func TestWatchObjectListGrammar(t *testing.T) {
 	// A list of nothing is a usage error, not an empty subscription.
 	if _, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", " ; ; "); err == nil {
 		t.Error("an all-empty --object should be refused")
+	}
+}
+// TestCerebrumDMRowMatchesGenericWatch pins the Tree/DM layout so an
+// NB watch reads like `dhs watch` on acp1/acp2. One grammar everywhere
+// is the point of the Tree/DM template (docs/protocols/verbs.md 12b);
+// an operator comparing a CONVERT over acp2 against the same card over
+// Cerebrum should be diffing VALUES, not re-learning a layout.
+func TestCerebrumDMRowMatchesGenericWatch(t *testing.T) {
+	ts := time.Date(2026, 8, 26, 1, 2, 3, 0, time.UTC)
+	capture := func(fn func()) string {
+		old := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		fn()
+		_ = w.Close()
+		os.Stdout = old
+		var sb strings.Builder
+		_, _ = io.Copy(&sb, r)
+		return sb.String()
+	}
+
+	// A readable value carries its access bits and type.
+	got := capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{
+			Object: "Nodes.[abc].SubID", Value: "1000",
+			Available: true, Readable: true, Writable: true, DataType: "INTEGER",
+		})
+	})
+	for _, want := range []string{"01:02:03", "SubID", "RW-", "integer", "1000"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("row missing %q:\n%s", want, got)
+		}
+	}
+
+	// available=0 is a CHILD GROUP arriving inside a VALUE response,
+	// not an object with an empty value — rendering it as the latter
+	// reads as "this object is empty" instead of "this is a folder".
+	got = capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{Object: "Nodes.[abc].Interfaces.[eno1]"})
+	})
+	if !strings.Contains(got, "group") || !strings.Contains(got, "<children>") {
+		t.Errorf("child group should render as a group row:\n%s", got)
+	}
+
+	// Units ride with the value, as in the generic watch.
+	got = capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{
+			Object: "a.Delay", Value: "5.0", Available: true, Readable: true, Units: "ms",
+		})
+	})
+	if !strings.Contains(got, "5.0 ms") {
+		t.Errorf("units should follow the value:\n%s", got)
+	}
+}
+
+// TestTruncatePathKeepsBothEnds: Cerebrum paths are front-loaded with a
+// group and a bracketed UUID, so head-truncation leaves every row with
+// an identical 52-character prefix and hides the segment that differs.
+func TestTruncatePathKeepsBothEnds(t *testing.T) {
+	long := "Nodes.[ab469b7c-0100-1000-a000-3ceceffd5b65].SDP_Resend_Mode"
+	got := truncatePath(long, 40)
+	if len([]rune(got)) != 40 {
+		t.Errorf("truncatePath returned %d runes, want 40: %q", len([]rune(got)), got)
+	}
+	if !strings.HasPrefix(got, "Nodes.") {
+		t.Errorf("head lost: %q", got)
+	}
+	if !strings.HasSuffix(got, "SDP_Resend_Mode") {
+		t.Errorf("tail lost — the tail IS the object name: %q", got)
+	}
+	// Short enough already: untouched.
+	if got := truncatePath("a.b", 40); got != "a.b" {
+		t.Errorf("short path was modified: %q", got)
 	}
 }
