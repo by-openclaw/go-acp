@@ -266,7 +266,8 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Mode B / static)")
 	apiVer := fs.String("api-ver", "v1.3", "IS-04 wire version exposed under /x-nmos/node/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
-	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats every 5 s")
+	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats")
+	heartbeat := fs.Duration("heartbeat", 0, "POST /health cadence (default 5s, IS-04 §6.1). Set it longer than the registry's --heartbeat-timeout to have this node garbage-collected on purpose")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -286,12 +287,13 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		mode = "static"
 	}
 	cfg := provider.IS04NodeConfig{
-		Bind:          *bind,
-		AdvertiseHost: *advertise,
-		DiscoveryMode: mode,
-		Priority:      *priority,
-		APIVer:        *apiVer,
-		RegistryURL:   *registry,
+		Bind:              *bind,
+		AdvertiseHost:     *advertise,
+		DiscoveryMode:     mode,
+		Priority:          *priority,
+		APIVer:            *apiVer,
+		RegistryURL:       *registry,
+		HeartbeatInterval: *heartbeat,
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
@@ -305,7 +307,11 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		fmt.Println("Announcing _nmos-node._tcp via mDNS.")
 	}
 	if *registry != "" {
-		fmt.Printf("Registering against %s every %s + heartbeat.\n", *registry, "5s")
+		beat := *heartbeat
+		if beat <= 0 {
+			beat = provider.HeartbeatInterval
+		}
+		fmt.Printf("Registering against %s, heartbeat every %s.\n", *registry, beat)
 	}
 	return srv.Serve(ctx)
 }
@@ -597,6 +603,13 @@ Role: node (Phase 1 #3 — IS-04 v1.3 Node API)
   --priority N          DNS-SD pri TXT (0-99 prod, 100+ dev)
   --registry URL        Registration API base URL (e.g. http://reg.local:8235);
                         omit to run mDNS-only / direct-Node mode
+  --heartbeat DURATION  POST /health cadence (default 5s, IS-04 §6.1). Pair it
+                        with the registry's --heartbeat-timeout to drive the
+                        garbage collector on purpose: a cadence LONGER than the
+                        timeout must get this node evicted, a shorter one must
+                        not. The threshold is NOT discoverable — IS-04 gives no
+                        way for a registry to advertise it, so both sides just
+                        assume the 5s/12s defaults.
 
 Role: system (Phase 1 #2 — IS-09 System API)
   Loads + validates a /global resource JSON, serves the two IS-09 endpoints

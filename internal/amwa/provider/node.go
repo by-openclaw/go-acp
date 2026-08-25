@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
@@ -79,6 +80,10 @@ type IS04NodeConfig struct {
 	// against this Registration API base (e.g. http://10.6.239.113:8235/).
 	// When empty, mDNS-only / direct-Node mode (Mode D peers).
 	RegistryURL string
+	// HeartbeatInterval overrides the POST /health cadence. Zero uses
+	// the IS-04 §6.1 default of five seconds. Settable so a lab can
+	// drive the registry's garbage collector on purpose.
+	HeartbeatInterval time.Duration
 }
 
 // IS04NodeServer hosts the Node API endpoints + DNS-SD announce +
@@ -223,6 +228,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// the highest-pri Registry — that's IS-04 §3.1 Mode A.
 	if s.cfg.RegistryURL != "" {
 		rc := NewRegistrationClient(s.logger, s.cfg.RegistryURL, s.cfg.APIVer, s.bundle)
+		rc.SetHeartbeatInterval(s.cfg.HeartbeatInterval)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
 		go rc.Run(ctx)
@@ -239,6 +245,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		}
 		s.watcher = w
 		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
+		rc.SetHeartbeatInterval(s.cfg.HeartbeatInterval)
 		rc.SetWatcher(w)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc

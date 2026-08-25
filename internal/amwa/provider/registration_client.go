@@ -38,13 +38,13 @@ var ErrRegistryNotFound = errors.New("provider/node: registry returned 404 — r
 
 // RegistrationClient drives the Node-side registration loop:
 //
-//   1. POST /resource for the Node, then each Device, Source, Flow,
-//      Sender, Receiver in dependency order (referential integrity:
-//      Sources before Flows, etc.).
-//   2. Heartbeat every 5 s via POST /health/nodes/{id}.
-//   3. On 404 from heartbeat → full re-registration.
-//   4. On Stop / shutdown → DELETE every owned resource (Receivers
-//      first, then Senders, Flows, Sources, Devices, Node).
+//  1. POST /resource for the Node, then each Device, Source, Flow,
+//     Sender, Receiver in dependency order (referential integrity:
+//     Sources before Flows, etc.).
+//  2. Heartbeat every 5 s via POST /health/nodes/{id}.
+//  3. On 404 from heartbeat → full re-registration.
+//  4. On Stop / shutdown → DELETE every owned resource (Receivers
+//     first, then Senders, Flows, Sources, Devices, Node).
 type RegistrationClient struct {
 	logger *slog.Logger
 
@@ -70,9 +70,9 @@ type RegistrationClient struct {
 
 	http *stdhttp.Client
 
-	mu          sync.Mutex
-	cancelLoop  context.CancelFunc
-	registered  atomic.Bool
+	mu         sync.Mutex
+	cancelLoop context.CancelFunc
+	registered atomic.Bool
 	// onRegistered fires whenever the registered flag transitions
 	// (true→false or false→true). The callback is invoked synchronously
 	// from the loop goroutine so handlers must be quick + non-blocking
@@ -85,14 +85,40 @@ type RegistrationClient struct {
 	// On subsequent failovers we use rejoinOrRegister (heartbeat-first)
 	// per IS-04 §6.1. Touched only inside the Run loop, no mutex.
 	everRegistered bool
-	registrations uint64
-	heartbeats    uint64
-	reregister    uint64
-	deletions     uint64
-	failures      uint64
+	registrations  uint64
+	heartbeats     uint64
+	reregister     uint64
+	deletions      uint64
+	failures       uint64
+
+	// heartbeat is the POST /health/nodes/{id} cadence. Defaults to the
+	// IS-04 §6.1 five seconds; settable so a lab can drive the registry's
+	// garbage collector deliberately — a cadence longer than the
+	// registry's timeout MUST get the node evicted, and one much shorter
+	// MUST NOT. Neither case is testable against a hard-coded constant.
+	heartbeat time.Duration
 
 	// closed signals the heartbeat loop to exit + DELETE has finished.
 	closed chan struct{}
+}
+
+// SetHeartbeatInterval overrides the POST /health cadence. Zero or
+// negative restores the IS-04 §6.1 default.
+//
+// Must be called before Run; the loop reads it once at start.
+func (c *RegistrationClient) SetHeartbeatInterval(d time.Duration) {
+	if d <= 0 {
+		d = HeartbeatInterval
+	}
+	c.heartbeat = d
+}
+
+// heartbeatInterval is the cadence the loop actually uses.
+func (c *RegistrationClient) heartbeatInterval() time.Duration {
+	if c.heartbeat > 0 {
+		return c.heartbeat
+	}
+	return HeartbeatInterval
 }
 
 // NewRegistrationClient builds an unstarted client. apiVer is the
@@ -257,11 +283,21 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 		}
 	}
 
-	// AMWA test_15/16 cascade-disables mocks every (HeartbeatInterval+1)
-	// seconds. To detect dead mocks reliably and fail over within that
-	// window, the loop ticks faster than the heartbeat cadence. We
-	// throttle actual heartbeats to HeartbeatInterval below.
-	ticker := time.NewTicker(1 * time.Second)
+	// AMWA test_15/16 cascade-disables mocks every (heartbeat+1) seconds.
+	// To detect dead mocks reliably and fail over within that window, the
+	// loop ticks faster than the heartbeat cadence. Actual heartbeats are
+	// throttled to the configured interval below.
+	beat := c.heartbeatInterval()
+	tick := time.Second
+	if beat < 2*time.Second {
+		// A sub-2s cadence is a deliberate lab setting; the loop has to
+		// tick faster than the beat or the throttle below swallows it.
+		tick = beat / 2
+		if tick < 50*time.Millisecond {
+			tick = 50 * time.Millisecond
+		}
+	}
+	ticker := time.NewTicker(tick)
 	defer ticker.Stop()
 	lastHeartbeat := time.Time{}
 
@@ -329,12 +365,18 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 					continue
 				}
 			}
-			// Throttle actual /health POSTs near HeartbeatInterval — the
-			// 1 s tick above is for fast failover detection only. AMWA
-			// test_05 enforces 5 s ± 0.5 s between heartbeats, so we
-			// fire when the elapsed budget is within 0.5 s of due to
-			// keep the tick-quantisation jitter inside the window.
-			if time.Since(lastHeartbeat) < HeartbeatInterval-500*time.Millisecond {
+			// Throttle actual /health POSTs near the configured cadence —
+			// the faster tick above is for failover detection only. AMWA
+			// test_05 enforces 5 s ± 0.5 s between heartbeats, so we fire
+			// when the elapsed budget is within 0.5 s of due to keep the
+			// tick-quantisation jitter inside the window. The slack
+			// scales with the cadence so a 500 ms lab setting is not
+			// swallowed by a 500 ms allowance.
+			slack := 500 * time.Millisecond
+			if beat/10 < slack {
+				slack = beat / 10
+			}
+			if time.Since(lastHeartbeat) < beat-slack {
 				continue
 			}
 			lastHeartbeat = time.Now()
@@ -469,8 +511,8 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 // postResource POSTs one IS-04 resource. Per IS-04 v1.3.3 §4.0:
 //   - 201 Created  → fresh registration, accept it.
 //   - 200 OK       → Registry already had this UUID (stale state). The
-//                    Node MUST DELETE the stale entry and re-POST as
-//                    fresh — AMWA test_21 enforces this.
+//     Node MUST DELETE the stale entry and re-POST as
+//     fresh — AMWA test_21 enforces this.
 //   - other        → error.
 func (c *RegistrationClient) postResource(ctx context.Context, t is04.ResourceType, data any) error {
 	status, err := c.postResourceOnce(ctx, t, data)
