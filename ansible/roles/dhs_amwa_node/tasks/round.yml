@@ -1,0 +1,92 @@
+---
+# One scoring round: bring the node up at ONE api_ver, run every suite
+# against it, tear it down.
+
+- name: "{{ api_ver }} — remove any previous node"
+  ansible.builtin.command: docker rm -f {{ dhs_amwa_node_name }}
+  changed_when: true
+  failed_when: false
+
+- name: "{{ api_ver }} — start the node on the oracle's bridge"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - run
+      - -d
+      - --name={{ dhs_amwa_node_name }}
+      - --hostname={{ dhs_amwa_node_name }}
+      - --network={{ dhs_amwa_project }}
+      - --restart=no
+      - "{{ dhs_amwa_node_image }}"
+      - producer
+      - nmos
+      - serve
+      - --config=/app/amwa-test-node.json
+      - --bind=:{{ dhs_amwa_node_port }}
+      # The node advertises the name the tool resolves it by. An href
+      # naming the container's own IP is unreachable from anywhere the
+      # tool would follow it to.
+      - --advertise-host={{ dhs_amwa_node_name }}:{{ dhs_amwa_node_port }}
+      - --mdns
+      - --api-ver={{ api_ver }}
+  changed_when: true
+
+- name: "{{ api_ver }} — let the node register and settle"
+  ansible.builtin.wait_for:
+    timeout: "{{ dhs_amwa_node_settle }}"
+
+# A suite run against a node that died on startup scores as a wall of
+# failures and looks like a conformance problem. Checking first turns
+# that into one honest error.
+- name: "{{ api_ver }} — the node is running"
+  ansible.builtin.command: docker inspect -f {% raw %}'{{.State.Running}}'{% endraw %} {{ dhs_amwa_node_name }}
+  register: dhs_amwa_node_alive
+  changed_when: false
+  failed_when: "'true' not in dhs_amwa_node_alive.stdout"
+
+- name: "{{ api_ver }} — node startup log"
+  ansible.builtin.command: docker logs --tail 15 {{ dhs_amwa_node_name }}
+  register: dhs_amwa_node_log
+  changed_when: false
+
+- name: "{{ api_ver }} — what the node said"
+  ansible.builtin.debug:
+    msg: "{{ (dhs_amwa_node_log.stderr | default('')) + (dhs_amwa_node_log.stdout | default('')) }}"
+
+- name: "{{ api_ver }} — run the suites"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_port_testing_ui }}/api"
+    method: POST
+    body_format: json
+    body:
+      suite: "{{ item.id }}"
+      host: ["{{ dhs_amwa_node_name }}"]
+      port: [{{ dhs_amwa_node_port }}]
+      version: ["{{ api_ver }}"]
+      output: json
+    timeout: "{{ dhs_amwa_node_suite_timeout }}"
+    status_code: [200, 400, 500]
+    return_content: true
+  register: dhs_amwa_node_run
+  loop: "{{ dhs_amwa_node_suites }}"
+  loop_control:
+    label: "{{ item.id }} @ {{ api_ver }}"
+  # A suite that errors is a RESULT, not a play failure: "the tool
+  # refused to score this" is exactly the kind of gap this run exists
+  # to surface, and stopping here would hide every later suite.
+  failed_when: false
+
+- name: "{{ api_ver }} — write each result"
+  ansible.builtin.copy:
+    content: "{{ item.content | default('{\"error\":\"no response\"}') }}"
+    dest: "{{ dhs_amwa_node_results }}/{{ item.item.id | lower }}-{{ api_ver }}.json"
+    mode: "0644"
+  loop: "{{ dhs_amwa_node_run.results }}"
+  loop_control:
+    label: "{{ item.item.id }} @ {{ api_ver }}"
+
+- name: "{{ api_ver }} — collect what was written"
+  ansible.builtin.find:
+    paths: "{{ dhs_amwa_node_results }}"
+    patterns: "*.json"
+  register: dhs_amwa_node_found

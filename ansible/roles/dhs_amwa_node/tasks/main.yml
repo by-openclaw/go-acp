@@ -1,0 +1,76 @@
+---
+# Score our Node against the AMWA NMOS Testing Tool.
+#
+# Not idempotent in the run-twice-equals-zero-changes sense, and should
+# not be: it is a measurement, and re-running it produces a fresh
+# result set. What IS stable is the input — the image is rebuilt from
+# the repo every time, so a score always names the source that earned
+# it.
+
+- name: The oracle must already be running
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_port_testing_ui }}/"
+    status_code: [200]
+  register: dhs_amwa_node_tool
+  failed_when: dhs_amwa_node_tool.status != 200
+
+- name: Stage the source (assets and testdata excluded — see .dockerignore)
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../"
+    dest: "{{ dhs_amwa_node_dir }}/src/"
+    delete: true
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=.cache"
+      - "--exclude=captures"
+      - "--exclude=bin"
+      - "--exclude=assets"
+      - "--exclude=testdata"
+  register: dhs_amwa_node_sync
+
+- name: Build the node image from that source
+  ansible.builtin.command:
+    cmd: >-
+      docker build
+      -f tests/integration/nmos/amwa/Dockerfile.node
+      -t {{ dhs_amwa_node_image }}
+      .
+    chdir: "{{ dhs_amwa_node_dir }}/src"
+  register: dhs_amwa_node_build
+  changed_when: "'Successfully' in dhs_amwa_node_build.stdout or dhs_amwa_node_build.rc == 0"
+
+- name: Results directory
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_node_results }}"
+    state: directory
+    mode: "0755"
+
+# The node is recreated per api_ver rather than reconfigured, because a
+# node that has already registered at one minor is not the same subject
+# as a fresh one — the tool's registration rounds observe first
+# contact, and a re-used node has already had it.
+- name: Score each API version
+  ansible.builtin.include_tasks: round.yml
+  loop: "{{ dhs_amwa_node_api_vers }}"
+  loop_control:
+    loop_var: api_ver
+
+- name: Stop the node under test
+  ansible.builtin.command: docker rm -f {{ dhs_amwa_node_name }}
+  changed_when: true
+  failed_when: false
+
+- name: Fetch the results into the repo
+  ansible.builtin.fetch:
+    src: "{{ item }}"
+    dest: "{{ dhs_amwa_node_fetch_to }}/"
+    flat: true
+  loop: "{{ dhs_amwa_node_found.files | map(attribute='path') | list }}"
+  when: dhs_amwa_node_found.files | default([]) | length > 0
+
+- name: Report where the numbers are
+  ansible.builtin.debug:
+    msg: >-
+      {{ dhs_amwa_node_found.files | default([]) | length }} result file(s)
+      fetched to tests/integration/nmos/amwa/results/ — score them with
+      scripts/amwa/amwa-summarize.sh

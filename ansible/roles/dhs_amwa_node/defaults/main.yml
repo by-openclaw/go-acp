@@ -1,0 +1,54 @@
+---
+# dhs_amwa_node — our Node under test, scored by the AMWA NMOS Testing
+# Tool that dhs_amwa keeps running.
+#
+# The node joins the SAME bridge as the tool. That is not incidental:
+# the IS-04 discovery rounds are mDNS, multicast flows between
+# containers on one bridge, and a node reached across a routed boundary
+# is only discoverable in the spec's unicast mode. Testing over the LAN
+# would silently skip the discovery half of IS-04-01 and report a
+# better score for a worse implementation.
+
+# Where the source is staged and the image built.
+dhs_amwa_node_dir: /opt/dhs-amwa-node
+dhs_amwa_node_image: dhs-node:conformance
+dhs_amwa_node_name: dhs-node
+# Port the node serves on inside the bridge. Not published: only the
+# testing tool needs to reach it, and it does so by container name.
+dhs_amwa_node_port: 18080
+
+# Which IS-04 minor the node serves for this round.
+#
+# Every minor AMWA has published is in scope (internal/amwa/CLAUDE.md,
+# strict-spec rule) so conformance is measured once per minor, not once
+# for the newest. The 2026-05-02 baseline is exactly why: v1.3 scored
+# 55/74 while v1.1 scored 33/73, and a v1.3-only run would have called
+# that healthy.
+dhs_amwa_node_api_vers: ["v1.0", "v1.1", "v1.2", "v1.3"]
+
+# Suites to run against the node, and the id the tool knows them by.
+#
+# Scoped to the node here; the registry and controller suites need a
+# different target and land in their own runs.
+dhs_amwa_node_suites:
+  - { id: "IS-04-01", name: "IS-04 Node API", per_version: true }
+  - { id: "IS-04-03", name: "IS-04 Node API (Peer to Peer)", per_version: true }
+  - { id: "IS-05-01", name: "IS-05 Connection Management API", per_version: false }
+  - { id: "IS-05-02", name: "IS-05 Interaction with IS-04", per_version: false }
+  - { id: "IS-07-01", name: "IS-07 Event & Tally API", per_version: false }
+  - { id: "IS-08-01", name: "IS-08 Channel Mapping API", per_version: false }
+  - { id: "IS-09-02", name: "IS-09 System API Discovery", per_version: false }
+
+# Where results land on the tooling host before being fetched back into
+# the repo. A conformance number only means something next to the code
+# that produced it.
+dhs_amwa_node_results: "{{ dhs_amwa_node_dir }}/results"
+dhs_amwa_node_fetch_to: "{{ playbook_dir }}/../../tests/integration/nmos/amwa/results"
+
+# Seconds to let the node register and settle before scoring it. The
+# tool's own cascade rounds are timing-sensitive; starting a suite
+# against a node still coming up scores the startup, not the node.
+dhs_amwa_node_settle: 8
+# A full suite can run for minutes; the tool answers POST /api only when
+# it has finished.
+dhs_amwa_node_suite_timeout: 900
