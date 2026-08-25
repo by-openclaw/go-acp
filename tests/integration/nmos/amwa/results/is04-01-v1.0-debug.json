@@ -1,0 +1,605 @@
+﻿{
+    "config":  {
+                   "API_PROCESSING_TIMEOUT":  1,
+                   "AUTH_TOKEN":  null,
+                   "BIND_INTERFACE":  null,
+                   "CACHE_PATH":  "cache",
+                   "CERTS_MOCKS":  [
+                                       "test_data/BCP00301/ca/intermediate/certs/ecdsa.mocks.testsuite.nmos.tv.cert.chain.pem",
+                                       "test_data/BCP00301/ca/intermediate/certs/rsa.mocks.testsuite.nmos.tv.cert.chain.pem"
+                                   ],
+                   "CERT_TRUST_ROOT_CA":  "test_data/BCP00301/ca/certs/ca.cert.pem",
+                   "CONTROLLER_TESTING_TIMEOUT":  120,
+                   "DNS_DOMAIN":  "testsuite.nmos.tv",
+                   "DNS_SD_ADVERT_TIMEOUT":  30,
+                   "DNS_SD_BROWSE_TIMEOUT":  2,
+                   "DNS_SD_MODE":  "multicast",
+                   "DNS_UPSTREAM_IP":  null,
+                   "ENABLE_AUTH":  false,
+                   "ENABLE_DNS_SD":  true,
+                   "ENABLE_HTTPS":  false,
+                   "ENABLE_MQTT_BROKER":  true,
+                   "GARBAGE_COLLECTION_TIMEOUT":  12,
+                   "HEARTBEAT_INTERVAL":  5,
+                   "HTTP_TIMEOUT":  1,
+                   "IS11_REFERENCE_SENDER_CONNECTION_API_URL":  "",
+                   "IS11_REFERENCE_SENDER_NODE_API_URL":  "",
+                   "JWKS_URI":  null,
+                   "KEYS_MOCKS":  [
+                                      "test_data/BCP00301/ca/intermediate/private/ecdsa.mocks.testsuite.nmos.tv.key.pem",
+                                      "test_data/BCP00301/ca/intermediate/private/rsa.mocks.testsuite.nmos.tv.key.pem"
+                                  ],
+                   "KEY_TRUST_ROOT_CA":  "test_data/BCP00301/ca/private/ca.key.pem",
+                   "MAX_TEST_ITERATIONS":  0,
+                   "MOCK_SERVICES_WARM_UP_DELAY":  0,
+                   "MQTT_BROKER_HOSTNAME":  "mqtt",
+                   "MQTT_BROKER_IP":  "127.0.0.1",
+                   "MQTT_BROKER_PORT":  1883,
+                   "MQTT_MESSAGE_TIMEOUT":  2,
+                   "MQTT_PASSWORD":  null,
+                   "MQTT_USERNAME":  null,
+                   "MS05_INTERACTIVE_TESTING":  false,
+                   "MS05_INVASIVE_TESTING":  false,
+                   "MULTICAST_STREAM_TARGET":  "233.252.0.1",
+                   "PORT_BASE":  5000,
+                   "PREVALIDATE_API":  true,
+                   "QUERY_API_HOST":  "127.0.0.1",
+                   "QUERY_API_PORT":  80,
+                   "RANDOM_SEED":  8014866445196593326,
+                   "REDIRECT_URI":  null,
+                   "SCOPE":  null,
+                   "SDP_PREFERENCES":  {
+                                           "RANGE":  null,
+                                           "TCS":  "SDR",
+                                           "TP":  "2110TPW",
+                                           "bit_rate":  109000,
+                                           "channels":  4,
+                                           "colorimetry":  "BT709",
+                                           "depth":  10,
+                                           "exactframerate":  "30000/1001",
+                                           "height":  1080,
+                                           "interlace":  true,
+                                           "level":  "2k-1",
+                                           "max_packet_time":  1,
+                                           "packet_time":  1,
+                                           "profile":  "High444.12",
+                                           "sample_rate":  48000,
+                                           "sampling":  "YCbCr-4:2:2",
+                                           "sublevel":  "Sublev3bpp",
+                                           "width":  1920
+                                       },
+                   "STABLE_STATE_ATTEMPTS":  5,
+                   "STABLE_STATE_DELAY":  3,
+                   "TESTING_FACADE_PORT":  5001,
+                   "TEST_SSL_BASH":  "bash",
+                   "UNICAST_STREAM_TARGET":  "192.0.2.1",
+                   "VERSION":  "c0f4f30",
+                   "WEBSOCKET_PORT_BASE":  6000,
+                   "WS_MESSAGE_TIMEOUT":  2
+               },
+    "duration":  104.5194320678711,
+    "endpoints":  [
+                      {
+                          "host":  "dhs-node",
+                          "port":  18080,
+                          "selector":  null,
+                          "urlpath":  null,
+                          "version":  "v1.0"
+                      }
+                  ],
+    "results":  [
+                    {
+                        "description":  "Test initialisation",
+                        "detail":  "",
+                        "duration":  0.366549015045166,
+                        "name":  "__init__",
+                        "state":  "Not Applicable"
+                    },
+                    {
+                        "description":  "Test setup",
+                        "detail":  "",
+                        "duration":  0.04203438758850098,
+                        "name":  "set_up_tests",
+                        "state":  "Not Applicable"
+                    },
+                    {
+                        "description":  "GET /x-nmos",
+                        "detail":  "",
+                        "duration":  0.0026700496673583984,
+                        "name":  "auto_node_1",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node",
+                        "detail":  "",
+                        "duration":  0.0022079944610595703,
+                        "name":  "auto_node_2",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0",
+                        "detail":  "",
+                        "duration":  0.0033922195434570312,
+                        "name":  "auto_node_3",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/devices",
+                        "detail":  "",
+                        "duration":  0.010368824005126953,
+                        "name":  "auto_node_4",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/devices/{deviceId}",
+                        "detail":  "",
+                        "duration":  0.004341602325439453,
+                        "name":  "auto_node_5",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/flows",
+                        "detail":  "",
+                        "duration":  0.004784584045410156,
+                        "name":  "auto_node_6",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/flows/{flowId}",
+                        "detail":  "",
+                        "duration":  0.006014347076416016,
+                        "name":  "auto_node_7",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/receivers",
+                        "detail":  "",
+                        "duration":  0.005069255828857422,
+                        "name":  "auto_node_8",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/receivers/{receiverId}",
+                        "detail":  "",
+                        "duration":  0.004787921905517578,
+                        "name":  "auto_node_9",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/self",
+                        "detail":  "",
+                        "duration":  0.006064176559448242,
+                        "name":  "auto_node_10",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/senders",
+                        "detail":  "Response schema validation error",
+                        "duration":  0.005104780197143555,
+                        "name":  "auto_node_11",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/senders/{senderId}",
+                        "detail":  "Error for {\u0027senderId\u0027: \u00272c47bf5e-1b2c-4abc-9def-deadbeef0005\u0027}: Response schema validation error",
+                        "duration":  0.0049855709075927734,
+                        "name":  "auto_node_12",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/sources",
+                        "detail":  "",
+                        "duration":  0.0058135986328125,
+                        "name":  "auto_node_13",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/sources/{sourceId}",
+                        "detail":  "",
+                        "duration":  0.004819393157958984,
+                        "name":  "auto_node_14",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0/6c01c773-e2b1-4b7c-9719-0ccbf5869b4a (Invalid Path)",
+                        "detail":  "",
+                        "duration":  0.0043294429779052734,
+                        "name":  "auto_node_15",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0 (Missing Authorization Header)",
+                        "detail":  "This test is only performed when an API supports Authorization and \u0027ENABLE_AUTH\u0027 is True",
+                        "duration":  2.9325485229492188E-05,
+                        "name":  "auto_node_16",
+                        "state":  "Test Disabled"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0 (Invalid Authorization Token)",
+                        "detail":  "This test is only performed when an API supports Authorization and \u0027ENABLE_AUTH\u0027 is True",
+                        "duration":  8.3446502685546875E-06,
+                        "name":  "auto_node_17",
+                        "state":  "Test Disabled"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0 (Expired Authorization Token)",
+                        "detail":  "This test is only performed when an API supports Authorization and \u0027ENABLE_AUTH\u0027 is True",
+                        "duration":  2.8133392333984375E-05,
+                        "name":  "auto_node_18",
+                        "state":  "Test Disabled"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0 (Incorrect Authorization Audience)",
+                        "detail":  "This test is only performed when an API supports Authorization and \u0027ENABLE_AUTH\u0027 is True",
+                        "duration":  5.340576171875E-05,
+                        "name":  "auto_node_19",
+                        "state":  "Test Disabled"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0 (Incorrect Authorization Scope)",
+                        "detail":  "This test is only performed when an API supports Authorization and \u0027ENABLE_AUTH\u0027 is True",
+                        "duration":  2.956390380859375E-05,
+                        "name":  "auto_node_20",
+                        "state":  "Test Disabled"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0 (Valid Authorization Scope)",
+                        "detail":  "This test is only performed when an API supports Authorization and \u0027ENABLE_AUTH\u0027 is True",
+                        "duration":  3.0994415283203125E-05,
+                        "name":  "auto_node_21",
+                        "state":  "Test Disabled"
+                    },
+                    {
+                        "description":  "GET /x-nmos/node/v1.0 (No Matching Public Keys)",
+                        "detail":  "This test is only performed when an API supports Authorization and \u0027ENABLE_AUTH\u0027 is True",
+                        "duration":  5.245208740234375E-06,
+                        "name":  "auto_node_22",
+                        "state":  "Test Disabled"
+                    },
+                    {
+                        "description":  "Node can discover network registration service via multicast DNS",
+                        "detail":  "Node did not attempt to register with the advertised registry.",
+                        "duration":  31.054321765899658,
+                        "name":  "test_01",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Node does not attempt to register with an unsuitable registry",
+                        "detail":  "Nodes running v1.0 do not check DNS-SD api_ver and api_proto TXT records",
+                        "duration":  1.9550323486328125E-05,
+                        "name":  "test_01_01",
+                        "state":  "Not Applicable"
+                    },
+                    {
+                        "description":  "Node can discover network registration service via unicast DNS",
+                        "detail":  "This test cannot be performed when ENABLE_DNS_SD is False or DNS_SD_MODE is not \u0027unicast\u0027",
+                        "duration":  1.5735626220703125E-05,
+                        "name":  "test_02",
+                        "state":  "Test Disabled"
+                    },
+                    {
+                        "description":  "Node does not attempt to register with an unsuitable registry",
+                        "detail":  "Nodes running v1.0 do not check DNS-SD api_ver and api_proto TXT records",
+                        "duration":  8.8214874267578125E-06,
+                        "name":  "test_02_01",
+                        "state":  "Not Applicable"
+                    },
+                    {
+                        "description":  "Registration API interactions use the correct headers",
+                        "detail":  "No registrations found",
+                        "duration":  7.3909759521484375E-06,
+                        "name":  "test_03",
+                        "state":  "Could Not Test"
+                    },
+                    {
+                        "description":  "Registration API interactions use the correct versioned path",
+                        "detail":  "No registrations found",
+                        "duration":  6.9141387939453125E-06,
+                        "name":  "test_03_01",
+                        "state":  "Could Not Test"
+                    },
+                    {
+                        "description":  "Node can register a valid Node resource with the network registration service,\nmatching its Node API self resource",
+                        "detail":  "Node 2c47bf5e-1b2c-4abc-9def-deadbeef0001 was not found in the registry.",
+                        "duration":  1.9073486328125E-05,
+                        "name":  "test_04",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Node maintains itself in the registry via periodic calls to the health resource",
+                        "detail":  "Not enough heartbeats were made in the time period.",
+                        "duration":  1.0251998901367188E-05,
+                        "name":  "test_05",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Node can register a valid Device resource with the network registration service, matching its\nNode API Device resource",
+                        "detail":  "Device 2c47bf5e-1b2c-4abc-9def-deadbeef0002 was not found in the registry.",
+                        "duration":  1.0967254638671875E-05,
+                        "name":  "test_07",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Registered Device was POSTed after a matching referenced Node",
+                        "detail":  "No Device resources were registered with the mock registry.",
+                        "duration":  1.3828277587890625E-05,
+                        "name":  "test_07_01",
+                        "state":  "Could Not Test"
+                    },
+                    {
+                        "description":  "Node can register a valid Source resource with the network\nregistration service, matching its Node API Source resource",
+                        "detail":  "Source 2c47bf5e-1b2c-4abc-9def-deadbeef0003 was not found in the registry.",
+                        "duration":  9.2983245849609375E-06,
+                        "name":  "test_08",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Registered Source was POSTed after a matching referenced Device",
+                        "detail":  "No Source resources were registered with the mock registry.",
+                        "duration":  1.33514404296875E-05,
+                        "name":  "test_08_01",
+                        "state":  "Could Not Test"
+                    },
+                    {
+                        "description":  "Node can register a valid Flow resource with the network\nregistration service, matching its Node API Flow resource",
+                        "detail":  "Flow 2c47bf5e-1b2c-4abc-9def-deadbeef0004 was not found in the registry.",
+                        "duration":  1.4066696166992188E-05,
+                        "name":  "test_09",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Registered Flow was POSTed after a matching referenced Device or Source",
+                        "detail":  "No Flow resources were registered with the mock registry.",
+                        "duration":  1.3589859008789063E-05,
+                        "name":  "test_09_01",
+                        "state":  "Could Not Test"
+                    },
+                    {
+                        "description":  "Node can register a valid Sender resource with the network\nregistration service, matching its Node API Sender resource",
+                        "detail":  "Sender 2c47bf5e-1b2c-4abc-9def-deadbeef0005 was not found in the registry.",
+                        "duration":  8.106231689453125E-06,
+                        "name":  "test_10",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Registered Sender was POSTed after a matching referenced Device",
+                        "detail":  "No Sender resources were registered with the mock registry.",
+                        "duration":  9.7751617431640625E-06,
+                        "name":  "test_10_01",
+                        "state":  "Could Not Test"
+                    },
+                    {
+                        "description":  "Node can register a valid Receiver resource with the network\nregistration service, matching its Node API Receiver resource",
+                        "detail":  "Receiver 2c47bf5e-1b2c-4abc-9def-deadbeef0006 was not found in the registry.",
+                        "duration":  8.8214874267578125E-06,
+                        "name":  "test_11",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Registered Receiver was POSTed after a matching referenced Device",
+                        "detail":  "No Receiver resources were registered with the mock registry.",
+                        "duration":  9.2983245849609375E-06,
+                        "name":  "test_11_01",
+                        "state":  "Could Not Test"
+                    },
+                    {
+                        "description":  "Node advertises a Node type mDNS announcement with no ver_* TXT records\nin the presence of a Registration API (v1.0, v1.1 and v1.2)",
+                        "detail":  "No matching mDNS announcement found for Node with IP/Port 172.19.0.3:18080. This will not affect operation in registered mode but may indicate a lack of support for peer to peer operation.",
+                        "duration":  33.91106057167053,
+                        "name":  "test_12",
+                        "state":  "Warning"
+                    },
+                    {
+                        "description":  "Node does not advertise a Node type mDNS announcement in the presence of a Registration API (v1.3+)",
+                        "detail":  "This test is disabled for Nodes \u003c v1.3",
+                        "duration":  2.6941299438476563E-05,
+                        "name":  "test_12_01",
+                        "state":  "Test Disabled"
+                    },
+                    {
+                        "description":  "PUTing to a Receiver target resource with a Sender resource payload is accepted\nand connects the Receiver to a stream",
+                        "detail":  "Receiver target PUT did not produce a 202 (or 501) response code: 400. Please ensure SDP_PREFERENCES match the node under test.",
+                        "duration":  0.8526005744934082,
+                        "name":  "test_13",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "PUTing to a Receiver target resource with an empty JSON object payload is accepted and\ndisconnects the Receiver from a stream",
+                        "detail":  "",
+                        "duration":  1.0103192329406738,
+                        "name":  "test_14",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Node correctly selects a Registration API based on advertised priorities",
+                        "detail":  "Node never made contact with registry 1 advertised on port 5103",
+                        "duration":  2.4318695068359375E-05,
+                        "name":  "test_15",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Node correctly fails over between advertised Registration APIs when one fails",
+                        "detail":  "Node never made contact with registry 1 advertised on port 5103",
+                        "duration":  1.049041748046875E-05,
+                        "name":  "test_16",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Node correctly handles Registration APIs whose connections time out",
+                        "detail":  "Node never made contact with registry 5 advertised on port 5106",
+                        "duration":  1.5974044799804688E-05,
+                        "name":  "test_16_01",
+                        "state":  "Warning"
+                    },
+                    {
+                        "description":  "All Node resources use different UUIDs",
+                        "detail":  "",
+                        "duration":  0.013576984405517578,
+                        "name":  "test_17",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "All Devices refer to their attached Senders and Receivers",
+                        "detail":  "",
+                        "duration":  0.005885124206542969,
+                        "name":  "test_17_01",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "All Node clocks are unique, and relate to any visible Sources\u0027 clocks",
+                        "detail":  "Clocks are not available until IS-04 v1.1",
+                        "duration":  1.7642974853515625E-05,
+                        "name":  "test_18",
+                        "state":  "Not Applicable"
+                    },
+                    {
+                        "description":  "All Node interfaces are unique, and relate to any visible Senders and Receivers\u0027 interface_bindings",
+                        "detail":  "Interfaces are not available until IS-04 v1.2",
+                        "duration":  1.2636184692382813E-05,
+                        "name":  "test_19",
+                        "state":  "Not Applicable"
+                    },
+                    {
+                        "description":  "All bound Node interfaces have attached_network_device info",
+                        "detail":  "Attached network device info is not available until IS-04 v1.3",
+                        "duration":  7.62939453125E-06,
+                        "name":  "test_19_01",
+                        "state":  "Not Applicable"
+                    },
+                    {
+                        "description":  "Node\u0027s resources correctly signal the current protocol and IP/hostname",
+                        "detail":  "",
+                        "duration":  0.004030942916870117,
+                        "name":  "test_20",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Sender manifests use the expected Content-Type",
+                        "detail":  "One or more of the tested Senders had null or empty \u0027manifest_href\u0027 or returned a 404 HTTP code. Please ensure all Senders are enabled and re-test.",
+                        "duration":  0.0018754005432128906,
+                        "name":  "test_20_01",
+                        "state":  "Could Not Test"
+                    },
+                    {
+                        "description":  "Node correctly interprets a 200 code from a registry upon initial registration",
+                        "detail":  "Node did not attempt to make contact with the registry",
+                        "duration":  36.82650375366211,
+                        "name":  "test_21",
+                        "state":  "Fail"
+                    },
+                    {
+                        "description":  "Node resource IDs persist over a reboot",
+                        "detail":  "This check must be performed manually, or via use of the following tool",
+                        "duration":  2.4557113647460938E-05,
+                        "name":  "test_22",
+                        "state":  "Manual"
+                    },
+                    {
+                        "description":  "Senders and Receivers correctly use BCP-002-01 grouping syntax",
+                        "detail":  "",
+                        "duration":  0.006542682647705078,
+                        "name":  "test_23",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Periodic Sources specify a \u0027grain_rate\u0027",
+                        "detail":  "",
+                        "duration":  0.003448486328125,
+                        "name":  "test_24",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Periodic Flows\u0027 \u0027grain_rate\u0027 is divisible by their parent Source \u0027grain_rate\u0027",
+                        "detail":  "",
+                        "duration":  0.00622248649597168,
+                        "name":  "test_24_01",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Receivers expose expected \u0027caps\u0027 for their API version",
+                        "detail":  "Capabilities are not used before API v1.1",
+                        "duration":  3.2186508178710938E-05,
+                        "name":  "test_25",
+                        "state":  "Not Applicable"
+                    },
+                    {
+                        "description":  "Source \u0027format\u0027 matches Flow \u0027format\u0027",
+                        "detail":  "",
+                        "duration":  0.005311489105224609,
+                        "name":  "test_26",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Node API implements BCP-004-01 Receiver Capabilities",
+                        "detail":  "",
+                        "duration":  0.03955674171447754,
+                        "name":  "test_27_1",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Receiver \u0027caps\u0027 version is valid",
+                        "detail":  "",
+                        "duration":  0.0022461414337158203,
+                        "name":  "test_27_2",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Receiver \u0027caps\u0027 parameter constraints should be listed in the Capabilities register",
+                        "detail":  "",
+                        "duration":  0.0021157264709472656,
+                        "name":  "test_27_3",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Node API implements BCP-004-01 Receiver Capabilities constraint set labels",
+                        "detail":  "",
+                        "duration":  0.0018618106842041016,
+                        "name":  "test_27_4",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Node API implements BCP-004-01 Receiver Capabilities constraint set preferences",
+                        "detail":  "",
+                        "duration":  0.0017833709716796875,
+                        "name":  "test_27_5",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Node API implements BCP-004-01 Receiver Capabilities enabled/disabled constraint sets",
+                        "detail":  "No BCP-004-01 \u0027constraint_sets\u0027 have enabled/disabled flags",
+                        "duration":  0.0021331310272216797,
+                        "name":  "test_27_6",
+                        "state":  "Not Implemented"
+                    },
+                    {
+                        "description":  "Receiver \u0027caps\u0027 parameter constraints should be used with the correct format",
+                        "detail":  "",
+                        "duration":  0.002516031265258789,
+                        "name":  "test_27_7",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Receiver \u0027caps\u0027 media type constraints should be used consistently",
+                        "detail":  "",
+                        "duration":  0.0023713111877441406,
+                        "name":  "test_27_8",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Node and Device resources correctly use BCP-002-02 distinguishing information",
+                        "detail":  "",
+                        "duration":  0.014966011047363281,
+                        "name":  "test_28",
+                        "state":  "Pass"
+                    },
+                    {
+                        "description":  "Test teardown",
+                        "detail":  "",
+                        "duration":  0.26428890228271484,
+                        "name":  "tear_down_tests",
+                        "state":  "Not Applicable"
+                    }
+                ],
+    "suite":  "IS-04-01",
+    "timestamp":  1777678612.0484853
+}
