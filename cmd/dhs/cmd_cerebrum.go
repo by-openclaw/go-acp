@@ -307,7 +307,7 @@ VERBS
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
-  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, or "GROUP.*" = every leaf under GROUP (a group subscribe only LISTS its children; change events come from leaf rows). Paths must be known — the wire refuses wildcards, so ".*" is expanded client-side by one obtain
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch; --raw keeps the per-frame wire view
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
@@ -1739,17 +1739,22 @@ func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device 
 		if part == "" {
 			continue
 		}
-		group, expand := strings.CutSuffix(part, ".*")
+		// Deep before shallow: "a.**" also ends in ".*".
+		group, deep := strings.CutSuffix(part, ".**")
+		expand := deep
+		if !deep {
+			group, expand = strings.CutSuffix(part, ".*")
+		}
 		if !expand {
 			out = append(out, part)
 			continue
 		}
-		leaves, err := cerebrumGroupLeaves(sess, timeout, device, byName, subDev, group)
+		leaves, err := cerebrumExpand(sess, timeout, device, byName, subDev, group, deep)
 		if err != nil {
 			return nil, fmt.Errorf("cerebrum-nb watch: expanding %q: %w", part, byNameHint(err, device, byName))
 		}
 		if len(leaves) == 0 {
-			return nil, fmt.Errorf("cerebrum-nb watch: %q expanded to no leaf objects — a group obtain lists child GROUPS as available=0; expand one level deeper, e.g. %q", part, group+".<child>.*")
+			return nil, fmt.Errorf("cerebrum-nb watch: %q expanded to nothing — check the group path against the device's Object Browser", part)
 		}
 		out = append(out, leaves...)
 	}
@@ -1759,14 +1764,8 @@ func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device 
 	return out, nil
 }
 
-// cerebrumGroupLeaves obtains one group and returns the paths of the
-// rows that carry a value.
-//
-// A §5.4.3 group obtain answers with BOTH kinds of row: child groups
-// come back available=0 with an empty value, leaves come back
-// available=1 with theirs. Only leaves can be subscribed, so the
-// available flag is the filter.
-func cerebrumGroupLeaves(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string) ([]string, error) {
+// cerebrumChildren obtains one group and returns its child rows.
+func cerebrumChildren(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string) ([]codec.DeviceObjectValue, error) {
 	dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: group}
 	if group == "" {
 		dc.ExplicitEmptyObject = true
@@ -1783,13 +1782,78 @@ func cerebrumGroupLeaves(sess *cerebrum.Session, timeout time.Duration, device s
 	if got == nil || got.Device == nil {
 		return nil, fmt.Errorf("no response within timeout")
 	}
-	var leaves []string
-	for _, ov := range got.Device.ObjectValues {
-		if ov.Available {
-			leaves = append(leaves, ov.Object)
+	return got.Device.ObjectValues, nil
+}
+
+// maxExpandDepth bounds "**". The deepest live NB tree seen is a node's
+// Interfaces/Devices at two levels; the cap is a guard against a cyclic
+// or pathological tree, not a real limit.
+const maxExpandDepth = 8
+
+// cerebrumExpand turns a group into the object list to subscribe.
+//
+// Shallow ("GROUP.*") takes the group's direct children. Deep
+// ("GROUP.**") descends into the children that are themselves groups.
+//
+// The subtlety is telling a group from a leaf. `available` does NOT do
+// it: a child group comes back available=0, but so does a leaf with no
+// current value — on a live NOC node `Last_Error` is exactly that, and
+// filtering on available dropped it, which is precisely the object
+// that says WHY a node is disconnected. So every child is subscribed
+// regardless, and for a deep expansion the available=0 rows are PROBED:
+// a group answers with rows for OTHER paths, a valueless leaf does
+// not. One obtain per candidate, and only for candidates.
+func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool) ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+
+	var walk func(g string, depth int) error
+	walk = func(g string, depth int) error {
+		kids, err := cerebrumChildren(sess, timeout, device, byName, subDev, g)
+		if err != nil {
+			return err
+		}
+		for _, ov := range kids {
+			if ov.Object == "" || ov.Object == g || seen[ov.Object] {
+				continue
+			}
+			// A row that already carries a value is a leaf; no probe
+			// can tell us anything more about it.
+			if !deep || ov.Available || depth >= maxExpandDepth {
+				seen[ov.Object] = true
+				out = append(out, ov.Object)
+				continue
+			}
+			// Candidate group. Ask it for children; anything that
+			// answers with OTHER paths is a group and is descended
+			// into, anything else is a valueless leaf and is kept.
+			sub, err := cerebrumChildren(sess, timeout, device, byName, subDev, ov.Object)
+			if err != nil || !hasOtherPaths(sub, ov.Object) {
+				seen[ov.Object] = true
+				out = append(out, ov.Object)
+				continue
+			}
+			if err := walk(ov.Object, depth+1); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := walk(group, 0); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// hasOtherPaths reports whether an obtain answered with rows for paths
+// other than the one asked for — the signature of a group.
+func hasOtherPaths(rows []codec.DeviceObjectValue, self string) bool {
+	for _, ov := range rows {
+		if ov.Object != "" && ov.Object != self {
+			return true
 		}
 	}
-	return leaves, nil
+	return false
 }
 
 // cerebrumSubscribeRows registers every row, batching first and
