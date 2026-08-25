@@ -878,7 +878,9 @@ func cerebrumDeviceDetails(_ context.Context, args []string) error {
 	fmt.Printf("device_type  %s\n", d.DeviceType)
 	if d.Details != nil {
 		if d.Details.Name != "" {
-			fmt.Printf("name         %s\n", d.Details.Name)
+			// This is the string --by-name has to match exactly, so it
+			// is shown with its padding, not as it happens to render.
+			fmt.Printf("name         %s\n", quoteIfPadded(d.Details.Name))
 		}
 		if d.Details.VendorType != "" {
 			fmt.Printf("vendor       %s\n", d.Details.VendorType)
@@ -968,7 +970,7 @@ func cerebrumDeviceValue(_ context.Context, args []string) error {
 	}
 	got, err := obtainSingleDeviceChange(sess, cf.timeout, dc, "VALUE")
 	if err != nil {
-		return err
+		return byNameHint(err, device, byName)
 	}
 	if got == nil || got.Device == nil {
 		fmt.Fprintln(os.Stderr, "(no DEVICE_CHANGE TYPE=VALUE response within timeout)")
@@ -1629,7 +1631,7 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
 			return nil // Ctrl+C during subscribe — clean exit, not an error
 		}
-		return fmt.Errorf("cerebrum-nb watch: subscribe %s: %w", dc.Type, err)
+		return fmt.Errorf("cerebrum-nb watch: subscribe %s: %w", dc.Type, byNameHint(err, device, byName))
 	}
 	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE TYPE=%s on %s — Ctrl+C to stop\n", dc.Type, device)
 	<-ctx.Done()
@@ -1743,6 +1745,60 @@ func summarise(items []string) string {
 func displayName(s string) string {
 	if s == "" {
 		return "-"
+	}
+	return quoteIfPadded(s)
+}
+
+// byNameHint adds the one explanation a by-name NACK never carries.
+//
+// The server refuses an unknown DEVICE_NAME with the same code it uses
+// for a bad object path, so the error says "the specified obtain failed
+// to complete" whether the caller got the object wrong or the name
+// wrong by one space. When the name was padded — or when the caller
+// copied a name that WASN'T padded from output that could not show the
+// difference — that is by far the likelier cause, and it is invisible.
+//
+// The hint is appended, never substituted: the wire's own words stay
+// first, because a hint that displaces the real error is worse than no
+// hint at all.
+func byNameHint(err error, device string, byName bool) error {
+	var nack *codec.NackError
+	if err == nil || !byName || !errors.As(err, &nack) {
+		return err
+	}
+	// Only the two codes that mean "I did not recognise what you
+	// addressed". A licence failure or a not-logged-in has nothing to
+	// do with the name, and a hint there is just noise.
+	if nack.ID != codec.NackOneOrMoreObtainsInvalid && nack.ID != codec.NackOneOrMoreEventsInvalid {
+		return err
+	}
+	if device != strings.TrimSpace(device) {
+		return fmt.Errorf("%w\n  hint: --device %q is padded; DEVICE_NAME matches byte-for-byte, so try %q, or address the device by IP",
+			err, device, strings.TrimSpace(device))
+	}
+	return fmt.Errorf("%w\n  hint: DEVICE_NAME matches byte-for-byte and some Cerebrum names carry trailing whitespace that terminals cannot show — re-check the name in `device-details` (padded names are printed quoted), or address the device by IP",
+		err)
+}
+
+// quoteIfPadded renders a DEVICE_NAME so that leading or trailing
+// whitespace is VISIBLE.
+//
+// --by-name matches the name byte-for-byte, padding included, and
+// Cerebrum pads some names and not others. Printed bare, the two are
+// indistinguishable, so the operator copies what they see, the obtain
+// NACKs 10, and nothing in the error points at a space. That cost a
+// live session an hour on 2026-08-25: every by-name call against
+// "Cerebrum NMOS NOC" failed while the identical call by IP worked,
+// and the difference was one trailing character the terminal could
+// not show.
+//
+// Only padded names are quoted. Quoting every name would add noise to
+// the common case and, worse, teach the reader that the quotes are
+// decoration — the point is that a quoted name means "this string has
+// edges you cannot see".
+func quoteIfPadded(s string) string {
+	if s != strings.TrimSpace(s) {
+		return strconv.Quote(s)
 	}
 	return s
 }

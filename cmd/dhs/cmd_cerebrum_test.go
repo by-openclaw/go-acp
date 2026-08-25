@@ -338,3 +338,81 @@ func TestRouteTargetFromFlags(t *testing.T) {
 		t.Fatalf("router IP target = %+v", byIP)
 	}
 }
+
+// TestNamePaddingIsVisible pins the fix for a live-session trap.
+//
+// --by-name matches DEVICE_NAME byte-for-byte and Cerebrum pads some
+// names and not others. Printed bare, "NOC" and "NOC " look identical,
+// so an operator copies what the terminal showed, the obtain NACKs 10,
+// and the error blames the obtain. On 2026-08-25 that cost an hour:
+// every by-name call against the NMOS NOC device failed while the same
+// call by IP succeeded, and the whole difference was one trailing
+// space.
+func TestNamePaddingIsVisible(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"trailing space is shown", "Cerebrum NMOS NOC ", `"Cerebrum NMOS NOC "`},
+		{"leading space is shown", " CONVERT", `" CONVERT"`},
+		{"tab is shown", "CONVERT\t", `"CONVERT\t"`},
+		// An unpadded name stays bare. Quoting every name would make
+		// the quotes decoration; the point is that quotes MEAN
+		// "this string has edges you cannot see".
+		{"unpadded stays bare", "Cerebrum NMOS NOC", "Cerebrum NMOS NOC"},
+		{"inner spaces are not padding", "bm-n-nncvt-001", "bm-n-nncvt-001"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := quoteIfPadded(tc.in); got != tc.want {
+				t.Errorf("quoteIfPadded(%q) = %s, want %s", tc.in, got, tc.want)
+			}
+		})
+	}
+	// displayName keeps its empty-string dash and gains the same
+	// visibility for padded values.
+	if got := displayName(""); got != "-" {
+		t.Errorf(`displayName("") = %q, want "-"`, got)
+	}
+	if got := displayName("NOC "); got != `"NOC "` {
+		t.Errorf(`displayName("NOC ") = %s, want quoted`, got)
+	}
+}
+
+// TestByNameHintNamesTheSuspect: the server refuses an unknown
+// DEVICE_NAME with the same code it uses for a bad object path, so the
+// hint is the only thing that points at whitespace.
+func TestByNameHintNamesTheSuspect(t *testing.T) {
+	nack := &codec.NackError{ID: codec.NackOneOrMoreObtainsInvalid}
+
+	// Padded name: say so, and say what to try.
+	got := byNameHint(nack, "Cerebrum NMOS NOC ", true)
+	if !strings.Contains(got.Error(), "padded") || !strings.Contains(got.Error(), `"Cerebrum NMOS NOC"`) {
+		t.Errorf("padded-name hint should name the trimmed form, got %q", got)
+	}
+	// The wire's own words must survive - a hint that displaces the
+	// real error is worse than no hint.
+	if !strings.Contains(got.Error(), "nack") {
+		t.Errorf("hint replaced the underlying error: %q", got)
+	}
+
+	// Unpadded name: still hint, because the name the operator copied
+	// may have been padded at the source.
+	got = byNameHint(nack, "Cerebrum NMOS NOC", true)
+	if !strings.Contains(got.Error(), "byte-for-byte") {
+		t.Errorf("unpadded by-name hint missing: %q", got)
+	}
+
+	// By IP: the name is not in play, so no hint.
+	if got := byNameHint(nack, "10.44.55.56", false); got != error(nack) {
+		t.Errorf("by-IP should pass the error through unchanged, got %q", got)
+	}
+	// A different NACK is not a naming problem.
+	other := &codec.NackError{ID: codec.NackNoLicenceAvailable}
+	if got := byNameHint(other, "NOC ", true); got != error(other) {
+		t.Errorf("unrelated NACK should pass through unchanged, got %q", got)
+	}
+	if byNameHint(nil, "NOC ", true) != nil {
+		t.Error("nil error must stay nil")
+	}
+}
