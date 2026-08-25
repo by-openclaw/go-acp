@@ -604,3 +604,34 @@ func TestConstraintsSurviveToTheWatch(t *testing.T) {
 		t.Errorf("enum should win over range, got %q", got)
 	}
 }
+// TestKeepOnlyNarrowsAnExpansion: an expansion answers "what is under
+// here"; --only answers "which of those do I care about". Without it
+// "Nodes.*" on a live NOC is 68 nodes x ~16 fields and the values
+// anyone actually watches are lost in the flood.
+func TestKeepOnlyNarrowsAnExpansion(t *testing.T) {
+	objs := []string{
+		"Nodes.[a].SubID", "Nodes.[a].Connected", "Nodes.[a].Description",
+		"Nodes.[b].SubID", "Nodes.[b].Connected", "Nodes.[b].Description",
+	}
+	got, err := keepOnly(objs, "SubID,Connected")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 4 {
+		t.Errorf("want 4 rows, got %d: %v", len(got), got)
+	}
+	// Case-insensitive: the name in the operator's head is "subid",
+	// not the casing of a path they never typed.
+	if got, err := keepOnly(objs, " subid "); err != nil || len(got) != 2 {
+		t.Errorf("case/space-insensitive match failed: %v %v", got, err)
+	}
+	// Empty filter is a no-op, not an empty result.
+	if got, _ := keepOnly(objs, ""); len(got) != len(objs) {
+		t.Errorf("empty --only should pass everything through, got %d", len(got))
+	}
+	// A filter that matches nothing is an error, not a silent empty
+	// watch that never fires.
+	if _, err := keepOnly(objs, "Nope"); err == nil {
+		t.Error("a filter matching nothing must be refused")
+	}
+}
