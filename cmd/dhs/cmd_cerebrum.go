@@ -307,7 +307,7 @@ VERBS
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
-  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch (object path must be known — wildcards refused, live-verified)
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
@@ -1378,6 +1378,21 @@ func extractStringFlag(args []string, name string) (string, []string, error) {
 	return val, rest, nil
 }
 
+// extractBoolFlag is the presence-only sibling of extractStringFlag,
+// for verb-local switches that never take a value.
+func extractBoolFlag(args []string, name string) (bool, []string, error) {
+	rest := make([]string, 0, len(args))
+	found := false
+	for _, a := range args {
+		if a == name {
+			found = true
+			continue
+		}
+		rest = append(rest, a)
+	}
+	return found, rest, nil
+}
+
 // extractDeviceDetailsFlags splits the device-details argv into the
 // verb-specific flags (--device, --by-name) and the remainder consumed
 // by connectAndLogin. We don't extend cerebrumFlags because these
@@ -1574,6 +1589,42 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	// --raw keeps the pre-parity per-frame rendering: every wire
+	// attribute, one block per frame. The table drops frame-level
+	// attrs (name/ip/sub repeat identically on every row of a single
+	// watch), so anything diagnosing the WIRE rather than the DEVICE
+	// still needs the old view.
+	rawView, rest, err := extractBoolFlag(rest, "--raw")
+	if err != nil {
+		return err
+	}
+	// --label narrows a watch to named objects. Without it, "Nodes.*"
+	// on a live NOC reports every field of all 68 nodes and the one
+	// value anyone is waiting on is lost in it.
+	//
+	// The name is not chosen here: --label is what the GENERIC watch
+	// calls this filter, next to --group / --id / --path / --slot, and
+	// that verb is shared by acp1, acp2, emberplus, probel, tsl and
+	// osc. cerebrum-nb inventing its own word for the same idea is the
+	// same class of drift as it having its own output format was.
+	//
+	// It differs in one way, deliberately: this takes a comma list
+	// where the generic one takes a single label. A list is a superset
+	// — one name still works — and the generic flag should grow the
+	// same, which is a change across every plugin's matcher rather
+	// than a rename.
+	only, rest, err := extractStringFlag(rest, "--label")
+	if err != nil {
+		return err
+	}
+	// --initial prints the value every subscription answers with.
+	// Off by default: a watch reports CHANGES. Use export for a
+	// snapshot — it walks the tree and writes a file.
+	showInitial, rest, err := extractBoolFlag(rest, "--initial")
+	if err != nil {
+		return err
+	}
+	onlyLeaves := parseOnly(only)
 	if device == "" {
 		return cerebrumValErr("watch", "--device IP|NAME is required")
 	}
@@ -1596,26 +1647,80 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 
-	dc := &codec.DeviceChange{}
-	if subDev != "" {
-		dc.Type = "VALUE"
-		dc.SubDevice = subDev
-		dc.Object = object
-		if byName {
-			dc.DeviceName = device
+	newRow := func(obj string) *codec.DeviceChange {
+		dc := &codec.DeviceChange{}
+		if subDev != "" {
+			dc.Type = "VALUE"
+			dc.SubDevice = subDev
+			dc.Object = obj
+			if byName {
+				dc.DeviceName = device
+			} else {
+				dc.IPAddress = device
+			}
 		} else {
+			// DETAILS addressing is IP-only (by-name NACKs — spec-conform).
+			dc.Type = "DETAILS"
 			dc.IPAddress = device
+			if deviceType == "" {
+				deviceType = "DEVICE"
+			}
 		}
-	} else {
-		// DETAILS addressing is IP-only (by-name NACKs — spec-conform).
-		dc.Type = "DETAILS"
-		dc.IPAddress = device
-		if deviceType == "" {
-			deviceType = "DEVICE"
+		if deviceType != "" {
+			dc.DeviceType = codec.DeviceType(strings.ToUpper(deviceType))
+		}
+		return dc
+	}
+
+	// Resolve the object list BEFORE subscribing, so an expansion that
+	// finds nothing fails loudly instead of quietly watching one row.
+	objects := []string{object}
+	if subDev != "" {
+		objects, err = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object, only)
+		if err != nil {
+			return err
 		}
 	}
-	if deviceType != "" {
-		dc.DeviceType = codec.DeviceType(strings.ToUpper(deviceType))
+
+	// A VALUE watch is Tree/DM data, so it renders in the Tree/DM
+	// layout — the same columns `dhs watch` gives acp1/acp2. DETAILS is
+	// connection state, a different shape, and keeps its own form.
+	dmView := subDev != "" && !rawView
+	// The header is emitted by the first row, not after subscribing:
+	// a subscription answers with the object's CURRENT value, so rows
+	// start arriving while Subscribe is still returning and a header
+	// printed afterwards lands below its own table. Deferring it to
+	// first use also means a watch that subscribes nothing prints no
+	// header for an empty table.
+	var header sync.Once
+	// A watch reports CHANGES.
+	//
+	// A Cerebrum SUBSCRIBE answers with the object's CURRENT value, so
+	// every subscription emits one row before anything has happened.
+	// On a single object that reads as a useful baseline; across an
+	// expanded list it is a full state dump — subscribing 68 nodes
+	// printed 1,088 rows of unchanged data and buried the events the
+	// watch existed to show. Worse, the server RE-ASSERTS values that
+	// have not changed, so even a settled tree keeps printing.
+	//
+	// So: remember the last value per object and print only when it
+	// differs. --initial prints the baseline; export is what produces
+	// a snapshot.
+	seenValue := map[string]string{}
+	var seenMu sync.Mutex
+	changed := func(ov codec.DeviceObjectValue) bool {
+		v := ov.Value
+		if !ov.Available {
+			v = "\x00unavailable"
+		}
+		seenMu.Lock()
+		defer seenMu.Unlock()
+		prev, known := seenValue[ov.Object]
+		seenValue[ov.Object] = v
+		if !known {
+			return showInitial
+		}
+		return prev != v
 	}
 
 	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
@@ -1625,18 +1730,313 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		case f.Kind == codec.KindAck:
 			return // transaction plumbing, not an event
 		}
+		if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
+			now := time.Now()
+			for _, ov := range f.Device.ObjectValues {
+				// --only filters what is PRINTED as well as what is
+				// subscribed. It has to: a group subscription is
+				// indivisible — "Nodes.*" registers 68 node groups and
+				// each one reports every field of its node — so the
+				// subscription list cannot express "SubID only", and
+				// filtering the rows is the only place that can.
+				if !wantLeaf(onlyLeaves, ov.Object) {
+					continue
+				}
+				if !changed(ov) {
+					continue
+				}
+				header.Do(cerebrumDMHeader)
+				cerebrumDMRow(now, ov)
+			}
+			return
+		}
 		printEventLabeled(f, nil)
 	})
-	if err := sess.Subscribe(ctx, []codec.SubItem{dc}); err != nil {
-		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
-			return nil // Ctrl+C during subscribe — clean exit, not an error
-		}
-		return fmt.Errorf("cerebrum-nb watch: subscribe %s: %w", dc.Type, byNameHint(err, device, byName))
+
+	// One row per object. NACK 9 is ONE_OR_MORE_EVENTS_INVALID — a
+	// batch fails WHOLESALE if any row is bad, and then names none of
+	// them. So a failed batch is retried row by row: the cost falls on
+	// the run that already has a problem, and the operator learns which
+	// path was refused instead of being told the batch was.
+	rows := make([]codec.SubItem, 0, len(objects))
+	for _, o := range objects {
+		rows = append(rows, newRow(o))
 	}
-	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE TYPE=%s on %s — Ctrl+C to stop\n", dc.Type, device)
+	okRows, bad, err := cerebrumSubscribeRows(ctx, sess, rows, objects, device, byName)
+	if err != nil {
+		return err
+	}
+	if okRows == 0 {
+		return fmt.Errorf("cerebrum-nb watch: no object could be subscribed (%d refused)", len(bad))
+	}
+	for _, b := range bad {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb watch: REFUSED %s\n", b)
+	}
+
+	what := "TYPE=" + rows[0].(*codec.DeviceChange).Type
+	if okRows > 1 {
+		what = fmt.Sprintf("%s on %d object(s)", what, okRows)
+	}
+	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE %s on %s — Ctrl+C to stop\n", what, device)
 	<-ctx.Done()
 	fmt.Fprintln(os.Stderr, "watch stopped.")
 	return nil
+}
+
+// cerebrumWatchObjects turns the --object argument into the concrete
+// list of paths to subscribe.
+//
+//	"a"          one path, as before
+//	"a;b;c"      an explicit list — same ';' grammar --path already uses
+//	             in export/extract
+//	"GROUP.*"    every LEAF under GROUP, discovered by one obtain
+//
+// The expansion exists because a group SUBSCRIBE does not watch its
+// children. Subscribing to "Nodes" on a live NOC returns the 68 child
+// handles as available=0 rows and then delivers nothing when a child
+// changes (live-verified 2026-08-26) — the listing is the whole
+// response, not a recursive registration. Change events come from leaf
+// rows only, so watching a subtree means enumerating it first and
+// subscribing to each leaf.
+func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object, only string) ([]string, error) {
+	want := parseOnly(only)
+	var out []string
+	for _, part := range strings.Split(object, ";") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		// Deep before shallow: "a.**" also ends in ".*".
+		group, deep := strings.CutSuffix(part, ".**")
+		expand := deep
+		if !deep {
+			group, expand = strings.CutSuffix(part, ".*")
+		}
+		if !expand {
+			out = append(out, part)
+			continue
+		}
+		leaves, err := cerebrumExpand(sess, timeout, device, byName, subDev, group, deep, want)
+		if err != nil {
+			return nil, fmt.Errorf("cerebrum-nb watch: expanding %q: %w", part, byNameHint(err, device, byName))
+		}
+		if len(leaves) == 0 {
+			return nil, fmt.Errorf("cerebrum-nb watch: %q expanded to nothing — check the group path against the device's Object Browser", part)
+		}
+		out = append(out, leaves...)
+	}
+	if len(out) == 0 {
+		return nil, cerebrumValErr("watch", "--object resolved to nothing")
+	}
+	return out, nil
+}
+
+// keepOnly narrows an expanded object list to the named LEAVES.
+//
+// An expansion answers "which objects are under here"; --only answers
+// "which of them do I care about". They compose: "Nodes.*" with
+// --only "SubID,Connected" is 68 rows of the two fields that matter
+// instead of 1,088 rows containing them.
+//
+// Matching is on the last path segment and case-insensitive, because
+// the name in the operator's head is "subid", not the exact casing of
+// a path they never typed.
+func parseOnly(only string) map[string]bool {
+	if strings.TrimSpace(only) == "" {
+		return nil
+	}
+	want := map[string]bool{}
+	for _, w := range strings.Split(only, ",") {
+		if w = strings.TrimSpace(w); w != "" {
+			want[strings.ToLower(w)] = true
+		}
+	}
+	if len(want) == 0 {
+		return nil
+	}
+	return want
+}
+
+// wantLeaf reports whether an expanded path should be kept.
+//
+// The filter is applied DURING the walk, not after it. Applied after,
+// "Nodes.** --only SubID" builds the whole tree first and trips the
+// object cap before it ever reaches the filter — which is exactly the
+// combination needed to watch one field across a plant.
+//
+// Matching is on the last path segment and case-insensitive: the name
+// in the operator's head is "subid", not the casing of a path they
+// never typed.
+func wantLeaf(want map[string]bool, path string) bool {
+	if want == nil {
+		return true
+	}
+	leaf := path
+	if i := strings.LastIndex(path, "."); i >= 0 {
+		leaf = path[i+1:]
+	}
+	return want[strings.ToLower(leaf)]
+}
+
+// cerebrumChildren obtains one group and returns its child rows.
+func cerebrumChildren(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string) ([]codec.DeviceObjectValue, error) {
+	dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: group}
+	if group == "" {
+		dc.ExplicitEmptyObject = true
+	}
+	if byName {
+		dc.DeviceName = device
+	} else {
+		dc.IPAddress = device
+	}
+	got, err := obtainSingleDeviceChange(sess, timeout, dc, "VALUE")
+	if err != nil {
+		return nil, err
+	}
+	if got == nil || got.Device == nil {
+		return nil, fmt.Errorf("no response within timeout")
+	}
+	return got.Device.ObjectValues, nil
+}
+
+// maxExpandDepth bounds "**". The deepest live NB tree seen is a node's
+// Interfaces/Devices at two levels; the cap is a guard against a cyclic
+// or pathological tree, not a real limit.
+const maxExpandDepth = 8
+
+// maxExpandObjects bounds what one expansion may subscribe.
+//
+// A deep walk probes every child, so "Nodes.**" on a live NOC is 68
+// nodes x ~16 fields, then into Interfaces and Devices, then into each
+// device's Senders/Receivers/Sources — tens of thousands of obtains
+// against a production control system, from one careless command.
+//
+// The cap refuses rather than truncating: a silently-shortened watch
+// is a watch that misses the event you were waiting for.
+const maxExpandObjects = 2000
+
+// cerebrumExpand turns a group into the object list to subscribe.
+//
+// Shallow ("GROUP.*") takes the group's direct children. Deep
+// ("GROUP.**") descends into the children that are themselves groups.
+//
+// The subtlety is telling a group from a leaf. `available` does NOT do
+// it: a child group comes back available=0, but so does a leaf with no
+// current value — on a live NOC node `Last_Error` is exactly that, and
+// filtering on available dropped it, which is precisely the object
+// that says WHY a node is disconnected. So every child is subscribed
+// regardless, and for a deep expansion the available=0 rows are PROBED:
+// a group answers with rows for OTHER paths, a valueless leaf does
+// not. One obtain per candidate, and only for candidates.
+func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool, want map[string]bool) ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+
+	var walk func(g string, depth int) error
+	walk = func(g string, depth int) error {
+		if len(out) > maxExpandObjects {
+			return fmt.Errorf("expansion exceeded %d objects at %q — narrow the path (one node rather than Nodes) or use .* instead of .**", maxExpandObjects, g)
+		}
+		kids, err := cerebrumChildren(sess, timeout, device, byName, subDev, g)
+		if err != nil {
+			return err
+		}
+		for _, ov := range kids {
+			if ov.Object == "" || ov.Object == g || seen[ov.Object] {
+				continue
+			}
+			if !deep || depth >= maxExpandDepth {
+				seen[ov.Object] = true
+				out = append(out, ov.Object)
+				continue
+			}
+			// Every child is probed on a deep walk, including the ones
+			// that already carry a value.
+			//
+			// Carrying a value does NOT mean being a leaf here.
+			// Interfaces answers with "en8,en12" AND has [en8]/[en12]
+			// beneath it, each holding Chassis_ID and Port_ID; Devices
+			// does the same with its UUID list. Skipping value-carrying
+			// rows stopped the descent exactly at the two nodes worth
+			// descending into.
+			//
+			// A value-carrying group is kept as well as descended into
+			// — the summary string is real data, not a placeholder for
+			// the children.
+			if ov.Available {
+				seen[ov.Object] = true
+				out = append(out, ov.Object)
+			}
+			// Candidate group. Ask it for children; anything that
+			// answers with OTHER paths is a group and is descended
+			// into, anything else is a valueless leaf and is kept.
+			sub, err := cerebrumChildren(sess, timeout, device, byName, subDev, ov.Object)
+			if err != nil || !hasOtherPaths(sub, ov.Object) {
+				seen[ov.Object] = true
+				out = append(out, ov.Object)
+				continue
+			}
+			if err := walk(ov.Object, depth+1); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := walk(group, 0); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// hasOtherPaths reports whether an obtain answered with rows for paths
+// other than the one asked for — the signature of a group.
+func hasOtherPaths(rows []codec.DeviceObjectValue, self string) bool {
+	for _, ov := range rows {
+		if ov.Object != "" && ov.Object != self {
+			return true
+		}
+	}
+	return false
+}
+
+// cerebrumSubscribeRows registers every row, batching first and
+// falling back to one-at-a-time only when the batch is refused.
+//
+// Returns how many rows the server accepted and a description of each
+// one it did not.
+func cerebrumSubscribeRows(ctx context.Context, sess *cerebrum.Session, rows []codec.SubItem, labels []string, device string, byName bool) (int, []string, error) {
+	if len(rows) == 1 {
+		if err := sess.Subscribe(ctx, rows); err != nil {
+			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return 0, nil, nil
+			}
+			return 0, nil, fmt.Errorf("cerebrum-nb watch: subscribe: %w", byNameHint(err, device, byName))
+		}
+		return 1, nil, nil
+	}
+
+	if err := sess.Subscribe(ctx, rows); err == nil {
+		return len(rows), nil, nil
+	} else if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+		return 0, nil, nil
+	}
+
+	// The batch was refused as a whole. Find out which rows the server
+	// actually objects to rather than reporting all of them as bad.
+	fmt.Fprintf(os.Stderr, "cerebrum-nb watch: batch of %d refused — retrying row by row to find the offender(s)\n", len(rows))
+	ok := 0
+	var bad []string
+	for i, row := range rows {
+		if err := sess.Subscribe(ctx, []codec.SubItem{row}); err != nil {
+			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return ok, bad, nil
+			}
+			bad = append(bad, fmt.Sprintf("%s: %v", labels[i], err))
+			continue
+		}
+		ok++
+	}
+	return ok, bad, nil
 }
 
 // printEventLabeled renders one dispatched frame; srcNames (optional) joins
@@ -1727,6 +2127,150 @@ func printEventLabeled(f *codec.Frame, srcNames map[string]string) {
 	default:
 		fmt.Printf("[%s] %s\n", f.Kind, f.Root.String())
 	}
+}
+
+// cerebrumDMHeader prints the Tree/DM watch header — the SAME columns
+// `dhs watch` uses for acp1/acp2, so a device watched over NB reads
+// like the same device watched natively.
+//
+// One grammar everywhere is the whole point of the Tree/DM template
+// (docs/protocols/verbs.md §12b): an operator comparing a CONVERT over
+// acp2 against the same card over Cerebrum should be diffing values,
+// not re-learning a layout.
+func cerebrumDMHeader() {
+	const head = "%-8s  %-52s  %-16s  %-3s  %-7s  value\n"
+	line := fmt.Sprintf(head, "time", "path", "label", "acc", "type")
+	fmt.Print(line)
+	// The rule spans the HEADER, not an arbitrary width: a fixed 118
+	// on a 101-character header draws a line past the last column,
+	// which is exactly the kind of detail that makes output look
+	// unconsidered.
+	fmt.Println(strings.Repeat("-", len(strings.TrimRight(line, "\n"))))
+}
+
+// cerebrumDMRow renders one object value in that layout.
+//
+// `label` is the last path segment, which is what the object is called
+// — the full path already occupies its own column, and repeating it
+// is what made the previous two-line form unreadable at 15 objects.
+//
+// A row the device reports available=0 is a CHILD GROUP, not a value:
+// group listings arrive inside a VALUE response and would otherwise
+// render as an object with an empty value, which reads as "this
+// object is empty" rather than "this is a folder".
+func cerebrumDMRow(ts time.Time, ov codec.DeviceObjectValue) {
+	label := ov.Label
+	if label == "" {
+		if i := strings.LastIndex(ov.Object, "."); i >= 0 {
+			label = ov.Object[i+1:]
+		} else {
+			label = ov.Object
+		}
+	}
+	if !ov.Available {
+		// available=0 means the row carries no value. That is TWO
+		// different things and the flag does not separate them: a child
+		// GROUP, and a leaf whose value is currently absent.
+		//
+		// Live evidence for the only signal that does separate them:
+		// every collection child Cerebrum emits is BRACKETED —
+		// Interfaces.[eno1], Devices.[uuid], Nodes.[uuid] — while
+		// valueless leaves are not: Last_Error on a live node,
+		// Connected/Host/UUID/Versions on a node that never connected.
+		// Calling those "group <children>" told the operator a status
+		// field was a folder.
+		//
+		// It is a naming heuristic, so it only decides the LABEL. When
+		// it is wrong the row still reads as "no value", which is true
+		// either way.
+		kind, val := "no-value", "—"
+		if isBracketed(label) {
+			kind, val = "group", "<children>"
+		}
+		fmt.Printf("%s  %-52s  %-16s  %-3s  %-7s  %s\n",
+			ts.Format("15:04:05"), truncatePath(ov.Object, 52), truncate(label, 16),
+			cerebrumAccess(ov), kind, val)
+		return
+	}
+	val := ov.Value
+	if ov.Units != "" {
+		val += " " + ov.Units
+	}
+	if c := cerebrumConstraint(ov); c != "" {
+		val += "  " + c
+	}
+	fmt.Printf("%s  %-52s  %-16s  %-3s  %-7s  %s\n",
+		ts.Format("15:04:05"), truncatePath(ov.Object, 52), truncate(label, 16),
+		cerebrumAccess(ov), strings.ToLower(ov.DataType), val)
+}
+
+// cerebrumConstraint renders what a value is ALLOWED to be — the enum
+// list, or the numeric range.
+//
+// The wire carries these on the same row as the value (§5.4.3
+// MIN/MAX/STEP, ENUM_LIST) and the DM store keeps them, but the watch
+// was throwing them away. They are the difference between reading a
+// device and being able to set it: "Send SDP Always" tells you nothing
+// about what else you could write there.
+//
+// A degenerate MIN==MAX carries no information — live ENUM rows report
+// 0..0, their real constraint being the enum list — so it is dropped,
+// the same rule CanonicalDeviceObject applies when building the DM.
+func cerebrumConstraint(ov codec.DeviceObjectValue) string {
+	if len(ov.EnumList) > 0 {
+		return "{" + strings.Join(ov.EnumList, "|") + "}"
+	}
+	if ov.Min == "" && ov.Max == "" {
+		return ""
+	}
+	if ov.Min == ov.Max {
+		return ""
+	}
+	r := "[" + ov.Min + ".." + ov.Max
+	if ov.Step != "" && ov.Step != "0" {
+		r += " step " + ov.Step
+	}
+	return r + "]"
+}
+
+// isBracketed reports whether a path segment is a Cerebrum collection
+// member — "[eno1]", "[<uuid>]". Members of a collection are bracketed;
+// named fields are not.
+func isBracketed(seg string) bool {
+	return strings.HasPrefix(seg, "[") && strings.HasSuffix(seg, "]")
+}
+
+// cerebrumAccess renders the R/W bits in the same three-character shape
+// `dhs watch` prints for acp1/acp2, so the column means one thing
+// across protocols.
+func cerebrumAccess(ov codec.DeviceObjectValue) string {
+	r, w := "-", "-"
+	if ov.Readable {
+		r = "R"
+	}
+	if ov.Writable {
+		w = "W"
+	}
+	return r + w + "-"
+}
+
+// truncatePath shortens from the MIDDLE, keeping both ends.
+//
+// A Cerebrum object path is front-loaded with a group and a bracketed
+// UUID, so head-truncation (what truncate does) leaves 52 characters of
+// identical prefix on every row and hides the one segment that differs.
+// The tail is the object name; the head is the group. Both matter.
+func truncatePath(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	if n < 5 {
+		return s[:n]
+	}
+	keep := n - 1 // room for the ellipsis
+	head := keep / 3
+	tail := keep - head
+	return s[:head] + "…" + s[len(s)-tail:]
 }
 
 // summarise renders the first 3 entries of a list inline; longer lists

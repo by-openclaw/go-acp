@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"io"
+	"os"
+	"time"
 	"strings"
 	"testing"
 
@@ -414,5 +417,271 @@ func TestByNameHintNamesTheSuspect(t *testing.T) {
 	}
 	if byNameHint(nil, "NOC ", true) != nil {
 		t.Error("nil error must stay nil")
+	}
+}
+// TestWatchObjectListGrammar: --object accepts one path, a
+// ';'-separated list (the same grammar --path already uses in
+// export/extract), or "GROUP.*" for every leaf under a group.
+//
+// Only the non-expanding forms are exercised here; ".*" needs a live
+// obtain and is covered by the consumer package's fake-WS tests.
+func TestWatchObjectListGrammar(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{"single path", "Nodes.[u].SubID", []string{"Nodes.[u].SubID"}},
+		{"list", "Nodes.[u].SubID;Nodes.[u].Connected", []string{"Nodes.[u].SubID", "Nodes.[u].Connected"}},
+		{"whitespace around separators is ignored", " a ; b ", []string{"a", "b"}},
+		{"empty entries are dropped", "a;;b;", []string{"a", "b"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", tc.in, "")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Errorf("got %v, want %v", got, tc.want)
+					break
+				}
+			}
+		})
+	}
+	// A list of nothing is a usage error, not an empty subscription.
+	if _, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", " ; ; ", ""); err == nil {
+		t.Error("an all-empty --object should be refused")
+	}
+}
+// TestCerebrumDMRowMatchesGenericWatch pins the Tree/DM layout so an
+// NB watch reads like `dhs watch` on acp1/acp2. One grammar everywhere
+// is the point of the Tree/DM template (docs/protocols/verbs.md 12b);
+// an operator comparing a CONVERT over acp2 against the same card over
+// Cerebrum should be diffing VALUES, not re-learning a layout.
+func TestCerebrumDMRowMatchesGenericWatch(t *testing.T) {
+	ts := time.Date(2026, 8, 26, 1, 2, 3, 0, time.UTC)
+	capture := func(fn func()) string {
+		old := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		fn()
+		_ = w.Close()
+		os.Stdout = old
+		var sb strings.Builder
+		_, _ = io.Copy(&sb, r)
+		return sb.String()
+	}
+
+	// A readable value carries its access bits and type.
+	got := capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{
+			Object: "Nodes.[abc].SubID", Value: "1000",
+			Available: true, Readable: true, Writable: true, DataType: "INTEGER",
+		})
+	})
+	for _, want := range []string{"01:02:03", "SubID", "RW-", "integer", "1000"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("row missing %q:\n%s", want, got)
+		}
+	}
+
+	// available=0 is a CHILD GROUP arriving inside a VALUE response,
+	// not an object with an empty value — rendering it as the latter
+	// reads as "this object is empty" instead of "this is a folder".
+	got = capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{Object: "Nodes.[abc].Interfaces.[eno1]"})
+	})
+	if !strings.Contains(got, "group") || !strings.Contains(got, "<children>") {
+		t.Errorf("a BRACKETED collection member is a group row:\n%s", got)
+	}
+
+	// ...but an UNBRACKETED valueless leaf is NOT a folder. Connected
+	// on a node that never connected, and Last_Error on a live one,
+	// both arrive available=0; calling them "group <children>" told
+	// the operator a status field was a directory.
+	got = capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{Object: "Nodes.[abc].Connected", Readable: true})
+	})
+	if strings.Contains(got, "group") {
+		t.Errorf("a valueless named field must not render as a group:\n%s", got)
+	}
+	if !strings.Contains(got, "no-value") {
+		t.Errorf("a valueless leaf should say so:\n%s", got)
+	}
+
+	// Units ride with the value, as in the generic watch.
+	got = capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{
+			Object: "a.Delay", Value: "5.0", Available: true, Readable: true, Units: "ms",
+		})
+	})
+	if !strings.Contains(got, "5.0 ms") {
+		t.Errorf("units should follow the value:\n%s", got)
+	}
+}
+
+// TestTruncatePathKeepsBothEnds: Cerebrum paths are front-loaded with a
+// group and a bracketed UUID, so head-truncation leaves every row with
+// an identical 52-character prefix and hides the segment that differs.
+func TestTruncatePathKeepsBothEnds(t *testing.T) {
+	long := "Nodes.[ab469b7c-0100-1000-a000-3ceceffd5b65].SDP_Resend_Mode"
+	got := truncatePath(long, 40)
+	if len([]rune(got)) != 40 {
+		t.Errorf("truncatePath returned %d runes, want 40: %q", len([]rune(got)), got)
+	}
+	if !strings.HasPrefix(got, "Nodes.") {
+		t.Errorf("head lost: %q", got)
+	}
+	if !strings.HasSuffix(got, "SDP_Resend_Mode") {
+		t.Errorf("tail lost — the tail IS the object name: %q", got)
+	}
+	// Short enough already: untouched.
+	if got := truncatePath("a.b", 40); got != "a.b" {
+		t.Errorf("short path was modified: %q", got)
+	}
+}
+// TestExpandKeepsValuelessLeaves pins the bug that dropped Last_Error.
+//
+// A group obtain answers with available=0 for a child GROUP and also
+// for a leaf that has no value right now. Filtering on `available`
+// therefore silently dropped Last_Error - the one object on an NMOS
+// node that says WHY it is disconnected - and made "Nodes.*" expand to
+// nothing at all, because all 68 node children are available=0.
+//
+// So availability is never the group/leaf test: every child is kept,
+// and a deep expansion PROBES the valueless ones instead of guessing.
+func TestHasOtherPathsIsTheGroupTest(t *testing.T) {
+	self := "Nodes.[abc].Interfaces"
+	// A group answers with rows for OTHER paths.
+	group := []codec.DeviceObjectValue{
+		{Object: self + ".[eno1]"},
+		{Object: self + ".[eno2]"},
+	}
+	if !hasOtherPaths(group, self) {
+		t.Error("rows for other paths mean a group")
+	}
+	// A valueless leaf answers with itself, or with nothing.
+	if hasOtherPaths([]codec.DeviceObjectValue{{Object: self}}, self) {
+		t.Error("a row for the path itself is not a child")
+	}
+	if hasOtherPaths(nil, self) {
+		t.Error("no rows is not a group")
+	}
+	// Empty object names are noise, not children.
+	if hasOtherPaths([]codec.DeviceObjectValue{{Object: ""}}, self) {
+		t.Error("an empty object name is not a child")
+	}
+}
+// TestConstraintsSurviveToTheWatch: the wire carries MIN/MAX/STEP and
+// ENUM_LIST on the same row as the value, and the watch was dropping
+// them. They are the difference between reading a device and being
+// able to set it.
+func TestConstraintsSurviveToTheWatch(t *testing.T) {
+	enum := codec.DeviceObjectValue{EnumList: []string{"Send SDP Always", "Send SDP Once"}}
+	if got := cerebrumConstraint(enum); got != "{Send SDP Always|Send SDP Once}" {
+		t.Errorf("enum list = %q", got)
+	}
+	rng := codec.DeviceObjectValue{Min: "0", Max: "1000", Step: "0.5"}
+	if got := cerebrumConstraint(rng); got != "[0..1000 step 0.5]" {
+		t.Errorf("range = %q", got)
+	}
+	// A degenerate MIN==MAX carries no information - live ENUM rows
+	// report 0..0 and their real constraint is the enum list. Same
+	// rule CanonicalDeviceObject applies when building the DM.
+	if got := cerebrumConstraint(codec.DeviceObjectValue{Min: "0", Max: "0"}); got != "" {
+		t.Errorf("degenerate range should be dropped, got %q", got)
+	}
+	if got := cerebrumConstraint(codec.DeviceObjectValue{}); got != "" {
+		t.Errorf("no constraint should render nothing, got %q", got)
+	}
+	// Enum wins over a range when both are present.
+	both := codec.DeviceObjectValue{EnumList: []string{"On", "Off"}, Min: "0", Max: "1"}
+	if got := cerebrumConstraint(both); got != "{On|Off}" {
+		t.Errorf("enum should win over range, got %q", got)
+	}
+}
+// TestWatchReportsChangesNotState pins what a watch IS.
+//
+// A Cerebrum SUBSCRIBE answers with the object's CURRENT value, and
+// the server re-asserts values that have not changed. Printing both
+// turned a 68-node watch into a 1,088-row state dump that buried the
+// events it existed to show. A snapshot is export's job.
+func TestWatchReportsChangesNotState(t *testing.T) {
+	newFilter := func(showInitial bool) func(codec.DeviceObjectValue) bool {
+		seen := map[string]string{}
+		return func(ov codec.DeviceObjectValue) bool {
+			v := ov.Value
+			if !ov.Available {
+				v = "\x00unavailable"
+			}
+			prev, known := seen[ov.Object]
+			seen[ov.Object] = v
+			if !known {
+				return showInitial
+			}
+			return prev != v
+		}
+	}
+	row := func(v string) codec.DeviceObjectValue {
+		return codec.DeviceObjectValue{Object: "Nodes.[a].SubID", Value: v, Available: true}
+	}
+
+	f := newFilter(false)
+	if f(row("0")) {
+		t.Error("the subscribe baseline must not print by default")
+	}
+	if !f(row("1000")) {
+		t.Error("a changed value must print")
+	}
+	if f(row("1000")) {
+		t.Error("a re-asserted value must not print - the server repeats them")
+	}
+	if !f(row("0")) {
+		t.Error("changing back must print")
+	}
+
+	// --initial opts the baseline back in.
+	f2 := newFilter(true)
+	if !f2(row("0")) {
+		t.Error("--initial should print the baseline")
+	}
+	if f2(row("0")) {
+		t.Error("--initial still suppresses re-asserts")
+	}
+
+	// available=0 is a distinct state, not the empty string: a value
+	// GOING absent is a change worth seeing.
+	f3 := newFilter(false)
+	f3(codec.DeviceObjectValue{Object: "x", Value: "up", Available: true})
+	if !f3(codec.DeviceObjectValue{Object: "x"}) {
+		t.Error("a value going unavailable is a change")
+	}
+}
+// TestOnlyIsAppliedDuringTheWalk: the filter has to narrow the
+// expansion as it happens, not afterwards. Applied after,
+// "Nodes.** --label SubID" builds the whole tree first and trips the
+// object cap before it reaches the filter - which is exactly the
+// combination needed to watch one field across a plant.
+func TestOnlyIsAppliedDuringTheWalk(t *testing.T) {
+	want := parseOnly("SubID,Connected")
+	if !wantLeaf(want, "Nodes.[a].SubID") {
+		t.Error("a named leaf should be kept")
+	}
+	if wantLeaf(want, "Nodes.[a].Description") {
+		t.Error("an unnamed leaf should be dropped")
+	}
+	// Case- and space-insensitive: the name in the operator's head is
+	// "subid", not the casing of a path they never typed.
+	if !wantLeaf(parseOnly(" subid "), "Nodes.[a].SubID") {
+		t.Error("match should ignore case and surrounding space")
+	}
+	// No filter keeps everything - nil means "unfiltered", never
+	// "match nothing".
+	if !wantLeaf(nil, "anything") || parseOnly("") != nil || parseOnly(" , ") != nil {
+		t.Error("an empty --label must be a no-op, not an empty result")
 	}
 }
