@@ -307,7 +307,7 @@ VERBS
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
-  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch; --raw keeps the per-frame wire view
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --only "SubID,Connected" narrows an expansion to named leaves. A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch; --raw keeps the per-frame wire view
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
@@ -1598,6 +1598,13 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	// --only narrows an expansion to named leaves. Without it,
+	// "Nodes.*" on a live NOC is 68 nodes x ~16 fields and the three
+	// values anyone actually watches are lost in it.
+	only, rest, err := extractStringFlag(rest, "--only")
+	if err != nil {
+		return err
+	}
 	if device == "" {
 		return cerebrumValErr("watch", "--device IP|NAME is required")
 	}
@@ -1651,6 +1658,9 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if subDev != "" {
 		objects, err = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object)
 		if err != nil {
+			return err
+		}
+		if objects, err = keepOnly(objects, only); err != nil {
 			return err
 		}
 	}
@@ -1760,6 +1770,45 @@ func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device 
 	}
 	if len(out) == 0 {
 		return nil, cerebrumValErr("watch", "--object resolved to nothing")
+	}
+	return out, nil
+}
+
+// keepOnly narrows an expanded object list to the named LEAVES.
+//
+// An expansion answers "which objects are under here"; --only answers
+// "which of them do I care about". They compose: "Nodes.*" with
+// --only "SubID,Connected" is 68 rows of the two fields that matter
+// instead of 1,088 rows containing them.
+//
+// Matching is on the last path segment and case-insensitive, because
+// the name in the operator's head is "subid", not the exact casing of
+// a path they never typed.
+func keepOnly(objects []string, only string) ([]string, error) {
+	if strings.TrimSpace(only) == "" {
+		return objects, nil
+	}
+	want := map[string]bool{}
+	for _, w := range strings.Split(only, ",") {
+		if w = strings.TrimSpace(w); w != "" {
+			want[strings.ToLower(w)] = true
+		}
+	}
+	if len(want) == 0 {
+		return objects, nil
+	}
+	var out []string
+	for _, o := range objects {
+		leaf := o
+		if i := strings.LastIndex(o, "."); i >= 0 {
+			leaf = o[i+1:]
+		}
+		if want[strings.ToLower(leaf)] {
+			out = append(out, o)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("cerebrum-nb watch: --only %q matched none of the %d expanded object(s)", only, len(objects))
 	}
 	return out, nil
 }
