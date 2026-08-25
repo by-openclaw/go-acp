@@ -688,9 +688,79 @@ func (h *harvester) collectNodes(blob json.RawMessage, v string) {
 }
 
 // linkPrev matches the `rel="prev"` member of an RFC 5988 Link header
-// — the OLDER direction, which is the one that enumerates a collection.
-// See olderPage for why it is prev and not next.
-var linkPrev = regexp.MustCompile(`<([^>]+)>\s*;\s*rel\s*=\s*"?prev"?`)
+// — the OLDER direction. linkNext matches `rel="next"`, the NEWER one.
+// See pageWalk for why a collection is enumerated with either.
+var (
+	linkPrev = regexp.MustCompile(`<([^>]+)>\s*;\s*rel\s*=\s*"?prev"?`)
+	linkNext = regexp.MustCompile(`<([^>]+)>\s*;\s*rel\s*=\s*"?next"?`)
+)
+
+// A pageWalk is one direction through a Query API collection.
+//
+// IS-04 §7 orders results by `version` and describes the window with
+// `paging.since` / `paging.until`, navigated by the Link rels. That
+// admits two complete enumerations, and neither is more correct than
+// the other:
+//
+//	ascending   pin the window to the oldest resource with
+//	            `paging.since=0:0`, then follow rel="next" forward.
+//	descending  take the default window — newest first — and follow
+//	            rel="prev" backward.
+//
+// Both are spec-legal, and a registry can be broken in exactly one of
+// them. One real registry answers /flows with an empty `X-Paging-Since`
+// and a rel="prev" cursor whose `paging.until` is blank; following it
+// re-serves page one forever, so the descending walk stops at 100 of
+// 5,168 flows while the ascending walk completes. A different registry
+// could break the other way round.
+//
+// So the exporter tries ascending first and falls back to descending
+// when the walk does not reach the end, keeping whichever enumerated
+// more. The fallback costs a second pass over one collection on a
+// registry that is already misbehaving, and nothing at all on one that
+// is not.
+type pageWalk struct {
+	name string
+	// start builds the first URL of the walk.
+	start func(base string) string
+	// step returns the next URL, or "" when the walk is over.
+	step func(h *harvester, cur string, hdr http.Header, items []json.RawMessage, limit int) string
+}
+
+var walkAscending = pageWalk{
+	name: "ascending",
+	// `0:0` is the zero TAI timestamp — older than any resource, so the
+	// first window starts at the beginning of the catalogue.
+	start: func(base string) string { return withQuery(base, "paging.since", "0:0") },
+	step: func(h *harvester, cur string, hdr http.Header, items []json.RawMessage, limit int) string {
+		// 1. The spec's cursor. Opaque — followed, never reconstructed.
+		if m := linkNext.FindStringSubmatch(hdr.Get("Link")); m != nil {
+			return h.pagingURL(cur, m[1])
+		}
+		// 2. The window we just received ends at X-Paging-Until; the
+		// next one forward starts there.
+		if until := hdr.Get("X-Paging-Until"); until != "" && until != "0:0" {
+			return withQuery(cur, "paging.since", until)
+		}
+		// 3. No paging headers at all. Derive the cursor from the data:
+		// the NEWEST version on the page is where the page after it
+		// begins. Probing costs one request when the collection was
+		// already exhausted; guessing it was exhausted costs the rest
+		// of the catalogue.
+		if v := maxVersion(items); v != "" {
+			return withQuery(cur, "paging.since", v)
+		}
+		return ""
+	},
+}
+
+var walkDescending = pageWalk{
+	name:  "descending",
+	start: func(base string) string { return base },
+	step: func(h *harvester, cur string, hdr http.Header, items []json.RawMessage, limit int) string {
+		return h.olderPage(cur, hdr, items, limit)
+	},
+}
 
 // getPaged walks a Query API collection to the end.
 //
@@ -699,10 +769,6 @@ var linkPrev = regexp.MustCompile(`<([^>]+)>\s*;\s*rel\s*=\s*"?prev"?`)
 // `Link: rel="next"` header; the cursor is opaque and must be followed
 // rather than reconstructed.
 func (h *harvester) getPaged(ctx context.Context, path string) json.RawMessage {
-	var all []json.RawMessage
-	next := h.scheme + "://" + h.target + path
-	seenCursor := map[string]bool{}
-
 	// Ask for a big page explicitly. Left to itself a registry applies
 	// its own default — seen as low as 10 in the field — and the walk
 	// then costs one round trip per ten resources.
@@ -710,7 +776,56 @@ func (h *harvester) getPaged(ctx context.Context, path string) json.RawMessage {
 	if limit <= 0 {
 		limit = defaultPageLimit
 	}
-	next = withQuery(next, "paging.limit", strconv.Itoa(limit))
+	base := withQuery(h.scheme+"://"+h.target+path, "paging.limit", strconv.Itoa(limit))
+
+	all, complete, raw := h.walkPages(ctx, path, base, limit, walkAscending)
+	if raw != nil {
+		return raw
+	}
+	// The same resource can legitimately appear on two pages when the
+	// catalogue changes mid-walk. Deduplicating by id is right; the
+	// per-page counts stay in report.txt so the duplication is still
+	// auditable. It also has to happen BEFORE the two directions are
+	// compared — a stuck walk re-serving one page of 100 four times has
+	// more rows than a complete walk and fewer resources.
+	uniq, dupes := dedupeByID(all)
+
+	// The walk did not reach the end. Try the other direction before
+	// accepting a short catalogue — a registry broken in one direction
+	// is usually intact in the other.
+	if !complete {
+		alt, altComplete, altRaw := h.walkPages(ctx, path, base, limit, walkDescending)
+		if altRaw == nil {
+			altUniq, altDupes := dedupeByID(alt)
+			if altComplete || len(altUniq) > len(uniq) {
+				h.note(fmt.Sprintf("NOTE  %s ascending walk stopped at %d resource(s), descending returned %d - keeping descending",
+					path, len(uniq), len(altUniq)))
+				uniq, dupes, all = altUniq, altDupes, alt
+			}
+		}
+	}
+
+	if dupes > 0 {
+		h.note(fmt.Sprintf("NOTE  %s returned %d rows across pages, %d unique", path, len(all), len(uniq)))
+	}
+	out, err := json.Marshal(uniq)
+	if err != nil {
+		return nil
+	}
+	h.writeRaw(path, out)
+	return out
+}
+
+// walkPages drives one pageWalk to the end of a collection.
+//
+// It returns the rows gathered, whether the walk actually REACHED the
+// end, and — when the endpoint turned out not to be a collection at all
+// — the raw body, which short-circuits everything above.
+func (h *harvester) walkPages(ctx context.Context, path, base string, limit int, strat pageWalk) ([]json.RawMessage, bool, json.RawMessage) {
+	var all []json.RawMessage
+	complete := false
+	next := strat.start(base)
+	seenCursor := map[string]bool{}
 
 	for page := 1; page <= 500 && next != ""; page++ {
 		body, hdr, code, err := h.do(ctx, next)
@@ -724,10 +839,10 @@ func (h *harvester) getPaged(ctx context.Context, path string) json.RawMessage {
 		if json.Unmarshal(body, &items) != nil {
 			// Not a collection — record it whole and stop paging.
 			h.writeRaw(path, body)
-			return body
+			return nil, true, body
 		}
 		all = append(all, items...)
-		h.note(fmt.Sprintf("%-5d %s  (page %d, +%d, total %d)", code, path, page, len(items), len(all)))
+		h.note(fmt.Sprintf("%-5d %s  (page %d, +%d, total %d) [%s]", code, path, page, len(items), len(all), strat.name))
 		// A registry catalogue is tens of pages per collection. Without
 		// a line per page the capture looks hung for minutes before the
 		// first node is even reached.
@@ -741,8 +856,8 @@ func (h *harvester) getPaged(ctx context.Context, path string) json.RawMessage {
 		// this a short capture in the field cannot be diagnosed without
 		// a debugger — which is exactly what happened.
 		if page == 1 {
-			h.note(fmt.Sprintf("PAGING %s  limit=%s Link=%q X-Paging-Limit=%q Since=%q Until=%q",
-				path, strconv.Itoa(limit), hdr.Get("Link"),
+			h.note(fmt.Sprintf("PAGING %s  walk=%s limit=%s Link=%q X-Paging-Limit=%q Since=%q Until=%q",
+				path, strat.name, strconv.Itoa(limit), hdr.Get("Link"),
 				hdr.Get("X-Paging-Limit"), hdr.Get("X-Paging-Since"), hdr.Get("X-Paging-Until")))
 		}
 
@@ -753,11 +868,18 @@ func (h *harvester) getPaged(ctx context.Context, path string) json.RawMessage {
 		// — so the presence of a `next` link says nothing about whether
 		// more resources exist. Only the page contents do.
 		if len(items) == 0 {
+			complete = true
 			break
 		}
 
-		cand := h.olderPage(next, hdr, items, limit)
+		cand := strat.step(h, next, hdr, items, limit)
 		if cand == "" {
+			// No cursor offered. The collection is exhausted only if the
+			// page was demonstrably short of the size the registry said
+			// it APPLIED. Without X-Paging-Limit "short" is a guess, and
+			// guessing wrong truncates a catalogue silently — so call it
+			// incomplete and let the other direction check.
+			complete = hdr.Get("X-Paging-Limit") != "" && len(items) < appliedLimit(hdr, limit)
 			break
 		}
 		// A cursor that repeats WHILE resources are still arriving is a
@@ -766,27 +888,50 @@ func (h *harvester) getPaged(ctx context.Context, path string) json.RawMessage {
 		// capture, and stopping quietly would report a smaller plant
 		// than exists.
 		if seenCursor[cand] {
-			h.note(fmt.Sprintf("WARN  paging cursor did not advance for %s - stopping (registry paging defect)", path))
+			h.note(fmt.Sprintf("WARN  paging cursor did not advance for %s - stopping (registry paging defect, %s walk)", path, strat.name))
 			break
 		}
 		seenCursor[cand] = true
 		next = cand
 	}
+	return all, complete, nil
+}
 
-	// The same resource can legitimately appear on two pages when the
-	// catalogue changes mid-walk. Deduplicating by id is right; the
-	// per-page counts stay in report.txt so the duplication is still
-	// auditable.
-	uniq, dupes := dedupeByID(all)
-	if dupes > 0 {
-		h.note(fmt.Sprintf("NOTE  %s returned %d rows across pages, %d unique", path, len(all), len(uniq)))
+// appliedLimit is the page size the registry actually used, which is
+// not necessarily the one we asked for — clamping a requested 100 down
+// to 10 is common, and comparing a full page of 10 against 100 reads
+// the end of page one as the end of the plant.
+func appliedLimit(hdr http.Header, asked int) int {
+	if v := hdr.Get("X-Paging-Limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
 	}
-	out, err := json.Marshal(uniq)
+	return asked
+}
+
+// pagingURL resolves a cursor from a Link header against the URL it
+// arrived on, then forces it back onto the host we are actually
+// talking to.
+//
+// A registry behind Docker or NAT advertises its own internal address
+// in the Link header — 172.17.0.3, a compose service name — and that
+// host does not resolve from the operator's laptop. The cursor's query
+// string is what carries the paging state; the authority is ours to
+// supply. Taken from the first-generation nmos-consumer, which hit
+// this against a containerised registry.
+func (h *harvester) pagingURL(cur, ref string) string {
+	abs := absolutize(cur, ref)
+	u, err := url.Parse(abs)
 	if err != nil {
-		return nil
+		return abs
 	}
-	h.writeRaw(path, out)
-	return out
+	if u.Host != "" && u.Host != h.target {
+		h.note(fmt.Sprintf("NOTE  paging cursor pointed at %s, rewritten to %s", u.Host, h.target))
+		u.Host = h.target
+		u.Scheme = h.scheme
+	}
+	return u.String()
 }
 
 // olderPage decides where the walk goes after this page.
@@ -806,7 +951,7 @@ func (h *harvester) getPaged(ctx context.Context, path string) json.RawMessage {
 func (h *harvester) olderPage(cur string, hdr http.Header, items []json.RawMessage, limit int) string {
 	// 1. The spec's cursor. Opaque — followed, never reconstructed.
 	if m := linkPrev.FindStringSubmatch(hdr.Get("Link")); m != nil {
-		return absolutize(cur, m[1])
+		return h.pagingURL(cur, m[1])
 	}
 
 	// A page shorter than the limit ends the collection — but it has to
@@ -814,13 +959,7 @@ func (h *harvester) olderPage(cur string, hdr http.Header, items []json.RawMessa
 	// registry that clamps 100 down to 10 serves a full page of 10, and
 	// comparing that against 100 calls the end of page one the end of
 	// the plant. That is precisely the field failure.
-	applied := limit
-	if v := hdr.Get("X-Paging-Limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			applied = n
-		}
-	}
-	if len(items) < applied {
+	if len(items) < appliedLimit(hdr, limit) {
 		// With no Link and no X-Paging-Limit we have no evidence of what
 		// the registry applied, so "short" is a guess — and guessing
 		// wrong truncates the plant silently. Probe one more page
@@ -846,6 +985,28 @@ func (h *harvester) olderPage(cur string, hdr http.Header, items []json.RawMessa
 		return withQuery(cur, "paging.until", v)
 	}
 	return ""
+}
+
+// maxVersion returns the largest IS-04 `<sec>:<nsec>` version among a
+// page of resources — the newest thing on the page, and therefore where
+// the next page forward begins. The ascending mirror of minVersion.
+func maxVersion(items []json.RawMessage) string {
+	best := ""
+	for _, it := range items {
+		var probe struct {
+			Version string `json:"version"`
+		}
+		if json.Unmarshal(it, &probe) != nil || probe.Version == "" {
+			continue
+		}
+		if _, _, ok := splitTAI(probe.Version); !ok {
+			continue
+		}
+		if best == "" || taiLess(best, probe.Version) {
+			best = probe.Version
+		}
+	}
+	return best
 }
 
 // minVersion returns the smallest IS-04 `<sec>:<nsec>` version among a

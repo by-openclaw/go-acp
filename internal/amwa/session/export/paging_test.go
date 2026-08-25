@@ -30,6 +30,12 @@ const (
 	// modeIgnoreSince serves the same first page forever, whatever
 	// cursor it is handed.
 	modeIgnoreSince
+	// modeBrokenPrev is the real EVS registry's /flows defect: the
+	// forward cursor is sound, but `rel="prev"` carries an empty
+	// `paging.until` and X-Paging-Since is blank, so the descending
+	// walk re-serves page one forever while the ascending walk
+	// completes normally.
+	modeBrokenPrev
 )
 
 // pagingRegistry serves `total` nodes in pages of `limit`, honouring
@@ -85,48 +91,80 @@ func (p *pagingRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		limit = p.serverLimit
 	}
 
-	// IS-04 orders a collection by `version`, NEWEST FIRST, and pages
-	// backwards over it. `paging.until` names the newest version the
-	// caller wants; the page returned is the `limit` resources at or
-	// below it. That is what a real registry does, and modelling it
-	// forwards is what let a 100-of-5222 capture look complete.
+	// IS-04 orders a collection by `version`, NEWEST FIRST, and the
+	// window is described by paging.since / paging.until. Both bounds
+	// are exclusive here, and both directions are servable:
+	//
+	//	paging.until=V  the `limit` resources STRICTLY OLDER than V,
+	//	                which is how a descending walk moves back.
+	//	paging.since=V  the `limit` resources STRICTLY NEWER than V,
+	//	                taken from the OLDEST end, which is how an
+	//	                ascending walk moves forward.
 	//
 	// Resource i has version 1000+i, so the newest is total-1.
-	top := p.total - 1
+	lo, hi := 0, p.total-1
+	ascending := false
 	if p.mode != modeIgnoreSince {
 		if until := r.URL.Query().Get("paging.until"); until != "" {
-			sec, _, ok := splitTAI(until)
-			if ok {
-				// Strictly older than the boundary the caller gave.
-				top = int(sec) - 1000 - 1
+			if sec, _, ok := splitTAI(until); ok {
+				hi = int(sec) - 1000 - 1
+			}
+		}
+		if since := r.URL.Query().Get("paging.since"); since != "" {
+			ascending = true
+			if sec, _, ok := splitTAI(since); ok {
+				if n := int(sec) - 1000 + 1; n > lo {
+					lo = n
+				}
 			}
 		}
 	}
 
+	// Which end of the window the page comes from depends on the
+	// direction asked for; the BODY is newest-first either way.
+	first, last := hi, hi-limit+1
+	if ascending {
+		first, last = lo+limit-1, lo
+		if first > hi {
+			first = hi
+		}
+	}
+	if last < lo {
+		last = lo
+	}
 	out := []any{}
-	oldest := top
-	for i := top; i >= 0 && len(out) < limit; i-- {
+	for i := first; i >= last && i >= 0 && i <= p.total-1; i-- {
 		out = append(out, nodeAt(i))
-		oldest = i
 	}
 
+	newest, oldest := first, last
 	switch p.mode {
-	case modeLink:
+	case modeLink, modeBrokenPrev:
 		// A real registry emits BOTH members on every response,
 		// including the last — so the presence of `next` says nothing
 		// about whether more resources exist.
-		next := fmt.Sprintf(`<%s?paging.since=%d:0>; rel="next"`, r.URL.Path, 1000+top)
+		next := fmt.Sprintf(`<%s?paging.since=%d:0>; rel="next"`, r.URL.Path, 1000+newest)
+		prev := fmt.Sprintf(`<%s?paging.until=%d:0>; rel="prev"`, r.URL.Path, 1000+oldest)
+		if p.mode == modeBrokenPrev {
+			// The defect, verbatim from the field capture: a prev
+			// cursor with nothing in it.
+			prev = fmt.Sprintf(`<%s?paging.until=>; rel="prev"`, r.URL.Path)
+		}
 		if len(out) > 0 {
-			prev := fmt.Sprintf(`<%s?paging.until=%d:0>; rel="prev"`, r.URL.Path, 1000+oldest)
 			w.Header().Set("Link", next+", "+prev)
 		} else {
 			w.Header().Set("Link", next)
+		}
+		if p.mode == modeBrokenPrev {
+			w.Header().Set("X-Paging-Limit", strconv.Itoa(limit))
+			w.Header().Set("X-Paging-Since", "")
+			w.Header().Set("X-Paging-Until", "0:0")
 		}
 	case modeHeaders, modeIgnoreSince:
 		w.Header().Set("X-Paging-Limit", strconv.Itoa(limit))
 		if len(out) > 0 {
 			w.Header().Set("X-Paging-Since", fmt.Sprintf("%d:0", 1000+oldest))
-			w.Header().Set("X-Paging-Until", fmt.Sprintf("%d:0", 1000+top))
+			w.Header().Set("X-Paging-Until", fmt.Sprintf("%d:0", 1000+newest))
 		}
 	case modeBare:
 		// nothing at all
@@ -222,6 +260,95 @@ func TestPagingStopsOnIgnoredCursor(t *testing.T) {
 	}
 	if p.requests > 10 {
 		t.Errorf("%d requests — the walk did not stop", p.requests)
+	}
+}
+
+// TestBrokenPrevCursorWalksForwardInstead is the field defect, on a
+// registry modelled from the capture that exposed it.
+//
+// One real registry answers /flows — and only /flows — with a blank
+// X-Paging-Since and a rel="prev" whose paging.until is empty. The
+// descending walk follows that cursor, gets page one back, and stops:
+// 100 flows of 5,168, and every sender in the plant then appeared to
+// reference a flow that did not exist. The forward cursor on the same
+// endpoint is sound, so walking the collection oldest-first completes.
+//
+// IS-04 §7 admits both enumerations. Preferring the ascending one, and
+// only falling back to descending, is what makes this registry
+// capturable at all.
+func TestBrokenPrevCursorWalksForwardInstead(t *testing.T) {
+	p := &pagingRegistry{total: 250, limit: 100, mode: modeBrokenPrev}
+	got, rep := exportNodes(t, p)
+	if got.NodesSeen != 250 {
+		t.Errorf("captured %d of 250 — the broken prev cursor was not routed around\n%s", got.NodesSeen, rep)
+	}
+	if strings.Contains(rep, "cursor did not advance") {
+		t.Errorf("the ascending walk should never have touched the broken cursor:\n%s", rep)
+	}
+	if !strings.Contains(rep, "walk=ascending") {
+		t.Errorf("report should record which direction was walked:\n%s", rep)
+	}
+}
+
+// TestAscendingIsPreferred: on a healthy registry the ascending walk
+// completes on its own, and the descending fallback never runs. The
+// fallback is insurance, not a second pass over every collection.
+func TestAscendingIsPreferred(t *testing.T) {
+	p := &pagingRegistry{total: 250, limit: 100, mode: modeLink}
+	got, rep := exportNodes(t, p)
+	if got.NodesSeen != 250 {
+		t.Errorf("captured %d of 250\n%s", got.NodesSeen, rep)
+	}
+	if strings.Contains(rep, "[descending]") {
+		t.Errorf("a healthy registry must not need the fallback:\n%s", rep)
+	}
+}
+
+// TestPagingCursorRewrittenToTarget: a registry behind Docker or NAT
+// advertises its own internal address in the Link header. The cursor's
+// query string is the paging state; the authority is ours to supply.
+func TestPagingCursorRewrittenToTarget(t *testing.T) {
+	h := &harvester{target: "10.44.55.56:8080", scheme: "http"}
+	got := h.pagingURL(
+		"http://10.44.55.56:8080/x-nmos/query/v1.3/nodes?paging.limit=100",
+		"http://172.17.0.3:8080/x-nmos/query/v1.3/nodes?paging.since=1787607060:080832800")
+	want := "http://10.44.55.56:8080/x-nmos/query/v1.3/nodes?paging.since=1787607060:080832800"
+	if got != want {
+		t.Errorf("pagingURL =\n  %s\nwant\n  %s", got, want)
+	}
+	if len(h.report) == 0 || !strings.Contains(h.report[0], "172.17.0.3:8080") {
+		t.Errorf("the rewrite must be recorded, got %v", h.report)
+	}
+	// A cursor already on our host is passed through untouched, and
+	// silently — the note would otherwise fire on every page.
+	h2 := &harvester{target: "10.44.55.56:8080", scheme: "http"}
+	same := "http://10.44.55.56:8080/x-nmos/query/v1.3/nodes?paging.since=1:0"
+	if got := h2.pagingURL(same, same); got != same {
+		t.Errorf("pagingURL rewrote a same-host cursor: %s", got)
+	}
+	if len(h2.report) != 0 {
+		t.Errorf("no note expected for a same-host cursor, got %v", h2.report)
+	}
+}
+
+// TestMaxVersionIsTheAscendingMirror guards the direction of the
+// data-derived cursor. minVersion sends the walk back, maxVersion
+// sends it forward; swapping them re-serves one page forever.
+func TestMaxVersionIsTheAscendingMirror(t *testing.T) {
+	page := []json.RawMessage{
+		json.RawMessage(`{"version":"1005:0"}`),
+		json.RawMessage(`{"version":"1001:0"}`),
+		json.RawMessage(`{"version":"not-a-version"}`),
+		json.RawMessage(`{"version":"1009:0"}`),
+	}
+	if got := maxVersion(page); got != "1009:0" {
+		t.Errorf("maxVersion = %q, want 1009:0", got)
+	}
+	if got := minVersion(page); got != "1001:0" {
+		t.Errorf("minVersion = %q, want 1001:0", got)
+	}
+	if got := maxVersion(nil); got != "" {
+		t.Errorf("maxVersion(nil) = %q, want empty", got)
 	}
 }
 
