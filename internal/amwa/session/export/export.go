@@ -867,8 +867,18 @@ func (h *harvester) walkPages(ctx context.Context, path, base string, limit int,
 		// response as navigational affordances, including the last one
 		// — so the presence of a `next` link says nothing about whether
 		// more resources exist. Only the page contents do.
+		//
+		// An empty FIRST page is different. It means this direction
+		// yielded nothing at all, and nothing from one direction is not
+		// proof the collection is empty: the registry that started all
+		// this answers /flows ascending with an empty window — Since
+		// and Until both 0:0, zero rows — while the descending walk on
+		// the same endpoint still returns resources. Reporting that as
+		// a complete, empty collection lost 100 flows that the older
+		// walk had been finding. So an empty first page ends THIS walk
+		// and asks the other direction.
 		if len(items) == 0 {
-			complete = true
+			complete = len(all) > 0
 			break
 		}
 

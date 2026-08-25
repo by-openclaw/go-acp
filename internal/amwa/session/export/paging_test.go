@@ -36,6 +36,13 @@ const (
 	// walk re-serves page one forever while the ascending walk
 	// completes normally.
 	modeBrokenPrev
+	// modeEmptyAscending is the SAME registry's /flows endpoint one
+	// export later: asked with paging.since it answers with an empty
+	// window — Since and Until both 0:0, zero rows — while the
+	// descending walk still returns resources. A collection that is
+	// genuinely empty is indistinguishable from this on the first
+	// page, which is exactly why one direction cannot settle it.
+	modeEmptyAscending
 )
 
 // pagingRegistry serves `total` nodes in pages of `limit`, honouring
@@ -104,6 +111,17 @@ func (p *pagingRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Resource i has version 1000+i, so the newest is total-1.
 	lo, hi := 0, p.total-1
 	ascending := false
+	if p.mode == modeEmptyAscending && r.URL.Query().Get("paging.since") != "" {
+		// The defect: an empty window, whatever was asked for.
+		w.Header().Set("X-Paging-Limit", strconv.Itoa(limit))
+		w.Header().Set("X-Paging-Since", "0:0")
+		w.Header().Set("X-Paging-Until", "0:0")
+		w.Header().Set("Link", fmt.Sprintf(
+			`<%s?paging.since=0:0>; rel="next", <%s?paging.until=0:0>; rel="prev"`,
+			r.URL.Path, r.URL.Path))
+		writeJSON(w, []any{})
+		return
+	}
 	if p.mode != modeIgnoreSince {
 		if until := r.URL.Query().Get("paging.until"); until != "" {
 			if sec, _, ok := splitTAI(until); ok {
@@ -290,6 +308,44 @@ func TestBrokenPrevCursorWalksForwardInstead(t *testing.T) {
 	}
 }
 
+// TestEmptyAscendingPageFallsBackToDescending is the regression that
+// cost a real capture its entire flows collection.
+//
+// The registry answers /flows ascending with an empty window — Since
+// and Until both 0:0, zero rows — while descending still returns
+// resources. Treating an empty FIRST page as "the collection is empty"
+// reported 0 flows and never asked the other direction, which is worse
+// than the 100 the descending-only walk had been getting.
+//
+// An empty page after a full one still ends the walk normally; it is
+// only the first one that has to be checked against the other
+// direction.
+func TestEmptyAscendingPageFallsBackToDescending(t *testing.T) {
+	p := &pagingRegistry{total: 250, limit: 100, mode: modeEmptyAscending}
+	got, rep := exportNodes(t, p)
+	if got.NodesSeen != 250 {
+		t.Errorf("captured %d of 250 — an empty ascending page was taken as the truth\n%s", got.NodesSeen, rep)
+	}
+	if !strings.Contains(rep, "[descending]") {
+		t.Errorf("the fallback should have run:\n%s", rep)
+	}
+}
+
+// TestGenuinelyEmptyCollectionCostsOneExtraRequest: the price of not
+// trusting an empty first page. A collection that really is empty is
+// walked in both directions — two requests, not one — and still
+// reports empty. Cheap insurance, but it must not be more than that.
+func TestGenuinelyEmptyCollectionCostsOneExtraRequest(t *testing.T) {
+	p := &pagingRegistry{total: 0, limit: 100, mode: modeLink}
+	got, rep := exportNodes(t, p)
+	if got.NodesSeen != 0 {
+		t.Errorf("an empty registry should list no nodes, got %d\n%s", got.NodesSeen, rep)
+	}
+	if p.requests != 2 {
+		t.Errorf("an empty collection should cost 2 requests (one per direction), took %d\n%s", p.requests, rep)
+	}
+}
+
 // TestAscendingIsPreferred: on a healthy registry the ascending walk
 // completes on its own, and the descending fallback never runs. The
 // fallback is insurance, not a second pass over every collection.
@@ -299,8 +355,14 @@ func TestAscendingIsPreferred(t *testing.T) {
 	if got.NodesSeen != 250 {
 		t.Errorf("captured %d of 250\n%s", got.NodesSeen, rep)
 	}
-	if strings.Contains(rep, "[descending]") {
-		t.Errorf("a healthy registry must not need the fallback:\n%s", rep)
+	// Scoped to the populated collection: the fake's other collections
+	// are genuinely empty, and an empty collection is checked in both
+	// directions by design.
+	for _, line := range strings.Split(rep, "\n") {
+		if strings.Contains(line, "/nodes") && strings.Contains(line, "[descending]") {
+			t.Errorf("a healthy registry must not need the fallback:\n%s", rep)
+			break
+		}
 	}
 }
 
