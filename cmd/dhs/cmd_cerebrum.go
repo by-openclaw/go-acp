@@ -307,7 +307,7 @@ VERBS
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
-  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --only "SubID,Connected" narrows an expansion to named leaves. A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch; --raw keeps the per-frame wire view
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --only "SubID,Connected" narrows an expansion to named leaves. A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
@@ -1605,6 +1605,13 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	// --initial prints the value every subscription answers with.
+	// Off by default: a watch reports CHANGES. Use export for a
+	// snapshot — it walks the tree and writes a file.
+	showInitial, rest, err := extractBoolFlag(rest, "--initial")
+	if err != nil {
+		return err
+	}
 	if device == "" {
 		return cerebrumValErr("watch", "--device IP|NAME is required")
 	}
@@ -1676,6 +1683,36 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	// first use also means a watch that subscribes nothing prints no
 	// header for an empty table.
 	var header sync.Once
+	// A watch reports CHANGES.
+	//
+	// A Cerebrum SUBSCRIBE answers with the object's CURRENT value, so
+	// every subscription emits one row before anything has happened.
+	// On a single object that reads as a useful baseline; across an
+	// expanded list it is a full state dump — subscribing 68 nodes
+	// printed 1,088 rows of unchanged data and buried the events the
+	// watch existed to show. Worse, the server RE-ASSERTS values that
+	// have not changed, so even a settled tree keeps printing.
+	//
+	// So: remember the last value per object and print only when it
+	// differs. --initial prints the baseline; export is what produces
+	// a snapshot.
+	seenValue := map[string]string{}
+	var seenMu sync.Mutex
+	changed := func(ov codec.DeviceObjectValue) bool {
+		v := ov.Value
+		if !ov.Available {
+			v = "\x00unavailable"
+		}
+		seenMu.Lock()
+		defer seenMu.Unlock()
+		prev, known := seenValue[ov.Object]
+		seenValue[ov.Object] = v
+		if !known {
+			return showInitial
+		}
+		return prev != v
+	}
+
 	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
 		switch {
 		case f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "":
@@ -1684,12 +1721,12 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 			return // transaction plumbing, not an event
 		}
 		if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
-			if len(f.Device.ObjectValues) == 0 {
-				return
-			}
-			header.Do(cerebrumDMHeader)
 			now := time.Now()
 			for _, ov := range f.Device.ObjectValues {
+				if !changed(ov) {
+					continue
+				}
+				header.Do(cerebrumDMHeader)
 				cerebrumDMRow(now, ov)
 			}
 			return
@@ -1839,6 +1876,17 @@ func cerebrumChildren(sess *cerebrum.Session, timeout time.Duration, device stri
 // or pathological tree, not a real limit.
 const maxExpandDepth = 8
 
+// maxExpandObjects bounds what one expansion may subscribe.
+//
+// A deep walk probes every child, so "Nodes.**" on a live NOC is 68
+// nodes x ~16 fields, then into Interfaces and Devices, then into each
+// device's Senders/Receivers/Sources — tens of thousands of obtains
+// against a production control system, from one careless command.
+//
+// The cap refuses rather than truncating: a silently-shortened watch
+// is a watch that misses the event you were waiting for.
+const maxExpandObjects = 2000
+
 // cerebrumExpand turns a group into the object list to subscribe.
 //
 // Shallow ("GROUP.*") takes the group's direct children. Deep
@@ -1858,6 +1906,9 @@ func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string
 
 	var walk func(g string, depth int) error
 	walk = func(g string, depth int) error {
+		if len(out) > maxExpandObjects {
+			return fmt.Errorf("expansion exceeded %d objects at %q — narrow the path (one node rather than Nodes) or use .* instead of .**", maxExpandObjects, g)
+		}
 		kids, err := cerebrumChildren(sess, timeout, device, byName, subDev, g)
 		if err != nil {
 			return err
@@ -1866,12 +1917,27 @@ func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string
 			if ov.Object == "" || ov.Object == g || seen[ov.Object] {
 				continue
 			}
-			// A row that already carries a value is a leaf; no probe
-			// can tell us anything more about it.
-			if !deep || ov.Available || depth >= maxExpandDepth {
+			if !deep || depth >= maxExpandDepth {
 				seen[ov.Object] = true
 				out = append(out, ov.Object)
 				continue
+			}
+			// Every child is probed on a deep walk, including the ones
+			// that already carry a value.
+			//
+			// Carrying a value does NOT mean being a leaf here.
+			// Interfaces answers with "en8,en12" AND has [en8]/[en12]
+			// beneath it, each holding Chassis_ID and Port_ID; Devices
+			// does the same with its UUID list. Skipping value-carrying
+			// rows stopped the descent exactly at the two nodes worth
+			// descending into.
+			//
+			// A value-carrying group is kept as well as descended into
+			// — the summary string is real data, not a placeholder for
+			// the children.
+			if ov.Available {
+				seen[ov.Object] = true
+				out = append(out, ov.Object)
 			}
 			// Candidate group. Ask it for children; anything that
 			// answers with OTHER paths is a group and is descended

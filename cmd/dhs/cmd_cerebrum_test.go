@@ -635,3 +635,60 @@ func TestKeepOnlyNarrowsAnExpansion(t *testing.T) {
 		t.Error("a filter matching nothing must be refused")
 	}
 }
+// TestWatchReportsChangesNotState pins what a watch IS.
+//
+// A Cerebrum SUBSCRIBE answers with the object's CURRENT value, and
+// the server re-asserts values that have not changed. Printing both
+// turned a 68-node watch into a 1,088-row state dump that buried the
+// events it existed to show. A snapshot is export's job.
+func TestWatchReportsChangesNotState(t *testing.T) {
+	newFilter := func(showInitial bool) func(codec.DeviceObjectValue) bool {
+		seen := map[string]string{}
+		return func(ov codec.DeviceObjectValue) bool {
+			v := ov.Value
+			if !ov.Available {
+				v = "\x00unavailable"
+			}
+			prev, known := seen[ov.Object]
+			seen[ov.Object] = v
+			if !known {
+				return showInitial
+			}
+			return prev != v
+		}
+	}
+	row := func(v string) codec.DeviceObjectValue {
+		return codec.DeviceObjectValue{Object: "Nodes.[a].SubID", Value: v, Available: true}
+	}
+
+	f := newFilter(false)
+	if f(row("0")) {
+		t.Error("the subscribe baseline must not print by default")
+	}
+	if !f(row("1000")) {
+		t.Error("a changed value must print")
+	}
+	if f(row("1000")) {
+		t.Error("a re-asserted value must not print - the server repeats them")
+	}
+	if !f(row("0")) {
+		t.Error("changing back must print")
+	}
+
+	// --initial opts the baseline back in.
+	f2 := newFilter(true)
+	if !f2(row("0")) {
+		t.Error("--initial should print the baseline")
+	}
+	if f2(row("0")) {
+		t.Error("--initial still suppresses re-asserts")
+	}
+
+	// available=0 is a distinct state, not the empty string: a value
+	// GOING absent is a change worth seeing.
+	f3 := newFilter(false)
+	f3(codec.DeviceObjectValue{Object: "x", Value: "up", Available: true})
+	if !f3(codec.DeviceObjectValue{Object: "x"}) {
+		t.Error("a value going unavailable is a change")
+	}
+}
