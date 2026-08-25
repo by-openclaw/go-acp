@@ -1659,6 +1659,13 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	// layout — the same columns `dhs watch` gives acp1/acp2. DETAILS is
 	// connection state, a different shape, and keeps its own form.
 	dmView := subDev != "" && !rawView
+	// The header is emitted by the first row, not after subscribing:
+	// a subscription answers with the object's CURRENT value, so rows
+	// start arriving while Subscribe is still returning and a header
+	// printed afterwards lands below its own table. Deferring it to
+	// first use also means a watch that subscribes nothing prints no
+	// header for an empty table.
+	var header sync.Once
 	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
 		switch {
 		case f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "":
@@ -1667,6 +1674,10 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 			return // transaction plumbing, not an event
 		}
 		if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
+			if len(f.Device.ObjectValues) == 0 {
+				return
+			}
+			header.Do(cerebrumDMHeader)
 			now := time.Now()
 			for _, ov := range f.Device.ObjectValues {
 				cerebrumDMRow(now, ov)
@@ -1701,9 +1712,6 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		what = fmt.Sprintf("%s on %d object(s)", what, okRows)
 	}
 	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE %s on %s — Ctrl+C to stop\n", what, device)
-	if dmView {
-		cerebrumDMHeader()
-	}
 	<-ctx.Done()
 	fmt.Fprintln(os.Stderr, "watch stopped.")
 	return nil
@@ -1923,9 +1931,14 @@ func printEventLabeled(f *codec.Frame, srcNames map[string]string) {
 // acp2 against the same card over Cerebrum should be diffing values,
 // not re-learning a layout.
 func cerebrumDMHeader() {
-	fmt.Printf("%-8s  %-52s  %-16s  %-3s  %-7s  value\n",
-		"time", "path", "label", "acc", "type")
-	fmt.Println(strings.Repeat("-", 118))
+	const head = "%-8s  %-52s  %-16s  %-3s  %-7s  value\n"
+	line := fmt.Sprintf(head, "time", "path", "label", "acc", "type")
+	fmt.Print(line)
+	// The rule spans the HEADER, not an arbitrary width: a fixed 118
+	// on a 101-character header draws a line past the last column,
+	// which is exactly the kind of detail that makes output look
+	// unconsidered.
+	fmt.Println(strings.Repeat("-", len(strings.TrimRight(line, "\n"))))
 }
 
 // cerebrumDMRow renders one object value in that layout.
