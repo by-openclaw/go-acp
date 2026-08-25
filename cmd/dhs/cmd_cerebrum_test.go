@@ -530,3 +530,35 @@ func TestTruncatePathKeepsBothEnds(t *testing.T) {
 		t.Errorf("short path was modified: %q", got)
 	}
 }
+// TestExpandKeepsValuelessLeaves pins the bug that dropped Last_Error.
+//
+// A group obtain answers with available=0 for a child GROUP and also
+// for a leaf that has no value right now. Filtering on `available`
+// therefore silently dropped Last_Error - the one object on an NMOS
+// node that says WHY it is disconnected - and made "Nodes.*" expand to
+// nothing at all, because all 68 node children are available=0.
+//
+// So availability is never the group/leaf test: every child is kept,
+// and a deep expansion PROBES the valueless ones instead of guessing.
+func TestHasOtherPathsIsTheGroupTest(t *testing.T) {
+	self := "Nodes.[abc].Interfaces"
+	// A group answers with rows for OTHER paths.
+	group := []codec.DeviceObjectValue{
+		{Object: self + ".[eno1]"},
+		{Object: self + ".[eno2]"},
+	}
+	if !hasOtherPaths(group, self) {
+		t.Error("rows for other paths mean a group")
+	}
+	// A valueless leaf answers with itself, or with nothing.
+	if hasOtherPaths([]codec.DeviceObjectValue{{Object: self}}, self) {
+		t.Error("a row for the path itself is not a child")
+	}
+	if hasOtherPaths(nil, self) {
+		t.Error("no rows is not a group")
+	}
+	// Empty object names are noise, not children.
+	if hasOtherPaths([]codec.DeviceObjectValue{{Object: ""}}, self) {
+		t.Error("an empty object name is not a child")
+	}
+}
