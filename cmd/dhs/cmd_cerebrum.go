@@ -1378,6 +1378,21 @@ func extractStringFlag(args []string, name string) (string, []string, error) {
 	return val, rest, nil
 }
 
+// extractBoolFlag is the presence-only sibling of extractStringFlag,
+// for verb-local switches that never take a value.
+func extractBoolFlag(args []string, name string) (bool, []string, error) {
+	rest := make([]string, 0, len(args))
+	found := false
+	for _, a := range args {
+		if a == name {
+			found = true
+			continue
+		}
+		rest = append(rest, a)
+	}
+	return found, rest, nil
+}
+
 // extractDeviceDetailsFlags splits the device-details argv into the
 // verb-specific flags (--device, --by-name) and the remainder consumed
 // by connectAndLogin. We don't extend cerebrumFlags because these
@@ -1574,6 +1589,15 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	// --raw keeps the pre-parity per-frame rendering: every wire
+	// attribute, one block per frame. The table drops frame-level
+	// attrs (name/ip/sub repeat identically on every row of a single
+	// watch), so anything diagnosing the WIRE rather than the DEVICE
+	// still needs the old view.
+	rawView, rest, err := extractBoolFlag(rest, "--raw")
+	if err != nil {
+		return err
+	}
 	if device == "" {
 		return cerebrumValErr("watch", "--device IP|NAME is required")
 	}
@@ -1631,12 +1655,23 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		}
 	}
 
+	// A VALUE watch is Tree/DM data, so it renders in the Tree/DM
+	// layout — the same columns `dhs watch` gives acp1/acp2. DETAILS is
+	// connection state, a different shape, and keeps its own form.
+	dmView := subDev != "" && !rawView
 	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
 		switch {
 		case f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "":
 			return // spurious §1.6 deviation
 		case f.Kind == codec.KindAck:
 			return // transaction plumbing, not an event
+		}
+		if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
+			now := time.Now()
+			for _, ov := range f.Device.ObjectValues {
+				cerebrumDMRow(now, ov)
+			}
+			return
 		}
 		printEventLabeled(f, nil)
 	})
@@ -1666,6 +1701,9 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		what = fmt.Sprintf("%s on %d object(s)", what, okRows)
 	}
 	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE %s on %s — Ctrl+C to stop\n", what, device)
+	if dmView {
+		cerebrumDMHeader()
+	}
 	<-ctx.Done()
 	fmt.Fprintln(os.Stderr, "watch stopped.")
 	return nil
@@ -1874,6 +1912,87 @@ func printEventLabeled(f *codec.Frame, srcNames map[string]string) {
 	default:
 		fmt.Printf("[%s] %s\n", f.Kind, f.Root.String())
 	}
+}
+
+// cerebrumDMHeader prints the Tree/DM watch header — the SAME columns
+// `dhs watch` uses for acp1/acp2, so a device watched over NB reads
+// like the same device watched natively.
+//
+// One grammar everywhere is the whole point of the Tree/DM template
+// (docs/protocols/verbs.md §12b): an operator comparing a CONVERT over
+// acp2 against the same card over Cerebrum should be diffing values,
+// not re-learning a layout.
+func cerebrumDMHeader() {
+	fmt.Printf("%-8s  %-52s  %-16s  %-3s  %-7s  value\n",
+		"time", "path", "label", "acc", "type")
+	fmt.Println(strings.Repeat("-", 118))
+}
+
+// cerebrumDMRow renders one object value in that layout.
+//
+// `label` is the last path segment, which is what the object is called
+// — the full path already occupies its own column, and repeating it
+// is what made the previous two-line form unreadable at 15 objects.
+//
+// A row the device reports available=0 is a CHILD GROUP, not a value:
+// group listings arrive inside a VALUE response and would otherwise
+// render as an object with an empty value, which reads as "this
+// object is empty" rather than "this is a folder".
+func cerebrumDMRow(ts time.Time, ov codec.DeviceObjectValue) {
+	label := ov.Label
+	if label == "" {
+		if i := strings.LastIndex(ov.Object, "."); i >= 0 {
+			label = ov.Object[i+1:]
+		} else {
+			label = ov.Object
+		}
+	}
+	if !ov.Available {
+		fmt.Printf("%s  %-52s  %-16s  %-3s  %-7s  %s\n",
+			ts.Format("15:04:05"), truncatePath(ov.Object, 52), truncate(label, 16),
+			"---", "group", "<children>")
+		return
+	}
+	val := ov.Value
+	if ov.Units != "" {
+		val += " " + ov.Units
+	}
+	fmt.Printf("%s  %-52s  %-16s  %-3s  %-7s  %s\n",
+		ts.Format("15:04:05"), truncatePath(ov.Object, 52), truncate(label, 16),
+		cerebrumAccess(ov), strings.ToLower(ov.DataType), val)
+}
+
+// cerebrumAccess renders the R/W bits in the same three-character shape
+// `dhs watch` prints for acp1/acp2, so the column means one thing
+// across protocols.
+func cerebrumAccess(ov codec.DeviceObjectValue) string {
+	r, w := "-", "-"
+	if ov.Readable {
+		r = "R"
+	}
+	if ov.Writable {
+		w = "W"
+	}
+	return r + w + "-"
+}
+
+// truncatePath shortens from the MIDDLE, keeping both ends.
+//
+// A Cerebrum object path is front-loaded with a group and a bracketed
+// UUID, so head-truncation (what truncate does) leaves 52 characters of
+// identical prefix on every row and hides the one segment that differs.
+// The tail is the object name; the head is the group. Both matter.
+func truncatePath(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	if n < 5 {
+		return s[:n]
+	}
+	keep := n - 1 // room for the ellipsis
+	head := keep / 3
+	tail := keep - head
+	return s[:head] + "…" + s[len(s)-tail:]
 }
 
 // summarise renders the first 3 entries of a list inline; longer lists
