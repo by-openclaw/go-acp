@@ -1,0 +1,130 @@
+---
+# Converge the AMWA reference stack. Idempotent: run-twice = 0 changes,
+# which is asserted by playbooks/test-idempotency.yml.
+
+- name: Assert the tooling host has a container runtime
+  ansible.builtin.command: docker compose version
+  register: dhs_amwa_compose
+  changed_when: false
+  failed_when: dhs_amwa_compose.rc != 0
+
+- name: Report the runtime the oracle will run on
+  ansible.builtin.debug:
+    msg: "{{ dhs_amwa_compose.stdout | trim }}"
+
+- name: Create the stack directory
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# The config files are rendered BEFORE the compose file so that a
+# `docker compose up` triggered by a compose change always mounts the
+# config the role intends, never the previous revision.
+- name: Render the reference implementation configs
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ dhs_amwa_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - registry.json
+    - node.json
+  register: dhs_amwa_configs
+
+- name: Render the compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ dhs_amwa_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: dhs_amwa_composefile
+
+# Pulling is separate from `up` so that a converge which changes
+# nothing does not silently adopt a newer :latest. The pin lives in
+# defaults; amwa-update.yml is what moves it on purpose.
+- name: Pull the pinned images if any are absent
+  ansible.builtin.command:
+    cmd: docker image inspect {{ item }}
+  register: dhs_amwa_have
+  changed_when: false
+  failed_when: false
+  loop:
+    - "{{ dhs_amwa_image_nmos_cpp }}"
+    - "{{ dhs_amwa_image_testing }}"
+
+- name: Fetch the missing images
+  ansible.builtin.command:
+    cmd: docker pull {{ item.item }}
+  loop: "{{ dhs_amwa_have.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.rc != 0
+  changed_when: true
+
+# `docker compose up -d` is convergent by nature: it recreates only what
+# no longer matches the file. Reading its output back is what turns that
+# into an honest changed/ok for Ansible - without it every run reports
+# changed and the idempotency gate is meaningless.
+- name: Converge the stack
+  ansible.builtin.command:
+    cmd: docker compose up -d --remove-orphans
+    chdir: "{{ dhs_amwa_dir }}"
+  register: dhs_amwa_up
+  changed_when: >-
+    dhs_amwa_up.stderr is search('(Created|Recreated|Started|Removed)')
+    or dhs_amwa_up.stdout is search('(Created|Recreated|Started|Removed)')
+
+- name: Wait for the reference registry to answer
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_port_registry_http }}/x-nmos/query/"
+    status_code: [200]
+  register: dhs_amwa_query
+  until: dhs_amwa_query is succeeded
+  retries: "{{ (dhs_amwa_health_timeout | int / 5) | round | int }}"
+  delay: 5
+
+- name: Wait for the reference node to answer
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_port_node_http }}/x-nmos/node/"
+    status_code: [200]
+  register: dhs_amwa_node
+  until: dhs_amwa_node is succeeded
+  retries: "{{ (dhs_amwa_health_timeout | int / 5) | round | int }}"
+  delay: 5
+
+- name: Wait for the testing tool to answer
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_port_testing_ui }}/"
+    status_code: [200]
+  register: dhs_amwa_tool
+  until: dhs_amwa_tool is succeeded
+  retries: "{{ (dhs_amwa_health_timeout | int / 5) | round | int }}"
+  delay: 5
+
+# A registry that answers but holds nothing has not proved the two
+# reference implementations found each other. The virtual node
+# registering is the real readiness signal, and it is also the first
+# thing that breaks if the bridge stops carrying multicast.
+- name: Confirm the reference node registered with the reference registry
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_port_registry_http }}/x-nmos/query/v1.3/nodes"
+    return_content: true
+  register: dhs_amwa_nodes
+  until: dhs_amwa_nodes.json | default([]) | length > 0
+  retries: "{{ (dhs_amwa_health_timeout | int / 5) | round | int }}"
+  delay: 5
+
+- name: Report the oracle's endpoints
+  ansible.builtin.debug:
+    msg: >-
+      AMWA reference stack up on {{ ansible_host }} -
+      registry http://{{ ansible_host }}:{{ dhs_amwa_port_registry_http }}
+      (ws :{{ dhs_amwa_port_registry_ws }}),
+      node http://{{ ansible_host }}:{{ dhs_amwa_port_node_http }},
+      testing tool http://{{ ansible_host }}:{{ dhs_amwa_port_testing_ui }};
+      {{ dhs_amwa_nodes.json | default([]) | length }} node(s) registered.
