@@ -1663,11 +1663,8 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	// finds nothing fails loudly instead of quietly watching one row.
 	objects := []string{object}
 	if subDev != "" {
-		objects, err = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object)
+		objects, err = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object, only)
 		if err != nil {
-			return err
-		}
-		if objects, err = keepOnly(objects, only); err != nil {
 			return err
 		}
 	}
@@ -1779,7 +1776,8 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 // response, not a recursive registration. Change events come from leaf
 // rows only, so watching a subtree means enumerating it first and
 // subscribing to each leaf.
-func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object string) ([]string, error) {
+func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object, only string) ([]string, error) {
+	want := parseOnly(only)
 	var out []string
 	for _, part := range strings.Split(object, ";") {
 		part = strings.TrimSpace(part)
@@ -1796,7 +1794,7 @@ func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device 
 			out = append(out, part)
 			continue
 		}
-		leaves, err := cerebrumExpand(sess, timeout, device, byName, subDev, group, deep)
+		leaves, err := cerebrumExpand(sess, timeout, device, byName, subDev, group, deep, want)
 		if err != nil {
 			return nil, fmt.Errorf("cerebrum-nb watch: expanding %q: %w", part, byNameHint(err, device, byName))
 		}
@@ -1821,9 +1819,9 @@ func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device 
 // Matching is on the last path segment and case-insensitive, because
 // the name in the operator's head is "subid", not the exact casing of
 // a path they never typed.
-func keepOnly(objects []string, only string) ([]string, error) {
+func parseOnly(only string) map[string]bool {
 	if strings.TrimSpace(only) == "" {
-		return objects, nil
+		return nil
 	}
 	want := map[string]bool{}
 	for _, w := range strings.Split(only, ",") {
@@ -1832,22 +1830,30 @@ func keepOnly(objects []string, only string) ([]string, error) {
 		}
 	}
 	if len(want) == 0 {
-		return objects, nil
+		return nil
 	}
-	var out []string
-	for _, o := range objects {
-		leaf := o
-		if i := strings.LastIndex(o, "."); i >= 0 {
-			leaf = o[i+1:]
-		}
-		if want[strings.ToLower(leaf)] {
-			out = append(out, o)
-		}
+	return want
+}
+
+// wantLeaf reports whether an expanded path should be kept.
+//
+// The filter is applied DURING the walk, not after it. Applied after,
+// "Nodes.** --only SubID" builds the whole tree first and trips the
+// object cap before it ever reaches the filter — which is exactly the
+// combination needed to watch one field across a plant.
+//
+// Matching is on the last path segment and case-insensitive: the name
+// in the operator's head is "subid", not the casing of a path they
+// never typed.
+func wantLeaf(want map[string]bool, path string) bool {
+	if want == nil {
+		return true
 	}
-	if len(out) == 0 {
-		return nil, fmt.Errorf("cerebrum-nb watch: --only %q matched none of the %d expanded object(s)", only, len(objects))
+	leaf := path
+	if i := strings.LastIndex(path, "."); i >= 0 {
+		leaf = path[i+1:]
 	}
-	return out, nil
+	return want[strings.ToLower(leaf)]
 }
 
 // cerebrumChildren obtains one group and returns its child rows.
@@ -1900,7 +1906,7 @@ const maxExpandObjects = 2000
 // regardless, and for a deep expansion the available=0 rows are PROBED:
 // a group answers with rows for OTHER paths, a valueless leaf does
 // not. One obtain per candidate, and only for candidates.
-func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool) ([]string, error) {
+func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool, want map[string]bool) ([]string, error) {
 	var out []string
 	seen := map[string]bool{}
 
