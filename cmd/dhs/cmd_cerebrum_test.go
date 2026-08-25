@@ -496,7 +496,21 @@ func TestCerebrumDMRowMatchesGenericWatch(t *testing.T) {
 		cerebrumDMRow(ts, codec.DeviceObjectValue{Object: "Nodes.[abc].Interfaces.[eno1]"})
 	})
 	if !strings.Contains(got, "group") || !strings.Contains(got, "<children>") {
-		t.Errorf("child group should render as a group row:\n%s", got)
+		t.Errorf("a BRACKETED collection member is a group row:\n%s", got)
+	}
+
+	// ...but an UNBRACKETED valueless leaf is NOT a folder. Connected
+	// on a node that never connected, and Last_Error on a live one,
+	// both arrive available=0; calling them "group <children>" told
+	// the operator a status field was a directory.
+	got = capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{Object: "Nodes.[abc].Connected", Readable: true})
+	})
+	if strings.Contains(got, "group") {
+		t.Errorf("a valueless named field must not render as a group:\n%s", got)
+	}
+	if !strings.Contains(got, "no-value") {
+		t.Errorf("a valueless leaf should say so:\n%s", got)
 	}
 
 	// Units ride with the value, as in the generic watch.
@@ -560,5 +574,33 @@ func TestHasOtherPathsIsTheGroupTest(t *testing.T) {
 	// Empty object names are noise, not children.
 	if hasOtherPaths([]codec.DeviceObjectValue{{Object: ""}}, self) {
 		t.Error("an empty object name is not a child")
+	}
+}
+// TestConstraintsSurviveToTheWatch: the wire carries MIN/MAX/STEP and
+// ENUM_LIST on the same row as the value, and the watch was dropping
+// them. They are the difference between reading a device and being
+// able to set it.
+func TestConstraintsSurviveToTheWatch(t *testing.T) {
+	enum := codec.DeviceObjectValue{EnumList: []string{"Send SDP Always", "Send SDP Once"}}
+	if got := cerebrumConstraint(enum); got != "{Send SDP Always|Send SDP Once}" {
+		t.Errorf("enum list = %q", got)
+	}
+	rng := codec.DeviceObjectValue{Min: "0", Max: "1000", Step: "0.5"}
+	if got := cerebrumConstraint(rng); got != "[0..1000 step 0.5]" {
+		t.Errorf("range = %q", got)
+	}
+	// A degenerate MIN==MAX carries no information - live ENUM rows
+	// report 0..0 and their real constraint is the enum list. Same
+	// rule CanonicalDeviceObject applies when building the DM.
+	if got := cerebrumConstraint(codec.DeviceObjectValue{Min: "0", Max: "0"}); got != "" {
+		t.Errorf("degenerate range should be dropped, got %q", got)
+	}
+	if got := cerebrumConstraint(codec.DeviceObjectValue{}); got != "" {
+		t.Errorf("no constraint should render nothing, got %q", got)
+	}
+	// Enum wins over a range when both are present.
+	both := codec.DeviceObjectValue{EnumList: []string{"On", "Off"}, Min: "0", Max: "1"}
+	if got := cerebrumConstraint(both); got != "{On|Off}" {
+		t.Errorf("enum should win over range, got %q", got)
 	}
 }
