@@ -307,7 +307,7 @@ VERBS
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
-  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --only "SubID,Connected" narrows an expansion to named leaves. A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
@@ -1598,10 +1598,22 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	// --only narrows an expansion to named leaves. Without it,
-	// "Nodes.*" on a live NOC is 68 nodes x ~16 fields and the three
-	// values anyone actually watches are lost in it.
-	only, rest, err := extractStringFlag(rest, "--only")
+	// --label narrows a watch to named objects. Without it, "Nodes.*"
+	// on a live NOC reports every field of all 68 nodes and the one
+	// value anyone is waiting on is lost in it.
+	//
+	// The name is not chosen here: --label is what the GENERIC watch
+	// calls this filter, next to --group / --id / --path / --slot, and
+	// that verb is shared by acp1, acp2, emberplus, probel, tsl and
+	// osc. cerebrum-nb inventing its own word for the same idea is the
+	// same class of drift as it having its own output format was.
+	//
+	// It differs in one way, deliberately: this takes a comma list
+	// where the generic one takes a single label. A list is a superset
+	// — one name still works — and the generic flag should grow the
+	// same, which is a change across every plugin's matcher rather
+	// than a rename.
+	only, rest, err := extractStringFlag(rest, "--label")
 	if err != nil {
 		return err
 	}
