@@ -31,10 +31,21 @@ dhs_amwa_project: dhs-amwa
 dhs_amwa_image_nmos_cpp: "rhastie/nmos-cpp:latest"
 dhs_amwa_image_testing: "amwa/nmos-testing:latest"
 
-# Host-side ports. Container-internal ports stay at the upstream
-# defaults (80 HTTP, 81 WS) so the shipped config files still apply;
-# only the published side is remapped, because three containers cannot
-# all own port 80 on one host.
+# The address the reference implementations ADVERTISE.
+#
+# This is the whole difference between a stack you can look at and one
+# you can drive. On the bridge each container gets a 172.x address and
+# nmos-cpp, left alone, publishes that as its href — so a registry walk
+# from outside lists two nodes and can reach neither. easy-nmos never
+# meets this because macvlan gives every container a real LAN address.
+#
+# So the containers are told to advertise the tooling host, and each
+# listens on the SAME port it is published on, which keeps the
+# advertised `host:port` true from anywhere on the lab VLAN.
+dhs_amwa_advertise_host: "{{ ansible_host }}"
+
+# Ports. Identical on both sides of the publish for the reason above;
+# three containers cannot all own port 80, so none of them does.
 dhs_amwa_port_testing_ui: 5000          # web UI and the POST /api driver
 dhs_amwa_port_testing_mocks: "5101-5106"  # the tool's own mock registries
 dhs_amwa_port_registry_http: 8110       # reference Registration + Query API

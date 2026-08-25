@@ -39,8 +39,8 @@ services:
     networks:
       nmos: {}
     ports:
-      - "{{ dhs_amwa_port_registry_http }}:80"
-      - "{{ dhs_amwa_port_registry_ws }}:81"
+      - "{{ dhs_amwa_port_registry_http }}:{{ dhs_amwa_port_registry_http }}"
+      - "{{ dhs_amwa_port_registry_ws }}:{{ dhs_amwa_port_registry_ws }}"
       - "{{ dhs_amwa_port_registry_mqtt }}:1883"
     restart: {{ dhs_amwa_restart_policy }}
 
@@ -61,8 +61,8 @@ services:
     networks:
       nmos: {}
     ports:
-      - "{{ dhs_amwa_port_node_http }}:80"
-      - "{{ dhs_amwa_port_node_ws }}:81"
+      - "{{ dhs_amwa_port_node_http }}:{{ dhs_amwa_port_node_http }}"
+      - "{{ dhs_amwa_port_node_ws }}:{{ dhs_amwa_port_node_ws }}"
     depends_on:
       - nmos-registry
     restart: {{ dhs_amwa_restart_policy }}
