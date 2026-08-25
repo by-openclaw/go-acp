@@ -663,7 +663,7 @@ func TestWatchReportsChangesNotState(t *testing.T) {
 }
 // TestOnlyIsAppliedDuringTheWalk: the filter has to narrow the
 // expansion as it happens, not afterwards. Applied after,
-// "Nodes.** --only SubID" builds the whole tree first and trips the
+// "Nodes.** --label SubID" builds the whole tree first and trips the
 // object cap before it reaches the filter - which is exactly the
 // combination needed to watch one field across a plant.
 func TestOnlyIsAppliedDuringTheWalk(t *testing.T) {
@@ -682,6 +682,6 @@ func TestOnlyIsAppliedDuringTheWalk(t *testing.T) {
 	// No filter keeps everything - nil means "unfiltered", never
 	// "match nothing".
 	if !wantLeaf(nil, "anything") || parseOnly("") != nil || parseOnly(" , ") != nil {
-		t.Error("an empty --only must be a no-op, not an empty result")
+		t.Error("an empty --label must be a no-op, not an empty result")
 	}
 }
