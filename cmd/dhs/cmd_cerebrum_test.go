@@ -437,7 +437,7 @@ func TestWatchObjectListGrammar(t *testing.T) {
 		{"empty entries are dropped", "a;;b;", []string{"a", "b"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", tc.in)
+			got, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", tc.in, "")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -453,7 +453,7 @@ func TestWatchObjectListGrammar(t *testing.T) {
 		})
 	}
 	// A list of nothing is a usage error, not an empty subscription.
-	if _, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", " ; ; "); err == nil {
+	if _, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", " ; ; ", ""); err == nil {
 		t.Error("an all-empty --object should be refused")
 	}
 }
@@ -604,37 +604,6 @@ func TestConstraintsSurviveToTheWatch(t *testing.T) {
 		t.Errorf("enum should win over range, got %q", got)
 	}
 }
-// TestKeepOnlyNarrowsAnExpansion: an expansion answers "what is under
-// here"; --only answers "which of those do I care about". Without it
-// "Nodes.*" on a live NOC is 68 nodes x ~16 fields and the values
-// anyone actually watches are lost in the flood.
-func TestKeepOnlyNarrowsAnExpansion(t *testing.T) {
-	objs := []string{
-		"Nodes.[a].SubID", "Nodes.[a].Connected", "Nodes.[a].Description",
-		"Nodes.[b].SubID", "Nodes.[b].Connected", "Nodes.[b].Description",
-	}
-	got, err := keepOnly(objs, "SubID,Connected")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(got) != 4 {
-		t.Errorf("want 4 rows, got %d: %v", len(got), got)
-	}
-	// Case-insensitive: the name in the operator's head is "subid",
-	// not the casing of a path they never typed.
-	if got, err := keepOnly(objs, " subid "); err != nil || len(got) != 2 {
-		t.Errorf("case/space-insensitive match failed: %v %v", got, err)
-	}
-	// Empty filter is a no-op, not an empty result.
-	if got, _ := keepOnly(objs, ""); len(got) != len(objs) {
-		t.Errorf("empty --only should pass everything through, got %d", len(got))
-	}
-	// A filter that matches nothing is an error, not a silent empty
-	// watch that never fires.
-	if _, err := keepOnly(objs, "Nope"); err == nil {
-		t.Error("a filter matching nothing must be refused")
-	}
-}
 // TestWatchReportsChangesNotState pins what a watch IS.
 //
 // A Cerebrum SUBSCRIBE answers with the object's CURRENT value, and
@@ -690,5 +659,29 @@ func TestWatchReportsChangesNotState(t *testing.T) {
 	f3(codec.DeviceObjectValue{Object: "x", Value: "up", Available: true})
 	if !f3(codec.DeviceObjectValue{Object: "x"}) {
 		t.Error("a value going unavailable is a change")
+	}
+}
+// TestOnlyIsAppliedDuringTheWalk: the filter has to narrow the
+// expansion as it happens, not afterwards. Applied after,
+// "Nodes.** --only SubID" builds the whole tree first and trips the
+// object cap before it reaches the filter - which is exactly the
+// combination needed to watch one field across a plant.
+func TestOnlyIsAppliedDuringTheWalk(t *testing.T) {
+	want := parseOnly("SubID,Connected")
+	if !wantLeaf(want, "Nodes.[a].SubID") {
+		t.Error("a named leaf should be kept")
+	}
+	if wantLeaf(want, "Nodes.[a].Description") {
+		t.Error("an unnamed leaf should be dropped")
+	}
+	// Case- and space-insensitive: the name in the operator's head is
+	// "subid", not the casing of a path they never typed.
+	if !wantLeaf(parseOnly(" subid "), "Nodes.[a].SubID") {
+		t.Error("match should ignore case and surrounding space")
+	}
+	// No filter keeps everything - nil means "unfiltered", never
+	// "match nothing".
+	if !wantLeaf(nil, "anything") || parseOnly("") != nil || parseOnly(" , ") != nil {
+		t.Error("an empty --only must be a no-op, not an empty result")
 	}
 }
