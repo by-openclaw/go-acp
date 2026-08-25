@@ -1612,6 +1612,7 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	onlyLeaves := parseOnly(only)
 	if device == "" {
 		return cerebrumValErr("watch", "--device IP|NAME is required")
 	}
@@ -1720,6 +1721,15 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
 			now := time.Now()
 			for _, ov := range f.Device.ObjectValues {
+				// --only filters what is PRINTED as well as what is
+				// subscribed. It has to: a group subscription is
+				// indivisible — "Nodes.*" registers 68 node groups and
+				// each one reports every field of its node — so the
+				// subscription list cannot express "SubID only", and
+				// filtering the rows is the only place that can.
+				if !wantLeaf(onlyLeaves, ov.Object) {
+					continue
+				}
 				if !changed(ov) {
 					continue
 				}
