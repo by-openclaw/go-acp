@@ -276,13 +276,13 @@ func checkIS04Graph(h *Harvest) []Finding {
 		// edge dangles — absence of the collection is not absence of
 		// the target. A collection that WAS captured and came back
 		// empty is different: the device has said it has none.
-		if !have[toKind] || maybeShort[toKind] {
+		if !have[toKind] || maybeShort[toKind] != "" {
 			return
 		}
 		out = append(out, h.find(
 			"NMOS-IS04-DANGLING-REF", SevError,
 			strings.TrimSuffix(kind, "s")+"/"+from,
-			fmt.Sprintf("%s %s points at %s %s, which is not in the capture", field, to, strings.TrimSuffix(toKind, "s"), to),
+			fmt.Sprintf("%s points at %s %s, which is not in the capture", field, strings.TrimSuffix(toKind, "s"), to),
 			"IS-04 "+strings.TrimSuffix(kind, "s")+".json "+field,
 			"a controller drops the whole branch when a link cannot be resolved"))
 	}

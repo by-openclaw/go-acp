@@ -95,18 +95,30 @@ func checkTransportReport(h *Harvest) []Finding {
 	// Suppressing findings against a possibly-short collection is only
 	// honest if the suppression itself is reported. Otherwise a
 	// truncated capture reads as a clean plant.
+	// One finding per REASON, not one per kind: a registry that breaks
+	// the same way on six collections is one defect, but a registry
+	// whose flows cursor sticks while its senders merely end on an
+	// empty page has told us two different things, and collapsing
+	// those into one sentence loses the stronger of the two.
 	if short := truncatedKinds(h.Report); len(short) > 0 {
-		kinds := make([]string, 0, len(short))
-		for k := range short {
-			kinds = append(kinds, k)
+		byReason := map[string][]string{}
+		for kind, reason := range short {
+			byReason[reason] = append(byReason[reason], kind)
 		}
-		sort.Strings(kinds)
-		out = append(out, h.find(
-			"NMOS-AUDIT-COLLECTION-MAYBE-SHORT", SevWarn, "query",
-			fmt.Sprintf("the walk of %s ended on an empty page directly after a full one",
-				strings.Join(kinds, ", ")),
-			"IS-04 v1.3 §7 Query API paging",
-			"either the registry holds exactly one page, or its cursor stopped advancing; checks that reason from a missing resource were suppressed for these"))
+		reasons := make([]string, 0, len(byReason))
+		for r := range byReason {
+			reasons = append(reasons, r)
+		}
+		sort.Strings(reasons)
+		for _, reason := range reasons {
+			kinds := byReason[reason]
+			sort.Strings(kinds)
+			out = append(out, h.find(
+				"NMOS-AUDIT-COLLECTION-MAYBE-SHORT", SevWarn, "query",
+				fmt.Sprintf("the walk of %s %s", strings.Join(kinds, ", "), reason),
+				"IS-04 v1.3 §7 Query API paging",
+				"the capture does not prove these collections are complete, so checks that reason from a missing resource were suppressed for them"))
+		}
 	}
 
 	if len(stuck) > 0 {
@@ -222,52 +234,91 @@ func checkQueryVersionIsolation(h *Harvest) []Finding {
 	return out
 }
 
+// Reasons a collection's walk cannot be trusted to have reached the
+// end. Ordered weakest to strongest, so a kind seen under several
+// paths keeps the most definite one.
+const (
+	shortEmptyPage = "ended on an empty page directly after a full one"
+	shortDupedRows = "re-served rows it had already handed out, so page boundaries are not stable"
+	shortStuckCurs = "was abandoned when the registry's paging cursor stopped advancing"
+)
+
+// shortRank orders the reasons by how definite they are, so a kind seen
+// under several paths keeps the strongest evidence. An empty page is
+// ambiguous — it also describes a registry with exactly one page. A
+// repeated cursor is not ambiguous at all.
+func shortRank(reason string) int {
+	switch reason {
+	case shortStuckCurs:
+		return 3
+	case shortDupedRows:
+		return 2
+	default:
+		return 1
+	}
+}
+
 // truncatedKinds reads the exporter's per-page record and names the
-// resource kinds whose walk may have stopped short.
+// resource kinds whose walk may have stopped short, against the reason
+// it stopped.
 //
-// The signature is a walk that ended on an empty page immediately after
-// a FULL one. A registry holding exactly one page of resources produces
-// the same trace as a registry whose paging cursor stops advancing, and
-// nothing in the capture distinguishes them. What the two share is that
-// neither proves the collection is complete — so anything that reasons
+// Three signatures, all meaning the same thing to a check: the capture
+// does not prove this collection is complete, so anything reasoning
 // from the ABSENCE of a resource has to stand down.
 //
-// Ignoring this cost 97 dangling-reference findings on one real 44-node
-// capture: the registry served exactly 100 senders and 100 flows, and
-// every sender past the boundary appeared to point at a flow that did
-// not exist.
-func truncatedKinds(report []string) map[string]bool {
-	type walk struct {
-		increments []int
-	}
-	walks := map[string]*walk{}
-	for _, line := range report {
-		m := pageLine.FindStringSubmatch(line)
-		if m == nil {
-			continue
+//  1. A walk that ended on an empty page immediately after a FULL one.
+//     A registry holding exactly one page produces the same trace as a
+//     registry whose cursor stops advancing, and nothing in the capture
+//     separates them.
+//  2. A walk the exporter abandoned because the cursor repeated. This
+//     one is not ambiguous — the catalogue was still arriving.
+//  3. A walk that came back with more rows than unique resources. A
+//     cursor that re-serves rows can also skip them.
+//
+// Ignoring (1) cost 97 dangling-reference findings on one real 44-node
+// capture. Ignoring (2) and (3) cost 8,802 on the full plant behind it:
+// the registry's flows cursor re-served page one forever, so every one
+// of 5,168 senders appeared to point at a flow that did not exist.
+func truncatedKinds(report []string) map[string]string {
+	out := map[string]string{}
+	mark := func(path, reason string) {
+		kind := kindOfPath(path)
+		if prev, ok := out[kind]; ok && shortRank(prev) >= shortRank(reason) {
+			return
 		}
-		path, inc := m[1], m[3]
-		n, err := strconv.Atoi(inc)
-		if err != nil {
-			continue
-		}
-		w, ok := walks[path]
-		if !ok {
-			w = &walk{}
-			walks[path] = w
-		}
-		w.increments = append(w.increments, n)
+		out[kind] = reason
 	}
 
-	out := map[string]bool{}
-	for path, w := range walks {
-		if len(w.increments) < 2 {
+	increments := map[string][]int{}
+	for _, line := range report {
+		switch {
+		case pageLine.MatchString(line):
+			m := pageLine.FindStringSubmatch(line)
+			n, err := strconv.Atoi(m[3])
+			if err != nil {
+				continue
+			}
+			increments[m[1]] = append(increments[m[1]], n)
+
+		case strings.HasPrefix(line, "WARN  paging cursor did not advance"):
+			mark(pathOfStuckLine(line), shortStuckCurs)
+
+		case pagingDupe.MatchString(line):
+			m := pagingDupe.FindStringSubmatch(line)
+			rows, _ := strconv.Atoi(m[2])
+			uniq, _ := strconv.Atoi(m[3])
+			if rows > uniq {
+				mark(m[1], shortDupedRows)
+			}
+		}
+	}
+
+	for path, inc := range increments {
+		if len(inc) < 2 {
 			continue
 		}
-		last := w.increments[len(w.increments)-1]
-		prev := w.increments[len(w.increments)-2]
-		if last == 0 && prev > 0 {
-			out[kindOfPath(path)] = true
+		if inc[len(inc)-1] == 0 && inc[len(inc)-2] > 0 {
+			mark(path, shortEmptyPage)
 		}
 	}
 	return out

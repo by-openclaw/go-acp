@@ -593,6 +593,73 @@ func TestTruncatedCollectionSuppressesDanglingRefs(t *testing.T) {
 	}
 }
 
+// TestStuckCursorSuppressesDanglingRefs pins the second signature of an
+// incomplete walk. Where TestTruncatedCollectionSuppressesDanglingRefs
+// covers a walk that ended on an empty page, this covers one the
+// exporter ABANDONED because the registry re-served the same cursor —
+// the page record then ends on a FULL page, so the empty-page signature
+// never fires and every reference into the collection looks dangling.
+//
+// Measured on a real 45-node plant: the registry answered
+// /x-nmos/query/v1.3/flows with `X-Paging-Since: ""` and a rel="prev"
+// cursor carrying an empty `paging.until`, so the walk stopped at 100
+// flows. That produced 5,128 dangling-reference errors — one for every
+// sender in the plant — for one registry defect.
+func TestStuckCursorSuppressesDanglingRefs(t *testing.T) {
+	h := mk("registry", map[string]map[string]map[string]any{
+		"query": {"v1.3": {
+			"flows":   []any{},
+			"devices": []any{},
+			"senders": []any{sender(sID, map[string]any{
+				"flow_id": "99999999-9999-4999-8999-999999999999",
+			})},
+		}},
+	})
+	// Note the walk ends on a FULL page — the empty-page signature
+	// cannot fire here.
+	h.Report = []string{
+		"200   /x-nmos/query/v1.3/flows  (page 1, +100, total 100)",
+		"200   /x-nmos/query/v1.3/flows  (page 2, +100, total 200)",
+		"WARN  paging cursor did not advance for /x-nmos/query/v1.3/flows - stopping (registry paging defect)",
+		"NOTE  /x-nmos/query/v1.3/flows returned 200 rows across pages, 100 unique",
+	}
+
+	for _, f := range checkIS04Graph(h) {
+		if f.Code == "NMOS-IS04-DANGLING-REF" && strings.Contains(f.Detail, "flow_id") {
+			t.Errorf("a reference into a stuck-cursor collection was reported: %q", f.Detail)
+		}
+	}
+	// Suppression stays per collection: devices walked cleanly, so a
+	// dangling device_id is still a finding.
+	if !strings.Contains(has(t, checkIS04Graph(h), "NMOS-IS04-DANGLING-REF").Detail, "device_id") {
+		t.Error("references into a complete collection must still be reported")
+	}
+
+	// The registry defect itself must still be reported — suppressing
+	// the symptom while hiding the cause would read as a clean plant.
+	found := checkTransportReport(h)
+	has(t, found, "NMOS-QUERY-PAGING-STUCK")
+	has(t, found, "NMOS-QUERY-PAGING-DUPES")
+	f := has(t, found, "NMOS-AUDIT-COLLECTION-MAYBE-SHORT")
+	if !strings.Contains(f.Detail, "flows") || !strings.Contains(f.Detail, "cursor stopped advancing") {
+		t.Errorf("the finding must name the collection AND the reason: %q", f.Detail)
+	}
+}
+
+// TestShortReasonKeepsStrongestEvidence: a kind seen under several
+// paths reports the most definite reason, not the last one parsed. An
+// empty page is ambiguous; a repeated cursor is not.
+func TestShortReasonKeepsStrongestEvidence(t *testing.T) {
+	got := truncatedKinds([]string{
+		"200   /x-nmos/query/v1.1/flows  (page 1, +100, total 100)",
+		"200   /x-nmos/query/v1.1/flows  (page 2, +0, total 100)",
+		"WARN  paging cursor did not advance for /x-nmos/query/v1.3/flows - stopping (registry paging defect)",
+	})
+	if got["flows"] != shortStuckCurs {
+		t.Errorf("want the stuck-cursor reason to win, got %q", got["flows"])
+	}
+}
+
 func TestTruncatedKinds(t *testing.T) {
 	// A walk that ended on a non-empty page is complete.
 	if got := truncatedKinds([]string{
@@ -600,6 +667,12 @@ func TestTruncatedKinds(t *testing.T) {
 		"200   /x-nmos/query/v1.3/nodes  (page 2, +7, total 107)",
 	}); len(got) != 0 {
 		t.Errorf("a walk ending on a partial page is complete, got %v", got)
+	}
+	// Rows equal to unique is a clean walk, not a truncated one.
+	if got := truncatedKinds([]string{
+		"NOTE  /x-nmos/query/v1.3/nodes returned 40 rows across pages, 40 unique",
+	}); len(got) != 0 {
+		t.Errorf("a walk with no duplicates is complete, got %v", got)
 	}
 	// A single page is complete.
 	if got := truncatedKinds([]string{
