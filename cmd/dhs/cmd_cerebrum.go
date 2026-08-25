@@ -2025,18 +2025,76 @@ func cerebrumDMRow(ts time.Time, ov codec.DeviceObjectValue) {
 		}
 	}
 	if !ov.Available {
+		// available=0 means the row carries no value. That is TWO
+		// different things and the flag does not separate them: a child
+		// GROUP, and a leaf whose value is currently absent.
+		//
+		// Live evidence for the only signal that does separate them:
+		// every collection child Cerebrum emits is BRACKETED —
+		// Interfaces.[eno1], Devices.[uuid], Nodes.[uuid] — while
+		// valueless leaves are not: Last_Error on a live node,
+		// Connected/Host/UUID/Versions on a node that never connected.
+		// Calling those "group <children>" told the operator a status
+		// field was a folder.
+		//
+		// It is a naming heuristic, so it only decides the LABEL. When
+		// it is wrong the row still reads as "no value", which is true
+		// either way.
+		kind, val := "no-value", "—"
+		if isBracketed(label) {
+			kind, val = "group", "<children>"
+		}
 		fmt.Printf("%s  %-52s  %-16s  %-3s  %-7s  %s\n",
 			ts.Format("15:04:05"), truncatePath(ov.Object, 52), truncate(label, 16),
-			"---", "group", "<children>")
+			cerebrumAccess(ov), kind, val)
 		return
 	}
 	val := ov.Value
 	if ov.Units != "" {
 		val += " " + ov.Units
 	}
+	if c := cerebrumConstraint(ov); c != "" {
+		val += "  " + c
+	}
 	fmt.Printf("%s  %-52s  %-16s  %-3s  %-7s  %s\n",
 		ts.Format("15:04:05"), truncatePath(ov.Object, 52), truncate(label, 16),
 		cerebrumAccess(ov), strings.ToLower(ov.DataType), val)
+}
+
+// cerebrumConstraint renders what a value is ALLOWED to be — the enum
+// list, or the numeric range.
+//
+// The wire carries these on the same row as the value (§5.4.3
+// MIN/MAX/STEP, ENUM_LIST) and the DM store keeps them, but the watch
+// was throwing them away. They are the difference between reading a
+// device and being able to set it: "Send SDP Always" tells you nothing
+// about what else you could write there.
+//
+// A degenerate MIN==MAX carries no information — live ENUM rows report
+// 0..0, their real constraint being the enum list — so it is dropped,
+// the same rule CanonicalDeviceObject applies when building the DM.
+func cerebrumConstraint(ov codec.DeviceObjectValue) string {
+	if len(ov.EnumList) > 0 {
+		return "{" + strings.Join(ov.EnumList, "|") + "}"
+	}
+	if ov.Min == "" && ov.Max == "" {
+		return ""
+	}
+	if ov.Min == ov.Max {
+		return ""
+	}
+	r := "[" + ov.Min + ".." + ov.Max
+	if ov.Step != "" && ov.Step != "0" {
+		r += " step " + ov.Step
+	}
+	return r + "]"
+}
+
+// isBracketed reports whether a path segment is a Cerebrum collection
+// member — "[eno1]", "[<uuid>]". Members of a collection are bracketed;
+// named fields are not.
+func isBracketed(seg string) bool {
+	return strings.HasPrefix(seg, "[") && strings.HasSuffix(seg, "]")
 }
 
 // cerebrumAccess renders the R/W bits in the same three-character shape
