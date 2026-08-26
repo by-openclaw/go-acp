@@ -1,9 +1,9 @@
 package is04
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
+
+	"dhs/internal/amwa/codec/spec"
 )
 
 // Source is the IS-04 v1.3 Source resource. Combines source_core
@@ -99,17 +99,35 @@ func (s *Source) Validate() error {
 
 // DecodeSource parses + validates a Source payload.
 func DecodeSource(raw []byte) (*Source, error) {
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	var s Source
-	if err := d.Decode(&s); err != nil {
-		return nil, fmt.Errorf("is04: decode source: %w", err)
-	}
-	if d.More() {
-		return nil, fmt.Errorf("is04: decode source: trailing JSON content")
+	return DecodeSourceReporting(raw, APIVersion, nil)
+}
+
+// DecodeSourceReporting parses a Source payload and validates it against the
+// canonical rules, which track the latest IS-04 minor.
+//
+// A per-minor codec wants [ParseSource] instead: a v1.0 payload judged by
+// v1.3 rules is failed for missing fields that minor never had.
+func DecodeSourceReporting(raw []byte, apiVer string, rep spec.Reporter) (*Source, error) {
+	s, err := ParseSource(raw, apiVer, rep)
+	if err != nil {
+		return nil, err
 	}
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
+	return s, nil
+}
+
+// ParseSource decodes a Source served on an apiVer tree WITHOUT applying any
+// minor's validation rules. Two classes of deviation are absorbed and
+// reported rather than raised: a field IS-04 defines nowhere (see
+// absorb.go) and a field it did not define until after apiVer (see
+// [Since]). The caller then validates against the minor it asked for.
+func ParseSource(raw []byte, apiVer string, rep spec.Reporter) (*Source, error) {
+	var s Source
+	if err := decodeAbsorbing(raw, &s, "source", apiVer, rep); err != nil {
+		return nil, err
+	}
+	AbsorbLaterThan(raw, "source", apiVer, rep)
 	return &s, nil
 }

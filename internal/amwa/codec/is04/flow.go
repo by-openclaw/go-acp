@@ -1,9 +1,9 @@
 package is04
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
+
+	"dhs/internal/amwa/codec/spec"
 )
 
 // Flow is the IS-04 v1.3 Flow resource. Combines flow_core
@@ -11,7 +11,8 @@ import (
 // discriminator (`format` URN) and a free-form `media_type`.
 //
 // JSON Schema base:
-//   https://specs.amwa.tv/is-04/releases/v1.3.3/APIs/schemas/with-refs/flow_core.html
+//
+//	https://specs.amwa.tv/is-04/releases/v1.3.3/APIs/schemas/with-refs/flow_core.html
 //
 // Per-format constraints (raw vs coded video, audio_raw, sdianc_data,
 // json_data, mux) layer on top of this base; we hold the union of
@@ -23,7 +24,7 @@ type Flow struct {
 	DeviceID  string     `json:"device_id"`
 	Parents   []string   `json:"parents"`
 	GrainRate *GrainRate `json:"grain_rate,omitempty"`
-	Format    string     `json:"format"`     // URN
+	Format    string     `json:"format"` // URN
 	MediaType string     `json:"media_type,omitempty"`
 
 	// Video-specific (flow_video / flow_video_raw / flow_video_coded):
@@ -134,17 +135,35 @@ func (f *Flow) Validate() error {
 
 // DecodeFlow parses + validates a Flow payload.
 func DecodeFlow(raw []byte) (*Flow, error) {
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	var f Flow
-	if err := d.Decode(&f); err != nil {
-		return nil, fmt.Errorf("is04: decode flow: %w", err)
-	}
-	if d.More() {
-		return nil, fmt.Errorf("is04: decode flow: trailing JSON content")
+	return DecodeFlowReporting(raw, APIVersion, nil)
+}
+
+// DecodeFlowReporting parses a Flow payload and validates it against the
+// canonical rules, which track the latest IS-04 minor.
+//
+// A per-minor codec wants [ParseFlow] instead: a v1.0 payload judged by
+// v1.3 rules is failed for missing fields that minor never had.
+func DecodeFlowReporting(raw []byte, apiVer string, rep spec.Reporter) (*Flow, error) {
+	f, err := ParseFlow(raw, apiVer, rep)
+	if err != nil {
+		return nil, err
 	}
 	if err := f.Validate(); err != nil {
 		return nil, err
 	}
+	return f, nil
+}
+
+// ParseFlow decodes a Flow served on an apiVer tree WITHOUT applying any
+// minor's validation rules. Two classes of deviation are absorbed and
+// reported rather than raised: a field IS-04 defines nowhere (see
+// absorb.go) and a field it did not define until after apiVer (see
+// [Since]). The caller then validates against the minor it asked for.
+func ParseFlow(raw []byte, apiVer string, rep spec.Reporter) (*Flow, error) {
+	var f Flow
+	if err := decodeAbsorbing(raw, &f, "flow", apiVer, rep); err != nil {
+		return nil, err
+	}
+	AbsorbLaterThan(raw, "flow", apiVer, rep)
 	return &f, nil
 }

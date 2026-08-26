@@ -4,7 +4,6 @@ import (
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/spec"
 	"encoding/json"
-	"strings"
 	"testing"
 )
 
@@ -80,8 +79,7 @@ func TestNodeEncodeStripsV12Fields(t *testing.T) {
 	}
 }
 
-func TestNodeDecodeRejectsV12Fields(t *testing.T) {
-	c := Codec{}
+func TestNodeDecodeAbsorbsV12Fields(t *testing.T) {
 	body := []byte(`{
 	  "id":"f47ac10b-58cc-4372-a567-0e02b2c3d479",
 	  "version":"1700000000:0","label":"x","description":"x",
@@ -91,10 +89,12 @@ func TestNodeDecodeRejectsV12Fields(t *testing.T) {
 	  "services":[],"clocks":[],
 	  "interfaces":[{"name":"eth0","chassis_id":"00-11-22-33-44-55","port_id":"00-11-22-33-44-66"}]
 	}`)
-	if _, err := c.DecodeNode(body); err == nil {
-		t.Fatalf("expected v1.1 decoder to reject Node with `interfaces`")
-	} else if !strings.Contains(err.Error(), "interfaces") {
-		t.Fatalf("error should name the rejected field, got %v", err)
+	rep := &spec.SliceReporter{}
+	if _, err := (Codec{Reporter: rep}).DecodeNode(body); err != nil {
+		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+	}
+	if len(rep.Snapshot()) == 0 {
+		t.Fatalf("an absorbed later-minor field must be reported")
 	}
 }
 
@@ -151,8 +151,7 @@ func TestSenderEncodeStripsV12Fields(t *testing.T) {
 	}
 }
 
-func TestSenderDecodeRejectsV12Fields(t *testing.T) {
-	c := Codec{}
+func TestSenderDecodeAbsorbsV12Fields(t *testing.T) {
 	cases := []string{`"caps":{}`, `"interface_bindings":[]`, `"subscription":{"active":false}`}
 	for _, extra := range cases {
 		body := []byte(`{
@@ -163,8 +162,12 @@ func TestSenderDecodeRejectsV12Fields(t *testing.T) {
 		  "device_id":"abcdef01-1234-4abc-9def-1234567890ab",
 		  "manifest_href":"http://h/m",
 		  ` + extra + `}`)
-		if _, err := c.DecodeSender(body); err == nil {
-			t.Fatalf("expected rejection of %q", extra)
+		rep := &spec.SliceReporter{}
+		if _, err := (Codec{Reporter: rep}).DecodeSender(body); err != nil {
+			t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+		}
+		if len(rep.Snapshot()) == 0 {
+			t.Fatalf("an absorbed later-minor field must be reported")
 		}
 	}
 }
@@ -174,11 +177,5 @@ func TestSenderValidateAcceptsMinimalV11(t *testing.T) {
 	s := validSenderV11("11111111-1111-4111-8111-111111111111")
 	if err := c.ValidateSender(s); err != nil {
 		t.Fatalf("v1.1 sender validator should accept minimal fixture: %v", err)
-	}
-}
-
-func TestRejectFieldsHelperOnNonObjectJSON(t *testing.T) {
-	if err := rejectFields([]byte("[1,2,3]"), []string{"x"}, "node"); err == nil {
-		t.Fatalf("rejectFields should reject non-object JSON")
 	}
 }

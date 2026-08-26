@@ -1,9 +1,9 @@
 package is04
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
+
+	"dhs/internal/amwa/codec/spec"
 )
 
 // Device is the IS-04 v1.3 Device resource.
@@ -12,9 +12,9 @@ import (
 type Device struct {
 	ResourceCore
 
-	Type      string          `json:"type"`     // URN
-	NodeID    string          `json:"node_id"`  // UUID v1-5
-	Senders   []string        `json:"senders"`  // deprecated array of UUIDs
+	Type      string          `json:"type"`    // URN
+	NodeID    string          `json:"node_id"` // UUID v1-5
+	Senders   []string        `json:"senders"` // deprecated array of UUIDs
 	Receivers []string        `json:"receivers"`
 	Controls  []DeviceControl `json:"controls"`
 }
@@ -63,17 +63,35 @@ func (d *Device) Validate() error {
 
 // DecodeDevice parses + validates a Device payload.
 func DecodeDevice(raw []byte) (*Device, error) {
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	var dev Device
-	if err := d.Decode(&dev); err != nil {
-		return nil, fmt.Errorf("is04: decode device: %w", err)
-	}
-	if d.More() {
-		return nil, fmt.Errorf("is04: decode device: trailing JSON content")
+	return DecodeDeviceReporting(raw, APIVersion, nil)
+}
+
+// DecodeDeviceReporting parses a Device payload and validates it against the
+// canonical rules, which track the latest IS-04 minor.
+//
+// A per-minor codec wants [ParseDevice] instead: a v1.0 payload judged by
+// v1.3 rules is failed for missing fields that minor never had.
+func DecodeDeviceReporting(raw []byte, apiVer string, rep spec.Reporter) (*Device, error) {
+	dev, err := ParseDevice(raw, apiVer, rep)
+	if err != nil {
+		return nil, err
 	}
 	if err := dev.Validate(); err != nil {
 		return nil, err
 	}
+	return dev, nil
+}
+
+// ParseDevice decodes a Device served on an apiVer tree WITHOUT applying any
+// minor's validation rules. Two classes of deviation are absorbed and
+// reported rather than raised: a field IS-04 defines nowhere (see
+// absorb.go) and a field it did not define until after apiVer (see
+// [Since]). The caller then validates against the minor it asked for.
+func ParseDevice(raw []byte, apiVer string, rep spec.Reporter) (*Device, error) {
+	var dev Device
+	if err := decodeAbsorbing(raw, &dev, "device", apiVer, rep); err != nil {
+		return nil, err
+	}
+	AbsorbLaterThan(raw, "device", apiVer, rep)
 	return &dev, nil
 }

@@ -110,8 +110,7 @@ func TestNodeEncodeStripsAttachedNetworkDevice(t *testing.T) {
 
 // TestNodeDecodeRejectsAttachedNetworkDevice verifies the v1.2 decoder
 // rejects a Node whose interfaces[] carry attached_network_device.
-func TestNodeDecodeRejectsAttachedNetworkDevice(t *testing.T) {
-	c := Codec{}
+func TestNodeDecodeAbsorbsAttachedNetworkDevice(t *testing.T) {
 	body := []byte(`{
 	  "id":"f47ac10b-58cc-4372-a567-0e02b2c3d479",
 	  "version":"1700000000:0","label":"x","description":"x","tags":{},
@@ -120,10 +119,12 @@ func TestNodeDecodeRejectsAttachedNetworkDevice(t *testing.T) {
 	  "services":[],"clocks":[],
 	  "interfaces":[{"name":"eth0","chassis_id":"00-11-22-33-44-55","port_id":"00-11-22-33-44-66","attached_network_device":{"chassis_id":"x","port_id":"y"}}]
 	}`)
-	if _, err := c.DecodeNode(body); err == nil {
-		t.Fatalf("expected v1.2 decoder to reject attached_network_device")
-	} else if !strings.Contains(err.Error(), "attached_network_device") {
-		t.Fatalf("error should name the rejected field, got %v", err)
+	rep := &spec.SliceReporter{}
+	if _, err := (Codec{Reporter: rep}).DecodeNode(body); err != nil {
+		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+	}
+	if len(rep.Snapshot()) == 0 {
+		t.Fatalf("an absorbed later-minor field must be reported")
 	}
 }
 
@@ -139,11 +140,11 @@ func TestReceiverEncodeStripsBCPv13Caps(t *testing.T) {
 			Description: "fixture",
 			Tags:        map[string][]string{},
 		},
-		Format:    "urn:x-nmos:format:video",
-		DeviceID:  "abcdef01-1234-4abc-9def-1234567890ab",
-		Transport: "urn:x-nmos:transport:rtp",
+		Format:            "urn:x-nmos:format:video",
+		DeviceID:          "abcdef01-1234-4abc-9def-1234567890ab",
+		Transport:         "urn:x-nmos:transport:rtp",
 		InterfaceBindings: []string{"eth0"},
-		Subscription: is04.ReceiverSubscription{Active: false},
+		Subscription:      is04.ReceiverSubscription{Active: false},
 		Caps: is04.ReceiverCaps{
 			MediaTypes:     []string{"video/raw"},
 			ConstraintSets: []map[string]any{{"urn:x-nmos:cap:format:color_sampling": map[string]any{"enum": []string{"YCbCr-4:2:2"}}}},
@@ -174,19 +175,22 @@ func TestReceiverEncodeStripsBCPv13Caps(t *testing.T) {
 	}
 }
 
-// TestReceiverDecodeRejectsBCPv13Caps verifies the v1.2 decoder rejects
-// a Receiver whose caps carries constraint_sets or version.
-func TestReceiverDecodeRejectsBCPv13Caps(t *testing.T) {
-	c := Codec{}
+// TestReceiverDecodeAbsorbsBCPv13Caps verifies the v1.2 decoder KEEPS
+// a Receiver whose caps carries constraint_sets or version — both
+// arrived in v1.3 — and reports each as a deviation instead of
+// refusing the resource.
+func TestReceiverDecodeAbsorbsBCPv13Caps(t *testing.T) {
 	cases := map[string]string{
 		"constraint_sets": `{"id":"11111111-1111-4111-8111-111111111111","version":"1700000000:0","label":"x","description":"x","tags":{},"format":"urn:x-nmos:format:video","caps":{"constraint_sets":[]},"device_id":"abcdef01-1234-4abc-9def-1234567890ab","transport":"urn:x-nmos:transport:rtp","subscription":{"sender_id":null,"active":false},"interface_bindings":[]}`,
 		"version":         `{"id":"11111111-1111-4111-8111-111111111111","version":"1700000000:0","label":"x","description":"x","tags":{},"format":"urn:x-nmos:format:video","caps":{"version":"1700000000:0"},"device_id":"abcdef01-1234-4abc-9def-1234567890ab","transport":"urn:x-nmos:transport:rtp","subscription":{"sender_id":null,"active":false},"interface_bindings":[]}`,
 	}
 	for name, body := range cases {
-		if _, err := c.DecodeReceiver([]byte(body)); err == nil {
-			t.Fatalf("expected v1.2 decoder to reject caps.%s", name)
-		} else if !strings.Contains(err.Error(), name) {
-			t.Fatalf("[%s] error should name the rejected field, got %v", name, err)
+		rep := &spec.SliceReporter{}
+		if _, err := (Codec{Reporter: rep}).DecodeReceiver([]byte(body)); err != nil {
+			t.Fatalf("caps.%s must be absorbed, not rejected: %v", name, err)
+		}
+		if len(rep.Snapshot()) == 0 {
+			t.Fatalf("caps.%s was absorbed but not reported", name)
 		}
 	}
 }

@@ -71,7 +71,11 @@ func TestNodeEncodeStripsV11PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, k := range nodeV11PlusFields {
+	for _, fs := range is04.LaterThan("node", "v1.0") {
+		k := fs.Path
+		if strings.Contains(k, ".") {
+			continue // nested paths carry their own assertions
+		}
 		if _, present := m[k]; present {
 			t.Fatalf("v1.0 wire must not carry %q: %s", k, body)
 		}
@@ -84,8 +88,7 @@ func TestNodeEncodeStripsV11PlusFields(t *testing.T) {
 	}
 }
 
-func TestNodeDecodeRejectsV11PlusFields(t *testing.T) {
-	c := Codec{}
+func TestNodeDecodeAbsorbsV11PlusFields(t *testing.T) {
 	// description and tags are NOT v1.1+ — v1.0.3 schema treats them
 	// as permitted additionalProperties, and AMWA test_28 expects
 	// `tags` to round-trip from the bundle on /x-nmos/node/v1.0/.
@@ -101,8 +104,12 @@ func TestNodeDecodeRejectsV11PlusFields(t *testing.T) {
 		  "version":"1700000000:0","label":"x","href":"http://h/",
 		  "caps":{},"services":[],
 		  ` + extra + `}`)
-		if _, err := c.DecodeNode(body); err == nil {
-			t.Fatalf("expected rejection of %q", extra)
+		rep := &spec.SliceReporter{}
+		if _, err := (Codec{Reporter: rep}).DecodeNode(body); err != nil {
+			t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+		}
+		if len(rep.Snapshot()) == 0 {
+			t.Fatalf("an absorbed later-minor field must be reported")
 		}
 	}
 }
@@ -152,15 +159,18 @@ func TestDeviceEncodeStripsV11PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, k := range deviceV11PlusFields {
+	for _, fs := range is04.LaterThan("device", "v1.0") {
+		k := fs.Path
+		if strings.Contains(k, ".") {
+			continue // nested paths carry their own assertions
+		}
 		if _, present := m[k]; present {
 			t.Fatalf("v1.0 wire must not carry %q: %s", k, body)
 		}
 	}
 }
 
-func TestDeviceDecodeRejectsControls(t *testing.T) {
-	c := Codec{}
+func TestDeviceDecodeAbsorbsControls(t *testing.T) {
 	body := []byte(`{
 	  "id":"12345678-1234-4abc-9def-1234567890ab",
 	  "version":"1700000000:0","label":"x",
@@ -169,10 +179,12 @@ func TestDeviceDecodeRejectsControls(t *testing.T) {
 	  "senders":[],"receivers":[],
 	  "controls":[{"href":"http://h","type":"urn:x-nmos:control:sr-ctrl/v1.0"}]
 	}`)
-	if _, err := c.DecodeDevice(body); err == nil {
-		t.Fatalf("expected v1.0 decoder to reject Device with `controls`")
-	} else if !strings.Contains(err.Error(), "controls") {
-		t.Fatalf("error should name the rejected field, got %v", err)
+	rep := &spec.SliceReporter{}
+	if _, err := (Codec{Reporter: rep}).DecodeDevice(body); err != nil {
+		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+	}
+	if len(rep.Snapshot()) == 0 {
+		t.Fatalf("an absorbed later-minor field must be reported")
 	}
 }
 
@@ -204,15 +216,18 @@ func TestSourceEncodeStripsV11PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, k := range sourceV11PlusFields {
+	for _, fs := range is04.LaterThan("source", "v1.0") {
+		k := fs.Path
+		if strings.Contains(k, ".") {
+			continue // nested paths carry their own assertions
+		}
 		if _, present := m[k]; present {
 			t.Fatalf("v1.0 wire must not carry %q: %s", k, body)
 		}
 	}
 }
 
-func TestSourceDecodeRejectsClockName(t *testing.T) {
-	c := Codec{}
+func TestSourceDecodeAbsorbsClockName(t *testing.T) {
 	body := []byte(`{
 	  "id":"11111111-1111-4111-8111-111111111111",
 	  "version":"1700000000:0","label":"x","description":"x","tags":{},
@@ -221,8 +236,12 @@ func TestSourceDecodeRejectsClockName(t *testing.T) {
 	  "parents":[],
 	  "clock_name":"clk0"
 	}`)
-	if _, err := c.DecodeSource(body); err == nil {
-		t.Fatalf("expected v1.0 decoder to reject Source with `clock_name`")
+	rep := &spec.SliceReporter{}
+	if _, err := (Codec{Reporter: rep}).DecodeSource(body); err != nil {
+		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+	}
+	if len(rep.Snapshot()) == 0 {
+		t.Fatalf("an absorbed later-minor field must be reported")
 	}
 }
 
@@ -259,15 +278,18 @@ func TestFlowEncodeStripsV11PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, k := range flowV11PlusFields {
+	for _, fs := range is04.LaterThan("flow", "v1.0") {
+		k := fs.Path
+		if strings.Contains(k, ".") {
+			continue // nested paths carry their own assertions
+		}
 		if _, present := m[k]; present {
 			t.Fatalf("v1.0 wire must not carry %q: %s", k, body)
 		}
 	}
 }
 
-func TestFlowDecodeRejectsMediaType(t *testing.T) {
-	c := Codec{}
+func TestFlowDecodeAbsorbsMediaType(t *testing.T) {
 	body := []byte(`{
 	  "id":"22222222-2222-4222-8222-222222222222",
 	  "version":"1700000000:0","label":"x","description":"x","tags":{},
@@ -276,8 +298,12 @@ func TestFlowDecodeRejectsMediaType(t *testing.T) {
 	  "parents":[],
 	  "media_type":"video/raw"
 	}`)
-	if _, err := c.DecodeFlow(body); err == nil {
-		t.Fatalf("expected v1.0 decoder to reject Flow with `media_type`")
+	rep := &spec.SliceReporter{}
+	if _, err := (Codec{Reporter: rep}).DecodeFlow(body); err != nil {
+		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+	}
+	if len(rep.Snapshot()) == 0 {
+		t.Fatalf("an absorbed later-minor field must be reported")
 	}
 }
 
@@ -316,15 +342,18 @@ func TestSenderEncodeStripsV12PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, k := range senderV11PlusFields {
+	for _, fs := range is04.LaterThan("sender", "v1.0") {
+		k := fs.Path
+		if strings.Contains(k, ".") {
+			continue // nested paths carry their own assertions
+		}
 		if _, present := m[k]; present {
 			t.Fatalf("v1.0 wire must not carry %q: %s", k, body)
 		}
 	}
 }
 
-func TestSenderDecodeRejectsCaps(t *testing.T) {
-	c := Codec{}
+func TestSenderDecodeAbsorbsCaps(t *testing.T) {
 	body := []byte(`{
 	  "id":"44444444-4444-4444-8444-444444444444",
 	  "version":"1700000000:0","label":"x","description":"x","tags":{},
@@ -334,8 +363,12 @@ func TestSenderDecodeRejectsCaps(t *testing.T) {
 	  "manifest_href":"http://h/m",
 	  "caps":{}
 	}`)
-	if _, err := c.DecodeSender(body); err == nil {
-		t.Fatalf("expected v1.0 decoder to reject Sender with `caps`")
+	rep := &spec.SliceReporter{}
+	if _, err := (Codec{Reporter: rep}).DecodeSender(body); err != nil {
+		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+	}
+	if len(rep.Snapshot()) == 0 {
+		t.Fatalf("an absorbed later-minor field must be reported")
 	}
 }
 
@@ -396,8 +429,7 @@ func TestReceiverEncodeStripsInterfaceBindings(t *testing.T) {
 	}
 }
 
-func TestReceiverDecodeRejectsInterfaceBindings(t *testing.T) {
-	c := Codec{}
+func TestReceiverDecodeAbsorbsInterfaceBindings(t *testing.T) {
 	body := []byte(`{
 	  "id":"66666666-6666-4666-8666-666666666666",
 	  "version":"1700000000:0","label":"x","description":"x","tags":{},
@@ -407,14 +439,12 @@ func TestReceiverDecodeRejectsInterfaceBindings(t *testing.T) {
 	  "subscription":{"sender_id":null,"active":false},
 	  "interface_bindings":["eth0"]
 	}`)
-	if _, err := c.DecodeReceiver(body); err == nil {
-		t.Fatalf("expected v1.0 decoder to reject Receiver with `interface_bindings`")
+	rep := &spec.SliceReporter{}
+	if _, err := (Codec{Reporter: rep}).DecodeReceiver(body); err != nil {
+		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
 	}
-}
-
-func TestRejectFieldsHelperOnNonObjectJSON(t *testing.T) {
-	if err := rejectFields([]byte("[1,2,3]"), []string{"x"}, "node"); err == nil {
-		t.Fatalf("rejectFields should reject non-object JSON")
+	if len(rep.Snapshot()) == 0 {
+		t.Fatalf("an absorbed later-minor field must be reported")
 	}
 }
 

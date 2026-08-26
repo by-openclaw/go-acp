@@ -1,44 +1,30 @@
-// Package v10 is the AMWA NMOS IS-04 v1.0.3 wire codec — one of four
+// Package v10 is the AMWA NMOS IS-04 v1.0.3 wire codec — one of the four
 // minors required by `internal/amwa/CLAUDE.md` "Versioning". It is a
-// thin Strategy implementation of [is04.Codec] that wraps the
-// canonical struct types in is04/ and gates fields per the v1.0.3
-// spec text — fields introduced in v1.1+ are stripped on encode and
-// rejected on decode.
+// Strategy implementation of [is04.Codec] over the canonical structs
+// in is04/, and it holds ONLY what is specific to v1.0: this package's
+// identity, and the v1.0.3 required-field validators.
 //
-// Schema diffs vs v1.1.3 (computed from
-// internal/amwa/codec/is04/testdata/schemas/v1.0.3/ and
-// /v1.1.3/):
+// It holds no field-gating tables of its own. Which property arrived
+// at which minor is stated once, as data, in [is04.Since]; both
+// directions read it:
 //
-//   - Node:     v1.0 lacks `description`, `tags` (added in v1.1
-//               via resource_core), `api`, `clocks`, `interfaces`
-//               (added in v1.1 / v1.2). v1.0 Node has top-level
-//               `href` REQUIRED (not deprecated yet).
-//   - Device:   v1.0 lacks `description`, `tags`, `controls[]`
-//               (controls added in v1.1).
-//   - Source:   v1.0 has `description`, `tags`, `parents[]`. Lacks
-//               `clock_name` (v1.1), `grain_rate` (v1.1), `channels`
-//               (v1.2 audio variant).
-//   - Flow:     v1.0 has `description`, `tags`, `parents[]`. Lacks
-//               `device_id` (v1.1), `grain_rate` (v1.1),
-//               `media_type` (v1.1), and every per-format field
-//               (frame_width, sample_rate, etc. — v1.1+).
-//   - Sender:   v1.0 has `description`, `tags`. Lacks v1.2 additions:
-//               `caps`, `interface_bindings`, `subscription`.
-//   - Receiver: v1.0 has the same top-level shape as v1.1; lacks
-//               `interface_bindings` (v1.2).
+//	Encode  validate at v1.0  ->  is04.StripLaterThan  ->  wire
+//	Decode  is04.ParseX (absorbs + reports)  ->  validate at v1.0
 //
-// Implementation: every Encode method round-trips the canonical
-// struct through encoding/json into a `map[string]json.RawMessage`,
-// strips the v1.1+ keys, and re-marshals. Every Decode method
-// pre-checks the raw JSON has none of the v1.1+ keys, then
-// delegates to the canonical decoder. v1.0-specific validators
-// implement the v1.0.3 required-field set (which differs from the
-// canonical Validate that targets v1.3.3).
+// The asymmetry is deliberate. What we EMIT is strict — a v1.0 tree
+// carrying a later minor's property is our bug, and AMWA IS-04-01
+// fails the Node for it. What we READ is tolerant — a peer that sends
+// one is still fully readable, and the deviation is reported as a
+// compliance event rather than costing the operator the resource.
+// A real EVS Neuron serves `controls` on its v1.0 Device tree.
+//
+// Adding a minor means adding rows to [is04.Since] and one package
+// like this one. It does not mean editing this file.
 package v10
 
 import (
-	"bytes"
 	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/spec"
 	"encoding/json"
 	"fmt"
 )
@@ -50,7 +36,12 @@ const SpecPatch = "v1.0.3"
 // Codec implements [is04.Codec] for IS-04 wire minor v1.0.
 //
 // Stateless and safe for concurrent use.
-type Codec struct{}
+type Codec struct {
+	// Reporter receives deviations found while DECODING a peer's
+	// payload. Optional: the zero Codec absorbs silently, which is
+	// what every existing caller gets.
+	Reporter spec.Reporter
+}
 
 // New returns a Codec — equivalent to a zero-value Codec{}.
 func New() Codec { return Codec{} }
@@ -68,76 +59,20 @@ func (Codec) SpecPatch() string { return SpecPatch }
 // wire MUST NOT carry. Each list is a strict subset of the canonical
 // (v1.3) struct's JSON keys.
 
-// Fields ACTUALLY introduced in v1.1+ that v1.0 wire MUST NOT carry.
-// `description` + `tags` are NOT in this list because v1.0.3 allows
-// them as additionalProperties — the AMWA IS-04-02 test_23_1 /
-// test_24_1 (basic-query / RQL filter) explicitly populates
-// `description` in the v1.0 body and expects it to round-trip
-// through the WS grain. We instead drop them only when empty
-// (zero-value Go struct field) via stripEmpty in EncodeNode/Device,
-// which matches the behavior of nmos-cpp's v1.0 codec.
-var nodeV11PlusFields = []string{
-	"api",        // added v1.1
-	"clocks",     // added v1.1
-	"interfaces", // added v1.2
-}
-
-var deviceV11PlusFields = []string{
-	"controls", // added v1.1
-}
-
-var sourceV11PlusFields = []string{
-	"clock_name", // added v1.1
-	"grain_rate", // added v1.1
-	"channels",   // added v1.2 (audio variant)
-	// description + tags are core fields in v1.0+ for sources;
-	// IS04Utils.downgrade_resource keeps them on Source. No strip.
-}
-
-var flowV11PlusFields = []string{
-	"device_id",               // added v1.1
-	"grain_rate",              // added v1.1
-	"media_type",              // added v1.1 (top-level)
-	"components",              // added v1.1 (video raw — array)
-	"frame_width",             // added v1.1 (video)
-	"frame_height",            // added v1.1 (video)
-	"interlace_mode",          // added v1.1 (video)
-	"colorspace",              // added v1.1 (video)
-	"transfer_characteristic", // added v1.1 (video)
-	"sample_rate",             // added v1.1 (audio)
-	"bit_depth",               // added v1.1 (audio)
-	"DID_SDID",                // added v1.1 (sdianc_data)
-	"event_type",              // added v1.1 (json_data)
-}
-
-var senderV11PlusFields = []string{
-	"caps",               // added v1.2
-	"interface_bindings", // added v1.2
-	"subscription",       // added v1.2
-}
-
-var receiverV11PlusFields = []string{
-	"interface_bindings", // added v1.2
-}
-
-// EncodeNode marshals a Node for v1.0.3 — strips v1.1+ properties
-// and the v1.3-only `authorization` flag from services[*]. (api block
-// is fully stripped, so endpoints[*].authorization is moot.) Empty
-// `description`/`tags` are also stripped: v1.0 doesn't require them
-// and the AMWA Testing tool's per-version fixture lacks them.
+// EncodeNode renders a Node onto the v1.0 wire.
 func (Codec) EncodeNode(n is04.Node) ([]byte, error) {
 	if err := validateNodeV10(n); err != nil {
 		return nil, err
 	}
-	raw, err := stripFields(n, nodeV11PlusFields)
+	raw, err := json.MarshalIndent(n, "", "  ")
 	if err != nil {
 		return nil, err
 	}
-	raw, err = stripEmptyOptional(raw, "description", "tags")
+	raw, err = is04.StripLaterThan(raw, "node", "v1.0")
 	if err != nil {
 		return nil, err
 	}
-	return stripAuthFromServices(raw)
+	return stripEmptyOptional(raw, "description", "tags")
 }
 
 // stripEmptyOptional drops the named top-level keys when their JSON
@@ -171,64 +106,16 @@ func jsonValueIsEmpty(v json.RawMessage) bool {
 	return false
 }
 
-// stripAuthFromServices removes the `authorization` key from every
-// element of `services[]` in a JSON object body. Used by codecs whose
-// wire schema predates IS-10 (`authorization` was added to the
-// services entry in IS-04 v1.3 alongside BCP-003-02 auth).
-func stripAuthFromServices(raw []byte) ([]byte, error) {
-	return stripFromArray(raw, []string{"services"}, "authorization")
-}
-
-// stripFromArray walks raw as JSON, descends into the nested object
-// path, then drops `key` from every element of the array at the leaf.
-// Re-marshals with 2-space indent. Idempotent — silently returns the
-// input unchanged when the path doesn't resolve to an array.
-func stripFromArray(raw []byte, path []string, key string) ([]byte, error) {
-	var v any
-	if err := json.Unmarshal(raw, &v); err != nil {
-		return nil, err
-	}
-	cur := v
-	for _, p := range path[:len(path)-1] {
-		m, ok := cur.(map[string]any)
-		if !ok {
-			return raw, nil
-		}
-		cur = m[p]
-	}
-	leaf, ok := cur.(map[string]any)
-	if !ok {
-		return raw, nil
-	}
-	arr, ok := leaf[path[len(path)-1]].([]any)
-	if !ok {
-		return raw, nil
-	}
-	for _, el := range arr {
-		if em, ok := el.(map[string]any); ok {
-			delete(em, key)
-		}
-	}
-	return json.MarshalIndent(v, "", "  ")
-}
-
-// DecodeNode parses a v1.0.3 Node payload. Rejects v1.1+ keys.
-func (Codec) DecodeNode(raw []byte) (is04.Node, error) {
-	if err := rejectFields(raw, nodeV11PlusFields, "node"); err != nil {
+// DecodeNode parses a Node served on a v1.0 tree.
+func (c Codec) DecodeNode(raw []byte) (is04.Node, error) {
+	n, err := is04.ParseNode(raw, "v1.0", c.Reporter)
+	if err != nil {
 		return is04.Node{}, err
 	}
-	// Decode permissively into the canonical struct (the v1.0 fields
-	// are a subset of canonical Node), then run the v1.0 validator.
-	var n is04.Node
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&n); err != nil {
-		return is04.Node{}, fmt.Errorf("is04 v1.0: decode node: %w", err)
-	}
-	if err := validateNodeV10(n); err != nil {
+	if err := c.ValidateNode(*n); err != nil {
 		return is04.Node{}, err
 	}
-	return n, nil
+	return *n, nil
 }
 
 // ValidateNode applies the v1.0.3 required-field set.
@@ -266,35 +153,32 @@ func validateNodeV10(n is04.Node) error {
 	return joinErrs("is04 v1.0 node validation failed", errs)
 }
 
-// EncodeDevice marshals a Device for v1.0.3 — strips `controls`
-// (v1.1) plus empty `description`/`tags` to match the IS04Utils v1.0
-// downgrade shape.
+// EncodeDevice renders a Device onto the v1.0 wire.
 func (Codec) EncodeDevice(d is04.Device) ([]byte, error) {
 	if err := validateDeviceV10(d); err != nil {
 		return nil, err
 	}
-	raw, err := stripFields(d, deviceV11PlusFields)
+	raw, err := json.MarshalIndent(d, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	raw, err = is04.StripLaterThan(raw, "device", "v1.0")
 	if err != nil {
 		return nil, err
 	}
 	return stripEmptyOptional(raw, "description", "tags")
 }
 
-// DecodeDevice parses a v1.0.3 Device payload. Rejects v1.1+ keys.
-func (Codec) DecodeDevice(raw []byte) (is04.Device, error) {
-	if err := rejectFields(raw, deviceV11PlusFields, "device"); err != nil {
+// DecodeDevice parses a Device served on a v1.0 tree.
+func (c Codec) DecodeDevice(raw []byte) (is04.Device, error) {
+	d, err := is04.ParseDevice(raw, "v1.0", c.Reporter)
+	if err != nil {
 		return is04.Device{}, err
 	}
-	var d is04.Device
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&d); err != nil {
-		return is04.Device{}, fmt.Errorf("is04 v1.0: decode device: %w", err)
-	}
-	if err := validateDeviceV10(d); err != nil {
+	if err := c.ValidateDevice(*d); err != nil {
 		return is04.Device{}, err
 	}
-	return d, nil
+	return *d, nil
 }
 
 // ValidateDevice applies the v1.0.3 required-field set.
@@ -336,30 +220,28 @@ func validateDeviceV10(d is04.Device) error {
 	return joinErrs("is04 v1.0 device validation failed", errs)
 }
 
-// EncodeSource marshals a Source for v1.0.3 — strips clock_name,
-// grain_rate, channels.
+// EncodeSource renders a Source onto the v1.0 wire.
 func (Codec) EncodeSource(s is04.Source) ([]byte, error) {
 	if err := validateSourceV10(s); err != nil {
 		return nil, err
 	}
-	return stripFields(s, sourceV11PlusFields)
+	raw, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return is04.StripLaterThan(raw, "source", "v1.0")
 }
 
-// DecodeSource parses a v1.0.3 Source payload. Rejects v1.1+ keys.
-func (Codec) DecodeSource(raw []byte) (is04.Source, error) {
-	if err := rejectFields(raw, sourceV11PlusFields, "source"); err != nil {
+// DecodeSource parses a Source served on a v1.0 tree.
+func (c Codec) DecodeSource(raw []byte) (is04.Source, error) {
+	s, err := is04.ParseSource(raw, "v1.0", c.Reporter)
+	if err != nil {
 		return is04.Source{}, err
 	}
-	var s is04.Source
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&s); err != nil {
-		return is04.Source{}, fmt.Errorf("is04 v1.0: decode source: %w", err)
-	}
-	if err := validateSourceV10(s); err != nil {
+	if err := c.ValidateSource(*s); err != nil {
 		return is04.Source{}, err
 	}
-	return s, nil
+	return *s, nil
 }
 
 // ValidateSource applies the v1.0.3 required-field set.
@@ -399,30 +281,28 @@ func validateSourceV10(s is04.Source) error {
 	return joinErrs("is04 v1.0 source validation failed", errs)
 }
 
-// EncodeFlow marshals a Flow for v1.0.3 — strips device_id, grain_rate,
-// media_type, and every per-format field added in v1.1+.
+// EncodeFlow renders a Flow onto the v1.0 wire.
 func (Codec) EncodeFlow(f is04.Flow) ([]byte, error) {
 	if err := validateFlowV10(f); err != nil {
 		return nil, err
 	}
-	return stripFields(f, flowV11PlusFields)
+	raw, err := json.MarshalIndent(f, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return is04.StripLaterThan(raw, "flow", "v1.0")
 }
 
-// DecodeFlow parses a v1.0.3 Flow payload. Rejects v1.1+ keys.
-func (Codec) DecodeFlow(raw []byte) (is04.Flow, error) {
-	if err := rejectFields(raw, flowV11PlusFields, "flow"); err != nil {
+// DecodeFlow parses a Flow served on a v1.0 tree.
+func (c Codec) DecodeFlow(raw []byte) (is04.Flow, error) {
+	f, err := is04.ParseFlow(raw, "v1.0", c.Reporter)
+	if err != nil {
 		return is04.Flow{}, err
 	}
-	var f is04.Flow
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&f); err != nil {
-		return is04.Flow{}, fmt.Errorf("is04 v1.0: decode flow: %w", err)
-	}
-	if err := validateFlowV10(f); err != nil {
+	if err := c.ValidateFlow(*f); err != nil {
 		return is04.Flow{}, err
 	}
-	return f, nil
+	return *f, nil
 }
 
 // ValidateFlow applies the v1.0.3 required-field set.
@@ -460,8 +340,7 @@ func validateFlowV10(f is04.Flow) error {
 	return joinErrs("is04 v1.0 flow validation failed", errs)
 }
 
-// EncodeSender marshals a Sender for v1.0.3 — strips caps,
-// interface_bindings, subscription.
+// EncodeSender renders a Sender onto the v1.0 wire.
 func (Codec) EncodeSender(s is04.Sender) ([]byte, error) {
 	if err := is04.GateTransport("sender", s.Transport, "v1.0"); err != nil {
 		return nil, err
@@ -469,24 +348,23 @@ func (Codec) EncodeSender(s is04.Sender) ([]byte, error) {
 	if err := validateSenderV10(s); err != nil {
 		return nil, err
 	}
-	return stripFields(s, senderV11PlusFields)
+	raw, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return is04.StripLaterThan(raw, "sender", "v1.0")
 }
 
-// DecodeSender parses a v1.0.3 Sender payload. Rejects v1.1+ keys.
-func (Codec) DecodeSender(raw []byte) (is04.Sender, error) {
-	if err := rejectFields(raw, senderV11PlusFields, "sender"); err != nil {
+// DecodeSender parses a Sender served on a v1.0 tree.
+func (c Codec) DecodeSender(raw []byte) (is04.Sender, error) {
+	s, err := is04.ParseSender(raw, "v1.0", c.Reporter)
+	if err != nil {
 		return is04.Sender{}, err
 	}
-	var s is04.Sender
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&s); err != nil {
-		return is04.Sender{}, fmt.Errorf("is04 v1.0: decode sender: %w", err)
-	}
-	if err := validateSenderV10(s); err != nil {
+	if err := c.ValidateSender(*s); err != nil {
 		return is04.Sender{}, err
 	}
-	return s, nil
+	return *s, nil
 }
 
 // ValidateSender applies the v1.0.3 required-field set.
@@ -522,11 +400,7 @@ func validateSenderV10(s is04.Sender) error {
 	return joinErrs("is04 v1.0 sender validation failed", errs)
 }
 
-// EncodeReceiver marshals a Receiver for v1.0.3 — strips
-// `interface_bindings` (v1.2 addition) AND `subscription.active`
-// (v1.1 addition). The IS04Utils.downgrade_resource v1.0 path
-// removes both, so the SYNC body must too for AMWA test_31's
-// byte-equality check.
+// EncodeReceiver renders a Receiver onto the v1.0 wire.
 func (Codec) EncodeReceiver(r is04.Receiver) ([]byte, error) {
 	if err := is04.GateTransport("receiver", r.Transport, "v1.0"); err != nil {
 		return nil, err
@@ -534,53 +408,23 @@ func (Codec) EncodeReceiver(r is04.Receiver) ([]byte, error) {
 	if err := validateReceiverV10(r); err != nil {
 		return nil, err
 	}
-	raw, err := stripFields(r, receiverV11PlusFields)
+	raw, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return nil, err
 	}
-	return stripNestedKey(raw, []string{"subscription"}, "active")
+	return is04.StripLaterThan(raw, "receiver", "v1.0")
 }
 
-// stripNestedKey for v1.0 — same shape as the v11/v12 helper. Walks
-// the nested object path, deletes `key` from the leaf map.
-func stripNestedKey(raw []byte, path []string, key string) ([]byte, error) {
-	var v any
-	if err := json.Unmarshal(raw, &v); err != nil {
-		return nil, err
-	}
-	cur := v
-	for _, p := range path[:len(path)-1] {
-		m, ok := cur.(map[string]any)
-		if !ok {
-			return raw, nil
-		}
-		cur = m[p]
-	}
-	leaf, ok := cur.(map[string]any)
-	if !ok {
-		return raw, nil
-	}
-	if leaf2, ok := leaf[path[len(path)-1]].(map[string]any); ok {
-		delete(leaf2, key)
-	}
-	return json.MarshalIndent(v, "", "  ")
-}
-
-// DecodeReceiver parses a v1.0.3 Receiver payload. Rejects v1.1+ keys.
-func (Codec) DecodeReceiver(raw []byte) (is04.Receiver, error) {
-	if err := rejectFields(raw, receiverV11PlusFields, "receiver"); err != nil {
+// DecodeReceiver parses a Receiver served on a v1.0 tree.
+func (c Codec) DecodeReceiver(raw []byte) (is04.Receiver, error) {
+	r, err := is04.ParseReceiver(raw, "v1.0", c.Reporter)
+	if err != nil {
 		return is04.Receiver{}, err
 	}
-	var r is04.Receiver
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&r); err != nil {
-		return is04.Receiver{}, fmt.Errorf("is04 v1.0: decode receiver: %w", err)
-	}
-	if err := validateReceiverV10(r); err != nil {
+	if err := c.ValidateReceiver(*r); err != nil {
 		return is04.Receiver{}, err
 	}
-	return r, nil
+	return *r, nil
 }
 
 // ValidateReceiver applies the v1.0.3 required-field set.
@@ -616,39 +460,6 @@ func validateReceiverV10(r is04.Receiver) error {
 	// Subscription is required in v1.0; sender_id may be null but the
 	// object itself must be present.
 	return joinErrs("is04 v1.0 receiver validation failed", errs)
-}
-
-// stripFields marshals v into JSON, drops the named top-level keys,
-// and re-marshals with 2-space indent.
-func stripFields(v any, drop []string) ([]byte, error) {
-	raw, err := json.Marshal(v)
-	if err != nil {
-		return nil, err
-	}
-	var m map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &m); err != nil {
-		return nil, err
-	}
-	for _, k := range drop {
-		delete(m, k)
-	}
-	return json.MarshalIndent(m, "", "  ")
-}
-
-// rejectFields parses raw as a JSON object and returns an error if it
-// carries any of the named top-level keys.
-func rejectFields(raw []byte, forbidden []string, kind string) error {
-	d := json.NewDecoder(bytes.NewReader(raw))
-	var m map[string]json.RawMessage
-	if err := d.Decode(&m); err != nil {
-		return fmt.Errorf("is04 v1.0: decode %s: %w", kind, err)
-	}
-	for _, k := range forbidden {
-		if _, present := m[k]; present {
-			return fmt.Errorf("is04 v1.0: %s.%s: forbidden in v1.0 (introduced in v1.1+)", kind, k)
-		}
-	}
-	return nil
 }
 
 // joinErrs renders a non-empty validation slice into a single error.
