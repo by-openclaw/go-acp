@@ -1,0 +1,1061 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQSRT21
+--        Module Id#:399
+--       Command Set:5
+--          Filename:SNELL-IQSRT21-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:29/06/2005
+--              Time:13:50
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQSRT21-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQSRT21,
+    moduleIQSRT21MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQSRT21CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506291350Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQSRT21MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqsrt21CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqsrt21CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQSRT21 1 }
+
+	iqsrt21CmdEntry OBJECT-TYPE
+		SYNTAX		Iqsrt21CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqsrt21SlotIndex }
+		::= { iqsrt21CmdTable 1 }
+
+	Iqsrt21CmdEntry ::=
+		SEQUENCE {
+			iqsrt21SlotIndex
+				Unsigned32,
+			iqsrt21InputSel
+				INTEGER,
+			iqsrt21Display
+				INTEGER,
+			iqsrt21DisplayResetEDHStats
+				INTEGER,
+			iqsrt21DisplayResetRTErrors
+				INTEGER,
+			iqsrt21AutoCycleCycleListItem1
+				INTEGER,
+			iqsrt21AutoCycleCycleListItem2
+				INTEGER,
+			iqsrt21AutoCycleCycleListItem3
+				INTEGER,
+			iqsrt21AutoCycleCycleListItem4
+				INTEGER,
+			iqsrt21AutoCycleCycleListItem5
+				INTEGER,
+			iqsrt21AutoCycleCycleListItem6
+				INTEGER,
+			iqsrt21AutoCycleCycleListItem7
+				INTEGER,
+			iqsrt21AutoCycleCycleListItem8
+				INTEGER,
+			iqsrt21AutoCycleCycleTime
+				INTEGER,
+			iqsrt21SetupInputNamesInput1
+				RollCallString,
+			iqsrt21SetupInputNamesInput2
+				RollCallString,
+			iqsrt21SetupInputNamesInput3
+				RollCallString,
+			iqsrt21SetupInputNamesInput4
+				RollCallString,
+			iqsrt21SetupInputNamesInput5
+				RollCallString,
+			iqsrt21SetupInputNamesInput6
+				RollCallString,
+			iqsrt21SetupInputNamesInput7
+				RollCallString,
+			iqsrt21SetupInputNamesInput8
+				RollCallString,
+			iqsrt21RollTrackInput1OnRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput1OnRTParams
+				RollCallString,
+			iqsrt21RollTrackInput1OffRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput1OffRTParams
+				RollCallString,
+			iqsrt21RollTrackInput2OnRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput2OnRTParams
+				RollCallString,
+			iqsrt21RollTrackInput2OffRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput2OffRTParams
+				RollCallString,
+			iqsrt21RollTrackInput3OnRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput3OnRTParams
+				RollCallString,
+			iqsrt21RollTrackInput3OffRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput3OffRTParams
+				RollCallString,
+			iqsrt21RollTrackInput4OnRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput4OnRTParams
+				RollCallString,
+			iqsrt21RollTrackInput4OffRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput4OffRTParams
+				RollCallString,
+			iqsrt21RollTrackInput5OnRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput5OnRTParams
+				RollCallString,
+			iqsrt21RollTrackInput5OffRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput5OffRTParams
+				RollCallString,
+			iqsrt21RollTrackInput6OnRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput6OnRTParams
+				RollCallString,
+			iqsrt21RollTrackInput6OffRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput6OffRTParams
+				RollCallString,
+			iqsrt21RollTrackInput7OnRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput7OnRTParams
+				RollCallString,
+			iqsrt21RollTrackInput7OffRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput7OffRTParams
+				RollCallString,
+			iqsrt21RollTrackInput8OnRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput8OnRTParams
+				RollCallString,
+			iqsrt21RollTrackInput8OffRTAddress
+				RollCallString,
+			iqsrt21RollTrackInput8OffRTParams
+				RollCallString,
+			iqsrt21SetupInhibitInputsInput1
+				INTEGER,
+			iqsrt21SetupInhibitInputsInput2
+				INTEGER,
+			iqsrt21SetupInhibitInputsInput3
+				INTEGER,
+			iqsrt21SetupInhibitInputsInput4
+				INTEGER,
+			iqsrt21SetupInhibitInputsInput5
+				INTEGER,
+			iqsrt21SetupInhibitInputsInput6
+				INTEGER,
+			iqsrt21SetupInhibitInputsInput7
+				INTEGER,
+			iqsrt21SetupInhibitInputsInput8
+				INTEGER,
+			iqsrt21SetupPresetUnit
+				INTEGER,
+			iqsrt21SetupLoggingInputStatus
+				INTEGER,
+			iqsrt21SetupLoggingInputName
+				INTEGER,
+			iqsrt21SetupLoggingEDHErrors
+				INTEGER,
+			iqsrt21SetupSoftwareVersion
+				RollCallString,
+			iqsrt21SetupSerialNumber
+				RollCallString
+		}
+
+	iqsrt21SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqsrt21CmdEntry 0 }
+
+
+	iqsrt21InputSel OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_1(0),
+							val_Select_2(1),
+							val_Select_3(2),
+							val_Select_4(3),
+							val_Select_5(4),
+							val_Select_6(5),
+							val_Select_7(6),
+							val_Select_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Input Sel  cmdID= 4 
+					Select 1  value= 0  
+					Select 2  value= 1  
+					Select 3  value= 2  
+					Select 4  value= 3  
+					Select 5  value= 4  
+					Select 6  value= 5  
+					Select 7  value= 6  
+					Select 8  value= 7  "
+		::= { iqsrt21CmdEntry 4 }
+
+
+	iqsrt21Display OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Show_Status(0),
+							val_Show_EDH_Stats(1),
+							val_Show_RT_Errors(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Show Status  cmdID= 5  value= 0  
+					Show EDH Stats  cmdID= 5  value= 1  
+					Show RT Errors  cmdID= 5  value= 2  "
+		::= { iqsrt21CmdEntry 5 }
+
+
+	iqsrt21DisplayResetEDHStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_EDH_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset EDH Stats  cmdID= 6  value= 1  "
+		::= { iqsrt21CmdEntry 6 }
+
+
+	iqsrt21DisplayResetRTErrors OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_RT_Errors(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset RT Errors  cmdID= 26  value= 1  "
+		::= { iqsrt21CmdEntry 26 }
+
+
+	iqsrt21AutoCycleCycleListItem1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Item 1  cmdID= 7  min= 0  max= 8  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 8  Step = 1 "
+		::= { iqsrt21CmdEntry 7 }
+
+
+	iqsrt21AutoCycleCycleListItem2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Item 2  cmdID= 8  min= 0  max= 8  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 8  Step = 1 "
+		::= { iqsrt21CmdEntry 8 }
+
+
+	iqsrt21AutoCycleCycleListItem3 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Item 3  cmdID= 9  min= 0  max= 8  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 8  Step = 1 "
+		::= { iqsrt21CmdEntry 9 }
+
+
+	iqsrt21AutoCycleCycleListItem4 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Item 4  cmdID= 10  min= 0  max= 8  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 8  Step = 1 "
+		::= { iqsrt21CmdEntry 10 }
+
+
+	iqsrt21AutoCycleCycleListItem5 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Item 5  cmdID= 11  min= 0  max= 8  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 8  Step = 1 "
+		::= { iqsrt21CmdEntry 11 }
+
+
+	iqsrt21AutoCycleCycleListItem6 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Item 6  cmdID= 12  min= 0  max= 8  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 8  Step = 1 "
+		::= { iqsrt21CmdEntry 12 }
+
+
+	iqsrt21AutoCycleCycleListItem7 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Item 7  cmdID= 13  min= 0  max= 8  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 8  Step = 1 "
+		::= { iqsrt21CmdEntry 13 }
+
+
+	iqsrt21AutoCycleCycleListItem8 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Item 8  cmdID= 14  min= 0  max= 8  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 8  Step = 1 "
+		::= { iqsrt21CmdEntry 14 }
+
+
+	iqsrt21AutoCycleCycleTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					CycleTime  cmdID= 15  min= 0  max= 32000  step= 1  format= %.0f Frames  div_scale= 1 
+					Min = 0 Frames  Max = 32000 Frames  Step = 1 Frames "
+		::= { iqsrt21CmdEntry 15 }
+
+
+	iqsrt21SetupInputNamesInput1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 1  cmdID= 16  "
+		::= { iqsrt21CmdEntry 16 }
+
+
+	iqsrt21SetupInputNamesInput2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 2  cmdID= 17  "
+		::= { iqsrt21CmdEntry 17 }
+
+
+	iqsrt21SetupInputNamesInput3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 3  cmdID= 18  "
+		::= { iqsrt21CmdEntry 18 }
+
+
+	iqsrt21SetupInputNamesInput4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 4  cmdID= 19  "
+		::= { iqsrt21CmdEntry 19 }
+
+
+	iqsrt21SetupInputNamesInput5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 5  cmdID= 20  "
+		::= { iqsrt21CmdEntry 20 }
+
+
+	iqsrt21SetupInputNamesInput6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 6  cmdID= 21  "
+		::= { iqsrt21CmdEntry 21 }
+
+
+	iqsrt21SetupInputNamesInput7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 7  cmdID= 22  "
+		::= { iqsrt21CmdEntry 22 }
+
+
+	iqsrt21SetupInputNamesInput8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 8  cmdID= 23  "
+		::= { iqsrt21CmdEntry 23 }
+
+
+	iqsrt21RollTrackInput1OnRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Address  cmdID= 35  "
+		::= { iqsrt21CmdEntry 35 }
+
+
+	iqsrt21RollTrackInput1OnRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Params  cmdID= 51  "
+		::= { iqsrt21CmdEntry 51 }
+
+
+	iqsrt21RollTrackInput1OffRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Address  cmdID= 43  "
+		::= { iqsrt21CmdEntry 43 }
+
+
+	iqsrt21RollTrackInput1OffRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Params  cmdID= 59  "
+		::= { iqsrt21CmdEntry 59 }
+
+
+	iqsrt21RollTrackInput2OnRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Address  cmdID= 36  "
+		::= { iqsrt21CmdEntry 36 }
+
+
+	iqsrt21RollTrackInput2OnRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Params  cmdID= 52  "
+		::= { iqsrt21CmdEntry 52 }
+
+
+	iqsrt21RollTrackInput2OffRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Address  cmdID= 44  "
+		::= { iqsrt21CmdEntry 44 }
+
+
+	iqsrt21RollTrackInput2OffRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Params  cmdID= 60  "
+		::= { iqsrt21CmdEntry 60 }
+
+
+	iqsrt21RollTrackInput3OnRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Address  cmdID= 37  "
+		::= { iqsrt21CmdEntry 37 }
+
+
+	iqsrt21RollTrackInput3OnRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Params  cmdID= 53  "
+		::= { iqsrt21CmdEntry 53 }
+
+
+	iqsrt21RollTrackInput3OffRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Address  cmdID= 45  "
+		::= { iqsrt21CmdEntry 45 }
+
+
+	iqsrt21RollTrackInput3OffRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Params  cmdID= 61  "
+		::= { iqsrt21CmdEntry 61 }
+
+
+	iqsrt21RollTrackInput4OnRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Address  cmdID= 38  "
+		::= { iqsrt21CmdEntry 38 }
+
+
+	iqsrt21RollTrackInput4OnRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Params  cmdID= 54  "
+		::= { iqsrt21CmdEntry 54 }
+
+
+	iqsrt21RollTrackInput4OffRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Address  cmdID= 46  "
+		::= { iqsrt21CmdEntry 46 }
+
+
+	iqsrt21RollTrackInput4OffRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Params  cmdID= 62  "
+		::= { iqsrt21CmdEntry 62 }
+
+
+	iqsrt21RollTrackInput5OnRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Address  cmdID= 39  "
+		::= { iqsrt21CmdEntry 39 }
+
+
+	iqsrt21RollTrackInput5OnRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Params  cmdID= 55  "
+		::= { iqsrt21CmdEntry 55 }
+
+
+	iqsrt21RollTrackInput5OffRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Address  cmdID= 47  "
+		::= { iqsrt21CmdEntry 47 }
+
+
+	iqsrt21RollTrackInput5OffRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Params  cmdID= 63  "
+		::= { iqsrt21CmdEntry 63 }
+
+
+	iqsrt21RollTrackInput6OnRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Address  cmdID= 40  "
+		::= { iqsrt21CmdEntry 40 }
+
+
+	iqsrt21RollTrackInput6OnRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Params  cmdID= 56  "
+		::= { iqsrt21CmdEntry 56 }
+
+
+	iqsrt21RollTrackInput6OffRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Address  cmdID= 48  "
+		::= { iqsrt21CmdEntry 48 }
+
+
+	iqsrt21RollTrackInput6OffRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Params  cmdID= 64  "
+		::= { iqsrt21CmdEntry 64 }
+
+
+	iqsrt21RollTrackInput7OnRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Address  cmdID= 41  "
+		::= { iqsrt21CmdEntry 41 }
+
+
+	iqsrt21RollTrackInput7OnRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Params  cmdID= 57  "
+		::= { iqsrt21CmdEntry 57 }
+
+
+	iqsrt21RollTrackInput7OffRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Address  cmdID= 49  "
+		::= { iqsrt21CmdEntry 49 }
+
+
+	iqsrt21RollTrackInput7OffRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Params  cmdID= 65  "
+		::= { iqsrt21CmdEntry 65 }
+
+
+	iqsrt21RollTrackInput8OnRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Address  cmdID= 42  "
+		::= { iqsrt21CmdEntry 42 }
+
+
+	iqsrt21RollTrackInput8OnRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					On RT Params  cmdID= 58  "
+		::= { iqsrt21CmdEntry 58 }
+
+
+	iqsrt21RollTrackInput8OffRTAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Address  cmdID= 50  "
+		::= { iqsrt21CmdEntry 50 }
+
+
+	iqsrt21RollTrackInput8OffRTParams OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Off RT Params  cmdID= 66  "
+		::= { iqsrt21CmdEntry 66 }
+
+
+	iqsrt21SetupInhibitInputsInput1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 1  cmdID= 27 "
+		::= { iqsrt21CmdEntry 27 }
+
+
+	iqsrt21SetupInhibitInputsInput2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 2  cmdID= 28 "
+		::= { iqsrt21CmdEntry 28 }
+
+
+	iqsrt21SetupInhibitInputsInput3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 3  cmdID= 29 "
+		::= { iqsrt21CmdEntry 29 }
+
+
+	iqsrt21SetupInhibitInputsInput4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 4  cmdID= 30 "
+		::= { iqsrt21CmdEntry 30 }
+
+
+	iqsrt21SetupInhibitInputsInput5 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 5  cmdID= 31 "
+		::= { iqsrt21CmdEntry 31 }
+
+
+	iqsrt21SetupInhibitInputsInput6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 6  cmdID= 32 "
+		::= { iqsrt21CmdEntry 32 }
+
+
+	iqsrt21SetupInhibitInputsInput7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 7  cmdID= 33 "
+		::= { iqsrt21CmdEntry 33 }
+
+
+	iqsrt21SetupInhibitInputsInput8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 8  cmdID= 34 "
+		::= { iqsrt21CmdEntry 34 }
+
+
+	iqsrt21SetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqsrt21CmdEntry 3 }
+
+
+	iqsrt21SetupLoggingInputStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input Status  cmdID= 24 "
+		::= { iqsrt21CmdEntry 24 }
+
+
+	iqsrt21SetupLoggingInputName OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input Name  cmdID= 67 "
+		::= { iqsrt21CmdEntry 67 }
+
+
+	iqsrt21SetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH Errors  cmdID= 25 "
+		::= { iqsrt21CmdEntry 25 }
+
+
+	iqsrt21SetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software Version  cmdID= 2  format=   "
+		::= { iqsrt21CmdEntry 2 }
+
+
+	iqsrt21SetupSerialNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial Number  cmdID= 1  format=   "
+		::= { iqsrt21CmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.67.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.67.72
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: 2
+--              : 3
+--              : 4
+--              : 5
+--              : 6
+--              : 7
+--              : 8
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number	: YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH_NAME
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.67.72.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.67.72.95.78.65.77.69
+-- Vary			: YES
+--
+-- Value(s)		: INPUT_1
+--				: INPUT_2
+--				: INPUT_3
+--				: INPUT_4
+--				: INPUT_5
+--				: INPUT_6
+--				: INPUT_7
+--				: INPUT_8
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

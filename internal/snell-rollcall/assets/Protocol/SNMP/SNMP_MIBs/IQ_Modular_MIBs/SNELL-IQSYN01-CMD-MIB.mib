@@ -1,0 +1,2712 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQSYN01
+--        Module Id#:465
+--       Command Set:5
+--          Filename:SNELL-IQSYN01-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:14/06/2007
+--              Time:09:19
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQSYN01-CMD-MIB.mib,v 1.8 2006/12/08 11:47:52 nikolaoskatsampekis Exp $
+--
+-- Copyright (c) 2007 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQSYN01-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQSYN01,
+    moduleIQSYN01MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQSYN01CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0706140919Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQSYN01MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqsyn01CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqsyn01CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQSYN01 1 }
+
+	iqsyn01CmdEntry OBJECT-TYPE
+		SYNTAX		Iqsyn01CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqsyn01SlotIndex }
+		::= { iqsyn01CmdTable 1 }
+
+	Iqsyn01CmdEntry ::=
+		SEQUENCE {
+			iqsyn01SlotIndex
+				Unsigned32,
+			iqsyn01VideoInput
+				INTEGER,
+			iqsyn01VideoInput525
+				INTEGER,
+			iqsyn01VideoInput625
+				INTEGER,
+			iqsyn01VideoProcAmp1In1ProcAmpEnable
+				INTEGER,
+			iqsyn01VideoProcAmp1LumaGain
+				INTEGER,
+			iqsyn01VideoProcAmp1ChromaGain
+				INTEGER,
+			iqsyn01VideoProcAmp1BlackLevel
+				INTEGER,
+			iqsyn01VideoProcAmp1PicturePosition
+				INTEGER,
+			iqsyn01VideoProcAmp1YCTiming
+				INTEGER,
+			iqsyn01VideoProcAmp2In2ProcAmpEnable
+				INTEGER,
+			iqsyn01VideoProcAmp2LumaGain
+				INTEGER,
+			iqsyn01VideoProcAmp2ChromaGain
+				INTEGER,
+			iqsyn01VideoProcAmp2BlackLevel
+				INTEGER,
+			iqsyn01VideoProcAmp2PicturePosition
+				INTEGER,
+			iqsyn01VideoProcAmp2YCTiming
+				INTEGER,
+			iqsyn01Freeze
+				INTEGER,
+			iqsyn01Genlock1049
+				INTEGER,
+			iqsyn01GenlockGenlockPhase625HPhase
+				INTEGER,
+			iqsyn01GenlockGenlockPhase625VPhase
+				INTEGER,
+			iqsyn01GenlockGenlockPhase525HPhase
+				INTEGER,
+			iqsyn01GenlockGenlockPhase525VPhase
+				INTEGER,
+			iqsyn01GenlockFreerunFreq
+				INTEGER,
+			iqsyn01Genlock2973
+				INTEGER,
+			iqsyn01GenlockDelayPhase625HPhase
+				INTEGER,
+			iqsyn01GenlockDelayPhase625VPhase
+				INTEGER,
+			iqsyn01GenlockDelayPhase525HPhase
+				INTEGER,
+			iqsyn01GenlockDelayPhase525VPhase
+				INTEGER,
+			iqsyn01UserMemory1Save
+				INTEGER,
+			iqsyn01UserMemory1Recall
+				INTEGER,
+			iqsyn01UserMemory1Clear
+				INTEGER,
+			iqsyn01UserMemory1Name
+				RollCallString,
+			iqsyn01UserMemory2Save
+				INTEGER,
+			iqsyn01UserMemory2Recall
+				INTEGER,
+			iqsyn01UserMemory2Clear
+				INTEGER,
+			iqsyn01UserMemory2Name
+				RollCallString,
+			iqsyn01UserMemory3Save
+				INTEGER,
+			iqsyn01UserMemory3Recall
+				INTEGER,
+			iqsyn01UserMemory3Clear
+				INTEGER,
+			iqsyn01UserMemory3Name
+				RollCallString,
+			iqsyn01UserMemory4Save
+				INTEGER,
+			iqsyn01UserMemory4Recall
+				INTEGER,
+			iqsyn01UserMemory4Clear
+				INTEGER,
+			iqsyn01UserMemory4Name
+				RollCallString,
+			iqsyn01UserMemory5Save
+				INTEGER,
+			iqsyn01UserMemory5Recall
+				INTEGER,
+			iqsyn01UserMemory5Clear
+				INTEGER,
+			iqsyn01UserMemory5Name
+				RollCallString,
+			iqsyn01UserMemory6Save
+				INTEGER,
+			iqsyn01UserMemory6Recall
+				INTEGER,
+			iqsyn01UserMemory6Clear
+				INTEGER,
+			iqsyn01UserMemory6Name
+				RollCallString,
+			iqsyn01UserMemory7Save
+				INTEGER,
+			iqsyn01UserMemory7Recall
+				INTEGER,
+			iqsyn01UserMemory7Clear
+				INTEGER,
+			iqsyn01UserMemory7Name
+				RollCallString,
+			iqsyn01UserMemory8Save
+				INTEGER,
+			iqsyn01UserMemory8Recall
+				INTEGER,
+			iqsyn01UserMemory8Clear
+				INTEGER,
+			iqsyn01UserMemory8Name
+				RollCallString,
+			iqsyn01SetupPatternAnimatedPattern
+				INTEGER,
+			iqsyn01SetupPatternEnablePattern
+				INTEGER,
+			iqsyn01SetupPattern
+				INTEGER,
+			iqsyn01SetupCaptionEditCaption
+				RollCallString,
+			iqsyn01SetupCaption
+				INTEGER,
+			iqsyn01BlankingVIPass525BlankAll
+				INTEGER,
+			iqsyn01BlankingVIPass525PassAll
+				INTEGER,
+			iqsyn01BlankingVIPass525Line11
+				INTEGER,
+			iqsyn01BlankingVIPass525Line274
+				INTEGER,
+			iqsyn01BlankingVIPass525Line12
+				INTEGER,
+			iqsyn01BlankingVIPass525Line275
+				INTEGER,
+			iqsyn01BlankingVIPass525Line13
+				INTEGER,
+			iqsyn01BlankingVIPass525Line276
+				INTEGER,
+			iqsyn01BlankingVIPass525Line14
+				INTEGER,
+			iqsyn01BlankingVIPass525Line277
+				INTEGER,
+			iqsyn01BlankingVIPass525Line15
+				INTEGER,
+			iqsyn01BlankingVIPass525Line278
+				INTEGER,
+			iqsyn01BlankingVIPass525Line16
+				INTEGER,
+			iqsyn01BlankingVIPass525Line279
+				INTEGER,
+			iqsyn01BlankingVIPass525Line17
+				INTEGER,
+			iqsyn01BlankingVIPass525Line280
+				INTEGER,
+			iqsyn01BlankingVIPass525Line18
+				INTEGER,
+			iqsyn01BlankingVIPass525Line281
+				INTEGER,
+			iqsyn01BlankingVIPass525Line19
+				INTEGER,
+			iqsyn01BlankingVIPass525Line282
+				INTEGER,
+			iqsyn01BlankingVIPass525Line20
+				INTEGER,
+			iqsyn01BlankingVIPass525Line283
+				INTEGER,
+			iqsyn01BlankingVIPass525Line21
+				INTEGER,
+			iqsyn01BlankingVIPass625BlankAll
+				INTEGER,
+			iqsyn01BlankingVIPass625PassAll
+				INTEGER,
+			iqsyn01BlankingVIPass625Line7
+				INTEGER,
+			iqsyn01BlankingVIPass625Line320
+				INTEGER,
+			iqsyn01BlankingVIPass625Line8
+				INTEGER,
+			iqsyn01BlankingVIPass625Line321
+				INTEGER,
+			iqsyn01BlankingVIPass625Line9
+				INTEGER,
+			iqsyn01BlankingVIPass625Line322
+				INTEGER,
+			iqsyn01BlankingVIPass625Line10
+				INTEGER,
+			iqsyn01BlankingVIPass625Line323
+				INTEGER,
+			iqsyn01BlankingVIPass625Line11
+				INTEGER,
+			iqsyn01BlankingVIPass625Line324
+				INTEGER,
+			iqsyn01BlankingVIPass625Line12
+				INTEGER,
+			iqsyn01BlankingVIPass625Line325
+				INTEGER,
+			iqsyn01BlankingVIPass625Line13
+				INTEGER,
+			iqsyn01BlankingVIPass625Line326
+				INTEGER,
+			iqsyn01BlankingVIPass625Line14
+				INTEGER,
+			iqsyn01BlankingVIPass625Line327
+				INTEGER,
+			iqsyn01BlankingVIPass625Line15
+				INTEGER,
+			iqsyn01BlankingVIPass625Line328
+				INTEGER,
+			iqsyn01BlankingVIPass625Line16
+				INTEGER,
+			iqsyn01BlankingVIPass625Line329
+				INTEGER,
+			iqsyn01BlankingVIPass625Line17
+				INTEGER,
+			iqsyn01BlankingVIPass625Line330
+				INTEGER,
+			iqsyn01BlankingVIPass625Line18
+				INTEGER,
+			iqsyn01BlankingVIPass625Line331
+				INTEGER,
+			iqsyn01BlankingVIPass625Line19
+				INTEGER,
+			iqsyn01BlankingVIPass625Line332
+				INTEGER,
+			iqsyn01BlankingVIPass625Line20
+				INTEGER,
+			iqsyn01BlankingVIPass625Line333
+				INTEGER,
+			iqsyn01BlankingVIPass625Line21
+				INTEGER,
+			iqsyn01BlankingVIPass625Line334
+				INTEGER,
+			iqsyn01BlankingVIPass625Line22
+				INTEGER,
+			iqsyn01BlankingVIPass625Line335
+				INTEGER,
+			iqsyn01BlankingVIPass625Line23
+				INTEGER,
+			iqsyn01SetupBlankingHancBlank
+				INTEGER,
+			iqsyn01GPIIOGPIInputDisableInputs
+				INTEGER,
+			iqsyn01GPIIOGPIInputInputSelection
+				INTEGER,
+			iqsyn01GPIIOGPIInputGPIInStatus
+				RollCallString,
+			iqsyn01GPIIOGPIOutputOutActiveHigh
+				INTEGER,
+			iqsyn01GPIIOGPIOutputOutputSelection
+				INTEGER,
+			iqsyn01GPIIOGPIOutputGPIOutStatus
+				RollCallString,
+			iqsyn01GPIIOGPIInputOutputGPIO1
+				INTEGER,
+			iqsyn01SetupGPIIOInputSelection
+				INTEGER,
+			iqsyn01SetupGPIIOOutputSelection
+				INTEGER,
+			iqsyn01SetupRollTrackIndex
+				INTEGER,
+			iqsyn01SetupRollTrackSource
+				INTEGER,
+			iqsyn01SetupRollTrackDisable
+				INTEGER,
+			iqsyn01SetupRollTrackAddress
+				RollCallString,
+			iqsyn01SetupRollTrackCommand
+				RollCallString,
+			iqsyn01SetupRollTrackSending
+				RollCallString,
+			iqsyn01SetupRollTrackStatus
+				RollCallString,
+			iqsyn01SetupRollTrackBIndex
+				INTEGER,
+			iqsyn01SetupRollTrackBSource
+				INTEGER,
+			iqsyn01SetupRollTrackBAddress
+				RollCallString,
+			iqsyn01SetupRollTrackBCommand
+				RollCallString,
+			iqsyn01SetupLoggingInput
+				INTEGER,
+			iqsyn01SetupLoggingStd
+				INTEGER,
+			iqsyn01SetupLoggingInput1
+				INTEGER,
+			iqsyn01SetupLoggingStd1
+				INTEGER,
+			iqsyn01SetupLoggingInput2
+				INTEGER,
+			iqsyn01SetupLoggingStd2
+				INTEGER,
+			iqsyn01SetupLoggingReference
+				INTEGER,
+			iqsyn01SetupLoggingEDH
+				INTEGER,
+			iqsyn01SetupLoggingEDHErrors
+				INTEGER,
+			iqsyn01SetupLoggingRollTrack
+				INTEGER,
+			iqsyn01SetupLoggingFault
+				INTEGER,
+			iqsyn01SetupLoggingStatusINPUT
+				RollCallString,
+			iqsyn01SetupLoggingStatusSTD
+				RollCallString,
+			iqsyn01SetupLoggingStatusINPUT1
+				RollCallString,
+			iqsyn01SetupLoggingStatusSTD1
+				RollCallString,
+			iqsyn01SetupLoggingStatusINPUT2
+				RollCallString,
+			iqsyn01SetupLoggingStatusSTD2
+				RollCallString,
+			iqsyn01SetupLoggingStatusEXTREF
+				RollCallString,
+			iqsyn01SetupLoggingStatusEDH
+				RollCallString,
+			iqsyn01SetupLoggingStatusERRSEC
+				RollCallString,
+			iqsyn01SetupLoggingStatusROLLTRACK
+				RollCallString,
+			iqsyn01SetupLoggingStatusFAULT
+				RollCallString,
+			iqsyn01SetupInformationWindow
+				INTEGER,
+			iqsyn01SetupInformationWindowResetErrors
+				INTEGER,
+			iqsyn01SetupDefaultOutput
+				INTEGER,
+			iqsyn01SetupDefaultOutputPattern
+				INTEGER,
+			iqsyn01SetupUnitSoftwareVersion
+				RollCallString,
+			iqsyn01SetupUnitSerialNo
+				RollCallString,
+			iqsyn01SetupUnitPresetUnit
+				INTEGER,
+			iqsyn01SetupUnitRestart
+				INTEGER,
+			iqsyn01SetupUnitBuildNo
+				RollCallString
+		}
+
+	iqsyn01SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqsyn01CmdEntry 0 }
+
+
+	iqsyn01VideoInput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1_SDI(0),
+							val_Input_2_SDI(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video- Input
+					Input 1 SDI  cmdID= 2251  value= 0
+					Input 2 SDI  cmdID= 2251  value= 1  "
+		::= { iqsyn01CmdEntry 2251 }
+
+
+	iqsyn01VideoInput525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video- Input
+					525  cmdID= 1405 "
+		::= { iqsyn01CmdEntry 1405 }
+
+
+	iqsyn01VideoInput625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video- Input
+					625  cmdID= 1406 "
+		::= { iqsyn01CmdEntry 1406 }
+
+
+	iqsyn01VideoProcAmp1In1ProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video- ProcAmp 1
+					In1 ProcAmp Enable  cmdID= 2864 "
+		::= { iqsyn01CmdEntry 2864 }
+
+
+	iqsyn01VideoProcAmp1LumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Luma Gain  cmdID= 2707  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqsyn01CmdEntry 2707 }
+
+
+	iqsyn01VideoProcAmp1ChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Chroma Gain  cmdID= 2706  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqsyn01CmdEntry 2706 }
+
+
+	iqsyn01VideoProcAmp1BlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Black Level  cmdID= 2708  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iqsyn01CmdEntry 2708 }
+
+
+	iqsyn01VideoProcAmp1PicturePosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Picture Position  cmdID= 2709  min= -592  max= 592  step= 148  format= %3.0f ns  div_scale= 1
+					Min = -592 ns  Max = 592 ns  Step = 148 ns "
+		::= { iqsyn01CmdEntry 2709 }
+
+
+	iqsyn01VideoProcAmp1YCTiming OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Y/C Timing  cmdID= 2924  min= -592  max= 592  step= 148  format= %3.0fns  div_scale= 1
+					Min = -592ns  Max = 592ns  Step = 148ns "
+		::= { iqsyn01CmdEntry 2924 }
+
+
+	iqsyn01VideoProcAmp2In2ProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video- ProcAmp 2
+					In2 ProcAmp Enable  cmdID= 2865 "
+		::= { iqsyn01CmdEntry 2865 }
+
+
+	iqsyn01VideoProcAmp2LumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Luma Gain  cmdID= 2711  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqsyn01CmdEntry 2711 }
+
+
+	iqsyn01VideoProcAmp2ChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Chroma Gain  cmdID= 2710  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqsyn01CmdEntry 2710 }
+
+
+	iqsyn01VideoProcAmp2BlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Black Level  cmdID= 2712  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iqsyn01CmdEntry 2712 }
+
+
+	iqsyn01VideoProcAmp2PicturePosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Picture Position  cmdID= 2713  min= -592  max= 592  step= 148  format= %3.0f ns  div_scale= 1
+					Min = -592 ns  Max = 592 ns  Step = 148 ns "
+		::= { iqsyn01CmdEntry 2713 }
+
+
+	iqsyn01VideoProcAmp2YCTiming OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Y/C Timing  cmdID= 2925  min= -592  max= 592  step= 148  format= %3.0fns  div_scale= 1
+					Min = -592ns  Max = 592ns  Step = 148ns "
+		::= { iqsyn01CmdEntry 2925 }
+
+
+	iqsyn01Freeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 1208 "
+		::= { iqsyn01CmdEntry 1208 }
+
+
+	iqsyn01Genlock1049 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Lock_to_Reference(0),
+							val_Lock_to_Input(1),
+							val_Free_Run(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Genlock
+					Lock to Reference  cmdID= 1049  value= 0
+					Lock to Input  cmdID= 1049  value= 1
+					Free Run  cmdID= 1049  value= 2  "
+		::= { iqsyn01CmdEntry 1049 }
+
+
+	iqsyn01GenlockGenlockPhase625HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					625 H Phase  cmdID= 1050  min= -31999968  max= 31962931  step= -28499  format=    %.0fns  div_scale= 1000
+					Min =    -32000ns  Max =    31963ns  Step =    -28ns "
+		::= { iqsyn01CmdEntry 1050 }
+
+
+	iqsyn01GenlockGenlockPhase625VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					625 V Phase  cmdID= 1051  min= -312  max= 312  step= 1  format=    %.0flines  div_scale= 1
+					Min =    -312lines  Max =    312lines  Step =    1lines "
+		::= { iqsyn01CmdEntry 1051 }
+
+
+	iqsyn01GenlockGenlockPhase525HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					525 H Phase  cmdID= 1052  min= -31777746  max= 31740709  step= -28499  format=    %.0fns  div_scale= 1000
+					Min =    -31778ns  Max =    31741ns  Step =    -28ns "
+		::= { iqsyn01CmdEntry 1052 }
+
+
+	iqsyn01GenlockGenlockPhase525VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					525 V Phase  cmdID= 1053  min= -262  max= 262  step= 1  format=    %.0flines  div_scale= 1
+					Min =    -262lines  Max =    262lines  Step =    1lines "
+		::= { iqsyn01CmdEntry 1053 }
+
+
+	iqsyn01GenlockFreerunFreq OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Freerun Freq  cmdID= 2449  min= -60  max= 60  step= 1  format=   %.0f  div_scale= 1
+					Min =   -60  Max =   60  Step =   1 "
+		::= { iqsyn01CmdEntry 2449 }
+
+
+	iqsyn01Genlock2973 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_0_Frame_Delay(0),
+							val_1_Frame_Delay(1),
+							val_2_Frame_Delay(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Genlock
+					0 Frame Delay  cmdID= 2973  value= 0
+					1 Frame Delay  cmdID= 2973  value= 1
+					2 Frame Delay  cmdID= 2973  value= 2  "
+		::= { iqsyn01CmdEntry 2973 }
+
+
+	iqsyn01GenlockDelayPhase625HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					625 H Phase  cmdID= 2974  min= 0  max= 63962899  step= -28499  format=  %.0fns  div_scale= 1000
+					Min =  0ns  Max =  63963ns  Step =  -28ns "
+		::= { iqsyn01CmdEntry 2974 }
+
+
+	iqsyn01GenlockDelayPhase625VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					625 V Phase  cmdID= 2975  min= 0  max= 624  step= 1  format=  %.0flines  div_scale= 1
+					Min =  0lines  Max =  624lines  Step =  1lines "
+		::= { iqsyn01CmdEntry 2975 }
+
+
+	iqsyn01GenlockDelayPhase525HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					525 H Phase  cmdID= 2976  min= 0  max= 63518455  step= -28499  format=  %.0fns  div_scale= 1000
+					Min =  0ns  Max =  63518ns  Step =  -28ns "
+		::= { iqsyn01CmdEntry 2976 }
+
+
+	iqsyn01GenlockDelayPhase525VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					525 V Phase  cmdID= 2977  min= 0  max= 524  step= 1  format=  %.0flines  div_scale= 1
+					Min =  0lines  Max =  524lines  Step =  1lines "
+		::= { iqsyn01CmdEntry 2977 }
+
+
+	iqsyn01UserMemory1Save OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 1  cmdID= 1600  value= 1  "
+		::= { iqsyn01CmdEntry 1600 }
+
+
+	iqsyn01UserMemory1Recall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 1  cmdID= 1601  value= 1  "
+		::= { iqsyn01CmdEntry 1601 }
+
+
+	iqsyn01UserMemory1Clear OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 1  cmdID= 1602  value= 1  "
+		::= { iqsyn01CmdEntry 1602 }
+
+
+	iqsyn01UserMemory1Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 1  cmdID= 1603  "
+		::= { iqsyn01CmdEntry 1603 }
+
+
+	iqsyn01UserMemory2Save OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 2  cmdID= 1604  value= 1  "
+		::= { iqsyn01CmdEntry 1604 }
+
+
+	iqsyn01UserMemory2Recall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 2  cmdID= 1605  value= 1  "
+		::= { iqsyn01CmdEntry 1605 }
+
+
+	iqsyn01UserMemory2Clear OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 2  cmdID= 1606  value= 1  "
+		::= { iqsyn01CmdEntry 1606 }
+
+
+	iqsyn01UserMemory2Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 2  cmdID= 1607  "
+		::= { iqsyn01CmdEntry 1607 }
+
+
+	iqsyn01UserMemory3Save OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 3  cmdID= 1608  value= 1  "
+		::= { iqsyn01CmdEntry 1608 }
+
+
+	iqsyn01UserMemory3Recall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 3  cmdID= 1609  value= 1  "
+		::= { iqsyn01CmdEntry 1609 }
+
+
+	iqsyn01UserMemory3Clear OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 3  cmdID= 1610  value= 1  "
+		::= { iqsyn01CmdEntry 1610 }
+
+
+	iqsyn01UserMemory3Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 3  cmdID= 1611  "
+		::= { iqsyn01CmdEntry 1611 }
+
+
+	iqsyn01UserMemory4Save OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 4  cmdID= 1612  value= 1  "
+		::= { iqsyn01CmdEntry 1612 }
+
+
+	iqsyn01UserMemory4Recall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 4  cmdID= 1613  value= 1  "
+		::= { iqsyn01CmdEntry 1613 }
+
+
+	iqsyn01UserMemory4Clear OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 4  cmdID= 1614  value= 1  "
+		::= { iqsyn01CmdEntry 1614 }
+
+
+	iqsyn01UserMemory4Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 4  cmdID= 1615  "
+		::= { iqsyn01CmdEntry 1615 }
+
+
+	iqsyn01UserMemory5Save OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 5  cmdID= 1616  value= 1  "
+		::= { iqsyn01CmdEntry 1616 }
+
+
+	iqsyn01UserMemory5Recall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 5  cmdID= 1617  value= 1  "
+		::= { iqsyn01CmdEntry 1617 }
+
+
+	iqsyn01UserMemory5Clear OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 5  cmdID= 1618  value= 1  "
+		::= { iqsyn01CmdEntry 1618 }
+
+
+	iqsyn01UserMemory5Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 5  cmdID= 1619  "
+		::= { iqsyn01CmdEntry 1619 }
+
+
+	iqsyn01UserMemory6Save OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 6  cmdID= 1620  value= 1  "
+		::= { iqsyn01CmdEntry 1620 }
+
+
+	iqsyn01UserMemory6Recall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 6  cmdID= 1621  value= 1  "
+		::= { iqsyn01CmdEntry 1621 }
+
+
+	iqsyn01UserMemory6Clear OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 6  cmdID= 1622  value= 1  "
+		::= { iqsyn01CmdEntry 1622 }
+
+
+	iqsyn01UserMemory6Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 6  cmdID= 1623  "
+		::= { iqsyn01CmdEntry 1623 }
+
+
+	iqsyn01UserMemory7Save OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 7  cmdID= 1624  value= 1  "
+		::= { iqsyn01CmdEntry 1624 }
+
+
+	iqsyn01UserMemory7Recall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 7  cmdID= 1625  value= 1  "
+		::= { iqsyn01CmdEntry 1625 }
+
+
+	iqsyn01UserMemory7Clear OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 7  cmdID= 1626  value= 1  "
+		::= { iqsyn01CmdEntry 1626 }
+
+
+	iqsyn01UserMemory7Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 7  cmdID= 1627  "
+		::= { iqsyn01CmdEntry 1627 }
+
+
+	iqsyn01UserMemory8Save OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 8  cmdID= 1628  value= 1  "
+		::= { iqsyn01CmdEntry 1628 }
+
+
+	iqsyn01UserMemory8Recall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 8  cmdID= 1629  value= 1  "
+		::= { iqsyn01CmdEntry 1629 }
+
+
+	iqsyn01UserMemory8Clear OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 8  cmdID= 1630  value= 1  "
+		::= { iqsyn01CmdEntry 1630 }
+
+
+	iqsyn01UserMemory8Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 8  cmdID= 1631  "
+		::= { iqsyn01CmdEntry 1631 }
+
+
+	iqsyn01SetupPatternAnimatedPattern OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern
+					Animated Pattern  cmdID= 2940 "
+		::= { iqsyn01CmdEntry 2940 }
+
+
+	iqsyn01SetupPatternEnablePattern OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern
+					Enable Pattern  cmdID= 1035 "
+		::= { iqsyn01CmdEntry 1035 }
+
+
+	iqsyn01SetupPattern OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Colour_Bars(1),
+							val_100_Colour_Bars(2),
+							val_Ramp(3),
+							val_Multiburst(4),
+							val_Pulse_Bar(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Pattern
+					Black  cmdID= 1036  value= 0
+					EBU Colour Bars  cmdID= 1036  value= 1
+					100% Colour Bars  cmdID= 1036  value= 2
+					Ramp  cmdID= 1036  value= 3
+					Multiburst  cmdID= 1036  value= 4
+					Pulse & Bar  cmdID= 1036  value= 5  "
+		::= { iqsyn01CmdEntry 1036 }
+
+
+	iqsyn01SetupCaptionEditCaption OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- Caption
+					Edit Caption  cmdID= 1041  "
+		::= { iqsyn01CmdEntry 1041 }
+
+
+	iqsyn01SetupCaption OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Caption_Off(0),
+							val_Caption_On(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Caption
+					Caption Off  cmdID= 1037  value= 0
+					Caption On  cmdID= 1037  value= 1  "
+		::= { iqsyn01CmdEntry 1037 }
+
+
+	iqsyn01BlankingVIPass525BlankAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Blank_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Blanking
+					Blank All  cmdID= 1298  value= 1  "
+		::= { iqsyn01CmdEntry 1298 }
+
+
+	iqsyn01BlankingVIPass525PassAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Pass_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Blanking
+					Pass All  cmdID= 1297  value= 1  "
+		::= { iqsyn01CmdEntry 1297 }
+
+
+	iqsyn01BlankingVIPass525Line11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 11  cmdID= 1211 "
+		::= { iqsyn01CmdEntry 1211 }
+
+
+	iqsyn01BlankingVIPass525Line274 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 274  cmdID= 1231 "
+		::= { iqsyn01CmdEntry 1231 }
+
+
+	iqsyn01BlankingVIPass525Line12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 12  cmdID= 1212 "
+		::= { iqsyn01CmdEntry 1212 }
+
+
+	iqsyn01BlankingVIPass525Line275 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 275  cmdID= 1232 "
+		::= { iqsyn01CmdEntry 1232 }
+
+
+	iqsyn01BlankingVIPass525Line13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 13  cmdID= 1213 "
+		::= { iqsyn01CmdEntry 1213 }
+
+
+	iqsyn01BlankingVIPass525Line276 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 276  cmdID= 1233 "
+		::= { iqsyn01CmdEntry 1233 }
+
+
+	iqsyn01BlankingVIPass525Line14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 14  cmdID= 1214 "
+		::= { iqsyn01CmdEntry 1214 }
+
+
+	iqsyn01BlankingVIPass525Line277 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 277  cmdID= 1234 "
+		::= { iqsyn01CmdEntry 1234 }
+
+
+	iqsyn01BlankingVIPass525Line15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 15  cmdID= 1215 "
+		::= { iqsyn01CmdEntry 1215 }
+
+
+	iqsyn01BlankingVIPass525Line278 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 278  cmdID= 1235 "
+		::= { iqsyn01CmdEntry 1235 }
+
+
+	iqsyn01BlankingVIPass525Line16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 16  cmdID= 1216 "
+		::= { iqsyn01CmdEntry 1216 }
+
+
+	iqsyn01BlankingVIPass525Line279 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 279  cmdID= 1236 "
+		::= { iqsyn01CmdEntry 1236 }
+
+
+	iqsyn01BlankingVIPass525Line17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 17  cmdID= 1217 "
+		::= { iqsyn01CmdEntry 1217 }
+
+
+	iqsyn01BlankingVIPass525Line280 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 280  cmdID= 1237 "
+		::= { iqsyn01CmdEntry 1237 }
+
+
+	iqsyn01BlankingVIPass525Line18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 18  cmdID= 1218 "
+		::= { iqsyn01CmdEntry 1218 }
+
+
+	iqsyn01BlankingVIPass525Line281 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 281  cmdID= 1238 "
+		::= { iqsyn01CmdEntry 1238 }
+
+
+	iqsyn01BlankingVIPass525Line19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 19  cmdID= 1219 "
+		::= { iqsyn01CmdEntry 1219 }
+
+
+	iqsyn01BlankingVIPass525Line282 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 282  cmdID= 1239 "
+		::= { iqsyn01CmdEntry 1239 }
+
+
+	iqsyn01BlankingVIPass525Line20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 20  cmdID= 1220 "
+		::= { iqsyn01CmdEntry 1220 }
+
+
+	iqsyn01BlankingVIPass525Line283 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 283  cmdID= 1240 "
+		::= { iqsyn01CmdEntry 1240 }
+
+
+	iqsyn01BlankingVIPass525Line21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 21  cmdID= 1221 "
+		::= { iqsyn01CmdEntry 1221 }
+
+
+	iqsyn01BlankingVIPass625BlankAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Blank_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Blanking
+					Blank All  cmdID= 1296  value= 1  "
+		::= { iqsyn01CmdEntry 1296 }
+
+
+	iqsyn01BlankingVIPass625PassAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Pass_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Blanking
+					Pass All  cmdID= 1295  value= 1  "
+		::= { iqsyn01CmdEntry 1295 }
+
+
+	iqsyn01BlankingVIPass625Line7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 7  cmdID= 1251 "
+		::= { iqsyn01CmdEntry 1251 }
+
+
+	iqsyn01BlankingVIPass625Line320 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 320  cmdID= 1272 "
+		::= { iqsyn01CmdEntry 1272 }
+
+
+	iqsyn01BlankingVIPass625Line8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 8  cmdID= 1252 "
+		::= { iqsyn01CmdEntry 1252 }
+
+
+	iqsyn01BlankingVIPass625Line321 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 321  cmdID= 1273 "
+		::= { iqsyn01CmdEntry 1273 }
+
+
+	iqsyn01BlankingVIPass625Line9 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 9  cmdID= 1253 "
+		::= { iqsyn01CmdEntry 1253 }
+
+
+	iqsyn01BlankingVIPass625Line322 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 322  cmdID= 1274 "
+		::= { iqsyn01CmdEntry 1274 }
+
+
+	iqsyn01BlankingVIPass625Line10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 10  cmdID= 1254 "
+		::= { iqsyn01CmdEntry 1254 }
+
+
+	iqsyn01BlankingVIPass625Line323 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 323  cmdID= 1275 "
+		::= { iqsyn01CmdEntry 1275 }
+
+
+	iqsyn01BlankingVIPass625Line11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 11  cmdID= 1255 "
+		::= { iqsyn01CmdEntry 1255 }
+
+
+	iqsyn01BlankingVIPass625Line324 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 324  cmdID= 1276 "
+		::= { iqsyn01CmdEntry 1276 }
+
+
+	iqsyn01BlankingVIPass625Line12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 12  cmdID= 1256 "
+		::= { iqsyn01CmdEntry 1256 }
+
+
+	iqsyn01BlankingVIPass625Line325 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 325  cmdID= 1277 "
+		::= { iqsyn01CmdEntry 1277 }
+
+
+	iqsyn01BlankingVIPass625Line13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 13  cmdID= 1257 "
+		::= { iqsyn01CmdEntry 1257 }
+
+
+	iqsyn01BlankingVIPass625Line326 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 326  cmdID= 1278 "
+		::= { iqsyn01CmdEntry 1278 }
+
+
+	iqsyn01BlankingVIPass625Line14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 14  cmdID= 1258 "
+		::= { iqsyn01CmdEntry 1258 }
+
+
+	iqsyn01BlankingVIPass625Line327 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 327  cmdID= 1279 "
+		::= { iqsyn01CmdEntry 1279 }
+
+
+	iqsyn01BlankingVIPass625Line15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 15  cmdID= 1259 "
+		::= { iqsyn01CmdEntry 1259 }
+
+
+	iqsyn01BlankingVIPass625Line328 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 328  cmdID= 1280 "
+		::= { iqsyn01CmdEntry 1280 }
+
+
+	iqsyn01BlankingVIPass625Line16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 16  cmdID= 1260 "
+		::= { iqsyn01CmdEntry 1260 }
+
+
+	iqsyn01BlankingVIPass625Line329 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 329  cmdID= 1281 "
+		::= { iqsyn01CmdEntry 1281 }
+
+
+	iqsyn01BlankingVIPass625Line17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 17  cmdID= 1261 "
+		::= { iqsyn01CmdEntry 1261 }
+
+
+	iqsyn01BlankingVIPass625Line330 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 330  cmdID= 1282 "
+		::= { iqsyn01CmdEntry 1282 }
+
+
+	iqsyn01BlankingVIPass625Line18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 18  cmdID= 1262 "
+		::= { iqsyn01CmdEntry 1262 }
+
+
+	iqsyn01BlankingVIPass625Line331 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 331  cmdID= 1283 "
+		::= { iqsyn01CmdEntry 1283 }
+
+
+	iqsyn01BlankingVIPass625Line19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 19  cmdID= 1263 "
+		::= { iqsyn01CmdEntry 1263 }
+
+
+	iqsyn01BlankingVIPass625Line332 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 332  cmdID= 1284 "
+		::= { iqsyn01CmdEntry 1284 }
+
+
+	iqsyn01BlankingVIPass625Line20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 20  cmdID= 1264 "
+		::= { iqsyn01CmdEntry 1264 }
+
+
+	iqsyn01BlankingVIPass625Line333 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 333  cmdID= 1285 "
+		::= { iqsyn01CmdEntry 1285 }
+
+
+	iqsyn01BlankingVIPass625Line21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 21  cmdID= 1265 "
+		::= { iqsyn01CmdEntry 1265 }
+
+
+	iqsyn01BlankingVIPass625Line334 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 334  cmdID= 1286 "
+		::= { iqsyn01CmdEntry 1286 }
+
+
+	iqsyn01BlankingVIPass625Line22 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 22  cmdID= 1266 "
+		::= { iqsyn01CmdEntry 1266 }
+
+
+	iqsyn01BlankingVIPass625Line335 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 335  cmdID= 1287 "
+		::= { iqsyn01CmdEntry 1287 }
+
+
+	iqsyn01BlankingVIPass625Line23 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 23  cmdID= 1267 "
+		::= { iqsyn01CmdEntry 1267 }
+
+
+	iqsyn01SetupBlankingHancBlank OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Hanc Blank  cmdID= 2971 "
+		::= { iqsyn01CmdEntry 2971 }
+
+
+	iqsyn01GPIIOGPIInputDisableInputs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					Disable Inputs  cmdID= 2605 "
+		::= { iqsyn01CmdEntry 2605 }
+
+
+	iqsyn01GPIIOGPIInputInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Input Selection  cmdID= 2011  min= -1  max= 12  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 12  Step = 1 "
+		::= { iqsyn01CmdEntry 2011 }
+
+
+	iqsyn01GPIIOGPIInputGPIInStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- GPI I/O
+					GPI In Status  cmdID= 2048  format=   "
+		::= { iqsyn01CmdEntry 2048 }
+
+
+	iqsyn01GPIIOGPIOutputOutActiveHigh OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					Out Active High  cmdID= 3540 "
+		::= { iqsyn01CmdEntry 3540 }
+
+
+	iqsyn01GPIIOGPIOutputOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Present(0),
+							val_Standard_625(1),
+							val_Video_Delay(2),
+							val_Unused(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- GPI I/O
+					Output Selection  cmdID= 2013
+					Input Present  value= 0
+					Standard 625  value= 1
+					Video Delay  value= 2
+					Unused  value= 3  "
+		::= { iqsyn01CmdEntry 2013 }
+
+
+	iqsyn01GPIIOGPIOutputGPIOutStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- GPI I/O
+					GPI Out Status  cmdID= 2049  format=   "
+		::= { iqsyn01CmdEntry 2049 }
+
+
+	iqsyn01GPIIOGPIInputOutputGPIO1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 1  cmdID= 2014 "
+		::= { iqsyn01CmdEntry 2014 }
+
+
+	iqsyn01SetupGPIIOInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Input Selection  cmdID= 2875  min= -1  max= 12  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 12  Step = 1 "
+		::= { iqsyn01CmdEntry 2875 }
+
+
+	iqsyn01SetupGPIIOOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Present(0),
+							val_Standard_625(1),
+							val_Video_Delay(2),
+							val_Unused(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- GPI I/O
+					Output Selection  cmdID= 2877
+					Input Present  value= 0
+					Standard 625  value= 1
+					Video Delay  value= 2
+					Unused  value= 3  "
+		::= { iqsyn01CmdEntry 2877 }
+
+
+	iqsyn01SetupRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Index  cmdID= 1495  min= 0  max= 49  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 49  Step = 1 "
+		::= { iqsyn01CmdEntry 1495 }
+
+
+	iqsyn01SetupRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Source  cmdID= 1496  min= -1  max= 18  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 18  Step = 1 "
+		::= { iqsyn01CmdEntry 1496 }
+
+
+	iqsyn01SetupRollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- RollTrack
+					RollTrack Disable  cmdID= 1513 "
+		::= { iqsyn01CmdEntry 1513 }
+
+
+	iqsyn01SetupRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Address  cmdID= 1497  "
+		::= { iqsyn01CmdEntry 1497 }
+
+
+	iqsyn01SetupRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Command  cmdID= 1498  "
+		::= { iqsyn01CmdEntry 1498 }
+
+
+	iqsyn01SetupRollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- RollTrack
+					RollTrack Sending  cmdID= 1514  format=   "
+		::= { iqsyn01CmdEntry 1514 }
+
+
+	iqsyn01SetupRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- RollTrack
+					RollTrack Status  cmdID= 1511  format=   "
+		::= { iqsyn01CmdEntry 1511 }
+
+
+	iqsyn01SetupRollTrackBIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Index  cmdID= 2870  min= 0  max= 49  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 49  Step = 1 "
+		::= { iqsyn01CmdEntry 2870 }
+
+
+	iqsyn01SetupRollTrackBSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Source  cmdID= 2871  min= -1  max= 18  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 18  Step = 1 "
+		::= { iqsyn01CmdEntry 2871 }
+
+
+	iqsyn01SetupRollTrackBAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Address  cmdID= 2872  "
+		::= { iqsyn01CmdEntry 2872 }
+
+
+	iqsyn01SetupRollTrackBCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Command  cmdID= 2873  "
+		::= { iqsyn01CmdEntry 2873 }
+
+
+	iqsyn01SetupLoggingInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Input  cmdID= 1060 "
+		::= { iqsyn01CmdEntry 1060 }
+
+
+	iqsyn01SetupLoggingStd OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Std  cmdID= 1061 "
+		::= { iqsyn01CmdEntry 1061 }
+
+
+	iqsyn01SetupLoggingInput1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Input1  cmdID= 1094 "
+		::= { iqsyn01CmdEntry 1094 }
+
+
+	iqsyn01SetupLoggingStd1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Std1  cmdID= 1097 "
+		::= { iqsyn01CmdEntry 1097 }
+
+
+	iqsyn01SetupLoggingInput2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Input2  cmdID= 1095 "
+		::= { iqsyn01CmdEntry 1095 }
+
+
+	iqsyn01SetupLoggingStd2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Std2  cmdID= 1098 "
+		::= { iqsyn01CmdEntry 1098 }
+
+
+	iqsyn01SetupLoggingReference OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Reference  cmdID= 1062 "
+		::= { iqsyn01CmdEntry 1062 }
+
+
+	iqsyn01SetupLoggingEDH OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					EDH  cmdID= 1064 "
+		::= { iqsyn01CmdEntry 1064 }
+
+
+	iqsyn01SetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					EDH Errors  cmdID= 1070 "
+		::= { iqsyn01CmdEntry 1070 }
+
+
+	iqsyn01SetupLoggingRollTrack OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					RollTrack  cmdID= 1106 "
+		::= { iqsyn01CmdEntry 1106 }
+
+
+	iqsyn01SetupLoggingFault OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Fault  cmdID= 1069 "
+		::= { iqsyn01CmdEntry 1069 }
+
+
+	iqsyn01SetupLoggingStatusINPUT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					INPUT=  cmdID= 2980  format=   "
+		::= { iqsyn01CmdEntry 2980 }
+
+
+	iqsyn01SetupLoggingStatusSTD OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					STD=  cmdID= 2981  format=   "
+		::= { iqsyn01CmdEntry 2981 }
+
+
+	iqsyn01SetupLoggingStatusINPUT1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					INPUT1=  cmdID= 2982  format=   "
+		::= { iqsyn01CmdEntry 2982 }
+
+
+	iqsyn01SetupLoggingStatusSTD1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					STD1=  cmdID= 2983  format=   "
+		::= { iqsyn01CmdEntry 2983 }
+
+
+	iqsyn01SetupLoggingStatusINPUT2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					INPUT2=  cmdID= 2984  format=   "
+		::= { iqsyn01CmdEntry 2984 }
+
+
+	iqsyn01SetupLoggingStatusSTD2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					STD2=  cmdID= 2985  format=   "
+		::= { iqsyn01CmdEntry 2985 }
+
+
+	iqsyn01SetupLoggingStatusEXTREF OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					EXTREF=  cmdID= 2986  format=   "
+		::= { iqsyn01CmdEntry 2986 }
+
+
+	iqsyn01SetupLoggingStatusEDH OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					EDH=  cmdID= 2987  format=   "
+		::= { iqsyn01CmdEntry 2987 }
+
+
+	iqsyn01SetupLoggingStatusERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					ERRSEC=  cmdID= 2988  format=   "
+		::= { iqsyn01CmdEntry 2988 }
+
+
+	iqsyn01SetupLoggingStatusROLLTRACK OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					ROLLTRACK=  cmdID= 2989  format=   "
+		::= { iqsyn01CmdEntry 2989 }
+
+
+	iqsyn01SetupLoggingStatusFAULT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					FAULT=  cmdID= 2990  format=   "
+		::= { iqsyn01CmdEntry 2990 }
+
+
+	iqsyn01SetupInformationWindow OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Status(0),
+							val_EDH_ANC_Status(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Information Window
+					Input Status  cmdID= 1915  value= 0
+					EDH & ANC Status  cmdID= 1915  value= 1  "
+		::= { iqsyn01CmdEntry 1915 }
+
+
+	iqsyn01SetupInformationWindowResetErrors OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Errors(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Information Window
+					Reset Errors  cmdID= 2978  value= 1  "
+		::= { iqsyn01CmdEntry 2978 }
+
+
+	iqsyn01SetupDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Video(1),
+							val_Freeze(2),
+							val_Pattern(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Default Output
+					Video  cmdID= 1202  value= 1
+					Freeze  cmdID= 1202  value= 2
+					Pattern  cmdID= 1202  value= 3  "
+		::= { iqsyn01CmdEntry 1202 }
+
+
+	iqsyn01SetupDefaultOutputPattern OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Colour_Bars(1),
+							val_100_Colour_Bars(2),
+							val_Ramp(3),
+							val_Multiburst(4),
+							val_Pulse_Bar(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Default Output
+					Black  cmdID= 1038  value= 0
+					EBU Colour Bars  cmdID= 1038  value= 1
+					100% Colour Bars  cmdID= 1038  value= 2
+					Ramp  cmdID= 1038  value= 3
+					Multiburst  cmdID= 1038  value= 4
+					Pulse & Bar  cmdID= 1038  value= 5  "
+		::= { iqsyn01CmdEntry 1038 }
+
+
+	iqsyn01SetupUnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Software Version  cmdID= 2  format=   "
+		::= { iqsyn01CmdEntry 2 }
+
+
+	iqsyn01SetupUnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Serial No  cmdID= 1  format=   "
+		::= { iqsyn01CmdEntry 1 }
+
+
+	iqsyn01SetupUnitPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Unit
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqsyn01CmdEntry 3 }
+
+
+	iqsyn01SetupUnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Unit
+					Restart  cmdID= 4  value= 1  "
+		::= { iqsyn01CmdEntry 4 }
+
+
+	iqsyn01SetupUnitBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Build No  cmdID= 5  format=   "
+		::= { iqsyn01CmdEntry 5 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: S36051713
+--				:
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				:
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+--
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN*
+--				: STDERR
+--				: 525
+--				: 625
+-- Comments		: This log field shows the detected video standard of the input:    
+--				: UNKNOWN*:	Input signal standard not recognized or no signal
+--				: STDERR  : Not a selected input standard
+--				: 525     : Input standard 525
+--				: 625     : Input standard 625
+
+---------------------------------------------------------------------------------------------------
+-- Header		: STD1
+--
+-- MIB ref		: swCardEventLogSlotXX       .4.83.84.68.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.4.83.84.68.49
+-- Vary			: YES
+--
+-- Value(s)		: ERR
+--				: 525				
+--				: 625 
+-- Comments		: This log field shows the detected video standard of input 1: 
+--				:
+--				:
+--				:ERR 	: Not a selected input standard
+--				:525	: Input standard 525
+--				:625 	: Input standard 625
+--               
+---------------------------------------------------------------------------------------------------
+-- Header		: STD2
+--               
+-- MIB ref		: swCardEventLogSlotXX       .4.83.84.68.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.4.83.84.68.50
+-- Vary			: YES
+--
+-- Value(s)		: ERR
+--				: 525				
+--				: 625 
+-- Comments		: This log field shows the detected video standard of input 2: 
+--				:
+--				:
+--				:ERR 	: Not a selected input standard
+--				:525	: Input standard 525
+--				:625 	: Input standard 625
+--               
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: FAIL
+--				:
+-- Comments		: This log field shows If the Module is at fault state.
+--				: NONE : No Internal errors detected
+--				: FAIL : Internal error detected
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: ERR*
+--				: LOST	
+--				:
+-- Comments		: This log field shows the detected video state of the input.
+-- 				: OK       : Valid input signa        
+--				: ERR*     : Invalid input sig        
+--				: LOST     : Input signal lost        
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: Runtime string 
+--				:
+-- Comments		: This log field shows the time since EDH was reset in seconds
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+-- Value(s)		:525
+--				:ERROR
+--				:WARNING
+--				:625
+--
+-- Comments		: This log field shows the status of the reference.								 		
+--				:525     : Valid 525 reference signal                      	
+--				:ERROR   : Reference/Output standard mismatch              	
+--				:WARNING : Reference signal available but not selected         
+--				:625     : Valid 625 reference signal                     
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT1
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.78.80.85.84.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.78.80.85.84.49
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: ERR*
+--				: LOST	
+--				:
+-- Comments		: This log field shows the detected video state of input 1.
+-- 				: OK       : Valid input signa        
+--				: ERR*     : Invalid input sig        
+--				: LOST     : Input signal lost        
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT2
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.78.80.85.84.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.78.80.85.84.50
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: ERR*
+--				: LOST	
+--				:
+-- Comments		: This log field shows the detected video state of input 2.
+-- 				: OK       : Valid input signa        
+--				: ERR*     : Invalid input sig        
+--				: LOST     : Input signal lost        
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+-- Vary			: YES
+--
+-- Vary			: YES
+--
+-- Value(s)		: Number, 0-n,
+--				:
+-- Comments		: This log field shows the number of control sessions to card
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ROL_STATES
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.82.79.76.95.83.84.65.84.69.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.82.79.76.95.83.84.65.84.69.83
+-- Vary			: YES
+--
+-- Value(s)		: OK                                    
+--				: FAIL  
+                                
+-- Comments		: This log field shows the state of the RollTrak messages send or received.
+--				: OK   :RollTrack message sent and received OK
+--              : FAIL :RollTrack message not acknowledged    
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+-- Vary			: YES
+--
+-- Value(s)		: String
+--				:
+-- Comments		: This log field shows the Time of last restart, format e.g 2006-10-16T09:20:05Z
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MODIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- Vary			: YES
+--
+-- Value(s)		: String
+--				: 
+-- Comments		: This log field shows the Time of last control update, format e.g 2006-10-16T09:20:05Z
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: This log field shows the EDH status of the SDI
+--				: input.
+--				: NONE    : The unit is not locked to the input signal
+--				: OK      : EDH errors have been found on the input signal
+--				: FAIL    : No EDH errors found on the input signal
+--				: RESET   : EDH statistics have been reset
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+---------------------------------------------------------------------------------------------------
+

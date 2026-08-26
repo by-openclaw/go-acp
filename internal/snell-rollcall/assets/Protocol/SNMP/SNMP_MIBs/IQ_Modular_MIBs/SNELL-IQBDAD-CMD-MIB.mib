@@ -1,0 +1,397 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBDAD
+--        Module Id#:54
+--       Command Set:7
+--          Filename:SNELL-IQBDAD-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:17/06/2005
+--              Time:15:37
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBDAD-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBDAD,
+    moduleIQBDADMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBDADCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506171537Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBDADMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbdadCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqbdadCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBDAD 1 }
+
+	iqbdadCmdEntry OBJECT-TYPE
+		SYNTAX		IqbdadCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbdadSlotIndex }
+		::= { iqbdadCmdTable 1 }
+
+	IqbdadCmdEntry ::=
+		SEQUENCE {
+			iqbdadSlotIndex
+				Unsigned32,
+			iqbdadDelayManualDelayTime
+				INTEGER,
+			iqbdadDelayManualDelay
+				INTEGER,
+			iqbdadDelayRollTrack
+				INTEGER,
+			iqbdadDelayExternalDelay
+				INTEGER,
+			iqbdadMute
+				INTEGER,
+			iqbdadSetupExtDelayPolarity
+				INTEGER,
+			iqbdadSetupPresetUnit
+				INTEGER,
+			iqbdadSetupLoggingInputStatus
+				INTEGER,
+			iqbdadSetupLoggingOverflow
+				INTEGER,
+			iqbdadSetupSoftwareVersion
+				RollCallString,
+			iqbdadSetupSerialNo
+				RollCallString,
+			iqbdadExtDelay1
+				INTEGER,
+			iqbdadExtDelay2
+				INTEGER,
+			iqbdadExtDelay3
+				INTEGER,
+			iqbdadExtDelay4
+				INTEGER,
+			iqbdadExtDelay5
+				INTEGER
+		}
+
+	iqbdadSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbdadCmdEntry 0 }
+
+
+	iqbdadDelayManualDelayTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Manual_Delay_Time  cmdID= 7  min= -1800  max= 1800  step= 1  format= %.0f ms  div_scale= 1 
+					Min = -1800 ms  Max = 1800 ms  Step = 1 ms "
+		::= { iqbdadCmdEntry 7 }
+
+
+	iqbdadDelayManualDelay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Manual_Delay  cmdID= 22 "
+		::= { iqbdadCmdEntry 22 }
+
+
+	iqbdadDelayRollTrack OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack  cmdID= 21 "
+		::= { iqbdadCmdEntry 21 }
+
+
+	iqbdadDelayExternalDelay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					External_Delay  cmdID= 8 "
+		::= { iqbdadCmdEntry 8 }
+
+
+	iqbdadMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute  cmdID= 6 "
+		::= { iqbdadCmdEntry 6 }
+
+
+	iqbdadSetupExtDelayPolarity OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Positive(1),
+							val_Negative(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Ext_Delay_Polarity  cmdID= 20 
+					Positive  value= 1  
+					Negative  value= 0  "
+		::= { iqbdadCmdEntry 20 }
+
+
+	iqbdadSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbdadCmdEntry 3 }
+
+
+	iqbdadSetupLoggingInputStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input_Status  cmdID= 10 "
+		::= { iqbdadCmdEntry 10 }
+
+
+	iqbdadSetupLoggingOverflow OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Overflow  cmdID= 11 "
+		::= { iqbdadCmdEntry 11 }
+
+
+	iqbdadSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbdadCmdEntry 2 }
+
+
+	iqbdadSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbdadCmdEntry 1 }
+
+
+	iqbdadExtDelay1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_1  cmdID= 14  min= 0  max= 1600  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 1600 ms  Step = 1 ms "
+		::= { iqbdadCmdEntry 14 }
+
+
+	iqbdadExtDelay2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_2  cmdID= 15  min= 0  max= 1600  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 1600 ms  Step = 1 ms "
+		::= { iqbdadCmdEntry 15 }
+
+
+	iqbdadExtDelay3 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_3  cmdID= 16  min= 0  max= 1600  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 1600 ms  Step = 1 ms "
+		::= { iqbdadCmdEntry 16 }
+
+
+	iqbdadExtDelay4 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_4  cmdID= 17  min= 0  max= 1600  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 1600 ms  Step = 1 ms "
+		::= { iqbdadCmdEntry 17 }
+
+
+	iqbdadExtDelay5 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_5  cmdID= 18  min= 0  max= 1600  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 1600 ms  Step = 1 ms "
+		::= { iqbdadCmdEntry 18 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		:             
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 625
+--				: 525
+--				: OK
+--				: N/A
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH-LEFT
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.67.72.45.76.69.70.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.67.72.45.76.69.70.84
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: OVERFLOW
+--				: LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH-RIGHT
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.67.72.45.82.73.71.72.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.67.72.45.82.73.71.72.84
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: OVERFLOW
+--				: LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

@@ -1,0 +1,50 @@
+{
+  "device": {
+    "name": "Tiny Ember+ Router",
+    "protocol": "emberplus",
+    "endpoints": [
+      {
+        "ip": "127.0.0.1",
+        "port": 9092,
+        "transport": "tcp"
+      }
+    ]
+  },
+  "frames": [
+    {
+      "name": "router",
+      "slots": [
+        {
+          "addr": {
+            "oid": "1.0"
+          },
+          "dm": "identity@1.6.2.json"
+        },
+        {
+          "addr": {
+            "oid": "1.1"
+          },
+          "dm": "oneToN@1.6.2.json"
+        },
+        {
+          "addr": {
+            "oid": "1.2"
+          },
+          "dm": "nToN@1.6.2.json"
+        },
+        {
+          "addr": {
+            "oid": "1.3"
+          },
+          "dm": "dynamic@1.6.2.json"
+        },
+        {
+          "addr": {
+            "oid": "1.4"
+          },
+          "dm": "functions@1.6.2.json"
+        }
+      ]
+    }
+  ]
+}

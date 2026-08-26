@@ -1,0 +1,1808 @@
+
+
+-- Generated file, do not edit
+--
+-- Format: MIBv2
+-- Product: tbs800b3
+-- ProductID: 558
+-- Software: 3.3a.5
+
+-- CreationDate: Mon Aug 16 11:05:25 2010
+
+
+
+SNELL-TBS800BD-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, NOTIFICATION-TYPE, MODULE-IDENTITY, OBJECT-IDENTITY,
+	Counter32, Gauge32, IpAddress, Unsigned32, Integer32
+		FROM SNMPv2-SMI
+
+	OBJECT-GROUP, MODULE-COMPLIANCE, AGENT-CAPABILITIES
+		FROM SNMPv2-CONF
+
+	RollCallString
+		FROM SNELL-WILCOX-TC
+
+	conversionTBS800B3, conversionTBS800B3Mib
+		FROM SNELL-WILCOX-PRODUCT-REG;
+
+
+-- ********************************
+-- Notifications
+
+	tbs800b3NoteEntries OBJECT IDENTIFIER ::= { conversionTBS800B3 0 }
+
+	tbs800b3TrapInputStandardStatus NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusInputStandard }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10001 }
+
+	tbs800b3TrapOutputStandardStatus NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusOutputStandard }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10002 }
+
+	tbs800b3TrapReferenceStatus NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusReference }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10003 }
+
+	tbs800b3TrapInputSourceStatus NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusInputSource }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10004 }
+
+	tbs800b3TrapSDIAudioPresent NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusSdiAudioPresent }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10005 }
+
+	tbs800b3TrapAESAudioPresent NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusAesAudioPresent }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10006 }
+
+	tbs800b3TrapGenlockModeStatus NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusGenlockMode }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10007 }
+
+	tbs800b3TrapClosedCaptionStatus NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusClosedCaptionStatus }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10008 }
+
+	tbs800b3TrapTimecodeStatus NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusTimecode }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10009 }
+
+	tbs800b3TrapInputSignalling NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusInputSignalling }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10010 }
+
+	tbs800b3TrapOutputSMPTE NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusOutputSmpte }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10011 }
+
+	tbs800b3TrapOutputL23 NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusOutputL23 }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10012 }
+
+	tbs800b3TrapOutputVI NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusOutputVi }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10013 }
+
+	tbs800b3TrapPowerSupplyStatus NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusPowerSupplyStatus }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10014 }
+
+	tbs800b3TrapSecondaryPSUStatus NOTIFICATION-TYPE
+		OBJECTS      { tbs800b3StatusSecondaryPsuStatus }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3NoteEntries 10015 }
+
+
+-- ********************************
+-- Control
+
+	tbs800b3CtrlEntries OBJECT IDENTIFIER ::= { conversionTBS800B3 1 }
+
+	tbs800b3AudioAdcAHeadroom OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { tbs800b3CtrlEntries 5071 }
+
+	tbs800b3AudioAdcBHeadroom OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { tbs800b3CtrlEntries 5072 }
+
+	tbs800b3VideoAnalogAcc OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5279 }
+
+	tbs800b3VideoAnalogCti OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5280 }
+
+	tbs800b3VideoAnalogNr OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5281 }
+
+	tbs800b3VideoAnalogPedestalIn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5277 }
+
+	tbs800b3AudioAudioDelay OBJECT-TYPE
+		SYNTAX		Integer32 (-40..80)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-40..80'
+			units='ms'
+			preset='0'
+			template='Audio'
+		"
+		::= { tbs800b3CtrlEntries 5433 }
+
+	tbs800b3AudioAAudioInALeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch1'
+			template='Audio A'
+		"
+		::= { tbs800b3CtrlEntries 5075 }
+
+	tbs800b3AudioAAudioInARight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch2'
+			template='Audio A'
+		"
+		::= { tbs800b3CtrlEntries 5076 }
+
+	tbs800b3AudioBAudioInBLeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch3'
+			template='Audio B'
+		"
+		::= { tbs800b3CtrlEntries 5079 }
+
+	tbs800b3AudioBAudioInBRight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch4'
+			template='Audio B'
+		"
+		::= { tbs800b3CtrlEntries 5080 }
+
+	tbs800b3AudioCAudioInCLeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch5'
+			template='Audio C'
+		"
+		::= { tbs800b3CtrlEntries 5083 }
+
+	tbs800b3AudioCAudioInCRight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch6'
+			template='Audio C'
+		"
+		::= { tbs800b3CtrlEntries 5084 }
+
+	tbs800b3AudioDAudioInDLeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch7'
+			template='Audio D'
+		"
+		::= { tbs800b3CtrlEntries 5087 }
+
+	tbs800b3AudioDAudioInDRight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch8'
+			template='Audio D'
+		"
+		::= { tbs800b3CtrlEntries 5088 }
+
+	tbs800b3ImageAutoZoom OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5091 }
+
+	tbs800b3VideoBlackLevel OBJECT-TYPE
+		SYNTAX		Integer32 (-125..125)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-100.0..100.0'
+			stepsize='0.8'
+			units='mV'
+			preset='0.0'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5006 }
+
+	tbs800b3OutputCea608ClosedCaption OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Output'
+		"
+		::= { tbs800b3CtrlEntries 5288 }
+
+	tbs800b3OutputCea708ClosedCaption OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Output'
+		"
+		::= { tbs800b3CtrlEntries 5289 }
+
+	tbs800b3OutputCea708OutputLine OBJECT-TYPE
+		SYNTAX		Integer32 (8..20)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='8..20'
+			preset='9'
+			template='Output'
+		"
+		::= { tbs800b3CtrlEntries 5290 }
+
+	tbs800b3VideoCvbsOutFormat OBJECT-TYPE
+		SYNTAX		INTEGER { cvbs(0), yc(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='CVBS'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5283 }
+
+	tbs800b3VideoCvbsOutStandard OBJECT-TYPE
+		SYNTAX		INTEGER { palntsc(0), palnpalm(1), palntscj(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='PALNTSC'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5282 }
+
+	tbs800b3VideoCombFilter OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5278 }
+
+	tbs800b3SnmpCommunity OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5364 }
+
+	tbs800b3SnmpContact OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5473 }
+
+	tbs800b3VideoContrast OBJECT-TYPE
+		SYNTAX		Integer32 (-30..30)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-6.0..6.0'
+			stepsize='0.2'
+			units='dB'
+			preset='0.0'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5092 }
+
+	tbs800b3AudioDac1Level OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { tbs800b3CtrlEntries 5093 }
+
+	tbs800b3AudioDac2Level OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { tbs800b3CtrlEntries 5094 }
+
+	tbs800b3InitialSetupDhcp OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Initial Setup'
+		"
+		::= { tbs800b3CtrlEntries 5095 }
+
+	tbs800b3InitialSetupDefaultIpAdd OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='192.168.0.100'
+			template='Initial Setup'
+		"
+		::= { tbs800b3CtrlEntries 5096 }
+
+	tbs800b3OutputDefaultFormat OBJECT-TYPE
+		SYNTAX		INTEGER { lastvalidinput(0), hz50(1), hz59(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Lastvalidinput'
+			template='Output'
+		"
+		::= { tbs800b3CtrlEntries 5308 }
+
+	tbs800b3InitialSetupDefaultGateway OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='192.168.0.200'
+			template='Initial Setup'
+		"
+		::= { tbs800b3CtrlEntries 5097 }
+
+	tbs800b3AudioEmbedGrpAb OBJECT-TYPE
+		SYNTAX		INTEGER { pair1(0), pair2(1), pair3(2), pair4(3), off(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='pair1'
+			template='Audio'
+		"
+		::= { tbs800b3CtrlEntries 5098 }
+
+	tbs800b3AudioEmbedGrpCd OBJECT-TYPE
+		SYNTAX		INTEGER { pair1(0), pair2(1), pair3(2), pair4(3), off(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='pair2'
+			template='Audio'
+		"
+		::= { tbs800b3CtrlEntries 5099 }
+
+	tbs800b3ImageEnhancedStill OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5318 }
+
+	tbs800b3InitialSetupFactoryDefaults OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Initial Setup'
+		"
+		::= { tbs800b3CtrlEntries 5335 }
+
+	tbs800b3Signalling2Force2016 OBJECT-TYPE
+		SYNTAX		INTEGER { afd0v4x3(0), afd1v4x3(1), afd2v4x3(2), afd3v4x3(3), afd4v4x3(4), afd5v4x3(5), afd6v4x3(6), afd7v4x3(7), afd8v4x3(8), afd9v4x3(9), afd10v4x3(10), afd11v4x3(11), afd12v4x3(12), afd13v4x3(13), afd14v4x3(14), afd15v4x3(15), afd0v16x9(16), afd1v16x9(17), afd2v16x9(18), afd3v16x9(19), afd4v16x9(20), afd5v16x9(21), afd6v16x9(22), afd7v16x9(23), afd8v16x9(24), afd9v16x9(25), afd10v16x9(26), afd11v16x9(27), afd12v16x9(28), afd13v16x9(29), afd14v16x9(30), afd15v16x9(31) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='afd0v4x3'
+			template='Signalling 2'
+		"
+		::= { tbs800b3CtrlEntries 5100 }
+
+	tbs800b3Signalling2ForceAfd OBJECT-TYPE
+		SYNTAX		INTEGER { afd0v4x3(0), afd1v4x3(1), afd2v4x3(2), afd3v4x3(3), afd4v4x3(4), afd5v4x3(5), afd6v4x3(6), afd7v4x3(7), afd0v16x9(8), afd1v16x9(9), afd2v16x9(10), afd3v16x9(11), afd4v16x9(12), afd5v16x9(13), afd6v16x9(14), afd7v16x9(15) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='afd0v4x3'
+			template='Signalling 2'
+		"
+		::= { tbs800b3CtrlEntries 5101 }
+
+	tbs800b3Signalling2ForceEtsi OBJECT-TYPE
+		SYNTAX		INTEGER { ffv4x3(0), centrev14x9(1), topv14x9(2), centrev16x9(3), topv16x9(4), centrevgt16x9(5), spv4x3v14x9(6), ffv16x9(7) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='ffv4x3'
+			template='Signalling 2'
+		"
+		::= { tbs800b3CtrlEntries 5102 }
+
+	tbs800b3Signalling2ForceRp186 OBJECT-TYPE
+		SYNTAX		INTEGER { v4x3(0), v16x9(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='v4x3'
+			template='Signalling 2'
+		"
+		::= { tbs800b3CtrlEntries 5103 }
+
+	tbs800b3ImageFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5012 }
+
+	tbs800b3AudioAGainPairA OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio A'
+		"
+		::= { tbs800b3CtrlEntries 5078 }
+
+	tbs800b3AudioBGainPairB OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio B'
+		"
+		::= { tbs800b3CtrlEntries 5082 }
+
+	tbs800b3AudioCGainPairC OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio C'
+		"
+		::= { tbs800b3CtrlEntries 5086 }
+
+	tbs800b3AudioDGainPairD OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio D'
+		"
+		::= { tbs800b3CtrlEntries 5090 }
+
+	tbs800b3VideoYGamma OBJECT-TYPE
+		SYNTAX		Integer32 (4..17)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0.4..1.7'
+			stepsize='0.1'
+			preset='1.0'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5104 }
+
+	tbs800b3OutputGenlock OBJECT-TYPE
+		SYNTAX		INTEGER { referencelock(0), inputlock(1), freerun(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Freerun'
+			template='Output'
+		"
+		::= { tbs800b3CtrlEntries 5105 }
+
+	tbs800b3EnhancerHDetail OBJECT-TYPE
+		SYNTAX		INTEGER { soft2(0), soft1(1), normal(2), sharp1(3), sharp2(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Normal'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5309 }
+
+	tbs800b3EnhancerHEnhance OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5295 }
+
+	tbs800b3EnhancerHFrequency OBJECT-TYPE
+		SYNTAX		INTEGER { low(0), medium(1), high(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Low'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5296 }
+
+	tbs800b3EnhancerHGain OBJECT-TYPE
+		SYNTAX		Integer32 (0..192)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..192'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5298 }
+
+	tbs800b3EnhancerHNoiseRejection OBJECT-TYPE
+		SYNTAX		Integer32 (0..100)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..100'
+			units='%'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5299 }
+
+	tbs800b3OutputHPhase OBJECT-TYPE
+		SYNTAX		Integer32 (-1320..1320)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-1320..1320'
+			units='pixels'
+			preset='0'
+			template='Output'
+		"
+		::= { tbs800b3CtrlEntries 5291 }
+
+	tbs800b3EnhancerHPresets OBJECT-TYPE
+		SYNTAX		INTEGER { low(0), medium(1), high(2), super(3), custom(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Low'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5297 }
+
+	tbs800b3EnhancerHSharpness OBJECT-TYPE
+		SYNTAX		INTEGER { low2(0), low1(1), normal(2), high1(3), high2(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Normal'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5310 }
+
+	tbs800b3TimecodeHdTimecodeSource OBJECT-TYPE
+		SYNTAX		INTEGER { embeddedltc(0), embeddedvitc(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='EmbeddedLTC'
+			template='Timecode'
+		"
+		::= { tbs800b3CtrlEntries 5326 }
+
+	tbs800b3Signalling1InSignallingsd OBJECT-TYPE
+		SYNTAX		INTEGER { smpte2016(0), vismpte(1), viafd(2), l23afd(3), l23etsi(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='SMPTE2016'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5111 }
+
+	tbs800b3VideoInputSelect OBJECT-TYPE
+		SYNTAX		INTEGER { sdia(0), sdib(1), cvbsa(2), cvbsb(3), yc(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='SDIA'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5110 }
+
+	tbs800b3Signalling1L23ForceBits OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5113 }
+
+	tbs800b3Signalling1L23InLine OBJECT-TYPE
+		SYNTAX		Integer32 (10..23)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='10..23'
+			preset='23'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5114 }
+
+	tbs800b3Signalling1L23Out OBJECT-TYPE
+		SYNTAX		INTEGER { auto(0), pass(1), force(2), delete(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Auto'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5115 }
+
+	tbs800b3Signalling1L23OutFormat OBJECT-TYPE
+		SYNTAX		INTEGER { afd(0), etsi(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='AFD'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5116 }
+
+	tbs800b3Signalling1L23OutLine OBJECT-TYPE
+		SYNTAX		Integer32 (10..23)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='10..23'
+			preset='23'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5117 }
+
+	tbs800b3Signalling1L23UserBits OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5118 }
+
+	tbs800b3VideoLegaliser OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5321 }
+
+	tbs800b3OutputLineStandard OBJECT-TYPE
+		SYNTAX		INTEGER { v525625(0), v720p(1), v1080i(2), v1080pa(3), v1080pb(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='v525625'
+			template='Output'
+		"
+		::= { tbs800b3CtrlEntries 5307 }
+
+	tbs800b3SnmpLocation OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5474 }
+
+	tbs800b3TimecodeManualTrigger OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Timecode'
+		"
+		::= { tbs800b3CtrlEntries 5330 }
+
+	tbs800b3ImageManualZoom OBJECT-TYPE
+		SYNTAX		Integer32 (80..120)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='80..120'
+			units='%'
+			preset='100'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5120 }
+
+	tbs800b3UserMemoryMemClear OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='User Memory'
+		"
+		::= { tbs800b3CtrlEntries 5361 }
+
+	tbs800b3UserMemoryMemSave OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='User Memory'
+		"
+		::= { tbs800b3CtrlEntries 5360 }
+
+	tbs800b3UserMemoryMemoryRecall OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='User Memory'
+		"
+		::= { tbs800b3CtrlEntries 5317 }
+
+	tbs800b3VideoNtscHue OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-180..180'
+			units='deg'
+			preset='0'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5276 }
+
+	tbs800b3InitialSetupIpNetMask OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='255.255.255.0'
+			template='Initial Setup'
+		"
+		::= { tbs800b3CtrlEntries 5121 }
+
+	tbs800b3AudioAPairANonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio A'
+		"
+		::= { tbs800b3CtrlEntries 5284 }
+
+	tbs800b3AudioBPairBNonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio B'
+		"
+		::= { tbs800b3CtrlEntries 5285 }
+
+	tbs800b3AudioCPairCNonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio C'
+		"
+		::= { tbs800b3CtrlEntries 5286 }
+
+	tbs800b3AudioDPairDNonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio D'
+		"
+		::= { tbs800b3CtrlEntries 5287 }
+
+	tbs800b3AudioAPairRoutingA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio A'
+		"
+		::= { tbs800b3CtrlEntries 5077 }
+
+	tbs800b3AudioBPairRoutingB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio B'
+		"
+		::= { tbs800b3CtrlEntries 5081 }
+
+	tbs800b3AudioCPairRoutingC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio C'
+		"
+		::= { tbs800b3CtrlEntries 5085 }
+
+	tbs800b3AudioDPairRoutingD OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio D'
+		"
+		::= { tbs800b3CtrlEntries 5089 }
+
+	tbs800b3ImagePattern OBJECT-TYPE
+		SYNTAX		INTEGER { off(0), ramp(1), bars(2), black(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Off'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5127 }
+
+	tbs800b3SnmpPort OBJECT-TYPE
+		SYNTAX		Integer32 (0..2047)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..2047'
+			preset='161'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5471 }
+
+	tbs800b3TimecodePresetTimecode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='Timecode'
+		"
+		::= { tbs800b3CtrlEntries 5334 }
+
+	tbs800b3SnmpResendTraps OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5472 }
+
+	tbs800b3InitialSetupUnitReset OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Initial Setup'
+		"
+		::= { tbs800b3CtrlEntries 5129 }
+
+	tbs800b3TimecodeSd525InsertionLine OBJECT-TYPE
+		SYNTAX		Integer32 (11..17)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='11..17'
+			preset='14'
+			template='Timecode'
+		"
+		::= { tbs800b3CtrlEntries 5331 }
+
+	tbs800b3TimecodeSd625InsertionLine OBJECT-TYPE
+		SYNTAX		Integer32 (7..20)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='7..20'
+			preset='19'
+			template='Timecode'
+		"
+		::= { tbs800b3CtrlEntries 5332 }
+
+	tbs800b3ImageSdHalfLineBlank OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5274 }
+
+	tbs800b3ImageSdInputFormat OBJECT-TYPE
+		SYNTAX		INTEGER { normalv4x3(0), lbv16x9(1), anv16x9(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='normalv4x3'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5130 }
+
+	tbs800b3TimecodeSdInsertion OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Timecode'
+		"
+		::= { tbs800b3CtrlEntries 5333 }
+
+	tbs800b3ImageSdOutputFormat OBJECT-TYPE
+		SYNTAX		INTEGER { normalv4x3(0), anv16x9(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='normalv4x3'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5131 }
+
+	tbs800b3Signalling1Smpte2016Out OBJECT-TYPE
+		SYNTAX		INTEGER { auto(0), pass(1), force(2), delete(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Auto'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5134 }
+
+	tbs800b3SnmpSnmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5470 }
+
+	tbs800b3ImageSafeAreaMarks OBJECT-TYPE
+		SYNTAX		INTEGER { off(0), v16x9(1), v4x3(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Off'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5135 }
+
+	tbs800b3VideoColourSaturation OBJECT-TYPE
+		SYNTAX		Integer32 (-30..30)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-6.0..6.0'
+			stepsize='0.2'
+			units='dB'
+			preset='0.0'
+			template='Video'
+		"
+		::= { tbs800b3CtrlEntries 5136 }
+
+	tbs800b3ImageConvertScaling OBJECT-TYPE
+		SYNTAX		INTEGER { fittowidth(0), v14x9(1), fittoheight(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Fittowidth'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5137 }
+
+	tbs800b3InitialSetupSelect OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Initial Setup'
+		"
+		::= { tbs800b3CtrlEntries 5325 }
+
+	tbs800b3ImageStillProcess OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5312 }
+
+	tbs800b3ImageSyncMode OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5138 }
+
+	tbs800b3TimecodeTimecodeMode OBJECT-TYPE
+		SYNTAX		INTEGER { inputfollow(0), generate(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Inputfollow'
+			template='Timecode'
+		"
+		::= { tbs800b3CtrlEntries 5327 }
+
+	tbs800b3AudioToneFrequency OBJECT-TYPE
+		SYNTAX		Integer32 (1..100)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='100..10000'
+			stepsize='100'
+			units='Hz'
+			preset='1000'
+			template='Audio'
+		"
+		::= { tbs800b3CtrlEntries 5139 }
+
+	tbs800b3SnmpTrapAddress1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5481 }
+
+	tbs800b3SnmpTrapAddress2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5483 }
+
+	tbs800b3SnmpTrapAddress3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5485 }
+
+	tbs800b3SnmpTrapAddress4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5487 }
+
+	tbs800b3SnmpTrapsEnable1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5482 }
+
+	tbs800b3SnmpTrapsEnable2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5484 }
+
+	tbs800b3SnmpTrapsEnable3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5486 }
+
+	tbs800b3SnmpTrapsEnable4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { tbs800b3CtrlEntries 5488 }
+
+	tbs800b3ImageUnknownIsManual OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5140 }
+
+	tbs800b3ImageUseSignalling OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5141 }
+
+	tbs800b3UserMemoryUserMemNameEditor OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='User Memory'
+		"
+		::= { tbs800b3CtrlEntries 5342 }
+
+	tbs800b3UserMemoryUserMemSelect OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='User Memory'
+		"
+		::= { tbs800b3CtrlEntries 5359 }
+
+	tbs800b3EnhancerVEnhance OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5300 }
+
+	tbs800b3EnhancerVFrequency OBJECT-TYPE
+		SYNTAX		INTEGER { low(0), medium(1), high(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Low'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5301 }
+
+	tbs800b3EnhancerVLevel OBJECT-TYPE
+		SYNTAX		INTEGER { soft(0), normal(1), sharp1(2), sharp2(3), sharp3(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Normal'
+			template='Enhancer'
+		"
+		::= { tbs800b3CtrlEntries 5302 }
+
+	tbs800b3OutputVPhase OBJECT-TYPE
+		SYNTAX		Integer32 (-563..562)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-563..562'
+			units='lines'
+			preset='0'
+			template='Output'
+		"
+		::= { tbs800b3CtrlEntries 5292 }
+
+	tbs800b3ImageVancBlank OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { tbs800b3CtrlEntries 5320 }
+
+	tbs800b3Signalling1ViOut OBJECT-TYPE
+		SYNTAX		INTEGER { auto(0), pass(1), force(2), delete(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Auto'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5142 }
+
+	tbs800b3Signalling1ViOutFormat OBJECT-TYPE
+		SYNTAX		INTEGER { smpte(0), afd(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='SMPTE'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5143 }
+
+	tbs800b3Signalling1ViPassData OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Signalling 1'
+		"
+		::= { tbs800b3CtrlEntries 5144 }
+
+	tbs800b3InitialSetupVersionSelection OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='Initial Setup'
+		"
+		::= { tbs800b3CtrlEntries 5303 }
+
+
+-- ********************************
+-- Status
+
+	tbs800b3StatEntries OBJECT IDENTIFIER ::= { conversionTBS800B3 2 }
+
+	tbs800b3StatusAesAudioPresent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5073 }
+
+	tbs800b3StatusClosedCaptionStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5313 }
+
+	tbs800b3InitialSetupCodeVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Initial Setup'
+		"
+		::= { tbs800b3StatEntries 5323 }
+
+	tbs800b3InitialSetupFlashDirectory OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Initial Setup'
+		"
+		::= { tbs800b3StatEntries 5322 }
+
+	tbs800b3StatusGenlockMode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5106 }
+
+	tbs800b3StatusInputSource OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5109 }
+
+	tbs800b3StatusInputSignalling OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5145 }
+
+	tbs800b3StatusInputStandard OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5112 }
+
+	tbs800b3UserMemoryLastRecalled OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='User Memory'
+		"
+		::= { tbs800b3StatEntries 5362 }
+
+	tbs800b3StatusOutputL23 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5123 }
+
+	tbs800b3StatusOutputSmpte OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5124 }
+
+	tbs800b3StatusOutputVi OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5125 }
+
+	tbs800b3StatusOutputStandard OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5126 }
+
+	tbs800b3TimecodeOutputTimecode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Timecode'
+		"
+		::= { tbs800b3StatEntries 5328 }
+
+	tbs800b3StatusPowerSupplyStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5294 }
+
+	tbs800b3StatusReference OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5128 }
+
+	tbs800b3StatusSdiAudioPresent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5133 }
+
+	tbs800b3StatusSecondaryPsuStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5311 }
+
+	tbs800b3StatusTimecode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { tbs800b3StatEntries 5329 }
+
+	tbs800b3UserMemoryUserMemoryPresent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='User Memory'
+		"
+		::= { tbs800b3StatEntries 5314 }
+
+	tbs800b3InitialSetupVersionStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Initial Setup'
+		"
+		::= { tbs800b3StatEntries 5324 }
+
+
+END

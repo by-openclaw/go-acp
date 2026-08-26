@@ -55,12 +55,31 @@ type IS05ConnectionServer struct {
 func NewIS05ConnectionServer(logger *slog.Logger, bundle *NodeConfig, cfg IS05ConnectionConfig) *IS05ConnectionServer {
 	st := newConnectionStore()
 	st.seedFromBundle(bundle)
+	// "auto" on source_ip / interface_ip resolves to an address a
+	// controller can actually reach. Taken from the Node's own
+	// interface list, because that is what the Node already tells the
+	// world about itself.
+	st.setNodeIP(firstNodeIP(bundle))
 
 	vers := is05.SupportedVersions()
 	if cfg.APIVer != "" {
 		vers = []string{cfg.APIVer}
 	}
 	return &IS05ConnectionServer{logger: logger, store: st, vers: vers}
+}
+
+// firstNodeIP picks the address ACTIVE parameters should name.
+//
+// The Node API already publishes the endpoints it is reachable on, so
+// that list is the honest source — inventing an address here could
+// name an interface the Node does not serve on.
+func firstNodeIP(cfg *NodeConfig) string {
+	for _, ep := range cfg.Node.API.Endpoints {
+		if ep.Host != "" {
+			return ep.Host
+		}
+	}
+	return ""
 }
 
 // Store exposes the connection state for tests and for the IS-04

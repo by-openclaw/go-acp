@@ -1,0 +1,1817 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDAVMM
+--        Module Id#:251
+--       Command Set:9
+--          Filename:SNELL-IQDAVMM-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:10/06/2005
+--              Time:14:11
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDAVMM-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDAVMM,
+    moduleIQDAVMMMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDAVMMCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506101411Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDAVMMMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdavmmCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdavmmCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDAVMM 1 }
+
+	iqdavmmCmdEntry OBJECT-TYPE
+		SYNTAX		IqdavmmCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdavmmSlotIndex }
+		::= { iqdavmmCmdTable 1 }
+
+	IqdavmmCmdEntry ::=
+		SEQUENCE {
+			iqdavmmSlotIndex
+				Unsigned32,
+			iqdavmmExtractAnalogueOutputA
+				INTEGER,
+			iqdavmmExtractAnalogueOutputB
+				INTEGER,
+			iqdavmmPatternPatternOn
+				INTEGER,
+			iqdavmmPattern
+				INTEGER,
+			iqdavmmPolarityAnalogueOutputA
+				INTEGER,
+			iqdavmmPolarityAnalogueOutputB
+				INTEGER,
+			iqdavmmDisplayDisplaySelectOSDEnable
+				INTEGER,
+			iqdavmmDisplayDisplaySelectCaption
+				INTEGER,
+			iqdavmmDisplayDisplaySelectBarA
+				INTEGER,
+			iqdavmmDisplayDisplaySelectBarB
+				INTEGER,
+			iqdavmmDisplayDisplaySelectBarAScaling
+				INTEGER,
+			iqdavmmDisplayDisplaySelectBarBScaling
+				INTEGER,
+			iqdavmmDisplayDisplaySelectBarAStatusBox
+				INTEGER,
+			iqdavmmDisplayDisplaySelectBarBStatusBox
+				INTEGER,
+			iqdavmmDisplayDisplaySelectPictureState
+				INTEGER,
+			iqdavmmDisplayOSDKeyLevel
+				INTEGER,
+			iqdavmmDisplayBarPositionsBarAXposition
+				INTEGER,
+			iqdavmmDisplayBarPositionsBarAYposition
+				INTEGER,
+			iqdavmmDisplayBarPositionsBarBXposition
+				INTEGER,
+			iqdavmmDisplayBarPositionsBarBYposition
+				INTEGER,
+			iqdavmmDisplayBarRangesBarMinRange
+				INTEGER,
+			iqdavmmDisplayBarRangesBarMaxRange
+				INTEGER,
+			iqdavmmDisplayMeterSelectScale
+				INTEGER,
+			iqdavmmDisplayMeterSelectBallistics
+				INTEGER,
+			iqdavmmDisplayMeterSelectMeterHeadroom
+				INTEGER,
+			iqdavmmDisplayInfoWindow
+				INTEGER,
+			iqdavmmDisplayCaptionText
+				RollCallString,
+			iqdavmmDisplayCaptionPositionCaptionXPosition
+				INTEGER,
+			iqdavmmDisplayCaptionPositionCaptionYPosition
+				INTEGER,
+			iqdavmmGain0dBFSLevel
+				INTEGER,
+			iqdavmmGainHeadroom
+				INTEGER,
+			iqdavmmGainAnalogueOutputA
+				INTEGER,
+			iqdavmmGainAnalogueOutputB
+				INTEGER,
+			iqdavmmSetupSilenceDetectDuration
+				INTEGER,
+			iqdavmmSetupSilenceDetectSilenceLevel
+				INTEGER,
+			iqdavmmSetupQuietDetectDuration
+				INTEGER,
+			iqdavmmSetupQuietDetectAudioALeftLevel
+				INTEGER,
+			iqdavmmSetupQuietDetectAudioARightLevel
+				INTEGER,
+			iqdavmmSetupQuietDetectAudioBLeftLevel
+				INTEGER,
+			iqdavmmSetupQuietDetectAudioBRightLevel
+				INTEGER,
+			iqdavmmSetupOverloadDetectDuration
+				INTEGER,
+			iqdavmmSetupOverloadDetectAudioALeftLevel
+				INTEGER,
+			iqdavmmSetupOverloadDetectAudioARightLevel
+				INTEGER,
+			iqdavmmSetupOverloadDetectAudioBLeftLevel
+				INTEGER,
+			iqdavmmSetupOverloadDetectAudioBRightLevel
+				INTEGER,
+			iqdavmmSetupPictureFrozenDuration
+				INTEGER,
+			iqdavmmSetupStandard
+				INTEGER,
+			iqdavmmSetupVBIPass
+				INTEGER,
+			iqdavmmSetupPedestalOn
+				INTEGER,
+			iqdavmmSetupChromaBandwidth
+				INTEGER,
+			iqdavmmSetupToneFrequency
+				INTEGER,
+			iqdavmmSetupInputNamesPAIR1L
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR1R
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR2L
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR2R
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR3L
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR3R
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR4L
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR4R
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR5L
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR5R
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR6L
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR6R
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR7L
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR7R
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR8L
+				RollCallString,
+			iqdavmmSetupInputNamesPAIR8R
+				RollCallString,
+			iqdavmmSetupDefaultVideo
+				INTEGER,
+			iqdavmmSetupDefaultAudioAnalogueOutputA
+				INTEGER,
+			iqdavmmSetupDefaultAudioAnalogueOutputB
+				INTEGER,
+			iqdavmmSetupEDHShowStats
+				INTEGER,
+			iqdavmmSetupEDHResetStats
+				INTEGER,
+			iqdavmmSetupLoggingInputLoss
+				INTEGER,
+			iqdavmmSetupLoggingStandard
+				INTEGER,
+			iqdavmmSetupLoggingPictureFrozen
+				INTEGER,
+			iqdavmmSetupLoggingEmbeddedAudio
+				INTEGER,
+			iqdavmmSetupLoggingAudioARightLevel
+				INTEGER,
+			iqdavmmSetupLoggingAudioALeftLevel
+				INTEGER,
+			iqdavmmSetupLoggingAudioBRightLevel
+				INTEGER,
+			iqdavmmSetupLoggingAudioBLeftLevel
+				INTEGER,
+			iqdavmmSetupLoggingUnrecAncData
+				INTEGER,
+			iqdavmmSetupLoggingEDHPresence
+				INTEGER,
+			iqdavmmSetupLoggingEDHErrorsec
+				INTEGER,
+			iqdavmmSetupRollTrackRollTrackDisable
+				INTEGER,
+			iqdavmmSetupRollTrackRollTrackIndex
+				INTEGER,
+			iqdavmmSetupRollTrackRollTrackSource
+				INTEGER,
+			iqdavmmSetupRollTrackRollTrackAddress
+				RollCallString,
+			iqdavmmSetupRollTrackRollTrackCommand
+				RollCallString,
+			iqdavmmSetupRollTrackRollTrackStatus
+				RollCallString,
+			iqdavmmSetupRollTrackRollTrackSending
+				RollCallString,
+			iqdavmmSetupUnitPresetUnit
+				INTEGER,
+			iqdavmmSetupUnitSoftwareVersion
+				RollCallString,
+			iqdavmmSetupUnitSerialNo
+				RollCallString,
+			iqdavmmSetupUnitBuildNo
+				RollCallString,
+			iqdavmmSetupUnitRestart
+				INTEGER
+		}
+
+	iqdavmmSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdavmmCmdEntry 0 }
+
+
+	iqdavmmExtractAnalogueOutputA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAIR_1(0),
+							val_PAIR_2(1),
+							val_PAIR_3(2),
+							val_PAIR_4(3),
+							val_PAIR_5(4),
+							val_PAIR_6(5),
+							val_PAIR_7(6),
+							val_PAIR_8(7),
+							val_TONE(8),
+							val_SILENCE(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Analogue Output A  cmdID= 18 
+					PAIR 1  value= 0  
+					PAIR 2  value= 1  
+					PAIR 3  value= 2  
+					PAIR 4  value= 3  
+					PAIR 5  value= 4  
+					PAIR 6  value= 5  
+					PAIR 7  value= 6  
+					PAIR 8  value= 7  
+					TONE  value= 8  
+					SILENCE  value= 9  "
+		::= { iqdavmmCmdEntry 18 }
+
+
+	iqdavmmExtractAnalogueOutputB OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAIR_1(0),
+							val_PAIR_2(1),
+							val_PAIR_3(2),
+							val_PAIR_4(3),
+							val_PAIR_5(4),
+							val_PAIR_6(5),
+							val_PAIR_7(6),
+							val_PAIR_8(7),
+							val_TONE(8),
+							val_SILENCE(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Analogue Output B  cmdID= 19 
+					PAIR 1  value= 0  
+					PAIR 2  value= 1  
+					PAIR 3  value= 2  
+					PAIR 4  value= 3  
+					PAIR 5  value= 4  
+					PAIR 6  value= 5  
+					PAIR 7  value= 6  
+					PAIR 8  value= 7  
+					TONE  value= 8  
+					SILENCE  value= 9  "
+		::= { iqdavmmCmdEntry 19 }
+
+
+	iqdavmmPatternPatternOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pattern On  cmdID= 7 "
+		::= { iqdavmmCmdEntry 7 }
+
+
+	iqdavmmPattern OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Bars(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Black  cmdID= 6  value= 0  
+					Bars  cmdID= 6  value= 1  "
+		::= { iqdavmmCmdEntry 6 }
+
+
+	iqdavmmPolarityAnalogueOutputA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_Inversion(0),
+							val_Invert_Left_Ch(1),
+							val_Invert_Right_Ch(2),
+							val_Invert_Both(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Analogue Output A  cmdID= 22 
+					No Inversion  value= 0  
+					Invert Left Ch  value= 1  
+					Invert Right Ch  value= 2  
+					Invert Both  value= 3  "
+		::= { iqdavmmCmdEntry 22 }
+
+
+	iqdavmmPolarityAnalogueOutputB OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_Inversion(0),
+							val_Invert_Left_Ch(1),
+							val_Invert_Right_Ch(2),
+							val_Invert_Both(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Analogue Output B  cmdID= 23 
+					No_Inversion  value= 0  
+					Invert Left Ch  value= 1  
+					Invert Right Ch  value= 2  
+					Invert Both  value= 3  "
+		::= { iqdavmmCmdEntry 23 }
+
+
+	iqdavmmDisplayDisplaySelectOSDEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					OSD Enable  cmdID= 39 "
+		::= { iqdavmmCmdEntry 39 }
+
+
+	iqdavmmDisplayDisplaySelectCaption OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Caption  cmdID= 78 "
+		::= { iqdavmmCmdEntry 78 }
+
+
+	iqdavmmDisplayDisplaySelectBarA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bar A  cmdID= 58 "
+		::= { iqdavmmCmdEntry 58 }
+
+
+	iqdavmmDisplayDisplaySelectBarB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bar B  cmdID= 59 "
+		::= { iqdavmmCmdEntry 59 }
+
+
+	iqdavmmDisplayDisplaySelectBarAScaling OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bar A Scaling  cmdID= 60 "
+		::= { iqdavmmCmdEntry 60 }
+
+
+	iqdavmmDisplayDisplaySelectBarBScaling OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bar B Scaling  cmdID= 61 "
+		::= { iqdavmmCmdEntry 61 }
+
+
+	iqdavmmDisplayDisplaySelectBarAStatusBox OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bar A Status Box  cmdID= 64 "
+		::= { iqdavmmCmdEntry 64 }
+
+
+	iqdavmmDisplayDisplaySelectBarBStatusBox OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bar B Status Box  cmdID= 65 "
+		::= { iqdavmmCmdEntry 65 }
+
+
+	iqdavmmDisplayDisplaySelectPictureState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Picture State  cmdID= 66 "
+		::= { iqdavmmCmdEntry 66 }
+
+
+	iqdavmmDisplayOSDKeyLevel OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_0(0),
+							val_25(1),
+							val_50(2),
+							val_75(3),
+							val_100(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					OSD Key Level  cmdID= 24 
+					0%  value= 0  
+					25%  value= 1  
+					50%  value= 2  
+					75%  value= 3  
+					100%  value= 4  "
+		::= { iqdavmmCmdEntry 24 }
+
+
+	iqdavmmDisplayBarPositionsBarAXposition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Bar A X position  cmdID= 40  min= 0  max= 31  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 31  Step = 1 "
+		::= { iqdavmmCmdEntry 40 }
+
+
+	iqdavmmDisplayBarPositionsBarAYposition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Bar A Y position  cmdID= 41  min= 0  max= 28  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 28  Step = 1 "
+		::= { iqdavmmCmdEntry 41 }
+
+
+	iqdavmmDisplayBarPositionsBarBXposition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Bar B X position  cmdID= 55  min= 0  max= 31  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 31  Step = 1 "
+		::= { iqdavmmCmdEntry 55 }
+
+
+	iqdavmmDisplayBarPositionsBarBYposition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Bar B Y position  cmdID= 56  min= 0  max= 28  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 28  Step = 1 "
+		::= { iqdavmmCmdEntry 56 }
+
+
+	iqdavmmDisplayBarRangesBarMinRange OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Bar Min Range  cmdID= 52  min= -51  max= 0  step= 1  format= %1.0fdB  div_scale= 1 
+					Min = -51dB  Max = 0dB  Step = 1dB "
+		::= { iqdavmmCmdEntry 52 }
+
+
+	iqdavmmDisplayBarRangesBarMaxRange OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Bar Max Range  cmdID= 53  min= -51  max= 0  step= 1  format= %1.0fdB  div_scale= 1 
+					Min = -51dB  Max = 0dB  Step = 1dB "
+		::= { iqdavmmCmdEntry 53 }
+
+
+	iqdavmmDisplayMeterSelectScale OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_dBFS(0),
+							val_UK_PPM(1),
+							val_LOG(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Scale  cmdID= 74 
+					dBFS  value= 0  
+					UK PPM  value= 1  
+					LOG  value= 2  "
+		::= { iqdavmmCmdEntry 74 }
+
+
+	iqdavmmDisplayMeterSelectBallistics OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PPM(0),
+							val_VU(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Ballistics  cmdID= 75 
+					PPM  value= 0  
+					VU  value= 1  "
+		::= { iqdavmmCmdEntry 75 }
+
+
+	iqdavmmDisplayMeterSelectMeterHeadroom OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Meter Headroom  cmdID= 76  min= 12  max= 24  step= 2  format= %1.0fdB  div_scale= 1 
+					Min = 12dB  Max = 24dB  Step = 2dB "
+		::= { iqdavmmCmdEntry 76 }
+
+
+	iqdavmmDisplayInfoWindow OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Embedded_D1(0),
+							val_Analogue_Outputs(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Info Window  cmdID= 37 
+					Embedded D1  value= 0  
+					Analogue Outputs  value= 1  "
+		::= { iqdavmmCmdEntry 37 }
+
+
+	iqdavmmDisplayCaptionText OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Caption Text  cmdID= 77  "
+		::= { iqdavmmCmdEntry 77 }
+
+
+	iqdavmmDisplayCaptionPositionCaptionXPosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Caption X Position  cmdID= 98  min= 0  max= 37  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 37  Step = 1 "
+		::= { iqdavmmCmdEntry 98 }
+
+
+	iqdavmmDisplayCaptionPositionCaptionYPosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Caption Y Position  cmdID= 99  min= 0  max= 43  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 43  Step = 1 "
+		::= { iqdavmmCmdEntry 99 }
+
+
+	iqdavmmGain0dBFSLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					0dB FS Level  cmdID= 36  min= 10  max= 45  step= 5  format= %1.1fV pk-pk  div_scale= 10 
+					Min = 1.0V pk-pk  Max = 4.5V pk-pk  Step = 0.5V pk-pk "
+		::= { iqdavmmCmdEntry 36 }
+
+
+	iqdavmmGainHeadroom OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Headroom  cmdID= 35  min= 12  max= 24  step= 1  format= +%1.0fdB  div_scale= 1 
+					Min = +12dB  Max = +24dB  Step = +1dB "
+		::= { iqdavmmCmdEntry 35 }
+
+
+	iqdavmmGainAnalogueOutputA OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Analogue Output A  cmdID= 33  min= -60  max= 60  step= 2  format= %.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.2dB "
+		::= { iqdavmmCmdEntry 33 }
+
+
+	iqdavmmGainAnalogueOutputB OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Analogue Output B  cmdID= 34  min= -60  max= 60  step= 2  format= %.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.2dB "
+		::= { iqdavmmCmdEntry 34 }
+
+
+	iqdavmmSetupSilenceDetectDuration OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Duration  cmdID= 47  min= 1  max= 120  step= 1  format= %1.0f seconds  div_scale= 1 
+					Min = 1 seconds  Max = 120 seconds  Step = 1 seconds "
+		::= { iqdavmmCmdEntry 47 }
+
+
+	iqdavmmSetupSilenceDetectSilenceLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Silence Level  cmdID= 67  min= -114  max= -60  step= 6  format= %1.0fdBFS  div_scale= 1 
+					Min = -114dBFS  Max = -60dBFS  Step = 6dBFS "
+		::= { iqdavmmCmdEntry 67 }
+
+
+	iqdavmmSetupQuietDetectDuration OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Duration  cmdID= 46  min= 1  max= 120  step= 1  format= %1.0f seconds  div_scale= 1 
+					Min = 1 seconds  Max = 120 seconds  Step = 1 seconds "
+		::= { iqdavmmCmdEntry 46 }
+
+
+	iqdavmmSetupQuietDetectAudioALeftLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Audio A Left Level  cmdID= 42  min= -50  max= -1  step= 1  format= %1.0fdBFS  div_scale= 1 
+					Min = -50dBFS  Max = -1dBFS  Step = 1dBFS "
+		::= { iqdavmmCmdEntry 42 }
+
+
+	iqdavmmSetupQuietDetectAudioARightLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Audio A Right Level  cmdID= 43  min= -50  max= -1  step= 1  format= %1.0fdBFS  div_scale= 1 
+					Min = -50dBFS  Max = -1dBFS  Step = 1dBFS "
+		::= { iqdavmmCmdEntry 43 }
+
+
+	iqdavmmSetupQuietDetectAudioBLeftLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Audio B Left Level  cmdID= 44  min= -50  max= -1  step= 1  format= %1.0fdBFS  div_scale= 1 
+					Min = -50dBFS  Max = -1dBFS  Step = 1dBFS "
+		::= { iqdavmmCmdEntry 44 }
+
+
+	iqdavmmSetupQuietDetectAudioBRightLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Audio B Right Level  cmdID= 45  min= -50  max= -1  step= 1  format= %1.0fdBFS  div_scale= 1 
+					Min = -50dBFS  Max = -1dBFS  Step = 1dBFS "
+		::= { iqdavmmCmdEntry 45 }
+
+
+	iqdavmmSetupOverloadDetectDuration OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Duration  cmdID= 73  min= 1  max= 120  step= 1  format= %1.0f seconds  div_scale= 1 
+					Min = 1 seconds  Max = 120 seconds  Step = 1 seconds "
+		::= { iqdavmmCmdEntry 73 }
+
+
+	iqdavmmSetupOverloadDetectAudioALeftLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Audio A Left Level  cmdID= 69  min= -15  max= 0  step= 1  format= %1.0fdBFS  div_scale= 1 
+					Min = -15dBFS  Max = 0dBFS  Step = 1dBFS "
+		::= { iqdavmmCmdEntry 69 }
+
+
+	iqdavmmSetupOverloadDetectAudioARightLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Audio A Right Level  cmdID= 70  min= -15  max= 0  step= 1  format= %1.0fdBFS  div_scale= 1 
+					Min = -15dBFS  Max = 0dBFS  Step = 1dBFS "
+		::= { iqdavmmCmdEntry 70 }
+
+
+	iqdavmmSetupOverloadDetectAudioBLeftLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Audio B Left Level  cmdID= 71  min= -15  max= 0  step= 1  format= %1.0fdBFS  div_scale= 1 
+					Min = -15dBFS  Max = 0dBFS  Step = 1dBFS "
+		::= { iqdavmmCmdEntry 71 }
+
+
+	iqdavmmSetupOverloadDetectAudioBRightLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Audio B Right Level  cmdID= 72  min= -15  max= 0  step= 1  format= %1.0fdBFS  div_scale= 1 
+					Min = -15dBFS  Max = 0dBFS  Step = 1dBFS "
+		::= { iqdavmmCmdEntry 72 }
+
+
+	iqdavmmSetupPictureFrozenDuration OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Duration  cmdID= 50  min= 2  max= 150  step= 1  format= %1.0f frames  div_scale= 1 
+					Min = 2 frames  Max = 150 frames  Step = 1 frames "
+		::= { iqdavmmCmdEntry 50 }
+
+
+	iqdavmmSetupStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAL_NTSC(0),
+							val_PALN_NTSC(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Standard  cmdID= 5 
+					PAL  / NTSC  value= 0  
+					PALN / NTSC  value= 1  "
+		::= { iqdavmmCmdEntry 5 }
+
+
+	iqdavmmSetupVBIPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					VBI Pass  cmdID= 68 "
+		::= { iqdavmmCmdEntry 68 }
+
+
+	iqdavmmSetupPedestalOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pedestal On  cmdID= 16 "
+		::= { iqdavmmCmdEntry 16 }
+
+
+	iqdavmmSetupChromaBandwidth OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_1_6MHz(0),
+							val_2MHz(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Chroma Bandwidth  cmdID= 8 
+					1.6MHz  value= 0  
+					2MHz  value= 1  "
+		::= { iqdavmmCmdEntry 8 }
+
+
+	iqdavmmSetupToneFrequency OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Tone Frequency  cmdID= 17  min= 250  max= 15750  step= 250  format= %4.2fHz  div_scale= 1 
+					Min = 250.00Hz  Max = 15750.00Hz  Step = 250.00Hz "
+		::= { iqdavmmCmdEntry 17 }
+
+
+	iqdavmmSetupInputNamesPAIR1L OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 1 L  cmdID= 25  "
+		::= { iqdavmmCmdEntry 25 }
+
+
+	iqdavmmSetupInputNamesPAIR1R OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 1 R  cmdID= 79  "
+		::= { iqdavmmCmdEntry 79 }
+
+
+	iqdavmmSetupInputNamesPAIR2L OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 2 L  cmdID= 26  "
+		::= { iqdavmmCmdEntry 26 }
+
+
+	iqdavmmSetupInputNamesPAIR2R OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 2 R  cmdID= 80  "
+		::= { iqdavmmCmdEntry 80 }
+
+
+	iqdavmmSetupInputNamesPAIR3L OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 3 L  cmdID= 27  "
+		::= { iqdavmmCmdEntry 27 }
+
+
+	iqdavmmSetupInputNamesPAIR3R OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 3 R  cmdID= 81  "
+		::= { iqdavmmCmdEntry 81 }
+
+
+	iqdavmmSetupInputNamesPAIR4L OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 4 L  cmdID= 28  "
+		::= { iqdavmmCmdEntry 28 }
+
+
+	iqdavmmSetupInputNamesPAIR4R OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 4 R  cmdID= 82  "
+		::= { iqdavmmCmdEntry 82 }
+
+
+	iqdavmmSetupInputNamesPAIR5L OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 5 L  cmdID= 29  "
+		::= { iqdavmmCmdEntry 29 }
+
+
+	iqdavmmSetupInputNamesPAIR5R OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 5 R  cmdID= 83  "
+		::= { iqdavmmCmdEntry 83 }
+
+
+	iqdavmmSetupInputNamesPAIR6L OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 6 L  cmdID= 30  "
+		::= { iqdavmmCmdEntry 30 }
+
+
+	iqdavmmSetupInputNamesPAIR6R OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 6 R  cmdID= 84  "
+		::= { iqdavmmCmdEntry 84 }
+
+
+	iqdavmmSetupInputNamesPAIR7L OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 7 L  cmdID= 31  "
+		::= { iqdavmmCmdEntry 31 }
+
+
+	iqdavmmSetupInputNamesPAIR7R OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 7 R  cmdID= 85  "
+		::= { iqdavmmCmdEntry 85 }
+
+
+	iqdavmmSetupInputNamesPAIR8L OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 8 L  cmdID= 32  "
+		::= { iqdavmmCmdEntry 32 }
+
+
+	iqdavmmSetupInputNamesPAIR8R OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					PAIR 8 R  cmdID= 86  "
+		::= { iqdavmmCmdEntry 86 }
+
+
+	iqdavmmSetupDefaultVideo OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Bars(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Default Video  cmdID= 11 
+					Black  value= 0  
+					Bars  value= 1  "
+		::= { iqdavmmCmdEntry 11 }
+
+
+	iqdavmmSetupDefaultAudioAnalogueOutputA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Silence(0),
+							val_Tone(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Analogue Output_A  cmdID= 20 
+					Silence  value= 0  
+					Tone  value= 1  "
+		::= { iqdavmmCmdEntry 20 }
+
+
+	iqdavmmSetupDefaultAudioAnalogueOutputB OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Silence(0),
+							val_Tone(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Analogue Output_B  cmdID= 21 
+					Silence  value= 0  
+					Tone  value= 1  "
+		::= { iqdavmmCmdEntry 21 }
+
+
+	iqdavmmSetupEDHShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Stats  cmdID= 9 "
+		::= { iqdavmmCmdEntry 9 }
+
+
+	iqdavmmSetupEDHResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 10  value= 1  "
+		::= { iqdavmmCmdEntry 10 }
+
+
+	iqdavmmSetupLoggingInputLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input Loss  cmdID= 87 "
+		::= { iqdavmmCmdEntry 87 }
+
+
+	iqdavmmSetupLoggingStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Standard  cmdID= 88 "
+		::= { iqdavmmCmdEntry 88 }
+
+
+	iqdavmmSetupLoggingPictureFrozen OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Picture Frozen  cmdID= 89 "
+		::= { iqdavmmCmdEntry 89 }
+
+
+	iqdavmmSetupLoggingEmbeddedAudio OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Embedded Audio  cmdID= 90 "
+		::= { iqdavmmCmdEntry 90 }
+
+
+	iqdavmmSetupLoggingAudioARightLevel OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Audio A Right Level  cmdID= 92 "
+		::= { iqdavmmCmdEntry 92 }
+
+
+	iqdavmmSetupLoggingAudioALeftLevel OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Audio A Left Level  cmdID= 91 "
+		::= { iqdavmmCmdEntry 91 }
+
+
+	iqdavmmSetupLoggingAudioBRightLevel OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Audio B Right Level  cmdID= 94 "
+		::= { iqdavmmCmdEntry 94 }
+
+
+	iqdavmmSetupLoggingAudioBLeftLevel OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Audio B Left Level  cmdID= 93 "
+		::= { iqdavmmCmdEntry 93 }
+
+
+	iqdavmmSetupLoggingUnrecAncData OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Unrec Anc Data  cmdID= 95 "
+		::= { iqdavmmCmdEntry 95 }
+
+
+	iqdavmmSetupLoggingEDHPresence OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH Presence  cmdID= 96 "
+		::= { iqdavmmCmdEntry 96 }
+
+
+	iqdavmmSetupLoggingEDHErrorsec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH Error sec  cmdID= 97 "
+		::= { iqdavmmCmdEntry 97 }
+
+
+	iqdavmmSetupRollTrackRollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack Disable  cmdID= 100 "
+		::= { iqdavmmCmdEntry 100 }
+
+
+	iqdavmmSetupRollTrackRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					RollTrack Index  cmdID= 101  min= 0  max= 15  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqdavmmCmdEntry 101 }
+
+
+	iqdavmmSetupRollTrackRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					RollTrack Source  cmdID= 102  min= 0  max= 40  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 40  Step = 1 "
+		::= { iqdavmmCmdEntry 102 }
+
+
+	iqdavmmSetupRollTrackRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					RollTrack Address  cmdID= 103  "
+		::= { iqdavmmCmdEntry 103 }
+
+
+	iqdavmmSetupRollTrackRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					RollTrack Command  cmdID= 104  "
+		::= { iqdavmmCmdEntry 104 }
+
+
+	iqdavmmSetupRollTrackRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					RollTrack Status  cmdID= 105  format=   "
+		::= { iqdavmmCmdEntry 105 }
+
+
+	iqdavmmSetupRollTrackRollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					RollTrack Sending  cmdID= 106  format=   "
+		::= { iqdavmmCmdEntry 106 }
+
+
+	iqdavmmSetupUnitPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqdavmmCmdEntry 3 }
+
+
+	iqdavmmSetupUnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software Version  cmdID= 2  format=   "
+		::= { iqdavmmCmdEntry 2 }
+
+
+	iqdavmmSetupUnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No  cmdID= 1  format=   "
+		::= { iqdavmmCmdEntry 1 }
+
+
+	iqdavmmSetupUnitBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build No  cmdID= 54  format=   "
+		::= { iqdavmmCmdEntry 54 }
+
+
+	iqdavmmSetupUnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdavmmCmdEntry 4 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: NTSC 
+--				: NTSCJ 
+--				: N44
+--				: PAL  
+--				: PAL-M
+--				: PAL-N
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: UAD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.85.65.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.85.65.68
+-- Vary			: YES
+--
+-- Value(s)		: No_UAD
+--				: UAD
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AUDIO
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.85.68.73.79
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.85.68.73.79
+-- Vary			: YES
+--
+-- Value(s)		: ----------------
+--				: 1---------------
+--				: 1-2-------------
+--				: 1-2-3-----------
+--				: 1-2-3-4---------
+--				: 1-2-3-4-5-------
+--				: 1-2-3-4-5-6-----
+--				: 1-2-3-4-5-6-7---
+--				: 1-2-3-4-5-6-7-8-
+--				: 1-2-3-4-5-6---8-
+--				: 1-2-3-4-5---7---
+--				: 1-2-3-4-5---7-8-
+--				: 1-2-3-4-5-----8-
+--				: 1-2-3-4---6-----
+--				: 1-2-3-4---6-7---
+--				: 1-2-3-4---6-7-8-
+--				: 1-2-3-4---6---8-
+--				: 1-2-3-4-----7---
+--				: 1-2-3-4-----7-8-
+--				: 1-2-3-4-------8-
+--				: 1-2-3---5-------
+--				: 1-2-3---5-6-----
+--				: 1-2-3---5-6-7---
+--				: 1-2-3---5-6-7-8-
+--				: 1-2-3---5-6---8-
+--				: 1-2-3---5---7---
+--				: 1-2-3---5---7-8-
+--				: 1-2-3---5-----8-
+--				: 1-2-3-----6-----
+--				: 1-2-3-----6-7---
+--				: 1-2-3-----6-7-8-
+--				: 1-2-3-----6---8-
+--				: 1-2-3-------7---
+--				: 1-2-3-------7-8-
+--				: 1-2-3---------8-
+--				: 1-2---4---------
+--				: 1-2---4-5-------
+--				: 1-2---4-5-6-----
+--				: 1-2---4-5-6-7---
+--				: 1-2---4-5-6-7-8-
+--				: 1-2---4-5-6---8-
+--				: 1-2---4-5---7---
+--				: 1-2---4-5---7-8-
+--				: 1-2---4-5-----8-
+--				: 1-2---4---6-----
+--				: 1-2---4---6-7---
+--				: 1-2---4---6-7-8-
+--				: 1-2---4---6---8-
+--				: 1-2---4-----7---
+--				: 1-2---4-----7-8-
+--				: 1-2---4-------8-
+--				: 1-2-----5-------
+--				: 1-2-----5-6-----
+--				: 1-2-----5-6-7---
+--				: 1-2-----5-6-7-8-
+--				: 1-2-----5-6---8-
+--				: 1-2-----5---7---
+--				: 1-2-----5---7-8-
+--				: 1-2-----5-----8-
+--				: 1-2-------6-----
+--				: 1-2-------6-7---
+--				: 1-2-------6-7-8-
+--				: 1-2-------6---8-
+--				: 1-2---------7---
+--				: 1-2---------7-8-
+--				: 1-2-----------8-
+--				: 1---3-----------
+--				: 1---3-4---------
+--				: 1---3-4-5-------
+--				: 1---3-4-5-6-----
+--				: 1---3-4-5-6-7---
+--				: 1---3-4-5-6-7-8-
+--				: 1---3-4-5-6---8-
+--				: 1---3-4-5---7---
+--				: 1---3-4-5---7-8-
+--				: 1---3-4-5-----8-
+--				: 1---3-4---6-----
+--				: 1---3-4---6-7---
+--				: 1---3-4---6-7-8-
+--				: 1---3-4---6---8-
+--				: 1---3-4-----7---
+--				: 1---3-4-----7-8-
+--				: 1---3-4-------8-
+--				: 1---3---5-------
+--				: 1---3---5-6-----
+--				: 1---3---5-6-7---
+--				: 1---3---5-6-7-8-
+--				: 1---3---5-6---8-
+--				: 1---3---5---7---
+--				: 1---3---5---7-8-
+--				: 1---3---5-----8-
+--				: 1---3-----6-----
+--				: 1---3-----6-7---
+--				: 1---3-----6-7-8-
+--				: 1---3-----6---8-
+--				: 1---3-------7---
+--				: 1---3-------7-8-
+--				: 1---3---------8-
+--				: 1-----4---------
+--				: 1-----4-5-------
+--				: 1-----4-5-6-----
+--				: 1-----4-5-6-7---
+--				: 1-----4-5-6-7-8-
+--				: 1-----4-5-6---8-
+--				: 1-----4-5---7---
+--				: 1-----4-5---7-8-
+--				: 1-----4-5-----8-
+--				: 1-----4---6-----
+--				: 1-----4---6-7---
+--				: 1-----4---6-7-8-
+--				: 1-----4---6---8-
+--				: 1-----4-----7---
+--				: 1-----4-----7-8-
+--				: 1-----4-------8-
+--				: 1-------5-------
+--				: 1-------5-6-----
+--				: 1-------5-6-7---
+--				: 1-------5-6-7-8-
+--				: 1-------5-6---8-
+--				: 1-------5---7---
+--				: 1-------5---7-8-
+--				: 1-------5-----8-
+--				: 1---------6-----
+--				: 1---------6-7---
+--				: 1---------6-7-8-
+--				: 1---------6---8-
+--				: 1-----------7---
+--				: 1-----------7-8-
+--				: 1-------------8-
+--				: --2-------------
+--				: --2-3-----------
+--				: --2-3-4---------
+--				: --2-3-4-5-------
+--				: --2-3-4-5-6-----
+--				: --2-3-4-5-6-7---
+--				: --2-3-4-5-6-7-8-
+--				: --2-3-4-5-6---8-
+--				: --2-3-4-5---7---
+--				: --2-3-4-5---7-8-
+--				: --2-3-4-5-----8-
+--				: --2-3-4---6-----
+--				: --2-3-4---6-7---
+--				: --2-3-4---6-7-8-
+--				: --2-3-4---6---8-
+--				: --2-3-4-----7---
+--				: --2-3-4-----7-8-
+--				: --2-3-4-------8-
+--				: --2-3---5-------
+--				: --2-3---5-6-----
+--				: --2-3---5-6-7---
+--				: --2-3---5-6-7-8-
+--				: --2-3---5-6---8-
+--				: --2-3---5---7---
+--				: --2-3---5---7-8-
+--				: --2-3---5-----8-
+--				: --2-3-----6-----
+--				: --2-3-----6-7---
+--				: --2-3-----6-7-8-
+--				: --2-3-----6---8-
+--				: --2-3-------7---
+--				: --2-3-------7-8-
+--				: --2-3---------8-
+--				: --2---4---------
+--				: --2---4-5-------
+--				: --2---4-5-6-----
+--				: --2---4-5-6-7---
+--				: --2---4-5-6-7-8-
+--				: --2---4-5-6---8-
+--				: --2---4-5---7---
+--				: --2---4-5---7-8-
+--				: --2---4-5-----8-
+--				: --2---4---6-----
+--				: --2---4---6-7---
+--				: --2---4---6-7-8-
+--				: --2---4---6---8-
+--				: --2---4-----7---
+--				: --2---4-----7-8-
+--				: --2---4-------8-
+--				: --2-----5-------
+--				: --2-----5-6-----
+--				: --2-----5-6-7---
+--				: --2-----5-6-7-8-
+--				: --2-----5-6---8-
+--				: --2-----5---7---
+--				: --2-----5---7-8-
+--				: --2-----5-----8-
+--				: --2-------6-----
+--				: --2-------6-7---
+--				: --2-------6-7-8-
+--				: --2-------6---8-
+--				: --2---------7---
+--				: --2---------7-8-
+--				: --2-----------8-
+--				: ----3-----------
+--				: ----3-4---------
+--				: ----3-4-5-------
+--				: ----3-4-5-6-----
+--				: ----3-4-5-6-7---
+--				: ----3-4-5-6-7-8-
+--				: ----3-4-5-6---8-
+--				: ----3-4-5---7---
+--				: ----3-4-5---7-8-
+--				: ----3-4-5-----8-
+--				: ----3-4---6-----
+--				: ----3-4---6-7---
+--				: ----3-4---6-7-8-
+--				: ----3-4---6---8-
+--				: ----3-4-----7---
+--				: ----3-4-----7-8-
+--				: ----3-4-------8-
+--				: ----3---5-------
+--				: ----3---5-6-----
+--				: ----3---5-6-7---
+--				: ----3---5-6-7-8-
+--				: ----3---5-6---8-
+--				: ----3---5---7---
+--				: ----3---5---7-8-
+--				: ----3---5-----8-
+--				: ----3-----6-----
+--				: ----3-----6-7---
+--				: ----3-----6-7-8-
+--				: ----3-----6---8-
+--				: ----3-------7---
+--				: ----3-------7-8-
+--				: ----3---------8-
+--				: ------4---------
+--				: ------4-5-------
+--				: ------4-5-6-----
+--				: ------4-5-6-7---
+--				: ------4-5-6-7-8-
+--				: ------4-5-6---8-
+--				: ------4-5---7---
+--				: ------4-5---7-8-
+--				: ------4-5-----8-
+--				: ------4---6-----
+--				: ------4---6-7---
+--				: ------4---6-7-8-
+--				: ------4---6---8-
+--				: ------4-----7---
+--				: ------4-----7-8-
+--				: ------4-------8-
+--				: --------5-------
+--				: --------5-6-----
+--				: --------5-6-7---
+--				: --------5-6-7-8-
+--				: --------5-6---8-
+--				: --------5---7---
+--				: --------5---7-8-
+--				: --------5-----8-
+--				: ----------6-----
+--				: ----------6-7---
+--				: ----------6-7-8-
+--				: ----------6---8-
+--				: ------------7---
+--				: ------------7-8-
+--				: --------------8-
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary	        : YES
+-- Vary	Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PICTURE
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.80.73.67.84.85.82.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.80.73.67.84.85.82.69
+-- Vary			: YES
+--
+-- Value(s)		: FREEZE
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AUDIO_A_LEFT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.65.85.68.73.79.95.65.95.76.69.70.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.65.85.68.73.79.95.65.95.76.69.70.84
+-- Vary			: YES
+--
+-- Value(s)		: SILENT
+--				: QUIET
+--				: OVERLOAD
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AUDIO_B_LEFT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.65.85.68.73.79.95.66.95.76.69.70.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.65.85.68.73.79.95.66.95.76.69.70.84
+-- Vary			: YES
+--
+-- Value(s)		: SILENT
+--				: QUIET
+--				: OVERLOAD
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AUDIO_A_RIGHT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.65.85.68.73.79.95.65.95.82.73.71.72.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.65.85.68.73.79.95.65.95.82.73.71.72.84
+-- Vary			: YES
+--
+-- Value(s)		: SILENT
+--				: QUIET
+--				: OVERLOAD
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AUDIO_B_RIGHT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.65.85.68.73.79.95.66.95.82.73.71.72.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.65.85.68.73.79.95.66.95.82.73.71.72.84
+-- Vary			: YES
+--
+-- Value(s)		: SILENT
+--				: QUIET
+--				: OVERLOAD
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

@@ -1,0 +1,494 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQSDA10
+--        Module Id#:436
+--       Command Set:6
+--          Filename:SNELL-IQSDA10-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:17/07/2007
+--              Time:14:55
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQSDA10-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQSDA10,
+    moduleIQSDA10MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQSDA10CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0707171455Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQSDA10MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqsda10CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqsda10CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQSDA10 1 }
+
+	iqsda10CmdEntry OBJECT-TYPE
+		SYNTAX		Iqsda10CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqsda10SlotIndex }
+		::= { iqsda10CmdTable 1 }
+
+	Iqsda10CmdEntry ::=
+		SEQUENCE {
+			iqsda10SlotIndex
+				Unsigned32,
+			iqsda10RollTrackIndex
+				INTEGER,
+			iqsda10RollTrackSource
+				INTEGER,
+			iqsda10RollTrackDisable
+				INTEGER,
+			iqsda10RollTrackAddress
+				RollCallString,
+			iqsda10RollTrackCommand
+				RollCallString,
+			iqsda10RollTrackSending
+				RollCallString,
+			iqsda10RollTrackStatus
+				RollCallString,
+			iqsda10RollTrackIndexB
+				INTEGER,
+			iqsda10RollTrackSourceB
+				INTEGER,
+			iqsda10RollTrackAddressB
+				RollCallString,
+			iqsda10RollTrackCommandB
+				RollCallString,
+			iqsda10LoggingInput1State
+				INTEGER,
+			iqsda10LoggingInput1RearLabel
+				INTEGER,
+			iqsda10LoggingInput1Type
+				INTEGER,
+			iqsda10LogStatusINPUT1TYPE
+				RollCallString,
+			iqsda10LogStatusINPUT1IDENT
+				RollCallString,
+			iqsda10LogStatusINPUT1STATE
+				RollCallString,
+			iqsda10UnitSoftwareVersion
+				RollCallString,
+			iqsda10UnitSerialNo
+				RollCallString,
+			iqsda10UnitRestart
+				INTEGER,
+			iqsda10UnitBuildNo
+				RollCallString
+		}
+
+	iqsda10SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqsda10CmdEntry 0 }
+
+
+	iqsda10RollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - RollTrack
+					RollTrack Index  cmdID= 1495  min= 0  max= 15  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqsda10CmdEntry 1495 }
+
+
+	iqsda10RollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - RollTrack
+					RollTrack Source  cmdID= 1496  min= -1  max= 1  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 1  Step = 1 "
+		::= { iqsda10CmdEntry 1496 }
+
+
+	iqsda10RollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - RollTrack
+					RollTrack Disable  cmdID= 1513 "
+		::= { iqsda10CmdEntry 1513 }
+
+
+	iqsda10RollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					RollTrack Address  cmdID= 1497  "
+		::= { iqsda10CmdEntry 1497 }
+
+
+	iqsda10RollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					RollTrack Command  cmdID= 1498  "
+		::= { iqsda10CmdEntry 1498 }
+
+
+	iqsda10RollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - RollTrack
+					RollTrack Sending  cmdID= 1514  format=   "
+		::= { iqsda10CmdEntry 1514 }
+
+
+	iqsda10RollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - RollTrack
+					RollTrack Status  cmdID= 1511  format=   "
+		::= { iqsda10CmdEntry 1511 }
+
+
+	iqsda10RollTrackIndexB OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - RollTrack
+					RollTrack Index  cmdID= 2870  min= 0  max= 15  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqsda10CmdEntry 2870 }
+
+
+	iqsda10RollTrackSourceB OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - RollTrack
+					RollTrack Source  cmdID= 2871  min= -1  max= 1  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 1  Step = 1 "
+		::= { iqsda10CmdEntry 2871 }
+
+
+	iqsda10RollTrackAddressB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					RollTrack Address  cmdID= 2872  "
+		::= { iqsda10CmdEntry 2872 }
+
+
+	iqsda10RollTrackCommandB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					RollTrack Command  cmdID= 2873  "
+		::= { iqsda10CmdEntry 2873 }
+
+
+	iqsda10LoggingInput1State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input1 State  cmdID= 1094 "
+		::= { iqsda10CmdEntry 1094 }
+
+
+	iqsda10LoggingInput1RearLabel OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input1 Rear Label  cmdID= 3590 "
+		::= { iqsda10CmdEntry 3590 }
+
+
+	iqsda10LoggingInput1Type OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input1 Type  cmdID= 3600 "
+		::= { iqsda10CmdEntry 3600 }
+
+
+	iqsda10LogStatusINPUT1TYPE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					INPUT_1_TYPE=  cmdID= 3620  format=   "
+		::= { iqsda10CmdEntry 3620 }
+
+
+	iqsda10LogStatusINPUT1IDENT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					INPUT_1_IDENT=  cmdID= 3610  format=   "
+		::= { iqsda10CmdEntry 3610 }
+
+
+	iqsda10LogStatusINPUT1STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					INPUT_1_STATE=  cmdID= 2982  format=   "
+		::= { iqsda10CmdEntry 2982 }
+
+
+	iqsda10UnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software Version  cmdID= 2  format=   "
+		::= { iqsda10CmdEntry 2 }
+
+
+	iqsda10UnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No  cmdID= 1  format=   "
+		::= { iqsda10CmdEntry 1 }
+
+
+	iqsda10UnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqsda10CmdEntry 4 }
+
+
+	iqsda10UnitBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build No  cmdID= 5  format=   "
+		::= { iqsda10CmdEntry 5 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: S36094328
+--				:
+-- Comments		: Serial Number, Alpha-numberic string
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: n
+-- Comments		: n >= 0    Number of connected rollcall session
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INFORMATION1
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.70.79.82.77.65.84.73.79.78.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.70.79.82.77.65.84.73.79.78.49
+-- Vary			: YES
+--
+-- Value(s)		: Info 1 field
+--				: Any 19 char string
+-- Comments		: User defined field 1.  If edit field is empty this is not logged
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INFORMATION2
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.70.79.82.77.65.84.73.79.78.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.70.79.82.77.65.84.73.79.78.50
+-- Vary			: YES
+--
+-- Value(s)		: Info 2 field
+--				: Any 19 char string
+-- Comments		: User defined field 2.  If edit field is empty this is not logged
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: SDSDI
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+-- Vary			: YES
+--
+-- Value(s)		: 2007-07-17T14:10:00Z
+--				: -
+-- Comments		: UTC time and date of box restart  ISO standardised
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- Vary			: YES
+--
+-- Value(s)		: SERIALIN1
+--				:
+-- Comments		: Text string identifier for Input 1
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:Lost
+--				: OK
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MODIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				: 2007-06-08T15:59:01Z
+-- Comments		: Date and time of last modification of Gateway controls,  Note this appears every
+--              : 5 seconds during continual control change, and/or 5 seconds after most recent update.
+--              : Format local time on Gateway dd/mm/yy hh:mm:ss
+--              : -  no control changes made since last start
+--
+---------------------------------------------------------------------------------------------------

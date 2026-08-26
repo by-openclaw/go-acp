@@ -146,6 +146,12 @@ func (s *connectionStore) scheduledTimeLocked(a is05.Activation) (time.Time, err
 // promoteLocked moves staged to active. Caller holds the lock.
 func (s *connectionStore) promoteLocked(e *connectionEndpoint) {
 	e.active = cloneStaged(e.staged)
+	// ACTIVE describes what the device is DOING. "the device will
+	// decide" is not something it can still be doing once activated,
+	// so every "auto" is replaced with the value actually chosen.
+	for i := range e.active.TransportParams {
+		resolveAuto(e.active.TransportParams[i], s.nodeIP, e.isSender, i)
+	}
 	now := is05.FormatTAINow(s.now())
 	// The ACTIVE block records the activation that produced it; the
 	// STAGED block is reset. A controller reading staged after an

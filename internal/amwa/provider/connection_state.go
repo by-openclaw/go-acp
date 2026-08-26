@@ -37,6 +37,10 @@ type connectionEndpoint struct {
 	// theirs inside the staged PATCH instead.
 	transportFile string
 	transportType string
+	// isSender selects the sender or receiver parameter rules when
+	// resolving "auto" — the two differ (a sender picks a destination,
+	// a receiver picks an interface).
+	isSender bool
 	// scheduled holds a pending timed activation, if any.
 	scheduled *time.Time
 }
@@ -54,6 +58,13 @@ type connectionStore struct {
 	receivers map[string]*connectionEndpoint
 	// now is injectable so scheduled-activation tests do not sleep.
 	now func() time.Time
+	// nodeIP is what "auto" resolves to for source_ip / interface_ip.
+	// A controller reads ACTIVE to learn where a stream comes from, so
+	// this has to be an address that is actually reachable, not a
+	// placeholder.
+	nodeIP string
+	// isSenderKind lets resolveAuto pick sender vs receiver rules.
+	_ struct{}
 }
 
 func newConnectionStore() *connectionStore {
@@ -62,6 +73,13 @@ func newConnectionStore() *connectionStore {
 		receivers: map[string]*connectionEndpoint{},
 		now:       time.Now,
 	}
+}
+
+// setNodeIP records the address "auto" resolves to.
+func (s *connectionStore) setNodeIP(ip string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.nodeIP = ip
 }
 
 // seedFromBundle gives every Sender and Receiver in the IS-04 bundle a
@@ -103,6 +121,7 @@ func newEndpointForTransport(transport string, isSender bool) *connectionEndpoin
 		},
 		constraints:   []map[string]any{constraintsForTransport(transport, isSender)},
 		transportType: transport,
+		isSender:      isSender,
 	}
 	e.active = cloneStaged(e.staged)
 	return e
@@ -110,92 +129,118 @@ func newEndpointForTransport(transport string, isSender bool) *connectionEndpoin
 
 // defaultLegParams is the unset-but-present parameter set for one leg.
 //
-// IS-05 uses the string "auto" for "the device chooses", which is NOT
-// the same as absent: absent means the parameter does not apply to
-// this transport, while "auto" means it applies and the device will
-// pick. Conflating them is why a receiver can look configured and
-// receive nothing.
+// The key set is not a choice. constraints-schema-rtp.json says
+// "every transport parameter must have an entry" and sets
+// additionalProperties:false, so transport_params and constraints must
+// carry EXACTLY the same keys — a mismatch is what the tool reports as
+// "Invalid combination of parameters on constraints endpoint".
+//
+// fec_* and rtcp_* are deliberately absent. They are optional, and
+// declaring fec_enabled without the six fec parameters that give it
+// meaning is precisely the invalid combination above. A device that
+// does not do FEC should say nothing about FEC.
+//
+// "auto" means "the device will choose", which is NOT the same as
+// absent: absent means the parameter does not apply to this transport.
+// Conflating them is why a receiver can look configured and receive
+// nothing.
 func defaultLegParams(transport string, isSender bool) is05.TransportParams {
 	p := is05.TransportParams{}
 	switch {
 	case isRTP(transport):
 		p["rtp_enabled"] = false
+		p["destination_port"] = "auto"
+		p["source_ip"] = "auto"
 		if isSender {
-			p["source_ip"] = "auto"
 			p["destination_ip"] = "auto"
 			p["source_port"] = "auto"
-			p["destination_port"] = "auto"
-			p["fec_enabled"] = false
-			p["rtcp_enabled"] = false
 		} else {
-			p["source_ip"] = nil
 			p["interface_ip"] = "auto"
-			p["destination_port"] = "auto"
-			p["fec_enabled"] = false
-			p["rtcp_enabled"] = false
 			p["multicast_ip"] = nil
 		}
 	case transport == transportWebSocketURN:
-		if isSender {
-			p["connection_uri"] = "auto"
-			p["connection_authorization"] = false
-		} else {
-			p["connection_uri"] = nil
-			p["connection_authorization"] = false
-		}
+		p["connection_uri"] = nil
+		p["connection_authorization"] = false
 	case transport == transportMQTTURN:
 		p["destination_host"] = "auto"
 		p["destination_port"] = "auto"
 		p["broker_topic"] = nil
 		p["broker_protocol"] = "auto"
-		p["broker_authorization"] = false
+		p["broker_authorization"] = "auto"
 		p["connection_status_broker_topic"] = nil
-	default:
-		// A transport we do not model in detail still gets a leg, so
-		// the endpoint is addressable and a controller can read its
-		// (empty) constraints rather than 404.
 	}
 	return p
 }
 
 // constraintsForTransport publishes what each parameter accepts.
 //
-// The constraints endpoint is not decoration: a controller validates
-// against it before staging, and an endpoint that publishes an empty
-// constraint set is telling controllers it accepts anything — which is
-// worse than publishing a narrow one.
+// One entry per transport parameter, same keys, no extras — see
+// defaultLegParams. An empty object is a legal constraint and means
+// "no dynamic restriction", which is honest: a constraint set that
+// invents limits the device does not enforce is worse than one that
+// admits it has none.
 func constraintsForTransport(transport string, isSender bool) map[string]any {
 	c := map[string]any{}
-	switch {
-	case isRTP(transport):
-		c["rtp_enabled"] = map[string]any{}
-		c["destination_port"] = map[string]any{
-			"minimum": 5000, "maximum": 49151,
+	for k := range defaultLegParams(transport, isSender) {
+		switch k {
+		case "destination_port", "source_port":
+			// The IANA dynamic/registered range real ST 2110 gear uses.
+			c[k] = map[string]any{"minimum": 5000, "maximum": 49151}
+		default:
+			c[k] = map[string]any{}
 		}
-		c["fec_enabled"] = map[string]any{}
-		c["rtcp_enabled"] = map[string]any{}
-		if isSender {
-			c["source_ip"] = map[string]any{"enum": []string{"auto"}}
-			c["destination_ip"] = map[string]any{}
-			c["source_port"] = map[string]any{"minimum": 5000, "maximum": 49151}
-		} else {
-			c["interface_ip"] = map[string]any{"enum": []string{"auto"}}
-			c["multicast_ip"] = map[string]any{}
-			c["source_ip"] = map[string]any{}
-		}
-	case transport == transportWebSocketURN:
-		c["connection_uri"] = map[string]any{}
-		c["connection_authorization"] = map[string]any{}
-	case transport == transportMQTTURN:
-		c["destination_host"] = map[string]any{}
-		c["destination_port"] = map[string]any{"minimum": 1, "maximum": 65535}
-		c["broker_topic"] = map[string]any{}
-		c["broker_protocol"] = map[string]any{}
-		c["broker_authorization"] = map[string]any{}
 	}
 	return c
 }
 
+// resolveAuto replaces every "auto" with the concrete value the device
+// chose.
+//
+// IS-05 is explicit that ACTIVE parameters must not contain "auto":
+// active describes what the device is DOING, and "the device will
+// decide" is not something it can still be doing once activated. The
+// AMWA rounds test_11_01 / test_12_01 exist for exactly this, and it
+// is a real fault rather than a formality — a controller reads active
+// to learn the multicast address it must join.
+func resolveAuto(p is05.TransportParams, nodeIP string, isSender bool, index int) {
+	if nodeIP == "" {
+		nodeIP = "127.0.0.1"
+	}
+	for k, v := range p {
+		s, ok := v.(string)
+		if !ok || s != autoKeyword {
+			continue
+		}
+		switch k {
+		case "source_ip", "interface_ip":
+			p[k] = nodeIP
+		case "destination_ip":
+			// A deterministic multicast group per leg. Leg 1 and leg 2
+			// of a 2022-7 pair land in DIFFERENT /24s, because putting
+			// both legs on one subnet defeats the redundancy - the
+			// fault the plant audit found on 48 senders.
+			p[k] = fmt.Sprintf("239.%d.1.1", 4+index*2)
+		case "source_port", "destination_port":
+			p[k] = defaultRTPPort + index*2
+		case "destination_host":
+			p[k] = nodeIP
+		case "broker_protocol":
+			p[k] = "mqtt"
+		case "broker_authorization":
+			p[k] = false
+		default:
+			// An "auto" on a parameter with no defined resolution is
+			// left alone rather than guessed at: inventing a value
+			// would be worse than reporting the device never resolved
+			// it.
+		}
+	}
+}
+
+const (
+	autoKeyword    = "auto"
+	defaultRTPPort = 5004
+)
 const (
 	transportWebSocketURN = "urn:x-nmos:transport:websocket"
 	transportMQTTURN      = "urn:x-nmos:transport:mqtt"

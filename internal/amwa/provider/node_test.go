@@ -233,8 +233,19 @@ func TestNodeServerEndToEnd(t *testing.T) {
 		if err := json.Unmarshal(body, &arr); err != nil {
 			t.Fatalf("%s decode: %v body=%s", c.path, err, body)
 		}
-		if len(arr) != 1 || arr[0] != c.want {
-			t.Fatalf("%s = %v, want [%q]", c.path, arr, c.want)
+		// The root lists every API TREE served, so a Node with IS-05
+		// mounted advertises "connection/" alongside "node/". Requiring
+		// exactly one entry was asserting a bug: the AMWA
+		// auto_connection_1 round fails when the Connection API is
+		// served but unlisted.
+		found := false
+		for _, got := range arr {
+			if got == c.want {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("%s = %v, want it to contain %q", c.path, arr, c.want)
 		}
 	}
 

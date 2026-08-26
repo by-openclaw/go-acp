@@ -1,0 +1,635 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBAXR
+--        Module Id#:99
+--       Command Set:6
+--          Filename:SNELL-IQBAXR-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:17/06/2005
+--              Time:15:12
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQBAXR-CMD-MIB.mib 228 2007-01-05 16:22:52Z nikolaoskatsampekis $
+-- Copyright (c) 2006 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBAXR-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBAXR,
+    moduleIQBAXRMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBAXRCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506171512Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBAXRMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbaxrCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqbaxrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBAXR 1 }
+
+	iqbaxrCmdEntry OBJECT-TYPE
+		SYNTAX		IqbaxrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbaxrSlotIndex }
+		::= { iqbaxrCmdTable 1 }
+
+	IqbaxrCmdEntry ::=
+		SEQUENCE {
+			iqbaxrSlotIndex
+				Unsigned32,
+			iqbaxrOutputs
+				INTEGER,
+			iqbaxrOutputsAssign
+				INTEGER,
+			iqbaxrDisplay
+				INTEGER,
+			iqbaxrLRSwapOutputA
+				INTEGER,
+			iqbaxrLRSwapOutputB
+				INTEGER,
+			iqbaxrEDHShowStats
+				INTEGER,
+			iqbaxrEDHResetStats
+				INTEGER,
+			iqbaxrSetupLockToRef
+				INTEGER,
+			iqbaxrSetupSetDefaultOutput
+				INTEGER,
+			iqbaxrNamesOutputNamesOutputA
+				RollCallString,
+			iqbaxrNamesOutputNamesOutputB
+				RollCallString,
+			iqbaxrNamesInputNamesPair1
+				RollCallString,
+			iqbaxrNamesInputNamesPair2
+				RollCallString,
+			iqbaxrNamesInputNamesPair3
+				RollCallString,
+			iqbaxrNamesInputNamesPair4
+				RollCallString,
+			iqbaxrNamesInputNamesPair5
+				RollCallString,
+			iqbaxrNamesInputNamesPair6
+				RollCallString,
+			iqbaxrNamesInputNamesPair7
+				RollCallString,
+			iqbaxrNamesInputNamesPair8
+				RollCallString,
+			iqbaxrSetupNamesPresetNames
+				INTEGER,
+			iqbaxrSetupLoggingInputChange
+				INTEGER,
+			iqbaxrSetupLoggingD1AudioChange
+				INTEGER,
+			iqbaxrSetupLoggingEDHErrors
+				INTEGER,
+			iqbaxrSetupLoggingAESRefChange
+				INTEGER,
+			iqbaxrSetupPresetUnit
+				INTEGER,
+			iqbaxrSetupSoftwareVersion
+				RollCallString,
+			iqbaxrSetupSerialNo
+				RollCallString
+		}
+
+	iqbaxrSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbaxrCmdEntry 0 }
+
+
+	iqbaxrOutputs OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output_A(0),
+							val_Output_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output_A  cmdID= 31  value= 0  
+					Output_B  cmdID= 31  value= 1  "
+		::= { iqbaxrCmdEntry 31 }
+
+
+	iqbaxrOutputsAssign OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pair_1(0),
+							val_Pair_2(1),
+							val_Pair_3(2),
+							val_Pair_4(3),
+							val_Pair_5(4),
+							val_Pair_6(5),
+							val_Pair_7(6),
+							val_Pair_8(7),
+							val_Tone(8),
+							val_Silence(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Assign  cmdID= 5 
+					Pair_1  value= 0  
+					Pair_2  value= 1  
+					Pair_3  value= 2  
+					Pair_4  value= 3  
+					Pair_5  value= 4  
+					Pair_6  value= 5  
+					Pair_7  value= 6  
+					Pair_8  value= 7  
+					Tone  value= 8  
+					Silence  value= 9  "
+		::= { iqbaxrCmdEntry 5 }
+
+
+	iqbaxrDisplay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Embedded_D1(0),
+							val_AES_Outputs(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Display  cmdID= 11 
+					Embedded_D1  value= 0  
+					AES_Outputs  value= 1  "
+		::= { iqbaxrCmdEntry 11 }
+
+
+	iqbaxrLRSwapOutputA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Output_A  cmdID= 7 "
+		::= { iqbaxrCmdEntry 7 }
+
+
+	iqbaxrLRSwapOutputB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Output_B  cmdID= 8 "
+		::= { iqbaxrCmdEntry 8 }
+
+
+	iqbaxrEDHShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_Stats  cmdID= 6 "
+		::= { iqbaxrCmdEntry 6 }
+
+
+	iqbaxrEDHResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset_Stats  cmdID= 12  value= 1  "
+		::= { iqbaxrCmdEntry 12 }
+
+
+	iqbaxrSetupLockToRef OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Lock_To_Ref  cmdID= 41 "
+		::= { iqbaxrCmdEntry 41 }
+
+
+	iqbaxrSetupSetDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Tone(8),
+							val_Silence(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Set_Default_Output  cmdID= 30 
+					Tone  value= 8  
+					Silence  value= 9  "
+		::= { iqbaxrCmdEntry 30 }
+
+
+	iqbaxrNamesOutputNamesOutputA OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Output_A  cmdID= 22  "
+		::= { iqbaxrCmdEntry 22 }
+
+
+	iqbaxrNamesOutputNamesOutputB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Output_B  cmdID= 23  "
+		::= { iqbaxrCmdEntry 23 }
+
+
+	iqbaxrNamesInputNamesPair1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Pair_1  cmdID= 14  "
+		::= { iqbaxrCmdEntry 14 }
+
+
+	iqbaxrNamesInputNamesPair2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Pair_2  cmdID= 15  "
+		::= { iqbaxrCmdEntry 15 }
+
+
+	iqbaxrNamesInputNamesPair3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Pair_3  cmdID= 16  "
+		::= { iqbaxrCmdEntry 16 }
+
+
+	iqbaxrNamesInputNamesPair4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Pair_4  cmdID= 17  "
+		::= { iqbaxrCmdEntry 17 }
+
+
+	iqbaxrNamesInputNamesPair5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Pair_5  cmdID= 18  "
+		::= { iqbaxrCmdEntry 18 }
+
+
+	iqbaxrNamesInputNamesPair6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Pair_6  cmdID= 19  "
+		::= { iqbaxrCmdEntry 19 }
+
+
+	iqbaxrNamesInputNamesPair7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Pair_7  cmdID= 20  "
+		::= { iqbaxrCmdEntry 20 }
+
+
+	iqbaxrNamesInputNamesPair8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Pair_8  cmdID= 21  "
+		::= { iqbaxrCmdEntry 21 }
+
+
+	iqbaxrSetupNamesPresetNames OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Names(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Names  cmdID= 28  value= 1  "
+		::= { iqbaxrCmdEntry 28 }
+
+
+	iqbaxrSetupLoggingInputChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input_Change  cmdID= 26 "
+		::= { iqbaxrCmdEntry 26 }
+
+
+	iqbaxrSetupLoggingD1AudioChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					D1_Audio_Change  cmdID= 43 "
+		::= { iqbaxrCmdEntry 43 }
+
+
+	iqbaxrSetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Errors  cmdID= 27 "
+		::= { iqbaxrCmdEntry 27 }
+
+
+	iqbaxrSetupLoggingAESRefChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Ref_Change  cmdID= 32 "
+		::= { iqbaxrCmdEntry 32 }
+
+
+	iqbaxrSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbaxrCmdEntry 3 }
+
+
+	iqbaxrSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbaxrCmdEntry 2 }
+
+
+	iqbaxrSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbaxrCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance. 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+-- Comments		: This log field shows the EDH status of the SDI
+--				: input.
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: UNKNOWN
+-- Comments		: This log field shows the detected video standard of the detected SDI input.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AUDIO
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.85.68.73.79
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.85.68.73.79
+-- Vary			: YES
+--
+-- Value(s)		: 1-2-3-4-5-6-7-8-
+--              : 1-2-3-4-5-6-----
+--              : 1-2-3-4-----7-8-
+--              : 1-2-3-4---------
+--              : 1-2-----5-6-7-8-
+--              : 1-2-----5-6-----
+--              : 1-2---------7-8-
+--              : 1-2-------------
+--              : ----3-4-5-6-7-8-
+--              : ----3-4-5-6-----
+--              : ----3-4-----7-8-
+--              : ----3-4---------
+--              : --------5-6-7-8-
+--              : --------5-6-----
+--              : ------------7-8-
+--              : ----------------
+--              : 1---3---5---7---
+--              : 1---3---5-------
+--              : 1---3-------7---
+--              : 1---3-----------
+--              : 1-------5---7---
+--              : 1-------5-------
+--              : 1-----------7---
+--              : 1---------------
+--              : ----3---5---7---
+--              : ----3---5-------
+--              : ----3-------7---
+--              : ----3-----------
+--              : --------5---7---
+--              : --------5-------
+--              : ------------7---
+--              : --2---4---6---8-
+--              : --2---4---6-----
+--              : --2---4-------8-
+--              : --2---4---------
+--              : --2-------6---8-
+--              : --2-------6-----
+--              : --2-----------8-
+--              : --2-------------
+--              : ------4---6---8-
+--              : ------4---6-----
+--              : ------4-------8-
+--              : ------4---------
+--              : ----------6---8-
+--              : ----------6-----
+--              : --------------8-
+-- Comments		: This log field reports the detected state of embedded audio pairs in the input SDI stream.
+--				: Each digit represents presence of that pair and a ( - ) the absence of that pair.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: This Field is not used with this card.
+--				: This log field shows that the module is in Local Mode.
+--				: When a device boots up in Local Mode, all settings will be
+--				: set to the values indicated by card edge switches, (ignoring
+--				: any previous values set through RollCall), and any parameters
+--				: not accessible from the card edge will be restored to their
+--				: factory defaults.
+--				: Generally Local mode is not suitable in a networked
+--				: environment, and Remote Mode should be used instead.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: This log field shows the detected state of the SDI input signal.
+--				: LOST indicates no input detected. 
+--				: ERROR indicates that the detected input is not valid.  
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: The number of EDH errors raised since initialization or the last EDH stats reset.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: This log field shows the status of the reference.
+--				: OK indicates that the card is locked to the selected input.
+--				: LOST indicates that the reference signal has been Lost.
+--
+---------------------------------------------------------------------------------------------------

@@ -1,0 +1,564 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBDAR
+--        Module Id#:88
+--       Command Set:7
+--          Filename:SNELL-IQBDAR-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:27/06/2005
+--              Time:14:14
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBDAR-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBDAR,
+    moduleIQBDARMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBDARCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506271414Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBDARMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbdarCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqbdarCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBDAR 1 }
+
+	iqbdarCmdEntry OBJECT-TYPE
+		SYNTAX		IqbdarCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbdarSlotIndex }
+		::= { iqbdarCmdTable 1 }
+
+	IqbdarCmdEntry ::=
+		SEQUENCE {
+			iqbdarSlotIndex
+				Unsigned32,
+			iqbdarGenerator
+				INTEGER,
+			iqbdarDisplayChannelStatusInf
+				INTEGER,
+			iqbdarDisplayChannelStatusSetupUp
+				INTEGER,
+			iqbdarDisplayChannelStatusSetupDown
+				INTEGER,
+			iqbdarSetGeneratorSetupLeftTone
+				INTEGER,
+			iqbdarSetGeneratorSetupLeftToneLeftFrequency
+				INTEGER,
+			iqbdarSetGeneratorSetupLeftToneLeftLevel
+				INTEGER,
+			iqbdarSetGeneratorSetupRightTone
+				INTEGER,
+			iqbdarSetGeneratorSetupRightToneRightFrequency
+				INTEGER,
+			iqbdarSetGeneratorSetupRightToneRightLevel
+				INTEGER,
+			iqbdarSetGeneratorLockRightToLeft
+				INTEGER,
+			iqbdarLock
+				INTEGER,
+			iqbdarChannelStatEditChannelStatOrigin
+				RollCallString,
+			iqbdarChannelStatEditChannelStatDestination
+				RollCallString,
+			iqbdarMemoryRead
+				INTEGER,
+			iqbdarMemoryWrite
+				INTEGER,
+			iqbdarMemoryPreset
+				INTEGER,
+			iqbdarMemoryNamesMemory1
+				RollCallString,
+			iqbdarMemoryNamesMemory2
+				RollCallString,
+			iqbdarMemoryNamesMemory3
+				RollCallString,
+			iqbdarMemoryNamesMemory4
+				RollCallString,
+			iqbdarSetupSampleWordLength
+				INTEGER,
+			iqbdarSetupLoggingVideoRefChange
+				INTEGER,
+			iqbdarSetupLoggingAESRefChange
+				INTEGER,
+			iqbdarSetupPresetUnit
+				INTEGER,
+			iqbdarSetupSoftwareVersion
+				RollCallString,
+			iqbdarSetupSerialNo
+				RollCallString
+		}
+
+	iqbdarSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbdarCmdEntry 0 }
+
+
+	iqbdarGenerator OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Generator  cmdID= 6 "
+		::= { iqbdarCmdEntry 6 }
+
+
+	iqbdarDisplayChannelStatusInf OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Channel_Status_Inf  cmdID= 35 "
+		::= { iqbdarCmdEntry 35 }
+
+
+	iqbdarDisplayChannelStatusSetupUp OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Up(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Up  cmdID= 30  value= 1  "
+		::= { iqbdarCmdEntry 30 }
+
+
+	iqbdarDisplayChannelStatusSetupDown OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Down(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Down  cmdID= 31  value= 1  "
+		::= { iqbdarCmdEntry 31 }
+
+
+	iqbdarSetGeneratorSetupLeftTone OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Pulse_Tone(1),
+							val_Sine_Tone(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Off  cmdID= 7  value= 0  
+					Pulse_Tone  cmdID= 7  value= 1  
+					Sine_Tone  cmdID= 7  value= 2  "
+		::= { iqbdarCmdEntry 7 }
+
+
+	iqbdarSetGeneratorSetupLeftToneLeftFrequency OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Left_Frequency  cmdID= 42  min= 100  max= 22500  step= 100  format= %4.2fHz  div_scale= 1 
+					Min = 100.00Hz  Max = 22500.00Hz  Step = 100.00Hz "
+		::= { iqbdarCmdEntry 42 }
+
+
+	iqbdarSetGeneratorSetupLeftToneLeftLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Left_Level  cmdID= 40  min= -20  max= 0  step= 1  format= %1.0f dBFS  div_scale= 1 
+					Min = -20 dBFS  Max = 0 dBFS  Step = 1 dBFS "
+		::= { iqbdarCmdEntry 40 }
+
+
+	iqbdarSetGeneratorSetupRightTone OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Pulse_Tone(1),
+							val_Sine_Tone(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Off  cmdID= 8  value= 0  
+					Pulse_Tone  cmdID= 8  value= 1  
+					Sine_Tone  cmdID= 8  value= 2  "
+		::= { iqbdarCmdEntry 8 }
+
+
+	iqbdarSetGeneratorSetupRightToneRightFrequency OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Right_Frequency  cmdID= 43  min= 100  max= 22500  step= 100  format= %4.2fHz  div_scale= 1 
+					Min = 100.00Hz  Max = 22500.00Hz  Step = 100.00Hz "
+		::= { iqbdarCmdEntry 43 }
+
+
+	iqbdarSetGeneratorSetupRightToneRightLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Right_Level  cmdID= 41  min= -20  max= 0  step= 1  format= %1.0f dBFS  div_scale= 1 
+					Min = -20 dBFS  Max = 0 dBFS  Step = 1 dBFS "
+		::= { iqbdarCmdEntry 41 }
+
+
+	iqbdarSetGeneratorLockRightToLeft OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Lock_Right_To_Left  cmdID= 44 "
+		::= { iqbdarCmdEntry 44 }
+
+
+	iqbdarLock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Video_Reference(2),
+							val_AES_Reference(1),
+							val_Freerun(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Lock  cmdID= 5 
+					Video Reference  value= 2  
+					AES Reference  value= 1  
+					Freerun  value= 0  "
+		::= { iqbdarCmdEntry 5 }
+
+
+	iqbdarChannelStatEditChannelStatOrigin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Origin  cmdID= 28  "
+		::= { iqbdarCmdEntry 28 }
+
+
+	iqbdarChannelStatEditChannelStatDestination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Destination  cmdID= 26  "
+		::= { iqbdarCmdEntry 26 }
+
+
+	iqbdarMemoryRead OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read  cmdID= 48 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbdarCmdEntry 48 }
+
+
+	iqbdarMemoryWrite OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Write  cmdID= 49 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbdarCmdEntry 49 }
+
+
+	iqbdarMemoryPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Preset_All_Memories(5),
+							val_Preset_All_Names(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Preset  cmdID= 50 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  
+					Preset_All_Memories  value= 5  
+					Preset_All_Names  cmdID= 50  value= 6  "
+		::= { iqbdarCmdEntry 50 }
+
+
+	iqbdarMemoryNamesMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 51  "
+		::= { iqbdarCmdEntry 51 }
+
+
+	iqbdarMemoryNamesMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 52  "
+		::= { iqbdarCmdEntry 52 }
+
+
+	iqbdarMemoryNamesMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 53  "
+		::= { iqbdarCmdEntry 53 }
+
+
+	iqbdarMemoryNamesMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 54  "
+		::= { iqbdarCmdEntry 54 }
+
+
+	iqbdarSetupSampleWordLength OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_20_bits(1),
+							val_24_bits(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Sample_Word_Length  cmdID= 45 
+					20_bits  value= 1  
+					24_bits  value= 0  "
+		::= { iqbdarCmdEntry 45 }
+
+
+	iqbdarSetupLoggingVideoRefChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Video_Ref_Change  cmdID= 22 "
+		::= { iqbdarCmdEntry 22 }
+
+
+	iqbdarSetupLoggingAESRefChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Ref_Change  cmdID= 21 "
+		::= { iqbdarCmdEntry 21 }
+
+
+	iqbdarSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbdarCmdEntry 3 }
+
+
+	iqbdarSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbdarCmdEntry 2 }
+
+
+	iqbdarSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbdarCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: INT
+--				: AES
+--				: 625
+--				: 525
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AESREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.65.69.83.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.65.69.83.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: 0
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: OFF
+--				: ERROR
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: VIDREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.86.73.68.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.86.73.68.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: 0
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

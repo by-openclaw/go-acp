@@ -168,6 +168,27 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	s.mu.RLock()
 	fn, ok := s.routes[routeKey{method: r.Method, path: r.URL.Path}]
 	if !ok {
+		// A trailing slash is not a different resource.
+		//
+		// The NMOS specs write collection paths with a trailing slash
+		// and clients send both forms freely — the AMWA testing tool
+		// asks for `single/senders/{id}/staged` while the spec text
+		// writes `.../staged/`. Answering 404 for the other form is
+		// technically defensible and practically useless: it failed 20
+		// IS-05 tests that were exercising handlers which existed and
+		// worked.
+		//
+		// Tried only after the exact match, so a route registered for
+		// one specific form still wins.
+		alt := r.URL.Path
+		if strings.HasSuffix(alt, "/") {
+			alt = strings.TrimSuffix(alt, "/")
+		} else {
+			alt += "/"
+		}
+		fn, ok = s.routes[routeKey{method: r.Method, path: alt}]
+	}
+	if !ok {
 		// Try a prefix route — longest match first.
 		for _, pr := range s.prefixes {
 			if pr.method == r.Method && strings.HasPrefix(r.URL.Path, pr.prefix) {
@@ -305,8 +326,18 @@ func (s *Server) methodsForPath(path string) string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	seen := map[string]struct{}{stdhttp.MethodOptions: {}}
+	// Both slash forms, for the same reason dispatch accepts both: a
+	// preflight for `.../bulk/senders` must advertise the POST that is
+	// registered at `.../bulk/senders/`, or the browser refuses the
+	// request that would have worked.
+	alt := path
+	if strings.HasSuffix(alt, "/") {
+		alt = strings.TrimSuffix(alt, "/")
+	} else {
+		alt += "/"
+	}
 	for k := range s.routes {
-		if k.path == path {
+		if k.path == path || k.path == alt {
 			seen[k.method] = struct{}{}
 		}
 	}

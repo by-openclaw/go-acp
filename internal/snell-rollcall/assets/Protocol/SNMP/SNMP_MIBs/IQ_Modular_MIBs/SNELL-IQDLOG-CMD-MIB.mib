@@ -1,0 +1,1359 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDLOG
+--        Module Id#:183
+--       Command Set:6
+--          Filename:SNELL-IQDLOG-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:17/06/2005
+--              Time:12:26
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDLOG-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDLOG,
+    moduleIQDLOGMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDLOGCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506171226Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDLOGMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdlogCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdlogCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDLOG 1 }
+
+	iqdlogCmdEntry OBJECT-TYPE
+		SYNTAX		IqdlogCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdlogSlotIndex }
+		::= { iqdlogCmdTable 1 }
+
+	IqdlogCmdEntry ::=
+		SEQUENCE {
+			iqdlogSlotIndex
+				Unsigned32,
+			iqdlogSelectSequenceLogosequences
+				INTEGER,
+			iqdlogSelectIPFLogoIPFLogo
+				INTEGER,
+			iqdlogLogosControls
+				INTEGER,
+			iqdlogLogosControlsReset
+				INTEGER,
+			iqdlogLogosControlsFade
+				INTEGER,
+			iqdlogLogosControlsOutTime
+				INTEGER,
+			iqdlogLogosControlsInTime
+				INTEGER,
+			iqdlogLogosControlsFadeMax
+				INTEGER,
+			iqdlogLogosControlsFadeMin
+				INTEGER,
+			iqdlogLogosControlsHPos
+				INTEGER,
+			iqdlogLogosControlsVPos
+				INTEGER,
+			iqdlogLogosControlsSingleCyl
+				INTEGER,
+			iqdlogLogosStepSequence
+				INTEGER,
+			iqdlogLogosLogoFileDetails
+				RollCallString,
+			iqdlogSetupOutputStandard
+				INTEGER,
+			iqdlogSetupDefaultOutput
+				INTEGER,
+			iqdlogSetupDefaultOutputIPFHPos
+				INTEGER,
+			iqdlogSetupDefaultOutputIPFVPos
+				INTEGER,
+			iqdlogSetupEDHShowStats
+				INTEGER,
+			iqdlogSetupEDHResetStats
+				INTEGER,
+			iqdlogSetupSetupGPIInputsStateTrig
+				INTEGER,
+			iqdlogEdSetupGPI1Open
+				INTEGER,
+			iqdlogEdSetupClose32
+				INTEGER,
+			iqdlogEdSetupGPI2Open
+				INTEGER,
+			iqdlogEdSetupClose34
+				INTEGER,
+			iqdlogEdSetupGPI3Open
+				INTEGER,
+			iqdlogEdSetupClose
+				INTEGER,
+			iqdlogStSetupGPIOOO
+				INTEGER,
+			iqdlogStSetupGPIOOX
+				INTEGER,
+			iqdlogStSetupGPIOXO
+				INTEGER,
+			iqdlogStSetupGPIOXX
+				INTEGER,
+			iqdlogStSetupGPIXOO
+				INTEGER,
+			iqdlogStSetupGPIXOX
+				INTEGER,
+			iqdlogStSetupGPIXXO
+				INTEGER,
+			iqdlogStSetupGPIXXX
+				INTEGER,
+			iqdlogSetupSetupGPIInputsOutTime
+				INTEGER,
+			iqdlogSetupSetupGPIInputsInTime
+				INTEGER,
+			iqdlogSetupSetupGPIInputsFadeMax
+				INTEGER,
+			iqdlogSetupSetupGPIInputsFadeMin
+				INTEGER,
+			iqdlogSetupLoggingInputChange
+				INTEGER,
+			iqdlogSetupLoggingEDHErrors
+				INTEGER,
+			iqdlogUserMemoryReadMem
+				INTEGER,
+			iqdlogUserMemorySaveMem
+				INTEGER,
+			iqdlogUserMemoryNameMemMemory1
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory2
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory3
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory4
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory5
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory6
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory7
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory8
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory9
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory10
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory11
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory12
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory13
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory14
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory15
+				RollCallString,
+			iqdlogUserMemoryNameMemMemory16
+				RollCallString,
+			iqdlogUserMemory
+				INTEGER,
+			iqdlogUnitPresetUnit
+				INTEGER,
+			iqdlogUnitSoftwareVersion
+				RollCallString,
+			iqdlogUnitSerialNo
+				RollCallString,
+			iqdlogUnitRestart
+				INTEGER
+		}
+
+	iqdlogSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdlogCmdEntry 0 }
+
+
+	iqdlogSelectSequenceLogosequences OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_unspecified(255),
+							val_Static_S_W_Logo(0),
+							val_Spin_S_W_Logo_16_9(1),
+							val_IQ_Modular(2),
+							val_IQ_Modular_S_W(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					  cmdID= 57  value= -1  
+					Static S&W Logo      cmdID= 57  value= 0  
+					Spin. S&W Logo 16:9  cmdID= 57  value= 1  
+					IQ Modular           cmdID= 57  value= 2  
+					IQ Modular + S&W     cmdID= 57  value= 3  "
+		::= { iqdlogCmdEntry 57 }
+
+
+	iqdlogSelectIPFLogoIPFLogo OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_unspecified(-1),
+							val_Static_S_W_Logo(0),
+							val_Spin_S_W_Logo_16_9(1),
+							val_IQ_Modular(2),
+							val_IQ_Modular_S_W(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					  cmdID= 59  value= -1  
+					Static S&W Logo      cmdID= 59  value= 0  
+					Spin. S&W Logo 16:9  cmdID= 59  value= 1  
+					IQ Modular           cmdID= 59  value= 2  
+					IQ Modular + S&W     cmdID= 59  value= 3  "
+		::= { iqdlogCmdEntry 59 }
+
+
+	iqdlogLogosControls OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Reverse(2),
+							val_Forward(3),
+							val_Stop(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Logos
+					Reverse  cmdID= 45  value= 2  
+					Forward  cmdID= 45  value= 3  
+					Stop  cmdID= 45  value= 1  "
+		::= { iqdlogCmdEntry 45 }
+
+
+	iqdlogLogosControlsReset OBJECT-TYPE
+		SYNTAX		INTEGER { val_Reset(0) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Logos
+					Reset  cmdID= 46  value= 0  "
+		::= { iqdlogCmdEntry 46 }
+
+
+	iqdlogLogosControlsFade OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Fade_Out(0),
+							val_Fade_In(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Logos
+					Fade Out  cmdID= 58  value= 0  
+					Fade In  cmdID= 58  value= 1  "
+		::= { iqdlogCmdEntry 58 }
+
+
+	iqdlogLogosControlsOutTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Logos
+					Out_Time  cmdID= 52  min= 1  max= 300  step= 1  format= %1.0f Frames  div_scale= 1 
+					Min = 1 Frames  Max = 300 Frames  Step = 1 Frames "
+		::= { iqdlogCmdEntry 52 }
+
+
+	iqdlogLogosControlsInTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Logos
+					In_Time  cmdID= 51  min= 1  max= 300  step= 1  format= %1.0f Frames  div_scale= 1 
+					Min = 1 Frames  Max = 300 Frames  Step = 1 Frames "
+		::= { iqdlogCmdEntry 51 }
+
+
+	iqdlogLogosControlsFadeMax OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Logos
+					Fade_Max  cmdID= 53  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdlogCmdEntry 53 }
+
+
+	iqdlogLogosControlsFadeMin OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Logos
+					Fade_Min  cmdID= 54  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdlogCmdEntry 54 }
+
+
+	iqdlogLogosControlsHPos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Logos
+					H_Pos  cmdID= 47  min= -120  max= 718  step= 2  format= %1.0f  div_scale= 1 
+					Min = -120  Max = 718  Step = 2 "
+		::= { iqdlogCmdEntry 47 }
+
+
+	iqdlogLogosControlsVPos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Logos
+					V_Pos  cmdID= 48  min= 0  max= 500  step= 2  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 500  Step = 2 "
+		::= { iqdlogCmdEntry 48 }
+
+
+	iqdlogLogosControlsSingleCyl OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logos
+					Single_Cyl  cmdID= 50 "
+		::= { iqdlogCmdEntry 50 }
+
+
+	iqdlogLogosStepSequence OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Logos
+					Step Sequence  cmdID= 55  min= 1  max= 5000  step= 1  format= %1.0f  div_scale= 1 
+					Min = 1  Max = 5000  Step = 1 "
+		::= { iqdlogCmdEntry 55 }
+
+
+	iqdlogLogosLogoFileDetails OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logos
+					Logo File Details  cmdID= 67  format=   "
+		::= { iqdlogCmdEntry 67 }
+
+
+	iqdlogSetupOutputStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_625(1),
+							val_525(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Output_Standard  cmdID= 11 
+					Auto  value= 0  
+					625  value= 1  
+					525  value= 2  "
+		::= { iqdlogCmdEntry 11 }
+
+
+	iqdlogSetupDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(1),
+							val_Black_Current_Logo(3),
+							val_Black_IP_Fail_Logo(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Default_Output
+					Black  cmdID= 5  value= 1  
+					Black & Current Logo  cmdID= 5  value= 3  
+					Black & IP Fail Logo  cmdID= 5  value= 2  "
+		::= { iqdlogCmdEntry 5 }
+
+
+	iqdlogSetupDefaultOutputIPFHPos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Default_Output
+					IPF H_Pos  cmdID= 60  min= -120  max= 718  step= 2  format= %1.0f  div_scale= 1 
+					Min = -120  Max = 718  Step = 2 "
+		::= { iqdlogCmdEntry 60 }
+
+
+	iqdlogSetupDefaultOutputIPFVPos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Default_Output
+					IPF V_Pos  cmdID= 61  min= 0  max= 500  step= 2  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 500  Step = 2 "
+		::= { iqdlogCmdEntry 61 }
+
+
+	iqdlogSetupEDHShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Show_Stats  cmdID= 6 "
+		::= { iqdlogCmdEntry 6 }
+
+
+	iqdlogSetupEDHResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					Reset_Stats  cmdID= 7  value= 1  "
+		::= { iqdlogCmdEntry 7 }
+
+
+	iqdlogSetupSetupGPIInputsStateTrig OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Edge_Trig(1),
+							val_State_Trig(2),
+							val_Disable(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs
+					Edge Trig  cmdID= 30  value= 1  
+					State Trig  cmdID= 30  value= 2  
+					Disable  cmdID= 30  value= 0  "
+		::= { iqdlogCmdEntry 30 }
+
+
+	iqdlogEdSetupGPI1Open OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- Ed.Setup- GPI1 Open
+					OFF  cmdID= 31  value= 22  
+					Stop  cmdID= 31  value= 2  
+					Reverse  cmdID= 31  value= 1  
+					Forward  cmdID= 31  value= 0  
+					Reset  cmdID= 31  value= 3  
+					Fade_IN  cmdID= 31  value= 4  
+					Fade_Out  cmdID= 31  value= 5  
+					Memory  cmdID= 31 "
+		::= { iqdlogCmdEntry 31 }
+
+
+	iqdlogEdSetupClose32 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- Ed.Setup- Close
+					OFF  cmdID= 32  value= 22  
+					Stop  cmdID= 32  value= 2  
+					Reverse  cmdID= 32  value= 1  
+					Forward  cmdID= 32  value= 0  
+					Reset  cmdID= 32  value= 3  
+					Fade_IN  cmdID= 32  value= 4  
+					Fade_Out  cmdID= 32  value= 5  
+					Memory  cmdID= 32 "
+		::= { iqdlogCmdEntry 32 }
+
+
+	iqdlogEdSetupGPI2Open OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- Ed.Setup- GPI2 Open
+					OFF  cmdID= 33  value= 22  
+					Stop  cmdID= 33  value= 2  
+					Reverse  cmdID= 33  value= 1  
+					Forward  cmdID= 33  value= 0  
+					Reset  cmdID= 33  value= 3  
+					Fade_IN  cmdID= 33  value= 4  
+					Fade_Out  cmdID= 33  value= 5  
+					Memory  cmdID= 33 "
+		::= { iqdlogCmdEntry 33 }
+
+
+	iqdlogEdSetupClose34 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- Ed.Setup- Close
+					OFF  cmdID= 34  value= 22  
+					Stop  cmdID= 34  value= 2  
+					Reverse  cmdID= 34  value= 1  
+					Forward  cmdID= 34  value= 0  
+					Reset  cmdID= 34  value= 3  
+					Fade_IN  cmdID= 34  value= 4  
+					Fade_Out  cmdID= 34  value= 5  
+					Memory  cmdID= 34 "
+		::= { iqdlogCmdEntry 34 }
+
+
+	iqdlogEdSetupGPI3Open OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- Ed.Setup- GPI3 Open
+					OFF  cmdID= 35  value= 22  
+					Stop  cmdID= 35  value= 2  
+					Reverse  cmdID= 35  value= 1  
+					Forward  cmdID= 35  value= 0  
+					Reset  cmdID= 35  value= 3  
+					Fade_IN  cmdID= 35  value= 4  
+					Fade_Out  cmdID= 35  value= 5  
+					Memory  cmdID= 35 "
+		::= { iqdlogCmdEntry 35 }
+
+
+	iqdlogEdSetupClose OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- Ed.Setup- Close
+					OFF  cmdID= 36  value= 22  
+					Stop  cmdID= 36  value= 2  
+					Reverse  cmdID= 36  value= 1  
+					Forward  cmdID= 36  value= 0  
+					Reset  cmdID= 36  value= 3  
+					Fade_IN  cmdID= 36  value= 4  
+					Fade_Out  cmdID= 36  value= 5  
+					Memory  cmdID= 36 "
+		::= { iqdlogCmdEntry 36 }
+
+
+	iqdlogStSetupGPIOOO OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- St.Setup- GPI-OOO
+					OFF  cmdID= 37  value= 22  
+					Stop  cmdID= 37  value= 2  
+					Reverse  cmdID= 37  value= 1  
+					Forward  cmdID= 37  value= 0  
+					Reset  cmdID= 37  value= 3  
+					Fade_IN  cmdID= 37  value= 4  
+					Fade_Out  cmdID= 37  value= 5  
+					Memory  cmdID= 37 "
+		::= { iqdlogCmdEntry 37 }
+
+
+	iqdlogStSetupGPIOOX OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- St.Setup- GPI-OOX
+					OFF  cmdID= 38  value= 22  
+					Stop  cmdID= 38  value= 2  
+					Reverse  cmdID= 38  value= 1  
+					Forward  cmdID= 38  value= 0  
+					Reset  cmdID= 38  value= 3  
+					Fade_IN  cmdID= 38  value= 4  
+					Fade_Out  cmdID= 38  value= 5  
+					Memory  cmdID= 38 "
+		::= { iqdlogCmdEntry 38 }
+
+
+	iqdlogStSetupGPIOXO OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- St.Setup- GPI-OXO
+					OFF  cmdID= 39  value= 22  
+					Stop  cmdID= 39  value= 2  
+					Reverse  cmdID= 39  value= 1  
+					Forward  cmdID= 39  value= 0  
+					Reset  cmdID= 39  value= 3  
+					Fade_IN  cmdID= 39  value= 4  
+					Fade_Out  cmdID= 39  value= 5  
+					Memory  cmdID= 39 "
+		::= { iqdlogCmdEntry 39 }
+
+
+	iqdlogStSetupGPIOXX OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- St.Setup- GPI-OXX
+					OFF  cmdID= 40  value= 22  
+					Stop  cmdID= 40  value= 2  
+					Reverse  cmdID= 40  value= 1  
+					Forward  cmdID= 40  value= 0  
+					Reset  cmdID= 40  value= 3  
+					Fade_IN  cmdID= 40  value= 4  
+					Fade_Out  cmdID= 40  value= 5  
+					Memory  cmdID= 40 "
+		::= { iqdlogCmdEntry 40 }
+
+
+	iqdlogStSetupGPIXOO OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- St.Setup- GPI-XOO
+					OFF  cmdID= 41  value= 22  
+					Stop  cmdID= 41  value= 2  
+					Reverse  cmdID= 41  value= 1  
+					Forward  cmdID= 41  value= 0  
+					Reset  cmdID= 41  value= 3  
+					Fade_IN  cmdID= 41  value= 4  
+					Fade_Out  cmdID= 41  value= 5  
+					Memory  cmdID= 41 "
+		::= { iqdlogCmdEntry 41 }
+
+
+	iqdlogStSetupGPIXOX OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- St.Setup- GPI-XOX
+					OFF  cmdID= 42  value= 22  
+					Stop  cmdID= 42  value= 2  
+					Reverse  cmdID= 42  value= 1  
+					Forward  cmdID= 42  value= 0  
+					Reset  cmdID= 42  value= 3  
+					Fade_IN  cmdID= 42  value= 4  
+					Fade_Out  cmdID= 42  value= 5  
+					Memory  cmdID= 42 "
+		::= { iqdlogCmdEntry 42 }
+
+
+	iqdlogStSetupGPIXXO OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- St.Setup- GPI-XXO
+					OFF  cmdID= 43  value= 22  
+					Stop  cmdID= 43  value= 2  
+					Reverse  cmdID= 43  value= 1  
+					Forward  cmdID= 43  value= 0  
+					Reset  cmdID= 43  value= 3  
+					Fade_IN  cmdID= 43  value= 4  
+					Fade_Out  cmdID= 43  value= 5  
+					Memory  cmdID= 43 "
+		::= { iqdlogCmdEntry 43 }
+
+
+	iqdlogStSetupGPIXXX OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OFF(22),
+							val_Stop(2),
+							val_Reverse(1),
+							val_Forward(0),
+							val_Reset(3),
+							val_Fade_IN(4),
+							val_Fade_Out(5),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Setup_GPI_Inputs- St.Setup- GPI-XXX
+					OFF  cmdID= 44  value= 22  
+					Stop  cmdID= 44  value= 2  
+					Reverse  cmdID= 44  value= 1  
+					Forward  cmdID= 44  value= 0  
+					Reset  cmdID= 44  value= 3  
+					Fade_IN  cmdID= 44  value= 4  
+					Fade_Out  cmdID= 44  value= 5  
+					Memory  cmdID= 44 "
+		::= { iqdlogCmdEntry 44 }
+
+
+	iqdlogSetupSetupGPIInputsOutTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Setup_GPI_Inputs
+					Out_Time  cmdID= 63  min= 1  max= 300  step= 1  format= %1.0f Frames  div_scale= 1 
+					Min = 1 Frames  Max = 300 Frames  Step = 1 Frames "
+		::= { iqdlogCmdEntry 63 }
+
+
+	iqdlogSetupSetupGPIInputsInTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Setup_GPI_Inputs
+					In_Time  cmdID= 62  min= 1  max= 300  step= 1  format= %1.0f Frames  div_scale= 1 
+					Min = 1 Frames  Max = 300 Frames  Step = 1 Frames "
+		::= { iqdlogCmdEntry 62 }
+
+
+	iqdlogSetupSetupGPIInputsFadeMax OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Setup_GPI_Inputs
+					Fade_Max  cmdID= 64  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdlogCmdEntry 64 }
+
+
+	iqdlogSetupSetupGPIInputsFadeMin OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Setup_GPI_Inputs
+					Fade_Min  cmdID= 65  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdlogCmdEntry 65 }
+
+
+	iqdlogSetupLoggingInputChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input_Change  cmdID= 28 "
+		::= { iqdlogCmdEntry 28 }
+
+
+	iqdlogSetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					EDH_Errors  cmdID= 29 "
+		::= { iqdlogCmdEntry 29 }
+
+
+	iqdlogUserMemoryReadMem OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - User_Memory
+					Read_Mem  cmdID= 8 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  "
+		::= { iqdlogCmdEntry 8 }
+
+
+	iqdlogUserMemorySaveMem OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - User_Memory
+					Save_Mem  cmdID= 9 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9   value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  "
+		::= { iqdlogCmdEntry 9 }
+
+
+	iqdlogUserMemoryNameMemMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_1  cmdID= 12  "
+		::= { iqdlogCmdEntry 12 }
+
+
+	iqdlogUserMemoryNameMemMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_2  cmdID= 13  "
+		::= { iqdlogCmdEntry 13 }
+
+
+	iqdlogUserMemoryNameMemMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_3  cmdID= 14  "
+		::= { iqdlogCmdEntry 14 }
+
+
+	iqdlogUserMemoryNameMemMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_4  cmdID= 15  "
+		::= { iqdlogCmdEntry 15 }
+
+
+	iqdlogUserMemoryNameMemMemory5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_5  cmdID= 16  "
+		::= { iqdlogCmdEntry 16 }
+
+
+	iqdlogUserMemoryNameMemMemory6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_6  cmdID= 17  "
+		::= { iqdlogCmdEntry 17 }
+
+
+	iqdlogUserMemoryNameMemMemory7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_7  cmdID= 18  "
+		::= { iqdlogCmdEntry 18 }
+
+
+	iqdlogUserMemoryNameMemMemory8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_8  cmdID= 19  "
+		::= { iqdlogCmdEntry 19 }
+
+
+	iqdlogUserMemoryNameMemMemory9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_9  cmdID= 20  "
+		::= { iqdlogCmdEntry 20 }
+
+
+	iqdlogUserMemoryNameMemMemory10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_10  cmdID= 21  "
+		::= { iqdlogCmdEntry 21 }
+
+
+	iqdlogUserMemoryNameMemMemory11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_11  cmdID= 22  "
+		::= { iqdlogCmdEntry 22 }
+
+
+	iqdlogUserMemoryNameMemMemory12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_12  cmdID= 23  "
+		::= { iqdlogCmdEntry 23 }
+
+
+	iqdlogUserMemoryNameMemMemory13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_13  cmdID= 24  "
+		::= { iqdlogCmdEntry 24 }
+
+
+	iqdlogUserMemoryNameMemMemory14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_14  cmdID= 25  "
+		::= { iqdlogCmdEntry 25 }
+
+
+	iqdlogUserMemoryNameMemMemory15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_15  cmdID= 26  "
+		::= { iqdlogCmdEntry 26 }
+
+
+	iqdlogUserMemoryNameMemMemory16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User_Memory
+					Memory_16  cmdID= 27  "
+		::= { iqdlogCmdEntry 27 }
+
+
+	iqdlogUserMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Preset_All_Names(16),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User_Memory
+					Preset_All_Names  cmdID= 10  value= 16  
+					Clear_Mem  cmdID= 10 "
+		::= { iqdlogCmdEntry 10 }
+
+
+	iqdlogUnitPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqdlogCmdEntry 3 }
+
+
+	iqdlogUnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqdlogCmdEntry 2 }
+
+
+	iqdlogUnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqdlogCmdEntry 1 }
+
+
+	iqdlogUnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdlogCmdEntry 4 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: RESET
+--				: OK
+--				: FAIL
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.68.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.68.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL_MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

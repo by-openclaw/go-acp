@@ -1,0 +1,1087 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDARCMR
+--        Module Id#:241
+--       Command Set:6
+--          Filename:SNELL-IQDARCMR-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:29/06/2005
+--              Time:11:10
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDARCMR-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDARCMR,
+    moduleIQDARCMRMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDARCMRCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506291110Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDARCMRMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdarcmrCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdarcmrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDARCMR 1 }
+
+	iqdarcmrCmdEntry OBJECT-TYPE
+		SYNTAX		IqdarcmrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdarcmrSlotIndex }
+		::= { iqdarcmrCmdTable 1 }
+
+	IqdarcmrCmdEntry ::=
+		SEQUENCE {
+			iqdarcmrSlotIndex
+				Unsigned32,
+			iqdarcmrAspectRatio
+				INTEGER,
+			iqdarcmrZoom
+				INTEGER,
+			iqdarcmrUserMemoryReadMemory
+				INTEGER,
+			iqdarcmrUserMemorySaveMemory
+				INTEGER,
+			iqdarcmrUserMemoryNameMemoriesMemory1
+				RollCallString,
+			iqdarcmrUserMemoryNameMemoriesMemory2
+				RollCallString,
+			iqdarcmrUserMemoryNameMemoriesMemory3
+				RollCallString,
+			iqdarcmrUserMemoryNameMemoriesMemory4
+				RollCallString,
+			iqdarcmrUserMemoryNameMemoriesMemory5
+				RollCallString,
+			iqdarcmrUserMemoryNameMemoriesMemory6
+				RollCallString,
+			iqdarcmrUserMemoryNameMemoriesMemory7
+				RollCallString,
+			iqdarcmrUserMemoryNameMemoriesMemory8
+				RollCallString,
+			iqdarcmrUserMemory
+				INTEGER,
+			iqdarcmrSetupEnhancer
+				INTEGER,
+			iqdarcmrSetupBorderColour
+				INTEGER,
+			iqdarcmrBorderColourSetUsrAUserARed
+				INTEGER,
+			iqdarcmrBorderColourSetUsrAUserAGreen
+				INTEGER,
+			iqdarcmrBorderColourSetUsrAUserABlue
+				INTEGER,
+			iqdarcmrBorderColourSetUsrBUserBRed
+				INTEGER,
+			iqdarcmrBorderColourSetUsrBUserBGreen
+				INTEGER,
+			iqdarcmrBorderColourSetUsrBUserBBlue
+				INTEGER,
+			iqdarcmrSetupVariableBlankingLeftEdge
+				INTEGER,
+			iqdarcmrSetupVariableBlankingRightEdge
+				INTEGER,
+			iqdarcmrSetupRollTrackUnit1
+				RollCallString,
+			iqdarcmrSetupRollTrackUnit2
+				RollCallString,
+			iqdarcmrSetupRollTrackUnit3
+				RollCallString,
+			iqdarcmrSetupRollTrackUnit4
+				RollCallString,
+			iqdarcmrSetupRollTrackUnit5
+				RollCallString,
+			iqdarcmrSetupRollTrackUnit6
+				RollCallString,
+			iqdarcmrSetupRollTrackUnit7
+				RollCallString,
+			iqdarcmrSetupRollTrackUnit8
+				RollCallString,
+			iqdarcmrSetupRollTrackMessages
+				INTEGER,
+			iqdarcmrSetupGPIInputsGPI1
+				INTEGER,
+			iqdarcmrSetupGPIInputsGPI1GPI1Function
+				INTEGER,
+			iqdarcmrSetupGPIInputsGPI2
+				INTEGER,
+			iqdarcmrSetupGPIInputsGPI2GPI2Function
+				INTEGER,
+			iqdarcmrSetupGPIInputsGPI3
+				INTEGER,
+			iqdarcmrSetupGPIInputsGPI3GPI3Function
+				INTEGER,
+			iqdarcmrSetupTransitionSpeed
+				INTEGER,
+			iqdarcmrSetupVerticalDataPreserveL21_283
+				INTEGER,
+			iqdarcmrSetupVerticalDataPreserveL23
+				INTEGER,
+			iqdarcmrSetupVerticalDataPreserveVidIndex
+				INTEGER,
+			iqdarcmrSetupMinimumDelay
+				INTEGER,
+			iqdarcmrSetupOutputStandard
+				INTEGER,
+			iqdarcmrSetupDefaultOutput
+				INTEGER,
+			iqdarcmrSetupRatioTerminology
+				INTEGER,
+			iqdarcmrSetupEDHShowStats
+				INTEGER,
+			iqdarcmrSetupEDHResetStats
+				INTEGER,
+			iqdarcmrSetupLoggingInputChange
+				INTEGER,
+			iqdarcmrSetupLoggingEDHErrors
+				INTEGER,
+			iqdarcmrSetupPresetUnit
+				INTEGER,
+			iqdarcmrSetupSoftwareVersion
+				RollCallString,
+			iqdarcmrSetupSerialNo
+				RollCallString,
+			iqdarcmrSetupRestart
+				INTEGER,
+			iqdarcmrFreeze
+				INTEGER,
+			iqdarcmrBypass
+				INTEGER
+		}
+
+	iqdarcmrSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdarcmrCmdEntry 0 }
+
+
+	iqdarcmrAspectRatio OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass(0),
+							val_12F12_12P16(1),
+							val_12F12_14P16(2),
+							val_12F12_16F16(3),
+							val_16L12_12F12(4),
+							val_16L12_14L12(5),
+							val_16F16_12F12(6),
+							val_16F16_14L12(7),
+							val_16F16_16L12(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Aspect_Ratio  cmdID= 40 
+					Pass  value= 0  
+					12F12->12P16  value= 1  
+					12F12->14P16  value= 2  
+					12F12->16F16  value= 3  
+					16L12->12F12  value= 4  
+					16L12->14L12  value= 5  
+					16F16->12F12  value= 6  
+					16F16->14L12  value= 7  
+					16F16->16L12  value= 8  "
+		::= { iqdarcmrCmdEntry 40 }
+
+
+	iqdarcmrZoom OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_95(0),
+							val_98(1),
+							val_Full(2),
+							val_102(3),
+							val_105(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Zoom  cmdID= 41 
+					95%  value= 0  
+					98%  value= 1  
+					Full  value= 2  
+					102%  value= 3  
+					105%  value= 4  "
+		::= { iqdarcmrCmdEntry 41 }
+
+
+	iqdarcmrUserMemoryReadMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read_Memory  cmdID= 9 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  "
+		::= { iqdarcmrCmdEntry 9 }
+
+
+	iqdarcmrUserMemorySaveMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save_Memory  cmdID= 10 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  "
+		::= { iqdarcmrCmdEntry 10 }
+
+
+	iqdarcmrUserMemoryNameMemoriesMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 13  "
+		::= { iqdarcmrCmdEntry 13 }
+
+
+	iqdarcmrUserMemoryNameMemoriesMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 14  "
+		::= { iqdarcmrCmdEntry 14 }
+
+
+	iqdarcmrUserMemoryNameMemoriesMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 15  "
+		::= { iqdarcmrCmdEntry 15 }
+
+
+	iqdarcmrUserMemoryNameMemoriesMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 16  "
+		::= { iqdarcmrCmdEntry 16 }
+
+
+	iqdarcmrUserMemoryNameMemoriesMemory5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_5  cmdID= 17  "
+		::= { iqdarcmrCmdEntry 17 }
+
+
+	iqdarcmrUserMemoryNameMemoriesMemory6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_6  cmdID= 18  "
+		::= { iqdarcmrCmdEntry 18 }
+
+
+	iqdarcmrUserMemoryNameMemoriesMemory7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_7  cmdID= 19  "
+		::= { iqdarcmrCmdEntry 19 }
+
+
+	iqdarcmrUserMemoryNameMemoriesMemory8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_8  cmdID= 20  "
+		::= { iqdarcmrCmdEntry 20 }
+
+
+	iqdarcmrUserMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Preset_All_Names(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_All_Names  cmdID= 11  value= 8  
+					Clear_Memories  cmdID= 11 "
+		::= { iqdarcmrCmdEntry 11 }
+
+
+	iqdarcmrSetupEnhancer OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_De_enhance(1),
+							val_Low(2),
+							val_Medium(3),
+							val_High(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Enhancer  cmdID= 43 
+					Off  value= 0  
+					De-enhance  value= 1  
+					Low  value= 2  
+					Medium  value= 3  
+					High  value= 4  "
+		::= { iqdarcmrCmdEntry 43 }
+
+
+	iqdarcmrSetupBorderColour OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Blue(1),
+							val_Red(2),
+							val_Green(3),
+							val_White(4),
+							val_Grey(5),
+							val_User_A(6),
+							val_User_B(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Black  cmdID= 39  value= 0  
+					Blue  cmdID= 39  value= 1  
+					Red  cmdID= 39  value= 2  
+					Green  cmdID= 39  value= 3  
+					White  cmdID= 39  value= 4  
+					Grey  cmdID= 39  value= 5  
+					User_A  cmdID= 39  value= 6  
+					User_B  cmdID= 39  value= 7  "
+		::= { iqdarcmrCmdEntry 39 }
+
+
+	iqdarcmrBorderColourSetUsrAUserARed OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_A_Red  cmdID= 33  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarcmrCmdEntry 33 }
+
+
+	iqdarcmrBorderColourSetUsrAUserAGreen OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_A_Green  cmdID= 35  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarcmrCmdEntry 35 }
+
+
+	iqdarcmrBorderColourSetUsrAUserABlue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_A_Blue  cmdID= 37  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarcmrCmdEntry 37 }
+
+
+	iqdarcmrBorderColourSetUsrBUserBRed OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_B_Red  cmdID= 34  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarcmrCmdEntry 34 }
+
+
+	iqdarcmrBorderColourSetUsrBUserBGreen OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_B_Green  cmdID= 36  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarcmrCmdEntry 36 }
+
+
+	iqdarcmrBorderColourSetUsrBUserBBlue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_B_Blue  cmdID= 38  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarcmrCmdEntry 38 }
+
+
+	iqdarcmrSetupVariableBlankingLeftEdge OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Left_Edge  cmdID= 49  min= 0  max= 20  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 20  Step = 1 "
+		::= { iqdarcmrCmdEntry 49 }
+
+
+	iqdarcmrSetupVariableBlankingRightEdge OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Right_Edge  cmdID= 50  min= -20  max= 0  step= 1  format= %1.0f  div_scale= 1 
+					Min = -20  Max = 0  Step = 1 "
+		::= { iqdarcmrCmdEntry 50 }
+
+
+	iqdarcmrSetupRollTrackUnit1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_1  cmdID= 53  "
+		::= { iqdarcmrCmdEntry 53 }
+
+
+	iqdarcmrSetupRollTrackUnit2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_2  cmdID= 54  "
+		::= { iqdarcmrCmdEntry 54 }
+
+
+	iqdarcmrSetupRollTrackUnit3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_3  cmdID= 55  "
+		::= { iqdarcmrCmdEntry 55 }
+
+
+	iqdarcmrSetupRollTrackUnit4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_4  cmdID= 56  "
+		::= { iqdarcmrCmdEntry 56 }
+
+
+	iqdarcmrSetupRollTrackUnit5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_5  cmdID= 57  "
+		::= { iqdarcmrCmdEntry 57 }
+
+
+	iqdarcmrSetupRollTrackUnit6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_6  cmdID= 58  "
+		::= { iqdarcmrCmdEntry 58 }
+
+
+	iqdarcmrSetupRollTrackUnit7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_7  cmdID= 59  "
+		::= { iqdarcmrCmdEntry 59 }
+
+
+	iqdarcmrSetupRollTrackUnit8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_8  cmdID= 60  "
+		::= { iqdarcmrCmdEntry 60 }
+
+
+	iqdarcmrSetupRollTrackMessages OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack_Messages  cmdID= 61 "
+		::= { iqdarcmrCmdEntry 61 }
+
+
+	iqdarcmrSetupGPIInputsGPI1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup_GPI_Inputs
+					Off  cmdID= 23  value= 2  
+					Latch  cmdID= 23  value= 0  
+					Edge  cmdID= 23  value= 1  "
+		::= { iqdarcmrCmdEntry 23 }
+
+
+	iqdarcmrSetupGPIInputsGPI1GPI1Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_ByPass(0),
+							val_Freeze(1),
+							val_Memory_1(2),
+							val_Memory_2(3),
+							val_Memory_3(4),
+							val_Memory_4(5),
+							val_Memory_5(6),
+							val_Memory_6(7),
+							val_Memory_7(8),
+							val_Memory_8(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup_GPI_Inputs
+					GPI_1_Function  cmdID= 26 
+					ByPass  value= 0  
+					Freeze  value= 1  
+					Memory_1  value= 2  
+					Memory_2  value= 3  
+					Memory_3  value= 4  
+					Memory_4  value= 5  
+					Memory_5  value= 6  
+					Memory_6  value= 7  
+					Memory_7  value= 8  
+					Memory_8  value= 9  "
+		::= { iqdarcmrCmdEntry 26 }
+
+
+	iqdarcmrSetupGPIInputsGPI2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup_GPI_Inputs
+					Off  cmdID= 24  value= 2  
+					Latch  cmdID= 24  value= 0  
+					Edge  cmdID= 24  value= 1  "
+		::= { iqdarcmrCmdEntry 24 }
+
+
+	iqdarcmrSetupGPIInputsGPI2GPI2Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_ByPass(0),
+							val_Freeze(1),
+							val_Memory_1(2),
+							val_Memory_2(3),
+							val_Memory_3(4),
+							val_Memory_4(5),
+							val_Memory_5(6),
+							val_Memory_6(7),
+							val_Memory_7(8),
+							val_Memory_8(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup_GPI_Inputs
+					GPI_2_Function  cmdID= 27 
+					ByPass  value= 0  
+					Freeze  value= 1  
+					Memory_1  value= 2  
+					Memory_2  value= 3  
+					Memory_3  value= 4  
+					Memory_4  value= 5  
+					Memory_5  value= 6  
+					Memory_6  value= 7  
+					Memory_7  value= 8  
+					Memory_8  value= 9  "
+		::= { iqdarcmrCmdEntry 27 }
+
+
+	iqdarcmrSetupGPIInputsGPI3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup_GPI_Inputs
+					Off  cmdID= 25  value= 2  
+					Latch  cmdID= 25  value= 0  
+					Edge  cmdID= 25  value= 1  "
+		::= { iqdarcmrCmdEntry 25 }
+
+
+	iqdarcmrSetupGPIInputsGPI3GPI3Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_ByPass(0),
+							val_Freeze(1),
+							val_Memory_1(2),
+							val_Memory_2(3),
+							val_Memory_3(4),
+							val_Memory_4(5),
+							val_Memory_5(6),
+							val_Memory_6(7),
+							val_Memory_7(8),
+							val_Memory_8(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup_GPI_Inputs
+					GPI_3_Function  cmdID= 28 
+					ByPass  value= 0  
+					Freeze  value= 1  
+					Memory_1  value= 2  
+					Memory_2  value= 3  
+					Memory_3  value= 4  
+					Memory_4  value= 5  
+					Memory_5  value= 6  
+					Memory_6  value= 7  
+					Memory_7  value= 8  
+					Memory_8  value= 9  "
+		::= { iqdarcmrCmdEntry 28 }
+
+
+	iqdarcmrSetupTransitionSpeed OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Fast(0),
+							val_Slow(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Transition_Speed  cmdID= 44 
+					Fast  value= 0  
+					Slow  value= 1  "
+		::= { iqdarcmrCmdEntry 44 }
+
+
+	iqdarcmrSetupVerticalDataPreserveL21_283 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Preserve_L21/283  cmdID= 46 "
+		::= { iqdarcmrCmdEntry 46 }
+
+
+	iqdarcmrSetupVerticalDataPreserveL23 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Preserve_L23  cmdID= 47 "
+		::= { iqdarcmrCmdEntry 47 }
+
+
+	iqdarcmrSetupVerticalDataPreserveVidIndex OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Preserve_Vid_Index  cmdID= 52 "
+		::= { iqdarcmrCmdEntry 52 }
+
+
+	iqdarcmrSetupMinimumDelay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Minimum_Delay  cmdID= 51 "
+		::= { iqdarcmrCmdEntry 51 }
+
+
+	iqdarcmrSetupOutputStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_625(1),
+							val_525(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Output_Standard  cmdID= 12 
+					Auto  value= 0  
+					625  value= 1  
+					525  value= 2  "
+		::= { iqdarcmrCmdEntry 12 }
+
+
+	iqdarcmrSetupDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Black_Border(1),
+							val_Border(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Default_Output  cmdID= 6 
+					Black  value= 0  
+					Black_&_Border  value= 1  
+					Border  value= 2  "
+		::= { iqdarcmrCmdEntry 6 }
+
+
+	iqdarcmrSetupRatioTerminology OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_WRT9_Terminology(0),
+							val_PB_LB_Terminology(1),
+							val_Ratio_Terminology(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Ratio_Terminology  cmdID= 42 
+					WRT9_Terminology  value= 0  
+					PB/LB_Terminology  value= 1  
+					Ratio_Terminology  value= 2  "
+		::= { iqdarcmrCmdEntry 42 }
+
+
+	iqdarcmrSetupEDHShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_Stats  cmdID= 7 "
+		::= { iqdarcmrCmdEntry 7 }
+
+
+	iqdarcmrSetupEDHResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset_Stats  cmdID= 8  value= 1  "
+		::= { iqdarcmrCmdEntry 8 }
+
+
+	iqdarcmrSetupLoggingInputChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input_Change  cmdID= 21 "
+		::= { iqdarcmrCmdEntry 21 }
+
+
+	iqdarcmrSetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Errors  cmdID= 22 "
+		::= { iqdarcmrCmdEntry 22 }
+
+
+	iqdarcmrSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqdarcmrCmdEntry 3 }
+
+
+	iqdarcmrSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqdarcmrCmdEntry 2 }
+
+
+	iqdarcmrSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqdarcmrCmdEntry 1 }
+
+
+	iqdarcmrSetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdarcmrCmdEntry 4 }
+
+
+	iqdarcmrFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 5 "
+		::= { iqdarcmrCmdEntry 5 }
+
+
+	iqdarcmrBypass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bypass  cmdID= 45 "
+		::= { iqdarcmrCmdEntry 45 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: RESET
+--				: OK
+--				: FAIL
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 625
+--				: 525
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL_MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

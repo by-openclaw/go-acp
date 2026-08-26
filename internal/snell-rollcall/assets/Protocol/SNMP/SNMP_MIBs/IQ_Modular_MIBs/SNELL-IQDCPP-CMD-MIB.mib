@@ -1,0 +1,1954 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDCPP
+--        Module Id#:269
+--       Command Set:5
+--          Filename:SNELL-IQDCPP-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:28/06/2005
+--              Time:14:44
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDCPP-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDCPP,
+    moduleIQDCPPMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDCPPCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506281444Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDCPPMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdcppCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdcppCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDCPP 1 }
+
+	iqdcppCmdEntry OBJECT-TYPE
+		SYNTAX		IqdcppCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdcppSlotIndex }
+		::= { iqdcppCmdTable 1 }
+
+	IqdcppCmdEntry ::=
+		SEQUENCE {
+			iqdcppSlotIndex
+				Unsigned32,
+			iqdcppQuick
+				INTEGER,
+			iqdcppQuickStrength
+				INTEGER,
+			iqdcppQuickStrengthSel
+				INTEGER,
+			iqdcppFiltersRecursive
+				INTEGER,
+			iqdcppQuickSemiTrans
+				INTEGER,
+			iqdcppFiltersSpatlTemp
+				INTEGER,
+			iqdcppQuickFreeze
+				INTEGER,
+			iqdcppSetupVideo8bitRnd
+				INTEGER,
+			iqdcppSetupPatternEnable
+				INTEGER,
+			iqdcppQuickSpltScrnOff
+				INTEGER,
+			iqdcppFiltersBypassFltrs
+				INTEGER,
+			iqdcppFiltersRecursiveSemiTrans
+				INTEGER,
+			iqdcppFiltersRecursiveThreshold
+				INTEGER,
+			iqdcppFiltersRecursiveBiasAutoTh
+				INTEGER,
+			iqdcppRecursiveLevelC
+				INTEGER,
+			iqdcppRecursiveLevelY
+				INTEGER,
+			iqdcppSpatlTempHorizC
+				INTEGER,
+			iqdcppSpatlTempHorizY
+				INTEGER,
+			iqdcppSpatlTempHorizBoost
+				INTEGER,
+			iqdcppSpatlTempVertTemp
+				INTEGER,
+			iqdcppVertTempAdaption
+				INTEGER,
+			iqdcppVertTempAdaptionGain
+				INTEGER,
+			iqdcppBypass
+				INTEGER,
+			iqdcppProcAmpBypassProcAmp
+				INTEGER,
+			iqdcppProcAmpYGain
+				INTEGER,
+			iqdcppProcAmpPicturePos
+				INTEGER,
+			iqdcppProcAmpCGain
+				INTEGER,
+			iqdcppProcAmpYCDelay
+				INTEGER,
+			iqdcppProcAmpBlackLevel
+				INTEGER,
+			iqdcppMemoryReadFixed
+				INTEGER,
+			iqdcppMemoryPresetUnit
+				INTEGER,
+			iqdcppMemorySaveUser
+				INTEGER,
+			iqdcppMemoryClearUser
+				INTEGER,
+			iqdcppMemoryNameUserMemory1
+				RollCallString,
+			iqdcppMemoryNameUserMemory2
+				RollCallString,
+			iqdcppMemoryNameUserMemory3
+				RollCallString,
+			iqdcppMemoryNameUserMemory4
+				RollCallString,
+			iqdcppMemoryNameUserMemory5
+				RollCallString,
+			iqdcppMemoryNameUserMemory6
+				RollCallString,
+			iqdcppMemoryNameUserMemory7
+				RollCallString,
+			iqdcppMemoryNameUserMemory8
+				RollCallString,
+			iqdcppMemoryNameUserMemory9
+				RollCallString,
+			iqdcppMemoryNameUserMemory10
+				RollCallString,
+			iqdcppMemoryNameUserMemory11
+				RollCallString,
+			iqdcppMemoryNameUserMemory12
+				RollCallString,
+			iqdcppMemoryNameUserMemory13
+				RollCallString,
+			iqdcppMemoryNameUserMemory14
+				RollCallString,
+			iqdcppMemoryNameUserMemory15
+				RollCallString,
+			iqdcppMemoryNameUserMemory16
+				RollCallString,
+			iqdcppMemoryNameUserMemory17
+				RollCallString,
+			iqdcppMemoryNameUserMemory18
+				RollCallString,
+			iqdcppMemoryNameUserMemory19
+				RollCallString,
+			iqdcppMemoryNameUserMemory20
+				RollCallString,
+			iqdcppMemoryNameUserMemory21
+				RollCallString,
+			iqdcppMemoryNameUserMemory22
+				RollCallString,
+			iqdcppMemoryNameUserMemory23
+				RollCallString,
+			iqdcppMemoryNameUserMemory24
+				RollCallString,
+			iqdcppMemoryNameUserPresetAllUserNames
+				INTEGER,
+			iqdcppSplitScreenSplitSelect
+				INTEGER,
+			iqdcppSplitScreenSplitSelectInverse
+				INTEGER,
+			iqdcppSetupSplitScreenBorderSelect
+				INTEGER,
+			iqdcppSetupVideoSource
+				INTEGER,
+			iqdcppSetupVideoStandard
+				INTEGER,
+			iqdcppSetupVideoFailSelect
+				INTEGER,
+			iqdcppSetupVideoFreeze
+				INTEGER,
+			iqdcppSetupVideo525VStd
+				INTEGER,
+			iqdcppVideoVBIData
+				INTEGER,
+			iqdcppSetupPatternSelect
+				INTEGER,
+			iqdcppSetupPanelDisplay
+				INTEGER,
+			iqdcppSetupRollTrackUnit1
+				RollCallString,
+			iqdcppSetupRollTrackUnit2
+				RollCallString,
+			iqdcppSetupRollTrackUnit3
+				RollCallString,
+			iqdcppSetupRollTrackUnit4
+				RollCallString,
+			iqdcppSetupRollTrackUnit5
+				RollCallString,
+			iqdcppSetupRollTrackUnit6
+				RollCallString,
+			iqdcppSetupRollTrackUnit7
+				RollCallString,
+			iqdcppSetupRollTrackUnit8
+				RollCallString,
+			iqdcppSetupRollTrackMessages
+				INTEGER,
+			iqdcppSetupEDH
+				INTEGER,
+			iqdcppSetupEDHEDHStatus
+				RollCallString,
+			iqdcppGPIInputsGPI1
+				INTEGER,
+			iqdcppGPIInputsGPI1GPI1Function
+				INTEGER,
+			iqdcppGPIInputsGPI2
+				INTEGER,
+			iqdcppGPIInputsGPI2GPI2Function
+				INTEGER,
+			iqdcppGPIInputsGPI3
+				INTEGER,
+			iqdcppGPIInputsGPI3GPI3Function
+				INTEGER,
+			iqdcppSetupLoggingLogInputState
+				INTEGER,
+			iqdcppSetupLoggingLogEDHState
+				INTEGER,
+			iqdcppSetupLoggingLogSplitScreen
+				INTEGER,
+			iqdcppSetupPresetUnit
+				INTEGER,
+			iqdcppSetupSoftwareVersion
+				RollCallString,
+			iqdcppSetupSerialNumber
+				RollCallString,
+			iqdcppSetupRestart
+				INTEGER
+		}
+
+	iqdcppSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdcppCmdEntry 0 }
+
+
+	iqdcppQuick OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(0),
+							val_Input_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input A   cmdID= 179  value= 0  
+					Input B   cmdID= 179  value= 1  "
+		::= { iqdcppCmdEntry 179 }
+
+
+	iqdcppQuickStrength OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Strength  cmdID= 214 "
+		::= { iqdcppCmdEntry 214 }
+
+
+	iqdcppQuickStrengthSel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					StrengthSel  cmdID= 213  min= 0  max= 10  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 10  Step = 1 "
+		::= { iqdcppCmdEntry 213 }
+
+
+	iqdcppFiltersRecursive OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Recursive  cmdID= 5 "
+		::= { iqdcppCmdEntry 5 }
+
+
+	iqdcppQuickSemiTrans OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					+SemiTrans  cmdID= 6 "
+		::= { iqdcppCmdEntry 6 }
+
+
+	iqdcppFiltersSpatlTemp OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					SpatlTemp  cmdID= 200 "
+		::= { iqdcppCmdEntry 200 }
+
+
+	iqdcppQuickFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 10 "
+		::= { iqdcppCmdEntry 10 }
+
+
+	iqdcppSetupVideo8bitRnd OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					8bit_Rnd  cmdID= 75 "
+		::= { iqdcppCmdEntry 75 }
+
+
+	iqdcppSetupPatternEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pattern  cmdID= 72 
+					Pattern Enable  cmdID= 72 "
+		::= { iqdcppCmdEntry 72 }
+
+
+	iqdcppQuickSpltScrnOff OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_SpltScrnOff(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					SpltScrnOff  cmdID= 180  value= 1  "
+		::= { iqdcppCmdEntry 180 }
+
+
+	iqdcppFiltersBypassFltrs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Filters
+					BypassFltrs  cmdID= 176 "
+		::= { iqdcppCmdEntry 176 }
+
+
+	iqdcppFiltersRecursiveSemiTrans OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Filters
+					+SemiTrans  cmdID= 141 "
+		::= { iqdcppCmdEntry 141 }
+
+
+	iqdcppFiltersRecursiveThreshold OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Filters
+					Threshold  cmdID= 144  min= -1  max= 15  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 15  Step = 1 "
+		::= { iqdcppCmdEntry 144 }
+
+
+	iqdcppFiltersRecursiveBiasAutoTh OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Filters
+					BiasAutoTh  cmdID= 145  min= -3  max= 3  step= 1  format= %.0f  div_scale= 1 
+					Min = -3  Max = 3  Step = 1 "
+		::= { iqdcppCmdEntry 145 }
+
+
+	iqdcppRecursiveLevelC OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_C_Off(0),
+							val_C_Min(2),
+							val_C_Med(3),
+							val_C_Max(4),
+							val_C_X_Colour(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					C_Off  cmdID= 143  value= 0  
+					C_Min  cmdID= 143  value= 2  
+					C_Med  cmdID= 143  value= 3  
+					C_Max  cmdID= 143  value= 4  
+					C_X-Colour  cmdID= 143  value= 5  "
+		::= { iqdcppCmdEntry 143 }
+
+
+	iqdcppRecursiveLevelY OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Y_Off(0),
+							val_Y_Min(2),
+							val_Y_Med(3),
+							val_Y_Max(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					Y_Off  cmdID= 142  value= 0  
+					Y_Min  cmdID= 142  value= 2  
+					Y_Med  cmdID= 142  value= 3  
+					Y_Max  cmdID= 142  value= 4  "
+		::= { iqdcppCmdEntry 142 }
+
+
+	iqdcppSpatlTempHorizC OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_C_Off(0),
+							val_C_Med(1),
+							val_C_Max(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					C_Off  cmdID= 203  value= 0  
+					C_Med  cmdID= 203  value= 1  
+					C_Max  cmdID= 203  value= 2  "
+		::= { iqdcppCmdEntry 203 }
+
+
+	iqdcppSpatlTempHorizY OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Y_Off(0),
+							val_Y_Med(1),
+							val_Y_Max(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					Y_Off  cmdID= 202  value= 0  
+					Y_Med  cmdID= 202  value= 1  
+					Y_Max  cmdID= 202  value= 2  "
+		::= { iqdcppCmdEntry 202 }
+
+
+	iqdcppSpatlTempHorizBoost OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Neg(3),
+							val_Off(2),
+							val_Min(1),
+							val_Max(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Filters
+					Boost  cmdID= 204 
+					Neg  value= 3  
+					Off  value= 2  
+					Min  value= 1  
+					Max  value= 0  "
+		::= { iqdcppCmdEntry 204 }
+
+
+	iqdcppSpatlTempVertTemp OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Vert_Min(3),
+							val_PrismMin(2),
+							val_Vert_Med(4),
+							val_PrismMed(1),
+							val_Vert_Max(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					Off  cmdID= 212  value= 0  
+					Vert-Min  cmdID= 212  value= 3  
+					PrismMin  cmdID= 212  value= 2  
+					Vert-Med  cmdID= 212  value= 4  
+					PrismMed  cmdID= 212  value= 1  
+					Vert-Max  cmdID= 212  value= 5  "
+		::= { iqdcppCmdEntry 212 }
+
+
+	iqdcppVertTempAdaption OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Core_Min(2),
+							val_Core_Med(1),
+							val_Core_Max(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					Core_Min  cmdID= 205  value= 2  
+					Core_Med  cmdID= 205  value= 1  
+					Core_Max  cmdID= 205  value= 0  "
+		::= { iqdcppCmdEntry 205 }
+
+
+	iqdcppVertTempAdaptionGain OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Gain_Min(1),
+							val_Gain_Max(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					Gain_Min  cmdID= 206  value= 1  
+					Gain_Max  cmdID= 206  value= 0  "
+		::= { iqdcppCmdEntry 206 }
+
+
+	iqdcppBypass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bypass  cmdID= 11 "
+		::= { iqdcppCmdEntry 11 }
+
+
+	iqdcppProcAmpBypassProcAmp OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					BypassProcAmp  cmdID= 177 "
+		::= { iqdcppCmdEntry 177 }
+
+
+	iqdcppProcAmpYGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Y_Gain  cmdID= 17  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdcppCmdEntry 17 }
+
+
+	iqdcppProcAmpPicturePos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PicturePos  cmdID= 20  min= -592  max= 592  step= 148  format= %1.0f ns  div_scale= 1 
+					Min = -592 ns  Max = 592 ns  Step = 148 ns "
+		::= { iqdcppCmdEntry 20 }
+
+
+	iqdcppProcAmpCGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					C_Gain  cmdID= 18  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdcppCmdEntry 18 }
+
+
+	iqdcppProcAmpYCDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					YC_Delay  cmdID= 21  min= -444  max= 444  step= 148  format= %1.0f ns  div_scale= 1 
+					Min = -444 ns  Max = 444 ns  Step = 148 ns "
+		::= { iqdcppCmdEntry 21 }
+
+
+	iqdcppProcAmpBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					BlackLevel  cmdID= 19  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iqdcppCmdEntry 19 }
+
+
+	iqdcppMemoryReadFixed OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Strength_Max_10(24),
+							val_Strength_Max_9(25),
+							val_Strength_Max_8(26),
+							val_Strength_Med_7(27),
+							val_Strength_Med_6(28),
+							val_Strength_Med_5(29),
+							val_Strength_Med_4(30),
+							val_Strength_Min_3(31),
+							val_Strength_Min_2(32),
+							val_Strength_Min_1(33),
+							val_Factory_Presets_0(34),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memory
+					ReadFixed  cmdID= 40 
+					Strength - Max 10   value= 24  
+					Strength - Max 9    value= 25  
+					Strength - Max 8    value= 26  
+					Strength - Med 7    value= 27  
+					Strength - Med 6    value= 28  
+					Strength - Med 5    value= 29  
+					Strength - Med 4    value= 30  
+					Strength - Min 3    value= 31  
+					Strength - Min 2    value= 32  
+					Strength - Min 1    value= 33  
+					Factory Presets (0)  value= 34  
+					ReadUser  cmdID= 40 "
+		::= { iqdcppCmdEntry 40 }
+
+
+	iqdcppMemoryPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_PresetUnit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memory
+					PresetUnit  cmdID= 182  value= 1  "
+		::= { iqdcppCmdEntry 182 }
+
+
+	iqdcppMemorySaveUser OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memory
+					SaveUser  cmdID= 41 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdcppCmdEntry 41 }
+
+
+	iqdcppMemoryClearUser OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memory
+					ClearUser  cmdID= 42 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdcppCmdEntry 42 }
+
+
+	iqdcppMemoryNameUserMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_1  cmdID= 44  "
+		::= { iqdcppCmdEntry 44 }
+
+
+	iqdcppMemoryNameUserMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_2  cmdID= 45  "
+		::= { iqdcppCmdEntry 45 }
+
+
+	iqdcppMemoryNameUserMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_3  cmdID= 46  "
+		::= { iqdcppCmdEntry 46 }
+
+
+	iqdcppMemoryNameUserMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_4  cmdID= 47  "
+		::= { iqdcppCmdEntry 47 }
+
+
+	iqdcppMemoryNameUserMemory5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_5  cmdID= 48  "
+		::= { iqdcppCmdEntry 48 }
+
+
+	iqdcppMemoryNameUserMemory6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_6  cmdID= 49  "
+		::= { iqdcppCmdEntry 49 }
+
+
+	iqdcppMemoryNameUserMemory7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_7  cmdID= 50  "
+		::= { iqdcppCmdEntry 50 }
+
+
+	iqdcppMemoryNameUserMemory8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_8  cmdID= 51  "
+		::= { iqdcppCmdEntry 51 }
+
+
+	iqdcppMemoryNameUserMemory9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_9  cmdID= 52  "
+		::= { iqdcppCmdEntry 52 }
+
+
+	iqdcppMemoryNameUserMemory10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_10  cmdID= 53  "
+		::= { iqdcppCmdEntry 53 }
+
+
+	iqdcppMemoryNameUserMemory11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_11  cmdID= 54  "
+		::= { iqdcppCmdEntry 54 }
+
+
+	iqdcppMemoryNameUserMemory12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_12  cmdID= 55  "
+		::= { iqdcppCmdEntry 55 }
+
+
+	iqdcppMemoryNameUserMemory13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_13  cmdID= 56  "
+		::= { iqdcppCmdEntry 56 }
+
+
+	iqdcppMemoryNameUserMemory14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_14  cmdID= 57  "
+		::= { iqdcppCmdEntry 57 }
+
+
+	iqdcppMemoryNameUserMemory15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_15  cmdID= 58  "
+		::= { iqdcppCmdEntry 58 }
+
+
+	iqdcppMemoryNameUserMemory16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_16  cmdID= 59  "
+		::= { iqdcppCmdEntry 59 }
+
+
+	iqdcppMemoryNameUserMemory17 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_17  cmdID= 60  "
+		::= { iqdcppCmdEntry 60 }
+
+
+	iqdcppMemoryNameUserMemory18 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_18  cmdID= 61  "
+		::= { iqdcppCmdEntry 61 }
+
+
+	iqdcppMemoryNameUserMemory19 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_19  cmdID= 62  "
+		::= { iqdcppCmdEntry 62 }
+
+
+	iqdcppMemoryNameUserMemory20 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_20  cmdID= 63  "
+		::= { iqdcppCmdEntry 63 }
+
+
+	iqdcppMemoryNameUserMemory21 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_21  cmdID= 64  "
+		::= { iqdcppCmdEntry 64 }
+
+
+	iqdcppMemoryNameUserMemory22 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_22  cmdID= 65  "
+		::= { iqdcppCmdEntry 65 }
+
+
+	iqdcppMemoryNameUserMemory23 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_23  cmdID= 66  "
+		::= { iqdcppCmdEntry 66 }
+
+
+	iqdcppMemoryNameUserMemory24 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_24  cmdID= 67  "
+		::= { iqdcppCmdEntry 67 }
+
+
+	iqdcppMemoryNameUserPresetAllUserNames OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PresetUserNames(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memory
+					PresetAllUserNames  cmdID= 43 
+					PresetUserNames  value= 1  "
+		::= { iqdcppCmdEntry 43 }
+
+
+	iqdcppSplitScreenSplitSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Horiz_Repeat(3),
+							val_Left_Right(1),
+							val_Top_Bottom(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Off  cmdID= 15  value= 0  
+					Horiz Repeat  cmdID= 15  value= 3  
+					Left/Right  cmdID= 15  value= 1  
+					Top/Bottom  cmdID= 15  value= 2  "
+		::= { iqdcppCmdEntry 15 }
+
+
+	iqdcppSplitScreenSplitSelectInverse OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Inverse  cmdID= 9 "
+		::= { iqdcppCmdEntry 9 }
+
+
+	iqdcppSetupSplitScreenBorderSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Black(0),
+							val_White(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					BorderSelect  cmdID= 16 
+					Off  value= 2  
+					Black  value= 0  
+					White  value= 1  "
+		::= { iqdcppCmdEntry 16 }
+
+
+	iqdcppSetupVideoSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(0),
+							val_Input_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Source  cmdID= 70 
+					Input A   value= 0  
+					Input B   value= 1  "
+		::= { iqdcppCmdEntry 70 }
+
+
+	iqdcppSetupVideoStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_525(1),
+							val_625(2),
+							val_Auto(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Standard  cmdID= 71 
+					525  value= 1  
+					625  value= 2  
+					Auto  value= 0  "
+		::= { iqdcppCmdEntry 71 }
+
+
+	iqdcppSetupVideoFailSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DoNothing(8),
+							val_Freeze(9),
+							val_Black(0),
+							val_EBU_Bars(1),
+							val_Y_Ramp(2),
+							val_UV_Ramp(3),
+							val_Y_Sweep(4),
+							val_UV_Sweep(5),
+							val_Bowtie(6),
+							val_100_Bars(7),
+							val_GrabAltIp(10),
+							val_InputChng(11)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					FailSelect  cmdID= 74 
+					DoNothing  value= 8  
+					Freeze  value= 9  
+					Black  value= 0  
+					EBU Bars  value= 1  
+					Y Ramp  value= 2  
+					UV Ramp  value= 3  
+					Y Sweep  value= 4  
+					UV Sweep  value= 5  
+					Bowtie  value= 6  
+					100% Bars  value= 7  
+					GrabAltIp  value= 10  
+					InputChng  value= 11  "
+		::= { iqdcppCmdEntry 74 }
+
+
+	iqdcppSetupVideoFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Freeze  cmdID= 181 "
+		::= { iqdcppCmdEntry 181 }
+
+
+	iqdcppSetupVideo525VStd OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OVD(0),
+							val_OBD(1),
+							val_ABD(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					525_V-Std  cmdID= 76 
+					OVD  value= 0  
+					OBD  value= 1  
+					ABD  value= 2  "
+		::= { iqdcppCmdEntry 76 }
+
+
+	iqdcppVideoVBIData OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_All_thro(0),
+							val_All_blank(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video
+					All thro'  cmdID= 77  value= 0  
+					All blank  cmdID= 77  value= 1  "
+		::= { iqdcppCmdEntry 77 }
+
+
+	iqdcppSetupPatternSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Bars(1),
+							val_Y_Ramp(2),
+							val_UV_Ramp(3),
+							val_Y_Sweep(4),
+							val_UV_Sweep(5),
+							val_Bowtie(6),
+							val_100_Bars(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Pattern Select  cmdID= 73 
+					Black  value= 0  
+					EBU Bars  value= 1  
+					Y Ramp  value= 2  
+					UV Ramp  value= 3  
+					Y Sweep  value= 4  
+					UV Sweep  value= 5  
+					Bowtie  value= 6  
+					100% Bars  value= 7  "
+		::= { iqdcppCmdEntry 73 }
+
+
+	iqdcppSetupPanelDisplay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_AllFilters(0),
+							val_Recursive(1),
+							val_Horizontal(2),
+							val_Vert_Temp(3),
+							val_ProcAmp(4),
+							val_EDH(5),
+							val_Auto_Loop(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Panel_Display  cmdID= 12 
+					AllFilters  value= 0  
+					Recursive  value= 1  
+					Horizontal  value= 2  
+					Vert-Temp  value= 3  
+					ProcAmp  value= 4  
+					EDH  value= 5  
+					Auto Loop  value= 6  "
+		::= { iqdcppCmdEntry 12 }
+
+
+	iqdcppSetupRollTrackUnit1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_1  cmdID= 126  "
+		::= { iqdcppCmdEntry 126 }
+
+
+	iqdcppSetupRollTrackUnit2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_2  cmdID= 127  "
+		::= { iqdcppCmdEntry 127 }
+
+
+	iqdcppSetupRollTrackUnit3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_3  cmdID= 128  "
+		::= { iqdcppCmdEntry 128 }
+
+
+	iqdcppSetupRollTrackUnit4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_4  cmdID= 129  "
+		::= { iqdcppCmdEntry 129 }
+
+
+	iqdcppSetupRollTrackUnit5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_5  cmdID= 130  "
+		::= { iqdcppCmdEntry 130 }
+
+
+	iqdcppSetupRollTrackUnit6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_6  cmdID= 131  "
+		::= { iqdcppCmdEntry 131 }
+
+
+	iqdcppSetupRollTrackUnit7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_7  cmdID= 132  "
+		::= { iqdcppCmdEntry 132 }
+
+
+	iqdcppSetupRollTrackUnit8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_8  cmdID= 133  "
+		::= { iqdcppCmdEntry 133 }
+
+
+	iqdcppSetupRollTrackMessages OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack_Messages  cmdID= 199 "
+		::= { iqdcppCmdEntry 199 }
+
+
+	iqdcppSetupEDH OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Dummy(0),
+							val_EDH_Reset(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					<Dummy>  cmdID= 14  value= 0  
+					EDH Reset  cmdID= 14  value= 1  "
+		::= { iqdcppCmdEntry 14 }
+
+
+	iqdcppSetupEDHEDHStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					EDH Status  cmdID= 13  format=   "
+		::= { iqdcppCmdEntry 13 }
+
+
+	iqdcppGPIInputsGPI1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI_Inputs
+					Off  cmdID= 152  value= 2  
+					Latch  cmdID= 152  value= 0  
+					Edge  cmdID= 152  value= 1  "
+		::= { iqdcppCmdEntry 152 }
+
+
+	iqdcppGPIInputsGPI1GPI1Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Change(41),
+							val_Freeze(34),
+							val_Bypass(36),
+							val_BypassFltrs(42),
+							val_BypassPAmp(44),
+							val_Pattern(38),
+							val_Strength_Max_10(24),
+							val_Strength_Max_9(25),
+							val_Strength_Max_8(26),
+							val_Strength_Med_7(27),
+							val_Strength_Med_6(28),
+							val_Strength_Med_5(29),
+							val_Strength_Med_4(30),
+							val_Strength_Min_3(31),
+							val_Strength_Min_2(32),
+							val_Strength_Min_1(33),
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI_Inputs
+					GPI_1_Function  cmdID= 155 
+					Input Change  value= 41  
+					Freeze  value= 34  
+					Bypass  value= 36  
+					BypassFltrs  value= 42  
+					BypassPAmp  value= 44  
+					Pattern  value= 38  
+					Strength - Max 10   value= 24  
+					Strength - Max 9    value= 25  
+					Strength - Max 8    value= 26  
+					Strength - Med 7    value= 27  
+					Strength - Med 6    value= 28  
+					Strength - Med 5    value= 29  
+					Strength - Med 4    value= 30  
+					Strength - Min 3    value= 31  
+					Strength - Min 2    value= 32  
+					Strength - Min 1    value= 33  
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdcppCmdEntry 155 }
+
+
+	iqdcppGPIInputsGPI2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI_Inputs
+					Off  cmdID= 153  value= 2  
+					Latch  cmdID= 153  value= 0  
+					Edge  cmdID= 153  value= 1  "
+		::= { iqdcppCmdEntry 153 }
+
+
+	iqdcppGPIInputsGPI2GPI2Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Change(41),
+							val_Freeze(34),
+							val_Bypass(36),
+							val_BypassFltrs(42),
+							val_BypassPAmp(44),
+							val_Pattern(38),
+							val_Strength_Max_10(24),
+							val_Strength_Max_9(25),
+							val_Strength_Max_8(26),
+							val_Strength_Med_7(27),
+							val_Strength_Med_6(28),
+							val_Strength_Med_5(29),
+							val_Strength_Med_4(30),
+							val_Strength_Min_3(31),
+							val_Strength_Min_2(32),
+							val_Strength_Min_1(33),
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI_Inputs
+					GPI_2_Function  cmdID= 156 
+					Input Change  value= 41  
+					Freeze  value= 34  
+					Bypass  value= 36  
+					BypassFltrs  value= 42  
+					BypassPAmp  value= 44  
+					Pattern  value= 38  
+					Strength - Max 10   value= 24  
+					Strength - Max 9    value= 25  
+					Strength - Max 8    value= 26  
+					Strength - Med 7    value= 27  
+					Strength - Med 6    value= 28  
+					Strength - Med 5    value= 29  
+					Strength - Med 4    value= 30  
+					Strength - Min 3    value= 31  
+					Strength - Min 2    value= 32  
+					Strength - Min 1    value= 33  
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdcppCmdEntry 156 }
+
+
+	iqdcppGPIInputsGPI3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI_Inputs
+					Off  cmdID= 154  value= 2  
+					Latch  cmdID= 154  value= 0  
+					Edge  cmdID= 154  value= 1  "
+		::= { iqdcppCmdEntry 154 }
+
+
+	iqdcppGPIInputsGPI3GPI3Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Change(41),
+							val_Freeze(34),
+							val_Bypass(36),
+							val_BypassFltrs(42),
+							val_BypassPAmp(44),
+							val_Pattern(38),
+							val_Strength_Max_10(24),
+							val_Strength_Max_9(25),
+							val_Strength_Max_8(26),
+							val_Strength_Med_7(27),
+							val_Strength_Med_6(28),
+							val_Strength_Med_5(29),
+							val_Strength_Med_4(30),
+							val_Strength_Min_3(31),
+							val_Strength_Min_2(32),
+							val_Strength_Min_1(33),
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI_Inputs
+					GPI_3_Function  cmdID= 157 
+					Input Change  value= 41  
+					Freeze  value= 34  
+					Bypass  value= 36  
+					BypassFltrs  value= 42  
+					BypassPAmp  value= 44  
+					Pattern  value= 38  
+					Strength - Max 10   value= 24  
+					Strength - Max 9    value= 25  
+					Strength - Max 8    value= 26  
+					Strength - Med 7    value= 27  
+					Strength - Med 6    value= 28  
+					Strength - Med 5    value= 29  
+					Strength - Med 4    value= 30  
+					Strength - Min 3    value= 31  
+					Strength - Min 2    value= 32  
+					Strength - Min 1    value= 33  
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdcppCmdEntry 157 }
+
+
+	iqdcppSetupLoggingLogInputState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Input State  cmdID= 22 "
+		::= { iqdcppCmdEntry 22 }
+
+
+	iqdcppSetupLoggingLogEDHState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log EDH State  cmdID= 24 "
+		::= { iqdcppCmdEntry 24 }
+
+
+	iqdcppSetupLoggingLogSplitScreen OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Split Screen  cmdID= 189 "
+		::= { iqdcppCmdEntry 189 }
+
+
+	iqdcppSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqdcppCmdEntry 3 }
+
+
+	iqdcppSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqdcppCmdEntry 2 }
+
+
+	iqdcppSetupSerialNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					SerialNumber  cmdID= 1  format=   "
+		::= { iqdcppCmdEntry 1 }
+
+
+	iqdcppSetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdcppCmdEntry 4 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--			: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: UNKNOWN
+--				: STDERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL_MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: ERR
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SPLIT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.83.80.76.73.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.83.80.76.73.84
+-- Vary			: YES
+--
+-- Value(s)		: OFF
+--				: LR
+--				: TB
+--				: HR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number	: YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: IP_SEL
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.80.95.83.69.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.80.95.83.69.76
+-- Vary			: YES
+--
+-- Value(s)		: A
+--				: B
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

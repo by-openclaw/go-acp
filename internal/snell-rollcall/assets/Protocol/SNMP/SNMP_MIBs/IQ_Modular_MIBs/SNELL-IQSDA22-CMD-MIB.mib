@@ -1,0 +1,1148 @@
+-- ************************************************************************************
+-- Snell Card:IQSDA22
+--        Module Id#:487
+--       Command Set:5
+--          Filename:SNELL-IQSDA22-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:27/01/2010
+--              Time:14:08
+--
+-- Copyright (c) 2010 Snell Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQSDA22-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQSDA22,
+    moduleIQSDA22MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQSDA22CmdMi MODULE-IDENTITY
+    LAST-UPDATED "1001271408Z"
+    ORGANIZATION "Snell Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQSDA22MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqsda22CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqsda22CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQSDA22 1 }
+
+	iqsda22CmdEntry OBJECT-TYPE
+		SYNTAX		Iqsda22CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqsda22SlotIndex }
+		::= { iqsda22CmdTable 1 }
+
+	Iqsda22CmdEntry ::=
+		SEQUENCE {
+			iqsda22SlotIndex
+				Unsigned32,
+			iqsda22Input1SDIRateInput1
+				INTEGER,
+			iqsda22Output1MuteOutput1
+				INTEGER,
+			iqsda22Output1OnInput1Loss
+				INTEGER,
+			iqsda22Input2SDIRateCh2
+				INTEGER,
+			iqsda22Output2MuteCh2
+				INTEGER,
+			iqsda22Output2OnInput2Loss
+				INTEGER,
+			iqsda22MemoriesRecallMemory
+				INTEGER,
+			iqsda22MemoriesSelMemory
+				INTEGER,
+			iqsda22MemoriesSaveMemory
+				INTEGER,
+			iqsda22MemoriesClearMemory
+				INTEGER,
+			iqsda22MemoriesMemoryNameChangeName
+				RollCallString,
+			iqsda22MemoriesLastUserMemory
+				RollCallString,
+			iqsda22LoggingMiscLogSerialNo
+				INTEGER,
+			iqsda22LoggingMiscSerialNo
+				RollCallString,
+			iqsda22LoggingMiscLogOSVersion
+				INTEGER,
+			iqsda22LoggingMiscOSVersion
+				RollCallString,
+			iqsda22LoggingMiscLogBuildNo
+				INTEGER,
+			iqsda22LoggingMiscBuildNo
+				RollCallString,
+			iqsda22LoggingMiscLogHardwareVer
+				INTEGER,
+			iqsda22LoggingMiscHardwareVer
+				RollCallString,
+			iqsda22LoggingMiscLogUpTime
+				INTEGER,
+			iqsda22LoggingMiscUpTime
+				RollCallString,
+			iqsda22LoggingInput1LogIdent
+				INTEGER,
+			iqsda22LoggingInput1Ident
+				RollCallString,
+			iqsda22LoggingInput1LogName
+				INTEGER,
+			iqsda22LoggingInput1Name
+				RollCallString,
+			iqsda22LoggingInput1LogType
+				INTEGER,
+			iqsda22LoggingInput1Type
+				RollCallString,
+			iqsda22LoggingInput1LogState
+				INTEGER,
+			iqsda22LoggingInput1State
+				RollCallString,
+			iqsda22LoggingInput1LogSDIBitrate
+				INTEGER,
+			iqsda22LoggingInput1Bitrate
+				RollCallString,
+			iqsda22LoggingInput2LogIdent
+				INTEGER,
+			iqsda22LoggingInput2Ident
+				RollCallString,
+			iqsda22LoggingInput2LogName
+				INTEGER,
+			iqsda22LoggingInput2Name
+				RollCallString,
+			iqsda22LoggingInput2LogType
+				INTEGER,
+			iqsda22LoggingInput2Type
+				RollCallString,
+			iqsda22LoggingInput2LogState
+				INTEGER,
+			iqsda22LoggingInput2State
+				RollCallString,
+			iqsda22LoggingInput2LogSDIBitrate
+				INTEGER,
+			iqsda22LoggingInput2Bitrate
+				RollCallString,
+			iqsda22RollTrackDisableAll
+				INTEGER,
+			iqsda22RollTrackIndex
+				INTEGER,
+			iqsda22RollTrackSource
+				INTEGER,
+			iqsda22RollTrackAddress
+				RollCallString,
+			iqsda22RollTrackCommand
+				RollCallString,
+			iqsda22RollTrackStatus
+				RollCallString,
+			iqsda22RollTrackSending
+				RollCallString,
+			iqsda22SetupProduct
+				RollCallString,
+			iqsda22SetupRelease
+				RollCallString,
+			iqsda22SetupBuild
+				RollCallString,
+			iqsda22SetupKOS
+				RollCallString,
+			iqsda22SetupSerialNo
+				RollCallString,
+			iqsda22SetupPCB
+				RollCallString,
+			iqsda22SetupInput1Name
+				RollCallString,
+			iqsda22SetupInput2Name
+				RollCallString,
+			iqsda22SetupFactoryDefault
+				INTEGER,
+			iqsda22SetupRestart
+				INTEGER,
+			iqsda22SetupSerialNumber
+				RollCallString,
+			iqsda22SetupBoardID
+				INTEGER,
+			iqsda22SetupSaveID
+				INTEGER
+		}
+
+	iqsda22SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqsda22CmdEntry 0 }
+
+
+	iqsda22Input1SDIRateInput1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(3),
+							val_SD_DVB_ASI_270_Mb(0),
+							val_HD_1_5_Gb(1),
+							val_3G_3Gb(2),
+							val_Reclock_Bypass(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					SDI Rate Input 1  cmdID= 4000
+					Auto  value= 3
+					SD/DVB-ASI (270 Mb)  value= 0
+					HD (1.5 Gb)  value= 1
+					3G (3Gb)  value= 2
+					Reclock Bypass  value= 4  "
+		::= { iqsda22CmdEntry 4000 }
+
+
+	iqsda22Output1MuteOutput1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute Output 1  cmdID= 4020 "
+		::= { iqsda22CmdEntry 4020 }
+
+
+	iqsda22Output1OnInput1Loss OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Mute(1),
+							val_Pass(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					On Input 1 Loss  cmdID= 4030
+					Mute  value= 1
+					Pass  value= 0  "
+		::= { iqsda22CmdEntry 4030 }
+
+
+	iqsda22Input2SDIRateCh2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(3),
+							val_SD_DVB_ASI_270_Mb(0),
+							val_HD_1_5_Gb(1),
+							val_3G_3Gb(2),
+							val_Reclock_Bypass(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					SDI Rate Ch2  cmdID= 4001
+					Auto  value= 3
+					SD/DVB-ASI (270 Mb)  value= 0
+					HD (1.5 Gb)  value= 1
+					3G (3Gb)  value= 2
+					Reclock Bypass  value= 4  "
+		::= { iqsda22CmdEntry 4001 }
+
+
+	iqsda22Output2MuteCh2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute Ch2  cmdID= 4021 "
+		::= { iqsda22CmdEntry 4021 }
+
+
+	iqsda22Output2OnInput2Loss OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Mute(1),
+							val_Pass(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					On Input 2 Loss  cmdID= 4031
+					Mute  value= 1
+					Pass  value= 0  "
+		::= { iqsda22CmdEntry 4031 }
+
+
+	iqsda22MemoriesRecallMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_User_Memory_1(1),
+							val_User_Memory_2(2),
+							val_User_Memory_3(3),
+							val_User_Memory_4(4),
+							val_User_Memory_5(5),
+							val_User_Memory_6(6),
+							val_User_Memory_7(7),
+							val_User_Memory_8(8),
+							val_User_Memory_9(9),
+							val_User_Memory_10(10),
+							val_User_Memory_11(11),
+							val_User_Memory_12(12),
+							val_User_Memory_13(13),
+							val_User_Memory_14(14),
+							val_User_Memory_15(15),
+							val_User_Memory_16(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Recall Memory  cmdID= 37100
+					User Memory 1  value= 1
+					User Memory 2  value= 2
+					User Memory 3  value= 3
+					User Memory 4  value= 4
+					User Memory 5  value= 5
+					User Memory 6  value= 6
+					User Memory 7  value= 7
+					User Memory 8  value= 8
+					User Memory 9  value= 9
+					User Memory 10  value= 10
+					User Memory 11  value= 11
+					User Memory 12  value= 12
+					User Memory 13  value= 13
+					User Memory 14  value= 14
+					User Memory 15  value= 15
+					User Memory 16  value= 16  "
+		::= { iqsda22CmdEntry 37100 }
+
+
+	iqsda22MemoriesSelMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_User_Memory_1(1),
+							val_User_Memory_2(2),
+							val_User_Memory_3(3),
+							val_User_Memory_4(4),
+							val_User_Memory_5(5),
+							val_User_Memory_6(6),
+							val_User_Memory_7(7),
+							val_User_Memory_8(8),
+							val_User_Memory_9(9),
+							val_User_Memory_10(10),
+							val_User_Memory_11(11),
+							val_User_Memory_12(12),
+							val_User_Memory_13(13),
+							val_User_Memory_14(14),
+							val_User_Memory_15(15),
+							val_User_Memory_16(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Sel Memory  cmdID= 37101
+					User Memory 1  value= 1
+					User Memory 2  value= 2
+					User Memory 3  value= 3
+					User Memory 4  value= 4
+					User Memory 5  value= 5
+					User Memory 6  value= 6
+					User Memory 7  value= 7
+					User Memory 8  value= 8
+					User Memory 9  value= 9
+					User Memory 10  value= 10
+					User Memory 11  value= 11
+					User Memory 12  value= 12
+					User Memory 13  value= 13
+					User Memory 14  value= 14
+					User Memory 15  value= 15
+					User Memory 16  value= 16  "
+		::= { iqsda22CmdEntry 37101 }
+
+
+	iqsda22MemoriesSaveMemory OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_Memory(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Save Memory  cmdID= 37102  value= 1  "
+		::= { iqsda22CmdEntry 37102 }
+
+
+	iqsda22MemoriesClearMemory OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_Memory(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Clear Memory  cmdID= 37105  value= 1  "
+		::= { iqsda22CmdEntry 37105 }
+
+
+	iqsda22MemoriesMemoryNameChangeName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Change Name  cmdID= 37103  "
+		::= { iqsda22CmdEntry 37103 }
+
+
+	iqsda22MemoriesLastUserMemory OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Last User Memory  cmdID= 37104  format=   "
+		::= { iqsda22CmdEntry 37104 }
+
+
+	iqsda22LoggingMiscLogSerialNo OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Serial No.  cmdID= 35015 "
+		::= { iqsda22CmdEntry 35015 }
+
+
+	iqsda22LoggingMiscSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No.=  cmdID= 36015  format=   "
+		::= { iqsda22CmdEntry 36015 }
+
+
+	iqsda22LoggingMiscLogOSVersion OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log OS Version  cmdID= 35993 "
+		::= { iqsda22CmdEntry 35993 }
+
+
+	iqsda22LoggingMiscOSVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					OS Version=  cmdID= 36993  format=   "
+		::= { iqsda22CmdEntry 36993 }
+
+
+	iqsda22LoggingMiscLogBuildNo OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Build No.  cmdID= 35990 "
+		::= { iqsda22CmdEntry 35990 }
+
+
+	iqsda22LoggingMiscBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build No.=  cmdID= 36990  format=   "
+		::= { iqsda22CmdEntry 36990 }
+
+
+	iqsda22LoggingMiscLogHardwareVer OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Hardware Ver.  cmdID= 35992 "
+		::= { iqsda22CmdEntry 35992 }
+
+
+	iqsda22LoggingMiscHardwareVer OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Hardware Ver.=  cmdID= 36992  format=   "
+		::= { iqsda22CmdEntry 36992 }
+
+
+	iqsda22LoggingMiscLogUpTime OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Up Time  cmdID= 35994 "
+		::= { iqsda22CmdEntry 35994 }
+
+
+	iqsda22LoggingMiscUpTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Up Time=  cmdID= 36994  format=   "
+		::= { iqsda22CmdEntry 36994 }
+
+
+	iqsda22LoggingInput1LogIdent OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Ident  cmdID= 35060 "
+		::= { iqsda22CmdEntry 35060 }
+
+
+	iqsda22LoggingInput1Ident OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Ident=  cmdID= 36060  format=   "
+		::= { iqsda22CmdEntry 36060 }
+
+
+	iqsda22LoggingInput1LogName OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Name  cmdID= 35080 "
+		::= { iqsda22CmdEntry 35080 }
+
+
+	iqsda22LoggingInput1Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Name=  cmdID= 36080  format=   "
+		::= { iqsda22CmdEntry 36080 }
+
+
+	iqsda22LoggingInput1LogType OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					LogType  cmdID= 35017 "
+		::= { iqsda22CmdEntry 35017 }
+
+
+	iqsda22LoggingInput1Type OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Type=  cmdID= 36017  format=   "
+		::= { iqsda22CmdEntry 36017 }
+
+
+	iqsda22LoggingInput1LogState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log State  cmdID= 35005 "
+		::= { iqsda22CmdEntry 35005 }
+
+
+	iqsda22LoggingInput1State OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					State=  cmdID= 36005  format=   "
+		::= { iqsda22CmdEntry 36005 }
+
+
+	iqsda22LoggingInput1LogSDIBitrate OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log SDI Bitrate  cmdID= 35070 "
+		::= { iqsda22CmdEntry 35070 }
+
+
+	iqsda22LoggingInput1Bitrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Bitrate=  cmdID= 36070  format=   "
+		::= { iqsda22CmdEntry 36070 }
+
+
+	iqsda22LoggingInput2LogIdent OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Ident  cmdID= 35061 "
+		::= { iqsda22CmdEntry 35061 }
+
+
+	iqsda22LoggingInput2Ident OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Ident=  cmdID= 36061  format=   "
+		::= { iqsda22CmdEntry 36061 }
+
+
+	iqsda22LoggingInput2LogName OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Name  cmdID= 35081 "
+		::= { iqsda22CmdEntry 35081 }
+
+
+	iqsda22LoggingInput2Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Name=  cmdID= 36081  format=   "
+		::= { iqsda22CmdEntry 36081 }
+
+
+	iqsda22LoggingInput2LogType OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					LogType  cmdID= 35047 "
+		::= { iqsda22CmdEntry 35047 }
+
+
+	iqsda22LoggingInput2Type OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Type=  cmdID= 36047  format=   "
+		::= { iqsda22CmdEntry 36047 }
+
+
+	iqsda22LoggingInput2LogState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log State  cmdID= 35035 "
+		::= { iqsda22CmdEntry 35035 }
+
+
+	iqsda22LoggingInput2State OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					State=  cmdID= 36035  format=   "
+		::= { iqsda22CmdEntry 36035 }
+
+
+	iqsda22LoggingInput2LogSDIBitrate OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log SDI Bitrate  cmdID= 35071 "
+		::= { iqsda22CmdEntry 35071 }
+
+
+	iqsda22LoggingInput2Bitrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Bitrate=  cmdID= 36071  format=   "
+		::= { iqsda22CmdEntry 36071 }
+
+
+	iqsda22RollTrackDisableAll OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Disable All  cmdID= 36104 "
+		::= { iqsda22CmdEntry 36104 }
+
+
+	iqsda22RollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Index  cmdID= 36100  min= 1  max= 16   step= 1  format= %0.0f  div_scale= 1
+					Min = 1  Max = 16  Step = 1 "
+		::= { iqsda22CmdEntry 36100 }
+
+
+	iqsda22RollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Unused(-1),
+							val_Input_1_OK(0),
+							val_Input_1_None(1),
+							val_Input_1_Bitrate_270(2),
+							val_Input_1_Bitrate_1_5(3),
+							val_Input_1_Bitrate_3G(4),
+							val_Input_1_Bitrate_Un(5),
+							val_Input_2_OK(6),
+							val_Input_2_None(7),
+							val_Input_2_Bitrate_270(8),
+							val_Input_2_Bitrate_1_5(9),
+							val_Input_2_Bitrate_3G(10),
+							val_Input_2_Bitrate_Un(11)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Source  cmdID= 36101
+					Unused  value= -1
+					Input 1 OK  value= 0
+					Input 1 None  value= 1
+					Input 1 Bitrate 270  value= 2
+					Input 1 Bitrate 1.5  value= 3
+					Input 1 Bitrate 3G  value= 4
+					Input 1 Bitrate Un.  value= 5
+					Input 2 OK  value= 6
+					Input 2 None  value= 7
+					Input 2 Bitrate 270  value= 8
+					Input 2 Bitrate 1.5  value= 9
+					Input 2 Bitrate 3G  value= 10
+					Input 2 Bitrate Un  value= 11  "
+		::= { iqsda22CmdEntry 36101 }
+
+
+	iqsda22RollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address  cmdID= 36102  "
+		::= { iqsda22CmdEntry 36102 }
+
+
+	iqsda22RollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Command  cmdID= 36103  "
+		::= { iqsda22CmdEntry 36103 }
+
+
+	iqsda22RollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Status  cmdID= 36105  format=   "
+		::= { iqsda22CmdEntry 36105 }
+
+
+	iqsda22RollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Sending  cmdID= 36106  format=   "
+		::= { iqsda22CmdEntry 36106 }
+
+
+	iqsda22SetupProduct OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Product  cmdID= 32771  format=   "
+		::= { iqsda22CmdEntry 32771 }
+
+
+	iqsda22SetupRelease OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Release  cmdID= 2  format=   "
+		::= { iqsda22CmdEntry 2 }
+
+
+	iqsda22SetupBuild OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build  cmdID= 5  format=   "
+		::= { iqsda22CmdEntry 5 }
+
+
+	iqsda22SetupKOS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					KOS  cmdID= 32772  format=   "
+		::= { iqsda22CmdEntry 32772 }
+
+
+	iqsda22SetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No.  cmdID= 1  format=   "
+		::= { iqsda22CmdEntry 1 }
+
+
+	iqsda22SetupPCB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					PCB  cmdID= 32770  format=   "
+		::= { iqsda22CmdEntry 32770 }
+
+
+	iqsda22SetupInput1Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 1 Name  cmdID= 9000  "
+		::= { iqsda22CmdEntry 9000 }
+
+
+	iqsda22SetupInput2Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 2 Name  cmdID= 9001  "
+		::= { iqsda22CmdEntry 9001 }
+
+
+	iqsda22SetupFactoryDefault OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Factory_Default(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Factory Default  cmdID= 37002  value= 1  "
+		::= { iqsda22CmdEntry 37002 }
+
+
+	iqsda22SetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqsda22CmdEntry 4 }
+
+
+	iqsda22SetupSerialNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Serial Number  cmdID= 32774  "
+		::= { iqsda22CmdEntry 32774 }
+
+
+	iqsda22SetupBoardID OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_IQSDA20(486),
+							val_IQSDA22(487),
+							val_IQSDA24(488),
+							val_IQSDA25(489)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					BoardID  cmdID= 32776
+					IQSDA20  value= 486
+					IQSDA22  value= 487
+					IQSDA24  value= 488
+					IQSDA25  value= 489  "
+		::= { iqsda22CmdEntry 32776 }
+
+
+	iqsda22SetupSaveID OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_ID(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Save ID  cmdID= 32775  value= 1  "
+		::= { iqsda22CmdEntry 32775 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: S38061542
+--				:
+-- Comments		: Serial Number or module
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: UPTIME
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.85.80.84.73.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.85.80.84.73.77.69
+-- Vary			: YES
+--
+-- Value(s)		: 000:00:34:00
+--				:
+-- Comments		: Uptime in formated date-time string
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				:
+-- Comments		: Number or current control sessions.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OS_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.79.83.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.79.83.95.86.69.82.83.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: V115 Release
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUILD_NUMBER
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.66.85.73.76.68.95.78.85.77.66.69.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.66.85.73.76.68.95.78.85.77.66.69.82
+-- Vary			: YES
+--
+-- Value(s)		: 0001800401
+--				:
+-- Comments		: Software build number
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_NAME
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.78.65.77.69
+-- Vary			: YES
+--
+-- Value(s)		: INPUT 1 SERIAL IN
+--				:
+-- Comments		: Updating string
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: HD/SD SDI
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+-- Vary			: YES
+--
+-- Value(s)		: 2010-01-27T14:04:41Z
+--				:
+-- Comments		: Time of last restart
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- Vary			: NO
+--
+-- Value(s)		: SERIAL IN 1
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:Lost
+--	            : OK
+--	            : WARN:Error
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MODIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- Vary			: YES
+--
+-- Value(s)		: 2010-01-27T10:45:05Z
+--				:
+-- Comments		: Time String of last control modification
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_SDIRATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .15.73.78.80.85.84.95.49.95.83.68.73.82.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.15.73.78.80.85.84.95.49.95.83.68.73.82.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--              : 270Mb/s
+--	            : 1.5Gb/s
+--	            : 3.0Gb/s
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: HARDWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: RD3RG11Y
+--				:
+-- Comments		: Hardware version
+--
+---------------------------------------------------------------------------------------------------

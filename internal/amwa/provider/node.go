@@ -475,11 +475,22 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 	// NMOS API trees this host serves (we expose only "node/"). Each
 	// API tree's root then advertises the supported version subtrees.
 	// AMWA NMOS Testing's auto_node_1/auto_node_2 require both.
+	// The root lists every API TREE this host serves, not only the Node
+	// API. auto_connection_1 fails outright when the Connection API is
+	// served but unlisted — the same "served but not advertised is
+	// absent" trap as device.controls, one level up.
+	apiTrees := func() []string {
+		trees := []string{"node/"}
+		if s.connection != nil {
+			trees = append(trees, "connection/")
+		}
+		return trees
+	}
 	srv.Handle(stdhttp.MethodGet, "/x-nmos", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
-		return 0, []string{"node/"}, nil
+		return 0, apiTrees(), nil
 	})
 	srv.Handle(stdhttp.MethodGet, "/x-nmos/", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
-		return 0, []string{"node/"}, nil
+		return 0, apiTrees(), nil
 	})
 	srv.Handle(stdhttp.MethodGet, "/x-nmos/node", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 		return 0, []string{s.cfg.APIVer + "/"}, nil

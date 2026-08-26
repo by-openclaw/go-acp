@@ -1,0 +1,856 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBADCS
+--        Module Id#:140
+--       Command Set:9
+--          Filename:SNELL-IQBADCS-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:10/06/2005
+--              Time:15:52
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQBADCS-CMD-MIB.mib 225 2006-12-21 16:32:22Z nikolaoskatsampekis $
+-- Copyright (c) 2006 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBADCS-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBADCS,
+    moduleIQBADCSMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBADCSCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506101552Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBADCSMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbadcsCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqbadcsCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBADCS 1 }
+
+	iqbadcsCmdEntry OBJECT-TYPE
+		SYNTAX		IqbadcsCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbadcsSlotIndex }
+		::= { iqbadcsCmdTable 1 }
+
+	IqbadcsCmdEntry ::=
+		SEQUENCE {
+			iqbadcsSlotIndex
+				Unsigned32,
+			iqbadcsMute
+				INTEGER,
+			iqbadcsDelayManualDelayTime
+				INTEGER,
+			iqbadcsDelayManualDelay
+				INTEGER,
+			iqbadcsDelayRollTrack
+				INTEGER,
+			iqbadcsDelayExternalDelay
+				INTEGER,
+			iqbadcsDelayJumpToDelay
+				INTEGER,
+			iqbadcsGain
+				INTEGER,
+			iqbadcsLockMode
+				INTEGER,
+			iqbadcsMemorySave
+				INTEGER,
+			iqbadcsMemoryRead
+				INTEGER,
+			iqbadcsMemoryPreset
+				INTEGER,
+			iqbadcsMemoryNameMemory1
+				RollCallString,
+			iqbadcsMemoryNameMemory2
+				RollCallString,
+			iqbadcsMemoryNameMemory3
+				RollCallString,
+			iqbadcsMemoryNameMemory4
+				RollCallString,
+			iqbadcsMemoryNamePresetAllNames
+				INTEGER,
+			iqbadcsSetupChannelStatusDefaults
+				INTEGER,
+			iqbadcsSetupChannelStatusUse
+				INTEGER,
+			iqbadcsSetupChannelStatusAudio
+				INTEGER,
+			iqbadcsSetupChannelStatusEmphasis
+				INTEGER,
+			iqbadcsSetupChannelStatusLocking
+				INTEGER,
+			iqbadcsSetupChannelStatusSampFreq
+				INTEGER,
+			iqbadcsSetupChannelStatusMode
+				INTEGER,
+			iqbadcsSetupChannelStatusUser
+				INTEGER,
+			iqbadcsSetupChannelStatusAuxUse
+				INTEGER,
+			iqbadcsSetupChannelStatusSource
+				INTEGER,
+			iqbadcsSetupChannelStatusReference
+				INTEGER,
+			iqbadcsSetupChannelStatusOrigin
+				RollCallString,
+			iqbadcsSetupChannelStatusDestination
+				RollCallString,
+			iqbadcsSetupExtDelayPolarity
+				INTEGER,
+			iqbadcsSetupInputSource
+				INTEGER,
+			iqbadcsSetupGPI
+				INTEGER,
+			iqbadcsSetupLoggingOverflow
+				INTEGER,
+			iqbadcsSetupLoggingRefLoss
+				INTEGER,
+			iqbadcsSetupPhaseInvert
+				INTEGER,
+			iqbadcsSetupFastDelayChange
+				INTEGER,
+			iqbadcsSetupPresetUnit
+				INTEGER,
+			iqbadcsSetupSoftwareVersion
+				RollCallString,
+			iqbadcsSetupSerialNo
+				RollCallString,
+			iqbadcsExtDelay1
+				INTEGER,
+			iqbadcsExtDelay2
+				INTEGER,
+			iqbadcsExtDelay3
+				INTEGER,
+			iqbadcsExtDelay4
+				INTEGER,
+			iqbadcsExtDelay5
+				INTEGER
+		}
+
+	iqbadcsSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbadcsCmdEntry 0 }
+
+
+	iqbadcsMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute  cmdID= 6 "
+		::= { iqbadcsCmdEntry 6 }
+
+
+	iqbadcsDelayManualDelayTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Manual_Delay_Time  cmdID= 7  min= -450  max= 450  step= 1  format= %.0f ms  div_scale= 1 
+					Min = -450 ms  Max = 450 ms  Step = 1 ms "
+		::= { iqbadcsCmdEntry 7 }
+
+
+	iqbadcsDelayManualDelay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Manual_Delay  cmdID= 48 "
+		::= { iqbadcsCmdEntry 48 }
+
+
+	iqbadcsDelayRollTrack OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack  cmdID= 8 "
+		::= { iqbadcsCmdEntry 8 }
+
+
+	iqbadcsDelayExternalDelay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					External_Delay  cmdID= 47 "
+		::= { iqbadcsCmdEntry 47 }
+
+
+	iqbadcsDelayJumpToDelay OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Jump_To_Delay(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Jump_To_Delay  cmdID= 69  value= 1  "
+		::= { iqbadcsCmdEntry 69 }
+
+
+	iqbadcsGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Gain  cmdID= 5  min= 0  max= 1200  step= 25  format= %1.2f dBu  div_scale= 100 
+					Min = 0.00 dBu  Max = 12.00 dBu  Step = 0.25 dBu "
+		::= { iqbadcsCmdEntry 5 }
+
+
+	iqbadcsLockMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_AES_Reference(1),
+							val_Internal(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					LockMode  cmdID= 4 
+					AES_Reference  value= 1  
+					Internal  value= 2  "
+		::= { iqbadcsCmdEntry 4 }
+
+
+	iqbadcsMemorySave OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save  cmdID= 51 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbadcsCmdEntry 51 }
+
+
+	iqbadcsMemoryRead OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read  cmdID= 52 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbadcsCmdEntry 52 }
+
+
+	iqbadcsMemoryPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Preset_All_Memories(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Preset  cmdID= 53 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  
+					Preset_All_Memories  value= 5  "
+		::= { iqbadcsCmdEntry 53 }
+
+
+	iqbadcsMemoryNameMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 54  "
+		::= { iqbadcsCmdEntry 54 }
+
+
+	iqbadcsMemoryNameMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 55  "
+		::= { iqbadcsCmdEntry 55 }
+
+
+	iqbadcsMemoryNameMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 56  "
+		::= { iqbadcsCmdEntry 56 }
+
+
+	iqbadcsMemoryNameMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 57  "
+		::= { iqbadcsCmdEntry 57 }
+
+
+	iqbadcsMemoryNamePresetAllNames OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_All_Names(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_All_Names  cmdID= 58  value= 1  "
+		::= { iqbadcsCmdEntry 58 }
+
+
+	iqbadcsSetupChannelStatusDefaults OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Defaults(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Defaults  cmdID= 21  value= 1  "
+		::= { iqbadcsCmdEntry 21 }
+
+
+	iqbadcsSetupChannelStatusUse OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Consumer(0),
+							val_Professional(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Use  cmdID= 22 
+					Consumer  value= 0  
+					Professional  value= 1  "
+		::= { iqbadcsCmdEntry 22 }
+
+
+	iqbadcsSetupChannelStatusAudio OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Audio(0),
+							val_Non_Audio(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Audio  cmdID= 23 
+					Audio  value= 0  
+					Non_Audio  value= 1  "
+		::= { iqbadcsCmdEntry 23 }
+
+
+	iqbadcsSetupChannelStatusEmphasis OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(1),
+							val_50_15us(3),
+							val_J17(7),
+							val_Not_Indicated(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Emphasis  cmdID= 24 
+					None  value= 1  
+					50/15us  value= 3  
+					J17  value= 7  
+					Not_Indicated  value= 0  "
+		::= { iqbadcsCmdEntry 24 }
+
+
+	iqbadcsSetupChannelStatusLocking OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Locked(0),
+							val_Unlocked(1),
+							val_Auto(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Locking  cmdID= 25 
+					Locked  value= 0  
+					Unlocked  value= 1  
+					Auto  value= 2  "
+		::= { iqbadcsCmdEntry 25 }
+
+
+	iqbadcsSetupChannelStatusSampFreq OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_48kHz(2),
+							val_44_1kHz(1),
+							val_32kHz(3),
+							val_Not_Indicated(0),
+							val_Auto(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Samp_Freq  cmdID= 26 
+					48kHz  value= 2  
+					44.1kHz  value= 1  
+					32kHz  value= 3  
+					Not_Indicated  value= 0  
+					Auto  value= 4  "
+		::= { iqbadcsCmdEntry 26 }
+
+
+	iqbadcsSetupChannelStatusMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_1_Channel(4),
+							val_2_Channels(8),
+							val_Prim_Sec(12),
+							val_Stereo(2),
+							val_Reserve1(10),
+							val_Reserve2(6),
+							val_Vector(15),
+							val_Not_Indicated(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Mode  cmdID= 27 
+					1_Channel  value= 4  
+					2_Channels  value= 8  
+					Prim/Sec  value= 12  
+					Stereo  value= 2  
+					Reserve1  value= 10  
+					Reserve2  value= 6  
+					Vector  value= 15  
+					Not_Indicated  value= 0  "
+		::= { iqbadcsCmdEntry 27 }
+
+
+	iqbadcsSetupChannelStatusUser OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_192_Bits(8),
+							val_Reserved(4),
+							val_User(12),
+							val_Not_Indicated(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					User  cmdID= 28 
+					192_Bits  value= 8  
+					Reserved  value= 4  
+					User  value= 12  
+					Not_Indicated  value= 0  "
+		::= { iqbadcsCmdEntry 28 }
+
+
+	iqbadcsSetupChannelStatusAuxUse OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Main_Audio(4),
+							val_Talkback(2),
+							val_User(6),
+							val_Not_Indicated(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Aux_Use  cmdID= 29 
+					Main_Audio  value= 4  
+					Talkback  value= 2  
+					User  value= 6  
+					Not_Indicated  value= 0  "
+		::= { iqbadcsCmdEntry 29 }
+
+
+	iqbadcsSetupChannelStatusSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_24_Bits(5),
+							val_23_Bits(4),
+							val_22_Bits(2),
+							val_21_Bits(6),
+							val_20_Bits(1),
+							val_Not_Indicated(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Source  cmdID= 30 
+					24_Bits  value= 5  
+					23_Bits  value= 4  
+					22_Bits  value= 2  
+					21_Bits  value= 6  
+					20_Bits  value= 1  
+					Not_Indicated  value= 0  "
+		::= { iqbadcsCmdEntry 30 }
+
+
+	iqbadcsSetupChannelStatusReference OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Not_Ref(0),
+							val_Grade_1(2),
+							val_Grade_2(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Reference  cmdID= 31 
+					Not_Ref  value= 0  
+					Grade_1  value= 2  
+					Grade_2  value= 1  "
+		::= { iqbadcsCmdEntry 31 }
+
+
+	iqbadcsSetupChannelStatusOrigin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Origin  cmdID= 63  "
+		::= { iqbadcsCmdEntry 63 }
+
+
+	iqbadcsSetupChannelStatusDestination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Destination  cmdID= 64  "
+		::= { iqbadcsCmdEntry 64 }
+
+
+	iqbadcsSetupExtDelayPolarity OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Positive(1),
+							val_Negative(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Ext_Delay_Polarity  cmdID= 20 
+					Positive  value= 1  
+					Negative  value= 0  "
+		::= { iqbadcsCmdEntry 20 }
+
+
+	iqbadcsSetupInputSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Balanced_Ref(1),
+							val_Unbalanced_Ref(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Input_Source  cmdID= 46 
+					Balanced_Ref  value= 1  
+					Unbalanced_Ref  value= 0  "
+		::= { iqbadcsCmdEntry 46 }
+
+
+	iqbadcsSetupGPI OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Mute(1),
+							val_Not_Used(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI  cmdID= 50 
+					Mute  value= 1  
+					Not_Used  value= 0  "
+		::= { iqbadcsCmdEntry 50 }
+
+
+	iqbadcsSetupLoggingOverflow OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Overflow  cmdID= 11 "
+		::= { iqbadcsCmdEntry 11 }
+
+
+	iqbadcsSetupLoggingRefLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Ref_Loss  cmdID= 12 "
+		::= { iqbadcsCmdEntry 12 }
+
+
+	iqbadcsSetupPhaseInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Phase_Invert  cmdID= 61 "
+		::= { iqbadcsCmdEntry 61 }
+
+
+	iqbadcsSetupFastDelayChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Fast_Delay_Change  cmdID= 70 "
+		::= { iqbadcsCmdEntry 70 }
+
+
+	iqbadcsSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbadcsCmdEntry 3 }
+
+
+	iqbadcsSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbadcsCmdEntry 2 }
+
+
+	iqbadcsSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbadcsCmdEntry 1 }
+
+
+	iqbadcsExtDelay1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_1  cmdID= 14  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbadcsCmdEntry 14 }
+
+
+	iqbadcsExtDelay2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_2  cmdID= 15  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbadcsCmdEntry 15 }
+
+
+	iqbadcsExtDelay3 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_3  cmdID= 16  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbadcsCmdEntry 16 }
+
+
+	iqbadcsExtDelay4 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_4  cmdID= 17  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbadcsCmdEntry 17 }
+
+
+	iqbadcsExtDelay5 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_5  cmdID= 18  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbadcsCmdEntry 18 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: N/A
+--				: OK_VIDEO
+--				: LOST_VIDEO
+--				: OK_AES
+--				: LOST_AES
+-- Comments		: This log field shows the status of the reference.
+--				: OK_VIDEO indicates that the card is locked to the selected Video input.
+--				: LOST_VIDEO indicates that the reference video signal has been Lost. 	
+--				: OK_AES indicates that the card is locked to the selected AES input.
+--				: LOST_AES indicates that the reference AES signal has been Lost. 			
+--				: N/A indicates no valid reference signal available.
+---------------------------------------------------------------------------------------------------
+-- Header		: CH-LEFT
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.67.72.45.76.69.70.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.67.72.45.76.69.70.84
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: OVERFLOW
+-- Comments		: This log field shows the detected audio state of the Left Channel input.
+--				: LOST indicates no input detected at this Channel. 
+--				: OVERFLOW indicates that a bit overflow is detected on the Left channel.
+---------------------------------------------------------------------------------------------------
+-- Header		: CH-RIGHT
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.67.72.45.82.73.71.72.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.67.72.45.82.73.71.72.84
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: OVERFLOW
+-- Comments		: This log field shows the detected audio state of the Right Channel input.
+--				: LOST indicates no input detected at this Channel. 
+--				: OVERFLOW indicates that a bit overflow is detected on the Right channel.
+--
+---------------------------------------------------------------------------------------------------

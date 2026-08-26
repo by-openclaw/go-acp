@@ -1,0 +1,5559 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:QUASAR
+--        Module Id#:466
+--       Command Set:23
+--  Software Version:2.6.0
+--          Filename:SNELL-QUASAR-CMD-MIB.mib
+--            Author:R English
+--              Date:31/05/2010
+--              Time:19:45
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-QUASAR-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleQUASAR,
+    moduleQUASARMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleQUASARCmdMi MODULE-IDENTITY
+    LAST-UPDATED "1005311945Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:R English
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleQUASARMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	quasarCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF QuasarCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleQUASAR 1 }
+
+	quasarCmdEntry OBJECT-TYPE
+		SYNTAX		QuasarCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ quasarSlotIndex }
+		::= { quasarCmdTable 1 }
+
+	QuasarCmdEntry ::=
+		SEQUENCE {
+			quasarSlotIndex
+				Unsigned32,
+			quasarAudMasterMode
+				INTEGER,
+			quasarAudMasterGain
+				INTEGER,
+			quasarAudMasterDelay
+				INTEGER,
+			quasarAudMasterSlewrate
+				INTEGER,
+			quasarAudIpEmb14Emb12
+				INTEGER,
+			quasarAudIpEmb14Emb34
+				INTEGER,
+			quasarAudIpEmb14Emb56
+				INTEGER,
+			quasarAudIpEmb14Emb78
+				INTEGER,
+			quasarAudIpEmb58Emb910
+				INTEGER,
+			quasarAudIpEmb58Emb1112
+				INTEGER,
+			quasarAudIpEmb58Emb1314
+				INTEGER,
+			quasarAudIpEmb58Emb1516
+				INTEGER,
+			quasarAudIpAES14AES12
+				INTEGER,
+			quasarAudIpAES14AES34
+				INTEGER,
+			quasarAudIpAES14AES56
+				INTEGER,
+			quasarAudIpAES14AES78
+				INTEGER,
+			quasarAudOp14AudOP14OP12
+				INTEGER,
+			quasarAudOp14AudOP14OP34
+				INTEGER,
+			quasarAudOp14AudOP14OP56
+				INTEGER,
+			quasarAudOp14AudOP14OP78
+				INTEGER,
+			quasarAudOp14AudD14Dly12
+				INTEGER,
+			quasarAudOp14AudD14Dly34
+				INTEGER,
+			quasarAudOp14AudD14Dly56
+				INTEGER,
+			quasarAudOp14AudD14Dly78
+				INTEGER,
+			quasarAudOp14AudG14Gain12
+				INTEGER,
+			quasarAudOp14AudG14Gain34
+				INTEGER,
+			quasarAudOp14AudG14Gain56
+				INTEGER,
+			quasarAudOp14AudG14Gain78
+				INTEGER,
+			quasarAudOp14AudIV14Inv12
+				INTEGER,
+			quasarAudOp14AudIV14Inv34
+				INTEGER,
+			quasarAudOp14AudIV14Inv56
+				INTEGER,
+			quasarAudOp14AudIV14Inv78
+				INTEGER,
+			quasarAudOp14AudMX14Mix12
+				INTEGER,
+			quasarAudOp14AudMX14Mix34
+				INTEGER,
+			quasarAudOp14AudMX14Mix56
+				INTEGER,
+			quasarAudOp14AudMX14Mix78
+				INTEGER,
+			quasarAudOp58AudOP58OP910
+				INTEGER,
+			quasarAudOp58AudOP58OP1112
+				INTEGER,
+			quasarAudOp58AudOP58OP1314
+				INTEGER,
+			quasarAudOp58AudOP58OP1516
+				INTEGER,
+			quasarAudOp58AudD58Dly910
+				INTEGER,
+			quasarAudOp58AudD58Dly1112
+				INTEGER,
+			quasarAudOp58AudD58Dly1314
+				INTEGER,
+			quasarAudOp58AudD58Dly1516
+				INTEGER,
+			quasarAudOp58AudG58Gain910
+				INTEGER,
+			quasarAudOp58AudG58Gain1112
+				INTEGER,
+			quasarAudOp58AudG58Gain1314
+				INTEGER,
+			quasarAudOp58AudG58Gain1516
+				INTEGER,
+			quasarAudOp58AudIV58Inv910
+				INTEGER,
+			quasarAudOp58AudIV58Inv1112
+				INTEGER,
+			quasarAudOp58AudIV58Inv1314
+				INTEGER,
+			quasarAudOp58AudIV58Inv1516
+				INTEGER,
+			quasarAudOp58AudMX58Mix910
+				INTEGER,
+			quasarAudOp58AudMX58Mix1112
+				INTEGER,
+			quasarAudOp58AudMX58Mix1314
+				INTEGER,
+			quasarAudOp58AudMX58Mix1516
+				INTEGER,
+			quasarMetadataWSSWSSEN
+				INTEGER,
+			quasarMetadataWSSType
+				INTEGER,
+			quasarMetadataWSSIPLine
+				INTEGER,
+			quasarMetadataWSSOPLine
+				INTEGER,
+			quasarCaptioningCEA608CEA708CEA708Enable
+				INTEGER,
+			quasarCaptioningCEA608CEA708IPCEA608Line
+				INTEGER,
+			quasarCaptioningCEA608CEA708OPCEA708Line
+				INTEGER,
+			quasarCaptioningCEA608CEA708CEA708Test
+				INTEGER,
+			quasarCaptioningWSTRDD8RDD8Enable
+				INTEGER,
+			quasarCaptioningWSTRDD8IPWSTLine
+				INTEGER,
+			quasarCaptioningWSTRDD8OPRDD8Line
+				INTEGER,
+			quasarMetadataTimecodeVITCin
+				RollCallString,
+			quasarMetadataTimecodeEmbedVITC
+				INTEGER,
+			quasarMetadataTimecodeEmbedLTC
+				INTEGER,
+			quasarVideoVideoIPSource
+				INTEGER,
+			quasarVideoVideoIPIPError
+				INTEGER,
+			quasarVideoVideoOPLineRate
+				INTEGER,
+			quasarVideoVideoOPFrameRate
+				INTEGER,
+			quasarVideoSyncMode
+				INTEGER,
+			quasarVideoSyncHTiming
+				INTEGER,
+			quasarVideoSyncVTiming
+				INTEGER,
+			quasarVideoSyncFreerun
+				INTEGER,
+			quasarVideoBlankIPLeft
+				INTEGER,
+			quasarVideoBlankIPRight
+				INTEGER,
+			quasarVideoBlankIPTop
+				INTEGER,
+			quasarVideoBlankIPBottom
+				INTEGER,
+			quasarVideoBlankOPLeft
+				INTEGER,
+			quasarVideoBlankOPRight
+				INTEGER,
+			quasarVideoBlankOPTop
+				INTEGER,
+			quasarVideoBlankOPBottom
+				INTEGER,
+			quasarVideoBlankColHue
+				INTEGER,
+			quasarVideoBlankColSat
+				INTEGER,
+			quasarVideoBlankColLuma
+				INTEGER,
+			quasarVidprocYGain
+				INTEGER,
+			quasarVidprocYOffset
+				INTEGER,
+			quasarVidprocCGain
+				INTEGER,
+			quasarVidprocHue
+				INTEGER,
+			quasarVidprocVidYCDlyYCDelay
+				INTEGER,
+			quasarVidprocNR
+				INTEGER,
+			quasarVidprocNRSplit
+				INTEGER,
+			quasarVidprocEnhance
+				INTEGER,
+			quasarVidprocLegalize
+				INTEGER,
+			quasarVidprocIdent
+				INTEGER,
+			quasarVidprocIdentCaption
+				RollCallString,
+			quasarVidprocPrefix
+				INTEGER,
+			quasarVidprocCleanCut
+				INTEGER,
+			quasarVidprocPattern
+				INTEGER,
+			quasarVidprocARCModeARCmode
+				INTEGER,
+			quasarVidprocARCPstARCPST
+				INTEGER,
+			quasarVidprocARCVarSize
+				INTEGER,
+			quasarVidprocARCVarPan
+				INTEGER,
+			quasarVidprocARCVarAsp
+				INTEGER,
+			quasarVidprocARCVarPos
+				INTEGER,
+			quasarVidprocARCUser
+				INTEGER,
+			quasarVidprocARCUserLoad
+				INTEGER,
+			quasarVidprocARCUserSave
+				INTEGER,
+			quasarVidprocARCUserRename
+				RollCallString,
+			quasarVidprocARCWSS
+				INTEGER,
+			quasarVidprocARCWSSLoad
+				INTEGER,
+			quasarVidprocARCWSSSave
+				INTEGER,
+			quasarVidprocARCWSSLossError
+				INTEGER,
+			quasarStatusInputIP
+				RollCallString,
+			quasarStatusInputCaptions
+				RollCallString,
+			quasarStatusInputWSS
+				RollCallString,
+			quasarStatusEDHFFES
+				RollCallString,
+			quasarStatusEDHAPES
+				RollCallString,
+			quasarStatusEDHFFEF
+				RollCallString,
+			quasarStatusEDHAPEF
+				RollCallString,
+			quasarStatusEDHAPFFPerc
+				RollCallString,
+			quasarStatusEDHAPEFPerc
+				RollCallString,
+			quasarStatusEDHStatus
+				RollCallString,
+			quasarStatusEDHElapsedTime
+				RollCallString,
+			quasarStatusEDHSession
+				INTEGER,
+			quasarStatusAudioEMBIP
+				RollCallString,
+			quasarStatusAudioAESIP
+				RollCallString,
+			quasarStatusAudioOPType
+				RollCallString,
+			quasarStatusSystemRelease
+				RollCallString,
+			quasarStatusSystemChecksum
+				RollCallString,
+			quasarStatusSystemLicenseID
+				RollCallString,
+			quasarStatusSystemSerialNumber
+				RollCallString,
+			quasarGPISetupGPIEnable
+				INTEGER,
+			quasarGPISetupGPIGPIDelay
+				INTEGER,
+			quasarGPISetupGPIAFDDelay
+				INTEGER,
+			quasarGPIMAPAGPIMap0
+				INTEGER,
+			quasarGPIMAPAGPIMap1
+				INTEGER,
+			quasarGPIMAPAGPIMap2
+				INTEGER,
+			quasarGPIMAPAGPIMap3
+				INTEGER,
+			quasarGPIMAPBGPIMap4
+				INTEGER,
+			quasarGPIMAPBGPIMap5
+				INTEGER,
+			quasarGPIMAPBGPIMap6
+				INTEGER,
+			quasarGPIMAPBGPIMap7
+				INTEGER,
+			quasarRemoteRollCallAddress
+				INTEGER,
+			quasarRemoteRollCallName
+				RollCallString,
+			quasarRemoteRollLogServer
+				RollCallString,
+			quasarRemoteRollLogServername
+				RollCallString,
+			quasarRemoteRollLogServeraddr
+				RollCallString,
+			quasarRemoteRLogTmpEnable
+				INTEGER,
+			quasarRemoteRLogTmpStatus
+				RollCallString,
+			quasarRemoteRLogInpEnable
+				INTEGER,
+			quasarRemoteRLogInpStatus
+				RollCallString,
+			quasarRemoteRLogFansEnable
+				INTEGER,
+			quasarRemoteRLogFansStatus
+				RollCallString,
+			quasarRemoteRLogPSUEnable
+				INTEGER,
+			quasarRemoteRLogPSUStatus
+				RollCallString,
+			quasarRemoteRLogRefEnable
+				INTEGER,
+			quasarRemoteRLogRefStatus
+				RollCallString,
+			quasarRemoteRTrack1Select
+				INTEGER,
+			quasarRemoteRTrack1AddrID
+				RollCallString,
+			quasarRemoteRTrack1CmdVal
+				RollCallString,
+			quasarRemoteRTrack1Status
+				RollCallString,
+			quasarRemoteRTrack2Select
+				INTEGER,
+			quasarRemoteRTrack2AddrID
+				RollCallString,
+			quasarRemoteRTrack2CmdVal
+				RollCallString,
+			quasarRemoteRTrack2Status
+				RollCallString,
+			quasarRemoteEther1DHCP
+				INTEGER,
+			quasarRemoteEther1Address
+				RollCallString,
+			quasarRemoteEther2Netmask
+				RollCallString,
+			quasarRemoteEther2Gateway
+				RollCallString,
+			quasarRemoteEther3DHCPenabled
+				RollCallString,
+			quasarRemoteEther3Currentaddress
+				RollCallString,
+			quasarRemoteEther4Currentnetmask
+				RollCallString,
+			quasarRemoteEther4Currentgateway
+				RollCallString,
+			quasarMemoriesMemorySelect
+				INTEGER,
+			quasarMemoriesMemoryLoad
+				INTEGER,
+			quasarMemoriesMemorySave
+				INTEGER,
+			quasarMemoriesMemoryRename
+				RollCallString,
+			quasarFrontPanelColor
+				INTEGER,
+			quasarDebugBandwidthLimit
+				INTEGER,
+			quasarDebugColourChromagain
+				INTEGER,
+			quasarDebugColourHue
+				INTEGER,
+			quasarColourMasterWhitestretch
+				INTEGER,
+			quasarColourMasterMidstretch
+				INTEGER,
+			quasarColourMasterBlackstretch
+				INTEGER,
+			quasarColourMasterWhiteknee
+				INTEGER,
+			quasarColourMasterBlackknee
+				INTEGER,
+			quasarColourMasterUpMidknee
+				INTEGER,
+			quasarColourMasterLoMidknee
+				INTEGER,
+			quasarColourRedWhitestretch
+				INTEGER,
+			quasarColourRedMidstretch
+				INTEGER,
+			quasarColourRedBlackstretch
+				INTEGER,
+			quasarColourRedWhiteknee
+				INTEGER,
+			quasarColourRedBlackknee
+				INTEGER,
+			quasarColourRedUpMidknee
+				INTEGER,
+			quasarColourRedLoMidknee
+				INTEGER,
+			quasarColourGreenWhitestretch
+				INTEGER,
+			quasarColourGreenMidstretch
+				INTEGER,
+			quasarColourGreenBlackstretch
+				INTEGER,
+			quasarColourBlueWhitestretch
+				INTEGER,
+			quasarColourBlueMidstretch
+				INTEGER,
+			quasarColourBlueBlackstretch
+				INTEGER,
+			quasarColourBlueWhiteknee
+				INTEGER,
+			quasarColourBlueBlackknee
+				INTEGER,
+			quasarColourBlueUpMidknee
+				INTEGER,
+			quasarColourBlueLoMidknee
+				INTEGER,
+			quasarColourLegaliserLegalen
+				INTEGER,
+			quasarColourLegaliserConstLuma
+				INTEGER,
+			quasarColourLegaliserView
+				INTEGER,
+			quasarColourLegaliserUpper
+				INTEGER,
+			quasarColourLegaliserLower
+				INTEGER,
+			quasarColourLegaliserTarget
+				INTEGER,
+			quasarColourClipper
+				INTEGER,
+			quasarColourClipperWhitepeak
+				INTEGER,
+			quasarColourClipperWhiteknee
+				INTEGER,
+			quasarColourClipperBlackpeak
+				INTEGER,
+			quasarColourClipperBlackknee
+				INTEGER,
+			quasarDebugRecursiveRecursen
+				INTEGER,
+			quasarDebugRecursiveLuma
+				INTEGER,
+			quasarDebugRecursiveChroma
+				INTEGER,
+			quasarDebugRecursiveThreshold
+				INTEGER,
+			quasarDebugRecursiveBias
+				INTEGER,
+			quasarDebugRecursiveWeighting
+				INTEGER,
+			quasarDebugRecursiveAutoen
+				INTEGER,
+			quasarDebugRecursiveViewMode
+				INTEGER,
+			quasarDebugStripHorzANC
+				INTEGER,
+			quasarDebugStripVertANC
+				INTEGER,
+			quasarDebugStripLuma
+				INTEGER,
+			quasarDebugStripChroma
+				INTEGER,
+			quasarDebugFreezeFreezeenable
+				INTEGER,
+			quasarDebugFreezeFieldfreeze
+				INTEGER,
+			quasarDebugFreezeOnLossFieldfreeze
+				INTEGER,
+			quasarDeinterlacedebugAdaptionFullstill
+				INTEGER,
+			quasarDeinterlacedebugAdaptionVTstill
+				INTEGER,
+			quasarDeinterlacedebugAdaptionFullMC
+				INTEGER,
+			quasarDeinterlacedebugAdaptionMCVT
+				INTEGER,
+			quasarDeinterlacedebugAdaptionVert
+				INTEGER,
+			quasarDeinterlacedebugAdaptionDiag
+				INTEGER,
+			quasarDeinterlacedebugAdaptionAnticlock
+				INTEGER,
+			quasarDeinterlacedebugAdaptionClock
+				INTEGER,
+			quasarDebugDeinterlacedebugOverlayenable
+				INTEGER,
+			quasarDebugDeinterlacedebugOverlay
+				INTEGER,
+			quasarDebugDeinterlacedebugErrordisplay
+				INTEGER,
+			quasarDebugDeinterlacedebugCutdetectorBlob
+				INTEGER,
+			quasarDebugPhCdebugShowasnVec
+				INTEGER,
+			quasarDebugPhCdebugShowdeiVec
+				INTEGER,
+			quasarDebugPhCdebugRstASN
+				INTEGER,
+			quasarDebugARCStretchHSize
+				INTEGER,
+			quasarDebugARCStretchVSize
+				INTEGER,
+			quasarDebugARCStretchAlpha
+				INTEGER,
+			quasarDebugARCStretchBeta
+				INTEGER,
+			quasarDebugARCStretchCenter
+				INTEGER,
+			quasarDebugSystemstatusInputLoss
+				RollCallString,
+			quasarDebugSystemstatusInputEDH
+				INTEGER,
+			quasarDebugSystemstatusRequestedinput
+				RollCallString,
+			quasarDebugSystemstatusActualinput
+				RollCallString,
+			quasarDebugSystemstatusActualoutput
+				RollCallString,
+			quasarDebugSystemstatusRequestedoutput
+				RollCallString,
+			quasarDebugSystemstatusAudiodelay
+				INTEGER,
+			quasarDebugSystemstatusGenlock
+				RollCallString,
+			quasarDebugSystemstatusCPUStatus
+				RollCallString,
+			quasarDebugSystemstatusPhCLogo
+				RollCallString,
+			quasarDebugSystemstatusARCstate
+				RollCallString,
+			quasarDebugShadowWSSmemWSSselect
+				INTEGER,
+			quasarDebugShadowWSSmemWSSload
+				INTEGER,
+			quasarDebugShadowWSSmemWSSsave
+				INTEGER,
+			quasarDebugShadowarcusrmem
+				INTEGER,
+			quasarDebugShadowOPLinecontOPLineWSS720
+				INTEGER,
+			quasarDebugShadowOPLinecontOPLineWSS1080
+				INTEGER,
+			quasarDebugShadowOPLinecontOPLineCC720
+				INTEGER,
+			quasarDebugShadowOPLinecontOPLineCC1080
+				INTEGER,
+			quasarDebugShadowOPLinecontOPLineWST720
+				INTEGER,
+			quasarDebugShadowOPLinecontOPLineWST1080
+				INTEGER,
+			quasarDebugGPIOSense
+				INTEGER,
+			quasarDebugSystemStatusFans
+				RollCallString,
+			quasarDebugSystemStatusPSUs
+				RollCallString,
+			quasarDebugSystemStatusTmp
+				RollCallString,
+			quasarDebugAudioStatusDolbyELine14
+				RollCallString,
+			quasarDebugAudioStatusDolbyELine58
+				RollCallString
+		}
+
+	quasarSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { quasarCmdEntry 0 }
+
+
+	quasarAudMasterMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2),
+							val_Dolby_E(3),
+							val_Mapped(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudMaster
+					Mode  cmdID= 20000 
+					PCM  value= 1  
+					Data  value= 2  
+					Dolby-E  value= 3  
+					Mapped  value= 4  "
+		::= { quasarCmdEntry 20000 }
+
+
+	quasarAudMasterGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudMaster
+					Gain  cmdID= 20001  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20001 }
+
+
+	quasarAudMasterDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudMaster
+					Delay  cmdID= 20002  min= -200  max= 20000  step= 1  format= %0.1fms  div_scale= 10 
+					Min = -20.0ms  Max = 2000.0ms  Step = 0.1ms "
+		::= { quasarCmdEntry 20002 }
+
+
+	quasarAudMasterSlewrate OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Instant(1),
+							val_Fast(2),
+							val_Medium(3),
+							val_Slow(4),
+							val_Slowest(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudMaster
+					Slewrate  cmdID= 20003 
+					Instant  value= 1  
+					Fast  value= 2  
+					Medium  value= 3  
+					Slow  value= 4  
+					Slowest  value= 5  "
+		::= { quasarCmdEntry 20003 }
+
+
+	quasarAudIpEmb14Emb12 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2),
+							val_DolbyE(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					Emb 1&2  cmdID= 20155 
+					PCM  value= 1  
+					Data  value= 2  
+					DolbyE  value= 3  "
+		::= { quasarCmdEntry 20155 }
+
+
+	quasarAudIpEmb14Emb34 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2),
+							val_DolbyE(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					Emb 3&4  cmdID= 20156 
+					PCM  value= 1  
+					Data  value= 2  
+					DolbyE  value= 3  "
+		::= { quasarCmdEntry 20156 }
+
+
+	quasarAudIpEmb14Emb56 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2),
+							val_DolbyE(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					Emb 5&6  cmdID= 20157 
+					PCM  value= 1  
+					Data  value= 2  
+					DolbyE  value= 3  "
+		::= { quasarCmdEntry 20157 }
+
+
+	quasarAudIpEmb14Emb78 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2),
+							val_DolbyE(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					Emb 7&8  cmdID= 20158 
+					PCM  value= 1  
+					Data  value= 2  
+					DolbyE  value= 3  "
+		::= { quasarCmdEntry 20158 }
+
+
+	quasarAudIpEmb58Emb910 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2),
+							val_DolbyE(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					Emb 9&10  cmdID= 20159 
+					PCM  value= 1  
+					Data  value= 2  
+					DolbyE  value= 3  "
+		::= { quasarCmdEntry 20159 }
+
+
+	quasarAudIpEmb58Emb1112 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2),
+							val_DolbyE(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					Emb 11&12  cmdID= 20160 
+					PCM  value= 1  
+					Data  value= 2  
+					DolbyE  value= 3  "
+		::= { quasarCmdEntry 20160 }
+
+
+	quasarAudIpEmb58Emb1314 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2),
+							val_DolbyE(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					Emb 13&14  cmdID= 20161 
+					PCM  value= 1  
+					Data  value= 2  
+					DolbyE  value= 3  "
+		::= { quasarCmdEntry 20161 }
+
+
+	quasarAudIpEmb58Emb1516 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2),
+							val_DolbyE(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					Emb 15&16  cmdID= 20162 
+					PCM  value= 1  
+					Data  value= 2  
+					DolbyE  value= 3  "
+		::= { quasarCmdEntry 20162 }
+
+
+	quasarAudIpAES14AES12 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					AES 1&2  cmdID= 20163 
+					PCM  value= 1  
+					Data  value= 2  "
+		::= { quasarCmdEntry 20163 }
+
+
+	quasarAudIpAES14AES34 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					AES 3&4  cmdID= 20164 
+					PCM  value= 1  
+					Data  value= 2  "
+		::= { quasarCmdEntry 20164 }
+
+
+	quasarAudIpAES14AES56 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					AES 5&6  cmdID= 20165 
+					PCM  value= 1  
+					Data  value= 2  "
+		::= { quasarCmdEntry 20165 }
+
+
+	quasarAudIpAES14AES78 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PCM(1),
+							val_Data(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudIp
+					AES 7&8  cmdID= 20166 
+					PCM  value= 1  
+					Data  value= 2  "
+		::= { quasarCmdEntry 20166 }
+
+
+	quasarAudOp14AudOP14OP12 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_EmbedP1(1),
+							val_EmbedP2(2),
+							val_EmbedP3(3),
+							val_EmbedP4(4),
+							val_EmbedP5(5),
+							val_EmbedP6(6),
+							val_EmbedP7(7),
+							val_EmbedP8(8),
+							val_AESP1(9),
+							val_AESP2(10),
+							val_AESP3(11),
+							val_AESP4(12),
+							val_Tone_LL(13),
+							val_Tone_LH(14),
+							val_Tone_HL(15),
+							val_Tone_HH(16),
+							val_Mute(17),
+							val_Off(18)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					OP1&2  cmdID= 20004 
+					EmbedP1  value= 1  
+					EmbedP2  value= 2  
+					EmbedP3  value= 3  
+					EmbedP4  value= 4  
+					EmbedP5  value= 5  
+					EmbedP6  value= 6  
+					EmbedP7  value= 7  
+					EmbedP8  value= 8  
+					AESP1  value= 9  
+					AESP2  value= 10  
+					AESP3  value= 11  
+					AESP4  value= 12  
+					Tone LL  value= 13  
+					Tone LH  value= 14  
+					Tone HL  value= 15  
+					Tone HH  value= 16  
+					Mute  value= 17  
+					Off  value= 18  "
+		::= { quasarCmdEntry 20004 }
+
+
+	quasarAudOp14AudOP14OP34 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_EmbedP1(1),
+							val_EmbedP2(2),
+							val_EmbedP3(3),
+							val_EmbedP4(4),
+							val_EmbedP5(5),
+							val_EmbedP6(6),
+							val_EmbedP7(7),
+							val_EmbedP8(8),
+							val_AESP1(9),
+							val_AESP2(10),
+							val_AESP3(11),
+							val_AESP4(12),
+							val_Tone_LL(13),
+							val_Tone_LH(14),
+							val_Tone_HL(15),
+							val_Tone_HH(16),
+							val_Mute(17),
+							val_Off(18)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					OP3&4  cmdID= 20005 
+					EmbedP1  value= 1  
+					EmbedP2  value= 2  
+					EmbedP3  value= 3  
+					EmbedP4  value= 4  
+					EmbedP5  value= 5  
+					EmbedP6  value= 6  
+					EmbedP7  value= 7  
+					EmbedP8  value= 8  
+					AESP1  value= 9  
+					AESP2  value= 10  
+					AESP3  value= 11  
+					AESP4  value= 12  
+					Tone LL  value= 13  
+					Tone LH  value= 14  
+					Tone HL  value= 15  
+					Tone HH  value= 16  
+					Mute  value= 17  
+					Off  value= 18  "
+		::= { quasarCmdEntry 20005 }
+
+
+	quasarAudOp14AudOP14OP56 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_EmbedP1(1),
+							val_EmbedP2(2),
+							val_EmbedP3(3),
+							val_EmbedP4(4),
+							val_EmbedP5(5),
+							val_EmbedP6(6),
+							val_EmbedP7(7),
+							val_EmbedP8(8),
+							val_AESP1(9),
+							val_AESP2(10),
+							val_AESP3(11),
+							val_AESP4(12),
+							val_Tone_LL(13),
+							val_Tone_LH(14),
+							val_Tone_HL(15),
+							val_Tone_HH(16),
+							val_Mute(17),
+							val_Off(18)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					OP5&6  cmdID= 20006 
+					EmbedP1  value= 1  
+					EmbedP2  value= 2  
+					EmbedP3  value= 3  
+					EmbedP4  value= 4  
+					EmbedP5  value= 5  
+					EmbedP6  value= 6  
+					EmbedP7  value= 7  
+					EmbedP8  value= 8  
+					AESP1  value= 9  
+					AESP2  value= 10  
+					AESP3  value= 11  
+					AESP4  value= 12  
+					Tone LL  value= 13  
+					Tone LH  value= 14  
+					Tone HL  value= 15  
+					Tone HH  value= 16  
+					Mute  value= 17  
+					Off  value= 18  "
+		::= { quasarCmdEntry 20006 }
+
+
+	quasarAudOp14AudOP14OP78 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_EmbedP1(1),
+							val_EmbedP2(2),
+							val_EmbedP3(3),
+							val_EmbedP4(4),
+							val_EmbedP5(5),
+							val_EmbedP6(6),
+							val_EmbedP7(7),
+							val_EmbedP8(8),
+							val_AESP1(9),
+							val_AESP2(10),
+							val_AESP3(11),
+							val_AESP4(12),
+							val_Tone_LL(13),
+							val_Tone_LH(14),
+							val_Tone_HL(15),
+							val_Tone_HH(16),
+							val_Mute(17),
+							val_Off(18)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					OP7&8  cmdID= 20007 
+					EmbedP1  value= 1  
+					EmbedP2  value= 2  
+					EmbedP3  value= 3  
+					EmbedP4  value= 4  
+					EmbedP5  value= 5  
+					EmbedP6  value= 6  
+					EmbedP7  value= 7  
+					EmbedP8  value= 8  
+					AESP1  value= 9  
+					AESP2  value= 10  
+					AESP3  value= 11  
+					AESP4  value= 12  
+					Tone LL  value= 13  
+					Tone LH  value= 14  
+					Tone HL  value= 15  
+					Tone HH  value= 16  
+					Mute  value= 17  
+					Off  value= 18  "
+		::= { quasarCmdEntry 20007 }
+
+
+	quasarAudOp14AudD14Dly12 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp1-4
+					Dly1&2  cmdID= 20008  min= 0  max= 600  step= 1  format= %0.1fms  div_scale= 10 
+					Min = 0.0ms  Max = 60.0ms  Step = 0.1ms "
+		::= { quasarCmdEntry 20008 }
+
+
+	quasarAudOp14AudD14Dly34 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp1-4
+					Dly3&4  cmdID= 20009  min= 0  max= 600  step= 1  format= %0.1fms  div_scale= 10 
+					Min = 0.0ms  Max = 60.0ms  Step = 0.1ms "
+		::= { quasarCmdEntry 20009 }
+
+
+	quasarAudOp14AudD14Dly56 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp1-4
+					Dly5&6  cmdID= 20010  min= 0  max= 600  step= 1  format= %0.1fms  div_scale= 10 
+					Min = 0.0ms  Max = 60.0ms  Step = 0.1ms "
+		::= { quasarCmdEntry 20010 }
+
+
+	quasarAudOp14AudD14Dly78 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp1-4
+					Dly7&8  cmdID= 20011  min= 0  max= 600  step= 1  format= %0.1fms  div_scale= 10 
+					Min = 0.0ms  Max = 60.0ms  Step = 0.1ms "
+		::= { quasarCmdEntry 20011 }
+
+
+	quasarAudOp14AudG14Gain12 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp1-4
+					Gain1&2  cmdID= 20012  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20012 }
+
+
+	quasarAudOp14AudG14Gain34 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp1-4
+					Gain3&4  cmdID= 20013  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20013 }
+
+
+	quasarAudOp14AudG14Gain56 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp1-4
+					Gain5&6  cmdID= 20014  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20014 }
+
+
+	quasarAudOp14AudG14Gain78 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp1-4
+					Gain7&8  cmdID= 20015  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20015 }
+
+
+	quasarAudOp14AudIV14Inv12 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(1),
+							val_Invert(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					Inv1&2  cmdID= 20016 
+					Normal  value= 1  
+					Invert  value= 2  "
+		::= { quasarCmdEntry 20016 }
+
+
+	quasarAudOp14AudIV14Inv34 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(1),
+							val_Invert(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					Inv3&4  cmdID= 20017 
+					Normal  value= 1  
+					Invert  value= 2  "
+		::= { quasarCmdEntry 20017 }
+
+
+	quasarAudOp14AudIV14Inv56 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(1),
+							val_Invert(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					Inv5&6  cmdID= 20018 
+					Normal  value= 1  
+					Invert  value= 2  "
+		::= { quasarCmdEntry 20018 }
+
+
+	quasarAudOp14AudIV14Inv78 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(1),
+							val_Invert(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					Inv7&8  cmdID= 20019 
+					Normal  value= 1  
+					Invert  value= 2  "
+		::= { quasarCmdEntry 20019 }
+
+
+	quasarAudOp14AudMX14Mix12 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Mix(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					Mix1&2  cmdID= 20020 
+					Off  value= 1  
+					Mix  value= 2  "
+		::= { quasarCmdEntry 20020 }
+
+
+	quasarAudOp14AudMX14Mix34 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Mix(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					Mix3&4  cmdID= 20021 
+					Off  value= 1  
+					Mix  value= 2  "
+		::= { quasarCmdEntry 20021 }
+
+
+	quasarAudOp14AudMX14Mix56 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Mix(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					Mix5&6  cmdID= 20022 
+					Off  value= 1  
+					Mix  value= 2  "
+		::= { quasarCmdEntry 20022 }
+
+
+	quasarAudOp14AudMX14Mix78 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Mix(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp1-4
+					Mix7&8  cmdID= 20023 
+					Off  value= 1  
+					Mix  value= 2  "
+		::= { quasarCmdEntry 20023 }
+
+
+	quasarAudOp58AudOP58OP910 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_EmbedP1(1),
+							val_EmbedP2(2),
+							val_EmbedP3(3),
+							val_EmbedP4(4),
+							val_EmbedP5(5),
+							val_EmbedP6(6),
+							val_EmbedP7(7),
+							val_EmbedP8(8),
+							val_AESP1(9),
+							val_AESP2(10),
+							val_AESP3(11),
+							val_AESP4(12),
+							val_Tone_LL(13),
+							val_Tone_LH(14),
+							val_Tone_HL(15),
+							val_Tone_HH(16),
+							val_Mute(17),
+							val_Off(18)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					OP9&10  cmdID= 20024 
+					EmbedP1  value= 1  
+					EmbedP2  value= 2  
+					EmbedP3  value= 3  
+					EmbedP4  value= 4  
+					EmbedP5  value= 5  
+					EmbedP6  value= 6  
+					EmbedP7  value= 7  
+					EmbedP8  value= 8  
+					AESP1  value= 9  
+					AESP2  value= 10  
+					AESP3  value= 11  
+					AESP4  value= 12  
+					Tone LL  value= 13  
+					Tone LH  value= 14  
+					Tone HL  value= 15  
+					Tone HH  value= 16  
+					Mute  value= 17  
+					Off  value= 18  "
+		::= { quasarCmdEntry 20024 }
+
+
+	quasarAudOp58AudOP58OP1112 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_EmbedP1(1),
+							val_EmbedP2(2),
+							val_EmbedP3(3),
+							val_EmbedP4(4),
+							val_EmbedP5(5),
+							val_EmbedP6(6),
+							val_EmbedP7(7),
+							val_EmbedP8(8),
+							val_AESP1(9),
+							val_AESP2(10),
+							val_AESP3(11),
+							val_AESP4(12),
+							val_Tone_LL(13),
+							val_Tone_LH(14),
+							val_Tone_HL(15),
+							val_Tone_HH(16),
+							val_Mute(17),
+							val_Off(18)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					OP11&12  cmdID= 20025 
+					EmbedP1  value= 1  
+					EmbedP2  value= 2  
+					EmbedP3  value= 3  
+					EmbedP4  value= 4  
+					EmbedP5  value= 5  
+					EmbedP6  value= 6  
+					EmbedP7  value= 7  
+					EmbedP8  value= 8  
+					AESP1  value= 9  
+					AESP2  value= 10  
+					AESP3  value= 11  
+					AESP4  value= 12  
+					Tone LL  value= 13  
+					Tone LH  value= 14  
+					Tone HL  value= 15  
+					Tone HH  value= 16  
+					Mute  value= 17  
+					Off  value= 18  "
+		::= { quasarCmdEntry 20025 }
+
+
+	quasarAudOp58AudOP58OP1314 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_EmbedP1(1),
+							val_EmbedP2(2),
+							val_EmbedP3(3),
+							val_EmbedP4(4),
+							val_EmbedP5(5),
+							val_EmbedP6(6),
+							val_EmbedP7(7),
+							val_EmbedP8(8),
+							val_AESP1(9),
+							val_AESP2(10),
+							val_AESP3(11),
+							val_AESP4(12),
+							val_Tone_LL(13),
+							val_Tone_LH(14),
+							val_Tone_HL(15),
+							val_Tone_HH(16),
+							val_Mute(17),
+							val_Off(18)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					OP13&14  cmdID= 20026 
+					EmbedP1  value= 1  
+					EmbedP2  value= 2  
+					EmbedP3  value= 3  
+					EmbedP4  value= 4  
+					EmbedP5  value= 5  
+					EmbedP6  value= 6  
+					EmbedP7  value= 7  
+					EmbedP8  value= 8  
+					AESP1  value= 9  
+					AESP2  value= 10  
+					AESP3  value= 11  
+					AESP4  value= 12  
+					Tone LL  value= 13  
+					Tone LH  value= 14  
+					Tone HL  value= 15  
+					Tone HH  value= 16  
+					Mute  value= 17  
+					Off  value= 18  "
+		::= { quasarCmdEntry 20026 }
+
+
+	quasarAudOp58AudOP58OP1516 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_EmbedP1(1),
+							val_EmbedP2(2),
+							val_EmbedP3(3),
+							val_EmbedP4(4),
+							val_EmbedP5(5),
+							val_EmbedP6(6),
+							val_EmbedP7(7),
+							val_EmbedP8(8),
+							val_AESP1(9),
+							val_AESP2(10),
+							val_AESP3(11),
+							val_AESP4(12),
+							val_Tone_LL(13),
+							val_Tone_LH(14),
+							val_Tone_HL(15),
+							val_Tone_HH(16),
+							val_Mute(17),
+							val_Off(18)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					OP15&16  cmdID= 20027 
+					EmbedP1  value= 1  
+					EmbedP2  value= 2  
+					EmbedP3  value= 3  
+					EmbedP4  value= 4  
+					EmbedP5  value= 5  
+					EmbedP6  value= 6  
+					EmbedP7  value= 7  
+					EmbedP8  value= 8  
+					AESP1  value= 9  
+					AESP2  value= 10  
+					AESP3  value= 11  
+					AESP4  value= 12  
+					Tone LL  value= 13  
+					Tone LH  value= 14  
+					Tone HL  value= 15  
+					Tone HH  value= 16  
+					Mute  value= 17  
+					Off  value= 18  "
+		::= { quasarCmdEntry 20027 }
+
+
+	quasarAudOp58AudD58Dly910 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp5-8
+					Dly9&10  cmdID= 20028  min= 0  max= 600  step= 1  format= %0.1fms  div_scale= 10 
+					Min = 0.0ms  Max = 60.0ms  Step = 0.1ms "
+		::= { quasarCmdEntry 20028 }
+
+
+	quasarAudOp58AudD58Dly1112 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp5-8
+					Dly11&12  cmdID= 20029  min= 0  max= 600  step= 1  format= %0.1fms  div_scale= 10 
+					Min = 0.0ms  Max = 60.0ms  Step = 0.1ms "
+		::= { quasarCmdEntry 20029 }
+
+
+	quasarAudOp58AudD58Dly1314 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp5-8
+					Dly13&14  cmdID= 20030  min= 0  max= 600  step= 1  format= %0.1fms  div_scale= 10 
+					Min = 0.0ms  Max = 60.0ms  Step = 0.1ms "
+		::= { quasarCmdEntry 20030 }
+
+
+	quasarAudOp58AudD58Dly1516 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp5-8
+					Dly15&16  cmdID= 20031  min= 0  max= 600  step= 1  format= %0.1fms  div_scale= 10 
+					Min = 0.0ms  Max = 60.0ms  Step = 0.1ms "
+		::= { quasarCmdEntry 20031 }
+
+
+	quasarAudOp58AudG58Gain910 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp5-8
+					Gain9&10  cmdID= 20032  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20032 }
+
+
+	quasarAudOp58AudG58Gain1112 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp5-8
+					Gain11&12  cmdID= 20033  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20033 }
+
+
+	quasarAudOp58AudG58Gain1314 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp5-8
+					Gain13&14  cmdID= 20034  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20034 }
+
+
+	quasarAudOp58AudG58Gain1516 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - AudOp5-8
+					Gain15&16  cmdID= 20035  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20035 }
+
+
+	quasarAudOp58AudIV58Inv910 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(1),
+							val_Invert(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					Inv9&10  cmdID= 20036 
+					Normal  value= 1  
+					Invert  value= 2  "
+		::= { quasarCmdEntry 20036 }
+
+
+	quasarAudOp58AudIV58Inv1112 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(1),
+							val_Invert(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					Inv11&12  cmdID= 20037 
+					Normal  value= 1  
+					Invert  value= 2  "
+		::= { quasarCmdEntry 20037 }
+
+
+	quasarAudOp58AudIV58Inv1314 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(1),
+							val_Invert(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					Inv13&14  cmdID= 20038 
+					Normal  value= 1  
+					Invert  value= 2  "
+		::= { quasarCmdEntry 20038 }
+
+
+	quasarAudOp58AudIV58Inv1516 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(1),
+							val_Invert(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					Inv15&16  cmdID= 20039 
+					Normal  value= 1  
+					Invert  value= 2  "
+		::= { quasarCmdEntry 20039 }
+
+
+	quasarAudOp58AudMX58Mix910 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Mix(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					Mix9&10  cmdID= 20040 
+					Off  value= 1  
+					Mix  value= 2  "
+		::= { quasarCmdEntry 20040 }
+
+
+	quasarAudOp58AudMX58Mix1112 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Mix(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					Mix11&12  cmdID= 20041 
+					Off  value= 1  
+					Mix  value= 2  "
+		::= { quasarCmdEntry 20041 }
+
+
+	quasarAudOp58AudMX58Mix1314 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Mix(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					Mix13&14  cmdID= 20042 
+					Off  value= 1  
+					Mix  value= 2  "
+		::= { quasarCmdEntry 20042 }
+
+
+	quasarAudOp58AudMX58Mix1516 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Mix(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - AudOp5-8
+					Mix15&16  cmdID= 20043 
+					Off  value= 1  
+					Mix  value= 2  "
+		::= { quasarCmdEntry 20043 }
+
+
+	quasarMetadataWSSWSSEN OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_IP(1),
+							val_OP(2),
+							val_IP_OP(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Metadata
+					WSS EN  cmdID= 20044 
+					IP  value= 1  
+					OP  value= 2  
+					IP&OP  value= 3  "
+		::= { quasarCmdEntry 20044 }
+
+
+	quasarMetadataWSSType OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_RP186(1),
+							val_RP186AFD(2),
+							val_ETSI(3),
+							val_L23AFD(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Metadata
+					Type  cmdID= 20045 
+					RP186  value= 1  
+					RP186AFD  value= 2  
+					ETSI  value= 3  
+					L23AFD  value= 4  "
+		::= { quasarCmdEntry 20045 }
+
+
+	quasarMetadataWSSIPLine OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Metadata
+					IP Line  cmdID= 20046  min= 0  max= 25  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 25  Step = 1 "
+		::= { quasarCmdEntry 20046 }
+
+
+	quasarMetadataWSSOPLine OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Metadata
+					OP Line  cmdID= 20047  min= 1  max= 30  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 30  Step = 1 "
+		::= { quasarCmdEntry 20047 }
+
+
+	quasarCaptioningCEA608CEA708CEA708Enable OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_On(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Metadata
+					CEA708 Enable  cmdID= 20048 
+					Off  value= 1  
+					On  value= 2  "
+		::= { quasarCmdEntry 20048 }
+
+
+	quasarCaptioningCEA608CEA708IPCEA608Line OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Metadata
+					IP CEA608 Line  cmdID= 20049  min= 0  max= 25  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 25  Step = 1 "
+		::= { quasarCmdEntry 20049 }
+
+
+	quasarCaptioningCEA608CEA708OPCEA708Line OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Metadata
+					OP CEA708 Line  cmdID= 20050  min= 1  max= 30  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 30  Step = 1 "
+		::= { quasarCmdEntry 20050 }
+
+
+	quasarCaptioningCEA608CEA708CEA708Test OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_On(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Metadata
+					CEA708 Test  cmdID= 20051 
+					Off  value= 1  
+					On  value= 2  "
+		::= { quasarCmdEntry 20051 }
+
+
+	quasarCaptioningWSTRDD8RDD8Enable OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_On(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Metadata
+					RDD8 Enable  cmdID= 20181 
+					Off  value= 1  
+					On  value= 2  "
+		::= { quasarCmdEntry 20181 }
+
+
+	quasarCaptioningWSTRDD8IPWSTLine OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Metadata
+					IP WST Line  cmdID= 20180  min= 0  max= 25  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 25  Step = 1 "
+		::= { quasarCmdEntry 20180 }
+
+
+	quasarCaptioningWSTRDD8OPRDD8Line OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Metadata
+					OP RDD8 Line  cmdID= 20182  min= 1  max= 30  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 30  Step = 1 "
+		::= { quasarCmdEntry 20182 }
+
+
+	quasarMetadataTimecodeVITCin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Metadata
+					VITC in  cmdID= 24306  format=   "
+		::= { quasarCmdEntry 24306 }
+
+
+	quasarMetadataTimecodeEmbedVITC OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_On(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Metadata
+					Embed VITC  cmdID= 24301 
+					Off  value= 0  
+					On  value= 1  "
+		::= { quasarCmdEntry 24301 }
+
+
+	quasarMetadataTimecodeEmbedLTC OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_On(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Metadata
+					Embed LTC  cmdID= 24302 
+					Off  value= 0  
+					On  value= 1  "
+		::= { quasarCmdEntry 24302 }
+
+
+	quasarVideoVideoIPSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_SDIA(1),
+							val_SDIB(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Source  cmdID= 20052 
+					SDIA  value= 1  
+					SDIB  value= 2  "
+		::= { quasarCmdEntry 20052 }
+
+
+	quasarVideoVideoIPIPError OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass_Video(1),
+							val_Freeze(2),
+							val_Black(3),
+							val_Bars(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					IP Error  cmdID= 20053 
+					Pass Video  value= 1  
+					Freeze  value= 2  
+					Black  value= 3  
+					Bars  value= 4  "
+		::= { quasarCmdEntry 20053 }
+
+
+	quasarVideoVideoOPLineRate OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_720(1),
+							val_1080(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Line Rate  cmdID= 20054 
+					720  value= 1  
+					1080  value= 2  "
+		::= { quasarCmdEntry 20054 }
+
+
+	quasarVideoVideoOPFrameRate OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_59_94(1),
+							val_50(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Frame Rate  cmdID= 20055 
+					59.94  value= 1  
+					50  value= 2  "
+		::= { quasarCmdEntry 20055 }
+
+
+	quasarVideoSyncMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Freerun(1),
+							val_External(2),
+							val_Input(3),
+							val_Min_Delay(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Mode  cmdID= 20056 
+					Freerun  value= 1  
+					External  value= 2  
+					Input  value= 3  
+					Min Delay  value= 4  "
+		::= { quasarCmdEntry 20056 }
+
+
+	quasarVideoSyncHTiming OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					H Timing  cmdID= 20057  min= 0  max= 1649  step= 1  format= %0.0fpixels  div_scale= 1 
+					Min = 0pixels  Max = 1649pixels  Step = 1pixels "
+		::= { quasarCmdEntry 20057 }
+
+
+	quasarVideoSyncVTiming OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					V Timing  cmdID= 20058  min= 0  max= 1499  step= 1  format= %0.0fLines  div_scale= 1 
+					Min = 0Lines  Max = 1499Lines  Step = 1Lines "
+		::= { quasarCmdEntry 20058 }
+
+
+	quasarVideoSyncFreerun OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Freerun  cmdID= 20059  min= -60  max= 60  step= 1  format= %0.0f  div_scale= 1 
+					Min = -60  Max = 60  Step = 1 "
+		::= { quasarCmdEntry 20059 }
+
+
+	quasarVideoBlankIPLeft OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Left  cmdID= 20060  min= 0  max= 720  step= 1  format= %0.0fpixels  div_scale= 1 
+					Min = 0pixels  Max = 720pixels  Step = 1pixels "
+		::= { quasarCmdEntry 20060 }
+
+
+	quasarVideoBlankIPRight OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Right  cmdID= 20061  min= -720  max= 0  step= 1  format= %0.0fpixels  div_scale= 1 
+					Min = -720pixels  Max = 0pixels  Step = 1pixels "
+		::= { quasarCmdEntry 20061 }
+
+
+	quasarVideoBlankIPTop OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Top  cmdID= 20062  min= 0  max= 486  step= 1  format= %0.0flines  div_scale= 1 
+					Min = 0lines  Max = 486lines  Step = 1lines "
+		::= { quasarCmdEntry 20062 }
+
+
+	quasarVideoBlankIPBottom OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Bottom  cmdID= 20063  min= -486  max= 0  step= 1  format= %0.0flines  div_scale= 1 
+					Min = -486lines  Max = 0lines  Step = 1lines "
+		::= { quasarCmdEntry 20063 }
+
+
+	quasarVideoBlankOPLeft OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Left  cmdID= 20064  min= 0  max= 1280  step= 1  format= %0.0fPixels  div_scale= 1 
+					Min = 0Pixels  Max = 1280Pixels  Step = 1Pixels "
+		::= { quasarCmdEntry 20064 }
+
+
+	quasarVideoBlankOPRight OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Right  cmdID= 20065  min= -1280  max= 0  step= 1  format= %0.0fPixels  div_scale= 1 
+					Min = -1280Pixels  Max = 0Pixels  Step = 1Pixels "
+		::= { quasarCmdEntry 20065 }
+
+
+	quasarVideoBlankOPTop OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Top  cmdID= 20066  min= 0  max= 720  step= 1  format= %0.0fLines  div_scale= 1 
+					Min = 0Lines  Max = 720Lines  Step = 1Lines "
+		::= { quasarCmdEntry 20066 }
+
+
+	quasarVideoBlankOPBottom OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Bottom  cmdID= 20067  min= -720  max= 0  step= 1  format= %0.0fLines  div_scale= 1 
+					Min = -720Lines  Max = 0Lines  Step = 1Lines "
+		::= { quasarCmdEntry 20067 }
+
+
+	quasarVideoBlankColHue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Hue  cmdID= 20068  min= 0  max= 359  step= 1  format= %0.0fdeg  div_scale= 1 
+					Min = 0deg  Max = 359deg  Step = 1deg "
+		::= { quasarCmdEntry 20068 }
+
+
+	quasarVideoBlankColSat OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Sat  cmdID= 20069  min= 0  max= 1000  step= 1  format= %0.1f%%  div_scale= 10 
+					Min = 0.0%  Max = 100.0%  Step = 0.1% "
+		::= { quasarCmdEntry 20069 }
+
+
+	quasarVideoBlankColLuma OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Luma  cmdID= 20070  min= 4  max= 1019  step= 1  format= %0.0f  div_scale= 1 
+					Min = 4  Max = 1019  Step = 1 "
+		::= { quasarCmdEntry 20070 }
+
+
+	quasarVidprocYGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					Y Gain  cmdID= 20071  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20071 }
+
+
+	quasarVidprocYOffset OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					Y Offset  cmdID= 20072  min= -64  max= 63  step= 1  format= %0.0fmV  div_scale= 1 
+					Min = -64mV  Max = 63mV  Step = 1mV "
+		::= { quasarCmdEntry 20072 }
+
+
+	quasarVidprocCGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					C Gain  cmdID= 20073  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { quasarCmdEntry 20073 }
+
+
+	quasarVidprocHue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					Hue  cmdID= 20074  min= -180  max= 179  step= 1  format= %0.0fdeg  div_scale= 1 
+					Min = -180deg  Max = 179deg  Step = 1deg "
+		::= { quasarCmdEntry 20074 }
+
+
+	quasarVidprocVidYCDlyYCDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					YC Delay  cmdID= 20075  min= -4  max= 3  step= 1  format= %0.0fns  div_scale= 1 
+					Min = -4ns  Max = 3ns  Step = 1ns "
+		::= { quasarCmdEntry 20075 }
+
+
+	quasarVidprocNR OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					NR  cmdID= 20076  min= 0  max= 10  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 10  Step = 1 "
+		::= { quasarCmdEntry 20076 }
+
+
+	quasarVidprocNRSplit OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_On(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					Split  cmdID= 20077 
+					Off  value= 1  
+					On  value= 2  "
+		::= { quasarCmdEntry 20077 }
+
+
+	quasarVidprocEnhance OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					Enhance  cmdID= 20078  min= -5  max= 20  step= 1  format= %0.0f  div_scale= 1 
+					Min = -5  Max = 20  Step = 1 "
+		::= { quasarCmdEntry 20078 }
+
+
+	quasarVidprocLegalize OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_HD721mV(2),
+							val_HD700mV(3),
+							val_SD_Digital(4),
+							val_SD_Analog(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					Legalize  cmdID= 20079 
+					Off  value= 1  
+					HD721mV  value= 2  
+					HD700mV  value= 3  
+					SD_Digital  value= 4  
+					SD_Analog  value= 5  "
+		::= { quasarCmdEntry 20079 }
+
+
+	quasarVidprocIdent OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_On(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					Ident  cmdID= 20080 
+					Off  value= 1  
+					On  value= 2  "
+		::= { quasarCmdEntry 20080 }
+
+
+	quasarVidprocIdentCaption OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Vid proc
+					Caption  cmdID= 20081  "
+		::= { quasarCmdEntry 20081 }
+
+
+	quasarVidprocPrefix OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Low(2),
+							val_Medium(3),
+							val_High(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					Prefix  cmdID= 20082 
+					Off  value= 1  
+					Low  value= 2  
+					Medium  value= 3  
+					High  value= 4  "
+		::= { quasarCmdEntry 20082 }
+
+
+	quasarVidprocCleanCut OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_On(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					CleanCut  cmdID= 20084 
+					Off  value= 1  
+					On  value= 2  "
+		::= { quasarCmdEntry 20084 }
+
+
+	quasarVidprocPattern OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_100_Bars(2),
+							val_75_Bars(3),
+							val_SMPTEBars(4),
+							val_Black(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					Pattern  cmdID= 20085 
+					Off  value= 1  
+					100%Bars  value= 2  
+					75%Bars  value= 3  
+					SMPTEBars  value= 4  
+					Black  value= 5  "
+		::= { quasarCmdEntry 20085 }
+
+
+	quasarVidprocARCModeARCmode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Preset(1),
+							val_User(2),
+							val_WSS(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					ARC mode  cmdID= 20086 
+					Preset  value= 1  
+					User  value= 2  
+					WSS  value= 3  "
+		::= { quasarCmdEntry 20086 }
+
+
+	quasarVidprocARCPstARCPST OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_4_3_16_9PB(1),
+							val_4_3_14_9PB(2),
+							val_16_9FH_16_9(3),
+							val_16_9LB_16_9(4),
+							val_16_9S_0(5),
+							val_16_9S_2_5(6),
+							val_16_9S_5(7),
+							val_16_9S_7_5(8),
+							val_16_9_STR(9),
+							val_16_9_STR2(10)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					ARC PST  cmdID= 20087 
+					4:3>16:9PB  value= 1  
+					4:3>14:9PB  value= 2  
+					16:9FH>16:9  value= 3  
+					16:9LB>16:9  value= 4  
+					16:9S 0%  value= 5  
+					16:9S 2.5%  value= 6  
+					16:9S 5%  value= 7  
+					16:9S 7.5%  value= 8  
+					16:9 STR  value= 9  
+					16:9 STR2  value= 10  "
+		::= { quasarCmdEntry 20087 }
+
+
+	quasarVidprocARCVarSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					Size  cmdID= 30088  min= 5000  max= 20000  step= 1  format= %0.1f%%  div_scale= 100 
+					Min = 50.0%  Max = 200.0%  Step = 0.0% "
+		::= { quasarCmdEntry 30088 }
+
+
+	quasarVidprocARCVarPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					Pan  cmdID= 30089  min= -5000  max= 5000  step= 1  format= %0.1f%%  div_scale= 100 
+					Min = -50.0%  Max = 50.0%  Step = 0.0% "
+		::= { quasarCmdEntry 30089 }
+
+
+	quasarVidprocARCVarAsp OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					Asp  cmdID= 30090  min= 5000  max= 20000  step= 1  format= %0.1f%%  div_scale= 100 
+					Min = 50.0%  Max = 200.0%  Step = 0.0% "
+		::= { quasarCmdEntry 30090 }
+
+
+	quasarVidprocARCVarPos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Vid proc
+					Pos  cmdID= 30091  min= -5000  max= 5000  step= 1  format= %0.1f%%  div_scale= 100 
+					Min = -50.0%  Max = 50.0%  Step = 0.0% "
+		::= { quasarCmdEntry 30091 }
+
+
+	quasarVidprocARCUser OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_User1(1),
+							val_User2(2),
+							val_User3(3),
+							val_User4(4),
+							val_User5(5),
+							val_User6(6),
+							val_User7(7),
+							val_User8(8),
+							val_User9(9),
+							val_User10(10)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					ARC User  cmdID= 30092 
+					User1  value= 1  
+					User2  value= 2  
+					User3  value= 3  
+					User4  value= 4  
+					User5  value= 5  
+					User6  value= 6  
+					User7  value= 7  
+					User8  value= 8  
+					User9  value= 9  
+					User10  value= 10  "
+		::= { quasarCmdEntry 30092 }
+
+
+	quasarVidprocARCUserLoad OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Load(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Vid proc
+					Load  cmdID= 12328  value= 1  "
+		::= { quasarCmdEntry 12328 }
+
+
+	quasarVidprocARCUserSave OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Vid proc
+					Save  cmdID= 20094  value= 1  "
+		::= { quasarCmdEntry 20094 }
+
+
+	quasarVidprocARCUserRename OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Vid proc
+					Rename  cmdID= 20095  "
+		::= { quasarCmdEntry 20095 }
+
+
+	quasarVidprocARCWSS OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					ARC WSS  cmdID= 12325 
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 12325 }
+
+
+	quasarVidprocARCWSSLoad OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Load(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Vid proc
+					Load  cmdID= 12326  value= 1  "
+		::= { quasarCmdEntry 12326 }
+
+
+	quasarVidprocARCWSSSave OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Vid proc
+					Save  cmdID= 12327  value= 1  "
+		::= { quasarCmdEntry 12327 }
+
+
+	quasarVidprocARCWSSLossError OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_change(0),
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Vid proc
+					Loss/Error  cmdID= 12324 
+					No change  value= 0  
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 12324 }
+
+
+	quasarStatusInputIP OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					IP  cmdID= 20099  format=   "
+		::= { quasarCmdEntry 20099 }
+
+
+	quasarStatusInputCaptions OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Captions  cmdID= 20100  format=   "
+		::= { quasarCmdEntry 20100 }
+
+
+	quasarStatusInputWSS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					WSS  cmdID= 20101  format=   "
+		::= { quasarCmdEntry 20101 }
+
+
+	quasarStatusEDHFFES OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					FF ES  cmdID= 20102  format=   "
+		::= { quasarCmdEntry 20102 }
+
+
+	quasarStatusEDHAPES OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					AP ES  cmdID= 20103  format=   "
+		::= { quasarCmdEntry 20103 }
+
+
+	quasarStatusEDHFFEF OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					FF EF  cmdID= 20104  format=   "
+		::= { quasarCmdEntry 20104 }
+
+
+	quasarStatusEDHAPEF OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					AP EF  cmdID= 20105  format=   "
+		::= { quasarCmdEntry 20105 }
+
+
+	quasarStatusEDHAPFFPerc OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					AP FF Perc  cmdID= 20106  format=   "
+		::= { quasarCmdEntry 20106 }
+
+
+	quasarStatusEDHAPEFPerc OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					AP EF Perc  cmdID= 20107  format=   "
+		::= { quasarCmdEntry 20107 }
+
+
+	quasarStatusEDHStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Status  cmdID= 20108  format=   "
+		::= { quasarCmdEntry 20108 }
+
+
+	quasarStatusEDHElapsedTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Elapsed Time  cmdID= 20109  format=   "
+		::= { quasarCmdEntry 20109 }
+
+
+	quasarStatusEDHSession OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Stop(1),
+							val_Running(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Status
+					Session  cmdID= 20110 
+					Stop  value= 1  
+					Running  value= 2  "
+		::= { quasarCmdEntry 20110 }
+
+
+	quasarStatusAudioEMBIP OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					EMB IP  cmdID= 20111  format=   "
+		::= { quasarCmdEntry 20111 }
+
+
+	quasarStatusAudioAESIP OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					AES IP  cmdID= 20112  format=   "
+		::= { quasarCmdEntry 20112 }
+
+
+	quasarStatusAudioOPType OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					OP Type  cmdID= 20167  format=   "
+		::= { quasarCmdEntry 20167 }
+
+
+	quasarStatusSystemRelease OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Release  cmdID= 20113  format=   "
+		::= { quasarCmdEntry 20113 }
+
+
+	quasarStatusSystemChecksum OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Checksum  cmdID= 20114  format=   "
+		::= { quasarCmdEntry 20114 }
+
+
+	quasarStatusSystemLicenseID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					License ID  cmdID= 20215  format=   "
+		::= { quasarCmdEntry 20215 }
+
+
+	quasarStatusSystemSerialNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Serial Number  cmdID= 20216  format=   "
+		::= { quasarCmdEntry 20216 }
+
+
+	quasarGPISetupGPIEnable OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Memory_Recall(2),
+							val_GPI_WSS(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI Setup
+					Enable  cmdID= 20115 
+					Off  value= 1  
+					Memory Recall  value= 2  
+					GPI WSS  value= 3  "
+		::= { quasarCmdEntry 20115 }
+
+
+	quasarGPISetupGPIGPIDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - GPI Setup
+					GPI Delay  cmdID= 20178  min= 0  max= 15  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { quasarCmdEntry 20178 }
+
+
+	quasarGPISetupGPIAFDDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - GPI Setup
+					AFD Delay  cmdID= 20179  min= 0  max= 15  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { quasarCmdEntry 20179 }
+
+
+	quasarGPIMAPAGPIMap0 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_change(0),
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI MAP A
+					GPI Map 0  cmdID= 20170 
+					No change  value= 0  
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 20170 }
+
+
+	quasarGPIMAPAGPIMap1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_change(0),
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI MAP A
+					GPI Map 1  cmdID= 20171 
+					No change  value= 0  
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 20171 }
+
+
+	quasarGPIMAPAGPIMap2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_change(0),
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI MAP A
+					GPI Map 2  cmdID= 20172 
+					No change  value= 0  
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 20172 }
+
+
+	quasarGPIMAPAGPIMap3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_change(0),
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI MAP A
+					GPI Map 3  cmdID= 20173 
+					No change  value= 0  
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 20173 }
+
+
+	quasarGPIMAPBGPIMap4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_change(0),
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI MAP B
+					GPI Map 4  cmdID= 20174 
+					No change  value= 0  
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 20174 }
+
+
+	quasarGPIMAPBGPIMap5 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_change(0),
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI MAP B
+					GPI Map 5  cmdID= 20175 
+					No change  value= 0  
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 20175 }
+
+
+	quasarGPIMAPBGPIMap6 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_change(0),
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI MAP B
+					GPI Map 6  cmdID= 20176 
+					No change  value= 0  
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 20176 }
+
+
+	quasarGPIMAPBGPIMap7 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_change(0),
+							val_RP186_0(1),
+							val_RP186_1(2),
+							val_RP186A0_0(3),
+							val_RP186A0_1(4),
+							val_RP186A0_2(5),
+							val_RP186A0_3(6),
+							val_RP186A0_4(7),
+							val_RP186A0_5(8),
+							val_RP186A0_6(9),
+							val_RP186A0_7(10),
+							val_RP186A1_0(11),
+							val_RP186A1_1(12),
+							val_RP186A1_2(13),
+							val_RP186A1_3(14),
+							val_RP186A1_4(15),
+							val_RP186A1_5(16),
+							val_RP186A1_6(17),
+							val_RP186A1_7(18),
+							val_ETSI0(19),
+							val_ETSI1(20),
+							val_ETSI2(21),
+							val_ETSI3(22),
+							val_ETSI4(23),
+							val_ETSI5(24),
+							val_ETSI6(25),
+							val_ETSI7(26),
+							val_L23A0_0(27),
+							val_L23A0_1(28),
+							val_L23A0_2(29),
+							val_L23A0_3(30),
+							val_L23A0_4(31),
+							val_L23A0_5(32),
+							val_L23A0_6(33),
+							val_L23A0_7(34),
+							val_L23A1_0(35),
+							val_L23A1_1(36),
+							val_L23A1_2(37),
+							val_L23A1_3(38),
+							val_L23A1_4(39),
+							val_L23A1_5(40),
+							val_L23A1_6(41),
+							val_L23A1_7(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI MAP B
+					GPI Map 7  cmdID= 20177 
+					No change  value= 0  
+					RP186_0  value= 1  
+					RP186_1  value= 2  
+					RP186A0.0  value= 3  
+					RP186A0.1  value= 4  
+					RP186A0.2  value= 5  
+					RP186A0.3  value= 6  
+					RP186A0.4  value= 7  
+					RP186A0.5  value= 8  
+					RP186A0.6  value= 9  
+					RP186A0.7  value= 10  
+					RP186A1.0  value= 11  
+					RP186A1.1  value= 12  
+					RP186A1.2  value= 13  
+					RP186A1.3  value= 14  
+					RP186A1.4  value= 15  
+					RP186A1.5  value= 16  
+					RP186A1.6  value= 17  
+					RP186A1.7  value= 18  
+					ETSI0  value= 19  
+					ETSI1  value= 20  
+					ETSI2  value= 21  
+					ETSI3  value= 22  
+					ETSI4  value= 23  
+					ETSI5  value= 24  
+					ETSI6  value= 25  
+					ETSI7  value= 26  
+					L23A0.0  value= 27  
+					L23A0.1  value= 28  
+					L23A0.2  value= 29  
+					L23A0.3  value= 30  
+					L23A0.4  value= 31  
+					L23A0.5  value= 32  
+					L23A0.6  value= 33  
+					L23A0.7  value= 34  
+					L23A1.0  value= 35  
+					L23A1.1  value= 36  
+					L23A1.2  value= 37  
+					L23A1.3  value= 38  
+					L23A1.4  value= 39  
+					L23A1.5  value= 40  
+					L23A1.6  value= 41  
+					L23A1.7  value= 42  "
+		::= { quasarCmdEntry 20177 }
+
+
+	quasarRemoteRollCallAddress OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Remote
+					Address  cmdID= 20116  min= 16  max= 255  step= 1  format= %0.0f  div_scale= 1 
+					Min = 16  Max = 255  Step = 1 "
+		::= { quasarCmdEntry 20116 }
+
+
+	quasarRemoteRollCallName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Remote
+					Name  cmdID= 20117  "
+		::= { quasarCmdEntry 20117 }
+
+
+	quasarRemoteRollLogServer OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Remote
+					Server  cmdID= 20118  "
+		::= { quasarCmdEntry 20118 }
+
+
+	quasarRemoteRollLogServername OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Server name  cmdID= 20119  format=   "
+		::= { quasarCmdEntry 20119 }
+
+
+	quasarRemoteRollLogServeraddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Server addr  cmdID= 20120  format=   "
+		::= { quasarCmdEntry 20120 }
+
+
+	quasarRemoteRLogTmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Disable(1),
+							val_Enable(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Remote
+					Enable  cmdID= 20121 
+					Disable  value= 1  
+					Enable  value= 2  "
+		::= { quasarCmdEntry 20121 }
+
+
+	quasarRemoteRLogTmpStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Status  cmdID= 20122  format=   "
+		::= { quasarCmdEntry 20122 }
+
+
+	quasarRemoteRLogInpEnable OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Disable(1),
+							val_Enable(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Remote
+					Enable  cmdID= 20123 
+					Disable  value= 1  
+					Enable  value= 2  "
+		::= { quasarCmdEntry 20123 }
+
+
+	quasarRemoteRLogInpStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Status  cmdID= 20124  format=   "
+		::= { quasarCmdEntry 20124 }
+
+
+	quasarRemoteRLogFansEnable OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Disable(1),
+							val_Enable(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Remote
+					Enable  cmdID= 20125 
+					Disable  value= 1  
+					Enable  value= 2  "
+		::= { quasarCmdEntry 20125 }
+
+
+	quasarRemoteRLogFansStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Status  cmdID= 20126  format=   "
+		::= { quasarCmdEntry 20126 }
+
+
+	quasarRemoteRLogPSUEnable OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Disable(1),
+							val_Enable(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Remote
+					Enable  cmdID= 20127 
+					Disable  value= 1  
+					Enable  value= 2  "
+		::= { quasarCmdEntry 20127 }
+
+
+	quasarRemoteRLogPSUStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Status  cmdID= 20128  format=   "
+		::= { quasarCmdEntry 20128 }
+
+
+	quasarRemoteRLogRefEnable OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Disable(1),
+							val_Enable(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Remote
+					Enable  cmdID= 20129 
+					Disable  value= 1  
+					Enable  value= 2  "
+		::= { quasarCmdEntry 20129 }
+
+
+	quasarRemoteRLogRefStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Status  cmdID= 20130  format=   "
+		::= { quasarCmdEntry 20130 }
+
+
+	quasarRemoteRTrack1Select OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Audio_delay(2),
+							val_Input_OK(3),
+							val_Input_loss(4),
+							val_Input_Error(5),
+							val_Input_Unsuitable(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Remote
+					Select  cmdID= 20131 
+					Off  value= 1  
+					Audio delay  value= 2  
+					Input OK  value= 3  
+					Input loss  value= 4  
+					Input Error  value= 5  
+					Input Unsuitable  value= 6  "
+		::= { quasarCmdEntry 20131 }
+
+
+	quasarRemoteRTrack1AddrID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Remote
+					Addr*ID  cmdID= 20132  "
+		::= { quasarCmdEntry 20132 }
+
+
+	quasarRemoteRTrack1CmdVal OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Remote
+					Cmd*Val  cmdID= 20133  "
+		::= { quasarCmdEntry 20133 }
+
+
+	quasarRemoteRTrack1Status OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Status  cmdID= 20134  format=   "
+		::= { quasarCmdEntry 20134 }
+
+
+	quasarRemoteRTrack2Select OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(1),
+							val_Audio_delay(2),
+							val_Input_OK(3),
+							val_Input_loss(4),
+							val_Input_Error(5),
+							val_Input_Unsuitable(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Remote
+					Select  cmdID= 20135 
+					Off  value= 1  
+					Audio delay  value= 2  
+					Input OK  value= 3  
+					Input loss  value= 4  
+					Input Error  value= 5  
+					Input Unsuitable  value= 6  "
+		::= { quasarCmdEntry 20135 }
+
+
+	quasarRemoteRTrack2AddrID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Remote
+					Addr*ID  cmdID= 20136  "
+		::= { quasarCmdEntry 20136 }
+
+
+	quasarRemoteRTrack2CmdVal OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Remote
+					Cmd*Val  cmdID= 20137  "
+		::= { quasarCmdEntry 20137 }
+
+
+	quasarRemoteRTrack2Status OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Status  cmdID= 20138  format=   "
+		::= { quasarCmdEntry 20138 }
+
+
+	quasarRemoteEther1DHCP OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Disable(1),
+							val_Enable(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Remote
+					DHCP  cmdID= 20139 
+					Disable  value= 1  
+					Enable  value= 2  "
+		::= { quasarCmdEntry 20139 }
+
+
+	quasarRemoteEther1Address OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Remote
+					Address  cmdID= 20140  "
+		::= { quasarCmdEntry 20140 }
+
+
+	quasarRemoteEther2Netmask OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Remote
+					Netmask  cmdID= 20141  "
+		::= { quasarCmdEntry 20141 }
+
+
+	quasarRemoteEther2Gateway OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Remote
+					Gateway  cmdID= 20142  "
+		::= { quasarCmdEntry 20142 }
+
+
+	quasarRemoteEther3DHCPenabled OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					DHCP enabled  cmdID= 20143  format=   "
+		::= { quasarCmdEntry 20143 }
+
+
+	quasarRemoteEther3Currentaddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Current address  cmdID= 20144  format=   "
+		::= { quasarCmdEntry 20144 }
+
+
+	quasarRemoteEther4Currentnetmask OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Current netmask  cmdID= 20145  format=   "
+		::= { quasarCmdEntry 20145 }
+
+
+	quasarRemoteEther4Currentgateway OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Remote
+					Current gateway  cmdID= 20146  format=   "
+		::= { quasarCmdEntry 20146 }
+
+
+	quasarMemoriesMemorySelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory1(1),
+							val_Memory2(2),
+							val_Memory3(3),
+							val_Memory4(4),
+							val_Memory5(5),
+							val_Memory6(6),
+							val_Memory7(7),
+							val_Memory8(8),
+							val_Memory9(9),
+							val_Memory10(10),
+							val_GPI1(11),
+							val_GPI2(12),
+							val_GPI3(13),
+							val_Defaults(14),
+							val_Factory(15)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memories
+					Select  cmdID= 20147 
+					Memory1  value= 1  
+					Memory2  value= 2  
+					Memory3  value= 3  
+					Memory4  value= 4  
+					Memory5  value= 5  
+					Memory6  value= 6  
+					Memory7  value= 7  
+					Memory8  value= 8  
+					Memory9  value= 9  
+					Memory10  value= 10  
+					GPI1  value= 11  
+					GPI2  value= 12  
+					GPI3  value= 13  
+					Defaults  value= 14  
+					Factory  value= 15  "
+		::= { quasarCmdEntry 20147 }
+
+
+	quasarMemoriesMemoryLoad OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Load(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Load  cmdID= 20148  value= 1  "
+		::= { quasarCmdEntry 20148 }
+
+
+	quasarMemoriesMemorySave OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save  cmdID= 20149  value= 1  "
+		::= { quasarCmdEntry 20149 }
+
+
+	quasarMemoriesMemoryRename OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Rename  cmdID= 20150  "
+		::= { quasarCmdEntry 20150 }
+
+
+	quasarFrontPanelColor OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Dynamic(0),
+							val_Red(1),
+							val_Green(2),
+							val_Blue(3),
+							val_Yellow(4),
+							val_Cyan(5),
+							val_Magenta(6),
+							val_White(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Front Panel
+					Color  cmdID= 2999 
+					Dynamic  value= 0  
+					Red  value= 1  
+					Green  value= 2  
+					Blue  value= 3  
+					Yellow  value= 4  
+					Cyan  value= 5  
+					Magenta  value= 6  
+					White  value= 7  "
+		::= { quasarCmdEntry 2999 }
+
+
+	quasarDebugBandwidthLimit OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					Bandwidth_Limit  cmdID= 20083  min= -10  max= 5  step= 1  format= %0.0f  div_scale= 1 
+					Min = -10  Max = 5  Step = 1 "
+		::= { quasarCmdEntry 20083 }
+
+
+	quasarDebugColourChromagain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Chroma gain  cmdID= 2100  min= 200  max= 799  step= 1  format= %0.0f  div_scale= 400 
+					Min = 1  Max = 2  Step = 0 "
+		::= { quasarCmdEntry 2100 }
+
+
+	quasarDebugColourHue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Hue  cmdID= 2102  min= 0  max= 718  step= 1  format= %0.0f  div_scale= 2 
+					Min = 0  Max = 359  Step = 1 "
+		::= { quasarCmdEntry 2102 }
+
+
+	quasarColourMasterWhitestretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					White stretch  cmdID= 2109  min= -512  max= 511  step= 1  format= %0.0f  div_scale= 1024 
+					Min = -1  Max = 0  Step = 0 "
+		::= { quasarCmdEntry 2109 }
+
+
+	quasarColourMasterMidstretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Mid stretch  cmdID= 2111  min= -1024  max= 1023  step= 1  format= %0.0f  div_scale= 512 
+					Min = -2  Max = 2  Step = 0 "
+		::= { quasarCmdEntry 2111 }
+
+
+	quasarColourMasterBlackstretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Black stretch  cmdID= 2110  min= -512  max= 511  step= 1  format= %0.0f  div_scale= 1024 
+					Min = -1  Max = 0  Step = 0 "
+		::= { quasarCmdEntry 2110 }
+
+
+	quasarColourMasterWhiteknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					White knee  cmdID= 2112  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2112 }
+
+
+	quasarColourMasterBlackknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Black knee  cmdID= 2113  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2113 }
+
+
+	quasarColourMasterUpMidknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Up Mid knee  cmdID= 2114  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2114 }
+
+
+	quasarColourMasterLoMidknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Lo Mid knee  cmdID= 2115  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2115 }
+
+
+	quasarColourRedWhitestretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					White stretch  cmdID= 2120  min= -512  max= 511  step= 1  format= %0.0f  div_scale= 1024 
+					Min = -1  Max = 0  Step = 0 "
+		::= { quasarCmdEntry 2120 }
+
+
+	quasarColourRedMidstretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Mid stretch  cmdID= 2122  min= -1024  max= 1023  step= 1  format= %0.0f  div_scale= 512 
+					Min = -2  Max = 2  Step = 0 "
+		::= { quasarCmdEntry 2122 }
+
+
+	quasarColourRedBlackstretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Black stretch  cmdID= 2121  min= -512  max= 511  step= 1  format= %0.0f  div_scale= 1024 
+					Min = -1  Max = 0  Step = 0 "
+		::= { quasarCmdEntry 2121 }
+
+
+	quasarColourRedWhiteknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					White knee  cmdID= 2123  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2123 }
+
+
+	quasarColourRedBlackknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Black knee  cmdID= 2124  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2124 }
+
+
+	quasarColourRedUpMidknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Up Mid knee  cmdID= 2125  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2125 }
+
+
+	quasarColourRedLoMidknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Lo Mid knee  cmdID= 2126  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2126 }
+
+
+	quasarColourGreenWhitestretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					White stretch  cmdID= 2150  min= -512  max= 511  step= 1  format= %0.0f  div_scale= 1024 
+					Min = -1  Max = 0  Step = 0 "
+		::= { quasarCmdEntry 2150 }
+
+
+	quasarColourGreenMidstretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Mid stretch  cmdID= 2152  min= -1024  max= 1023  step= 1  format= %0.0f  div_scale= 512 
+					Min = -2  Max = 2  Step = 0 "
+		::= { quasarCmdEntry 2152 }
+
+
+	quasarColourGreenBlackstretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Black stretch  cmdID= 2151  min= -512  max= 511  step= 1  format= %0.0f  div_scale= 1024 
+					Min = -1  Max = 0  Step = 0 "
+		::= { quasarCmdEntry 2151 }
+
+
+	quasarColourBlueWhitestretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					White stretch  cmdID= 2140  min= -512  max= 511  step= 1  format= %0.0f  div_scale= 1024 
+					Min = -1  Max = 0  Step = 0 "
+		::= { quasarCmdEntry 2140 }
+
+
+	quasarColourBlueMidstretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Mid stretch  cmdID= 2142  min= -1024  max= 1023  step= 1  format= %0.0f  div_scale= 512 
+					Min = -2  Max = 2  Step = 0 "
+		::= { quasarCmdEntry 2142 }
+
+
+	quasarColourBlueBlackstretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Black stretch  cmdID= 2141  min= -512  max= 511  step= 1  format= %0.0f  div_scale= 1024 
+					Min = -1  Max = 0  Step = 0 "
+		::= { quasarCmdEntry 2141 }
+
+
+	quasarColourBlueWhiteknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					White knee  cmdID= 2143  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2143 }
+
+
+	quasarColourBlueBlackknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Black knee  cmdID= 2144  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2144 }
+
+
+	quasarColourBlueUpMidknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Up Mid knee  cmdID= 2145  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2145 }
+
+
+	quasarColourBlueLoMidknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Lo Mid knee  cmdID= 2146  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2146 }
+
+
+	quasarColourLegaliserLegalen OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug- Colour
+					Legal en  cmdID= 2118 "
+		::= { quasarCmdEntry 2118 }
+
+
+	quasarColourLegaliserConstLuma OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug- Colour
+					Const Luma  cmdID= 2116 "
+		::= { quasarCmdEntry 2116 }
+
+
+	quasarColourLegaliserView OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug- Colour
+					View  cmdID= 2119 "
+		::= { quasarCmdEntry 2119 }
+
+
+	quasarColourLegaliserUpper OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Upper  cmdID= 2104  min= 512  max= 1019  step= 1  format= %0.0f  div_scale= 1 
+					Min = 512  Max = 1019  Step = 1 "
+		::= { quasarCmdEntry 2104 }
+
+
+	quasarColourLegaliserLower OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Lower  cmdID= 2105  min= 4  max= 512  step= 1  format= %0.0f  div_scale= 1 
+					Min = 4  Max = 512  Step = 1 "
+		::= { quasarCmdEntry 2105 }
+
+
+	quasarColourLegaliserTarget OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Target  cmdID= 2106  min= 64  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2106 }
+
+
+	quasarColourClipper OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug- Colour
+					Clip  cmdID= 2117 "
+		::= { quasarCmdEntry 2117 }
+
+
+	quasarColourClipperWhitepeak OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					White peak  cmdID= 2131  min= 940  max= 1019  step= 1  format= %0.0f  div_scale= 1 
+					Min = 940  Max = 1019  Step = 1 "
+		::= { quasarCmdEntry 2131 }
+
+
+	quasarColourClipperWhiteknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					White knee  cmdID= 2130  min= 502  max= 940  step= 1  format= %0.0f  div_scale= 1 
+					Min = 502  Max = 940  Step = 1 "
+		::= { quasarCmdEntry 2130 }
+
+
+	quasarColourClipperBlackpeak OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Black peak  cmdID= 2133  min= 4  max= 64  step= 1  format= %0.0f  div_scale= 1 
+					Min = 4  Max = 64  Step = 1 "
+		::= { quasarCmdEntry 2133 }
+
+
+	quasarColourClipperBlackknee OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug- Colour
+					Black knee  cmdID= 2132  min= 64  max= 502  step= 1  format= %0.0f  div_scale= 1 
+					Min = 64  Max = 502  Step = 1 "
+		::= { quasarCmdEntry 2132 }
+
+
+	quasarDebugRecursiveRecursen OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Recurs en  cmdID= 2200 "
+		::= { quasarCmdEntry 2200 }
+
+
+	quasarDebugRecursiveLuma OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					Luma  cmdID= 2206  min= 0  max= 31  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 31  Step = 1 "
+		::= { quasarCmdEntry 2206 }
+
+
+	quasarDebugRecursiveChroma OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					Chroma  cmdID= 2207  min= 0  max= 31  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 31  Step = 1 "
+		::= { quasarCmdEntry 2207 }
+
+
+	quasarDebugRecursiveThreshold OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					Threshold  cmdID= 2208  min= 0  max= 15  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { quasarCmdEntry 2208 }
+
+
+	quasarDebugRecursiveBias OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					Bias  cmdID= 2209  min= 0  max= 15  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { quasarCmdEntry 2209 }
+
+
+	quasarDebugRecursiveWeighting OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_White(0),
+							val_Uniform(1),
+							val_Black(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Debug
+					Weighting  cmdID= 2205 
+					White  value= 0  
+					Uniform  value= 1  
+					Black  value= 2  "
+		::= { quasarCmdEntry 2205 }
+
+
+	quasarDebugRecursiveAutoen OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Auto en  cmdID= 2201 "
+		::= { quasarCmdEntry 2201 }
+
+
+	quasarDebugRecursiveViewMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Motion(1),
+							val_Diff(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Debug
+					View Mode  cmdID= 2202 
+					Off  value= 0  
+					Motion  value= 1  
+					Diff  value= 2  "
+		::= { quasarCmdEntry 2202 }
+
+
+	quasarDebugStripHorzANC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Horz ANC  cmdID= 2270 "
+		::= { quasarCmdEntry 2270 }
+
+
+	quasarDebugStripVertANC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Vert ANC  cmdID= 2271 "
+		::= { quasarCmdEntry 2271 }
+
+
+	quasarDebugStripLuma OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Luma  cmdID= 2272 "
+		::= { quasarCmdEntry 2272 }
+
+
+	quasarDebugStripChroma OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Chroma  cmdID= 2273 "
+		::= { quasarCmdEntry 2273 }
+
+
+	quasarDebugFreezeFreezeenable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Freeze enable  cmdID= 2320 "
+		::= { quasarCmdEntry 2320 }
+
+
+	quasarDebugFreezeFieldfreeze OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Frame_freeze(0),
+							val_Field_freeze(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Debug
+					Field freeze  cmdID= 2321 
+					Frame freeze  value= 0  
+					Field freeze  value= 1  "
+		::= { quasarCmdEntry 2321 }
+
+
+	quasarDebugFreezeOnLossFieldfreeze OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Frame_freeze(0),
+							val_Field_freeze(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Debug
+					OnLoss Field freeze  cmdID= 2322 
+					Frame freeze  value= 0  
+					Field freeze  value= 1  "
+		::= { quasarCmdEntry 2322 }
+
+
+	quasarDeinterlacedebugAdaptionFullstill OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Full still  cmdID= 3000 "
+		::= { quasarCmdEntry 3000 }
+
+
+	quasarDeinterlacedebugAdaptionVTstill OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					VT still  cmdID= 3001 "
+		::= { quasarCmdEntry 3001 }
+
+
+	quasarDeinterlacedebugAdaptionFullMC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Full MC  cmdID= 3002 "
+		::= { quasarCmdEntry 3002 }
+
+
+	quasarDeinterlacedebugAdaptionMCVT OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					MC VT  cmdID= 3003 "
+		::= { quasarCmdEntry 3003 }
+
+
+	quasarDeinterlacedebugAdaptionVert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Vert  cmdID= 3004 "
+		::= { quasarCmdEntry 3004 }
+
+
+	quasarDeinterlacedebugAdaptionDiag OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Diag  cmdID= 3005 "
+		::= { quasarCmdEntry 3005 }
+
+
+	quasarDeinterlacedebugAdaptionAnticlock OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Anticlock  cmdID= 3006 "
+		::= { quasarCmdEntry 3006 }
+
+
+	quasarDeinterlacedebugAdaptionClock OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Clock  cmdID= 3007 "
+		::= { quasarCmdEntry 3007 }
+
+
+	quasarDebugDeinterlacedebugOverlayenable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Overlay enable  cmdID= 3008 "
+		::= { quasarCmdEntry 3008 }
+
+
+	quasarDebugDeinterlacedebugOverlay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Mixed(0),
+							val_Full_still(1),
+							val_VT_still(2),
+							val_Full_MC(3),
+							val_MC_VT(4),
+							val_Vert(5),
+							val_Diag(6),
+							val_Anticlock(7),
+							val_Clock(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Debug
+					Overlay  cmdID= 3009 
+					Mixed  value= 0  
+					Full still  value= 1  
+					VT still  value= 2  
+					Full MC  value= 3  
+					MC VT  value= 4  
+					Vert  value= 5  
+					Diag  value= 6  
+					Anticlock  value= 7  
+					Clock  value= 8  "
+		::= { quasarCmdEntry 3009 }
+
+
+	quasarDebugDeinterlacedebugErrordisplay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Error display  cmdID= 3010 "
+		::= { quasarCmdEntry 3010 }
+
+
+	quasarDebugDeinterlacedebugCutdetectorBlob OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Cut detector Blob  cmdID= 2306 "
+		::= { quasarCmdEntry 2306 }
+
+
+	quasarDebugPhCdebugShowasnVec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Show asn Vec  cmdID= 2300 "
+		::= { quasarCmdEntry 2300 }
+
+
+	quasarDebugPhCdebugShowdeiVec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Show dei Vec  cmdID= 2301 "
+		::= { quasarCmdEntry 2301 }
+
+
+	quasarDebugPhCdebugRstASN OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Debug
+					Rst ASN  cmdID= 2302 "
+		::= { quasarCmdEntry 2302 }
+
+
+	quasarDebugARCStretchHSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					H Size  cmdID= 2350  min= 800  max= 1200  step= 1  format= %0.2f%%  div_scale= 10 
+					Min = 80.00%  Max = 120.00%  Step = 0.10% "
+		::= { quasarCmdEntry 2350 }
+
+
+	quasarDebugARCStretchVSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					V Size  cmdID= 2351  min= 800  max= 1200  step= 1  format= %0.2f%%  div_scale= 10 
+					Min = 80.00%  Max = 120.00%  Step = 0.10% "
+		::= { quasarCmdEntry 2351 }
+
+
+	quasarDebugARCStretchAlpha OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					Alpha  cmdID= 2352  min= 50  max= 400  step= 1  format= %0.1f%%  div_scale= 10 
+					Min = 5.0%  Max = 40.0%  Step = 0.1% "
+		::= { quasarCmdEntry 2352 }
+
+
+	quasarDebugARCStretchBeta OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					Beta  cmdID= 2353  min= 200  max= 400  step= 1  format= %0.1f%%  div_scale= 10 
+					Min = 20.0%  Max = 40.0%  Step = 0.1% "
+		::= { quasarCmdEntry 2353 }
+
+
+	quasarDebugARCStretchCenter OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					Center  cmdID= 2354  min= 0  max= 1000  step= 1  format= %0.1f%%  div_scale= 10 
+					Min = 0.0%  Max = 100.0%  Step = 0.1% "
+		::= { quasarCmdEntry 2354 }
+
+
+	quasarDebugSystemstatusInputLoss OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug- System status
+					Input Loss  cmdID= 2313  format=   "
+		::= { quasarCmdEntry 2313 }
+
+
+	quasarDebugSystemstatusInputEDH OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarLevel orientation="vertical"
+				 PAGE: - Debug- System status
+					vertical  label= Input EDH  cmdID= 2317  min= -2147483648  max= 2147483647  
+					Min =  Max =  Step = "
+		::= { quasarCmdEntry 2317 }
+
+
+	quasarDebugSystemstatusRequestedinput OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug- System status
+					Requested input  cmdID= 2318  format=   "
+		::= { quasarCmdEntry 2318 }
+
+
+	quasarDebugSystemstatusActualinput OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug- System status
+					Actual input  cmdID= 2311  format=   "
+		::= { quasarCmdEntry 2311 }
+
+
+	quasarDebugSystemstatusActualoutput OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug- System status
+					Actual output  cmdID= 2312  format=   "
+		::= { quasarCmdEntry 2312 }
+
+
+	quasarDebugSystemstatusRequestedoutput OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug- System status
+					Requested output  cmdID= 2319  format=   "
+		::= { quasarCmdEntry 2319 }
+
+
+	quasarDebugSystemstatusAudiodelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarLevel orientation="vertical"
+				 PAGE: - Debug- System status
+					vertical  label= Audio delay  cmdID= 2310  min= -2147483648  max= 2147483647  
+					Min =  Max =  Step = "
+		::= { quasarCmdEntry 2310 }
+
+
+	quasarDebugSystemstatusGenlock OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug- System status
+					Genlock  cmdID= 2233  format=   "
+		::= { quasarCmdEntry 2233 }
+
+
+	quasarDebugSystemstatusCPUStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug- System status
+					CPU Status  cmdID= 10020  format=   "
+		::= { quasarCmdEntry 10020 }
+
+
+	quasarDebugSystemstatusPhCLogo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug- System status
+					PhC Logo  cmdID= 10021  format=   "
+		::= { quasarCmdEntry 10021 }
+
+
+	quasarDebugSystemstatusARCstate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug- System status
+					ARC state  cmdID= 2323  format=   "
+		::= { quasarCmdEntry 2323 }
+
+
+	quasarDebugShadowWSSmemWSSselect OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					WSS select  cmdID= 20096  min= 1  max= 42  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 42  Step = 1 "
+		::= { quasarCmdEntry 20096 }
+
+
+	quasarDebugShadowWSSmemWSSload OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_WSS_load(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Debug
+					WSS load  cmdID= 20097  value= 1  "
+		::= { quasarCmdEntry 20097 }
+
+
+	quasarDebugShadowWSSmemWSSsave OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_WSS_save(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Debug
+					WSS save  cmdID= 20098  value= 1  "
+		::= { quasarCmdEntry 20098 }
+
+
+	quasarDebugShadowarcusrmem OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Usr_load(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Debug
+					Shadow arc usr mem  cmdID= 20093 
+					Usr load  value= 1  "
+		::= { quasarCmdEntry 20093 }
+
+
+	quasarDebugShadowOPLinecontOPLineWSS720 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					OP Line WSS 720  cmdID= 20151  min= 1  max= 30  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 30  Step = 1 "
+		::= { quasarCmdEntry 20151 }
+
+
+	quasarDebugShadowOPLinecontOPLineWSS1080 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					OP Line WSS 1080  cmdID= 20152  min= 1  max= 22  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 22  Step = 1 "
+		::= { quasarCmdEntry 20152 }
+
+
+	quasarDebugShadowOPLinecontOPLineCC720 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					OP Line CC 720  cmdID= 20153  min= 1  max= 30  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 30  Step = 1 "
+		::= { quasarCmdEntry 20153 }
+
+
+	quasarDebugShadowOPLinecontOPLineCC1080 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					OP Line CC 1080  cmdID= 20154  min= 1  max= 22  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 22  Step = 1 "
+		::= { quasarCmdEntry 20154 }
+
+
+	quasarDebugShadowOPLinecontOPLineWST720 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					OP Line WST 720  cmdID= 20183  min= 1  max= 30  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 30  Step = 1 "
+		::= { quasarCmdEntry 20183 }
+
+
+	quasarDebugShadowOPLinecontOPLineWST1080 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Debug
+					OP Line WST 1080  cmdID= 20184  min= 1  max= 22  step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 22  Step = 1 "
+		::= { quasarCmdEntry 20184 }
+
+
+	quasarDebugGPIOSense OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pos(1),
+							val_Neg(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Debug
+					Sense  cmdID= 2017 
+					Pos  value= 1  
+					Neg  value= 2  "
+		::= { quasarCmdEntry 2017 }
+
+
+	quasarDebugSystemStatusFans OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug
+					Fans  cmdID= 2370  format=   "
+		::= { quasarCmdEntry 2370 }
+
+
+	quasarDebugSystemStatusPSUs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug
+					PSUs  cmdID= 2371  format=   "
+		::= { quasarCmdEntry 2371 }
+
+
+	quasarDebugSystemStatusTmp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug
+					Tmp  cmdID= 2372  format=   "
+		::= { quasarCmdEntry 2372 }
+
+
+	quasarDebugAudioStatusDolbyELine14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug
+					DolbyE Line 1-4  cmdID= 20168  format=   "
+		::= { quasarCmdEntry 20168 }
+
+
+	quasarDebugAudioStatusDolbyELine58 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Debug
+					DolbyE Line 5-8  cmdID= 20169  format=   "
+		::= { quasarCmdEntry 20169 }
+
+END
