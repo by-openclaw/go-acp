@@ -37,8 +37,8 @@
 package v10
 
 import (
-	"dhs/internal/amwa/codec/is04"
 	"bytes"
+	"dhs/internal/amwa/codec/is04"
 	"encoding/json"
 	"fmt"
 )
@@ -87,9 +87,9 @@ var deviceV11PlusFields = []string{
 }
 
 var sourceV11PlusFields = []string{
-	"clock_name",  // added v1.1
-	"grain_rate",  // added v1.1
-	"channels",    // added v1.2 (audio variant)
+	"clock_name", // added v1.1
+	"grain_rate", // added v1.1
+	"channels",   // added v1.2 (audio variant)
 	// description + tags are core fields in v1.0+ for sources;
 	// IS04Utils.downgrade_resource keeps them on Source. No strip.
 }
@@ -463,6 +463,9 @@ func validateFlowV10(f is04.Flow) error {
 // EncodeSender marshals a Sender for v1.0.3 — strips caps,
 // interface_bindings, subscription.
 func (Codec) EncodeSender(s is04.Sender) ([]byte, error) {
+	if err := is04.GateTransport("sender", s.Transport, "v1.0"); err != nil {
+		return nil, err
+	}
 	if err := validateSenderV10(s); err != nil {
 		return nil, err
 	}
@@ -525,6 +528,9 @@ func validateSenderV10(s is04.Sender) error {
 // removes both, so the SYNC body must too for AMWA test_31's
 // byte-equality check.
 func (Codec) EncodeReceiver(r is04.Receiver) ([]byte, error) {
+	if err := is04.GateTransport("receiver", r.Transport, "v1.0"); err != nil {
+		return nil, err
+	}
 	if err := validateReceiverV10(r); err != nil {
 		return nil, err
 	}

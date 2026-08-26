@@ -129,6 +129,12 @@ func NewIS07EventsServer(logger *slog.Logger, bundle *NodeConfig, cfg IS07Events
 
 // currentState returns one source's latest state message, for the
 // Publisher to send when a client subscribes.
+//
+// WITH flow_id, unlike the REST view. The two are genuinely different
+// answers to different questions: REST `/state` is scoped to the
+// SOURCE -- one current value however many flows carry it -- while a
+// WebSocket message arrives on a connection reached through one
+// Sender, so it can and must say which flow it came by.
 func (s *IS07EventsServer) currentState(sourceID string) (is07.Message, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -136,8 +142,27 @@ func (s *IS07EventsServer) currentState(sourceID string) (is07.Message, bool) {
 	if !found {
 		return nil, false
 	}
-	m, isMsg := es.state.(is07.Message)
-	return m, isMsg
+	return withFlowID(es.state, es.flowID)
+}
+
+// withFlowID stamps a state message's identity with the flow carrying
+// it. Returns false for anything that is not a state message.
+func withFlowID(state any, flowID string) (is07.Message, bool) {
+	switch e := state.(type) {
+	case is07.EventBoolean:
+		e.Identity.FlowID = flowID
+		return e, true
+	case is07.EventNumber:
+		e.Identity.FlowID = flowID
+		return e, true
+	case is07.EventString:
+		e.Identity.FlowID = flowID
+		return e, true
+	case is07.EventObject:
+		e.Identity.FlowID = flowID
+		return e, true
+	}
+	return nil, false
 }
 
 // Close tears down every WebSocket subscriber.
@@ -341,7 +366,9 @@ func (s *IS07EventsServer) SetState(sourceID string, payload any) (any, bool) {
 	// they do not have to poll, and they would go on believing the old
 	// value indefinitely.
 	if s.pub != nil {
-		if m, isMsg := es.state.(is07.Message); isMsg {
+		// The fanned-out copy carries flow_id; the REST view does not.
+		// See currentState.
+		if m, isMsg := withFlowID(es.state, es.flowID); isMsg {
 			if err := s.pub.Publish(m); err != nil && s.logger != nil {
 				s.logger.Warn("is-07 publish failed",
 					"plugin", "amwa", "api", "is-07", "source", sourceID, "err", err)

@@ -27,8 +27,8 @@
 package v11
 
 import (
-	"dhs/internal/amwa/codec/is04"
 	"bytes"
+	"dhs/internal/amwa/codec/is04"
 	"encoding/json"
 	"fmt"
 )
@@ -194,6 +194,9 @@ func (Codec) ValidateFlow(f is04.Flow) error {
 // EncodeSender marshals a Sender for v1.1.3 — strips v1.2+
 // properties (caps, interface_bindings, subscription).
 func (Codec) EncodeSender(s is04.Sender) ([]byte, error) {
+	if err := is04.GateTransport("sender", s.Transport, "v1.1"); err != nil {
+		return nil, err
+	}
 	if err := s.Validate(); err != nil {
 		// v1.3 validator may require subscription / interface_bindings;
 		// for v1.1 those are not in scope. Re-validate against the
@@ -279,6 +282,9 @@ func validateSenderV11(s is04.Sender) error {
 // (added v1.2 alongside the connection_management activation
 // model). IS04Utils.downgrade_resource removes both for v_minor <= 1.
 func (Codec) EncodeReceiver(r is04.Receiver) ([]byte, error) {
+	if err := is04.GateTransport("receiver", r.Transport, "v1.1"); err != nil {
+		return nil, err
+	}
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}

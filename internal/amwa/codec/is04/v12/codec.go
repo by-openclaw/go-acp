@@ -28,8 +28,8 @@
 package v12
 
 import (
-	"dhs/internal/amwa/codec/is04"
 	"bytes"
+	"dhs/internal/amwa/codec/is04"
 	"encoding/json"
 	"fmt"
 )
@@ -173,6 +173,9 @@ func (Codec) ValidateFlow(f is04.Flow) error {
 
 // EncodeSender marshals a Sender for v1.2.2.
 func (Codec) EncodeSender(s is04.Sender) ([]byte, error) {
+	if err := is04.GateTransport("sender", s.Transport, "v1.2"); err != nil {
+		return nil, err
+	}
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
@@ -197,6 +200,9 @@ func (Codec) ValidateSender(s is04.Sender) error {
 // receiver-capabilities fields `caps.constraint_sets[]` and
 // `caps.version` (added v1.3).
 func (Codec) EncodeReceiver(r is04.Receiver) ([]byte, error) {
+	if err := is04.GateTransport("receiver", r.Transport, "v1.2"); err != nil {
+		return nil, err
+	}
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}

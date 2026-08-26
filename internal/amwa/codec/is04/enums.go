@@ -1,6 +1,7 @@
 package is04
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -129,6 +130,67 @@ var transportMinIS05 = map[string]string{
 	TransportMQTT:      "v1.1",
 	TransportNDI:       "v1.2",
 	TransportUSB:       "v1.2",
+}
+
+// transportMinIS04 is the earliest IS-04 minor each transport may
+// appear on. It is NOT the same table as transportMinIS05, and the
+// difference is not a rounding error.
+//
+// IS-05 accepted websocket and mqtt from v1.1; IS-04's sender.json did
+// not list them until v1.3. Verified against the AMWA schemas at each
+// tag (2026-08-26): v1.0's transport enum is exactly
+// {rtp, rtp.ucast, rtp.mcast, dash}, and v1.1 and v1.2 both reject
+// websocket with "not valid under any of the given schemas".
+//
+// So a Node serving IS-04 v1.2 CANNOT describe its own WebSocket event
+// sender, however valid that sender is on IS-05 v1.2. The two specs
+// version independently and a single table for both quietly asserts
+// they do not.
+var transportMinIS04 = map[string]string{
+	TransportRTP:       "v1.0",
+	TransportRTPMcast:  "v1.0",
+	TransportRTPUcast:  "v1.0",
+	TransportDASH:      "v1.0",
+	TransportWebSocket: "v1.3",
+	TransportMQTT:      "v1.3",
+	TransportNDI:       "v1.3",
+	TransportUSB:       "v1.3",
+}
+
+// IsTransportAtIS04 reports whether u may appear in an IS-04 tree
+// served at apiVer.
+//
+// A transport outside the NMOS namespace is a vendor transport, which
+// every minor permits — the version gate applies only to URNs AMWA
+// itself defines.
+func IsTransportAtIS04(u, apiVer string) bool {
+	if !IsValidTransportURN(u) {
+		return false
+	}
+	min, known := transportMinIS04[u]
+	if !known {
+		return true
+	}
+	return compareAPIVer(apiVer, min) >= 0
+}
+
+// GateTransport rejects a resource whose transport the given IS-04
+// minor does not define.
+//
+// The rejection is what makes the per-minor trees honest. IS-04's
+// Upgrade Path is explicit that an earlier API version "MUST NOT list
+// any Senders or Receivers which make use of this new transport type"
+// — so a v1.2 tree that lists a WebSocket sender is non-conformant
+// even though that sender is perfectly valid on v1.3. The caller drops
+// it from collections and answers 404 for it individually, which is
+// the truthful answer: this Node does not have that resource AT THIS
+// VERSION.
+func GateTransport(kind, u, apiVer string) error {
+	if IsTransportAtIS04(u, apiVer) {
+		return nil
+	}
+	return fmt.Errorf("is04 %s: %s.transport %q: not defined before IS-04 %s",
+		apiVer, kind, u, transportMinIS04[u])
 }
 
 // IsNMOSTransport reports whether u is a registered NMOS transport
