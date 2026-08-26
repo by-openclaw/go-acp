@@ -166,9 +166,13 @@ type IS04NodeServer struct {
 	// events is the IS-07 Event & Tally API. Nil disables it.
 	events *IS07EventsServer
 
-	// systemGlobal is what an IS-09 System API told this Node at
-	// startup, or nil if none answered. Guarded by mu.
+	// systemGlobal is what an IS-09 System API last told this Node, or
+	// nil if none has. Guarded by mu.
 	systemGlobal *is09.Global
+	// systemWatcher keeps looking for a System API after startup.
+	// IS-09 §4 has the Node re-resolve on change, so a one-shot fetch
+	// misses every System API advertised after boot. Guarded by mu.
+	systemWatcher *SystemWatcher
 
 	mu        sync.Mutex
 	http      *httpsession.Server
@@ -413,6 +417,17 @@ func (s *IS04NodeServer) Stop() error {
 	}
 	if s.regClient != nil {
 		_ = s.regClient.Close()
+	}
+	if s.systemWatcher != nil {
+		_ = s.systemWatcher.Close()
+		s.systemWatcher = nil
+	}
+	if s.events != nil {
+		// Drops every IS-07 WebSocket subscriber. Without it a
+		// shutdown leaves consumers holding a socket to a Node that is
+		// gone, and they wait out their own timeout instead of
+		// reconnecting somewhere useful.
+		_ = s.events.Close()
 	}
 	return nil
 }

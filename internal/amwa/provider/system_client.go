@@ -57,8 +57,15 @@ func (s *IS04NodeServer) fetchSystemGlobal(ctx context.Context) *is09.Global {
 		}
 		found, err := systemsession.DiscoverMDNS(ctx, systemDiscoveryTimeout, s.logger)
 		if err != nil || len(found) == 0 {
-			s.logger.Info("provider/node: no System API found",
+			// Not an error, and not the end of it. The System API may
+			// simply not be advertised yet -- the config server can be
+			// restarted, or this Node can have booted first -- so a
+			// watcher keeps listening and fetches when one appears.
+			// IS-09 §4 expects the Node to re-resolve on change; a
+			// Node that looked once never learns.
+			s.logger.Info("provider/node: no System API yet, watching for one",
 				"plugin", "amwa", "api", "is-09", "err", err)
+			s.watchForSystem(ctx)
 			return nil
 		}
 		opts.Discovered = found
@@ -68,11 +75,55 @@ func (s *IS04NodeServer) fetchSystemGlobal(ctx context.Context) *is09.Global {
 	if err != nil || res == nil || res.Global == nil {
 		s.logger.Warn("provider/node: System API found but /global could not be read",
 			"plugin", "amwa", "api", "is-09", "err", err)
+		s.watchForSystem(ctx)
 		return nil
 	}
 	s.applySystemGlobal(res.Global, res.URL)
+	// Keep watching even after a successful read: `pri` exists so an
+	// operator can advertise a better System API and have devices move
+	// to it without being restarted.
+	s.watchForSystem(ctx)
 	return res.Global
 }
+
+// watchForSystem starts the ongoing mDNS watch, once.
+func (s *IS04NodeServer) watchForSystem(ctx context.Context) {
+	if s.cfg.SystemURL != "" || s.cfg.DiscoveryMode == "static" {
+		// An explicitly configured System API is not up for
+		// rediscovery, and a Node with discovery switched off is not
+		// browsing for anything.
+		return
+	}
+	s.mu.Lock()
+	if s.systemWatcher != nil {
+		s.mu.Unlock()
+		return
+	}
+	w, err := NewSystemWatcher(s.logger, is09WireVersion, func(g any, url string) {
+		global, ok := g.(*is09.Global)
+		if !ok {
+			return
+		}
+		s.applySystemGlobal(global, url)
+	})
+	if err != nil {
+		s.mu.Unlock()
+		s.logger.Warn("provider/node: cannot watch for a System API",
+			"plugin", "amwa", "api", "is-09", "err", err)
+		return
+	}
+	s.systemWatcher = w
+	s.mu.Unlock()
+
+	if err := w.Run(ctx); err != nil {
+		s.logger.Warn("provider/node: System API watch failed to start",
+			"plugin", "amwa", "api", "is-09", "err", err)
+	}
+}
+
+// is09WireVersion is the IS-09 minor the Node speaks. One published
+// minor today; a constant beats a lookup that can only ever return it.
+const is09WireVersion = "v1.0"
 
 // applySystemGlobal records what the System API told this Node.
 //
