@@ -260,10 +260,30 @@ func DecodeStagedReceiver(raw []byte) (*StagedReceiver, error) {
 	return &r, nil
 }
 
-// FormatTAINow renders a `<sec>:<nsec>` TAI string from a wall-clock
-// time.Time. Note: this is approximate (uses Unix epoch + Go
-// monotonic) — production code that needs strict TAI must subtract
-// the leap-second offset (~37s in 2026); see IETF NTP sources.
+// TAILeapSeconds is TAI − UTC: the count of leap seconds inserted
+// since the two scales were aligned in 1972.
+//
+// 37 since 2017-01-01, and unchanged since — the IERS has announced no
+// leap second in the years around this table, and the 2022 CGPM
+// resolution is to stop inserting them by 2035. A constant is
+// therefore honest for the deployment window and a table would be
+// pretending to a precision nothing here uses.
+//
+// This offset is NOT cosmetic. IS-05 §4.2 types every timestamp as
+// TAI, so a controller scheduling an absolute activation sends a TAI
+// instant. Reading it as Unix seconds puts the switch 37 seconds into
+// the future, which looks like a device that simply never activates —
+// AMWA IS-05-01 test_29/test_30 give up after three retries.
+const TAILeapSeconds = 37
+
+// FormatTAINow renders a wall-clock time as a `<sec>:<nsec>` TAI
+// string.
 func FormatTAINow(t time.Time) string {
-	return fmt.Sprintf("%d:%d", t.Unix(), t.Nanosecond())
+	return fmt.Sprintf("%d:%d", t.Unix()+TAILeapSeconds, t.Nanosecond())
+}
+
+// TAIToTime converts a TAI `<sec>:<nsec>` instant to wall-clock time.
+// The inverse of FormatTAINow.
+func TAIToTime(sec, nsec int64) time.Time {
+	return time.Unix(sec-TAILeapSeconds, nsec)
 }

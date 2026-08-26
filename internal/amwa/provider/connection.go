@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -401,6 +402,24 @@ func decodePatch(raw []byte) (is05.StagedSender, patchFields, error) {
 	var patch is05.StagedSender
 	if err := json.Unmarshal(raw, &patch); err != nil {
 		return is05.StagedSender{}, patchFields{}, err
+	}
+	// Unknown top-level fields are refused, not ignored.
+	//
+	// Both staged schemas set additionalProperties:false, so a body
+	// carrying a field outside this set is not a forward-compatible
+	// extension -- it is a typo, a wrong-collection PATCH, or a
+	// controller aimed at different hardware. Ignoring it answers 200
+	// to a request the device did not honour, and the controller has
+	// no way to find out (IS-05-01 test_19/test_20 send {"bad":
+	// "data"} and require 400).
+	for k := range probe {
+		switch k {
+		case "master_enable", "activation", "transport_params",
+			"transport_file", "sender_id", "receiver_id":
+		default:
+			return is05.StagedSender{}, patchFields{},
+				fmt.Errorf("%q is not a field of a staged endpoint", k)
+		}
 	}
 	_, hasSender := probe["sender_id"]
 	_, hasReceiver := probe["receiver_id"]

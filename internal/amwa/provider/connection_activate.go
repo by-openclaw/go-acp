@@ -225,39 +225,30 @@ func validateParamValue(key string, v any, isSender bool) error {
 			return fmt.Errorf("%q must be a port number in 0..65535 or %q, got %v", key, autoKeyword, v)
 		}
 
-	case "destination_ip", "interface_ip":
-		s, ok := v.(string)
-		if !ok {
-			return fmt.Errorf("%q must be a string, got %T", key, v)
-		}
-		if s != autoKeyword && net.ParseIP(s) == nil {
-			return fmt.Errorf("%q must be an IP address or %q, got %q", key, autoKeyword, s)
-		}
-
-	case "source_ip", "multicast_ip":
-		// A receiver may say null: "I do not know / do not care".
-		// A sender's source_ip is one of its own addresses and may
-		// never be null, and neither may ever be "auto" -- the schemas
-		// do not list it.
+	case "destination_ip", "interface_ip", "source_ip", "multicast_ip":
+		// null is "I do not know / do not care", which only a receiver
+		// gets to say -- a sender's source_ip is one of its own
+		// addresses.
 		if v == nil {
-			if isSender && key == "source_ip" {
+			if isSender {
 				return fmt.Errorf("%q may not be null on a sender", key)
 			}
 			return nil
 		}
 		s, ok := v.(string)
-		if !ok || net.ParseIP(s) == nil {
-			return fmt.Errorf("%q must be an IP address%s, got %v", key, nullable(!isSender), v)
+		if !ok {
+			return fmt.Errorf("%q must be a string, got %T", key, v)
+		}
+		// "auto" is legal on every address parameter: it is how a
+		// controller says "you choose", and IS-05 §5.1 requires the
+		// device to answer with the value it chose on /active. What is
+		// NOT legal is a string that is neither -- rejecting that is
+		// the whole point of validating here.
+		if s != autoKeyword && net.ParseIP(s) == nil {
+			return fmt.Errorf("%q must be an IP address, %q, or null, got %q", key, autoKeyword, s)
 		}
 	}
 	return nil
-}
-
-func nullable(ok bool) string {
-	if ok {
-		return " or null"
-	}
-	return ""
 }
 
 func toInt(v any) (int, bool) {
@@ -293,9 +284,12 @@ func (s *connectionStore) scheduledTimeLocked(a is05.Activation) (time.Time, err
 		return time.Time{}, fmt.Errorf("requested_time %q is not <sec>:<nsec>", *a.RequestedTime)
 	}
 	if a.Mode == is05.ActivationModeScheduledRelative {
+		// A relative request is a DURATION, so no epoch is involved
+		// and no conversion applies.
 		return s.now().Add(time.Duration(sec)*time.Second + time.Duration(nsec)), nil
 	}
-	return time.Unix(sec, nsec), nil
+	// An absolute request is a TAI INSTANT and has to cross scales.
+	return is05.TAIToTime(sec, nsec), nil
 }
 
 // promoteLocked moves staged to active. Caller holds the lock.

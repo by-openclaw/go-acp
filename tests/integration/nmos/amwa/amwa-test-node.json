@@ -5,22 +5,42 @@
     "label": "dhs-test-node",
     "description": "dhs Phase 2 - AMWA NMOS Testing harness (full bundle)",
     "tags": {
-      "urn:x-nmos:tag:asset:manufacturer/v1.0": ["BY-SYSTEMS"],
-      "urn:x-nmos:tag:asset:product/v1.0": ["dhs"],
-      "urn:x-nmos:tag:asset:instance-id/v1.0": ["2c47bf5e-1b2c-4abc-9def-deadbeef0001"],
-      "urn:x-nmos:tag:asset:function/v1.0": ["NMOS Node"]
+      "urn:x-nmos:tag:asset:manufacturer/v1.0": [
+        "BY-SYSTEMS"
+      ],
+      "urn:x-nmos:tag:asset:product/v1.0": [
+        "dhs"
+      ],
+      "urn:x-nmos:tag:asset:instance-id/v1.0": [
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0001"
+      ],
+      "urn:x-nmos:tag:asset:function/v1.0": [
+        "NMOS Node"
+      ]
     },
     "href": "http://dhs-node:18080/",
     "caps": {},
     "api": {
-      "versions": ["v1.0", "v1.1", "v1.2", "v1.3"],
+      "versions": [
+        "v1.0",
+        "v1.1",
+        "v1.2",
+        "v1.3"
+      ],
       "endpoints": [
-        {"host": "dhs-node", "port": 18080, "protocol": "http"}
+        {
+          "host": "dhs-node",
+          "port": 18080,
+          "protocol": "http"
+        }
       ]
     },
     "services": [],
     "clocks": [
-      {"name": "clk0", "ref_type": "internal"}
+      {
+        "name": "clk0",
+        "ref_type": "internal"
+      }
     ],
     "interfaces": [
       {
@@ -41,15 +61,28 @@
       "label": "dhs-test-device",
       "description": "single device under dhs-test-node",
       "tags": {
-        "urn:x-nmos:tag:asset:manufacturer/v1.0": ["BY-SYSTEMS"],
-        "urn:x-nmos:tag:asset:product/v1.0": ["dhs"],
-        "urn:x-nmos:tag:asset:instance-id/v1.0": ["2c47bf5e-1b2c-4abc-9def-deadbeef0002"],
-      "urn:x-nmos:tag:asset:function/v1.0": ["audio-bridge"]
+        "urn:x-nmos:tag:asset:manufacturer/v1.0": [
+          "BY-SYSTEMS"
+        ],
+        "urn:x-nmos:tag:asset:product/v1.0": [
+          "dhs"
+        ],
+        "urn:x-nmos:tag:asset:instance-id/v1.0": [
+          "2c47bf5e-1b2c-4abc-9def-deadbeef0002"
+        ],
+        "urn:x-nmos:tag:asset:function/v1.0": [
+          "audio-bridge"
+        ]
       },
       "type": "urn:x-nmos:device:generic",
       "node_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0001",
-      "senders": ["2c47bf5e-1b2c-4abc-9def-deadbeef0005"],
-      "receivers": ["2c47bf5e-1b2c-4abc-9def-deadbeef0006"],
+      "senders": [
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0005",
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0009"
+      ],
+      "receivers": [
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0006"
+      ],
       "controls": []
     }
   ],
@@ -66,9 +99,28 @@
       "clock_name": "clk0",
       "format": "urn:x-nmos:format:audio",
       "channels": [
-        {"label": "Left", "symbol": "L"},
-        {"label": "Right", "symbol": "R"}
+        {
+          "label": "Left",
+          "symbol": "L"
+        },
+        {
+          "label": "Right",
+          "symbol": "R"
+        }
       ]
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0007",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-tally",
+      "description": "camera 1 tally",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:data",
+      "event_type": "boolean"
     }
   ],
   "flows": [
@@ -83,8 +135,24 @@
       "parents": [],
       "format": "urn:x-nmos:format:audio",
       "media_type": "audio/L24",
-      "sample_rate": {"numerator": 48000, "denominator": 1},
+      "sample_rate": {
+        "numerator": 48000,
+        "denominator": 1
+      },
       "bit_depth": 24
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0008",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-tally",
+      "description": "tally events",
+      "tags": {},
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0007",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "boolean"
     }
   ],
   "senders": [
@@ -94,15 +162,40 @@
       "label": "dhs-test-sender-rtp",
       "description": "RTP unicast sender carrying the audio L24 flow",
       "tags": {
-        "urn:x-nmos:tag:grouphint/v1.0": ["dhs-test-group:sender-1"]
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "dhs-test-group:sender-1"
+        ]
       },
       "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0004",
       "transport": "urn:x-nmos:transport:rtp.ucast",
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0005/transportfile",
-      "interface_bindings": ["eth0"],
+      "interface_bindings": [
+        "eth0"
+      ],
       "caps": {},
-      "subscription": {"receiver_id": null, "active": false}
+      "subscription": {
+        "receiver_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0009",
+      "version": "1777651501:0",
+      "label": "dhs-test-sender-tally",
+      "description": "tally over websocket",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0008",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": false
+      }
     }
   ],
   "receivers": [
@@ -112,24 +205,39 @@
       "label": "dhs-test-receiver-audio",
       "description": "RTP audio receiver",
       "tags": {
-        "urn:x-nmos:tag:grouphint/v1.0": ["dhs-test-group:receiver-1"]
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "dhs-test-group:receiver-1"
+        ]
       },
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "transport": "urn:x-nmos:transport:rtp",
-      "interface_bindings": ["eth0"],
+      "interface_bindings": [
+        "eth0"
+      ],
       "format": "urn:x-nmos:format:audio",
       "caps": {
-        "media_types": ["audio/L24", "audio/L16"],
+        "media_types": [
+          "audio/L24",
+          "audio/L16"
+        ],
         "version": "1777651501:0",
         "constraint_sets": [
           {
             "urn:x-nmos:cap:meta:label": "L24 / L16 audio @ 48 kHz, stereo",
             "urn:x-nmos:cap:meta:preference": 0,
             "urn:x-nmos:cap:format:media_type": {
-              "enum": ["audio/L24", "audio/L16"]
+              "enum": [
+                "audio/L24",
+                "audio/L16"
+              ]
             },
             "urn:x-nmos:cap:format:sample_rate": {
-              "enum": [{"numerator": 48000, "denominator": 1}]
+              "enum": [
+                {
+                  "numerator": 48000,
+                  "denominator": 1
+                }
+              ]
             },
             "urn:x-nmos:cap:format:channel_count": {
               "minimum": 2,
@@ -138,7 +246,10 @@
           }
         ]
       },
-      "subscription": {"sender_id": null, "active": false}
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
     }
   ]
 }

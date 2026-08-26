@@ -64,6 +64,12 @@ dhs_amwa_node_suites:
   - id: "IS-05-02"
     name: "IS-05 Interaction with IS-04"
     endpoints: ["node", "connection"]
+  - id: "IS-07-01"
+    name: "IS-07 Event & Tally API"
+    endpoints: ["events"]
+  - id: "IS-07-02"
+    name: "IS-07 Interaction with IS-04 and IS-05"
+    endpoints: ["node", "connection", "events"]
   - id: "IS-08-01"
     name: "IS-08 Channel Mapping API"
     endpoints: ["chanmap"]

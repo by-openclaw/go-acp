@@ -101,6 +101,14 @@ type IS04NodeConfig struct {
 	// ChannelMappingAPIVer pins IS-08 to one wire minor. Empty mounts
 	// every registered minor.
 	ChannelMappingAPIVer string
+
+	// NoEventsAPI suppresses IS-07. Same opt-OUT reasoning again: a
+	// Node with data Sources and no Event & Tally API publishes tally
+	// state nothing can read.
+	NoEventsAPI bool
+
+	// EventsAPIVer pins IS-07 to one wire minor.
+	EventsAPIVer string
 }
 
 // IS04NodeServer hosts the Node API endpoints + DNS-SD announce +
@@ -127,6 +135,9 @@ type IS04NodeServer struct {
 	// it; a Node with no audio inputs or outputs gets an empty one,
 	// which is the honest answer rather than a missing API.
 	channelMapping *IS08ChannelMappingServer
+
+	// events is the IS-07 Event & Tally API. Nil disables it.
+	events *IS07EventsServer
 
 	mu        sync.Mutex
 	http      *httpsession.Server
@@ -209,6 +220,11 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 			APIVer: cfg.ChannelMappingAPIVer,
 		})
 	}
+	if !cfg.NoEventsAPI {
+		s.events = NewIS07EventsServer(logger, bundle, IS07EventsConfig{
+			APIVer: cfg.EventsAPIVer,
+		})
+	}
 	return s, nil
 }
 
@@ -255,6 +271,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// to the Connection API and never look again.
 	s.attachConnectionAPI(srv)
 	s.attachChannelMappingAPI(srv)
+	s.attachEventsAPI(srv)
 	s.http = srv
 
 	// DNS-SD announce.
@@ -524,6 +541,9 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 		}
 		if s.channelMapping != nil {
 			trees = append(trees, "channelmapping/")
+		}
+		if s.events != nil {
+			trees = append(trees, "events/")
 		}
 		return trees
 	}

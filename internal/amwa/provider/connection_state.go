@@ -298,6 +298,11 @@ func resolveAuto(p is05.TransportParams, nodeIP string, isSender bool, index int
 			// both legs on one subnet defeats the redundancy - the
 			// fault the plant audit found on 48 senders.
 			p[k] = fmt.Sprintf("239.%d.1.1", 4+index*2)
+		case "multicast_ip":
+			// The group a receiver joins. Same per-leg spread as a
+			// sender's destination_ip, and for the same reason: two
+			// legs of a 2022-7 pair on one subnet is not redundancy.
+			p[k] = fmt.Sprintf("239.%d.1.1", 4+index*2)
 		case "source_port", "destination_port":
 			p[k] = defaultRTPPort + index*2
 		case "destination_host":
