@@ -24,6 +24,12 @@
 # That last part matters more than the transport: a conformance score
 # has to name a commit, and staging the working tree would let a
 # forgotten local edit into the number.
+#
+# The results directory is excluded even though it is tracked: it is
+# this play's OUTPUT, not its input. Including it also made the archive
+# fail outright once the fetch step began clearing the directory first
+# -- git still listed files that were no longer on disk, and tar
+# stopped on the first one it could not stat.
 - name: Build a source archive from tracked files
   ansible.builtin.command:
     cmd: git ls-files -z
@@ -44,7 +50,8 @@
   ansible.builtin.shell:
     cmd: >-
       git ls-files -z
-      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/'
+      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/'
+        -e '^captures/' -e '^tests/integration/nmos/amwa/results/'
       | tar --null -T - -czf /tmp/dhs-amwa-src.tgz
     chdir: "{{ playbook_dir }}/../.."
   delegate_to: localhost
