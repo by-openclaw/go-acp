@@ -27,6 +27,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	stdhttp "net/http"
 	"sort"
@@ -36,6 +37,7 @@ import (
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is05"
 	"dhs/internal/amwa/codec/is07"
+	"dhs/internal/amwa/session/events"
 	httpsession "dhs/internal/amwa/session/http"
 )
 
@@ -69,6 +71,11 @@ type IS07EventsServer struct {
 	logger *slog.Logger
 	vers   []string
 
+	// pub is the WebSocket side. REST is for bootstrap and re-sync;
+	// this is how a consumer actually follows a source, and IS-07 §5
+	// points a Sender's connection_uri straight at it.
+	pub *events.Publisher
+
 	mu      sync.RWMutex
 	sources map[string]*eventSource
 	now     func() time.Time
@@ -86,14 +93,38 @@ func NewIS07EventsServer(logger *slog.Logger, bundle *NodeConfig, cfg IS07Events
 		sources: map[string]*eventSource{},
 		now:     time.Now,
 	}
+	// The WebSocket side needs a wire codec, and the codec registry is
+	// populated by blank imports in cmd/dhs -- not by this package,
+	// which must not depend on a concrete minor (see the dependency
+	// rules in internal/amwa/CLAUDE.md). Ask the registry; if nothing
+	// answers, serve REST only rather than panicking on a nil codec.
+	if len(vers) > 0 {
+		if codec, found := is07.Get(vers[len(vers)-1]); found {
+			s.pub = events.NewPublisher(events.PublisherOptions{Codec: codec, Logger: logger})
+		}
+	}
 	s.seedFromBundle(bundle)
 	return s
+}
+
+// Close tears down every WebSocket subscriber.
+func (s *IS07EventsServer) Close() error {
+	if s.pub == nil {
+		return nil
+	}
+	return s.pub.Close()
 }
 
 // Versions lists the mounted IS-07 minors.
 func (s *IS07EventsServer) Versions() []string { return s.vers }
 
 const formatData = "urn:x-nmos:format:data"
+
+// eventsWireVersion is the IS-07 minor named in a WebSocket sender's
+// connection_uri. IS-07 has published exactly one minor, so this is a
+// constant rather than a lookup; when AMWA ships v1.1 it becomes the
+// highest mounted one.
+const eventsWireVersion = "v1.0"
 
 func (s *IS07EventsServer) seedFromBundle(bundle *NodeConfig) {
 	if bundle == nil {
@@ -106,15 +137,33 @@ func (s *IS07EventsServer) seedFromBundle(bundle *NodeConfig) {
 		}
 		es := &eventSource{id: src.ID, eventType: src.EventType}
 		// The Flow carrying this source's messages, when there is one.
-		// IS-07 identity carries flow_id so a consumer can tell two
-		// encodings of one source apart.
+		//
+		// Recorded but NOT put in the REST state message. IS-07 §4.2
+		// scopes `state` to the SOURCE -- a source has one current
+		// value regardless of how many flows carry it -- so an
+		// identity naming a flow there claims the value belongs to one
+		// encoding of the source rather than to the source. The
+		// WebSocket messages, which are per-connection and therefore
+		// per-flow, are where flow_id belongs.
 		for j := range bundle.Flows {
 			if bundle.Flows[j].SourceID == src.ID {
 				es.flowID = bundle.Flows[j].ID
 				break
 			}
 		}
-		es.typeDef = defaultTypeDef(src.EventType, src.Label)
+		// An operator-declared type document wins. It is the only way
+		// to publish an ENUM -- labelled values -- because IS-04 knows
+		// only that the source emits booleans, not what the two
+		// booleans mean.
+		if raw, declared := bundle.EventTypes[src.ID]; declared && len(raw) > 0 {
+			var doc any
+			if err := json.Unmarshal(raw, &doc); err == nil {
+				es.typeDef = doc
+			}
+		}
+		if es.typeDef == nil {
+			es.typeDef = defaultTypeDef(src.EventType)
+		}
 		es.state = s.initialState(es)
 		s.sources[src.ID] = es
 	}
@@ -127,7 +176,7 @@ func (s *IS07EventsServer) seedFromBundle(bundle *NodeConfig) {
 // before it can render a control for the source at all. Without it a
 // tally is just a boolean with no labels and a fader is a number with
 // no range.
-func defaultTypeDef(eventType, label string) any {
+func defaultTypeDef(eventType string) any {
 	switch is07.CategoryOf(eventType) {
 	case is07.EventCategoryBoolean:
 		return is07.TypeBoolean{Type: "boolean"}
@@ -154,7 +203,7 @@ func defaultTypeDef(eventType, label string) any {
 func (s *IS07EventsServer) initialState(es *eventSource) any {
 	common := is07.EventCommon{
 		MessageType: is07.MessageTypeState,
-		Identity:    is07.Identity{SourceID: es.id, FlowID: es.flowID},
+		Identity:    is07.Identity{SourceID: es.id},
 		Timing:      is07.Timing{CreationTimestamp: is05.FormatTAINow(s.now())},
 		EventType:   es.eventType,
 	}
@@ -185,7 +234,7 @@ func (s *IS07EventsServer) SetState(sourceID string, payload any) (any, bool) {
 	}
 	common := is07.EventCommon{
 		MessageType: is07.MessageTypeState,
-		Identity:    is07.Identity{SourceID: es.id, FlowID: es.flowID},
+		Identity:    is07.Identity{SourceID: es.id},
 		Timing:      is07.Timing{CreationTimestamp: is05.FormatTAINow(s.now())},
 		EventType:   es.eventType,
 	}
@@ -202,6 +251,20 @@ func (s *IS07EventsServer) SetState(sourceID string, payload any) (any, bool) {
 		es.state = is07.EventObject{EventCommon: common, Payload: v}
 	default:
 		return nil, false
+	}
+	// Fan it to every subscriber whose set includes this source.
+	//
+	// A state change that updates REST and not the socket is worse
+	// than one that updates neither: subscribers exist precisely so
+	// they do not have to poll, and they would go on believing the old
+	// value indefinitely.
+	if s.pub != nil {
+		if m, isMsg := es.state.(is07.Message); isMsg {
+			if err := s.pub.Publish(m); err != nil && s.logger != nil {
+				s.logger.Warn("is-07 publish failed",
+					"plugin", "amwa", "api", "is-07", "source", sourceID, "err", err)
+			}
+		}
 	}
 	return es.state, true
 }
@@ -227,6 +290,12 @@ func (s *IS07EventsServer) mountVersion(srv *httpsession.Server, base string) {
 	srv.Handle(stdhttp.MethodGet, base+"/", func(context.Context, *stdhttp.Request) (int, any, error) {
 		return ok([]string{"sources/"})
 	})
+	// The WebSocket a Sender's connection_uri points at. Registered as
+	// a RAW handler because the upgrade hijacks the connection, which
+	// a handler that only returns a body cannot do.
+	if s.pub != nil {
+		srv.HandleRaw(base+"/ws", s.pub.Handler())
+	}
 	srv.Handle(stdhttp.MethodGet, base+"/sources/", func(context.Context, *stdhttp.Request) (int, any, error) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()

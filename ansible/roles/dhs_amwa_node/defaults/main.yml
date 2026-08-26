@@ -76,6 +76,12 @@ dhs_amwa_node_suites:
   - id: "IS-08-02"
     name: "IS-08 Interaction with IS-04"
     endpoints: ["node", "chanmap"]
+  # Two slots even though the tool disables most of their fields: the
+  # arrays are positional, and a short one is refused outright with
+  # "expects 2 Hostname(s)/IP address(es), Port(s) and Version(s)".
+  - id: "IS-09-02"
+    name: "IS-09 System API Discovery"
+    endpoints: ["node", "system"]
 
 # Per-endpoint version map, resolved at request time.
 dhs_amwa_node_endpoint_vers:

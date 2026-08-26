@@ -98,8 +98,12 @@ func TestEventStateIsAlwaysPresent(t *testing.T) {
 	if state.Identity.SourceID != id {
 		t.Errorf("identity.source_id = %q, want %q", state.Identity.SourceID, id)
 	}
-	if state.Identity.FlowID == "" {
-		t.Error("identity.flow_id must name the Flow carrying the messages")
+	// flow_id is NOT permitted here. IS-07 §4.2 scopes the REST state
+	// to the SOURCE -- one current value, however many flows carry it
+	// -- so naming a flow would claim the value belongs to one
+	// encoding rather than to the source.
+	if state.Identity.FlowID != "" {
+		t.Errorf("identity.flow_id = %q, must be absent on the source-scoped REST state", state.Identity.FlowID)
 	}
 	if state.Timing.CreationTimestamp == "" {
 		t.Error("every event carries a creation_timestamp")

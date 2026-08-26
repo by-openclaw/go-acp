@@ -206,9 +206,37 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 // reject valid controllers.
 func validateParamValue(key string, v any, isSender bool) error {
 	switch key {
-	case "rtp_enabled", "connection_authorization", "broker_authorization":
+	case "rtp_enabled":
 		if _, ok := v.(bool); !ok {
 			return fmt.Errorf("%q must be a boolean, got %T", key, v)
+		}
+
+	case "connection_authorization", "broker_authorization":
+		// Boolean OR "auto" -- unlike rtp_enabled, these are things
+		// the device may decide for itself, so the schemas list the
+		// keyword alongside the two boolean values.
+		if s, ok := v.(string); ok {
+			if s != autoKeyword {
+				return fmt.Errorf("%q must be a boolean or %q, got %q", key, autoKeyword, s)
+			}
+			return nil
+		}
+		if _, ok := v.(bool); !ok {
+			return fmt.Errorf("%q must be a boolean or %q, got %T", key, autoKeyword, v)
+		}
+
+	case "connection_uri", "destination_host", "broker_protocol", "broker_topic",
+		"connection_status_broker_topic":
+		// A URI, a host, a topic -- or "auto", or null where the
+		// schema allows the device to have none yet. There is no
+		// useful shape check beyond "it is a string": rejecting a
+		// hostname because it is not an IP would break every MQTT
+		// broker named by DNS.
+		if v == nil {
+			return nil
+		}
+		if _, ok := v.(string); !ok {
+			return fmt.Errorf("%q must be a string or null, got %T", key, v)
 		}
 
 	case "source_port", "destination_port":

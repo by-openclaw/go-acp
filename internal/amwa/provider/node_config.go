@@ -24,6 +24,20 @@ type NodeConfig struct {
 	Flows     []is04.Flow     `json:"flows"`
 	Senders   []is04.Sender   `json:"senders"`
 	Receivers []is04.Receiver `json:"receivers"`
+
+	// EventTypes carries IS-07 `type` documents, keyed by Source id.
+	//
+	// Not derivable from IS-04, and that is the point: IS-04 says a
+	// Source emits `boolean` events, and IS-07's type document says
+	// whether those two boolean values are called "on"/"off" or
+	// "PGM"/"PVW" and what a controller should render. An enum source
+	// is exactly a source whose type document carries `values`, so
+	// without a place to declare them the Node can only ever publish
+	// unlabelled primitives.
+	//
+	// Optional. A Source with no entry here gets the plain type
+	// document its event_type implies.
+	EventTypes map[string]json.RawMessage `json:"event_types,omitempty"`
 }
 
 // LoadNodeConfigFromFile reads + validates a Node config bundle.

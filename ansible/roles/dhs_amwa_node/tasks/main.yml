@@ -106,6 +106,22 @@
   changed_when: true
   failed_when: false
 
+# The DESTINATION needs emptying too, not just the source.
+#
+# Emptying only the tooling host's directory leaves last run's files
+# sitting in the repo, and fetch copies over them without removing
+# what it did not produce. A suite dropped from the list keeps its old
+# score there — which is how a stale IS-09-02 file was still being
+# summarised after the suite had stopped running.
+- name: Clear previously fetched results
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_node_fetch_to }}"
+    state: "{{ item }}"
+    mode: "0755"
+  loop: [absent, directory]
+  delegate_to: localhost
+  run_once: true
+
 - name: Fetch the results into the repo
   ansible.builtin.fetch:
     src: "{{ item }}"

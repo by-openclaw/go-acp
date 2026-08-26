@@ -28,6 +28,7 @@ type Server struct {
 	mu       sync.RWMutex
 	routes   map[routeKey]HandlerFunc
 	prefixes []prefixRoute // longer prefixes first
+	raw      map[string]stdhttp.Handler
 	mux      *stdhttp.ServeMux
 	srv      *stdhttp.Server
 }
@@ -108,6 +109,26 @@ func (s *Server) MuxHandler() stdhttp.Handler {
 	return stdhttp.HandlerFunc(s.dispatch)
 }
 
+// HandleRaw registers a plain http.Handler at an exact path, bypassing
+// the (status, body, error) route table.
+//
+// Needed for WebSocket upgrades and nothing else. The normal handler
+// signature returns a value the server then serialises, which means
+// the ResponseWriter is written and closed by the framework -- but an
+// upgrade has to HIJACK that connection and keep it, so a handler that
+// only returns a body can never perform one.
+func (s *Server) HandleRaw(path string, h stdhttp.Handler) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.raw == nil {
+		s.raw = map[string]stdhttp.Handler{}
+	}
+	if _, dup := s.raw[path]; dup {
+		panic("nmos/http: duplicate raw route " + path)
+	}
+	s.raw[path] = h
+}
+
 // Serve binds to addr and serves until ctx is cancelled. Returns the
 // first non-graceful shutdown error.
 func (s *Server) Serve(ctx context.Context, addr string) error {
@@ -171,6 +192,20 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(stdhttp.StatusOK)
 		_, _ = w.Write([]byte("{}"))
+		return
+	}
+
+	// Raw handlers first, and before the CORS/JSON machinery has
+	// touched the ResponseWriter -- a hijack must happen on a
+	// connection nothing has written to.
+	s.mu.RLock()
+	rawH, isRaw := s.raw[r.URL.Path]
+	if !isRaw {
+		rawH, isRaw = s.raw[altSlashForm(r.URL.Path)]
+	}
+	s.mu.RUnlock()
+	if isRaw {
+		rawH.ServeHTTP(w, r)
 		return
 	}
 

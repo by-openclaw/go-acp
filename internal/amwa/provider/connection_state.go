@@ -67,6 +67,10 @@ type connectionStore struct {
 	// this has to be an address that is actually reachable, not a
 	// placeholder.
 	nodeIP string
+	// nodeBase is host:port -- what a URL must name to be fetchable.
+	// nodeIP alone is enough for a transport parameter typed as an
+	// address, and not enough for one typed as a URL.
+	nodeBase string
 	// onPromote fires after every activation, inside the store lock,
 	// and returns the transport file the endpoint should serve from
 	// then on.
@@ -95,6 +99,13 @@ func (s *connectionStore) setNodeIP(ip string) {
 	s.nodeIP = ip
 }
 
+// setNodeBase records the host:port URLs should name.
+func (s *connectionStore) setNodeBase(hostPort string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.nodeBase = hostPort
+}
+
 // reresolveActive recomputes every endpoint's ACTIVE addresses against
 // the current nodeIP.
 //
@@ -110,6 +121,15 @@ func (s *connectionStore) reresolveActive() {
 	if ip == "" {
 		ip = "127.0.0.1"
 	}
+	// The IS-07 REST base, now that the Node knows where it answers.
+	// A consumer reads this to fetch a source's current value before
+	// its first WebSocket message arrives, so it must carry the PORT
+	// as well as the address.
+	restBase, wsURI := "", ""
+	if s.nodeBase != "" {
+		restBase = "http://" + s.nodeBase + "/x-nmos/events/" + eventsWireVersion + "/"
+		wsURI = "ws://" + s.nodeBase + "/x-nmos/events/" + eventsWireVersion + "/ws"
+	}
 	for _, set := range []map[string]*connectionEndpoint{s.senders, s.receivers} {
 		for _, e := range set {
 			// A sender's source_ip is seeded blank because the Node
@@ -122,6 +142,23 @@ func (s *connectionStore) reresolveActive() {
 				for i := range e.staged.TransportParams {
 					if v, ok := e.staged.TransportParams[i]["source_ip"].(string); ok && v == "" {
 						e.staged.TransportParams[i]["source_ip"] = ip
+					}
+				}
+			}
+			if restBase != "" {
+				for i := range e.staged.TransportParams {
+					p := e.staged.TransportParams[i]
+					if v, ok := p["ext_is_07_rest_api_url"].(string); ok && v == "" {
+						p["ext_is_07_rest_api_url"] = restBase
+					}
+					// A WebSocket sender with a null connection_uri
+					// publishes a stream nothing can reach: IS-07 §5
+					// makes this the ONLY address a consumer gets. The
+					// socket exists from the moment the Node serves,
+					// so there is no state in which "not yet known" is
+					// the truthful answer.
+					if _, carries := p["connection_uri"]; carries && p["connection_uri"] == nil {
+						p["connection_uri"] = wsURI
 					}
 				}
 			}
@@ -150,13 +187,59 @@ func (s *connectionStore) seedFromBundle(cfg *NodeConfig) {
 		snd := &cfg.Senders[i]
 		e := newEndpointForTransport(snd.Transport, true)
 		e.id = snd.ID
+		fillEventExtParams(e, cfg, snd.FlowID)
 		s.senders[snd.ID] = e
 	}
 	for i := range cfg.Receivers {
 		rcv := &cfg.Receivers[i]
 		e := newEndpointForTransport(rcv.Transport, false)
 		e.id = rcv.ID
+		fillEventExtParams(e, cfg, nil)
 		s.receivers[rcv.ID] = e
+	}
+}
+
+// fillEventExtParams resolves the IS-07 extension parameters for an
+// endpoint that carries events.
+//
+// Only endpoints whose Flow is an event flow get them. A WebSocket
+// sender is not automatically an event sender -- IS-12 uses WebSocket
+// too -- so the discriminator is the Flow's format, the same one IS-07
+// uses to decide what an event source is.
+func fillEventExtParams(e *connectionEndpoint, cfg *NodeConfig, flowID *string) {
+	if flowID == nil || *flowID == "" {
+		return
+	}
+	var sourceID string
+	for i := range cfg.Flows {
+		if cfg.Flows[i].ID != *flowID {
+			continue
+		}
+		if cfg.Flows[i].Format != formatData {
+			return
+		}
+		sourceID = cfg.Flows[i].SourceID
+		break
+	}
+	if sourceID == "" {
+		return
+	}
+	for i := range e.staged.TransportParams {
+		if _, carries := e.staged.TransportParams[i]["ext_is_07_source_id"]; !carries {
+			continue
+		}
+		e.staged.TransportParams[i]["ext_is_07_source_id"] = sourceID
+		e.staged.TransportParams[i]["ext_is_07_rest_api_url"] = ""
+		e.active.TransportParams[i]["ext_is_07_source_id"] = sourceID
+		e.active.TransportParams[i]["ext_is_07_rest_api_url"] = ""
+	}
+	// The constraint set has to grow the same two keys or the
+	// endpoint's own PATCH validation would reject them as unknown.
+	for i := range e.constraints {
+		if _, carries := e.constraints[i]["ext_is_07_source_id"]; !carries {
+			e.constraints[i]["ext_is_07_source_id"] = map[string]any{}
+			e.constraints[i]["ext_is_07_rest_api_url"] = map[string]any{}
+		}
 	}
 }
 
@@ -237,6 +320,18 @@ func defaultLegParams(transport string, isSender bool) is05.TransportParams {
 	case transport == transportWebSocketURN:
 		p["connection_uri"] = nil
 		p["connection_authorization"] = false
+		// IS-07 §5 extension parameters.
+		//
+		// `ext_` params are how IS-05 carries information a transport
+		// needs that IS-05 itself knows nothing about. For events that
+		// is which SOURCE the WebSocket carries and where to read its
+		// current value over REST -- without them a consumer has a
+		// socket it can open and no way to know what arrives on it.
+		// The values are filled in per endpoint by seedFromBundle,
+		// which is the only place that knows which source this sender
+		// belongs to.
+		p["ext_is_07_source_id"] = nil
+		p["ext_is_07_rest_api_url"] = nil
 	case transport == transportMQTTURN:
 		p["destination_host"] = "auto"
 		p["destination_port"] = "auto"
@@ -309,8 +404,14 @@ func resolveAuto(p is05.TransportParams, nodeIP string, isSender bool, index int
 			p[k] = nodeIP
 		case "broker_protocol":
 			p[k] = "mqtt"
-		case "broker_authorization":
+		case "broker_authorization", "connection_authorization":
 			p[k] = false
+		case "connection_uri":
+			// The WebSocket a consumer connects to for this sender's
+			// events. IS-07 §5 makes this the ONLY way a consumer
+			// finds the stream, so "auto" has to resolve to a real
+			// URL rather than being left for the operator.
+			p[k] = "ws://" + nodeIP + "/x-nmos/events/" + eventsWireVersion + "/"
 		default:
 			// An "auto" on a parameter with no defined resolution is
 			// left alone rather than guessed at: inventing a value

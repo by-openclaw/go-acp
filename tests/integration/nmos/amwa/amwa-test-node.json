@@ -78,7 +78,10 @@
       "node_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0001",
       "senders": [
         "2c47bf5e-1b2c-4abc-9def-deadbeef0005",
-        "2c47bf5e-1b2c-4abc-9def-deadbeef0009"
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0009",
+        "2c47bf5e-1b2c-4abc-9def-deadcfff000a",
+        "2c47bf5e-1b2c-4abc-9def-deadcfff000b",
+        "2c47bf5e-1b2c-4abc-9def-deadcfff000c"
       ],
       "receivers": [
         "2c47bf5e-1b2c-4abc-9def-deadbeef0006"
@@ -121,6 +124,45 @@
       "clock_name": "clk0",
       "format": "urn:x-nmos:format:data",
       "event_type": "boolean"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000a",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-fader",
+      "description": "fader position",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:data",
+      "event_type": "number"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000b",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-label",
+      "description": "camera label",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:data",
+      "event_type": "string"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000c",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-tally-enum",
+      "description": "tally with named states",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:data",
+      "event_type": "boolean"
     }
   ],
   "flows": [
@@ -148,6 +190,45 @@
       "description": "tally events",
       "tags": {},
       "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0007",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "boolean"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbfff000a",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-fader-flow",
+      "description": "fader position",
+      "tags": {},
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef000a",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "number"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbfff000b",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-label-flow",
+      "description": "camera label",
+      "tags": {},
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef000b",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "string"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbfff000c",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-tally-enum-flow",
+      "description": "tally with named states",
+      "tags": {},
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef000c",
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "parents": [],
       "format": "urn:x-nmos:format:data",
@@ -186,6 +267,60 @@
       "description": "tally over websocket",
       "tags": {},
       "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0008",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadcfff000a",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-fader-sender",
+      "description": "fader position over websocket",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbfff000a",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadcfff000b",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-label-sender",
+      "description": "camera label over websocket",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbfff000b",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadcfff000c",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-tally-enum-sender",
+      "description": "tally with named states over websocket",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbfff000c",
       "transport": "urn:x-nmos:transport:websocket",
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "manifest_href": null,
@@ -251,5 +386,49 @@
         "active": false
       }
     }
-  ]
+  ],
+  "event_types": {
+    "2c47bf5e-1b2c-4abc-9def-deadbeef000c": {
+      "type": "boolean",
+      "values": [
+        {
+          "label": "Program",
+          "value": true
+        },
+        {
+          "label": "Off",
+          "value": false
+        }
+      ]
+    },
+    "2c47bf5e-1b2c-4abc-9def-deadbeef000a": {
+      "type": "number",
+      "minimum": {
+        "value": -60,
+        "scale": 1
+      },
+      "maximum": {
+        "value": 10,
+        "scale": 1
+      },
+      "step": {
+        "value": 1,
+        "scale": 1
+      },
+      "unit": "dB"
+    },
+    "2c47bf5e-1b2c-4abc-9def-deadbeef000b": {
+      "type": "string",
+      "values": [
+        {
+          "label": "Camera 1",
+          "value": "CAM1"
+        },
+        {
+          "label": "Camera 2",
+          "value": "CAM2"
+        }
+      ]
+    }
+  }
 }

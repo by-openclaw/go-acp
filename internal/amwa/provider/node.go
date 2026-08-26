@@ -260,6 +260,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// points a controller at a host that is not us.
 	if s.connection != nil {
 		s.connection.Store().setNodeIP(firstNodeIP(s.bundle))
+		s.connection.Store().setNodeBase(s.controlHost())
 		s.connection.Store().reresolveActive()
 	}
 

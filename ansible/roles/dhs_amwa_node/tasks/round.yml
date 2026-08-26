@@ -87,6 +87,13 @@
       # scoring run into a 400.
       port: "{{ item.endpoints | map('regex_replace', '^.*$', dhs_amwa_node_port | string) | map('int') | list }}"
       version: "{{ item.endpoints | map('extract', dhs_amwa_node_endpoint_vers) | list }}"
+      # One selector slot per endpoint, empty unless the suite needs
+      # one. IS-08 declares `selector: True`, and the tool refuses to
+      # start with "No Selector(s) specified" rather than defaulting —
+      # which scores as a suite that could not run, not as a failure.
+      # An empty string means "the only instance", which is what a
+      # device with one Channel Mapping API has.
+      selector: "{{ item.endpoints | map('regex_replace', '^.*$', '') | list }}"
       output: json
     timeout: "{{ dhs_amwa_node_suite_timeout }}"
     status_code: [200, 400, 500]

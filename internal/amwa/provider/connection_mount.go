@@ -149,7 +149,15 @@ func (s *IS04NodeServer) runActivationScheduler(ctx context.Context, tick time.D
 		return
 	}
 	if tick <= 0 {
-		tick = 100 * time.Millisecond
+		// 20ms, not 100.
+		//
+		// The tick is the worst-case lateness of every scheduled
+		// switch, and IS-05-01 test_27 schedules 200ms out and checks
+		// the result within 200ms of that. At a 100ms tick half the
+		// runs land outside the window -- not a failure, but a warning
+		// that the device is slower than asked, which for a
+		// frame-accurate switch is the thing being measured.
+		tick = 20 * time.Millisecond
 	}
 	t := time.NewTicker(tick)
 	defer t.Stop()
