@@ -50,8 +50,7 @@
   ansible.builtin.shell:
     cmd: >-
       git ls-files -z
-      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/'
-        -e '^captures/' -e '^tests/integration/nmos/amwa/results/'
+      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/' -e '^tests/integration/nmos/amwa/results/'
       | tar --null -T - -czf /tmp/dhs-amwa-src.tgz
     chdir: "{{ playbook_dir }}/../.."
   delegate_to: localhost
