@@ -106,16 +106,6 @@ dhs_amwa_node_suites:
 # "-" is the TOOL-SUPPLIED slot: the suite disables that endpoint's
 # host and port because the tool stands the API up itself. The slot
 # still occupies a position in every array.
-# The tool's PRIMARY mock System API. It stands up six of them at
-# PORT_BASE + 300 + n (nmostesting/mocks/System.py) and IS-09-02 checks
-# our Node discovers them by mDNS.
-#
-# The slot has to name one that actually answers: the tool
-# pre-validates every endpoint URL with a GET before the suite starts,
-# so its own web UI port returns 404 for /x-nmos/system/ and the suite
-# dies before scoring anything. Container-internal, so it does not need
-# publishing to the host.
-dhs_amwa_port_testing_system_mock: 5302
 
 dhs_amwa_node_endpoint_vers:
   node: "{{ api_ver | default('v1.3') }}"
@@ -126,18 +116,16 @@ dhs_amwa_node_endpoint_vers:
   "-": "v1.0"
 
 # Per-endpoint host + port. Every real slot is this same node — a Node
-# serves all its APIs on one listener — and "-" is the TOOL, because
-# that is who serves the API in that slot. The fields are REQUIRED to
-# be non-empty even where the suite ignores them: the tool rejects a
-# blank outright with "All IP/Hostname and Port fields must be
-# completed".
+# serves all its APIs on one listener — and "-" is null, because the
+# TOOL serves that API and pre-validating it against anything we could
+# name fails. See the assembly task in tasks/suite_run.yml.
 dhs_amwa_node_endpoint_hosts:
   node: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   connection: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   events: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   chanmap: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   system: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
-  "-": "{{ dhs_amwa_tool_ip.stdout | default('') | trim }}"
+  "-": null
 
 dhs_amwa_node_endpoint_ports:
   node: "{{ dhs_amwa_node_port }}"
@@ -145,7 +133,7 @@ dhs_amwa_node_endpoint_ports:
   events: "{{ dhs_amwa_node_port }}"
   chanmap: "{{ dhs_amwa_node_port }}"
   system: "{{ dhs_amwa_node_port }}"
-  "-": "{{ dhs_amwa_port_testing_system_mock }}"
+  "-": null
 
 # Where results land on the tooling host before being fetched back into
 # the repo. A conformance number only means something next to the code

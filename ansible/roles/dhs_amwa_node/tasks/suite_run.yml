@@ -59,6 +59,33 @@
   register: dhs_amwa_node_ip
   changed_when: false
 
+# Build the positional endpoint arrays explicitly.
+#
+# The tool-supplied slot ("-") must carry JSON **null**, not a blank
+# and not a plausible address. The distinction is load-bearing:
+#
+#   ""     -> "All IP/Hostname and Port fields must be completed"
+#   a host -> the tool pre-validates it with a GET before the suite
+#             starts, and its own mock System API answers 500 until
+#             set_up_tests has populated it -- so any real address
+#             fails too, including the right one
+#   null   -> the tool sets that API's url to None and skips
+#             pre-validation, which is what a slot IT serves needs
+#
+# A Jinja map() cannot produce that mix without `| int` turning None
+# into 0, so the arrays are assembled here where the types survive.
+- name: "{{ api_ver }} / {{ suite.id }} — assemble the endpoint arrays"
+  ansible.builtin.set_fact:
+    dhs_amwa_suite_hosts: >-
+      {{ suite.endpoints
+         | map('extract', dhs_amwa_node_endpoint_hosts) | list }}
+    dhs_amwa_suite_ports: >-
+      {{ suite.endpoints
+         | map('extract', dhs_amwa_node_endpoint_ports) | list }}
+    dhs_amwa_suite_vers: >-
+      {{ suite.endpoints
+         | map('extract', dhs_amwa_node_endpoint_vers) | list }}
+
 - name: "{{ api_ver }} / {{ suite.id }} — run it"
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ dhs_amwa_port_testing_ui }}/api"
@@ -73,18 +100,12 @@
       # the part that cannot be guessed: passing the IS-04 minor to an
       # IS-05 suite makes the tool throw instead of score.
       #
-      # "-" is the TOOL-SUPPLIED slot. Some suites disable a slot's
-      # host and port because the tool stands that API up itself --
-      # IS-09-02 runs its own System APIs and checks the Node goes and
-      # finds them by mDNS. Those fields are still REQUIRED to be
-      # non-empty (the API rejects blanks outright); the suite simply
-      # ignores what is in them. So the slot gets the tool's own
-      # address, which is honest about who serves that API.
-      host: "{{ suite.endpoints | map('extract', dhs_amwa_node_endpoint_hosts) | list }}"
+      # The "-" slot carries null; see the assembly task above.
+      host: "{{ dhs_amwa_suite_hosts }}"
       # Ports stay INTs -- the tool type-checks them, so quoting turns
       # a scoring run into a 400.
-      port: "{{ suite.endpoints | map('extract', dhs_amwa_node_endpoint_ports) | map('int') | list }}"
-      version: "{{ suite.endpoints | map('extract', dhs_amwa_node_endpoint_vers) | list }}"
+      port: "{{ dhs_amwa_suite_ports }}"
+      version: "{{ dhs_amwa_suite_vers }}"
       # One selector slot per endpoint, empty unless the suite needs
       # one. IS-08 declares `selector: True`, and the tool refuses to
       # start with "No Selector(s) specified" rather than defaulting --
