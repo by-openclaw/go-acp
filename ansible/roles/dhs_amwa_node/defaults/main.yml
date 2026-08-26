@@ -79,17 +79,44 @@ dhs_amwa_node_suites:
   # Two slots even though the tool disables most of their fields: the
   # arrays are positional, and a short one is refused outright with
   # "expects 2 Hostname(s)/IP address(es), Port(s) and Version(s)".
+  # The System slot is the TOOL's own: IS-09-02 stands up a System API
+  # and checks the Node discovers it. Pointing that slot at our Node
+  # asks it for an API it does not serve and the suite dies on a 404
+  # before scoring anything.
   - id: "IS-09-02"
     name: "IS-09 System API Discovery"
-    endpoints: ["node", "system"]
+    endpoints: ["node", "-"]
 
 # Per-endpoint version map, resolved at request time.
+#
+# "-" is the TOOL-SUPPLIED slot: the suite disables that endpoint's
+# host and port because the tool stands the API up itself. The slot
+# still occupies a position in every array.
 dhs_amwa_node_endpoint_vers:
   node: "{{ api_ver | default('v1.3') }}"
   connection: "{{ dhs_amwa_node_is05_ver }}"
   events: "v1.0"
   chanmap: "v1.0"
   system: "v1.0"
+  "-": "v1.0"
+
+# Per-endpoint host + port. Every real slot is this same node — a Node
+# serves all its APIs on one listener — and "-" is blank.
+dhs_amwa_node_endpoint_hosts:
+  node: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  connection: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  events: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  chanmap: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  system: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  "-": ""
+
+dhs_amwa_node_endpoint_ports:
+  node: "{{ dhs_amwa_node_port }}"
+  connection: "{{ dhs_amwa_node_port }}"
+  events: "{{ dhs_amwa_node_port }}"
+  chanmap: "{{ dhs_amwa_node_port }}"
+  system: "{{ dhs_amwa_node_port }}"
+  "-": 0
 
 # Where results land on the tooling host before being fetched back into
 # the repo. A conformance number only means something next to the code

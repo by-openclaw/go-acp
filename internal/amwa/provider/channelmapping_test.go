@@ -79,6 +79,24 @@ func cmTestServer(t *testing.T) (*IS08ChannelMappingServer, *httptest.Server) {
 
 func bytesReader(b []byte) io.Reader { return bytes.NewReader(b) }
 
+// decodeKeyedActivation reads the `{"<id>": {...}}` envelope IS-08
+// uses for POST responses and the activations collection, returning
+// the id and the activation it keys.
+func decodeKeyedActivation(t *testing.T, r io.Reader) (string, is08.MapActivationResponse) {
+	t.Helper()
+	var env map[string]is08.MapActivationResponse
+	if err := json.NewDecoder(r).Decode(&env); err != nil {
+		t.Fatalf("decode activation envelope: %v", err)
+	}
+	if len(env) != 1 {
+		t.Fatalf("activation envelope carries %d entries, want exactly 1", len(env))
+	}
+	for id, a := range env {
+		return id, a
+	}
+	return "", is08.MapActivationResponse{}
+}
+
 func cmGet(t *testing.T, ts *httptest.Server, path string, into any) int {
 	t.Helper()
 	resp, err := ts.Client().Get(ts.URL + path)
@@ -187,9 +205,11 @@ func TestChannelMappingImmediateActivation(t *testing.T) {
 	if resp.StatusCode != stdhttp.StatusOK {
 		t.Fatalf("immediate activation: got %d, want 200", resp.StatusCode)
 	}
-	var out is08.MapActivationResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		t.Fatalf("decode: %v", err)
+	// The body is KEYED by activation id, for the 200 as well as the
+	// 202 -- a controller reads the id out of the first key.
+	id, out := decodeKeyedActivation(t, resp.Body)
+	if id == "" {
+		t.Error("the response key is the activation id; an empty one is unusable")
 	}
 	if out.Activation.ActivationTime == nil {
 		t.Error("an activation that HAS happened must report when")
@@ -267,9 +287,8 @@ func TestChannelMappingScheduledIsQueued(t *testing.T) {
 	if resp.StatusCode != stdhttp.StatusAccepted {
 		t.Fatalf("scheduled activation: got %d, want 202", resp.StatusCode)
 	}
-	var out is08.MapActivationResponse
-	_ = json.NewDecoder(resp.Body).Decode(&out)
-	if out.ID == "" {
+	id, _ := decodeKeyedActivation(t, resp.Body)
+	if id == "" {
 		t.Fatal("a queued activation needs an id to poll or cancel")
 	}
 
@@ -279,18 +298,23 @@ func TestChannelMappingScheduledIsQueued(t *testing.T) {
 		t.Error("a scheduled activation must not take effect on POST")
 	}
 
-	// It is listed, readable, and cancellable.
-	var ids []string
-	cmGet(t, ts, "/x-nmos/channelmapping/v1.0/map/activations/", &ids)
-	if len(ids) != 1 {
-		t.Errorf("activations list = %v, want one entry", ids)
+	// It is listed, readable, and cancellable. The collection is a MAP
+	// keyed by id, not a list of links -- a controller reads every
+	// pending change in one request instead of following N of them.
+	var listed map[string]is08.MapActivationResponse
+	cmGet(t, ts, "/x-nmos/channelmapping/v1.0/map/activations/", &listed)
+	if len(listed) != 1 {
+		t.Errorf("activations list carries %d entries, want one", len(listed))
 	}
-	if code := cmGet(t, ts, "/x-nmos/channelmapping/v1.0/map/activations/"+out.ID+"/", nil); code != 200 {
+	if _, present := listed[id]; !present {
+		t.Errorf("activation %q missing from the collection", id)
+	}
+	if code := cmGet(t, ts, "/x-nmos/channelmapping/v1.0/map/activations/"+id+"/", nil); code != 200 {
 		t.Errorf("GET activation: got %d, want 200", code)
 	}
 
 	req, _ := stdhttp.NewRequest(stdhttp.MethodDelete,
-		ts.URL+"/x-nmos/channelmapping/v1.0/map/activations/"+out.ID+"/", nil)
+		ts.URL+"/x-nmos/channelmapping/v1.0/map/activations/"+id+"/", nil)
 	del, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatalf("DELETE: %v", err)
@@ -299,7 +323,7 @@ func TestChannelMappingScheduledIsQueued(t *testing.T) {
 	if del.StatusCode != stdhttp.StatusNoContent {
 		t.Errorf("DELETE activation: got %d, want 204", del.StatusCode)
 	}
-	if code := cmGet(t, ts, "/x-nmos/channelmapping/v1.0/map/activations/"+out.ID+"/", nil); code != 404 {
+	if code := cmGet(t, ts, "/x-nmos/channelmapping/v1.0/map/activations/"+id+"/", nil); code != 404 {
 		t.Errorf("cancelled activation still readable: got %d, want 404", code)
 	}
 }

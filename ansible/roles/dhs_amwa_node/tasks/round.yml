@@ -82,10 +82,19 @@
       # host is an ADDRESS, never the container name: the tool calls
       # ipaddress.ip_address() on it and a name raises. IS-04-01
       # tolerated a name, IS-05 does not.
-      host: "{{ item.endpoints | map('regex_replace', '^.*$', dhs_amwa_node_ip.stdout | trim) | list }}"
+      #
+      # An endpoint named "-" is left BLANK. Some suites disable the
+      # host/port fields of one slot because the TOOL stands that API
+      # up itself — IS-09-02 runs its own System API and checks the
+      # Node goes and finds it. Filling that slot in points the tool at
+      # our Node for an API it does not serve, and the suite dies on
+      # "No API found ... (404)" before scoring anything. The slot
+      # still has to EXIST: the arrays are positional and a short one
+      # is refused outright.
+      host: "{{ item.endpoints | map('extract', dhs_amwa_node_endpoint_hosts) | list }}"
       # Ports stay INTs — the tool type-checks them, so quoting turns a
       # scoring run into a 400.
-      port: "{{ item.endpoints | map('regex_replace', '^.*$', dhs_amwa_node_port | string) | map('int') | list }}"
+      port: "{{ item.endpoints | map('extract', dhs_amwa_node_endpoint_ports) | map('int') | list }}"
       version: "{{ item.endpoints | map('extract', dhs_amwa_node_endpoint_vers) | list }}"
       # One selector slot per endpoint, empty unless the suite needs
       # one. IS-08 declares `selector: True`, and the tool refuses to

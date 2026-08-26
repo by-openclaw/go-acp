@@ -236,18 +236,15 @@ func (s *IS07EventsServer) initialState(es *eventSource) any {
 			return is07.EventBoolean{EventCommon: common, Payload: is07.PayloadBoolean{Value: val}}
 		case string:
 			return is07.EventString{EventCommon: common, Payload: is07.PayloadString{Value: val}}
-		case map[string]any:
-			// A number enum's value is a {value, scale} object.
-			n := is07.Number{Scale: 1}
-			if f, ok := val["value"].(float64); ok {
-				n.Value = f
-			}
-			if f, ok := val["scale"].(float64); ok && f != 0 {
-				n.Scale = int(f)
-			}
-			return is07.EventNumber{EventCommon: common, Payload: n}
 		case float64:
-			return is07.EventNumber{EventCommon: common, Payload: is07.Number{Value: val, Scale: 1}}
+			// No scale on an enum payload.
+			//
+			// A number enum declares its values as PLAIN numbers, so
+			// the payload that reports one carries just the value. A
+			// scale here is not harmless extra precision: it says the
+			// real value is value/scale, which is then not the enum
+			// member the source claims to be reporting.
+			return is07.EventNumber{EventCommon: common, Payload: is07.Number{Value: val}}
 		}
 	}
 

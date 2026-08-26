@@ -371,15 +371,23 @@ func (s *IS08ChannelMappingServer) mountVersion(srv *httpsession.Server, base st
 		})
 	}
 
+	// A MAP keyed by activation id, not a list of links.
+	//
+	// Every other NMOS collection endpoint answers with a list of
+	// child paths, which makes a list the obvious guess here and the
+	// wrong one: IS-08's activations schema is an object whose KEYS
+	// are the ids and whose values are the activations themselves. A
+	// controller reads the whole pending set in one request rather
+	// than following N links, which is what makes "show me every
+	// scheduled change" cheap.
 	srv.Handle(stdhttp.MethodGet, base+"/map/activations/", func(context.Context, *stdhttp.Request) (int, any, error) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
-		ids := make([]string, 0, len(s.activations))
-		for id := range s.activations {
-			ids = append(ids, id+"/")
+		out := map[string]is08.MapActivationResponse{}
+		for id, a := range s.activations {
+			out[id] = activationBody(a)
 		}
-		sort.Strings(ids)
-		return ok(ids)
+		return ok(out)
 	})
 	srv.Handle(stdhttp.MethodPost, base+"/map/activations/", func(_ context.Context, r *stdhttp.Request) (int, any, error) {
 		return s.handleActivationPost(r)
@@ -524,17 +532,29 @@ func (s *IS08ChannelMappingServer) handleActivationPost(r *stdhttp.Request) (int
 		}, nil
 	}
 
+	// Every activation gets an id, immediate ones included.
+	//
+	// The response body is KEYED by that id -- `{"<id>": {activation,
+	// action}}` -- for both the 200 and the 202. A flat object with an
+	// "id" member alongside the other fields reads more naturally and
+	// is not what the schema says; a controller pulling the id out of
+	// the first key gets the string "id" and then deletes an
+	// activation by that name, which is a 404 it has no way to explain.
+	s.nextID++
+	id := strconv.Itoa(s.nextID)
+	resp.ID = id
+
 	if mode == is08.ActivationModeImmediate {
 		s.applyLocked(req.Action)
 		resp.Activation.ActivationTime = &now
 		s.active.Activation = resp.Activation
+		s.activations[id] = resp
 		if s.onActivate != nil {
 			s.onActivate()
 		}
-		// An immediate activation is not queued: it has already
-		// happened, and IS-08 §5 answers 200 with the result rather
-		// than 202 with an id to poll.
-		return stdhttp.StatusOK, resp, nil
+		// 200, not 202: it has already happened, so there is nothing
+		// to wait for.
+		return stdhttp.StatusOK, keyedActivation(id, resp), nil
 	}
 
 	when, err := s.dueTimeLocked(req.Activation)
@@ -544,9 +564,6 @@ func (s *IS08ChannelMappingServer) handleActivationPost(r *stdhttp.Request) (int
 		}, nil
 	}
 
-	s.nextID++
-	id := strconv.Itoa(s.nextID)
-	resp.ID = id
 	s.activations[id] = resp
 	s.due[id] = when
 	for outID := range req.Action {
@@ -554,7 +571,21 @@ func (s *IS08ChannelMappingServer) handleActivationPost(r *stdhttp.Request) (int
 	}
 	// 202: accepted, not yet done. The controller polls
 	// map/activations/{id} or watches map/active.
-	return stdhttp.StatusAccepted, resp, nil
+	return stdhttp.StatusAccepted, keyedActivation(id, resp), nil
+}
+
+// keyedActivation wraps one activation in the id-keyed envelope the
+// POST and list responses use.
+func keyedActivation(id string, a is08.MapActivationResponse) map[string]is08.MapActivationResponse {
+	return map[string]is08.MapActivationResponse{id: activationBody(a)}
+}
+
+// activationBody strips the id from the value side of the envelope.
+// The id is the KEY; repeating it inside the object would be a second
+// place for it to disagree with itself.
+func activationBody(a is08.MapActivationResponse) is08.MapActivationResponse {
+	a.ID = ""
+	return a
 }
 
 // dueTimeLocked resolves a scheduled activation's requested_time to a
@@ -650,7 +681,9 @@ func (s *IS08ChannelMappingServer) handleActivationGet(base string, r *stdhttp.R
 	if !found {
 		return stdhttp.StatusNotFound, is08.ErrorBody{Code: 404, Error: "Unknown activation", Debug: id}, nil
 	}
-	return stdhttp.StatusOK, a, nil
+	// The SINGLE-activation view is NOT keyed -- the id is already in
+	// the URL. Only the collection and the POST response wrap it.
+	return stdhttp.StatusOK, activationBody(a), nil
 }
 
 func (s *IS08ChannelMappingServer) handleActivationDelete(base string, r *stdhttp.Request) (int, any, error) {
