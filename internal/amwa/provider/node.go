@@ -232,6 +232,16 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 	if !ok {
 		return nil, fmt.Errorf("provider/node: no IS-04 codec registered for api_ver=%q (registered: %v)", cfg.APIVer, is04.SupportedVersions())
 	}
+	// Narrow the bundle to what this IS-04 minor can describe, BEFORE
+	// anything is built from it.
+	//
+	// Every API downstream -- IS-05 endpoints, IS-07 sources, IS-08
+	// inputs and outputs, the registration payload -- derives from this
+	// one value, so they cannot disagree about which resources the
+	// device has. Doing it later, per API, is how you end up serving a
+	// Connection endpoint for a Sender the Node API does not list.
+	bundle = projectForMinor(bundle, cfg.APIVer)
+
 	s := &IS04NodeServer{logger: logger, cfg: cfg, bundle: bundle, codec: codec}
 
 	// IS-05 is served unless explicitly disabled. A Node carrying
