@@ -17,6 +17,7 @@ package provider
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -73,6 +74,31 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 	if present.TransportFile && patch.TransportFile != nil {
 		tf := *patch.TransportFile
 		merged.TransportFile = &tf
+		// An SDP handed to a Receiver is not an attachment to file
+		// away: it is the connection request. IS-05 §4.3 has the
+		// controller copy the Sender's transport file across verbatim
+		// and expects the Receiver to derive its own parameters from
+		// it -- the controller never translates. Storing the blob and
+		// leaving transport_params untouched accepts a connection the
+		// receiver will not make (IS-05-02 test_18).
+		if !e.isSender && tf.Data != nil && *tf.Data != "" {
+			derived := sdpReceiverParams(*tf.Data)
+			for i := range merged.TransportParams {
+				for k, v := range derived {
+					// Only parameters this endpoint actually
+					// publishes. An SDP field with no matching
+					// transport param is essence description, not
+					// transport, and inventing a key here would fail
+					// the endpoint's own constraints.
+					if i < len(e.constraints) {
+						if _, known := e.constraints[i][k]; !known {
+							continue
+						}
+					}
+					merged.TransportParams[i][k] = v
+				}
+			}
+		}
 	}
 	// A sender PATCH carries receiver_id and a receiver PATCH carries
 	// sender_id. Both land in the shared struct's one id slot — the
@@ -109,6 +135,9 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 							"transport_params leg %d: %q is not a parameter of this endpoint", i, k)
 					}
 				}
+				if err := validateParamValue(k, v, e.isSender); err != nil {
+					return is05.StagedSender{}, 400, fmt.Errorf("transport_params leg %d: %w", i, err)
+				}
 				merged.TransportParams[i][k] = v
 			}
 		}
@@ -144,9 +173,106 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 		}
 		e.staged = merged
 		e.scheduled = &when
-		return cloneStaged(e.staged), 202, nil
+		// The 202 body carries the time the switch WILL happen.
+		//
+		// activation_time is not "the moment it fired" -- it is the
+		// server's answer to the controller's requested_time, and for
+		// a scheduled activation the whole point is to learn it before
+		// the switch. A relative request especially: the controller
+		// asked for "+5s" and only the server can say what absolute
+		// instant that resolved to, which is what makes a coordinated
+		// multi-device switch verifiable (test_27 through test_30).
+		at := is05.FormatTAINow(when)
+		out := cloneStaged(e.staged)
+		out.Activation.ActivationTime = &at
+		e.staged.Activation.ActivationTime = &at
+		return out, 202, nil
 	}
 	return is05.StagedSender{}, 400, fmt.Errorf("unknown activation mode %q", mode)
+}
+
+// validateParamValue checks one transport parameter against the type
+// IS-05 gives it.
+//
+// The endpoint publishes which parameters exist; this is the other
+// half -- what each may HOLD. A PATCH carrying a plausible name with
+// an impossible value (a port that is a word, an address that is not
+// one) has to be refused at the door: accepting it stages a
+// configuration the endpoint cannot enact and then reports it back as
+// though it were real. IS-05 §5.1 requires 400 (test_19/test_20).
+//
+// Only shapes the spec fixes are checked. Anything the schema leaves
+// open stays open -- guessing a stricter rule than the spec's would
+// reject valid controllers.
+func validateParamValue(key string, v any, isSender bool) error {
+	switch key {
+	case "rtp_enabled", "connection_authorization", "broker_authorization":
+		if _, ok := v.(bool); !ok {
+			return fmt.Errorf("%q must be a boolean, got %T", key, v)
+		}
+
+	case "source_port", "destination_port":
+		// "auto" or a port number. JSON numbers decode as float64, and
+		// a fractional or out-of-range one is not a port.
+		if s, ok := v.(string); ok {
+			if s != autoKeyword {
+				return fmt.Errorf("%q must be a port number or %q, got %q", key, autoKeyword, s)
+			}
+			return nil
+		}
+		n, ok := toInt(v)
+		if !ok || n < 0 || n > 65535 {
+			return fmt.Errorf("%q must be a port number in 0..65535 or %q, got %v", key, autoKeyword, v)
+		}
+
+	case "destination_ip", "interface_ip":
+		s, ok := v.(string)
+		if !ok {
+			return fmt.Errorf("%q must be a string, got %T", key, v)
+		}
+		if s != autoKeyword && net.ParseIP(s) == nil {
+			return fmt.Errorf("%q must be an IP address or %q, got %q", key, autoKeyword, s)
+		}
+
+	case "source_ip", "multicast_ip":
+		// A receiver may say null: "I do not know / do not care".
+		// A sender's source_ip is one of its own addresses and may
+		// never be null, and neither may ever be "auto" -- the schemas
+		// do not list it.
+		if v == nil {
+			if isSender && key == "source_ip" {
+				return fmt.Errorf("%q may not be null on a sender", key)
+			}
+			return nil
+		}
+		s, ok := v.(string)
+		if !ok || net.ParseIP(s) == nil {
+			return fmt.Errorf("%q must be an IP address%s, got %v", key, nullable(!isSender), v)
+		}
+	}
+	return nil
+}
+
+func nullable(ok bool) string {
+	if ok {
+		return " or null"
+	}
+	return ""
+}
+
+func toInt(v any) (int, bool) {
+	switch n := v.(type) {
+	case float64:
+		if n != float64(int(n)) {
+			return 0, false
+		}
+		return int(n), true
+	case int:
+		return n, true
+	case int64:
+		return int(n), true
+	}
+	return 0, false
 }
 
 // scheduledTimeLocked resolves the CLIENT's requested_time to a wall

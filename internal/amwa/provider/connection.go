@@ -107,10 +107,16 @@ func (s *IS05ConnectionServer) updateIS04Subscription(kind, id string, active is
 	if s.bundle == nil {
 		return
 	}
-	// The far end, when one was staged. An empty string means "no
-	// peer", which the wire spells as null rather than "".
+	// The far end, when one was staged AND the endpoint is enabled.
+	//
+	// master_enable false is "parked": the endpoint remembers the id it
+	// was pointed at, but IS-04 `subscription` describes what is
+	// happening, not what was configured. A parked receiver that still
+	// names a sender_id reads to a controller as a live connection and
+	// makes the route look occupied (IS-05-02 test_08/test_11). An
+	// empty string is likewise spelled null on the wire.
 	var peer *string
-	if active.ReceiverID != nil && *active.ReceiverID != "" {
+	if active.MasterEnable && active.ReceiverID != nil && *active.ReceiverID != "" {
 		v := *active.ReceiverID
 		peer = &v
 	}
@@ -173,6 +179,23 @@ func firstNodeIP(cfg *NodeConfig) string {
 		}
 	}
 	return ""
+}
+
+// senderSDP renders one Sender's transport file, or "" when there is
+// no Connection API to render it from. Used by the IS-04 side so both
+// APIs serve one generator's output.
+func (s *IS04NodeServer) senderSDP(id string) string {
+	if s.connection == nil {
+		return ""
+	}
+	e, err := s.connection.Store().get("senders", id)
+	if err != nil {
+		return ""
+	}
+	if sdp := s.connection.sdpForSender(id, e.active); sdp != "" {
+		return sdp
+	}
+	return e.transportFile
 }
 
 // Store exposes the connection state for tests and for the IS-04

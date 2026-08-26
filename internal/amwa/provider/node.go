@@ -91,6 +91,16 @@ type IS04NodeConfig struct {
 	// does — a v1.0-pinned controller and a v1.2 one must each find a
 	// tree they can speak.
 	ConnectionAPIVer string
+
+	// NoChannelMappingAPI suppresses IS-08. Same opt-OUT reasoning as
+	// IS-05: a multi-channel audio Node with no Channel Mapping API
+	// can be connected but not patched, so the operator can only route
+	// whole streams and never a single channel.
+	NoChannelMappingAPI bool
+
+	// ChannelMappingAPIVer pins IS-08 to one wire minor. Empty mounts
+	// every registered minor.
+	ChannelMappingAPIVer string
 }
 
 // IS04NodeServer hosts the Node API endpoints + DNS-SD announce +
@@ -112,6 +122,11 @@ type IS04NodeServer struct {
 	// API. Nil disables it — a Node that only advertises resources is
 	// still a valid IS-04 Node, it just cannot be routed.
 	connection *IS05ConnectionServer
+
+	// channelMapping is the IS-08 Channel Mapping API. Nil disables
+	// it; a Node with no audio inputs or outputs gets an empty one,
+	// which is the honest answer rather than a missing API.
+	channelMapping *IS08ChannelMappingServer
 
 	mu        sync.Mutex
 	http      *httpsession.Server
@@ -185,6 +200,15 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 			APIVer: cfg.ConnectionAPIVer,
 		})
 	}
+	// IS-08 likewise. An audio Node that publishes no channel map
+	// leaves a controller unable to say which channel goes where, so
+	// the useful default is to serve it and let a Node with no audio
+	// publish an empty one.
+	if !cfg.NoChannelMappingAPI {
+		s.channelMapping = NewIS08ChannelMappingServer(logger, bundle, IS08ChannelMappingConfig{
+			APIVer: cfg.ChannelMappingAPIVer,
+		})
+	}
 	return s, nil
 }
 
@@ -230,6 +254,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// that fetched /devices first would cache a Device with no route
 	// to the Connection API and never look again.
 	s.attachConnectionAPI(srv)
+	s.attachChannelMappingAPI(srv)
 	s.http = srv
 
 	// DNS-SD announce.
@@ -497,6 +522,9 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 		if s.connection != nil {
 			trees = append(trees, "connection/")
 		}
+		if s.channelMapping != nil {
+			trees = append(trees, "channelmapping/")
+		}
 		return trees
 	}
 	srv.Handle(stdhttp.MethodGet, "/x-nmos", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
@@ -606,11 +634,26 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 	// manifest_href to be a non-null URI; AMWA test_20_01 (v1.3) checks
 	// the URL is actually reachable. We serve a minimal RFC 4566 SDP
 	// per Sender — Content-Type application/sdp, status 200.
+	//
+	// The SDP comes from the IS-05 generator, not from a second one
+	// living here. IS-05-02 test_13 fetches BOTH URLs and compares
+	// them byte for byte, and it is right to: they are two routes to
+	// one fact, and a Node that answers differently on each has told a
+	// controller two different things about the same stream. Two
+	// generators drift the moment either is touched.
 	for _, snd := range s.bundle.Senders {
 		sid := snd.ID
 		sndCopy := snd
 		path := base + "/senders/" + sid + "/transportfile"
 		srv.Handle(stdhttp.MethodGet, path, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+			if sdp := s.senderSDP(sid); sdp != "" {
+				return 0, &httpsession.RawBody{
+					ContentType: "application/sdp",
+					Body:        []byte(sdp),
+				}, nil
+			}
+			// No Connection API mounted: fall back to the standalone
+			// renderer so manifest_href still resolves.
 			return 0, &httpsession.RawBody{
 				ContentType: "application/sdp",
 				Body:        []byte(sdpFor(sndCopy)),

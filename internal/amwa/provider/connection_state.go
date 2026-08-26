@@ -106,8 +106,25 @@ func (s *connectionStore) setNodeIP(ip string) {
 func (s *connectionStore) reresolveActive() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	ip := s.nodeIP
+	if ip == "" {
+		ip = "127.0.0.1"
+	}
 	for _, set := range []map[string]*connectionEndpoint{s.senders, s.receivers} {
 		for _, e := range set {
+			// A sender's source_ip is seeded blank because the Node
+			// does not know its own address until the endpoint list is
+			// expanded. Filling it in STAGED as well as active is the
+			// point of this pass: source_ip may not be "auto", so
+			// there is no placeholder that would survive validation
+			// until the first activation.
+			if e.isSender {
+				for i := range e.staged.TransportParams {
+					if v, ok := e.staged.TransportParams[i]["source_ip"].(string); ok && v == "" {
+						e.staged.TransportParams[i]["source_ip"] = ip
+					}
+				}
+			}
 			if e.active.Activation.ActivationTime != nil {
 				continue
 			}
@@ -198,11 +215,22 @@ func defaultLegParams(transport string, isSender bool) is05.TransportParams {
 	case isRTP(transport):
 		p["rtp_enabled"] = false
 		p["destination_port"] = "auto"
-		p["source_ip"] = "auto"
+		// "auto" is NOT legal on every parameter, and the split is not
+		// symmetric between the two roles.
+		//
+		// IS-05's RTP schemas allow the literal "auto" only where the
+		// device genuinely gets to choose: a sender's destination and
+		// ports, a receiver's interface. A sender's source_ip is an
+		// enum of the addresses the device HAS, and a receiver's
+		// source_ip is the far end's address or null -- neither may be
+		// "auto", so seeding it there makes staged fail validation
+		// against our own published constraints (IS-05-01 test_16).
 		if isSender {
+			p["source_ip"] = ""
 			p["destination_ip"] = "auto"
 			p["source_port"] = "auto"
 		} else {
+			p["source_ip"] = nil
 			p["interface_ip"] = "auto"
 			p["multicast_ip"] = nil
 		}

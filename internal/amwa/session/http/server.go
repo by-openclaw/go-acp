@@ -43,6 +43,15 @@ type prefixRoute struct {
 	fn     HandlerFunc
 }
 
+// altSlashForm returns the other spelling of a path: with a trailing
+// slash if it had none, without if it had one.
+func altSlashForm(p string) string {
+	if strings.HasSuffix(p, "/") {
+		return strings.TrimSuffix(p, "/")
+	}
+	return p + "/"
+}
+
 // ErrorBody mirrors the IS-04 §4.4 / IS-09 RAML error envelope so
 // peers see a uniform shape on 4xx / 5xx.
 type ErrorBody struct {
@@ -180,13 +189,7 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		//
 		// Tried only after the exact match, so a route registered for
 		// one specific form still wins.
-		alt := r.URL.Path
-		if strings.HasSuffix(alt, "/") {
-			alt = strings.TrimSuffix(alt, "/")
-		} else {
-			alt += "/"
-		}
-		fn, ok = s.routes[routeKey{method: r.Method, path: alt}]
+		fn, ok = s.routes[routeKey{method: r.Method, path: altSlashForm(r.URL.Path)}]
 	}
 	if !ok {
 		// Try a prefix route — longest match first.
@@ -201,8 +204,15 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	if !ok {
 		// Choose 404 vs 405 based on whether ANY route matches the path.
 		methodNotAllowed := false
+		// Both spellings of the path, for the same reason the lookup
+		// above tries both: a trailing slash is not a different
+		// resource. `GET /bulk/senders` against a POST-only
+		// `/bulk/senders/` is a wrong METHOD, not a missing route, and
+		// answering 404 tells a controller the endpoint does not exist
+		// (IS-05-01 test_34/test_35).
+		alt := altSlashForm(r.URL.Path)
 		for k := range s.routes {
-			if k.path == r.URL.Path && k.method != r.Method {
+			if (k.path == r.URL.Path || k.path == alt) && k.method != r.Method {
 				methodNotAllowed = true
 				break
 			}

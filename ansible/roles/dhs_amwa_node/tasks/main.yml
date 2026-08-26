@@ -77,11 +77,19 @@
   register: dhs_amwa_node_build
   changed_when: "'Successfully' in dhs_amwa_node_build.stdout or dhs_amwa_node_build.rc == 0"
 
-- name: Results directory
+# Recreated, not just ensured. Yesterday's scores are not this run's.
+#
+# The fetch step collects whatever *.json is sitting here, so a suite
+# dropped from the list keeps reporting its last result forever — and
+# in a summary it reads exactly like a suite that ran and passed. Three
+# phantom IS-07 / IS-08 / IS-09 files survived that way into a run
+# where the node served none of those APIs.
+- name: Results directory (emptied first)
   ansible.builtin.file:
     path: "{{ dhs_amwa_node_results }}"
-    state: directory
+    state: "{{ item }}"
     mode: "0755"
+  loop: [absent, directory]
 
 # The node is recreated per api_ver rather than reconfigured, because a
 # node that has already registered at one minor is not the same subject

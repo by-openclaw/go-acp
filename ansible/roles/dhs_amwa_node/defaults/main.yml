@@ -64,6 +64,12 @@ dhs_amwa_node_suites:
   - id: "IS-05-02"
     name: "IS-05 Interaction with IS-04"
     endpoints: ["node", "connection"]
+  - id: "IS-08-01"
+    name: "IS-08 Channel Mapping API"
+    endpoints: ["chanmap"]
+  - id: "IS-08-02"
+    name: "IS-08 Interaction with IS-04"
+    endpoints: ["node", "chanmap"]
 
 # Per-endpoint version map, resolved at request time.
 dhs_amwa_node_endpoint_vers:

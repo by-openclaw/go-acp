@@ -77,7 +77,17 @@ func (s *IS05ConnectionServer) sdpForSender(id string, active is05.StagedSender)
 	// ST 2110-10 §8: every stream declares its clock. `direct=0`
 	// with a TAI reference is the plain "PTP-locked, no offset" case.
 	fmt.Fprintf(&b, "a=mediaclk:direct=0\r\n")
-	fmt.Fprintf(&b, "a=ts-refclk:localmac=00-00-00-00-00-00\r\n")
+	// The MAC of the interface this Sender is bound to, not a
+	// placeholder.
+	//
+	// IS-04 already states the binding twice -- the Sender's
+	// interface_bindings names an interface, and node.interfaces names
+	// that interface's port_id -- and ts-refclk is the same fact a
+	// third time, in the SDP. A controller cross-checks them to work
+	// out which physical port a stream leaves by (IS-05-02 test_17),
+	// so a constant here is not a harmless stub: it contradicts the
+	// two places that are correct.
+	fmt.Fprintf(&b, "a=ts-refclk:localmac=%s\r\n", s.senderLocalMAC(snd))
 	// source-filter lets a receiver join an SSM group. Multicast only:
 	// on a unicast stream there is no group to filter.
 	if ip := net.ParseIP(dstIP); ip != nil && ip.IsMulticast() {
@@ -128,6 +138,30 @@ func mediaLinesFor(f *is04.Flow, channels int) (media, rtpmap string, extra []st
 		}
 		return "video", "raw/90000", attrs
 	}
+}
+
+// senderLocalMAC resolves a Sender's bound interface to its MAC.
+//
+// Falls back to the Node's first interface, then to the all-zero MAC:
+// the SDP line is mandatory, so an unresolvable binding still has to
+// render something syntactically valid.
+func (s *IS05ConnectionServer) senderLocalMAC(snd *is04.Sender) string {
+	const unknown = "00-00-00-00-00-00"
+	if s.bundle == nil {
+		return unknown
+	}
+	ifaces := s.bundle.Node.Interfaces
+	for _, name := range snd.InterfaceBindings {
+		for i := range ifaces {
+			if ifaces[i].Name == name && ifaces[i].PortID != "" {
+				return ifaces[i].PortID
+			}
+		}
+	}
+	if len(ifaces) > 0 && ifaces[0].PortID != "" {
+		return ifaces[0].PortID
+	}
+	return unknown
 }
 
 // audioChannels counts the channels on the Source behind a Flow.
