@@ -39,6 +39,18 @@ const systemDiscoveryTimeout = 2 * time.Second
 // resource, applying what it finds. Returns the Global, or nil when
 // none was found.
 func (s *IS04NodeServer) fetchSystemGlobal(ctx context.Context) *is09.Global {
+	// The watch starts FIRST, before the one-shot lookup below.
+	//
+	// Order matters more than it looks. The one-shot lookup blocks for
+	// a discovery timeout, and anything advertised during that window
+	// is announced to nobody -- the watcher does not exist yet, and a
+	// browse opened afterwards is only told about what happens NEXT.
+	// Starting the watch first means the Node is listening from the
+	// moment it serves, and the one-shot lookup becomes what it should
+	// be: a fast path for a System API that is already there, not the
+	// only path.
+	s.watchForSystem(ctx)
+
 	opts := systemsession.IS09FetchOptions{Logger: s.logger}
 
 	// An explicitly configured System API beats discovery. An operator
