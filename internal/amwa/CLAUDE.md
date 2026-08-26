@@ -398,6 +398,8 @@ internal/amwa/codec/
     codec.go                     # extends spec.Versioned with the spec's resource methods
     {node,device,...}.go         # canonical union structs (every minor's fields, omitempty)
     patterns.go enums.go         # shared regex / URN tables
+    since.go                     # WHEN each property arrived — the version delta, as data
+    absorb.go                    # decode that records unknown fields instead of failing
     v10/  v11/  v12/  v13/       # per-minor Strategy impls (~50–100 LOC each)
       codec.go                   # implements the spec's Codec interface for ONE wire minor
 
@@ -407,6 +409,46 @@ internal/amwa/codec/
     bcp00601/  bcp00604/         # BCP-006-01 / 006-04
     bcp00801/  bcp00802/         # BCP-008-01 / 008-02
 ```
+
+### The version delta is DATA, in one place
+
+A `vXX/` package holds only what is specific to that minor: its
+identity and its required-field validators. It holds **no field-gating
+table of its own**. Which property arrived at which minor is stated
+once, in `is04.Since`, keyed by resource kind, with a dotted path
+(`controls` · `caps.constraint_sets` ·
+`interfaces[].attached_network_device` — `[]` fans out across an
+array). Exactly two functions read it:
+
+| Direction | Function | Posture |
+|---|---|---|
+| encode | `StripLaterThan(raw, kind, apiVer)` | **strict** — a v1.x tree MUST NOT carry a later minor's property; AMWA IS-04-01 fails the Node for it |
+| decode | `AbsorbLaterThan(raw, kind, apiVer, reporter)` | **tolerant** — report `nmos_is04_later_minor_field` at Warn, keep the resource |
+
+The asymmetry is deliberate and matches the repo-wide compliance
+posture: strict on what we emit, tolerant of what we read. A real EVS
+Neuron serves `controls` on its v1.0 Device tree — refusing it lost
+the whole Device and told the operator nothing actionable.
+
+Two rules follow, and breaking either is how this rotted the first
+time:
+
+- **Never add a fifth mechanism.** If a delta cannot be expressed in
+  `Since`, extend the path grammar — do not hand-write a walker in a
+  `vXX/` package. That is exactly how v12 ended up with
+  `rejectNodeV13Nested` while v10/v11 used flat key lists.
+- **Decode at a minor validates at that minor.** Per-minor `DecodeX`
+  calls `is04.ParseX` (decode + absorb + report, no validation) and
+  then its OWN validator. Delegating to `is04.DecodeX` validates
+  against the canonical/latest rules, which failed a v1.0 Flow for
+  missing `frame_width` — a field that same table says arrived in
+  v1.1.
+
+For comparison: sony/nmos-cpp keeps no per-minor types at all. One
+untyped `web::json::value` per resource, stored at its highest
+version, with the whole delta in a single `nmos::downgrade()` in
+`nmos/api_downgrade.cpp`. `Since` is the same single-source-of-truth
+shape, expressed as data rather than `if (version < v1_1) erase(...)`.
 
 ### OOP principles enforced
 
