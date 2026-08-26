@@ -207,6 +207,35 @@ func (s *IS07EventsServer) initialState(es *eventSource) any {
 		Timing:      is07.Timing{CreationTimestamp: is05.FormatTAINow(s.now())},
 		EventType:   es.eventType,
 	}
+	// An ENUM source's starting value must be one of its OWN values.
+	//
+	// The Go zero value is fine for a plain source -- a tally starts
+	// off, a fader starts at zero -- but a source that has declared
+	// "this may only ever be CAM1 or CAM2" and then reports "" is
+	// publishing a value it has just said is impossible. There is no
+	// "unset" member in an enum, so the first declared value is the
+	// only honest default.
+	if v, isEnum := firstEnumValue(es.typeDef); isEnum {
+		switch val := v.(type) {
+		case bool:
+			return is07.EventBoolean{EventCommon: common, Payload: is07.PayloadBoolean{Value: val}}
+		case string:
+			return is07.EventString{EventCommon: common, Payload: is07.PayloadString{Value: val}}
+		case map[string]any:
+			// A number enum's value is a {value, scale} object.
+			n := is07.Number{Scale: 1}
+			if f, ok := val["value"].(float64); ok {
+				n.Value = f
+			}
+			if f, ok := val["scale"].(float64); ok && f != 0 {
+				n.Scale = int(f)
+			}
+			return is07.EventNumber{EventCommon: common, Payload: n}
+		case float64:
+			return is07.EventNumber{EventCommon: common, Payload: is07.Number{Value: val, Scale: 1}}
+		}
+	}
+
 	switch is07.CategoryOf(es.eventType) {
 	case is07.EventCategoryBoolean:
 		return is07.EventBoolean{EventCommon: common}
@@ -217,6 +246,29 @@ func (s *IS07EventsServer) initialState(es *eventSource) any {
 	default:
 		return is07.EventObject{EventCommon: common, Payload: is07.PayloadObject{}}
 	}
+}
+
+// firstEnumValue reads the first declared value out of a type
+// document, reporting whether the document is an enum at all.
+//
+// A type document is an enum exactly when it carries `values` -- the
+// base `type` still says "boolean" or "string", so the presence of the
+// list is the whole discriminator.
+func firstEnumValue(doc any) (any, bool) {
+	m, isMap := doc.(map[string]any)
+	if !isMap {
+		return nil, false
+	}
+	values, hasValues := m["values"].([]any)
+	if !hasValues || len(values) == 0 {
+		return nil, false
+	}
+	first, isMap := values[0].(map[string]any)
+	if !isMap {
+		return nil, false
+	}
+	v, present := first["value"]
+	return v, present
 }
 
 // SetState replaces one source's current value and returns the message

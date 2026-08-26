@@ -15,6 +15,7 @@ import (
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is09"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 )
@@ -109,6 +110,10 @@ type IS04NodeConfig struct {
 
 	// EventsAPIVer pins IS-07 to one wire minor.
 	EventsAPIVer string
+
+	// SystemURL names an IS-09 System API as `host:port`, skipping
+	// discovery. Empty means browse for one.
+	SystemURL string
 }
 
 // IS04NodeServer hosts the Node API endpoints + DNS-SD announce +
@@ -138,6 +143,10 @@ type IS04NodeServer struct {
 
 	// events is the IS-07 Event & Tally API. Nil disables it.
 	events *IS07EventsServer
+
+	// systemGlobal is what an IS-09 System API told this Node at
+	// startup, or nil if none answered. Guarded by mu.
+	systemGlobal *is09.Global
 
 	mu        sync.Mutex
 	http      *httpsession.Server
@@ -339,6 +348,17 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// possible behaviours, because it looks correct to the controller
 	// right up until the switch does not happen.
 	go s.runActivationScheduler(ctx, 0)
+
+	// Read the System API, if there is one.
+	//
+	// In its own goroutine: IS-09 discovery browses mDNS with a
+	// timeout, and blocking the listener on it would mean a Node on a
+	// network with no System API takes seconds to answer its first
+	// request. The result is advisory (see system_client.go), so
+	// nothing here needs to wait for it.
+	go func() {
+		s.fetchSystemGlobal(ctx)
+	}()
 
 	s.mu.Unlock()
 	return srv.Serve(ctx, s.cfg.Bind)

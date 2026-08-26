@@ -9,17 +9,23 @@
 //
 //	/x-nmos/channelmapping/{ver}/
 //	  io/                              GET
+//	  inputs/                          GET
+//	  inputs/{inputID}/                GET -> properties parent channels caps
+//	  outputs/                         GET
+//	  outputs/{outputID}/              GET -> properties sourceid channels caps
 //	  map/                             GET
 //	  map/active/                      GET
 //	  map/active/{outputID}/           GET
 //	  map/activations/                 GET POST
 //	  map/activations/{activationID}/  GET DELETE
 //
-// There are no separate /inputs or /outputs trees. Every per-input and
-// per-output property -- name, parent, channel labels, caps -- is a
-// sub-object of the single `io` aggregate. That is worth stating
-// because the codec has an InputProperties type and it is tempting to
-// give it a route of its own; no controller would ever fetch it.
+// `io` is an AGGREGATE of the inputs and outputs trees, not a
+// replacement for them. Both exist because they answer different
+// questions: a controller building a patch grid fetches `io` once, and
+// one watching a single input's channel labels polls that input alone.
+// Serving only the aggregate is a plausible-looking mistake -- every
+// value is still reachable -- and it 404s a controller that walks the
+// tree the RAML describes.
 //
 // Staged/active works differently from IS-05 too. IS-05 stages onto
 // the endpoint and activates in place; IS-08 POSTs a whole activation
@@ -297,8 +303,9 @@ func (s *IS08ChannelMappingServer) mountVersion(srv *httpsession.Server, base st
 	ok := func(v any) (int, any, error) { return stdhttp.StatusOK, v, nil }
 
 	srv.Handle(stdhttp.MethodGet, base+"/", func(context.Context, *stdhttp.Request) (int, any, error) {
-		return ok([]string{"io/", "map/"})
+		return ok([]string{"io/", "inputs/", "outputs/", "map/"})
 	})
+	s.mountIOTrees(srv, base)
 	srv.Handle(stdhttp.MethodGet, base+"/io/", func(context.Context, *stdhttp.Request) (int, any, error) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
@@ -357,6 +364,89 @@ func (s *IS08ChannelMappingServer) mountVersion(srv *httpsession.Server, base st
 	srv.HandlePrefix(base+"/map/activations/", stdhttp.MethodDelete, func(_ context.Context, r *stdhttp.Request) (int, any, error) {
 		return s.handleActivationDelete(base, r)
 	})
+}
+
+// mountIOTrees registers the /inputs and /outputs resources.
+//
+// One route per known id rather than a prefix match, for the same
+// reason the map/active per-output route is: an id the device does not
+// have should get the router's 404, not an empty object that looks
+// like an input with nothing in it.
+func (s *IS08ChannelMappingServer) mountIOTrees(srv *httpsession.Server, base string) {
+	ok := func(v any) (int, any, error) { return stdhttp.StatusOK, v, nil }
+
+	s.mu.RLock()
+	inputs := sortedKeys(s.io.Inputs)
+	outputs := sortedKeys(s.io.Outputs)
+	s.mu.RUnlock()
+
+	srv.Handle(stdhttp.MethodGet, base+"/inputs/", func(context.Context, *stdhttp.Request) (int, any, error) {
+		return ok(withSlashes(inputs))
+	})
+	srv.Handle(stdhttp.MethodGet, base+"/outputs/", func(context.Context, *stdhttp.Request) (int, any, error) {
+		return ok(withSlashes(outputs))
+	})
+
+	for _, id := range inputs {
+		inID := id
+		p := base + "/inputs/" + inID
+		srv.Handle(stdhttp.MethodGet, p+"/", func(context.Context, *stdhttp.Request) (int, any, error) {
+			return ok([]string{"caps/", "channels/", "parent/", "properties/"})
+		})
+		srv.Handle(stdhttp.MethodGet, p+"/properties/", s.inputField(inID, func(in is08.Input) any { return in.Properties }))
+		srv.Handle(stdhttp.MethodGet, p+"/parent/", s.inputField(inID, func(in is08.Input) any { return in.Parent }))
+		srv.Handle(stdhttp.MethodGet, p+"/channels/", s.inputField(inID, func(in is08.Input) any { return in.Channels }))
+		srv.Handle(stdhttp.MethodGet, p+"/caps/", s.inputField(inID, func(in is08.Input) any { return in.Caps }))
+	}
+
+	for _, id := range outputs {
+		outID := id
+		p := base + "/outputs/" + outID
+		srv.Handle(stdhttp.MethodGet, p+"/", func(context.Context, *stdhttp.Request) (int, any, error) {
+			return ok([]string{"caps/", "channels/", "properties/", "sourceid/"})
+		})
+		srv.Handle(stdhttp.MethodGet, p+"/properties/", s.outputField(outID, func(o is08.Output) any { return o.Properties }))
+		// `sourceid` is one word in the URL and `source_id` in JSON.
+		// That is the spec's spelling, not a slip.
+		srv.Handle(stdhttp.MethodGet, p+"/sourceid/", s.outputField(outID, func(o is08.Output) any { return o.SourceID }))
+		srv.Handle(stdhttp.MethodGet, p+"/channels/", s.outputField(outID, func(o is08.Output) any { return o.Channels }))
+		srv.Handle(stdhttp.MethodGet, p+"/caps/", s.outputField(outID, func(o is08.Output) any { return o.Caps }))
+	}
+}
+
+// inputField serves one field of one input under the store lock.
+func (s *IS08ChannelMappingServer) inputField(id string, pick func(is08.Input) any) httpsession.HandlerFunc {
+	return func(context.Context, *stdhttp.Request) (int, any, error) {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		in, found := s.io.Inputs[id]
+		if !found {
+			return stdhttp.StatusNotFound, is08.ErrorBody{Code: 404, Error: "Unknown input", Debug: id}, nil
+		}
+		return stdhttp.StatusOK, pick(in), nil
+	}
+}
+
+// outputField serves one field of one output under the store lock.
+func (s *IS08ChannelMappingServer) outputField(id string, pick func(is08.Output) any) httpsession.HandlerFunc {
+	return func(context.Context, *stdhttp.Request) (int, any, error) {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		o, found := s.io.Outputs[id]
+		if !found {
+			return stdhttp.StatusNotFound, is08.ErrorBody{Code: 404, Error: "Unknown output", Debug: id}, nil
+		}
+		return stdhttp.StatusOK, pick(o), nil
+	}
+}
+
+func sortedKeys[T any](m map[string]T) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // handleActivationPost applies or queues one re-map.

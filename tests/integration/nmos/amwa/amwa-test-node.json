@@ -81,7 +81,9 @@
         "2c47bf5e-1b2c-4abc-9def-deadbeef0009",
         "2c47bf5e-1b2c-4abc-9def-deadcfff000a",
         "2c47bf5e-1b2c-4abc-9def-deadcfff000b",
-        "2c47bf5e-1b2c-4abc-9def-deadcfff000c"
+        "2c47bf5e-1b2c-4abc-9def-deadcfff000c",
+        "2c47bf5e-1b2c-4abc-9def-deadcfff000d",
+        "2c47bf5e-1b2c-4abc-9def-deadcfff000e"
       ],
       "receivers": [
         "2c47bf5e-1b2c-4abc-9def-deadbeef0006"
@@ -163,6 +165,32 @@
       "clock_name": "clk0",
       "format": "urn:x-nmos:format:data",
       "event_type": "boolean"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000d",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-preset-enum",
+      "description": "preset-enum",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:data",
+      "event_type": "number"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000e",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-camera-enum",
+      "description": "camera-enum",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:data",
+      "event_type": "string"
     }
   ],
   "flows": [
@@ -234,6 +262,32 @@
       "format": "urn:x-nmos:format:data",
       "media_type": "application/json",
       "event_type": "boolean"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbfff000d",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-preset-enum",
+      "description": "preset-enum",
+      "tags": {},
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef000d",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "number"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbfff000e",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-camera-enum",
+      "description": "camera-enum",
+      "tags": {},
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef000e",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "string"
     }
   ],
   "senders": [
@@ -331,6 +385,42 @@
         "receiver_id": null,
         "active": false
       }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadcfff000d",
+      "version": "1777651501:0",
+      "label": "dhs-test-sender-preset-enum",
+      "description": "preset-enum over websocket",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbfff000d",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadcfff000e",
+      "version": "1777651501:0",
+      "label": "dhs-test-sender-camera-enum",
+      "description": "camera-enum over websocket",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbfff000e",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": false
+      }
     }
   ],
   "receivers": [
@@ -388,6 +478,30 @@
     }
   ],
   "event_types": {
+    "2c47bf5e-1b2c-4abc-9def-deadbeef0007": {
+      "type": "boolean"
+    },
+    "2c47bf5e-1b2c-4abc-9def-deadbeef000a": {
+      "type": "number",
+      "min": {
+        "value": -60,
+        "scale": 1
+      },
+      "max": {
+        "value": 10,
+        "scale": 1
+      },
+      "step": {
+        "value": 1,
+        "scale": 1
+      },
+      "unit": "dB"
+    },
+    "2c47bf5e-1b2c-4abc-9def-deadbeef000b": {
+      "type": "string",
+      "min_length": 0,
+      "max_length": 16
+    },
     "2c47bf5e-1b2c-4abc-9def-deadbeef000c": {
       "type": "boolean",
       "values": [
@@ -401,23 +515,26 @@
         }
       ]
     },
-    "2c47bf5e-1b2c-4abc-9def-deadbeef000a": {
+    "2c47bf5e-1b2c-4abc-9def-deadbeef000d": {
       "type": "number",
-      "minimum": {
-        "value": -60,
-        "scale": 1
-      },
-      "maximum": {
-        "value": 10,
-        "scale": 1
-      },
-      "step": {
-        "value": 1,
-        "scale": 1
-      },
-      "unit": "dB"
+      "values": [
+        {
+          "label": "Wide",
+          "value": {
+            "value": 1,
+            "scale": 1
+          }
+        },
+        {
+          "label": "Tight",
+          "value": {
+            "value": 2,
+            "scale": 1
+          }
+        }
+      ]
     },
-    "2c47bf5e-1b2c-4abc-9def-deadbeef000b": {
+    "2c47bf5e-1b2c-4abc-9def-deadbeef000e": {
       "type": "string",
       "values": [
         {

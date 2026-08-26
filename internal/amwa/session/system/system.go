@@ -14,7 +14,7 @@
 //   4. Randomised tie-break among the lowest-pri survivors.
 //   5. GET /x-nmos/system/<api-ver>/global, validate, return Global.
 
-package consumer
+package system
 
 import (
 	"context"
