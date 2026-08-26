@@ -14,29 +14,57 @@
   register: dhs_amwa_node_tool
   failed_when: dhs_amwa_node_tool.status != 200
 
-# synchronize needs rsync on BOTH ends. The tooling host is a slim
-# Ubuntu LXC and does not ship it.
-- name: rsync present (synchronize needs it on the target too)
-  ansible.builtin.apt:
-    name: rsync
-    state: present
-    update_cache: true
-    cache_valid_time: 3600
-  when: ansible_os_family == "Debian"
+# Source staging goes over tar, not rsync.
+#
+# ansible.posix.synchronize needs rsync on BOTH the control node and
+# the target, and neither of these slim LXCs ships it. Installing it in
+# two places to move 7 MB once per run is a dependency bought for
+# nothing — tar is in every base image, and the archive is built from
+# `git ls-files` so the build context is exactly what is COMMITTED.
+# That last part matters more than the transport: a conformance score
+# has to name a commit, and staging the working tree would let a
+# forgotten local edit into the number.
+- name: Build a source archive from tracked files
+  ansible.builtin.command:
+    cmd: git ls-files -z
+    chdir: "{{ playbook_dir }}/../.."
+  register: dhs_amwa_node_tracked
+  delegate_to: localhost
+  changed_when: false
 
-- name: Stage the source (assets and testdata excluded — see .dockerignore)
-  ansible.posix.synchronize:
-    src: "{{ playbook_dir }}/../../"
-    dest: "{{ dhs_amwa_node_dir }}/src/"
-    delete: true
-    rsync_opts:
-      - "--exclude=.git"
-      - "--exclude=.cache"
-      - "--exclude=captures"
-      - "--exclude=bin"
-      - "--exclude=assets"
-      - "--exclude=testdata"
+- name: Record the commit being scored
+  ansible.builtin.command:
+    cmd: git rev-parse HEAD
+    chdir: "{{ playbook_dir }}/../.."
+  register: dhs_amwa_node_commit
+  delegate_to: localhost
+  changed_when: false
+
+- name: Archive the tracked source (assets and testdata dropped — none of it compiles)
+  ansible.builtin.shell:
+    cmd: >-
+      git ls-files -z
+      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/'
+      | tar --null -T - -czf /tmp/dhs-amwa-src.tgz
+    chdir: "{{ playbook_dir }}/../.."
+  delegate_to: localhost
+  changed_when: true
+
+- name: Stage directory
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_node_dir }}/src"
+    state: directory
+    mode: "0755"
+
+- name: Ship and unpack the source
+  ansible.builtin.unarchive:
+    src: /tmp/dhs-amwa-src.tgz
+    dest: "{{ dhs_amwa_node_dir }}/src"
   register: dhs_amwa_node_sync
+
+- name: Report the commit under test
+  ansible.builtin.debug:
+    msg: "scoring commit {{ dhs_amwa_node_commit.stdout | default('unknown') }}"
 
 - name: Build the node image from that source
   ansible.builtin.command:
