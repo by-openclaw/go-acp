@@ -44,6 +44,18 @@
   changed_when: false
   failed_when: "'true' not in dhs_amwa_node_alive.stdout"
 
+# The tool calls ipaddress.ip_address() on the host field, so a
+# container NAME throws where an address works. IS-04-01 tolerated the
+# name; IS-05 does not, which is why the first IS-05 run produced a
+# Python traceback rather than a score.
+- name: "{{ api_ver }} — resolve the node''s address on the bridge"
+  ansible.builtin.command: >-
+    docker inspect -f
+    {% raw %}'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'{% endraw %}
+    {{ dhs_amwa_node_name }}
+  register: dhs_amwa_node_ip
+  changed_when: false
+
 - name: "{{ api_ver }} — node startup log"
   ansible.builtin.command: docker logs --tail 15 {{ dhs_amwa_node_name }}
   register: dhs_amwa_node_log
@@ -60,12 +72,21 @@
     body_format: json
     body:
       suite: "{{ item.id }}"
-      host: ["{{ dhs_amwa_node_name }}"]
-      # A list expression, not a bare template in brackets — and the
-      # port stays an INT: the tool validates the type, so quoting it
-      # turns a scoring run into a 400.
-      port: "{{ [dhs_amwa_node_port | int] }}"
-      version: ["{{ api_ver }}"]
+      # One array slot per endpoint the suite declares, in ITS order.
+      #
+      # Every slot is this same node — a Node serves all its APIs on
+      # one listener — but the VERSION differs per API, and that is the
+      # part that cannot be guessed: passing the IS-04 minor to an
+      # IS-05 suite makes the tool throw instead of score.
+      #
+      # host is an ADDRESS, never the container name: the tool calls
+      # ipaddress.ip_address() on it and a name raises. IS-04-01
+      # tolerated a name, IS-05 does not.
+      host: "{{ item.endpoints | map('regex_replace', '^.*$', dhs_amwa_node_ip.stdout | trim) | list }}"
+      # Ports stay INTs — the tool type-checks them, so quoting turns a
+      # scoring run into a 400.
+      port: "{{ item.endpoints | map('regex_replace', '^.*$', dhs_amwa_node_port | string) | map('int') | list }}"
+      version: "{{ item.endpoints | map('extract', dhs_amwa_node_endpoint_vers) | list }}"
       output: json
     timeout: "{{ dhs_amwa_node_suite_timeout }}"
     status_code: [200, 400, 500]
