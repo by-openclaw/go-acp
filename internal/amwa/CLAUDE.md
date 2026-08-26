@@ -149,19 +149,31 @@ the wire `api_ver` (major.minor) AND the latest patch within that
 minor (the spec text we strictly comply with). Authoritative version
 numbers come from `internal/amwa/reference.md`.
 
-| Spec | Wire `api_ver` (URL) | Spec text patch (strict-comply) |
-|---|---|---|
-| IS-04 | v1.0, v1.1, v1.2, v1.3 | v1.0.3 / v1.1.3 / v1.2.2 / v1.3.3 |
-| IS-05 | v1.0, v1.1 | v1.0.2 / v1.1.2 |
-| IS-07 | v1.0 | v1.0.1 |
-| IS-08 | v1.0 | v1.0.1 |
-| IS-09 | v1.0 | v1.0.0 |
-| IS-12 | v1.0 | v1.0.1 |
-| MS-05-01 / MS-05-02 | v1.0 | v1.0.0 |
-| BCP-002-01 / BCP-002-02 | v1.0 | v1.0.0 |
-| BCP-004-01 / BCP-004-02 | v1.0 | v1.0.0 |
-| BCP-006-01 / BCP-006-04 | v1.0 | v1.0.0 |
-| BCP-008-01 / BCP-008-02 | v1.0 | v1.0.0 |
+Verified against specs.amwa.tv on **2026-08-26**. `impl` is what
+`internal/amwa/codec/` actually ships; a gap between the two columns is
+a MISSING implementation by the rule below, never a scope decision.
+
+| Spec | Published (latest patch) | Wire `api_ver` | impl |
+|---|---|---|---|
+| IS-04 Discovery & Registration | v1.0.3 / v1.1.3 / v1.2.2 / **v1.3.3** | v1.0–v1.3 | ✅ v1.0–v1.3 |
+| IS-05 Connection Management | v1.0.2 / v1.1.2 / **v1.2.0** | v1.0–v1.2 | ⚠️ v1.0, v1.1 — **v1.2 MISSING** |
+| IS-07 Event & Tally | **v1.0.1** | v1.0 | ✅ v1.0 |
+| IS-08 Channel Mapping | **v1.0.1** | v1.0 | ✅ v1.0 |
+| IS-09 System Parameters | **v1.0.0** | v1.0 | ✅ v1.0 |
+| IS-11 Stream Compatibility | **v1.0.0** | v1.0 | ❌ **MISSING — spec not started** |
+| IS-12 Control Protocol | **v1.0.1** | v1.0 | ✅ v1.0 |
+| IS-14 Device Configuration | **v1.0.0** | v1.0 | ❌ **MISSING — spec not started** |
+| MS-05-01 / MS-05-02 | **v1.0.0** | v1.0 | ✅ v1.0 |
+| BCP-002-01 / -02 Grouping, Asset | **v1.0.0** | — | ✅ |
+| BCP-003-01 Secure Communications | **v1.0.1** | — | ⚠️ table said v1.0.0 |
+| BCP-003-02 Authorization | **v1.0.0** | — | ❌ **MISSING** |
+| BCP-003-03 Certificate Provisioning | **v1.0.0** | — | ❌ **MISSING** |
+| BCP-004-01 / -02 Receiver/Sender Caps | **v1.0.0** | — | ✅ |
+| BCP-005-01 EDID Mapping | **v1.0.0** | — | ❌ **MISSING** |
+| BCP-005-02 / -03 IPMX HKEP, PEP | **v1.0.0** | — | ❌ **MISSING** |
+| BCP-006-01 JPEG XS / -04 MPEG TS | **v1.0.0** | — | ✅ |
+| BCP-007-03 MXL | **v1.0.0** | — | ❌ **MISSING** |
+| BCP-008-01 / -02 Status Monitoring | **v1.0.0** | — | ✅ |
 
 **Strict-spec rule (binding, no exceptions for AMWA-published versions):**
 every minor AMWA has published is in scope. There is **no "deferred",
@@ -184,6 +196,17 @@ Genuinely WIP at AMWA (no stable release yet — land when stable):
 IS-13 Annotation, BCP-006-02 H.264, BCP-006-03 H.265, BCP-007-01 NDI.
 These are the ONLY legitimate "land when stable" carve-outs; they
 land the moment AMWA publishes a stable release.
+
+**This table drifts, and drift here is invisible.** The 2026-08-26
+audit found the previous version of it four specs and one minor behind
+what AMWA had already published — IS-05 v1.2.0, IS-11, IS-14,
+BCP-003-02/-03, BCP-005-01/-02/-03 and BCP-007-03 were all released
+and none appeared here, so nothing flagged them as missing. Re-verify
+against specs.amwa.tv whenever the AMWA testing tool gains a suite we
+have no row for: the tool ships suites for exactly the published set,
+so a suite we cannot name IS the signal. Suites present on the tool
+today with no implementation behind them: IS-11, IS-14, BCP-005-01,
+BCP-007-03.
 
 ---
 
