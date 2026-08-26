@@ -156,7 +156,7 @@ a MISSING implementation by the rule below, never a scope decision.
 | Spec | Published (latest patch) | Wire `api_ver` | impl |
 |---|---|---|---|
 | IS-04 Discovery & Registration | v1.0.3 / v1.1.3 / v1.2.2 / **v1.3.3** | v1.0–v1.3 | ✅ v1.0–v1.3 |
-| IS-05 Connection Management | v1.0.2 / v1.1.2 / **v1.2.0** | v1.0–v1.2 | ⚠️ v1.0, v1.1 — **v1.2 MISSING** |
+| IS-05 Connection Management | v1.0.2 / v1.1.2 / **v1.2.0** | v1.0–v1.2 | ✅ v1.0–v1.2 |
 | IS-07 Event & Tally | **v1.0.1** | v1.0 | ✅ v1.0 |
 | IS-08 Channel Mapping | **v1.0.1** | v1.0 | ✅ v1.0 |
 | IS-09 System Parameters | **v1.0.0** | v1.0 | ✅ v1.0 |
@@ -207,6 +207,34 @@ have no row for: the tool ships suites for exactly the published set,
 so a suite we cannot name IS the signal. Suites present on the tool
 today with no implementation behind them: IS-11, IS-14, BCP-005-01,
 BCP-007-03.
+
+---
+
+### What the NODE role actually serves
+
+The table above is about CODECS. A codec with nothing serving it is not
+a working Node, and for a long time IS-07 and IS-08 were exactly that:
+complete, tested, and mounted nowhere. This table is about the Node
+provider (`internal/amwa/provider/`), which is a different question.
+
+| API | Node surface | Where |
+|---|---|---|
+| IS-04 Node API | `/x-nmos/node/{ver}/` + DNS-SD + registration client | `node.go` |
+| IS-05 Connection | `/x-nmos/connection/{ver}/` + SDP + activation scheduler | `connection*.go` |
+| IS-07 Event & Tally | `/x-nmos/events/{ver}/` REST + the WebSocket at `…/ws` | `events.go` |
+| IS-08 Channel Mapping | `/x-nmos/channelmapping/{ver}/` incl. `inputs`/`outputs` | `channelmapping.go` |
+| IS-09 System | **client**, not server — the Node reads a System API | `system_client.go` |
+
+IS-09 is the odd one and worth stating: every other row is something
+the Node SERVES, and that one is something it CONSUMES. A Node that
+ignores the System API picks its Registry from mDNS priority alone, so
+a plant that deliberately pointed its devices at one Registry finds
+this Node quietly registered somewhere else.
+
+Two deployment modes are mutually exclusive on the wire and therefore
+cannot both be tested against one process: IS-04 §4.2.1 requires a
+registered Node to STOP advertising `_nmos-node._tcp`, so peer-to-peer
+(Mode D) needs `--no-registry`.
 
 ---
 
