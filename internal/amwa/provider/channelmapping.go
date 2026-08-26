@@ -367,7 +367,16 @@ func (s *IS08ChannelMappingServer) mountVersion(srv *httpsession.Server, base st
 					Code: 404, Error: "Unknown output", Debug: outID,
 				}, nil
 			}
-			return ok(entries)
+			// The per-output view keeps the SAME shape as the whole
+			// map -- {activation, map} -- with the map narrowed to one
+			// output rather than unwrapped to bare channel entries.
+			// One shape means a controller parses both views with one
+			// path, and the activation block is what tells it whether
+			// what it is reading is settled or about to change.
+			return ok(is08.MapActive{
+				Activation: s.active.Activation,
+				Map:        is08.MapEntries{outID: entries},
+			})
 		})
 	}
 

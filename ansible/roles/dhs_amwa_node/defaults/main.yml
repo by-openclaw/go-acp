@@ -101,14 +101,18 @@ dhs_amwa_node_endpoint_vers:
   "-": "v1.0"
 
 # Per-endpoint host + port. Every real slot is this same node — a Node
-# serves all its APIs on one listener — and "-" is blank.
+# serves all its APIs on one listener — and "-" is the TOOL, because
+# that is who serves the API in that slot. The fields are REQUIRED to
+# be non-empty even where the suite ignores them: the tool rejects a
+# blank outright with "All IP/Hostname and Port fields must be
+# completed".
 dhs_amwa_node_endpoint_hosts:
   node: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   connection: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   events: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   chanmap: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   system: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
-  "-": ""
+  "-": "{{ dhs_amwa_tool_ip.stdout | default('') | trim }}"
 
 dhs_amwa_node_endpoint_ports:
   node: "{{ dhs_amwa_node_port }}"
@@ -116,7 +120,7 @@ dhs_amwa_node_endpoint_ports:
   events: "{{ dhs_amwa_node_port }}"
   chanmap: "{{ dhs_amwa_node_port }}"
   system: "{{ dhs_amwa_node_port }}"
-  "-": 0
+  "-": "{{ dhs_amwa_port_testing_ui }}"
 
 # Where results land on the tooling host before being fetched back into
 # the repo. A conformance number only means something next to the code

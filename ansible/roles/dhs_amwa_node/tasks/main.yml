@@ -113,10 +113,18 @@
     mode: "0755"
   loop: [absent, directory]
 
-# The node is recreated per api_ver rather than reconfigured, because a
-# node that has already registered at one minor is not the same subject
-# as a fresh one — the tool's registration rounds observe first
-# contact, and a re-used node has already had it.
+# The tool's own address on the bridge, for TOOL-SUPPLIED endpoint
+# slots. Those fields are required to be non-empty even when the suite
+# ignores them, so they get the address of whoever actually serves that
+# API rather than a placeholder pointing at our Node.
+- name: Resolve the testing tool's address on the bridge
+  ansible.builtin.command: >-
+    docker inspect -f
+    {% raw %}'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'{% endraw %}
+    nmos-testing
+  register: dhs_amwa_tool_ip
+  changed_when: false
+
 - name: Score each API version
   ansible.builtin.include_tasks: round.yml
   loop: "{{ dhs_amwa_node_api_vers }}"
