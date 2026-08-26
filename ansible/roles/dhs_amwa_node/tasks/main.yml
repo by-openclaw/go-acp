@@ -14,6 +14,16 @@
   register: dhs_amwa_node_tool
   failed_when: dhs_amwa_node_tool.status != 200
 
+# synchronize needs rsync on BOTH ends. The tooling host is a slim
+# Ubuntu LXC and does not ship it.
+- name: rsync present (synchronize needs it on the target too)
+  ansible.builtin.apt:
+    name: rsync
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
 - name: Stage the source (assets and testdata excluded — see .dockerignore)
   ansible.posix.synchronize:
     src: "{{ playbook_dir }}/../../"
