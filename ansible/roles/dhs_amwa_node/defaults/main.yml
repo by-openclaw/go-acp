@@ -106,6 +106,17 @@ dhs_amwa_node_suites:
 # "-" is the TOOL-SUPPLIED slot: the suite disables that endpoint's
 # host and port because the tool stands the API up itself. The slot
 # still occupies a position in every array.
+# The tool's PRIMARY mock System API. It stands up six of them at
+# PORT_BASE + 300 + n (nmostesting/mocks/System.py) and IS-09-02 checks
+# our Node discovers them by mDNS.
+#
+# The slot has to name one that actually answers: the tool
+# pre-validates every endpoint URL with a GET before the suite starts,
+# so its own web UI port returns 404 for /x-nmos/system/ and the suite
+# dies before scoring anything. Container-internal, so it does not need
+# publishing to the host.
+dhs_amwa_port_testing_system_mock: 5302
+
 dhs_amwa_node_endpoint_vers:
   node: "{{ api_ver | default('v1.3') }}"
   connection: "{{ dhs_amwa_node_is05_ver }}"
@@ -134,7 +145,7 @@ dhs_amwa_node_endpoint_ports:
   events: "{{ dhs_amwa_node_port }}"
   chanmap: "{{ dhs_amwa_node_port }}"
   system: "{{ dhs_amwa_node_port }}"
-  "-": "{{ dhs_amwa_port_testing_ui }}"
+  "-": "{{ dhs_amwa_port_testing_system_mock }}"
 
 # Where results land on the tooling host before being fetched back into
 # the repo. A conformance number only means something next to the code
