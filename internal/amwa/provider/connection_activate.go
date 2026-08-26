@@ -74,7 +74,12 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 		tf := *patch.TransportFile
 		merged.TransportFile = &tf
 	}
-	if present.ReceiverID {
+	// A sender PATCH carries receiver_id and a receiver PATCH carries
+	// sender_id. Both land in the shared struct's one id slot — the
+	// VIEW renames it per collection — so either being present must
+	// write it, or a receiver's sender_id is silently dropped
+	// (test_21).
+	if present.ReceiverID || present.SenderID {
 		merged.ReceiverID = patch.ReceiverID
 	}
 	if present.TransportParams && len(patch.TransportParams) > 0 {
@@ -88,6 +93,22 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 		}
 		for i, leg := range patch.TransportParams {
 			for k, v := range leg {
+				// The parameter must be one this endpoint publishes.
+				//
+				// IS-05 constraints carry additionalProperties:false,
+				// so the published set is the WHOLE set -- a name
+				// outside it is not an extension, it is a typo or a
+				// controller aimed at different hardware. Merging it
+				// anyway leaves the endpoint reporting a parameter no
+				// schema describes, and the endpoint then fails its
+				// own constraints on the next read. 400 at the door
+				// (test_19/test_20).
+				if i < len(e.constraints) {
+					if _, known := e.constraints[i][k]; !known {
+						return is05.StagedSender{}, 400, fmt.Errorf(
+							"transport_params leg %d: %q is not a parameter of this endpoint", i, k)
+					}
+				}
 				merged.TransportParams[i][k] = v
 			}
 		}
@@ -104,9 +125,17 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 	case is05.ActivationModeImmediate:
 		e.staged = merged
 		s.promoteLocked(e)
-		// After an immediate activation the staged activation block is
-		// cleared and the ACTIVE one records when it happened (§5.2).
-		return cloneStaged(e.staged), 200, nil
+		// The response reports the activation that was PERFORMED.
+		//
+		// Internally the staged activation block is cleared, which is
+		// right — a controller reading staged later must see a clean
+		// slate. But answering the PATCH with that cleared block tells
+		// the caller "mode: ''" for an activation it just performed,
+		// and the caller has no other way to learn the mode or the
+		// time. test_25 through test_30 all fail on exactly that.
+		out := cloneStaged(e.staged)
+		out.Activation = e.active.Activation
+		return out, 200, nil
 
 	case is05.ActivationModeScheduledAbsolute, is05.ActivationModeScheduledRelative:
 		when, err := s.scheduledTimeLocked(patch.Activation)
@@ -166,6 +195,18 @@ func (s *connectionStore) promoteLocked(e *connectionEndpoint) {
 	}
 	e.staged.Activation = is05.Activation{}
 	e.scheduled = nil
+	if s.onPromote != nil {
+		e.transportFile = s.onPromote(kindOf(e.isSender), e.id, e.active)
+	}
+}
+
+// kindOf names the collection an endpoint belongs to, in the spelling
+// the URL uses.
+func kindOf(isSender bool) string {
+	if isSender {
+		return "senders"
+	}
+	return "receivers"
 }
 
 // runScheduled promotes any endpoint whose scheduled time has passed.

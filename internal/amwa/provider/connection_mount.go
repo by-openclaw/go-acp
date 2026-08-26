@@ -14,6 +14,8 @@ package provider
 
 import (
 	"context"
+	"net"
+	"strconv"
 	"time"
 
 	"dhs/internal/amwa/codec/is04"
@@ -45,9 +47,27 @@ func (s *IS04NodeServer) attachConnectionAPI(srv *httpsession.Server) {
 // IS-08, a vendor URN), and silently replacing them would remove
 // capability the operator declared on purpose.
 func (s *IS04NodeServer) advertiseConnectionControls() {
+	// The control href names the ADDRESS the Node is reachable on, not
+	// the name it was started with.
+	//
+	// A controller matches this href against the Connection API it is
+	// talking to. When the Node is launched as `--advertise-host
+	// dhs-node:18080` the href says "dhs-node", the controller reached
+	// us at an IP, and the two do not compare equal -- so the Device
+	// looks like it advertises somebody else's Connection API and the
+	// controller reports no sr-ctrl control at all (IS-05-02 test_02).
+	// The Node's own published endpoint list is the address it really
+	// answers on, so prefer that and keep the advertised port.
 	host := s.cfg.AdvertiseHost
 	if host == "" {
 		host = "localhost"
+	}
+	if ip := firstNodeIP(s.bundle); ip != "" {
+		if _, port := splitHostPort(s.cfg.AdvertiseHost, s.cfg.Bind); port > 0 {
+			host = net.JoinHostPort(ip, strconv.Itoa(port))
+		} else {
+			host = ip
+		}
 	}
 	for i := range s.bundle.Devices {
 		d := &s.bundle.Devices[i]

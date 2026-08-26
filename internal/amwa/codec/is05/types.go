@@ -51,6 +51,28 @@ type Activation struct {
 	ActivationTime *string        `json:"activation_time"`
 }
 
+// MarshalJSON writes an unset mode as JSON null, never as "".
+//
+// Every IS-05 activation schema types `mode` as an ENUM that is
+// nullable: null, activate_immediate, activate_scheduled_relative,
+// activate_scheduled_absolute. The empty string is not a member, so a
+// Go zero value serialised literally makes every staged and active
+// response fail schema validation -- a wide failure with a narrow
+// cause, because the activation block sits inside almost every other
+// response this API returns.
+func (a Activation) MarshalJSON() ([]byte, error) {
+	// A named alias, so the nested Marshal does not recurse back into
+	// this method.
+	type plain Activation
+	if a.Mode == "" {
+		return json.Marshal(struct {
+			Mode any `json:"mode"`
+			plain
+		}{Mode: nil, plain: plain(a)})
+	}
+	return json.Marshal(plain(a))
+}
+
 // TransportParams is the per-leg array of transport-specific
 // parameters. RTP carries source_ip / destination_ip / source_port /
 // destination_port etc.; WebSocket carries connection_uri etc.
@@ -89,8 +111,12 @@ type StagedSender struct {
 // TransportFile is the inline transport file representation used in
 // PATCH bodies (vs the separate /transportfile GET endpoint).
 type TransportFile struct {
-	Type string `json:"type"` // "application/sdp" for RTP
-	Data string `json:"data"` // SDP body, or empty when null
+	// Both members are typed ["string","null"] by the schema, so both
+	// are pointers. An unset transport file is
+	// {"type":null,"data":null} -- NOT an absent object, and not a
+	// pair of empty strings; neither of those validates.
+	Type *string `json:"type"` // "application/sdp" for RTP
+	Data *string `json:"data"` // SDP body
 }
 
 // StagedReceiver is the body of GET / PATCH
@@ -107,7 +133,11 @@ type StagedReceiver struct {
 
 	// SDP-style transport file the controller feeds into the
 	// receiver — same shape as StagedSender.TransportFile.
-	TransportFile *TransportFile `json:"transport_file,omitempty"`
+	// No omitempty: receiver-stage-schema lists transport_file as
+	// REQUIRED (nullable), while sender-stage-schema does not allow it
+	// at all under additionalProperties:false. The asymmetry is the
+	// spec's, and it is why the two views cannot share one tag.
+	TransportFile *TransportFile `json:"transport_file"`
 }
 
 // ActiveSender is the read-only mirror of currently-running sender
@@ -162,7 +192,8 @@ func ValidateStagedSender(s StagedSender) error {
 	if s.TransportParams == nil {
 		return fmt.Errorf("is05: staged.sender.transport_params: required (may be empty array)")
 	}
-	if s.TransportFile != nil && s.TransportFile.Type == "" {
+	if s.TransportFile != nil && s.TransportFile.Data != nil && *s.TransportFile.Data != "" &&
+		(s.TransportFile.Type == nil || *s.TransportFile.Type == "") {
 		return fmt.Errorf("is05: staged.sender.transport_file.type: required when transport_file present")
 	}
 	return nil

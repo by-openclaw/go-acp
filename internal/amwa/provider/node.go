@@ -210,6 +210,19 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// URI string; the matching transportfile handler is installed below.
 	rewriteManifestHrefs(s.bundle.Senders, s.cfg.AdvertiseHost, s.cfg.APIVer)
 
+	// Re-seed what IS-05 "auto" resolves to, now that the endpoint list
+	// is real.
+	//
+	// The Connection API was constructed before expandNodeEndpoints
+	// ran, so it took its address from whatever the bundle file
+	// happened to declare -- often nothing. ACTIVE transport params
+	// name the address a peer connects to, and a stale one there
+	// points a controller at a host that is not us.
+	if s.connection != nil {
+		s.connection.Store().setNodeIP(firstNodeIP(s.bundle))
+		s.connection.Store().reresolveActive()
+	}
+
 	srv := httpsession.NewServer(s.logger)
 	s.installRoutes(srv)
 	// IS-05 is attached BEFORE the first request can be served,

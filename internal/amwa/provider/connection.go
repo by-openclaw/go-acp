@@ -25,10 +25,12 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	stdhttp "net/http"
 	"sort"
 	"strings"
 
+	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is05"
 	httpsession "dhs/internal/amwa/session/http"
 )
@@ -47,6 +49,11 @@ type IS05ConnectionServer struct {
 	logger *slog.Logger
 	store  *connectionStore
 	vers   []string
+	// bundle is the IS-04 side of the same device. IS-05 §4.1 makes
+	// these two views of ONE set of resources, so generating a
+	// Sender's SDP and reflecting an activation into
+	// `subscription.active` both read from here.
+	bundle *NodeConfig
 }
 
 // NewIS05ConnectionServer builds the Connection API over a Node
@@ -65,7 +72,78 @@ func NewIS05ConnectionServer(logger *slog.Logger, bundle *NodeConfig, cfg IS05Co
 	if cfg.APIVer != "" {
 		vers = []string{cfg.APIVer}
 	}
-	return &IS05ConnectionServer{logger: logger, store: st, vers: vers}
+	s := &IS05ConnectionServer{logger: logger, store: st, vers: vers, bundle: bundle}
+	// Every activation regenerates the Sender's SDP and pushes
+	// master_enable back into the IS-04 resource. Both are things a
+	// controller reads on the OTHER API, and neither can be computed
+	// from connection state alone.
+	st.onPromote = s.afterActivation
+	return s
+}
+
+// afterActivation reflects one activation across both APIs and returns
+// the transport file the endpoint serves from now on.
+//
+// Runs under the store lock, so it must not call back into the store.
+func (s *IS05ConnectionServer) afterActivation(kind, id string, active is05.StagedSender) string {
+	s.updateIS04Subscription(kind, id, active)
+	if kind == "senders" {
+		return s.sdpForSender(id, active)
+	}
+	return ""
+}
+
+// updateIS04Subscription writes an IS-05 activation into the IS-04
+// resource's `subscription` block.
+//
+// IS-04 §5 defines `subscription.active` as "the Sender/Receiver is
+// currently enabled", and IS-05 §5.1 defines `master_enable` as the
+// same fact. They are one state with two spellings, and a controller
+// that reads the Query API to render which receivers are live sees
+// only the IS-04 one. Leaving it false after a successful activation
+// makes an active receiver look idle everywhere except the Connection
+// API (IS-05-02 test_07/test_08).
+func (s *IS05ConnectionServer) updateIS04Subscription(kind, id string, active is05.StagedSender) {
+	if s.bundle == nil {
+		return
+	}
+	// The far end, when one was staged. An empty string means "no
+	// peer", which the wire spells as null rather than "".
+	var peer *string
+	if active.ReceiverID != nil && *active.ReceiverID != "" {
+		v := *active.ReceiverID
+		peer = &v
+	}
+	now := is05.FormatTAINow(s.store.now())
+	if kind == "senders" {
+		for i := range s.bundle.Senders {
+			if s.bundle.Senders[i].ID != id {
+				continue
+			}
+			s.bundle.Senders[i].Subscription = is04.SenderSubscription{
+				ReceiverID: peer,
+				Active:     active.MasterEnable,
+			}
+			// A changed resource is a NEW version. A registry
+			// deduplicates on this field, so an update that reuses the
+			// old version is discarded as a replay and the change
+			// never reaches a controller.
+			s.bundle.Senders[i].Version = now
+			return
+		}
+		return
+	}
+	for i := range s.bundle.Receivers {
+		if s.bundle.Receivers[i].ID != id {
+			continue
+		}
+		s.bundle.Receivers[i].Subscription = is04.ReceiverSubscription{
+			SenderID: peer,
+			Active:   active.MasterEnable,
+		}
+		s.bundle.Receivers[i].Version = now
+		return
+	}
 }
 
 // firstNodeIP picks the address ACTIVE parameters should name.
@@ -74,6 +152,21 @@ func NewIS05ConnectionServer(logger *slog.Logger, bundle *NodeConfig, cfg IS05Co
 // that list is the honest source — inventing an address here could
 // name an interface the Node does not serve on.
 func firstNodeIP(cfg *NodeConfig) string {
+	// An IP LITERAL wins over a hostname, even a hostname listed first.
+	//
+	// Two callers depend on this being a literal. IS-05 `source_ip`
+	// and `interface_ip` are typed as addresses by the constraints
+	// schema, so a hostname there fails validation outright. And the
+	// sr-ctrl control href is compared by a controller against the
+	// address it reached us on, which is an IP. The endpoint list
+	// legitimately carries both forms -- IS-04 wants every name the
+	// Node answers to -- so picking the first entry would be a coin
+	// toss on ordering.
+	for _, ep := range cfg.Node.API.Endpoints {
+		if ep.Host != "" && net.ParseIP(ep.Host) != nil {
+			return ep.Host
+		}
+	}
 	for _, ep := range cfg.Node.API.Endpoints {
 		if ep.Host != "" {
 			return ep.Host
@@ -150,9 +243,11 @@ func (s *IS05ConnectionServer) mountCollection(srv *httpsession.Server, base, ki
 	srv.Handle(stdhttp.MethodPost, base+"/bulk/"+kind+"/", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 		return s.handleBulk(kind, r)
 	})
-	srv.Handle(stdhttp.MethodGet, base+"/bulk/"+kind+"/", func(context.Context, *stdhttp.Request) (int, any, error) {
-		return ok([]string{})
-	})
+	// No GET on a bulk endpoint. IS-05 defines bulk as POST-only, and
+	// the tool checks for 405 specifically (test_34/35): answering 200
+	// with an empty array invents a collection that does not exist.
+	// The server derives 405 from "the path is routed for another
+	// method", so registering nothing here is what produces it.
 }
 
 func (s *IS05ConnectionServer) mountEndpoint(srv *httpsession.Server, root, kind, id string) {
@@ -182,7 +277,14 @@ func (s *IS05ConnectionServer) mountEndpoint(srv *httpsession.Server, root, kind
 		if err != nil {
 			return notFound(err)
 		}
-		return ok(e.transportType)
+		// The BASE transport URN, not the IS-04 sub-type.
+		//
+		// IS-04 distinguishes rtp.mcast from rtp.ucast; IS-05 does not
+		// — its transport_params and constraints schemas are keyed on
+		// "rtp" alone. Returning the sub-type makes the tool report
+		// "Unsupported transport type ... for staged/constraints
+		// validation" and skip the checks entirely (test_15/16).
+		return ok(is05TransportType(e.transportType))
 	})
 
 	srv.Handle(stdhttp.MethodGet, p+"/staged/", func(context.Context, *stdhttp.Request) (int, any, error) {
@@ -211,14 +313,33 @@ func (s *IS05ConnectionServer) mountEndpoint(srv *httpsession.Server, root, kind
 			if err != nil {
 				return notFound(err)
 			}
-			if e.transportFile == "" {
+			// Rendered from ACTIVE state on demand, with the value
+			// cached at activation as the fallback.
+			//
+			// Serving only the cached copy would 404 every sender that
+			// has not been activated yet, and a controller reads the
+			// SDP to DECIDE whether to connect — before any activation
+			// has happened. ACTIVE always describes a full set of
+			// addresses (auto is resolved at seed time), so there is
+			// always an honest file to render.
+			sdp := s.sdpForSender(id, e.active)
+			if sdp == "" {
+				sdp = e.transportFile
+			}
+			if sdp == "" {
 				return stdhttp.StatusNotFound, httpsession.ErrorBody{
 					Code:  404,
 					Error: "No transport file",
-					Debug: "this sender has no transport file; RTP senders publish SDP here once activated",
+					Debug: "this sender has no transport file; only RTP senders publish SDP here",
 				}, nil
 			}
-			return ok(e.transportFile)
+			// application/sdp, never JSON: a controller PATCHes this
+			// body verbatim into a receiver's transport_file.data, and
+			// a JSON-quoted string is not an SDP.
+			return stdhttp.StatusOK, &httpsession.RawBody{
+				ContentType: "application/sdp",
+				Body:        []byte(sdp),
+			}, nil
 		})
 	}
 
@@ -260,6 +381,16 @@ func decodePatch(raw []byte) (is05.StagedSender, patchFields, error) {
 	}
 	_, hasSender := probe["sender_id"]
 	_, hasReceiver := probe["receiver_id"]
+	// A receiver PATCH names the far end "sender_id", which the shared
+	// StagedSender struct does not have a field for. Lift it into the
+	// one id slot the struct does carry; viewOf renames it back on the
+	// way out.
+	if hasSender {
+		var rv is05.StagedReceiver
+		if json.Unmarshal(raw, &rv) == nil {
+			patch.ReceiverID = rv.SenderID
+		}
+	}
 	return patch, patchFields{
 		MasterEnable:    hasKey(probe, "master_enable"),
 		TransportParams: hasKey(probe, "transport_params"),
@@ -337,7 +468,25 @@ func viewOf(kind string, s is05.StagedSender) any {
 	// The sender feeding this receiver is held in the shared struct's
 	// ReceiverID slot; the receiver view names it sender_id.
 	r.SenderID = s.ReceiverID
+	// A receiver that has never been given an SDP still publishes the
+	// object, with both members null. receiver-stage-schema types
+	// transport_file as an OBJECT; omitting it, or sending JSON null
+	// in its place, fails validation on every read of staged -- which
+	// is most of the API.
+	if r.TransportFile == nil {
+		r.TransportFile = &is05.TransportFile{}
+	}
 	return r
+}
+
+// is05TransportType maps an IS-04 transport URN onto the one IS-05
+// knows. IS-04 splits RTP into mcast and ucast; IS-05's schemas are
+// keyed on the base URN only.
+func is05TransportType(t string) string {
+	if isRTP(t) {
+		return "urn:x-nmos:transport:rtp"
+	}
+	return t
 }
 
 func withSlashes(ids []string) []string {
@@ -353,4 +502,3 @@ func notFound(err error) (int, any, error) {
 		Code: 404, Error: "Not found", Debug: err.Error(),
 	}, nil
 }
-

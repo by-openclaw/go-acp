@@ -25,6 +25,10 @@ import (
 
 // connectionEndpoint is one Sender or Receiver's connection state.
 type connectionEndpoint struct {
+	// id is the IS-04 resource id, carried so an activation can name
+	// itself to the promote hook without the store re-scanning its own
+	// maps to find which key it just modified.
+	id string
 	// staged is what a controller has written but not yet activated.
 	staged is05.StagedSender
 	// active is what the endpoint is actually doing.
@@ -63,8 +67,17 @@ type connectionStore struct {
 	// this has to be an address that is actually reachable, not a
 	// placeholder.
 	nodeIP string
-	// isSenderKind lets resolveAuto pick sender vs receiver rules.
-	_ struct{}
+	// onPromote fires after every activation, inside the store lock,
+	// and returns the transport file the endpoint should serve from
+	// then on.
+	//
+	// The store cannot compute that itself: an SDP needs the IS-04
+	// Flow, and reflecting an activation into IS-04's
+	// `subscription.active` needs the IS-04 bundle. Both live a layer
+	// up. A callback keeps the store ignorant of IS-04 rather than
+	// giving it a bundle pointer it would then be tempted to read on
+	// every request.
+	onPromote func(kind, id string, active is05.StagedSender) string
 }
 
 func newConnectionStore() *connectionStore {
@@ -82,6 +95,30 @@ func (s *connectionStore) setNodeIP(ip string) {
 	s.nodeIP = ip
 }
 
+// reresolveActive recomputes every endpoint's ACTIVE addresses against
+// the current nodeIP.
+//
+// Called once the Node knows what address it actually answers on.
+// Only endpoints that have never been activated are touched: an
+// activated endpoint's ACTIVE state describes a stream that is running
+// now, and rewriting its addresses out from under a controller would
+// silently retarget live traffic.
+func (s *connectionStore) reresolveActive() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, set := range []map[string]*connectionEndpoint{s.senders, s.receivers} {
+		for _, e := range set {
+			if e.active.Activation.ActivationTime != nil {
+				continue
+			}
+			e.active = cloneStaged(e.staged)
+			for i := range e.active.TransportParams {
+				resolveAuto(e.active.TransportParams[i], s.nodeIP, e.isSender, i)
+			}
+		}
+	}
+}
+
 // seedFromBundle gives every Sender and Receiver in the IS-04 bundle a
 // connection endpoint.
 //
@@ -94,11 +131,15 @@ func (s *connectionStore) seedFromBundle(cfg *NodeConfig) {
 	defer s.mu.Unlock()
 	for i := range cfg.Senders {
 		snd := &cfg.Senders[i]
-		s.senders[snd.ID] = newEndpointForTransport(snd.Transport, true)
+		e := newEndpointForTransport(snd.Transport, true)
+		e.id = snd.ID
+		s.senders[snd.ID] = e
 	}
 	for i := range cfg.Receivers {
 		rcv := &cfg.Receivers[i]
-		s.receivers[rcv.ID] = newEndpointForTransport(rcv.Transport, false)
+		e := newEndpointForTransport(rcv.Transport, false)
+		e.id = rcv.ID
+		s.receivers[rcv.ID] = e
 	}
 }
 
@@ -123,7 +164,14 @@ func newEndpointForTransport(transport string, isSender bool) *connectionEndpoin
 		transportType: transport,
 		isSender:      isSender,
 	}
+	// ACTIVE never contains "auto", not even before the first
+	// activation: active describes what the device is DOING, and a
+	// device that has decided nothing yet has still decided the
+	// address it would use. test_11_01/test_12_01 check exactly this.
 	e.active = cloneStaged(e.staged)
+	for i := range e.active.TransportParams {
+		resolveAuto(e.active.TransportParams[i], "", isSender, i)
+	}
 	return e
 }
 
@@ -182,13 +230,15 @@ func defaultLegParams(transport string, isSender bool) is05.TransportParams {
 func constraintsForTransport(transport string, isSender bool) map[string]any {
 	c := map[string]any{}
 	for k := range defaultLegParams(transport, isSender) {
-		switch k {
-		case "destination_port", "source_port":
-			// The IANA dynamic/registered range real ST 2110 gear uses.
-			c[k] = map[string]any{"minimum": 5000, "maximum": 49151}
-		default:
-			c[k] = map[string]any{}
-		}
+		// Every entry is an EMPTY constraint.
+		//
+		// A numeric minimum/maximum on a port looks more precise and
+		// is wrong: the same parameter legally holds the string "auto"
+		// before activation, and the tool validates STAGED against
+		// these constraints — "'auto' is not valid under any of the
+		// given schemas". Publishing a bound we cannot honour for
+		// every legal value is worse than publishing none.
+		c[k] = map[string]any{}
 	}
 	return c
 }
