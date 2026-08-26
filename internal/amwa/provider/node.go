@@ -79,6 +79,18 @@ type IS04NodeConfig struct {
 	// against this Registration API base (e.g. http://10.6.239.113:8235/).
 	// When empty, mDNS-only / direct-Node mode (Mode D peers).
 	RegistryURL string
+
+	// NoConnectionAPI suppresses IS-05. Opt-OUT rather than opt-in: a
+	// Node with senders and receivers but no Connection API is a valid
+	// IS-04 Node that no controller can route, so the useful default
+	// is to serve it.
+	NoConnectionAPI bool
+
+	// ConnectionAPIVer pins IS-05 to one wire minor. Empty mounts
+	// every registered minor in parallel, which is what a real product
+	// does — a v1.0-pinned controller and a v1.2 one must each find a
+	// tree they can speak.
+	ConnectionAPIVer string
 }
 
 // IS04NodeServer hosts the Node API endpoints + DNS-SD announce +
@@ -95,6 +107,11 @@ type IS04NodeServer struct {
 	// auto_node_11/12 fail "Response schema validation error" without it.
 	// See root CLAUDE.md "AMWA NMOS strict" and #192.
 	codec is04.Codec
+
+	// connection is the IS-05 Connection API served alongside the Node
+	// API. Nil disables it — a Node that only advertises resources is
+	// still a valid IS-04 Node, it just cannot be routed.
+	connection *IS05ConnectionServer
 
 	mu        sync.Mutex
 	http      *httpsession.Server
@@ -158,7 +175,17 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 	if !ok {
 		return nil, fmt.Errorf("provider/node: no IS-04 codec registered for api_ver=%q (registered: %v)", cfg.APIVer, is04.SupportedVersions())
 	}
-	return &IS04NodeServer{logger: logger, cfg: cfg, bundle: bundle, codec: codec}, nil
+	s := &IS04NodeServer{logger: logger, cfg: cfg, bundle: bundle, codec: codec}
+
+	// IS-05 is served unless explicitly disabled. A Node carrying
+	// senders and receivers but no Connection API can be discovered
+	// and never routed — valid IS-04 and useless — so it is opt-OUT.
+	if !cfg.NoConnectionAPI {
+		s.connection = NewIS05ConnectionServer(logger, bundle, IS05ConnectionConfig{
+			APIVer: cfg.ConnectionAPIVer,
+		})
+	}
+	return s, nil
 }
 
 // Serve binds the HTTP listener, optionally announces via DNS-SD,
@@ -185,6 +212,11 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 
 	srv := httpsession.NewServer(s.logger)
 	s.installRoutes(srv)
+	// IS-05 is attached BEFORE the first request can be served,
+	// because attaching it rewrites device.controls[] — a controller
+	// that fetched /devices first would cache a Device with no route
+	// to the Connection API and never look again.
+	s.attachConnectionAPI(srv)
 	s.http = srv
 
 	// DNS-SD announce.
@@ -244,6 +276,13 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.regClient = rc
 		go rc.Run(ctx)
 	}
+
+	// Scheduled activations need a clock running for the life of the
+	// server. Without it an endpoint accepts a scheduled PATCH,
+	// answers 202, and then never acts — the worst of the three
+	// possible behaviours, because it looks correct to the controller
+	// right up until the switch does not happen.
+	go s.runActivationScheduler(ctx, 0)
 
 	s.mu.Unlock()
 	return srv.Serve(ctx, s.cfg.Bind)

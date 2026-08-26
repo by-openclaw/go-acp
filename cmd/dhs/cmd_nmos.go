@@ -267,6 +267,8 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	apiVer := fs.String("api-ver", "v1.3", "IS-04 wire version exposed under /x-nmos/node/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
 	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats every 5 s")
+	noConnection := fs.Bool("no-connection-api", false, "do not serve IS-05. The Node stays discoverable and becomes unroutable — useful only to reproduce a discovery-only device")
+	connectionAPIVer := fs.String("connection-api-ver", "", "pin IS-05 to one wire minor (v1.0/v1.1/v1.2). Empty serves every registered minor in parallel, which is what a real product does")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -286,12 +288,14 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		mode = "static"
 	}
 	cfg := provider.IS04NodeConfig{
-		Bind:          *bind,
-		AdvertiseHost: *advertise,
-		DiscoveryMode: mode,
-		Priority:      *priority,
-		APIVer:        *apiVer,
-		RegistryURL:   *registry,
+		Bind:             *bind,
+		AdvertiseHost:    *advertise,
+		DiscoveryMode:    mode,
+		Priority:         *priority,
+		APIVer:           *apiVer,
+		RegistryURL:      *registry,
+		NoConnectionAPI:  *noConnection,
+		ConnectionAPIVer: *connectionAPIVer,
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
@@ -300,6 +304,9 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	defer func() { _ = srv.Stop() }()
 
 	fmt.Printf("Node API: bind=%s, mode=%s, api_ver=%s, priority=%d\n", *bind, mode, *apiVer, *priority)
+	if !*noConnection {
+		fmt.Printf("Connection API (IS-05): %s\n", strings.Join(srv.ConnectionVersions(), ", "))
+	}
 	fmt.Printf("  GET http://<host>%s/x-nmos/node/%s/{,self,devices,sources,flows,senders,receivers}\n", *bind, *apiVer)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-node._tcp via mDNS.")
