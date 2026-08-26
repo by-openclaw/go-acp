@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is05"
 	httpsession "dhs/internal/amwa/session/http"
 )
 
@@ -50,6 +51,11 @@ func (s *IS04NodeServer) attachChannelMappingAPI(srv *httpsession.Server) {
 	if s.channelMapping == nil {
 		return
 	}
+	// A channel re-map bumps every Device's IS-04 version. IS-04 §5
+	// makes `version` how a controller learns anything changed, and a
+	// Device whose version stands still through a re-map tells every
+	// cached controller that nothing happened.
+	s.channelMapping.onActivate = s.bumpDeviceVersions
 	s.channelMapping.Mount(srv)
 	host := s.controlHost()
 	for i := range s.bundle.Devices {
@@ -124,6 +130,20 @@ func (s *IS04NodeServer) ConnectionVersions() []string {
 		return nil
 	}
 	return s.connection.Versions()
+}
+
+// bumpDeviceVersions stamps every Device with a new IS-04 version.
+//
+// Called from inside the Channel Mapping server's lock, so it must not
+// call back into it.
+func (s *IS04NodeServer) bumpDeviceVersions() {
+	now := is05.FormatTAINow(time.Now())
+	for i := range s.bundle.Devices {
+		s.bundle.Devices[i].Version = now
+	}
+	// The peer-to-peer TXT counter follows, so a Mode-D peer watching
+	// mDNS re-fetches rather than waiting for a poll it never makes.
+	s.verDevice.Add(1)
 }
 
 func hasControl(controls []is04.DeviceControl, typ string) bool {

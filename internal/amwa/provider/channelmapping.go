@@ -49,6 +49,7 @@ import (
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is05"
 	"dhs/internal/amwa/codec/is08"
+	"dhs/internal/amwa/codec/spec"
 	httpsession "dhs/internal/amwa/session/http"
 )
 
@@ -73,11 +74,34 @@ type IS08ChannelMappingServer struct {
 	// arrives; an immediate one is recorded so a controller can read
 	// back what it just did.
 	activations map[string]is08.MapActivationResponse
+	// due is when each pending activation fires, resolved at POST time.
+	//
+	// Held separately rather than re-derived from requested_time on
+	// every tick, because the two scheduled modes mean different
+	// things by the same field: absolute is a TAI INSTANT and relative
+	// is a DURATION from receipt. Re-reading "2:0" each tick would ask
+	// "is it past 1970?" of a switch the controller wanted two seconds
+	// from now.
+	due map[string]time.Time
+	// lockedOutputs names the outputs a pending activation has already
+	// claimed. IS-08 §5 answers 423 to a second change on the same
+	// output: a controller that scheduled a switch and then quietly
+	// had it overwritten has no way to discover that happened.
+	lockedOutputs map[string]string
 	// nextID mints activation ids. Sequential rather than random
 	// because a controller listing activations reads them in the order
 	// it created them, and a UUID would hide that.
 	nextID int
 	now    func() time.Time
+
+	// onActivate fires after any activation takes effect.
+	//
+	// A channel re-map changes what the Device is doing, and IS-04
+	// §5 makes `version` the field a controller watches to learn that
+	// anything changed at all. A Device whose version stands still
+	// through a re-map is telling every cached controller that nothing
+	// happened (IS-08-02 test_01).
+	onActivate func()
 }
 
 // NewIS08ChannelMappingServer derives the channel-mapping IO view from
@@ -88,10 +112,12 @@ func NewIS08ChannelMappingServer(logger *slog.Logger, bundle *NodeConfig, cfg IS
 		vers = []string{cfg.APIVer}
 	}
 	s := &IS08ChannelMappingServer{
-		logger:      logger,
-		vers:        vers,
-		activations: map[string]is08.MapActivationResponse{},
-		now:         time.Now,
+		logger:        logger,
+		vers:          vers,
+		activations:   map[string]is08.MapActivationResponse{},
+		due:           map[string]time.Time{},
+		lockedOutputs: map[string]string{},
+		now:           time.Now,
 	}
 	s.io = deriveIO(bundle)
 	s.active = is08.MapActive{
@@ -484,23 +510,84 @@ func (s *IS08ChannelMappingServer) handleActivationPost(r *stdhttp.Request) (int
 		Action: req.Action,
 	}
 
+	// A pending activation LOCKS the outputs it will change.
+	//
+	// Without this a controller can schedule a switch, have a second
+	// controller overwrite it, and never learn that its own activation
+	// will not happen. 423 is the spec's way of saying "somebody else
+	// owns this output until their activation fires or is deleted".
+	if locked, by := s.lockedByLocked(req.Action); locked {
+		return stdhttp.StatusLocked, is08.ErrorBody{
+			Code:  423,
+			Error: "Output locked by a pending activation",
+			Debug: "activation " + by + " already claims one of these outputs",
+		}, nil
+	}
+
 	if mode == is08.ActivationModeImmediate {
 		s.applyLocked(req.Action)
 		resp.Activation.ActivationTime = &now
 		s.active.Activation = resp.Activation
+		if s.onActivate != nil {
+			s.onActivate()
+		}
 		// An immediate activation is not queued: it has already
 		// happened, and IS-08 §5 answers 200 with the result rather
 		// than 202 with an id to poll.
 		return stdhttp.StatusOK, resp, nil
 	}
 
+	when, err := s.dueTimeLocked(req.Activation)
+	if err != nil {
+		return stdhttp.StatusBadRequest, is08.ErrorBody{
+			Code: 400, Error: "Invalid activation time", Debug: err.Error(),
+		}, nil
+	}
+
 	s.nextID++
 	id := strconv.Itoa(s.nextID)
 	resp.ID = id
 	s.activations[id] = resp
+	s.due[id] = when
+	for outID := range req.Action {
+		s.lockedOutputs[outID] = id
+	}
 	// 202: accepted, not yet done. The controller polls
 	// map/activations/{id} or watches map/active.
 	return stdhttp.StatusAccepted, resp, nil
+}
+
+// dueTimeLocked resolves a scheduled activation's requested_time to a
+// wall clock.
+//
+// The two modes mean different things by the same field: absolute is a
+// TAI INSTANT, relative is a DURATION from receipt. Reading a relative
+// "2:0" as an absolute instant asks whether the current time is past
+// 1970 -- which it is, so the switch the controller wanted two seconds
+// from now happens immediately.
+func (s *IS08ChannelMappingServer) dueTimeLocked(a is08.Activation) (time.Time, error) {
+	if a.RequestedTime == nil || *a.RequestedTime == "" {
+		return time.Time{}, fmt.Errorf("%s requires requested_time", a.Mode)
+	}
+	sec, nsec, ok := spec.ParseTAI(*a.RequestedTime)
+	if !ok {
+		return time.Time{}, fmt.Errorf("requested_time %q is not <sec>:<nsec>", *a.RequestedTime)
+	}
+	if a.Mode == is08.ActivationModeScheduledRelative {
+		return s.now().Add(time.Duration(sec)*time.Second + time.Duration(nsec)), nil
+	}
+	return spec.TAIToTime(sec, nsec), nil
+}
+
+// lockedByLocked reports whether any output in the action is already
+// claimed by a pending activation, and which one claims it.
+func (s *IS08ChannelMappingServer) lockedByLocked(action is08.MapEntries) (bool, string) {
+	for outID := range action {
+		if id, claimed := s.lockedOutputs[outID]; claimed {
+			return true, id
+		}
+	}
+	return false, ""
 }
 
 // validateActionLocked checks one action against the IO view.
@@ -574,6 +661,10 @@ func (s *IS08ChannelMappingServer) handleActivationDelete(base string, r *stdhtt
 		return stdhttp.StatusNotFound, is08.ErrorBody{Code: 404, Error: "Unknown activation", Debug: id}, nil
 	}
 	delete(s.activations, id)
+	delete(s.due, id)
+	// Releasing the lock is the point of deleting: the outputs this
+	// activation claimed go back to whoever asks next.
+	s.releaseLockLocked(id)
 	// 204: the activation is gone and there is nothing to say about
 	// it. A body here would imply it still exists.
 	return stdhttp.StatusNoContent, nil, nil
@@ -612,11 +703,8 @@ func (s *IS08ChannelMappingServer) runActivations() int {
 		if a.Activation.ActivationTime != nil {
 			continue // already done
 		}
-		if a.Activation.RequestedTime == nil {
-			continue
-		}
-		due, err := parseTAI(*a.Activation.RequestedTime)
-		if err != nil || now.Before(due) {
+		when, scheduled := s.due[id]
+		if !scheduled || now.Before(when) {
 			continue
 		}
 		s.applyLocked(a.Action)
@@ -624,18 +712,24 @@ func (s *IS08ChannelMappingServer) runActivations() int {
 		a.Activation.ActivationTime = &stamp
 		s.activations[id] = a
 		s.active.Activation = a.Activation
+		// The outputs are free again the moment the switch has
+		// happened; the lock exists to protect a PENDING change.
+		s.releaseLockLocked(id)
 		fired++
+	}
+	if fired > 0 && s.onActivate != nil {
+		s.onActivate()
 	}
 	return fired
 }
 
-// parseTAI reads a "<seconds>:<nanoseconds>" timestamp.
-func parseTAI(v string) (time.Time, error) {
-	var secs, nanos int64
-	if _, err := fmt.Sscanf(v, "%d:%d", &secs, &nanos); err != nil {
-		return time.Time{}, err
+// releaseLockLocked drops every output claim held by one activation.
+func (s *IS08ChannelMappingServer) releaseLockLocked(id string) {
+	for outID, holder := range s.lockedOutputs {
+		if holder == id {
+			delete(s.lockedOutputs, outID)
+		}
 	}
-	return time.Unix(secs, nanos), nil
 }
 
 // jsonRaw is retained for symmetry with the IS-05 decoder's strict

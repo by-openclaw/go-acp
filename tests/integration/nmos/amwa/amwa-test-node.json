@@ -506,12 +506,14 @@
       "type": "boolean",
       "values": [
         {
+          "value": true,
           "label": "Program",
-          "value": true
+          "description": "camera is on air"
         },
         {
+          "value": false,
           "label": "Off",
-          "value": false
+          "description": "camera is not on air"
         }
       ]
     },
@@ -519,18 +521,14 @@
       "type": "number",
       "values": [
         {
+          "value": 1,
           "label": "Wide",
-          "value": {
-            "value": 1,
-            "scale": 1
-          }
+          "description": "wide shot preset"
         },
         {
+          "value": 2,
           "label": "Tight",
-          "value": {
-            "value": 2,
-            "scale": 1
-          }
+          "description": "tight shot preset"
         }
       ]
     },
@@ -538,12 +536,14 @@
       "type": "string",
       "values": [
         {
+          "value": "CAM1",
           "label": "Camera 1",
-          "value": "CAM1"
+          "description": "studio camera 1"
         },
         {
+          "value": "CAM2",
           "label": "Camera 2",
-          "value": "CAM2"
+          "description": "studio camera 2"
         }
       ]
     }
