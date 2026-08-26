@@ -22,6 +22,7 @@ package provider
 import (
 	"context"
 	"log/slog"
+	"net"
 	"sync"
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
@@ -50,6 +51,15 @@ type SystemWatcher struct {
 	// advertisement of the same thing does not re-fetch on every
 	// mDNS refresh.
 	fetched string
+	// failed records instances whose /global could not be read, so a
+	// broken advertisement is skipped rather than retried ahead of a
+	// working one on every packet.
+	failed map[string]struct{}
+	// hostIPv4 aggregates A records by SRV target across packets. The
+	// address often arrives separately from the SRV, and a candidate
+	// with only a `.local` name is unreachable anywhere without an
+	// mDNS resolver.
+	hostIPv4 map[string]net.IP
 }
 
 // NewSystemWatcher opens the browser. It does not start browsing.
@@ -70,6 +80,8 @@ func NewSystemWatcher(logger *slog.Logger, apiVer string, onGlobal func(g any, u
 		onGlobal: onGlobal,
 		browser:  br,
 		seen:     map[string]dnssdcodec.Instance{},
+		failed:   map[string]struct{}{},
+		hostIPv4: map[string]net.IP{},
 	}, nil
 }
 
@@ -123,39 +135,92 @@ func (w *SystemWatcher) observe(ctx context.Context, ins dnssdcodec.Instance) {
 	} else {
 		w.seen[key] = ins
 	}
+	// A records arrive in their own packets as often as alongside the
+	// SRV, so they are aggregated by hostname across everything seen.
+	// Without this a System API is discovered with a `.local` target
+	// and no address, and `.local` is resolvable only on a host
+	// running an mDNS resolver.
+	if len(ins.IPv4) > 0 && ins.Host != "" {
+		w.hostIPv4[ins.Host] = ins.IPv4[0]
+	}
 	candidates := make([]dnssdcodec.Instance, 0, len(w.seen))
 	for _, v := range w.seen {
+		if len(v.IPv4) == 0 {
+			if ip, known := w.hostIPv4[v.Host]; known {
+				v.IPv4 = []net.IP{ip}
+			}
+		}
 		candidates = append(candidates, v)
 	}
 	already := w.fetched
+	tried := make(map[string]bool, len(w.failed))
+	for k := range w.failed {
+		tried[k] = true
+	}
 	w.mu.Unlock()
 
 	if len(candidates) == 0 {
 		return
 	}
-	best, err := systemsession.SelectInstance(candidates, "http", w.apiVer, w.logger)
-	if err != nil {
-		return
-	}
-	bestKey := best.Name + "." + best.Service
-	if bestKey == already {
-		return
-	}
 
-	res, err := systemsession.Fetch(ctx, systemsession.IS09FetchOptions{
-		Logger:     w.logger,
-		APIVer:     w.apiVer,
-		Discovered: []dnssdcodec.Instance{best},
-	})
-	if err != nil || res == nil || res.Global == nil {
-		w.logger.Warn("provider/node: System API advertised but /global could not be read",
-			"plugin", "amwa", "api", "is-09", "instance", best.Name, "err", err)
+	// Walk the candidates in priority order, skipping ones already
+	// known to be unreachable.
+	//
+	// Stopping at the first pick would be wrong here in a way it is
+	// not for a Registry: several System APIs may be advertised at
+	// once (the AMWA suite advertises a deliberately broken one
+	// alongside the good one), and a Node that gives up on the
+	// highest-priority failure never reaches the one that works.
+	for {
+		best, err := systemsession.SelectInstance(candidates, "http", w.apiVer, w.logger)
+		if err != nil {
+			return
+		}
+		bestKey := best.Name + "." + best.Service
+		if bestKey == already {
+			return
+		}
+		if tried[bestKey] {
+			candidates = dropInstance(candidates, bestKey)
+			if len(candidates) == 0 {
+				return
+			}
+			continue
+		}
+		res, err := systemsession.Fetch(ctx, systemsession.IS09FetchOptions{
+			Logger:     w.logger,
+			APIVer:     w.apiVer,
+			Discovered: []dnssdcodec.Instance{best},
+		})
+		if err != nil || res == nil || res.Global == nil {
+			w.logger.Warn("provider/node: System API advertised but /global could not be read",
+				"plugin", "amwa", "api", "is-09", "instance", best.Name, "err", err)
+			w.mu.Lock()
+			w.failed[bestKey] = struct{}{}
+			w.mu.Unlock()
+			tried[bestKey] = true
+			candidates = dropInstance(candidates, bestKey)
+			if len(candidates) == 0 {
+				return
+			}
+			continue
+		}
+		w.mu.Lock()
+		w.fetched = bestKey
+		w.mu.Unlock()
+		if w.onGlobal != nil {
+			w.onGlobal(res.Global, res.URL)
+		}
 		return
 	}
-	w.mu.Lock()
-	w.fetched = bestKey
-	w.mu.Unlock()
-	if w.onGlobal != nil {
-		w.onGlobal(res.Global, res.URL)
+}
+
+func dropInstance(in []dnssdcodec.Instance, key string) []dnssdcodec.Instance {
+	out := in[:0]
+	for _, v := range in {
+		if v.Name+"."+v.Service != key {
+			out = append(out, v)
+		}
 	}
+	return out
 }

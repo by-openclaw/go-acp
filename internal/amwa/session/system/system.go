@@ -183,11 +183,19 @@ func versionListContains(csv, want string) bool {
 
 // fetchFromInstance does the HTTP GET, validates, and returns.
 func fetchFromInstance(ctx context.Context, client *httpsession.Client, ins dnssdcodec.Instance, opts IS09FetchOptions) (*FetchResult, error) {
-	// Use the instance Host (DNS name from SRV) when available,
-	// falling back to the first IPv4. The session/http client uses
-	// the system resolver, so DNS names from the .arpa zone work.
+	// The ADVERTISED ADDRESS wins over the SRV hostname.
+	//
+	// mDNS names its targets in `.local`, and `.local` is resolvable
+	// only by a host running an mDNS resolver. Ours is not always one:
+	// inside a container the stub resolver at 127.0.0.11 answers "no
+	// such host" for `nmos-registry.local` and the fetch fails against
+	// a System API that is sitting right there and answering.
+	//
+	// The A record travels in the same announcement as the SRV, so the
+	// address is already in hand — using the name instead asks a
+	// second resolver to rediscover what mDNS just told us.
 	hostport := ins.Host + ":" + strconv.Itoa(int(ins.Port))
-	if ins.Host == "" && len(ins.IPv4) > 0 {
+	if len(ins.IPv4) > 0 {
 		hostport = ins.IPv4[0].String() + ":" + strconv.Itoa(int(ins.Port))
 	}
 	url := opts.APIProto + "://" + hostport + "/x-nmos/system/" + opts.APIVer + "/global"
