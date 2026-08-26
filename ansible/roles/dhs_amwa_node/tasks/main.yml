@@ -50,11 +50,20 @@
   delegate_to: localhost
   changed_when: true
 
-- name: Stage directory
+# Wiped, not merely ensured.
+#
+# Unpacking a tar over an existing tree ADDS and OVERWRITES; it never
+# removes. A file deleted or renamed in the commit under test therefore
+# survives from the previous run, and Go sees both the old and the new
+# copy: "IS09FetchOptions redeclared in this block". The build fails on
+# code that compiles perfectly in the repo, which sends you looking for
+# a bug that is not there.
+- name: Stage directory (wiped first)
   ansible.builtin.file:
     path: "{{ dhs_amwa_node_dir }}/src"
-    state: directory
+    state: "{{ item }}"
     mode: "0755"
+  loop: [absent, directory]
 
 - name: Ship and unpack the source
   ansible.builtin.unarchive:
@@ -65,6 +74,19 @@
 - name: Report the commit under test
   ansible.builtin.debug:
     msg: "scoring commit {{ dhs_amwa_node_commit.stdout | default('unknown') }}"
+
+# Delete the old image BEFORE building the new one.
+#
+# A failed build leaves the previous image in place under the same tag,
+# and every later task runs happily against it — so the run reports a
+# full set of scores for a commit it never compiled. That is the worst
+# possible failure mode for a conformance harness: not a missing
+# number, but a plausible wrong one. Without the image there is nothing
+# to score and the run stops where it should.
+- name: Drop the previous node image
+  ansible.builtin.command: docker rmi -f {{ dhs_amwa_node_image }}
+  changed_when: true
+  failed_when: false
 
 - name: Build the node image from that source
   ansible.builtin.command:
