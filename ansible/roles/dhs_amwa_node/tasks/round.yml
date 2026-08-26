@@ -61,7 +61,10 @@
     body:
       suite: "{{ item.id }}"
       host: ["{{ dhs_amwa_node_name }}"]
-      port: [{{ dhs_amwa_node_port }}]
+      # A list expression, not a bare template in brackets — and the
+      # port stays an INT: the tool validates the type, so quoting it
+      # turns a scoring run into a 400.
+      port: "{{ [dhs_amwa_node_port | int] }}"
       version: ["{{ api_ver }}"]
       output: json
     timeout: "{{ dhs_amwa_node_suite_timeout }}"
