@@ -26,18 +26,52 @@ dhs_amwa_node_port: 18080
 # that healthy.
 dhs_amwa_node_api_vers: ["v1.0", "v1.1", "v1.2", "v1.3"]
 
-# Suites to run against the node, and the id the tool knows them by.
+# The IS-05 minor served alongside each IS-04 round. Highest published,
+# because the Connection API version is chosen independently of IS-04's
+# — a v1.0 Node API and a v1.2 Connection API on one device is legal
+# and common.
+dhs_amwa_node_is05_ver: "v1.2"
+
+# Suites, and the ENDPOINT LIST each one needs.
 #
-# Scoped to the node here; the registry and controller suites need a
-# different target and land in their own runs.
+# This is the part that cannot be guessed. Every suite declares its own
+# endpoint list in the tool's TEST_DEFINITIONS, and the request must
+# supply host/port/version arrays of exactly that length, in that
+# order. My first run passed the IS-04 minor to every suite and got
+# tracebacks from IS-05 and IS-07 — the version array has to carry
+# EACH spec's own minor, not the node's IS-04 one.
+#
+#   endpoints: which API each array slot addresses.
+#     node        -> IS-04 Node API, version = the round's api_ver
+#     connection  -> IS-05, version = dhs_amwa_node_is05_ver
+#     events      -> IS-07 v1.0
+#     chanmap     -> IS-08 v1.0
+#     system      -> IS-09 v1.0
+#
+# Suites needing the testing-facade (IS-04-04, IS-05-03, the Controller
+# rounds) are NOT here: they drive a controller, not a node, and need a
+# driver that answers the tool's prompts.
 dhs_amwa_node_suites:
-  - { id: "IS-04-01", name: "IS-04 Node API", per_version: true }
-  - { id: "IS-04-03", name: "IS-04 Node API (Peer to Peer)", per_version: true }
-  - { id: "IS-05-01", name: "IS-05 Connection Management API", per_version: false }
-  - { id: "IS-05-02", name: "IS-05 Interaction with IS-04", per_version: false }
-  - { id: "IS-07-01", name: "IS-07 Event & Tally API", per_version: false }
-  - { id: "IS-08-01", name: "IS-08 Channel Mapping API", per_version: false }
-  - { id: "IS-09-02", name: "IS-09 System API Discovery", per_version: false }
+  - id: "IS-04-01"
+    name: "IS-04 Node API"
+    endpoints: ["node"]
+  - id: "IS-04-03"
+    name: "IS-04 Node API (Peer to Peer)"
+    endpoints: ["node"]
+  - id: "IS-05-01"
+    name: "IS-05 Connection Management API"
+    endpoints: ["connection"]
+  - id: "IS-05-02"
+    name: "IS-05 Interaction with IS-04"
+    endpoints: ["node", "connection"]
+
+# Per-endpoint version map, resolved at request time.
+dhs_amwa_node_endpoint_vers:
+  node: "{{ api_ver | default('v1.3') }}"
+  connection: "{{ dhs_amwa_node_is05_ver }}"
+  events: "v1.0"
+  chanmap: "v1.0"
+  system: "v1.0"
 
 # Where results land on the tooling host before being fetched back into
 # the repo. A conformance number only means something next to the code
