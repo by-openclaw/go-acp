@@ -55,9 +55,13 @@ dhs_amwa_node_suites:
   - id: "IS-04-01"
     name: "IS-04 Node API"
     endpoints: ["node"]
+  # Peer-to-peer is a MODE, not an endpoint. A Node that registers must
+  # stop advertising _nmos-node._tcp (IS-04 §4.2.1), so this suite only
+  # has a subject if the Node is kept out of the Registry.
   - id: "IS-04-03"
     name: "IS-04 Node API (Peer to Peer)"
     endpoints: ["node"]
+    node_args: ["--no-registry"]
   - id: "IS-05-01"
     name: "IS-05 Connection Management API"
     endpoints: ["connection"]

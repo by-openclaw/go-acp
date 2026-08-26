@@ -20,9 +20,17 @@
   changed_when: true
   failed_when: false
 
+# `suite.node_args` exists because some suites test a DEPLOYMENT MODE
+# rather than an endpoint. IS-04-03 is peer-to-peer, and IS-04 §4.2.1
+# makes the modes exclusive on the wire: a Node that has registered
+# MUST stop advertising _nmos-node._tcp. Left free to find the
+# reference Registry on the shared bridge, our Node registers and
+# withdraws the very announcement that suite exists to check.
 - name: "{{ api_ver }} / {{ suite.id }} — start a fresh node"
   ansible.builtin.command:
-    argv:
+    argv: "{{ dhs_amwa_node_argv + (suite.node_args | default([])) }}"
+  vars:
+    dhs_amwa_node_argv:
       - docker
       - run
       - -d

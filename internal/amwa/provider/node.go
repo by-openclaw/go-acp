@@ -114,6 +114,18 @@ type IS04NodeConfig struct {
 	// SystemURL names an IS-09 System API as `host:port`, skipping
 	// discovery. Empty means browse for one.
 	SystemURL string
+
+	// NoRegistry keeps the Node out of any Registry: no explicit
+	// registration, and no browsing for one.
+	//
+	// This is Mode D (mDNS direct-Node) from internal/amwa/CLAUDE.md,
+	// and it is a real deployment, not a test affordance -- EVS
+	// Cerebrum runs registry-less peer-to-peer. It matters because
+	// IS-04 §4.2.1 makes the two modes mutually exclusive on the wire:
+	// a Node that has registered MUST stop advertising
+	// _nmos-node._tcp, so a Node allowed to find a Registry cannot
+	// also be a peer-to-peer Node.
+	NoRegistry bool
 }
 
 // IS04NodeServer hosts the Node API endpoints + DNS-SD announce +
@@ -318,7 +330,10 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// Registration: explicit URL wins (Mode B). Otherwise, when in
 	// mDNS mode, browse `_nmos-register._tcp` and auto-register against
 	// the highest-pri Registry — that's IS-04 §3.1 Mode A.
-	if s.cfg.RegistryURL != "" {
+	if s.cfg.NoRegistry {
+		s.logger.Info("provider/node: registry disabled, staying peer-to-peer",
+			"plugin", "amwa", "api", "is-04", "mode", "direct-node")
+	} else if s.cfg.RegistryURL != "" {
 		rc := NewRegistrationClient(s.logger, s.cfg.RegistryURL, s.cfg.APIVer, s.bundle)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc

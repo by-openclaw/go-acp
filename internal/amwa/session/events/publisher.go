@@ -64,10 +64,16 @@ func NewPublisher(opts PublisherOptions) *Publisher {
 	if logger == nil {
 		logger = slog.Default()
 	}
+	// 0 means OFF, exactly as the field documents.
+	//
+	// It used to mean "off" in the comment and "5 seconds" in the code,
+	// which is worse than either: a caller that read the doc and asked
+	// for silence got a heartbeat anyway. IS-07 §5 puts the heartbeat
+	// on the receiver -- it sends a health command, the sender answers
+	// one message -- so an unsolicited health is a spec deviation the
+	// caller then cannot switch off. Off is also the right default for
+	// a sender; the loopback tests that want one pass an interval.
 	hb := opts.HeartbeatInterval
-	if hb == 0 {
-		hb = 5 * time.Second
-	}
 	p := &Publisher{
 		codec:   c,
 		logger:  logger,

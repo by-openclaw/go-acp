@@ -269,6 +269,8 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats every 5 s")
 	noConnection := fs.Bool("no-connection-api", false, "do not serve IS-05. The Node stays discoverable and becomes unroutable — useful only to reproduce a discovery-only device")
 	connectionAPIVer := fs.String("connection-api-ver", "", "pin IS-05 to one wire minor (v1.0/v1.1/v1.2). Empty serves every registered minor in parallel, which is what a real product does")
+	systemURL := fs.String("system", "", "IS-09 System API as `host:port`, skipping discovery. Empty browses for one; a Node that finds none serves normally, because IS-09 makes the System API optional")
+	noRegistry := fs.Bool("no-registry", false, "stay peer-to-peer: neither register nor browse for a Registry. IS-04 §4.2.1 makes the modes exclusive — a registered Node stops advertising _nmos-node._tcp — so a Node that may find a Registry cannot also be a peer-to-peer Node")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -296,6 +298,8 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		RegistryURL:      *registry,
 		NoConnectionAPI:  *noConnection,
 		ConnectionAPIVer: *connectionAPIVer,
+		SystemURL:        *systemURL,
+		NoRegistry:       *noRegistry,
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
