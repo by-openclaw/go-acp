@@ -65,21 +65,31 @@ dhs_amwa_node_suites:
   - id: "IS-05-01"
     name: "IS-05 Connection Management API"
     endpoints: ["connection"]
+  # IS-05 is advertised through the Device `controls` array (IS-04
+  # v1.1) and the suite's own test_01 requires v1.2 or greater.
   - id: "IS-05-02"
     name: "IS-05 Interaction with IS-04"
     endpoints: ["node", "connection"]
+    min_node_ver: "v1.2"
   - id: "IS-07-01"
     name: "IS-07 Event & Tally API"
     endpoints: ["events"]
+  # IS-07 needs a Flow `media_type`, which IS-04 has no field for below
+  # v1.1, and it reaches the sender through IS-05 -- so it inherits
+  # IS-05-02's v1.2 floor.
   - id: "IS-07-02"
     name: "IS-07 Interaction with IS-04 and IS-05"
     endpoints: ["node", "connection", "events"]
+    min_node_ver: "v1.2"
   - id: "IS-08-01"
     name: "IS-08 Channel Mapping API"
     endpoints: ["chanmap"]
+  # IS-08 is advertised through the Device `controls` array, added in
+  # IS-04 v1.1.
   - id: "IS-08-02"
     name: "IS-08 Interaction with IS-04"
     endpoints: ["node", "chanmap"]
+    min_node_ver: "v1.1"
   # Two slots even though the tool disables most of their fields: the
   # arrays are positional, and a short one is refused outright with
   # "expects 2 Hostname(s)/IP address(es), Port(s) and Version(s)".

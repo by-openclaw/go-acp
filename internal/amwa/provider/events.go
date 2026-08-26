@@ -103,6 +103,11 @@ func NewIS07EventsServer(logger *slog.Logger, bundle *NodeConfig, cfg IS07Events
 			s.pub = events.NewPublisher(events.PublisherOptions{
 				Codec:  codec,
 				Logger: logger,
+				// The Publisher fans out changes; only the Node knows
+				// what each source is saying RIGHT NOW, which is what
+				// a fresh subscriber has to be told before anything
+				// changes again.
+				StateOf: s.currentState,
 				// No unsolicited heartbeat.
 				//
 				// IS-07 §5 puts the heartbeat on the RECEIVER: it sends
@@ -120,6 +125,19 @@ func NewIS07EventsServer(logger *slog.Logger, bundle *NodeConfig, cfg IS07Events
 	}
 	s.seedFromBundle(bundle)
 	return s
+}
+
+// currentState returns one source's latest state message, for the
+// Publisher to send when a client subscribes.
+func (s *IS07EventsServer) currentState(sourceID string) (is07.Message, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	es, found := s.sources[sourceID]
+	if !found {
+		return nil, false
+	}
+	m, isMsg := es.state.(is07.Message)
+	return m, isMsg
 }
 
 // Close tears down every WebSocket subscriber.

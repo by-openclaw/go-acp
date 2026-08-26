@@ -22,12 +22,22 @@ import (
 
 // encodeOne wraps a per-resource codec Encode method into a
 // json.RawMessage suitable for handing back to the HTTP framework.
-// On encode error, returns a JSON null — the schema-validation tests
-// will catch this as a server bug rather than masking it as 200 OK.
+//
+// A resource the served minor cannot express returns NIL, and the
+// caller turns that into a 404.
+//
+// It used to return a JSON `null` at 200, on the theory that a
+// schema-validation test would catch it. It does -- as an
+// unattributable "Response schema validation error" three minors
+// deep, which is a slow way to learn something the server already
+// knew. And the behaviour is wrong on its own terms: the LIST endpoint
+// drops a resource the minor cannot express, so serving it
+// individually advertises a resource the Node does not list, and
+// answers "here it is" with nothing.
 func encodeOne[T any](enc func(T) ([]byte, error), v T) json.RawMessage {
 	body, err := enc(v)
 	if err != nil {
-		return json.RawMessage("null")
+		return nil
 	}
 	return json.RawMessage(body)
 }
@@ -816,7 +826,12 @@ func (s *IS04NodeServer) installCollection(
 		path := base + "/" + plural + "/" + id
 		srv.Handle(stdhttp.MethodGet, path, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 			body, ok := getFn(id)
-			if !ok {
+			// Not found, OR found and inexpressible at this minor --
+			// the same answer either way. A controller asking a v1.0
+			// Node for a resource that needs v1.2 vocabulary is asking
+			// for something this Node does not have AT THIS VERSION,
+			// which is what 404 means.
+			if !ok || isNilBody(body) {
 				return stdhttp.StatusNotFound, httpsession.ErrorBody{
 					Code: stdhttp.StatusNotFound, Error: "Not Found", Debug: id,
 				}, nil
@@ -824,6 +839,17 @@ func (s *IS04NodeServer) installCollection(
 			return 0, body, nil
 		})
 	}
+}
+
+// isNilBody reports whether a getFn result carries no encodable
+// resource. The typed nil hides inside an interface, so a plain
+// `body == nil` misses it.
+func isNilBody(body any) bool {
+	if body == nil {
+		return true
+	}
+	raw, isRaw := body.(json.RawMessage)
+	return isRaw && len(raw) == 0
 }
 
 func idsFromDevices(in []is04.Device) []string {

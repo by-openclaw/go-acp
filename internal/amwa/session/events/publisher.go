@@ -26,16 +26,23 @@ import (
 // Thread-safety: Publish, Handler, and Close are safe to call from
 // any goroutine concurrently.
 type Publisher struct {
-	codec    is07.Codec
-	logger   *slog.Logger
-	hbEvery  time.Duration
+	codec   is07.Codec
+	logger  *slog.Logger
+	hbEvery time.Duration
+	// idleTimeout is how long a connection may go without a health
+	// command before the Sender closes it (IS-07 §5.2).
+	idleTimeout time.Duration
+	// stateOf returns a source's current state message, for the
+	// initial send on subscription. Nil means this Publisher has no
+	// state to offer -- a bare fan-out relay rather than a Node.
+	stateOf func(sourceID string) (is07.Message, bool)
 
-	mu          sync.RWMutex
-	clients     map[uint64]*subscription
-	closed      bool
-	clientSeq   atomic.Uint64
-	stop        chan struct{}
-	hbWg        sync.WaitGroup
+	mu        sync.RWMutex
+	clients   map[uint64]*subscription
+	closed    bool
+	clientSeq atomic.Uint64
+	stop      chan struct{}
+	hbWg      sync.WaitGroup
 }
 
 // PublisherOptions configures Publisher creation.
@@ -52,6 +59,19 @@ type PublisherOptions struct {
 	// background heartbeat (clients can still drive heartbeats via
 	// CommandHealth probes). Default 5s per IS-07 §3.
 	HeartbeatInterval time.Duration
+
+	// IdleTimeout is how long a connection may go without a health
+	// command before the Sender closes it. Default 12s per IS-07
+	// §5.2 -- the receiver heartbeats every 5s, so 12 tolerates one
+	// missed beat and not two.
+	IdleTimeout time.Duration
+
+	// StateOf returns a source's current state, sent immediately on
+	// subscription. IS-07 §5.2 requires it, and the reason is the
+	// whole point of the API: a tally changes rarely, so a consumer
+	// that subscribed and then waited for the next change could sit
+	// for hours not knowing whether the lamp is lit.
+	StateOf func(sourceID string) (is07.Message, bool)
 }
 
 // NewPublisher constructs a Publisher.
@@ -74,12 +94,18 @@ func NewPublisher(opts PublisherOptions) *Publisher {
 	// caller then cannot switch off. Off is also the right default for
 	// a sender; the loopback tests that want one pass an interval.
 	hb := opts.HeartbeatInterval
+	idle := opts.IdleTimeout
+	if idle <= 0 {
+		idle = 12 * time.Second
+	}
 	p := &Publisher{
-		codec:   c,
-		logger:  logger,
-		hbEvery: hb,
-		clients: make(map[uint64]*subscription),
-		stop:    make(chan struct{}),
+		codec:       c,
+		logger:      logger,
+		hbEvery:     hb,
+		idleTimeout: idle,
+		stateOf:     opts.StateOf,
+		clients:     make(map[uint64]*subscription),
+		stop:        make(chan struct{}),
 	}
 	if hb > 0 {
 		p.hbWg.Add(1)
@@ -224,6 +250,23 @@ func (p *Publisher) serve(ctx context.Context, ws *httpsession.WebSocket, remote
 	p.logger.Info("nmos/is07: ws client connected",
 		"client", id, "remote", remote)
 
+	// A connection with no health command inside the timeout is
+	// dropped.
+	//
+	// IS-07 §5.2 makes the receiver responsible for heartbeating and
+	// the sender responsible for reaping. Holding a silent connection
+	// open forever looks harmless on a test rig and is not: every
+	// consumer that crashes or is unplugged leaves a socket behind,
+	// and a sender that never reaps them accumulates them until it
+	// runs out of file descriptors -- at which point the NEXT
+	// consumer, the working one, cannot connect.
+	idle := time.AfterFunc(p.idleTimeout, func() {
+		p.logger.Info("nmos/is07: ws client timed out with no health command",
+			"client", id, "after", p.idleTimeout)
+		_ = ws.Close()
+	})
+	defer idle.Stop()
+
 	for {
 		if err := ctx.Err(); err != nil {
 			return
@@ -247,7 +290,31 @@ func (p *Publisher) serve(ctx context.Context, ws *httpsession.WebSocket, remote
 			sub.set(c.Sources)
 			p.logger.Info("nmos/is07: subscription updated",
 				"client", id, "sources", len(c.Sources))
+			// Send each subscribed source's CURRENT state at once.
+			//
+			// IS-07 §5.2 requires it, and the reason is the whole
+			// point of the API: a tally lamp changes rarely, so a
+			// consumer that subscribed and then waited for the next
+			// change could sit for hours not knowing whether the lamp
+			// is lit. The subscription response IS the initial read.
+			if p.stateOf != nil {
+				for _, srcID := range c.Sources {
+					m, found := p.stateOf(srcID)
+					if !found {
+						continue
+					}
+					body, err := p.codec.EncodeMessage(m)
+					if err != nil {
+						continue
+					}
+					if err := ws.SendText(body); err != nil {
+						return
+					}
+				}
+			}
 		case is07.CommandHealth:
+			// The heartbeat that keeps the connection alive.
+			idle.Reset(p.idleTimeout)
 			resp := is07.MessageHealth{
 				Timing: is07.Timing{
 					CreationTimestamp: is07Now(),

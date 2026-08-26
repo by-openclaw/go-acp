@@ -149,6 +149,36 @@ func TestSetStatePublishesNewValue(t *testing.T) {
 	}
 }
 
+// TestCurrentStateFeedsNewSubscribers: the Publisher fans out
+// CHANGES; a client that has just subscribed has not seen one yet, and
+// a tally can go hours without changing. IS-07 §5.2 makes the
+// subscription response carry the current value.
+func TestCurrentStateFeedsNewSubscribers(t *testing.T) {
+	ev, _, id := eventsTestServer(t)
+
+	m, found := ev.currentState(id)
+	if !found {
+		t.Fatal("a known source must have a state to hand a new subscriber")
+	}
+	if m.Kind() != is07.MessageTypeState {
+		t.Errorf("kind = %q, want %q", m.Kind(), is07.MessageTypeState)
+	}
+
+	// It tracks changes, not just the seed.
+	if _, ok := ev.SetState(id, true); !ok {
+		t.Fatal("SetState refused a known source")
+	}
+	m, _ = ev.currentState(id)
+	b, isBool := m.(is07.EventBoolean)
+	if !isBool || !b.Payload.Value {
+		t.Errorf("current state = %#v, want the value just set", m)
+	}
+
+	if _, found := ev.currentState("no-such-source"); found {
+		t.Error("an unknown source has no state to offer")
+	}
+}
+
 // TestUnknownEventSourceIs404: a source we do not have gets the
 // router's 404, not an invented empty state.
 func TestUnknownEventSourceIs404(t *testing.T) {
