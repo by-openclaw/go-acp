@@ -11,18 +11,9 @@
     loop_var: suite
     label: "{{ suite.id }} @ {{ api_ver }}"
 
-- name: "{{ api_ver }} — node log from the last suite"
-  ansible.builtin.command: docker logs --tail 15 {{ dhs_amwa_node_name }}
-  register: dhs_amwa_node_log
-  changed_when: false
-  failed_when: false
-
-- name: "{{ api_ver }} — what the node said"
-  ansible.builtin.debug:
-    msg: "{{ (dhs_amwa_node_log.stderr | default('')) + (dhs_amwa_node_log.stdout | default('')) }}"
 
 - name: "{{ api_ver }} — collect what was written"
   ansible.builtin.find:
     paths: "{{ dhs_amwa_node_results }}"
-    patterns: "*.json"
+    patterns: ["*.json", "*.log"]
   register: dhs_amwa_node_found

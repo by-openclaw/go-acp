@@ -121,6 +121,25 @@
   # to surface, and stopping here would hide every later suite.
   failed_when: false
 
+# The node's own log, while the container still exists.
+#
+# round.yml used to dump it after the loop, by which point the next
+# suite had already removed the container -- so the one artefact that
+# explains a failure was empty exactly when it was needed.
+- name: "{{ api_ver }} / {{ suite.id }} — what the node said"
+  ansible.builtin.command: docker logs --tail 40 {{ dhs_amwa_node_name }}
+  register: dhs_amwa_node_suite_log
+  changed_when: false
+  failed_when: false
+
+- name: "{{ api_ver }} / {{ suite.id }} — keep it beside the result"
+  ansible.builtin.copy:
+    content: |
+      {{ dhs_amwa_node_suite_log.stdout | default('') }}
+      {{ dhs_amwa_node_suite_log.stderr | default('') }}
+    dest: "{{ dhs_amwa_node_results }}/{{ suite.id | lower }}-{{ api_ver }}.log"
+    mode: "0644"
+
 - name: "{{ api_ver }} / {{ suite.id }} — write the result"
   ansible.builtin.copy:
     content: "{{ dhs_amwa_node_one_run.content | default('{\"error\":\"no response\"}') }}"
