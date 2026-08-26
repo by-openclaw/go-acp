@@ -5,25 +5,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+
+	"dhs/internal/amwa/codec/spec"
 	"time"
 )
 
 // ActivationMode is the fixed-set discriminator on the activation
 // object. Spec: §4.2 PATCH /staged → activation.
 //
-//   ""                              — no activation requested
-//   activate_immediate              — apply on receipt
-//   activate_scheduled_relative     — apply N seconds after receipt
-//   activate_scheduled_absolute     — apply at TAI timestamp
+//	""                              — no activation requested
+//	activate_immediate              — apply on receipt
+//	activate_scheduled_relative     — apply N seconds after receipt
+//	activate_scheduled_absolute     — apply at TAI timestamp
 type ActivationMode string
 
 // Recognised activation modes per the spec. Empty is a valid value
 // (no activation in this PATCH).
 const (
-	ActivationModeNone               ActivationMode = ""
-	ActivationModeImmediate          ActivationMode = "activate_immediate"
-	ActivationModeScheduledRelative  ActivationMode = "activate_scheduled_relative"
-	ActivationModeScheduledAbsolute  ActivationMode = "activate_scheduled_absolute"
+	ActivationModeNone              ActivationMode = ""
+	ActivationModeImmediate         ActivationMode = "activate_immediate"
+	ActivationModeScheduledRelative ActivationMode = "activate_scheduled_relative"
+	ActivationModeScheduledAbsolute ActivationMode = "activate_scheduled_absolute"
 )
 
 // IsValidActivationMode is true when m is one of the four spec values.
@@ -153,10 +155,10 @@ var taiPattern = regexp.MustCompile(`^[0-9]+:[0-9]+$`)
 
 // ValidateActivation enforces the per-mode rules:
 //
-//   activate_scheduled_relative — requested_time MUST be set, in TAI.
-//   activate_scheduled_absolute — same.
-//   activate_immediate          — requested_time MUST be null.
-//   ""                          — every field MUST be null.
+//	activate_scheduled_relative — requested_time MUST be set, in TAI.
+//	activate_scheduled_absolute — same.
+//	activate_immediate          — requested_time MUST be null.
+//	""                          — every field MUST be null.
 func ValidateActivation(a Activation) error {
 	if !IsValidActivationMode(a.Mode) {
 		return fmt.Errorf("is05: activation.mode %q: invalid", a.Mode)
@@ -260,30 +262,16 @@ func DecodeStagedReceiver(raw []byte) (*StagedReceiver, error) {
 	return &r, nil
 }
 
-// TAILeapSeconds is TAI − UTC: the count of leap seconds inserted
-// since the two scales were aligned in 1972.
-//
-// 37 since 2017-01-01, and unchanged since — the IERS has announced no
-// leap second in the years around this table, and the 2022 CGPM
-// resolution is to stop inserting them by 2035. A constant is
-// therefore honest for the deployment window and a table would be
-// pretending to a precision nothing here uses.
-//
-// This offset is NOT cosmetic. IS-05 §4.2 types every timestamp as
-// TAI, so a controller scheduling an absolute activation sends a TAI
-// instant. Reading it as Unix seconds puts the switch 37 seconds into
-// the future, which looks like a device that simply never activates —
-// AMWA IS-05-01 test_29/test_30 give up after three retries.
-const TAILeapSeconds = 37
+// TAILeapSeconds is TAI − UTC. Defined once for the whole suite in
+// codec/spec, because IS-04 versions, IS-05 activations, IS-07 event
+// timing and IS-08 activations are compared against each other and a
+// second implementation would put them 37 seconds apart.
+const TAILeapSeconds = spec.TAILeapSeconds
 
 // FormatTAINow renders a wall-clock time as a `<sec>:<nsec>` TAI
 // string.
-func FormatTAINow(t time.Time) string {
-	return fmt.Sprintf("%d:%d", t.Unix()+TAILeapSeconds, t.Nanosecond())
-}
+func FormatTAINow(t time.Time) string { return spec.FormatTAI(t) }
 
 // TAIToTime converts a TAI `<sec>:<nsec>` instant to wall-clock time.
 // The inverse of FormatTAINow.
-func TAIToTime(sec, nsec int64) time.Time {
-	return time.Unix(sec-TAILeapSeconds, nsec)
-}
+func TAIToTime(sec, nsec int64) time.Time { return spec.TAIToTime(sec, nsec) }

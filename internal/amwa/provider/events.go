@@ -100,7 +100,22 @@ func NewIS07EventsServer(logger *slog.Logger, bundle *NodeConfig, cfg IS07Events
 	// answers, serve REST only rather than panicking on a nil codec.
 	if len(vers) > 0 {
 		if codec, found := is07.Get(vers[len(vers)-1]); found {
-			s.pub = events.NewPublisher(events.PublisherOptions{Codec: codec, Logger: logger})
+			s.pub = events.NewPublisher(events.PublisherOptions{
+				Codec:  codec,
+				Logger: logger,
+				// No unsolicited heartbeat.
+				//
+				// IS-07 §5 puts the heartbeat on the RECEIVER: it sends
+				// a health command every ~5s and the Sender answers
+				// one health message. A Sender that also emits health
+				// on its own timer means a controller that sent one
+				// command sometimes reads two responses and cannot
+				// tell which is the answer -- the tool checks for
+				// exactly one. The Publisher keeps the option because
+				// its own loopback tests use it to observe fan-out
+				// without driving it.
+				HeartbeatInterval: 0,
+			})
 		}
 	}
 	s.seedFromBundle(bundle)
