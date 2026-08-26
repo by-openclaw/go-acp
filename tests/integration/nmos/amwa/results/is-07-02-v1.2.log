@@ -1,0 +1,13 @@
+Node API: bind=:18080, mode=mdns, api_ver=v1.2, priority=0
+Connection API (IS-05): v1.0, v1.1, v1.2
+  GET http://<host>:18080/x-nmos/node/v1.2/{,self,devices,sources,flows,senders,receivers}
+Announcing _nmos-node._tcp via mDNS.
+time=2026-08-26T20:19:44.427Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-26T20:19:44.429Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.2 pri=0
+time=2026-08-26T20:19:44.429Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-26T20:19:44.432Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-26T20:19:44.433Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-26T20:19:44.635Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.2
+time=2026-08-26T20:19:44.636Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.2
+time=2026-08-26T20:19:45.470Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-26T20:19:46.437Z level=WARN msg="provider/node: System API found but /global could not be read" plugin=amwa api=is-09 err="nmos/system: peer /global failed validation: is09 /global validation failed: label: required (resource_core); description: required (resource_core)"
