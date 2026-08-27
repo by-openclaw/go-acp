@@ -74,13 +74,20 @@ dhs_amwa_node_suites:
   - id: "IS-07-01"
     name: "IS-07 Event & Tally API"
     endpoints: ["events"]
-  # IS-07 needs a Flow `media_type`, which IS-04 has no field for below
-  # v1.1, and it reaches the sender through IS-05 -- so it inherits
-  # IS-05-02's v1.2 floor.
+  # IS-07's IS-04 floor is v1.3, and AMWA's own artifacts force it:
+  # sender.json at v1.0-v1.2 rejects `urn:x-nmos:transport:websocket`
+  # (oneOf: the four RTP/DASH URNs, or NOT ^urn:x-nmos:), and Source
+  # `event_type` exists only from v1.3 -- yet the suite's test_02
+  # cross-references both against the Node API. A v1.2 pairing can
+  # therefore only "pass" by serving a Node API that v1.2's own
+  # schemas reject, which IS-04-01 at v1.2 would then fail. The
+  # projection (node_project.go) is the spec-correct side of this:
+  # below v1.3 the WS event senders and their sources are not part
+  # of the device.
   - id: "IS-07-02"
     name: "IS-07 Interaction with IS-04 and IS-05"
     endpoints: ["node", "connection", "events"]
-    min_node_ver: "v1.2"
+    min_node_ver: "v1.3"
   - id: "IS-08-01"
     name: "IS-08 Channel Mapping API"
     endpoints: ["chanmap"]
