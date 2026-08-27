@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"sort"
 	"strings"
@@ -314,7 +315,7 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	if !*noConnection {
 		fmt.Printf("Connection API (IS-05): %s\n", strings.Join(srv.ConnectionVersions(), ", "))
 	}
-	fmt.Printf("  GET http://<host>%s/x-nmos/node/%s/{,self,devices,sources,flows,senders,receivers}\n", *bind, *apiVer)
+	fmt.Printf("  GET http://%s/x-nmos/node/%s/{,self,devices,sources,flows,senders,receivers}\n", displayBind(*bind), *apiVer)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-node._tcp via mDNS.")
 	}
@@ -501,8 +502,8 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	defer func() { _ = srv.Stop() }()
 
 	fmt.Printf("System API: bind=%s, mode=%s, api_ver=%s, priority=%d\n", *bind, mode, *apiVer, *priority)
-	fmt.Printf("  GET http://<host>%s/x-nmos/system/%s/        (index)\n", *bind, *apiVer)
-	fmt.Printf("  GET http://<host>%s/x-nmos/system/%s/global  (global resource)\n", *bind, *apiVer)
+	fmt.Printf("  GET http://%s/x-nmos/system/%s/        (index)\n", displayBind(*bind), *apiVer)
+	fmt.Printf("  GET http://%s/x-nmos/system/%s/global  (global resource)\n", displayBind(*bind), *apiVer)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-system._tcp via mDNS.")
 	} else {
@@ -553,9 +554,9 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		verLabel = "<all>"
 	}
 	fmt.Printf("Registry: bind=%s, mode=%s, priority=%d, api_ver=%s\n", *bind, mode, *priority, verLabel)
-	fmt.Printf("  Registration: POST/GET/DELETE under http://<host>%s/x-nmos/registration/%s/...\n", *bind, verLabel)
-	fmt.Printf("  Query:        GET + POST /subscriptions under http://<host>%s/x-nmos/query/%s/...\n", *bind, verLabel)
-	fmt.Printf("  WS subs:      ws://<host>%s/x-nmos/query/%s/subscriptions/<id>/ws\n", *bind, verLabel)
+	fmt.Printf("  Registration: POST/GET/DELETE under http://%s/x-nmos/registration/%s/...\n", displayBind(*bind), verLabel)
+	fmt.Printf("  Query:        GET + POST /subscriptions under http://%s/x-nmos/query/%s/...\n", displayBind(*bind), verLabel)
+	fmt.Printf("  WS subs:      ws://%s/x-nmos/query/%s/subscriptions/<id>/ws\n", displayBind(*bind), verLabel)
 	fmt.Printf("  GC: tick=%s, heartbeat-timeout=%s\n", *gcInterval, *heartbeatTimeout)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-register._tcp + _nmos-query._tcp via mDNS.")
@@ -569,7 +570,36 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 func printNMOSConsumerHelp() {
 	fmt.Println(`Usage:
   dhs consumer nmos discover [flags]
+  dhs consumer nmos walk     [flags]
+  dhs consumer nmos connect  [flags]
   dhs consumer nmos system   [flags]
+  dhs consumer nmos events   [flags]
+
+Start here — read one device with no Registry, no mDNS, no config:
+
+  dhs consumer nmos walk --node http://10.6.255.102:3000 -l
+
+walk — read a catalogue. Point it at ONE device or at a Registry.
+  --node URL            one Node directly (IS-04 peer-to-peer). The only way
+                        to reach a device that has not registered anywhere.
+  --registry URL        a Registry's Query API
+  --mdns / --unicast    discover a Registry instead of naming one
+  --api-ver V           pin a wire minor (v1.0/v1.1/v1.2/v1.3); default highest
+  -l                    list every resource with its UUID, not just counts
+  --json                emit the whole catalogue as JSON
+
+connect — route a Sender to a Receiver over IS-05. Addresses resources by
+UUID, because NMOS labels are mutable and non-unique. Use "walk -l" to get
+the UUIDs. The IS-05 endpoint is discovered from IS-04, never guessed.
+  --receiver UUID       required
+  --sender UUID         omit (or pass --disconnect) to disconnect
+  --dry-run             print the endpoint, the PATCH body and the receiver's
+                        CURRENT route, and send nothing. Do this first:
+                        routing moves real signal and IS-05 has no undo.
+  --mode M              activate_immediate (default) | activate_scheduled_relative
+                        | activate_scheduled_absolute
+  --when S:NS           TAI time for the scheduled modes (TAI = UTC + 37s)
+  (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.
   --mdns                Use mDNS multicast (Mode A; default)
@@ -798,4 +828,20 @@ func printComplianceSummary(events []spec.ComplianceEvent) {
 	for _, k := range order {
 		fmt.Fprintf(os.Stderr, "  x%-4d [%s] %s: %s\n", counts[k], k.sev, k.code, k.detail)
 	}
+}
+
+// displayBind turns a listen address into one a reader can paste.
+//
+// "0.0.0.0:8235" and ":8235" are correct to bind and useless to click:
+// they name every interface, not an address. Printing 127.0.0.1 is the
+// honest minimum — it always works from the machine reading the banner.
+func displayBind(bind string) string {
+	host, port, err := net.SplitHostPort(bind)
+	if err != nil {
+		return bind
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" || host == "[::]" {
+		host = "127.0.0.1"
+	}
+	return net.JoinHostPort(host, port)
 }
