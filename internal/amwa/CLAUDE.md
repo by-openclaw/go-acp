@@ -398,10 +398,11 @@ internal/amwa/codec/
     codec.go                     # extends spec.Versioned with the spec's resource methods
     {node,device,...}.go         # canonical union structs (every minor's fields, omitempty)
     patterns.go enums.go         # shared regex / URN tables
-    since.go                     # WHEN each property arrived — the version delta, as data
     absorb.go                    # decode that records unknown fields instead of failing
-    v10/  v11/  v12/  v13/       # per-minor Strategy impls (~50–100 LOC each)
-      codec.go                   # implements the spec's Codec interface for ONE wire minor
+    schemas/                     # AMWA's OWN JSON Schemas, verbatim, per patch release
+      v1.0.3/ v1.1.3/ v1.2.2/ v1.3.3/
+    v10/  v11/  v12/  v13/       # per-minor Strategy impls — SELF-CONTAINED
+      codec.go                   # this minor's identity + its own drop table + its strip
 
   bcp/                           # JSON-shape validators (no own wire — layer onto host spec)
     bcp00201/  bcp00202/         # BCP-002-01 / 002-02
@@ -410,45 +411,72 @@ internal/amwa/codec/
     bcp00801/  bcp00802/         # BCP-008-01 / 008-02
 ```
 
-### The version delta is DATA, in one place
+### Validation comes from AMWA's schemas. We write no rules.
 
-A `vXX/` package holds only what is specific to that minor: its
-identity and its required-field validators. It holds **no field-gating
-table of its own**. Which property arrived at which minor is stated
-once, in `is04.Since`, keyed by resource kind, with a dotted path
-(`controls` · `caps.constraint_sets` ·
-`interfaces[].attached_network_device` — `[]` fans out across an
-array). Exactly two functions read it:
+**Every IS-04 validation rule lives in `codec/is04/schemas/`, copied
+verbatim from github.com/AMWA-TV/is-04 at each patch tag.** They are
+never edited. When AMWA publishes a new patch, the fix is to copy the
+new set in — not to adjust Go.
 
-| Direction | Function | Posture |
+This is the single most important rule in this package, because every
+IS-04 bug we have had came from breaking it. Hand-written validators
+are a paraphrase of the schemas, and a paraphrase drifts:
+
+- a non-empty check on `label`/`description` that no schema states —
+  failed all 176 Senders on a real EVS Neuron
+- a v1.0 Flow failed for missing `frame_width`, which v1.0 has no
+  concept of
+- a v1.0 Device refused for `controls`, which AMWA's own v1.0
+  `device.json` permits — the device was right and we were wrong
+- `chassis_id: "ZZ"` rejected, where AMWA defines
+  `anyOf [MAC-pattern, "^.+$", null]` and only `""` is invalid
+
+sony/nmos-cpp has none of this class of bug for the same reason: it
+embeds the AMWA schemas (`Development/nmos/is04_schemas/`) and
+validates against them.
+
+`internal/amwa/codec/jsonschema` is a stdlib-only draft-04 validator
+(ADR-0006) covering exactly the keywords a scan of the four schema sets
+reports. **An unimplemented keyword is REPORTED, never skipped** — a
+silent skip means a document went unchecked and nobody notices;
+`TestNoUnimplementedKeyword` fails the build if AMWA ships one.
+
+### Each minor is self-contained
+
+A `vXX/` package holds **only** what is specific to that minor: its
+identity, its own drop table, its own strip helper. Nothing is shared
+between minors and the duplication is deliberate — a change to v1.0
+must be incapable of altering how v1.2 behaves. Each minor also gets
+its own schema compiler over its own directory, so a v1.0 validator
+physically cannot load a v1.3 schema.
+
+The two directions have opposite postures, and that asymmetry is the
+point:
+
+| Direction | Rule | Posture |
 |---|---|---|
-| encode | `StripLaterThan(raw, kind, apiVer)` | **strict** — a v1.x tree MUST NOT carry a later minor's property; AMWA IS-04-01 fails the Node for it |
-| decode | `AbsorbLaterThan(raw, kind, apiVer, reporter)` | **tolerant** — report `nmos_is04_later_minor_field` at Warn, keep the resource |
+| **encode** | drop what this minor lacks, then schema-check | **FATAL** — emitting a payload AMWA rejects is our bug |
+| **decode** | parse tolerantly, schema deviations become events | **absorbed** — `nmos_is04_schema_deviation` at Warn |
 
-The asymmetry is deliberate and matches the repo-wide compliance
-posture: strict on what we emit, tolerant of what we read. A real EVS
-Neuron serves `controls` on its v1.0 Device tree — refusing it lost
-the whole Device and told the operator nothing actionable.
+We must not EMIT what AMWA would reject. But refusing to READ it costs
+the operator the whole resource and tells them nothing actionable. Same
+rule in IS-09: an out-of-spec `/global` is absorbed, because discarding
+it sends the Node to a Registry the operator did not choose.
 
-Two rules follow, and breaking either is how this rotted the first
-time:
+Three rules follow, and breaking any of them is how this rotted before:
 
-- **Never add a fifth mechanism.** If a delta cannot be expressed in
-  `Since`, extend the path grammar — do not hand-write a walker in a
-  `vXX/` package. That is exactly how v12 ended up with
-  `rejectNodeV13Nested` while v10/v11 used flat key lists.
+- **Never hand-write a validation rule.** If the schema does not say
+  it, it is not a rule. AMWA's schema is the authority, not our
+  reading of it.
+- **A drop table must never strip a REQUIRED property.** A required
+  property is by definition not a later-minor field. Listing
+  `channels` at v1.1 — where `source_audio.json` requires it — made
+  every audio Source fail to register, and IS-04-01 reported it four
+  tests away as "not found in the registry". `schemas.RequiredLeaves`
+  plus each package's `drop_test.go` catch that at unit-test speed.
 - **Decode at a minor validates at that minor.** Per-minor `DecodeX`
-  calls `is04.ParseX` (decode + absorb + report, no validation) and
-  then its OWN validator. Delegating to `is04.DecodeX` validates
-  against the canonical/latest rules, which failed a v1.0 Flow for
-  missing `frame_width` — a field that same table says arrived in
-  v1.1.
-
-For comparison: sony/nmos-cpp keeps no per-minor types at all. One
-untyped `web::json::value` per resource, stored at its highest
-version, with the whole delta in a single `nmos::downgrade()` in
-`nmos/api_downgrade.cpp`. `Since` is the same single-source-of-truth
-shape, expressed as data rather than `if (version < v1_1) erase(...)`.
+  calls `is04.ParseX` (decode + absorb + report, no validation), never
+  `is04.DecodeX`, which validates against the canonical latest rules.
 
 ### OOP principles enforced
 
