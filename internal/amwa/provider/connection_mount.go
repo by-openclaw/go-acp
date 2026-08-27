@@ -80,6 +80,18 @@ func (s *IS04NodeServer) controlHost() string {
 	if host == "" {
 		host = "localhost"
 	}
+	// The operator's --advertise-host is authoritative when it is an
+	// IP literal: it satisfies the IP-wins rule below AND cannot be
+	// poisoned by stale endpoints riding in from a bundle file. That
+	// poisoning is silent and expensive — every control href points
+	// at a dead address, and the controller (Cerebrum) just shows
+	// empty IS-05 panels with no error anywhere.
+	if ah, port := splitHostPort(s.cfg.AdvertiseHost, s.cfg.Bind); ah != "" && net.ParseIP(ah) != nil {
+		if port > 0 {
+			return net.JoinHostPort(ah, strconv.Itoa(port))
+		}
+		return ah
+	}
 	if ip := firstNodeIP(s.bundle); ip != "" {
 		if _, port := splitHostPort(s.cfg.AdvertiseHost, s.cfg.Bind); port > 0 {
 			return net.JoinHostPort(ip, strconv.Itoa(port))

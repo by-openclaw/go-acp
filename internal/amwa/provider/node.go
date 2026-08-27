@@ -308,6 +308,15 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// against whatever URL the test reaches us at.
 	expandNodeEndpoints(&s.bundle.Node, s.cfg.AdvertiseHost, s.cfg.Bind)
 
+	// The Node's own href follows the same authority: it is the Node
+	// API base a controller will fetch, and a bundle-file leftover
+	// (host.docker.internal, a decommissioned IP) hands every reader
+	// a dead URL. With --advertise-host set, the operator has named
+	// the reachable address — use it.
+	if s.cfg.AdvertiseHost != "" {
+		s.bundle.Node.Href = "http://" + s.controlHost() + "/"
+	}
+
 	// Rewrite Sender manifest_href to point at our /transportfile route
 	// at the wire api_ver. v1.0/v1.1/v1.2 sender.json require a non-null
 	// URI string; the matching transportfile handler is installed below.

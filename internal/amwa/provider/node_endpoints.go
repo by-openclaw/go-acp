@@ -24,18 +24,28 @@ import (
 // The protocol is currently fixed to "http" — IS-10 / TLS lands later.
 func expandNodeEndpoints(n *is04.Node, advertiseHost, bind string) {
 	host, port := endpointHostPort(advertiseHost, bind)
-	want := []is04.NodeEndpoint{}
+	// The advertised endpoint goes FIRST, not last: firstNodeIP picks
+	// the first IP literal, and every derived address — control
+	// hrefs, IS-05 source_ip, the SDP origin — follows it. Appending
+	// let stale entries riding in from the bundle keep winning: a
+	// dead 10.6.239.113 in a fixture put every registered control
+	// href on a host that no longer exists, and the controller showed
+	// empty connection panels with no error anywhere.
 	if host != "" && port != 0 && !isWildcard(host) {
-		want = append(want, is04.NodeEndpoint{Host: host, Port: port, Protocol: "http"})
+		adv := is04.NodeEndpoint{Host: host, Port: port, Protocol: "http"}
+		out := []is04.NodeEndpoint{adv}
+		for _, ep := range n.API.Endpoints {
+			if !endpointAlreadyListed(out, ep) {
+				out = append(out, ep)
+			}
+		}
+		n.API.Endpoints = out
 	}
 	for _, ip := range localIPv4() {
-		want = append(want, is04.NodeEndpoint{Host: ip, Port: port, Protocol: "http"})
-	}
-	for _, candidate := range want {
-		if endpointAlreadyListed(n.API.Endpoints, candidate) {
-			continue
+		candidate := is04.NodeEndpoint{Host: ip, Port: port, Protocol: "http"}
+		if !endpointAlreadyListed(n.API.Endpoints, candidate) {
+			n.API.Endpoints = append(n.API.Endpoints, candidate)
 		}
-		n.API.Endpoints = append(n.API.Endpoints, candidate)
 	}
 }
 

@@ -18,7 +18,7 @@
     "NMOS Node"
    ]
   },
-  "href": "http://dhs-node:18080/",
+  "href": "http://127.0.0.1:18080/",
   "caps": {},
   "api": {
    "versions": [
@@ -29,9 +29,10 @@
    ],
    "endpoints": [
     {
-     "host": "dhs-node",
+     "host": "127.0.0.1",
      "port": 18080,
-     "protocol": "http"
+     "protocol": "http",
+     "authorization": false
     }
    ]
   },
@@ -52,7 +53,8 @@
      "port_id": "00-11-22-33-44-66"
     }
    }
-  ]
+  ],
+  "hostname": "dhs-test-node"
  },
  "devices": [
   {
