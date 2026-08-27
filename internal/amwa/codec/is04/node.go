@@ -199,6 +199,5 @@ func ParseNode(raw []byte, apiVer string, rep spec.Reporter) (*Node, error) {
 	if err := decodeAbsorbing(raw, &n, "node", apiVer, rep); err != nil {
 		return nil, err
 	}
-	AbsorbLaterThan(raw, "node", apiVer, rep)
 	return &n, nil
 }

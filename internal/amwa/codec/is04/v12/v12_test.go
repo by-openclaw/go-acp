@@ -123,8 +123,13 @@ func TestNodeDecodeAbsorbsAttachedNetworkDevice(t *testing.T) {
 	if _, err := (Codec{Reporter: rep}).DecodeNode(body); err != nil {
 		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
 	}
-	if len(rep.Snapshot()) == 0 {
-		t.Fatalf("an absorbed later-minor field must be reported")
+	// AMWA's v1.2 schema does NOT forbid this property — there is no
+	// additionalProperties:false on these resources. So the correct
+	// behaviour is to accept it in silence. Our old hand-written rule
+	// rejected it, and that rule was invented, not specified.
+	if n := len(rep.Snapshot()); n != 0 {
+		t.Fatalf("AMWA permits this on a v1.2 tree; %d deviations reported: %v",
+			n, rep.Snapshot())
 	}
 }
 
@@ -189,8 +194,43 @@ func TestReceiverDecodeAbsorbsBCPv13Caps(t *testing.T) {
 		if _, err := (Codec{Reporter: rep}).DecodeReceiver([]byte(body)); err != nil {
 			t.Fatalf("caps.%s must be absorbed, not rejected: %v", name, err)
 		}
-		if len(rep.Snapshot()) == 0 {
-			t.Fatalf("caps.%s was absorbed but not reported", name)
+		// AMWA's v1.2 schema does NOT forbid this property — there is no
+		// additionalProperties:false on these resources. So the correct
+		// behaviour is to accept it in silence. Our old hand-written rule
+		// rejected it, and that rule was invented, not specified.
+		if n := len(rep.Snapshot()); n != 0 {
+			t.Fatalf("AMWA permits this on a v1.2 tree; %d deviations reported: %v",
+				n, rep.Snapshot())
+		}
+	}
+}
+
+// TestSchemaDeviationIsReportedNotFatal: a payload AMWA's own schema
+// rejects is still returned to the caller — refusing it costs the
+// operator the resource — but every failure is named as a compliance
+// event so nothing is swallowed.
+func TestSchemaDeviationIsReportedNotFatal(t *testing.T) {
+	// `id` is not a UUID and `version` is not <secs>:<nanos>: two rules
+	// AMWA states explicitly, so two deviations.
+	bad := []byte(`{"id":"not-a-uuid","version":"whenever","label":"x","description":"","tags":{},"node_id":"22222222-2222-4222-8222-222222222222","type":"urn:x-nmos:device:generic","senders":[],"receivers":[]}`)
+	rep := &spec.SliceReporter{}
+	d, err := (Codec{Reporter: rep}).DecodeDevice(bad)
+	if err != nil {
+		t.Fatalf("a schema deviation must not stop the decode: %v", err)
+	}
+	if d.ID != "not-a-uuid" {
+		t.Fatalf("the resource must still reach the caller, got %+v", d)
+	}
+	events := rep.Snapshot()
+	if len(events) == 0 {
+		t.Fatal("a schema deviation must be reported, not swallowed")
+	}
+	for _, e := range events {
+		if e.Code != "nmos_is04_schema_deviation" {
+			t.Errorf("code = %q", e.Code)
+		}
+		if e.APIVer != "v1.2" {
+			t.Errorf("apiVer = %q", e.APIVer)
 		}
 	}
 }

@@ -164,6 +164,5 @@ func ParseFlow(raw []byte, apiVer string, rep spec.Reporter) (*Flow, error) {
 	if err := decodeAbsorbing(raw, &f, "flow", apiVer, rep); err != nil {
 		return nil, err
 	}
-	AbsorbLaterThan(raw, "flow", apiVer, rep)
 	return &f, nil
 }

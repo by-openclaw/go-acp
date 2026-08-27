@@ -97,6 +97,5 @@ func ParseSender(raw []byte, apiVer string, rep spec.Reporter) (*Sender, error) 
 	if err := decodeAbsorbing(raw, &s, "sender", apiVer, rep); err != nil {
 		return nil, err
 	}
-	AbsorbLaterThan(raw, "sender", apiVer, rep)
 	return &s, nil
 }

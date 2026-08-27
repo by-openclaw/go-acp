@@ -18,9 +18,9 @@ import (
 // Production callers usually obtain one from the Controller after
 // `is04.SelectHighest(peer.APIVersions)`.
 type Client struct {
-	HTTP   *httpsession.Client
-	Base   string     // e.g. "http://10.6.239.113:8235"
-	Codec  is04.Codec // negotiated wire version — drives URL APIVer + payload shape
+	HTTP  *httpsession.Client
+	Base  string     // e.g. "http://10.6.239.113:8235"
+	Codec is04.Codec // negotiated wire version — drives URL APIVer + payload shape
 }
 
 // NewClient constructs a Client. base is the Registry origin

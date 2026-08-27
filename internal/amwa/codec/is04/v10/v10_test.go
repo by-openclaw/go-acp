@@ -71,8 +71,8 @@ func TestNodeEncodeStripsV11PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, fs := range is04.LaterThan("node", "v1.0") {
-		k := fs.Path
+	for _, path := range drop["node"] {
+		k := path
 		if strings.Contains(k, ".") {
 			continue // nested paths carry their own assertions
 		}
@@ -108,8 +108,13 @@ func TestNodeDecodeAbsorbsV11PlusFields(t *testing.T) {
 		if _, err := (Codec{Reporter: rep}).DecodeNode(body); err != nil {
 			t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
 		}
-		if len(rep.Snapshot()) == 0 {
-			t.Fatalf("an absorbed later-minor field must be reported")
+		// AMWA's v1.0 schema does NOT forbid this property — there is no
+		// additionalProperties:false on these resources. So the correct
+		// behaviour is to accept it in silence. Our old hand-written rule
+		// rejected it, and that rule was invented, not specified.
+		if n := len(rep.Snapshot()); n != 0 {
+			t.Fatalf("AMWA permits this on a v1.0 tree; %d deviations reported: %v",
+				n, rep.Snapshot())
 		}
 	}
 }
@@ -159,8 +164,8 @@ func TestDeviceEncodeStripsV11PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, fs := range is04.LaterThan("device", "v1.0") {
-		k := fs.Path
+	for _, path := range drop["device"] {
+		k := path
 		if strings.Contains(k, ".") {
 			continue // nested paths carry their own assertions
 		}
@@ -183,8 +188,13 @@ func TestDeviceDecodeAbsorbsControls(t *testing.T) {
 	if _, err := (Codec{Reporter: rep}).DecodeDevice(body); err != nil {
 		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
 	}
-	if len(rep.Snapshot()) == 0 {
-		t.Fatalf("an absorbed later-minor field must be reported")
+	// AMWA's v1.0 schema does NOT forbid this property — there is no
+	// additionalProperties:false on these resources. So the correct
+	// behaviour is to accept it in silence. Our old hand-written rule
+	// rejected it, and that rule was invented, not specified.
+	if n := len(rep.Snapshot()); n != 0 {
+		t.Fatalf("AMWA permits this on a v1.0 tree; %d deviations reported: %v",
+			n, rep.Snapshot())
 	}
 }
 
@@ -216,8 +226,8 @@ func TestSourceEncodeStripsV11PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, fs := range is04.LaterThan("source", "v1.0") {
-		k := fs.Path
+	for _, path := range drop["source"] {
+		k := path
 		if strings.Contains(k, ".") {
 			continue // nested paths carry their own assertions
 		}
@@ -240,8 +250,13 @@ func TestSourceDecodeAbsorbsClockName(t *testing.T) {
 	if _, err := (Codec{Reporter: rep}).DecodeSource(body); err != nil {
 		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
 	}
-	if len(rep.Snapshot()) == 0 {
-		t.Fatalf("an absorbed later-minor field must be reported")
+	// AMWA's v1.0 schema does NOT forbid this property — there is no
+	// additionalProperties:false on these resources. So the correct
+	// behaviour is to accept it in silence. Our old hand-written rule
+	// rejected it, and that rule was invented, not specified.
+	if n := len(rep.Snapshot()); n != 0 {
+		t.Fatalf("AMWA permits this on a v1.0 tree; %d deviations reported: %v",
+			n, rep.Snapshot())
 	}
 }
 
@@ -278,8 +293,8 @@ func TestFlowEncodeStripsV11PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, fs := range is04.LaterThan("flow", "v1.0") {
-		k := fs.Path
+	for _, path := range drop["flow"] {
+		k := path
 		if strings.Contains(k, ".") {
 			continue // nested paths carry their own assertions
 		}
@@ -302,8 +317,13 @@ func TestFlowDecodeAbsorbsMediaType(t *testing.T) {
 	if _, err := (Codec{Reporter: rep}).DecodeFlow(body); err != nil {
 		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
 	}
-	if len(rep.Snapshot()) == 0 {
-		t.Fatalf("an absorbed later-minor field must be reported")
+	// AMWA's v1.0 schema does NOT forbid this property — there is no
+	// additionalProperties:false on these resources. So the correct
+	// behaviour is to accept it in silence. Our old hand-written rule
+	// rejected it, and that rule was invented, not specified.
+	if n := len(rep.Snapshot()); n != 0 {
+		t.Fatalf("AMWA permits this on a v1.0 tree; %d deviations reported: %v",
+			n, rep.Snapshot())
 	}
 }
 
@@ -342,8 +362,8 @@ func TestSenderEncodeStripsV12PlusFields(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("re-decode: %v", err)
 	}
-	for _, fs := range is04.LaterThan("sender", "v1.0") {
-		k := fs.Path
+	for _, path := range drop["sender"] {
+		k := path
 		if strings.Contains(k, ".") {
 			continue // nested paths carry their own assertions
 		}
@@ -367,8 +387,13 @@ func TestSenderDecodeAbsorbsCaps(t *testing.T) {
 	if _, err := (Codec{Reporter: rep}).DecodeSender(body); err != nil {
 		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
 	}
-	if len(rep.Snapshot()) == 0 {
-		t.Fatalf("an absorbed later-minor field must be reported")
+	// AMWA's v1.0 schema does NOT forbid this property — there is no
+	// additionalProperties:false on these resources. So the correct
+	// behaviour is to accept it in silence. Our old hand-written rule
+	// rejected it, and that rule was invented, not specified.
+	if n := len(rep.Snapshot()); n != 0 {
+		t.Fatalf("AMWA permits this on a v1.0 tree; %d deviations reported: %v",
+			n, rep.Snapshot())
 	}
 }
 
@@ -443,8 +468,13 @@ func TestReceiverDecodeAbsorbsInterfaceBindings(t *testing.T) {
 	if _, err := (Codec{Reporter: rep}).DecodeReceiver(body); err != nil {
 		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
 	}
-	if len(rep.Snapshot()) == 0 {
-		t.Fatalf("an absorbed later-minor field must be reported")
+	// AMWA's v1.0 schema does NOT forbid this property — there is no
+	// additionalProperties:false on these resources. So the correct
+	// behaviour is to accept it in silence. Our old hand-written rule
+	// rejected it, and that rule was invented, not specified.
+	if n := len(rep.Snapshot()); n != 0 {
+		t.Fatalf("AMWA permits this on a v1.0 tree; %d deviations reported: %v",
+			n, rep.Snapshot())
 	}
 }
 
@@ -463,5 +493,35 @@ func TestRoundTripNodeV10(t *testing.T) {
 	}
 	if got.ID != n.ID || got.Label != n.Label || got.Href != n.Href {
 		t.Fatalf("round-trip mismatch: got %+v want %+v", got, n)
+	}
+}
+
+// TestSchemaDeviationIsReportedNotFatal: a payload AMWA's own schema
+// rejects is still returned to the caller — refusing it costs the
+// operator the resource — but every failure is named as a compliance
+// event so nothing is swallowed.
+func TestSchemaDeviationIsReportedNotFatal(t *testing.T) {
+	// `id` is not a UUID and `version` is not <secs>:<nanos>: two rules
+	// AMWA states explicitly, so two deviations.
+	bad := []byte(`{"id":"not-a-uuid","version":"whenever","label":"x","description":"","tags":{},"node_id":"22222222-2222-4222-8222-222222222222","type":"urn:x-nmos:device:generic","senders":[],"receivers":[]}`)
+	rep := &spec.SliceReporter{}
+	d, err := (Codec{Reporter: rep}).DecodeDevice(bad)
+	if err != nil {
+		t.Fatalf("a schema deviation must not stop the decode: %v", err)
+	}
+	if d.ID != "not-a-uuid" {
+		t.Fatalf("the resource must still reach the caller, got %+v", d)
+	}
+	events := rep.Snapshot()
+	if len(events) == 0 {
+		t.Fatal("a schema deviation must be reported, not swallowed")
+	}
+	for _, e := range events {
+		if e.Code != "nmos_is04_schema_deviation" {
+			t.Errorf("code = %q", e.Code)
+		}
+		if e.APIVer != "v1.0" {
+			t.Errorf("apiVer = %q", e.APIVer)
+		}
 	}
 }

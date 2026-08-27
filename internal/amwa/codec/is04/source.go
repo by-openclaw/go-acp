@@ -128,6 +128,5 @@ func ParseSource(raw []byte, apiVer string, rep spec.Reporter) (*Source, error) 
 	if err := decodeAbsorbing(raw, &s, "source", apiVer, rep); err != nil {
 		return nil, err
 	}
-	AbsorbLaterThan(raw, "source", apiVer, rep)
 	return &s, nil
 }

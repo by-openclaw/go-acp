@@ -1,7 +1,6 @@
 package is04
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -172,25 +171,6 @@ func IsTransportAtIS04(u, apiVer string) bool {
 		return true
 	}
 	return compareAPIVer(apiVer, min) >= 0
-}
-
-// GateTransport rejects a resource whose transport the given IS-04
-// minor does not define.
-//
-// The rejection is what makes the per-minor trees honest. IS-04's
-// Upgrade Path is explicit that an earlier API version "MUST NOT list
-// any Senders or Receivers which make use of this new transport type"
-// — so a v1.2 tree that lists a WebSocket sender is non-conformant
-// even though that sender is perfectly valid on v1.3. The caller drops
-// it from collections and answers 404 for it individually, which is
-// the truthful answer: this Node does not have that resource AT THIS
-// VERSION.
-func GateTransport(kind, u, apiVer string) error {
-	if IsTransportAtIS04(u, apiVer) {
-		return nil
-	}
-	return fmt.Errorf("is04 %s: %s.transport %q: not defined before IS-04 %s",
-		apiVer, kind, u, transportMinIS04[u])
 }
 
 // IsNMOSTransport reports whether u is a registered NMOS transport

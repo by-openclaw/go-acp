@@ -92,6 +92,5 @@ func ParseDevice(raw []byte, apiVer string, rep spec.Reporter) (*Device, error) 
 	if err := decodeAbsorbing(raw, &dev, "device", apiVer, rep); err != nil {
 		return nil, err
 	}
-	AbsorbLaterThan(raw, "device", apiVer, rep)
 	return &dev, nil
 }
