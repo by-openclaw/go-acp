@@ -51,7 +51,10 @@ func (s *IS04NodeServer) fetchSystemGlobal(ctx context.Context) *is09.Global {
 	// only path.
 	s.watchForSystem(ctx)
 
-	opts := systemsession.IS09FetchOptions{Logger: s.logger}
+	opts := systemsession.IS09FetchOptions{
+		Logger:   s.logger,
+		Reporter: newLogReporter(s.logger),
+	}
 
 	// An explicitly configured System API beats discovery. An operator
 	// who named one has already made the choice discovery exists to

@@ -12,6 +12,7 @@ import (
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is09"
+	"dhs/internal/amwa/codec/spec"
 	httpsession "dhs/internal/amwa/session/http"
 )
 
@@ -169,13 +170,13 @@ func TestSelectInstanceNoneMatch(t *testing.T) {
 
 func TestVersionListContains(t *testing.T) {
 	cases := map[string]bool{
-		"v1.0":         true,
-		"v1.0,v1.1":    true,
-		" v1.0 ,v1.1":  true,
-		"v0.9,v1.1":    false,
-		"":             false,
-		"v1.0.0":       false,
-		"V1.0":         false, // case-sensitive on the leading V
+		"v1.0":        true,
+		"v1.0,v1.1":   true,
+		" v1.0 ,v1.1": true,
+		"v0.9,v1.1":   false,
+		"":            false,
+		"v1.0.0":      false,
+		"V1.0":        false, // case-sensitive on the leading V
 	}
 	for csv, want := range cases {
 		if got := versionListContains(csv, "v1.0"); got != want {
@@ -232,7 +233,7 @@ func TestFetchAgainstFakeServer(t *testing.T) {
 	}
 }
 
-func TestFetchRejectsOutOfSpecPeer(t *testing.T) {
+func TestFetchAbsorbsOutOfSpecPeer(t *testing.T) {
 	// Out-of-range heartbeat (1001 > max 1000).
 	bad := `{
   "id": "3b8be755-08ff-452b-b217-c9151eb21193",
@@ -249,13 +250,62 @@ func TestFetchRejectsOutOfSpecPeer(t *testing.T) {
 	}))
 	defer srv.Close()
 	host, port := splitHostPortForTest(srv.URL)
-	_, err := Fetch(context.Background(), IS09FetchOptions{
+	var rep spec.SliceReporter
+	res, err := Fetch(context.Background(), IS09FetchOptions{
 		APIVer:   "v1.0",
 		APIProto: "http",
 		Direct:   host + ":" + strconv.Itoa(port),
+		Reporter: &rep,
 	})
-	if err == nil {
-		t.Fatal("expected validation rejection")
+	// Inverted deliberately. Refusing a /global sends this Node back to
+	// picking a Registry from mDNS priority alone — the precise outcome
+	// IS-09 exists to stop. AMWA's own IS-09-02 mock serves a /global
+	// missing `label` and `description`, and rejecting it scored "did
+	// not attempt to contact the advertised System API" on all four
+	// minors while the Node had in fact contacted it.
+	if err != nil {
+		t.Fatalf("an out-of-spec /global must be absorbed, not refused: %v", err)
+	}
+	if res == nil || res.Global == nil {
+		t.Fatal("the config must still reach the caller")
+	}
+	if res.Global.IS04.HeartbeatInterval != 1001 {
+		t.Fatalf("the peer's own value must survive, got %d", res.Global.IS04.HeartbeatInterval)
+	}
+	events := rep.Snapshot()
+	if len(events) != 1 {
+		t.Fatalf("the deviation must be reported exactly once, got %d", len(events))
+	}
+	if events[0].Code != "nmos_is09_global_deviation" {
+		t.Fatalf("code = %q", events[0].Code)
+	}
+	if events[0].Severity != spec.SeverityWarn {
+		t.Fatalf("severity = %v, want Warn", events[0].Severity)
+	}
+}
+
+// TestFetchWithoutReporterStillAbsorbs: tolerance must not depend on a
+// Reporter being wired. A caller who never passes one still gets the
+// config; the deviation simply goes unrecorded.
+func TestFetchWithoutReporterStillAbsorbs(t *testing.T) {
+	bad := `{"id":"3b8be755-08ff-452b-b217-c9151eb21193","version":"0:0",
+	  "is04":{"heartbeat_interval":5},
+	  "ptp":{"announce_receipt_timeout":2,"domain_number":0}}`
+	srv := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, bad)
+	}))
+	defer srv.Close()
+	host, port := splitHostPortForTest(srv.URL)
+	res, err := Fetch(context.Background(), IS09FetchOptions{
+		APIVer: "v1.0", APIProto: "http",
+		Direct: host + ":" + strconv.Itoa(port),
+	})
+	if err != nil {
+		t.Fatalf("no Reporter must not make this fatal: %v", err)
+	}
+	if res.Global.IS04.HeartbeatInterval != 5 {
+		t.Fatalf("heartbeat_interval = %d", res.Global.IS04.HeartbeatInterval)
 	}
 }
 

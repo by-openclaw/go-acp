@@ -436,7 +436,6 @@ func isRTP(t string) bool {
 		t == "urn:x-nmos:transport:rtp.ucast"
 }
 
-
 // cloneStaged deep-copies the parts that a caller could otherwise
 // mutate through a shared map. Legs are maps, so a shallow copy of the
 // slice would let a later PATCH rewrite the ACTIVE state in place —

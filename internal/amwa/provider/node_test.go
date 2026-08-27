@@ -35,7 +35,7 @@ func validNode() is04.Node {
 		Href: "http://10.6.239.113:8080/",
 		Caps: map[string]any{},
 		API: is04.NodeAPI{
-			Versions: []string{"v1.3"},
+			Versions:  []string{"v1.3"},
 			Endpoints: []is04.NodeEndpoint{{Host: "10.6.239.113", Port: 8080, Protocol: "http"}},
 		},
 		Services: []is04.NodeService{},
@@ -273,9 +273,9 @@ func TestNodeServerEndToEnd(t *testing.T) {
 
 func TestRegistrationClientPostsAllResources(t *testing.T) {
 	var (
-		mu        sync.Mutex
-		posts     []string
-		deletes   []string
+		mu         sync.Mutex
+		posts      []string
+		deletes    []string
 		heartbeats int32
 	)
 	srv := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {

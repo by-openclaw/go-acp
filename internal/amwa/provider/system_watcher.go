@@ -189,6 +189,7 @@ func (w *SystemWatcher) observe(ctx context.Context, ins dnssdcodec.Instance) {
 		}
 		res, err := systemsession.Fetch(ctx, systemsession.IS09FetchOptions{
 			Logger:     w.logger,
+			Reporter:   newLogReporter(w.logger),
 			APIVer:     w.apiVer,
 			Discovered: []dnssdcodec.Instance{best},
 		})

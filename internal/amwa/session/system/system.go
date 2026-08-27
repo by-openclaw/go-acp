@@ -30,6 +30,7 @@ import (
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is09"
+	"dhs/internal/amwa/codec/spec"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 )
@@ -50,6 +51,11 @@ type IS09FetchOptions struct {
 	// HTTPClient lets callers pre-configure timeouts, transport, etc.
 	// Default = httpsession.NewClient().
 	HTTPClient *httpsession.Client
+
+	// Reporter receives deviations found in a peer's /global. Optional:
+	// nil absorbs silently, which is what a caller who never wired one
+	// already got.
+	Reporter spec.Reporter
 
 	// Direct, when non-empty, bypasses discovery and fetches
 	// /global from this `host:port` directly. Useful for unicast Mode B
@@ -211,8 +217,36 @@ func fetchFromInstance(ctx context.Context, client *httpsession.Client, ins dnss
 	if err := client.GetJSON(ctx, url, &raw); err != nil {
 		return nil, fmt.Errorf("nmos/system: GET %s: %w", url, err)
 	}
+	// A /global that fails validation is ABSORBED, not refused.
+	//
+	// This used to return an error, and the consequence was the exact
+	// harm IS-09 exists to prevent. IS-09's whole purpose is to let an
+	// operator point their devices at one chosen Registry; a Node that
+	// throws the config away because a field it does not need is
+	// missing goes back to picking a Registry from mDNS priority alone
+	// and quietly registers somewhere else. AMWA's own IS-09-02 mock
+	// serves a /global with no `label` or `description` — both required
+	// by resource_core.json — and our Node refused every one of them,
+	// scoring "did not attempt to contact the advertised System API"
+	// across all four minors.
+	//
+	// The deviation is real and stays reported. It is simply not worth
+	// discarding the operator's intent over.
 	if err := raw.Validate(); err != nil {
-		return nil, fmt.Errorf("nmos/system: peer /global failed validation: %w", err)
+		if opts.Reporter != nil {
+			opts.Reporter.Report(spec.ComplianceEvent{
+				SpecID:   is09.SpecID,
+				APIVer:   opts.APIVer,
+				Code:     "nmos_is09_global_deviation",
+				Severity: spec.SeverityWarn,
+				Detail: fmt.Sprintf("%s does not match the IS-09 schema (%v); "+
+					"absorbed and used anyway, because discarding it would send this "+
+					"Node to a Registry the operator did not choose", url, err),
+				Resource: "global",
+				PeerHost: hostport,
+				At:       time.Now(),
+			})
+		}
 	}
 	return &FetchResult{Selected: ins, URL: url, Global: &raw}, nil
 }
