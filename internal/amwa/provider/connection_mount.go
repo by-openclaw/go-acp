@@ -65,11 +65,27 @@ func (s *IS04NodeServer) attachChannelMappingAPI(srv *httpsession.Server) {
 				Type: controlTypeChannelMapping + ver,
 				Href: "http://" + host + "/x-nmos/channelmapping/" + ver + "/",
 			}
-			if !hasControl(d.Controls, ctrl.Type) {
-				d.Controls = append(d.Controls, ctrl)
-			}
+			upsertControl(&d.Controls, ctrl)
 		}
 	}
+}
+
+// upsertControl adds ctrl, or REPLACES an existing control of the same
+// Type with the fresh href. The old skip-if-present rule is how a
+// stale href from a bundle file survived every restart: the fixture
+// carried controls minted under a decommissioned address, the type
+// matched, and the fresh reachable href was never written — so the
+// device kept advertising a Connection API at a host that no longer
+// exists. Controls are OURS to mint at attach time; a bundle's copy is
+// at best yesterday's.
+func upsertControl(controls *[]is04.DeviceControl, ctrl is04.DeviceControl) {
+	for i := range *controls {
+		if (*controls)[i].Type == ctrl.Type {
+			(*controls)[i] = ctrl
+			return
+		}
+	}
+	*controls = append(*controls, ctrl)
 }
 
 // controlHost is the host:port a control href should name -- the
@@ -128,9 +144,7 @@ func (s *IS04NodeServer) advertiseConnectionControls() {
 				Type: controlTypeSRCtrl + ver,
 				Href: "http://" + host + "/x-nmos/connection/" + ver + "/",
 			}
-			if !hasControl(d.Controls, ctrl.Type) {
-				d.Controls = append(d.Controls, ctrl)
-			}
+			upsertControl(&d.Controls, ctrl)
 		}
 	}
 }
@@ -156,15 +170,6 @@ func (s *IS04NodeServer) bumpDeviceVersions() {
 	// The peer-to-peer TXT counter follows, so a Mode-D peer watching
 	// mDNS re-fetches rather than waiting for a poll it never makes.
 	s.verDevice.Add(1)
-}
-
-func hasControl(controls []is04.DeviceControl, typ string) bool {
-	for _, c := range controls {
-		if c.Type == typ {
-			return true
-		}
-	}
-	return false
 }
 
 // runActivationScheduler promotes scheduled activations as their times

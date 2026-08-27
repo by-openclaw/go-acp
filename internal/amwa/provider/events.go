@@ -471,9 +471,7 @@ func (s *IS04NodeServer) attachEventsAPI(srv *httpsession.Server) {
 				Type: controlTypeEvents + ver,
 				Href: "http://" + host + "/x-nmos/events/" + ver + "/",
 			}
-			if !hasControl(d.Controls, ctrl.Type) {
-				d.Controls = append(d.Controls, ctrl)
-			}
+			upsertControl(&d.Controls, ctrl)
 		}
 	}
 }

@@ -295,6 +295,35 @@ Latin-1 `â€"` — the wire bytes are spec-correct UTF-8; only the
 display layer is broken. Workaround: keep dhs labels/descriptions
 ASCII when testing.
 
+### Device updates MERGE controls — observed live 2026-08-28
+
+IS-04 registration updates replace the whole resource document.
+Cerebrum's hosted Registry instead **unions `device.controls` across
+updates**: after a dhs Node re-registered with corrected control
+hrefs, Cerebrum's Query API served BOTH the fresh controls and the
+stale ones from the previous registration — six `sr-ctrl` entries for
+a device whose own Node API document carried exactly three. Proof
+method: fetch the device from the Node API and from Cerebrum's Query
+API and diff `controls[]`; the Node-side document is what dhs actually
+POSTed.
+
+Operational consequences:
+
+- A Node that ever registered a bad control href cannot fix it by
+  re-registering — the stale entry persists until the operator clicks
+  **Forget** on the node in Cerebrum's NMOS Nodes table (the node
+  re-registers clean within a heartbeat cycle).
+- Controllers reading Cerebrum's catalogue must expect duplicate
+  control types and pick the one matching the node's current
+  `api.endpoints` — or better, the Node API document.
+- dhs side: `provider/connection_mount.go upsertControl` now REPLACES
+  same-type controls at attach time, so a dhs Node never publishes a
+  stale-vs-fresh pair itself, whatever a bundle file carried.
+
+Compliance event `nmos_registry_update_merged_peer` is the candidate
+name once the controller-side read-back comparison is wired; until
+then this note is the tracking artifact.
+
 ### Verification status
 
 dhs codec is byte-exact-correct against the AMWA IS-04 v1.3 schemas
