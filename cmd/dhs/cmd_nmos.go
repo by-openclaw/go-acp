@@ -52,10 +52,12 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSWalk(ctx, rest)
 	case "connect":
 		return runNMOSConnect(ctx, rest)
+	case "set":
+		return runNMOSSet(ctx, rest)
 	case "events":
 		return runNMOSEventsConsumer(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, connect, events)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, connect, set, events)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -572,6 +574,7 @@ func printNMOSConsumerHelp() {
   dhs consumer nmos discover [flags]
   dhs consumer nmos walk     [flags]
   dhs consumer nmos connect  [flags]
+  dhs consumer nmos set      [flags]
   dhs consumer nmos system   [flags]
   dhs consumer nmos events   [flags]
 
@@ -599,6 +602,19 @@ the UUIDs. The IS-05 endpoint is discovered from IS-04, never guessed.
   --mode M              activate_immediate (default) | activate_scheduled_relative
                         | activate_scheduled_absolute
   --when S:NS           TAI time for the scheduled modes (TAI = UTC + 37s)
+  (any of walk's --node / --registry / discovery flags)
+
+set — configure a Sender's IS-05 transport. connect points a Receiver at a
+Sender; this points a Sender at a network. A device can be fully connected
+and still move nothing: a real EVS Neuron ships every Sender enabled with
+destination_ip 0.0.0.0 — addressed nowhere.
+  --sender UUID         required
+  --destination IP,IP   one per transport leg, in device order. ST 2022-7
+                        senders have two legs and must not share a group.
+  --port N,N            one per leg; empty leaves the device's own
+  --enable / --disable  also set master_enable
+  --dry-run             print the PATCH body and the sender's current legs
+  --mode / --when       as for connect
   (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.

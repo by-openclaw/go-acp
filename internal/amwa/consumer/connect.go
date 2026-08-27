@@ -188,6 +188,27 @@ func (c *Controller) connectionHref(snap *CatalogueSnapshot, receiverID string) 
 		return "", fmt.Errorf("nmos connect: no receiver %s in this catalogue "+
 			"(walk it first to see what is there)", receiverID)
 	}
+	return c.hrefForDevice(snap, deviceID, receiverID, "receiver")
+}
+
+// senderConnectionHref is the Sender-side twin. Same rule: the endpoint
+// comes from the owning Device's IS-04 `controls`, never from a guess.
+func (c *Controller) senderConnectionHref(snap *CatalogueSnapshot, senderID string) (string, error) {
+	deviceID := ""
+	for _, s := range snap.Senders {
+		if s.ID == senderID {
+			deviceID = s.DeviceID
+			break
+		}
+	}
+	if deviceID == "" {
+		return "", fmt.Errorf("nmos: no sender %s in this catalogue "+
+			"(walk it first to see what is there)", senderID)
+	}
+	return c.hrefForDevice(snap, deviceID, senderID, "sender")
+}
+
+func (c *Controller) hrefForDevice(snap *CatalogueSnapshot, deviceID, resourceID, kind string) (string, error) {
 	for _, d := range snap.Devices {
 		if d.ID != deviceID {
 			continue
@@ -195,12 +216,12 @@ func (c *Controller) connectionHref(snap *CatalogueSnapshot, receiverID string) 
 		if href := pickConnectionControl(d.Controls); href != "" {
 			return href, nil
 		}
-		return "", fmt.Errorf("nmos connect: device %s advertises no "+
+		return "", fmt.Errorf("nmos: device %s advertises no "+
 			"urn:x-nmos:control:sr-ctrl control, so it has no IS-05 endpoint "+
-			"to route through", deviceID)
+			"to drive", deviceID)
 	}
-	return "", fmt.Errorf("nmos connect: receiver %s names device %s, which is "+
-		"not in this catalogue", receiverID, deviceID)
+	return "", fmt.Errorf("nmos: %s %s names device %s, which is "+
+		"not in this catalogue", kind, resourceID, deviceID)
 }
 
 // pickConnectionControl selects the highest sr-ctrl version advertised.

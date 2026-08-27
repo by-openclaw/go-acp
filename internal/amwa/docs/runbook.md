@@ -97,7 +97,52 @@ dhs consumer nmos connect ... --mode activate_scheduled_absolute --when 18000000
 
 ---
 
-## 3. Run a Registry and register a Node into it
+## 3. Make a Sender actually emit
+
+`connect` points a Receiver at a Sender. It does **not** give the Sender
+somewhere to send. A device can be fully connected and move nothing.
+
+The EVS Neuron ships in exactly that state — every Sender enabled, real
+source IPs on both ST 2022-7 legs, and no destination:
+
+```
+leg 0  src=10.6.40.51   dst=0.0.0.0  port=12700  rtp=true
+leg 1  src=10.7.40.51   dst=0.0.0.0  port=12700  rtp=true
+```
+
+Its SDP says the same thing (`c=IN IP4 0.0.0.0/32`). Assign the groups:
+
+```bash
+dhs consumer nmos set --node http://10.6.255.102:3000 \
+  --sender 00c466fc-23bf-43b9-8139-4d7c0179af7c \
+  --destination 239.100.40.51,239.101.40.51 --dry-run
+```
+
+**One `--destination` per transport leg, in device order.** ST 2022-7
+legs run on two separate networks and MUST NOT share a group — that is
+the whole point of seamless protection — so a single value applied to
+both would be wrong, and a count that does not match the device is
+refused rather than silently truncated.
+
+`--port` takes a list the same way. `--enable` / `--disable` sets
+`master_enable` alongside. Anything you do not name is left as the
+device has it: IS-05 PATCH is a merge, and the transport_params array is
+always sent full-length because IS-05 matches legs **positionally**.
+
+Drop `--dry-run` to apply. The Sender's `/active` state and its SDP both
+update:
+
+```
+SET sender 2c47bf5e-… via http://127.0.0.1:8080/x-nmos/connection/v1.2
+  master_enable true
+  leg 0  src=127.0.0.1  dst=239.50.0.1  port=5004  rtp=false
+```
+
+A leg still reading `0.0.0.0` after a set emits nothing; the command
+prints a WARNING and fires `nmos_is05_destination_ignored` rather than
+reporting success.
+
+## 4. Run a Registry and register a Node into it
 
 Two terminals, both local. This is the loop to reach for when you want
 to reproduce a plant on one machine.
@@ -138,7 +183,7 @@ resource, and a Controller renders routing state from the Registry.
 
 ---
 
-## 4. Discovery modes
+## 5. Discovery modes
 
 All four IS-04 deployment modes are supported. mDNS is the default and
 the one most likely to be blocked on a customer network.
@@ -156,7 +201,7 @@ firewall is configured — use mode B.
 
 ---
 
-## 5. When something is wrong
+## 6. When something is wrong
 
 Every command prints a compliance summary to stderr, collapsed by
 distinct message so one systematic deviation across 208 resources
@@ -178,7 +223,7 @@ own Node will refuse to serve a payload AMWA's schema rejects.
 
 ---
 
-## 6. Conformance
+## 7. Conformance
 
 The Node is scored by the AMWA NMOS Testing Tool, once per IS-04 minor,
 from the Linux control node — never from Windows:
