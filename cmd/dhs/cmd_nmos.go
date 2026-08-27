@@ -272,6 +272,9 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	advertise := fs.String("advertise-host", "", "host[:port] placed in DNS-SD A/SRV records (default: hostname + bind port)")
 	mdns := fs.Bool("mdns", true, "advertise via mDNS")
 	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Mode B / static)")
+	unicast := fs.Bool("unicast", false, "discover the Registry via unicast DNS-SD instead of mDNS (IS-04 §3.1 for multicast-blocked plants)")
+	resolver := fs.String("resolver", "", "DNS server `IP[:port]` holding the _nmos-register._tcp records (with --unicast)")
+	domain := fs.String("domain", "", "search domain the registration SRV records live under (with --unicast)")
 	apiVer := fs.String("api-ver", "v1.3", "IS-04 wire version exposed under /x-nmos/node/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
 	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats every 5 s")
@@ -297,6 +300,12 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	if !*mdns || *noMDNS {
 		mode = "static"
 	}
+	if *unicast {
+		if *resolver == "" {
+			return fmt.Errorf("producer nmos serve: --unicast requires --resolver IP[:port]")
+		}
+		mode = "unicast"
+	}
 	cfg := provider.IS04NodeConfig{
 		Bind:             *bind,
 		AdvertiseHost:    *advertise,
@@ -304,6 +313,8 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		Priority:         *priority,
 		APIVer:           *apiVer,
 		RegistryURL:      *registry,
+		UnicastResolver:  *resolver,
+		UnicastDomain:    *domain,
 		NoConnectionAPI:  *noConnection,
 		ConnectionAPIVer: *connectionAPIVer,
 		SystemURL:        *systemURL,

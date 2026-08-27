@@ -61,9 +61,11 @@ type RegistrationClient struct {
 	// coherence on every minor < v1.3.
 	codec is04.Codec
 
-	// watcher, when non-nil, supplies the current Registry (Mode A).
-	// When nil, base is fixed (Mode B).
-	watcher *RegistryWatcher
+	// watcher, when non-nil, supplies the current Registry — mDNS
+	// (Mode A) or unicast DNS-SD, the client cannot tell and must not:
+	// IS-04 §6.1 failover works identically on both. When nil, base is
+	// fixed (Mode B).
+	watcher registrySource
 	// currentRegistry is the FullName of the watcher pick the loop is
 	// currently registered against — used for Disqualify on failure.
 	currentRegistry string
@@ -194,10 +196,20 @@ func (c *RegistrationClient) setRegistered(v bool) {
 	}
 }
 
-// SetWatcher attaches a RegistryWatcher; when set, Run picks the
-// highest-pri Registry from the watcher each cycle and falls over to
-// the next-best on registration / heartbeat failure.
-func (c *RegistrationClient) SetWatcher(w *RegistryWatcher) {
+// registrySource is where Registry candidates come from — multicast
+// mDNS (RegistryWatcher) or unicast DNS-SD (UnicastRegistryWatcher).
+// The client's selection + failover logic is identical either way,
+// and that is the contract: a Node's failover order must not depend
+// on which discovery transport fed it.
+type registrySource interface {
+	Best() (RegistryCandidate, bool)
+	Disqualify(fullName string)
+}
+
+// SetWatcher attaches a registry source; when set, Run picks the
+// highest-pri Registry from it each cycle and falls over to the
+// next-best on registration / heartbeat failure.
+func (c *RegistrationClient) SetWatcher(w registrySource) {
 	c.mu.Lock()
 	c.watcher = w
 	c.mu.Unlock()

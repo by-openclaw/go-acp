@@ -82,9 +82,16 @@ func nodeInstanceName(label string) string {
 type IS04NodeConfig struct {
 	Bind          string
 	AdvertiseHost string
-	DiscoveryMode string // "mdns" | "static"
+	DiscoveryMode string // "mdns" | "static" | "unicast"
 	Priority      int
 	APIVer        string // default "v1.3"
+
+	// UnicastResolver + UnicastDomain drive Registry discovery over
+	// unicast DNS-SD (DiscoveryMode "unicast"): the resolver is the
+	// DNS server holding the `_nmos-register._tcp.<domain>` records,
+	// per IS-04 §3.1 for plants that block multicast.
+	UnicastResolver string
+	UnicastDomain   string
 
 	// RegistryURL — when non-empty the producer also registers itself
 	// against this Registration API base (e.g. http://10.6.239.113:8235/).
@@ -374,6 +381,20 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 			"plugin", "amwa", "api", "is-04", "mode", "direct-node")
 	} else if s.cfg.RegistryURL != "" {
 		rc := NewRegistrationClient(s.logger, s.cfg.RegistryURL, s.cfg.APIVer, s.bundle)
+		rc.SetOnRegistered(s.onRegistrationStateChanged)
+		s.regClient = rc
+		s.wireRepublish(rc)
+		go rc.Run(ctx)
+	} else if s.cfg.DiscoveryMode == "unicast" {
+		// Mode B with discovery: registries come from a conventional
+		// DNS zone instead of multicast — same client, same failover.
+		uw := NewUnicastRegistryWatcher(s.logger, s.cfg.UnicastResolver, s.cfg.UnicastDomain, s.cfg.APIVer)
+		if err := uw.Run(ctx); err != nil {
+			s.mu.Unlock()
+			return fmt.Errorf("provider/node: start unicast registry watcher: %w", err)
+		}
+		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
+		rc.SetWatcher(uw)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
 		s.wireRepublish(rc)
