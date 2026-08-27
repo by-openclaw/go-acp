@@ -273,6 +273,11 @@ func (b *avahiBrowser) resolveItemNew(
 		Host:    rHost,
 		Port:    rPort,
 		TXT:     txt,
+		// Avahi's ItemNew means the instance is alive — the daemon
+		// does not surface record TTLs, and goodbyes arrive as
+		// ItemRemove, never as a zero TTL. Emitting the default keeps
+		// TTL==0 meaning "goodbye" for every backend uniformly.
+		TTL: dnssd.DefaultAnnounceTTL,
 	}
 	if ip := net.ParseIP(rAddr); ip != nil {
 		if ip4 := ip.To4(); ip4 != nil {
