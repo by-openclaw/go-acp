@@ -52,8 +52,70 @@
         {"label": "Left", "symbol": "L"},
         {"label": "Right", "symbol": "R"}
       ]
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0007",
+      "version": "1777651501:0",
+      "label": "dhs-test-event-number",
+      "description": "IS-07 number source - fader position",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "number"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0008",
+      "version": "1777651501:0",
+      "label": "dhs-test-event-string",
+      "description": "IS-07 string source - UMD text",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "string"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0009",
+      "version": "1777651501:0",
+      "label": "dhs-test-event-boolean",
+      "description": "IS-07 boolean source - tally lamp",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "boolean"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000a",
+      "version": "1777651501:0",
+      "label": "dhs-test-event-enum",
+      "description": "IS-07 enum source - input selector (string with declared values)",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "string"
     }
   ],
+  "event_types": {
+    "2c47bf5e-1b2c-4abc-9def-deadbeef000a": {
+      "type": "string",
+      "values": [
+        {"value": "CAM1", "label": "Camera 1"},
+        {"value": "CAM2", "label": "Camera 2"},
+        {"value": "VTR", "label": "Playout"}
+      ]
+    }
+  },
   "flows": [
     {
       "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0004",
@@ -68,6 +130,58 @@
       "media_type": "audio/L24",
       "sample_rate": {"numerator": 48000, "denominator": 1},
       "bit_depth": 24
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000b",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-event-number",
+      "description": "JSON event flow for the number source",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0007",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "number"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000c",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-event-string",
+      "description": "JSON event flow for the string source",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0008",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "string"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000d",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-event-boolean",
+      "description": "JSON event flow for the boolean source",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0009",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "boolean"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef000e",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-event-enum",
+      "description": "JSON event flow for the enum source",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef000a",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "string"
     }
   ],
   "senders": [
@@ -91,13 +205,34 @@
       "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0006",
       "version": "1777651501:0",
       "label": "dhs-test-receiver-audio",
-      "description": "RTP audio receiver",
+      "description": "RTP audio receiver with BCP-004-01 constraint sets",
       "tags": {},
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "transport": "urn:x-nmos:transport:rtp",
       "interface_bindings": ["eth0"],
       "format": "urn:x-nmos:format:audio",
-      "caps": {"media_types": ["audio/L24", "audio/L16"]},
+      "caps": {
+        "media_types": ["audio/L24", "audio/L16"],
+        "version": "1777651501:0",
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:meta:label": "48kHz stereo L24",
+            "urn:x-nmos:cap:meta:preference": 100,
+            "urn:x-nmos:cap:meta:enabled": true,
+            "urn:x-nmos:cap:format:media_type": {"enum": ["audio/L24"]},
+            "urn:x-nmos:cap:format:sample_rate": {"enum": [{"numerator": 48000, "denominator": 1}]},
+            "urn:x-nmos:cap:format:channel_count": {"minimum": 1, "maximum": 2}
+          },
+          {
+            "urn:x-nmos:cap:meta:label": "44.1kHz L16 (disabled)",
+            "urn:x-nmos:cap:meta:preference": 0,
+            "urn:x-nmos:cap:meta:enabled": false,
+            "urn:x-nmos:cap:format:media_type": {"enum": ["audio/L16"]},
+            "urn:x-nmos:cap:format:sample_rate": {"enum": [{"numerator": 44100, "denominator": 1}]},
+            "urn:x-nmos:cap:format:channel_count": {"minimum": 1, "maximum": 2}
+          }
+        ]
+      },
       "subscription": {"sender_id": null, "active": false}
     }
   ]

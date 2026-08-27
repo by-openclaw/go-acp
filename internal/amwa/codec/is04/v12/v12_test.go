@@ -133,9 +133,11 @@ func TestNodeDecodeAbsorbsAttachedNetworkDevice(t *testing.T) {
 	}
 }
 
-// TestReceiverEncodeStripsBCPv13Caps verifies the v1.2 wire drops
-// `caps.constraint_sets` and `caps.version` (BCP-004-01, added v1.3).
-func TestReceiverEncodeStripsBCPv13Caps(t *testing.T) {
+// TestReceiverEncodeKeepsBCP004Caps verifies the v1.2 wire drops
+// at EVERY minor, and BCP-004-01 layers onto any of them - stripping
+// constraint_sets below v1.3 made the AMWA tool report the whole feature
+// as Not Implemented at v1.0..v1.2.
+func TestReceiverEncodeKeepsBCP004Caps(t *testing.T) {
 	c := Codec{}
 	r := is04.Receiver{
 		ResourceCore: is04.ResourceCore{
@@ -168,11 +170,11 @@ func TestReceiverEncodeStripsBCPv13Caps(t *testing.T) {
 	if !ok {
 		t.Fatalf("caps missing or wrong type: %v", m["caps"])
 	}
-	if _, present := caps["constraint_sets"]; present {
-		t.Fatalf("v1.2 wire must not carry receiver.caps.constraint_sets: %s", body)
+	if _, present := caps["constraint_sets"]; !present {
+		t.Fatalf("v1.2 wire must KEEP receiver.caps.constraint_sets (BCP-004-01): %s", body)
 	}
-	if _, present := caps["version"]; present {
-		t.Fatalf("v1.2 wire must not carry receiver.caps.version: %s", body)
+	if _, present := caps["version"]; !present {
+		t.Fatalf("v1.2 wire must KEEP receiver.caps.version (BCP-004-01): %s", body)
 	}
 	// Sanity: caller's Receiver must not be mutated.
 	if len(r.Caps.ConstraintSets) == 0 || r.Caps.Version == "" {

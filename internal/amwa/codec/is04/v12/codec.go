@@ -56,7 +56,7 @@ var drop = map[string][]string{
 	"source":   nil,
 	"flow":     nil,
 	"sender":   nil,
-	"receiver": {"caps.constraint_sets", "caps.version"},
+	"receiver": nil,
 }
 
 // Codec implements [is04.Codec] for IS-04 wire minor v1.2.

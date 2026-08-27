@@ -78,8 +78,6 @@ var drop = map[string][]string{
 	"receiver": {
 		"interface_bindings",
 		"subscription.active",
-		"caps.constraint_sets",
-		"caps.version",
 	},
 }
 
