@@ -11,14 +11,7 @@
    "versions": [
     "v1.3"
    ],
-   "endpoints": [
-    {
-     "host": "127.0.0.1",
-     "port": 18080,
-     "protocol": "http",
-     "authorization": false
-    }
-   ]
+   "endpoints": []
   },
   "services": [],
   "clocks": [

@@ -76,6 +76,53 @@ func TestSenderSDPLocalMACMatchesInterfaceBinding(t *testing.T) {
 	}
 }
 
+// TestSenderSDPDuplicatesForTwoLegs: an ST 2022-7 pair is ONE stream
+// carried twice, and ST 2110-10 §8.3 requires the SDP to say so — a
+// session-level `a=group:DUP` and one media section per leg. SDPoker
+// rejected a two-leg SDP without the group, and IS-05-01
+// test_09_01/25/27/29 reject an SDP whose media-section count
+// disagrees with transport_params. Cerebrum additionally keys on the
+// exact `primary secondary` spelling.
+func TestSenderSDPDuplicatesForTwoLegs(t *testing.T) {
+	cs := sdpTestServer(t)
+	id := cs.bundle.Senders[0].ID
+	active := is05.StagedSender{
+		MasterEnableField: is05.MasterEnableField{MasterEnable: true},
+		TransportParams: []is05.TransportParams{
+			{"source_ip": "10.0.0.7", "destination_ip": "239.20.1.1", "destination_port": 5004, "rtp_enabled": true},
+			{"source_ip": "10.0.0.7", "destination_ip": "239.22.1.1", "destination_port": 5004, "rtp_enabled": true},
+		},
+	}
+	sdp := cs.sdpForSender(id, active)
+	if !strings.Contains(sdp, "a=group:DUP primary secondary\r\n") {
+		t.Errorf("two-leg SDP must carry a=group:DUP primary secondary:\n%s", sdp)
+	}
+	if got := strings.Count(sdp, "m=audio "); got != 2 {
+		t.Errorf("two-leg SDP must carry 2 media sections, got %d:\n%s", got, sdp)
+	}
+	for _, want := range []string{"c=IN IP4 239.20.1.1/64", "c=IN IP4 239.22.1.1/64", "a=mid:primary", "a=mid:secondary"} {
+		if !strings.Contains(sdp, want) {
+			t.Errorf("two-leg SDP missing %q:\n%s", want, sdp)
+		}
+	}
+
+	// And the single-leg form must NOT grow a group — declaring a DUP
+	// with one member is exactly the malformed case parsers reject.
+	single := is05.StagedSender{
+		MasterEnableField: is05.MasterEnableField{MasterEnable: true},
+		TransportParams: []is05.TransportParams{
+			{"source_ip": "10.0.0.7", "destination_ip": "239.20.1.1", "destination_port": 5004, "rtp_enabled": true},
+		},
+	}
+	sdp = cs.sdpForSender(id, single)
+	if strings.Contains(sdp, "a=group:DUP") {
+		t.Errorf("single-leg SDP must not declare a DUP group:\n%s", sdp)
+	}
+	if got := strings.Count(sdp, "m=audio "); got != 1 {
+		t.Errorf("single-leg SDP must carry exactly 1 media section, got %d", got)
+	}
+}
+
 // TestSDPRoundTripsIntoReceiverParams: what a Sender publishes is
 // exactly what a Receiver is given, so the two halves must agree --
 // the controller copies the file verbatim and translates nothing.

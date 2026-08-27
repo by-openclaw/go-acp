@@ -37,11 +37,6 @@ func (s *IS05ConnectionServer) sdpForSender(id string, active is05.StagedSender)
 	if len(active.TransportParams) == 0 {
 		return ""
 	}
-	leg := active.TransportParams[0]
-
-	srcIP := paramString(leg, "source_ip", "127.0.0.1")
-	dstIP := paramString(leg, "destination_ip", srcIP)
-	dstPort := paramInt(leg, "destination_port", 5004)
 
 	// o= needs a session id and version. A clock reading would make
 	// the same stream produce a different SDP on every GET, which
@@ -50,48 +45,76 @@ func (s *IS05ConnectionServer) sdpForSender(id string, active is05.StagedSender)
 	// string tied to actual changes, so it is the honest source for
 	// both fields.
 	sessID := taiSeconds(snd.Version)
+	firstSrc := paramString(active.TransportParams[0], "source_ip", "127.0.0.1")
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "v=0\r\n")
-	fmt.Fprintf(&b, "o=- %s %s IN IP4 %s\r\n", sessID, sessID, srcIP)
+	fmt.Fprintf(&b, "o=- %s %s IN IP4 %s\r\n", sessID, sessID, firstSrc)
 	fmt.Fprintf(&b, "s=%s\r\n", sdpText(snd.Label, "dhs sender"))
 	fmt.Fprintf(&b, "t=0 0\r\n")
+
+	// ST 2022-7: a two-leg Sender is ONE stream carried twice, and the
+	// SDP has to say so — one media section per leg, tied together by
+	// a session-level duplication group (RFC 7104). ST 2110-10 §8.3
+	// requires the `a=group:DUP` and the tool enforces both halves:
+	// SDPoker rejects a two-leg SDP without the group, and the
+	// IS-05-01 comparison rejects an SDP whose media-section count
+	// disagrees with transport_params. Cerebrum additionally expects
+	// this exact `primary secondary` spelling — anything else and it
+	// treats the second leg as a separate flow.
+	mids := []string{"primary", "secondary"}
+	if len(active.TransportParams) > 1 {
+		fmt.Fprintf(&b, "a=group:DUP %s\r\n", strings.Join(mids[:len(active.TransportParams)], " "))
+	}
 
 	// The channel count is on the SOURCE, not the Flow — a Flow
 	// describes the encoding, a Source describes what was encoded.
 	flow := s.flowByID(snd.FlowID)
 	media, rtpmap, extra := mediaLinesFor(flow, s.audioChannels(flow))
-	fmt.Fprintf(&b, "m=%s %d RTP/AVP 96\r\n", media, dstPort)
-	// A multicast destination carries a TTL on the connection line and
-	// a unicast one must NOT — an SDP parser rejects the wrong form
-	// rather than ignoring it.
-	if ip := net.ParseIP(dstIP); ip != nil && ip.IsMulticast() {
-		fmt.Fprintf(&b, "c=IN IP4 %s/64\r\n", dstIP)
-	} else {
-		fmt.Fprintf(&b, "c=IN IP4 %s\r\n", dstIP)
-	}
-	fmt.Fprintf(&b, "a=rtpmap:96 %s\r\n", rtpmap)
-	for _, line := range extra {
-		fmt.Fprintf(&b, "a=%s\r\n", line)
-	}
-	// ST 2110-10 §8: every stream declares its clock. `direct=0`
-	// with a TAI reference is the plain "PTP-locked, no offset" case.
-	fmt.Fprintf(&b, "a=mediaclk:direct=0\r\n")
-	// The MAC of the interface this Sender is bound to, not a
-	// placeholder.
-	//
-	// IS-04 already states the binding twice -- the Sender's
-	// interface_bindings names an interface, and node.interfaces names
-	// that interface's port_id -- and ts-refclk is the same fact a
-	// third time, in the SDP. A controller cross-checks them to work
-	// out which physical port a stream leaves by (IS-05-02 test_17),
-	// so a constant here is not a harmless stub: it contradicts the
-	// two places that are correct.
-	fmt.Fprintf(&b, "a=ts-refclk:localmac=%s\r\n", s.senderLocalMAC(snd))
-	// source-filter lets a receiver join an SSM group. Multicast only:
-	// on a unicast stream there is no group to filter.
-	if ip := net.ParseIP(dstIP); ip != nil && ip.IsMulticast() {
-		fmt.Fprintf(&b, "a=source-filter: incl IN IP4 %s %s\r\n", dstIP, srcIP)
+
+	for li, leg := range active.TransportParams {
+		srcIP := paramString(leg, "source_ip", firstSrc)
+		dstIP := paramString(leg, "destination_ip", srcIP)
+		dstPort := paramInt(leg, "destination_port", 5004)
+
+		fmt.Fprintf(&b, "m=%s %d RTP/AVP 96\r\n", media, dstPort)
+		// A multicast destination carries a TTL on the connection line
+		// and a unicast one must NOT — an SDP parser rejects the wrong
+		// form rather than ignoring it.
+		if ip := net.ParseIP(dstIP); ip != nil && ip.IsMulticast() {
+			fmt.Fprintf(&b, "c=IN IP4 %s/64\r\n", dstIP)
+		} else {
+			fmt.Fprintf(&b, "c=IN IP4 %s\r\n", dstIP)
+		}
+		fmt.Fprintf(&b, "a=rtpmap:96 %s\r\n", rtpmap)
+		for _, line := range extra {
+			fmt.Fprintf(&b, "a=%s\r\n", line)
+		}
+		// ST 2110-10 §8: every stream declares its clock. `direct=0`
+		// with a TAI reference is the plain "PTP-locked, no offset"
+		// case.
+		fmt.Fprintf(&b, "a=mediaclk:direct=0\r\n")
+		// The MAC of the interface this Sender is bound to, not a
+		// placeholder.
+		//
+		// IS-04 already states the binding twice -- the Sender's
+		// interface_bindings names an interface, and node.interfaces
+		// names that interface's port_id -- and ts-refclk is the same
+		// fact a third time, in the SDP. A controller cross-checks
+		// them to work out which physical port a stream leaves by
+		// (IS-05-02 test_17), so a constant here is not a harmless
+		// stub: it contradicts the two places that are correct.
+		fmt.Fprintf(&b, "a=ts-refclk:localmac=%s\r\n", s.senderLocalMAC(snd))
+		// source-filter lets a receiver join an SSM group. Multicast
+		// only: on a unicast stream there is no group to filter.
+		if ip := net.ParseIP(dstIP); ip != nil && ip.IsMulticast() {
+			fmt.Fprintf(&b, "a=source-filter: incl IN IP4 %s %s\r\n", dstIP, srcIP)
+		}
+		// mid ties this media section to its slot in the DUP group.
+		// Only meaningful when a group was declared.
+		if len(active.TransportParams) > 1 && li < len(mids) {
+			fmt.Fprintf(&b, "a=mid:%s\r\n", mids[li])
+		}
 	}
 	return b.String()
 }

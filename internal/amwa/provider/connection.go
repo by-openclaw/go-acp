@@ -205,6 +205,15 @@ func firstNodeIP(cfg *NodeConfig) string {
 	// legitimately carries both forms -- IS-04 wants every name the
 	// Node answers to -- so picking the first entry would be a coin
 	// toss on ordering.
+	// Loopback is an IP literal too, and one a placeholder endpoint in
+	// a bundle file legitimately carries — but 127.0.0.1 as source_ip
+	// or an SDP origin describes a stream no peer can correlate, so a
+	// routable literal always outranks it.
+	for _, ep := range cfg.Node.API.Endpoints {
+		if ip := net.ParseIP(ep.Host); ip != nil && !ip.IsLoopback() {
+			return ep.Host
+		}
+	}
 	for _, ep := range cfg.Node.API.Endpoints {
 		if ep.Host != "" && net.ParseIP(ep.Host) != nil {
 			return ep.Host
