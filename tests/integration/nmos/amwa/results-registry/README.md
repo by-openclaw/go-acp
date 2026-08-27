@@ -20,57 +20,99 @@ Remaining states are the tool's own: 64 Test Disabled (HTTPS/auth
 rounds, off in this config), 37 Could Not Test, 31 Not Applicable,
 4 Manual.
 
-## Run it
+## Run it — on the LAN, with real discovery
 
-The registry must be a **container on the tool's own docker bridge**:
+The registry runs on the LAN (10.100.0.101) and is found by **mDNS**,
+not by being co-located with the tool:
 
 ```bash
-docker run -d --name dhs-registry --hostname dhs-registry \
-  --network dhs-amwa dhs-node:conformance \
-  registry nmos serve --bind :8235 --mdns --advertise-host dhs-registry:8235
+dhs registry nmos serve --bind 0.0.0.0:8235 --mdns \
+  --advertise-host 10.100.0.101:8235
 ```
 
-then POST to the tool:
+The tool must be on the **host network** so it participates in LAN
+multicast:
+
+```bash
+docker run -d --name nmos-testing-lan --network host \
+  -v <config-volume>:/config amwa/nmos-testing:latest
+```
+
+then POST the run:
 
 ```json
-{"suite":"IS-04-02","host":["dhs-registry","dhs-registry"],
+{"suite":"IS-04-02","host":["10.100.0.101","10.100.0.101"],
  "port":[8235,8235],"version":["v1.3","v1.3"],
  "selector":[null,null],"urlpath":[null,null],"output":"json"}
 ```
 
-## Two things that made earlier runs lie
+> An earlier version of this file described running the registry as a
+> container on the tool's docker bridge. That was a workaround for the
+> tool being walled off from LAN multicast, and it tested the wrong
+> thing — the registry must be discoverable over the LAN by mDNS,
+> unicast DNS-SD and manual configuration alike. Our announcement is
+> visible from other LAN hosts:
+>
+> ```
+> eth0;IPv4;dhs-nmos-registry;_nmos-register._tcp;local;
+>   dhs-debian.local;10.100.0.101;8235;"api_ver=v1.0,v1.1,v1.2,v1.3" "pri=0"
+> ```
+>
+> The fix belonged on the tool's side, not ours.
 
-Worth recording, because both produced failures that pointed away from
-the cause:
+## What the LAN run found that the bridged run did not
 
-**A stray registry won the mDNS name.** A second `dhs registry` was
-running on 10.100.0.103 announcing the same instance name,
-`dhs-nmos-registry`. The tool resolved the name to *that* host, so it
-was scoring a different process than the one under test — reported as
-four WebSocket failures (test_22_2, test_23_1, test_24_1, test_31,
-"Expected at least one message via WebSocket subscription"). Nothing
-was wrong with the subscriptions; the tool was talking to another
-registry. All four passed once the stray was stopped.
+**`DELETE /subscriptions/{id}` was not implemented.** Only GET was
+registered on the by-id prefix, so a Controller had no way to release a
+subscription. IS-04's Query API defines it.
 
-**mDNS does not reach into a container from the LAN.** Running the
-registry on the host (10.100.0.101) left test_01/test_02 failing with
-"No matching mDNS announcement found" — the tool runs inside a
-container, and multicast reaches it only from its own bridge. This is
-the same constraint the Node rounds already document, and the fix is
-the same: put the thing under test on that bridge.
+It surfaced several steps from the cause. Our
+`Access-Control-Allow-Methods` is generated from the route table, so an
+unregistered verb shows up as a CORS complaint:
+
+```
+auto_query_19: 'DELETE' not in 'Access-Control-Allow-Methods' CORS header
+```
+
+It had gone unnoticed because a non-persistent subscription is *also*
+reaped when its WebSocket closes — the common path cleans up without
+anyone calling DELETE, so nothing looked broken.
+
+Fixed in `registry/subscriptions.go` (`HandleDeleteByID`, 204 on
+success, 404 on unknown id, closes the WebSocket) and registered in
+`registry/query.go`. Pinned by `subscription_delete_test.go`, including
+a test that asserts the CORS header advertises DELETE — because that is
+the form the failure actually took.
+
+## A stray registry can make this whole file lie
+
+While setting this up, a second `dhs registry` was running on
+10.100.0.103 announcing the same mDNS instance name,
+`dhs-nmos-registry`. The tool resolved the name to *that* host and
+scored a different process than the one under test — reported as four
+WebSocket failures claiming no subscription messages arrived. The
+subscriptions were fine. Check `avahi-browse -prt _nmos-register._tcp`
+resolves to the host you think it does before trusting a run.
 
 ## Not covered here: the Controller
 
 **IS-04-04 "IS-04 Controller"** and **IS-05-03** are NOT in this
-evidence set, and cannot be run as things stand.
+evidence set.
 
 Their first endpoint slot is `testing-facade / testquestion`: the tool
 does not drive a controller directly. It POSTs questions to a **Testing
 Facade** — a service that receives each question, makes the controller
-under test perform the action, and answers back. The tool's second slot
-for IS-04-04 has `disable_fields: ["host", "port"]`, because the tool
-supplies its own mock registry for the controller to discover.
+under test perform the action, and answers back on `answer_uri`. The
+tool's second slot for IS-04-04 has `disable_fields: ["host", "port"]`,
+because the tool supplies its own mock registry for the controller to
+discover.
 
-We have no facade, so these suites are untested rather than passing.
-Building one means implementing the AMWA Testing Facade question/answer
-protocol and wiring it to `dhs consumer nmos`.
+The suites are real and runnable — 5 tests in IS-04-04 (discover the
+registry by unicast DNS-SD, reach the Query API, enumerate Senders and
+Receivers across pagination, notice a Sender going offline) and 4 in
+IS-05-03 (identify IS-05-controllable Receivers, activate a connection,
+disconnect, reflect state from the Query API). Every one of them maps
+onto `dhs consumer nmos walk` and `connect`.
+
+`internal/amwa/facade/` implements the facade protocol. It is not yet
+wired into a scored run, so these suites are **untested, not passing**.

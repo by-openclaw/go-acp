@@ -72,6 +72,10 @@ func installQueryRoutes(srv *httpsession.Server, store *Store, mgr *Subscription
 	srv.Handle(stdhttp.MethodGet, base+"/subscriptions", mgr.HandleList())
 	subPrefix := base + "/subscriptions/"
 	srv.HandlePrefix(subPrefix, stdhttp.MethodGet, mgr.HandleGetByID(subPrefix))
+	// DELETE releases a subscription a Controller is finished with.
+	// Also what makes DELETE appear in Access-Control-Allow-Methods,
+	// since that header is generated from this route table.
+	srv.HandlePrefix(subPrefix, stdhttp.MethodDelete, mgr.HandleDeleteByID(subPrefix))
 }
 
 // hasAncestryFilter reports whether the request asked for an

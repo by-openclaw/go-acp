@@ -73,14 +73,14 @@ func subscriptionForVersion(r SubscriptionResource, apiVer string) any {
 
 // Grain is the IS-04 §5.2 envelope shipped on every WebSocket frame.
 type Grain struct {
-	GrainType         string  `json:"grain_type"`
-	SourceID          string  `json:"source_id"`
-	FlowID            string  `json:"flow_id"`
-	OriginTimestamp   string  `json:"origin_timestamp"`
-	SyncTimestamp     string  `json:"sync_timestamp"`
-	CreationTimestamp string  `json:"creation_timestamp"`
-	Rate              GrainRT `json:"rate"`
-	Duration          GrainRT `json:"duration"`
+	GrainType         string    `json:"grain_type"`
+	SourceID          string    `json:"source_id"`
+	FlowID            string    `json:"flow_id"`
+	OriginTimestamp   string    `json:"origin_timestamp"`
+	SyncTimestamp     string    `json:"sync_timestamp"`
+	CreationTimestamp string    `json:"creation_timestamp"`
+	Rate              GrainRT   `json:"rate"`
+	Duration          GrainRT   `json:"duration"`
 	Grain             GrainBody `json:"grain"`
 }
 
@@ -109,11 +109,11 @@ type GrainDataRow struct {
 
 // subscription is one in-flight WS session.
 type subscription struct {
-	ID           string
-	ResourcePath string
-	WSHref       string
-	Persist      bool
-	Secure       bool
+	ID            string
+	ResourcePath  string
+	WSHref        string
+	Persist       bool
+	Secure        bool
 	MaxUpdateRate int
 
 	// params is the IS-04 §6.1.5 basic-query / RQL filter the
@@ -129,9 +129,9 @@ type subscription struct {
 	// to its own api_ver.
 	downgrade string
 
-	ws       *httpsession.WebSocket
-	source   string // sub UUID echoed in grain.source_id
-	closeCh  chan struct{}
+	ws      *httpsession.WebSocket
+	source  string // sub UUID echoed in grain.source_id
+	closeCh chan struct{}
 }
 
 // SubscriptionManager owns all in-flight subscriptions, the WS
@@ -275,6 +275,44 @@ func (m *SubscriptionManager) HandleGetByID(prefix string) httpsession.HandlerFu
 			Persist: s.Persist, Secure: s.Secure, ResourcePath: s.ResourcePath,
 			Params: queryAsParams(s.params),
 		}, m.apiVer), nil
+	}
+}
+
+// HandleDeleteByID implements DELETE /subscriptions/{id}.
+//
+// IS-04 §"Query API" gives a Controller this to release a subscription
+// it no longer wants, and the AMWA suite checks it twice over: once by
+// calling it, and once through the CORS preflight, because our
+// Access-Control-Allow-Methods is derived from the route table. With no
+// DELETE route registered, `auto_query_19` failed on the header alone —
+// the missing verb showed up as a CORS complaint rather than as a
+// missing endpoint.
+//
+// A non-persistent subscription is also garbage-collected when its
+// WebSocket closes, which is why this went unnoticed: the common path
+// cleans up without anyone calling DELETE.
+//
+// Returns 204 on success, per the spec's no-content deletion.
+func (m *SubscriptionManager) HandleDeleteByID(prefix string) httpsession.HandlerFunc {
+	return func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		id := strings.TrimPrefix(r.URL.Path, prefix)
+		if id == "" || strings.Contains(id, "/") {
+			return stdhttp.StatusNotFound, httpsession.ErrorBody{
+				Code: 404, Error: "Not Found", Debug: r.URL.Path}, nil
+		}
+		m.mu.Lock()
+		_, ok := m.subs[id]
+		m.mu.Unlock()
+		if !ok {
+			return stdhttp.StatusNotFound, httpsession.ErrorBody{
+				Code: 404, Error: "Not Found", Debug: id}, nil
+		}
+		// removeSub closes the WebSocket as well as dropping the
+		// record; leaving the socket open would keep pushing grains to
+		// a controller that just said it was finished.
+		m.removeSub(id)
+		m.logger.Info("registry/nmos: subscription deleted", "id", id)
+		return stdhttp.StatusNoContent, nil, nil
 	}
 }
 
