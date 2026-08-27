@@ -16,7 +16,12 @@
 //
 // The 202-then-answer split matters: the tool blocks on an async queue
 // waiting for the answer, so doing the work before replying would
-// deadlock the run against its own HTTP timeout.
+// deadlock the run against its own HTTP timeout. It matters twice over
+// for the monitor questions ("press Next as soon as the NCuT detects
+// ..."), where the right answer arrives minutes after the question.
+//
+// The question/answer semantics live in decide.go; this file is only
+// the HTTP transport.
 package facade
 
 import (
@@ -26,8 +31,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sort"
-	"strings"
 	"time"
 
 	"dhs/internal/amwa/consumer"
@@ -94,10 +97,9 @@ type Options struct {
 
 // Server is the facade HTTP server.
 type Server struct {
-	logger  *slog.Logger
-	opts    Options
-	client  *http.Client
-	handled int
+	logger *slog.Logger
+	opts   Options
+	client *http.Client
 }
 
 // New builds a facade Server.
@@ -161,7 +163,6 @@ func (s *Server) handleQuestion(w http.ResponseWriter, r *http.Request) {
 	// on anything we answered.
 	w.WriteHeader(http.StatusAccepted)
 
-	s.handled++
 	s.logger.Info("nmos/facade: question",
 		"id", q.QuestionID, "type", q.TestType, "answers", len(q.Answers))
 
@@ -170,7 +171,9 @@ func (s *Server) handleQuestion(w http.ResponseWriter, r *http.Request) {
 
 // answer works out the response and posts it back.
 func (s *Server) answer(ctx context.Context, q Question) {
-	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
+	// Generous ceiling: the monitor questions legitimately take up to
+	// 60s of tool-side delay plus a 30s answer window.
+	ctx, cancel := context.WithTimeout(ctx, 150*time.Second)
 	defer cancel()
 
 	resp, err := s.decide(ctx, q)
@@ -209,133 +212,5 @@ func emptyFor(testType string) any {
 	if testType == "multi_choice" {
 		return []string{}
 	}
-	return nil
-}
-
-// decide turns one question into an answer by driving the Controller.
-func (s *Server) decide(ctx context.Context, q Question) (any, error) {
-	switch q.TestType {
-	case "action":
-		return nil, s.performAction(ctx, q)
-	case "multi_choice":
-		return s.selectResources(ctx, q)
-	case "single_choice":
-		ids, err := s.selectResources(ctx, q)
-		if err != nil {
-			return nil, err
-		}
-		if len(ids) == 0 {
-			return nil, fmt.Errorf("no offered answer matched anything in the registry")
-		}
-		return ids[0], nil
-	}
-	return nil, fmt.Errorf("unknown test_type %q", q.TestType)
-}
-
-// selectResources answers "which of these can you see?" by walking the
-// registry and returning the answer ids whose resource we actually
-// found.
-//
-// Matched by UUID only. The display strings are prose built from
-// label+description and would match on a rename; the id is the only
-// stable identifier NMOS has.
-func (s *Server) selectResources(ctx context.Context, q Question) ([]string, error) {
-	if len(q.Answers) == 0 {
-		return []string{}, nil
-	}
-	c, err := s.opts.Controller(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("build controller: %w", err)
-	}
-	snap, _ := c.Walk(ctx)
-
-	seen := map[string]bool{}
-	for _, x := range snap.Senders {
-		seen[x.ID] = true
-	}
-	for _, x := range snap.Receivers {
-		seen[x.ID] = true
-	}
-	for _, x := range snap.Devices {
-		seen[x.ID] = true
-	}
-	for _, x := range snap.Nodes {
-		seen[x.ID] = true
-	}
-
-	// IS-05-03 test_01 asks specifically for Receivers that are
-	// CONTROLLABLE — the registry lists more than that, and a
-	// controller that offers to route something it cannot route is
-	// worse than one that hides it. Narrow to receivers whose Device
-	// advertises an IS-05 endpoint.
-	if wantsConnectableOnly(q.Question) {
-		seen = connectableReceivers(snap)
-	}
-
-	var out []string
-	for _, a := range q.Answers {
-		if a.Resource.ID != "" && seen[a.Resource.ID] {
-			out = append(out, a.AnswerID)
-		}
-	}
-	sort.Strings(out)
-	if out == nil {
-		out = []string{}
-	}
-	return out, nil
-}
-
-// wantsConnectableOnly spots the IS-05-03 test_01 phrasing.
-func wantsConnectableOnly(question string) bool {
-	q := strings.ToLower(question)
-	return strings.Contains(q, "connection api")
-}
-
-// connectableReceivers returns the receiver ids whose owning Device
-// advertises an IS-05 control endpoint.
-func connectableReceivers(snap *consumer.CatalogueSnapshot) map[string]bool {
-	withIS05 := map[string]bool{}
-	for _, d := range snap.Devices {
-		for _, ctl := range d.Controls {
-			if strings.HasPrefix(ctl.Type, "urn:x-nmos:control:sr-ctrl/") {
-				withIS05[d.ID] = true
-				break
-			}
-		}
-	}
-	out := map[string]bool{}
-	for _, r := range snap.Receivers {
-		if withIS05[r.DeviceID] {
-			out[r.ID] = true
-		}
-	}
-	return out
-}
-
-// performAction carries out an "action" question: connect, or
-// disconnect, whichever the metadata describes.
-func (s *Server) performAction(ctx context.Context, q Question) error {
-	if q.Metadata == nil || q.Metadata.Receiver == nil {
-		// Actions with no metadata are "click Next when ready" prompts
-		// — nothing to do but acknowledge.
-		return nil
-	}
-	c, err := s.opts.Controller(ctx)
-	if err != nil {
-		return fmt.Errorf("build controller: %w", err)
-	}
-	req := consumer.ConnectRequest{ReceiverID: q.Metadata.Receiver.ID}
-	if q.Metadata.Sender != nil {
-		req.SenderID = q.Metadata.Sender.ID
-	}
-	// A metadata block naming only a receiver is a disconnect;
-	// ConnectRequest already spells that as an empty SenderID.
-	res, err := c.Connect(ctx, req)
-	if err != nil {
-		return fmt.Errorf("connect: %w", err)
-	}
-	s.logger.Info("nmos/facade: action done",
-		"receiver", res.ReceiverID, "master_enable", res.MasterEnable,
-		"endpoint", res.Endpoint)
 	return nil
 }

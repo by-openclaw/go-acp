@@ -168,8 +168,15 @@ func (c *Client) ListReceivers(ctx context.Context, filter map[string]string) ([
 }
 
 // fetchListRaw issues GET /x-nmos/query/<api_ver>/<plural>?<filter>
-// and returns the raw JSON array. Per-resource decode happens via the
-// negotiated Codec so version-specific field gating applies.
+// and returns the raw JSON array, following IS-04 §6.2 pagination.
+//
+// A Registry may serve a collection in pages of any size it likes —
+// the AMWA IS-04-04 suite deliberately drops the paging limit to 2 —
+// and points at the next page via `Link: rel="next"`. Stopping after
+// the first response would silently truncate the catalogue, which for
+// a controller means routing decisions taken on a fraction of the
+// plant. Pages are followed until the server stops offering a next
+// link or a page comes back empty.
 func (c *Client) fetchListRaw(ctx context.Context, plural string, filter map[string]string) ([]json.RawMessage, error) {
 	u := c.urlFor(plural)
 	if len(filter) > 0 {
@@ -180,8 +187,24 @@ func (c *Client) fetchListRaw(ctx context.Context, plural string, filter map[str
 		u += "?" + q.Encode()
 	}
 	var out []json.RawMessage
-	if err := c.HTTP.GetJSON(ctx, u, &out); err != nil {
-		return nil, fmt.Errorf("nmos/query: list %s: %w", plural, err)
+	seen := map[string]bool{}
+	// 10k pages caps a runaway server that links to itself forever; a
+	// real catalogue at limit=2 never gets near it.
+	for i := 0; u != "" && i < 10000; i++ {
+		if seen[u] {
+			break // servers that Link back to an earlier page
+		}
+		seen[u] = true
+		var page []json.RawMessage
+		next, err := c.HTTP.GetJSONPage(ctx, u, &page)
+		if err != nil {
+			return nil, fmt.Errorf("nmos/query: list %s: %w", plural, err)
+		}
+		out = append(out, page...)
+		if len(page) == 0 {
+			break
+		}
+		u = next
 	}
 	return out, nil
 }
