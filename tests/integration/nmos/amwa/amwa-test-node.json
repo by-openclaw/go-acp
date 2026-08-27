@@ -449,7 +449,8 @@
         "constraint_sets": [
           {
             "urn:x-nmos:cap:meta:label": "L24 / L16 audio @ 48 kHz, stereo",
-            "urn:x-nmos:cap:meta:preference": 0,
+            "urn:x-nmos:cap:meta:preference": 100,
+            "urn:x-nmos:cap:meta:enabled": true,
             "urn:x-nmos:cap:format:media_type": {
               "enum": [
                 "audio/L24",
@@ -460,6 +461,28 @@
               "enum": [
                 {
                   "numerator": 48000,
+                  "denominator": 1
+                }
+              ]
+            },
+            "urn:x-nmos:cap:format:channel_count": {
+              "minimum": 2,
+              "maximum": 2
+            }
+          },
+          {
+            "urn:x-nmos:cap:meta:label": "44.1 kHz L16 (disabled)",
+            "urn:x-nmos:cap:meta:preference": 0,
+            "urn:x-nmos:cap:meta:enabled": false,
+            "urn:x-nmos:cap:format:media_type": {
+              "enum": [
+                "audio/L16"
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_rate": {
+              "enum": [
+                {
+                  "numerator": 44100,
                   "denominator": 1
                 }
               ]

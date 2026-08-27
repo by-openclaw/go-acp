@@ -244,6 +244,17 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 	// one value, so they cannot disagree about which resources the
 	// device has. Doing it later, per API, is how you end up serving a
 	// Connection endpoint for a Sender the Node API does not list.
+	// The FULL bundle survives for the one API whose resources are not
+	// gated by the IS-04 minor. IS-07 versions independently of IS-04:
+	// a Node serving its Node API at v1.0 still serves Events at IS-07
+	// v1.0, and its event sources still exist. Seeding events from the
+	// projected bundle silently emptied the Events API below v1.3 —
+	// the projection drops WebSocket senders (transport not in
+	// IS-04 < v1.3 per the Upgrade Path), the cascade then removes
+	// their flows and data sources, and AMWA IS-07-01 scored
+	// "No sources were returned from Events API" at v1.0/v1.1/v1.2
+	// while v1.3 passed. The tool was right: the sources were gone.
+	fullBundle := bundle
 	bundle = projectForMinor(bundle, cfg.APIVer)
 
 	s := &IS04NodeServer{logger: logger, cfg: cfg, bundle: bundle, codec: codec}
@@ -266,7 +277,7 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 		})
 	}
 	if !cfg.NoEventsAPI {
-		s.events = NewIS07EventsServer(logger, bundle, IS07EventsConfig{
+		s.events = NewIS07EventsServer(logger, fullBundle, IS07EventsConfig{
 			APIVer: cfg.EventsAPIVer,
 		})
 	}

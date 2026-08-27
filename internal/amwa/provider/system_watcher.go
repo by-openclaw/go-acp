@@ -122,6 +122,19 @@ func (w *SystemWatcher) consume(ctx context.Context, out <-chan dnssdcodec.Insta
 
 // observe records one advertisement and re-picks the best instance.
 func (w *SystemWatcher) observe(ctx context.Context, ins dnssdcodec.Instance) {
+	// One line per advertisement, because its absence is evidence too.
+	// AMWA IS-09-02 failed for a whole day with "Node did not attempt
+	// to contact the advertised System API" while this Node sat locked
+	// onto the reference registry's System API — and nothing in the log
+	// could say whether the suite's mock was ever even seen on the
+	// link, so the contention could not be told apart from a browse
+	// failure.
+	if w.logger != nil {
+		w.logger.Info("provider/node: System API advertisement observed",
+			"plugin", "amwa", "api", "is-09",
+			"instance", ins.Name, "host", ins.Host, "port", ins.Port,
+			"ttl", ins.TTL, "pri", ins.TXT[dnssdcodec.TXTKeyPriority])
+	}
 	key := ins.Name + "." + ins.Service
 	w.mu.Lock()
 	if ins.TTL == 0 {
