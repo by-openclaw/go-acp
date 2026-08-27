@@ -142,6 +142,37 @@ A leg still reading `0.0.0.0` after a set emits nothing; the command
 prints a WARNING and fires `nmos_is05_destination_ignored` rather than
 reporting success.
 
+### Ship a device that boots configured
+
+A bundle can seed IS-05 boot state per endpoint id — a `connection`
+block beside the IS-04 sections:
+
+```json
+"connection": {
+  "senders": {
+    "<sender-uuid>": {
+      "master_enable": true,
+      "transport_params": [
+        {"rtp_enabled": true, "destination_ip": "239.20.1.1", "destination_port": 5004},
+        {"rtp_enabled": true, "destination_ip": "239.22.1.1", "destination_port": 5004}
+      ]
+    }
+  }
+}
+```
+
+Two legs mean an ST 2022-7 pair (endpoint and constraints grow to
+match). `master_enable: true` promotes the endpoint at boot through the
+same path a controller activation takes: ACTIVE goes concrete, a Sender
+gets its SDP, IS-04 `subscription.active` reflects it. Unknown endpoint
+ids, unknown parameter keys, and >2 legs are refused at load — a typo
+here otherwise surfaces four suites away as a constraints mismatch.
+
+The test fixture carries four archetypes to copy from:
+`dhs-sender-min` / `dhs-receiver-min` (required fields only, IS-05
+factory-fresh) and `dhs-sender-full` / `dhs-receiver-full` (every
+optional field, BCP-004 caps, boot-active 2022-7 multicast).
+
 ## 4. Run a Registry and register a Node into it
 
 Two terminals, both local. This is the loop to reach for when you want
@@ -191,13 +222,36 @@ the one most likely to be blocked on a customer network.
 | Mode | When | Flags |
 |---|---|---|
 | A — mDNS + Registry | greenfield, spec-compliant peers | default |
-| B — unicast Registry | multicast blocked | `--no-mdns --registry http://host:port` |
+| B — fixed Registry URL | multicast blocked, address known | `--no-mdns --registry http://host:port` |
+| B — unicast DNS-SD | multicast blocked, DNS zone available | `--no-mdns --unicast --resolver IP[:port] --domain <zone>` |
 | C — direct Node | no Registry at all | `--node http://host:port` |
 | D — mDNS peer-to-peer | Cerebrum P2P | `--mdns --no-registry` |
 
 **mDNS does not cross a routed hop.** If the Registry and the device
 are on different subnets, mDNS will never find it no matter how the
 firewall is configured — use mode B.
+
+Unicast DNS-SD (IS-04 §3.1) wants one PTR + SRV + TXT + A set per
+Registry in a conventional zone. A minimal dnsmasq zone publishing a
+Registry at 10.100.0.5:8080 under `nmos.lab`:
+
+```
+port=8053
+no-resolv
+no-hosts
+host-record=cer.nmos.lab,10.100.0.5
+ptr-record=_nmos-register._tcp.nmos.lab,cerebrum._nmos-register._tcp.nmos.lab
+srv-host=cerebrum._nmos-register._tcp.nmos.lab,cer.nmos.lab,8080
+txt-record=cerebrum._nmos-register._tcp.nmos.lab,"api_ver=v1.1,v1.2,v1.3","api_proto=http","api_auth=false","pri=0"
+```
+
+The Node re-asks the zone every 60 s and applies the SAME priority
+selection and failover (§6.1) as mDNS — one selection rule, two
+transports. All three registration paths were proven live against the
+Cerebrum registry in one session: `dhs-node-mdns` (browse, picked
+pri=0 over a pri=199 dev registry, then suspended its own
+`_nmos-node` announce per §4.2.1), `dhs-node-dnssd` (the zone above),
+`dhs-node-manual` (fixed URL).
 
 ---
 
@@ -237,3 +291,10 @@ Results land in `tests/integration/nmos/amwa/results/`.
 The node and the tool share one bridge on purpose: IS-04 discovery is
 mDNS, and testing across a routed boundary silently skips the discovery
 half of IS-04-01 and reports a better score for a worse implementation.
+
+The **Registry** (`results-registry/`) and **Controller**
+(`results-controller/`) evidence sets have their own READMEs, each
+documenting the hermeticity rules its numbers depend on — the registry
+one in particular: LAN-mode tool for the mDNS tests, a pre-created
+persistent subscription per minor, and no live devices churning the
+store during scoring.
