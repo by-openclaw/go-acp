@@ -1,41 +1,41 @@
 
-time=2026-08-26T20:13:17.676Z level=WARN msg="provider/node: System API found but /global could not be read" plugin=amwa api=is-09 err="nmos/system: peer /global failed validation: is09 /global validation failed: label: required (resource_core); description: required (resource_core)"
-time=2026-08-26T20:13:27.099Z level=INFO msg="provider/node: registry rejected" name=NMOSTestSuite5101http._nmos-registration._tcp.local host=nmos-mocks.local port=5101 api_ver_advert=v9.0 api_ver_prefer=v1.1 api_proto=http
-time=2026-08-26T20:13:27.907Z level=INFO msg="provider/node: registry rejected" name=NMOSTestSuite5101invalid._nmos-registration._tcp.local host=nmos-mocks.local port=5101 api_ver_advert=v1.1 api_ver_prefer=v1.1 api_proto=invalid
-time=2026-08-26T20:13:28.713Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5102http._nmos-registration._tcp.local url=http://172.18.0.4:5102 pri=0 api_ver=v1.1
-time=2026-08-26T20:13:29.702Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-26T20:13:36.161Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5103http._nmos-registration._tcp.local url=http://172.18.0.4:5103 pri=10 api_ver=v1.1
-time=2026-08-26T20:13:36.968Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5104http._nmos-registration._tcp.local url=http://172.18.0.4:5104 pri=20 api_ver=v1.1
-time=2026-08-26T20:13:37.776Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5105http._nmos-registration._tcp.local url=http://172.18.0.4:5105 pri=30 api_ver=v1.1
-time=2026-08-26T20:13:38.583Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite444http._nmos-registration._tcp.local url=http://192.0.2.1:444 pri=40 api_ver=v1.1
-time=2026-08-26T20:13:39.391Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5106http._nmos-registration._tcp.local url=http://172.18.0.4:5106 pri=50 api_ver=v1.1
-time=2026-08-26T20:13:44.676Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
-time=2026-08-26T20:13:44.678Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-26T20:13:44.680Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
-time=2026-08-26T20:13:44.685Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-26T20:13:45.676Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
-time=2026-08-26T20:13:45.678Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-26T20:13:45.681Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
-time=2026-08-26T20:13:45.686Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-26T20:13:46.674Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
-time=2026-08-26T20:13:46.675Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-26T20:13:46.677Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
-time=2026-08-26T20:13:46.679Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-26T20:13:47.676Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
-time=2026-08-26T20:13:47.677Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-26T20:13:47.680Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
-time=2026-08-26T20:13:57.680Z level=WARN msg="provider/node: cascade rejoin/register failed" step=0 err="provider/node: POST http://192.0.2.1:444/x-nmos/registration/v1.1/health/nodes/2c47bf5e-1b2c-4abc-9def-deadbeef0001: Post \"http://192.0.2.1:444/x-nmos/registration/v1.1/health/nodes/2c47bf5e-1b2c-4abc-9def-deadbeef0001\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
-time=2026-08-26T20:13:57.687Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-26T20:14:02.677Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
-time=2026-08-26T20:14:02.678Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-26T20:14:02.681Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
-time=2026-08-26T20:14:02.713Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-26T20:14:15.671Z level=INFO msg="provider/node: better registry available — switching"
-time=2026-08-26T20:14:15.687Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-26T20:14:15.690Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
-time=2026-08-26T20:14:15.723Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-26T20:14:20.676Z level=WARN msg="provider/node: heartbeat 404 — re-registering"
-time=2026-08-26T20:14:20.677Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-26T20:14:20.680Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
-time=2026-08-26T20:14:21.009Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5102http._nmos-registration._tcp.local url=http://172.18.0.4:5102 pri=0 api_ver=v1.1
-time=2026-08-26T20:14:21.710Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-27T02:39:28.425Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
+time=2026-08-27T02:39:38.323Z level=INFO msg="provider/node: registry rejected" name=NMOSTestSuite5101http._nmos-registration._tcp.local host=nmos-mocks.local port=5101 api_ver_advert=v9.0 api_ver_prefer=v1.1 api_proto=http
+time=2026-08-27T02:39:39.132Z level=INFO msg="provider/node: registry rejected" name=NMOSTestSuite5101invalid._nmos-registration._tcp.local host=nmos-mocks.local port=5101 api_ver_advert=v1.1 api_ver_prefer=v1.1 api_proto=invalid
+time=2026-08-27T02:39:39.938Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5102http._nmos-registration._tcp.local url=http://172.18.0.4:5102 pri=0 api_ver=v1.1
+time=2026-08-27T02:39:40.451Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-27T02:39:46.989Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5103http._nmos-registration._tcp.local url=http://172.18.0.4:5103 pri=10 api_ver=v1.1
+time=2026-08-27T02:39:47.796Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5104http._nmos-registration._tcp.local url=http://172.18.0.4:5104 pri=20 api_ver=v1.1
+time=2026-08-27T02:39:48.602Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5105http._nmos-registration._tcp.local url=http://172.18.0.4:5105 pri=30 api_ver=v1.1
+time=2026-08-27T02:39:49.409Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite444http._nmos-registration._tcp.local url=http://192.0.2.1:444 pri=40 api_ver=v1.1
+time=2026-08-27T02:39:50.217Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5106http._nmos-registration._tcp.local url=http://172.18.0.4:5106 pri=50 api_ver=v1.1
+time=2026-08-27T02:39:55.423Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
+time=2026-08-27T02:39:55.424Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-27T02:39:55.427Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
+time=2026-08-27T02:39:55.432Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-27T02:39:56.423Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
+time=2026-08-27T02:39:56.424Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-27T02:39:56.426Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
+time=2026-08-27T02:39:56.432Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-27T02:39:57.423Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
+time=2026-08-27T02:39:57.424Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-27T02:39:57.426Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
+time=2026-08-27T02:39:57.433Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-27T02:39:58.421Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
+time=2026-08-27T02:39:58.421Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-27T02:39:58.422Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
+time=2026-08-27T02:40:08.424Z level=WARN msg="provider/node: cascade rejoin/register failed" step=0 err="provider/node: POST http://192.0.2.1:444/x-nmos/registration/v1.1/health/nodes/2c47bf5e-1b2c-4abc-9def-deadbeef0001: Post \"http://192.0.2.1:444/x-nmos/registration/v1.1/health/nodes/2c47bf5e-1b2c-4abc-9def-deadbeef0001\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+time=2026-08-27T02:40:08.431Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-27T02:40:13.421Z level=WARN msg="provider/node: heartbeat failed" err="provider/node: heartbeat: HTTP 503: <!doctype html>\n<html lang=en>\n<title>503 Service Unavailable</title>\n<h1>Service Unavailable</h1>\n<p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>"
+time=2026-08-27T02:40:13.422Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-27T02:40:13.423Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
+time=2026-08-27T02:40:13.439Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-27T02:40:26.418Z level=INFO msg="provider/node: better registry available — switching"
+time=2026-08-27T02:40:26.426Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-27T02:40:26.427Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
+time=2026-08-27T02:40:26.444Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-27T02:40:31.423Z level=WARN msg="provider/node: heartbeat 404 — re-registering"
+time=2026-08-27T02:40:31.424Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-27T02:40:31.426Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.1 pri=0
+time=2026-08-27T02:40:31.753Z level=INFO msg="provider/node: registry discovered" name=NMOSTestSuite5102http._nmos-registration._tcp.local url=http://172.18.0.4:5102 pri=0 api_ver=v1.1
+time=2026-08-27T02:40:32.459Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
