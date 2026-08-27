@@ -361,6 +361,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		rc := NewRegistrationClient(s.logger, s.cfg.RegistryURL, s.cfg.APIVer, s.bundle)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
+		s.wireRepublish(rc)
 		go rc.Run(ctx)
 	} else if s.cfg.DiscoveryMode == "" || s.cfg.DiscoveryMode == "mdns" {
 		w, err := NewRegistryWatcher(s.logger, s.cfg.APIVer)
@@ -378,6 +379,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		rc.SetWatcher(w)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
+		s.wireRepublish(rc)
 		go rc.Run(ctx)
 	}
 
@@ -826,6 +828,25 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 			return stdhttp.StatusAccepted, json.RawMessage(respBody), nil
 		})
 	}
+}
+
+// wireRepublish connects IS-05 activations to the Registration API, so
+// a route changes the Registry's copy and not just the Node's own.
+//
+// IS-04 §4.2 requires the Node to re-POST a resource whose data
+// changed. Skipping it left the Query API insisting a live receiver was
+// idle — invisible on the Node API, which reported the truth, and the
+// exact disagreement a Controller cannot see past because it renders
+// routing state from the Registry.
+func (s *IS04NodeServer) wireRepublish(rc *RegistrationClient) {
+	if s.connection == nil {
+		return
+	}
+	s.connection.SetOnResourceChanged(func(t is04.ResourceType, data any) {
+		// Non-blocking by contract: this runs inside the connection
+		// store's lock during an activation.
+		rc.Republish(t, data)
+	})
 }
 
 // findReceiverByID locates a Receiver in the slice by UUID. Returns nil

@@ -55,6 +55,22 @@ type IS05ConnectionServer struct {
 	// Sender's SDP and reflecting an activation into
 	// `subscription.active` both read from here.
 	bundle *NodeConfig
+
+	// onResourceChanged fires after an activation has rewritten an
+	// IS-04 resource, so the Node can re-POST it to its Registry.
+	//
+	// IS-04 §4.2 requires that re-POST; the Registry learns no other
+	// way. Optional — a peer-to-peer Node has no Registry to tell.
+	//
+	// Called under the connection store's lock, so an implementation
+	// MUST NOT block.
+	onResourceChanged func(is04.ResourceType, any)
+}
+
+// SetOnResourceChanged installs the re-registration hook. Wired by the
+// Node server when it has a Registration client.
+func (s *IS05ConnectionServer) SetOnResourceChanged(fn func(is04.ResourceType, any)) {
+	s.onResourceChanged = fn
 }
 
 // NewIS05ConnectionServer builds the Connection API over a Node
@@ -136,6 +152,12 @@ func (s *IS05ConnectionServer) updateIS04Subscription(kind, id string, active is
 			// old version is discarded as a replay and the change
 			// never reaches a controller.
 			s.bundle.Senders[i].Version = now
+			// Snapshot, not a pointer into the bundle: the registration
+			// loop encodes this on another goroutine, and a later
+			// activation would otherwise rewrite the payload underneath
+			// it and publish a version that never existed.
+			snap := s.bundle.Senders[i]
+			s.notifyChanged(is04.ResourceSender, &snap)
 			return
 		}
 		return
@@ -149,7 +171,21 @@ func (s *IS05ConnectionServer) updateIS04Subscription(kind, id string, active is
 			Active:   active.MasterEnable,
 		}
 		s.bundle.Receivers[i].Version = now
+		snap := s.bundle.Receivers[i]
+		s.notifyChanged(is04.ResourceReceiver, &snap)
 		return
+	}
+}
+
+// notifyChanged tells the Node a resource needs re-registering.
+//
+// Without it the Node's own API and its Registry disagree the moment
+// anything is routed: the Node reports subscription.active=true and the
+// Query API still says false. A Controller renders routing state from
+// the Query API, so the route looks like it never happened.
+func (s *IS05ConnectionServer) notifyChanged(t is04.ResourceType, data any) {
+	if s.onResourceChanged != nil {
+		s.onResourceChanged(t, data)
 	}
 }
 

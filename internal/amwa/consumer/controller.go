@@ -10,6 +10,7 @@ import (
 	"dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/spec"
+	httpsession "dhs/internal/amwa/session/http"
 	"dhs/internal/amwa/session/query"
 )
 
@@ -40,6 +41,17 @@ type ControllerOptions struct {
 	// At least one of (RegistryURL, DiscoveryMode) must be set.
 	RegistryURL   string
 	DiscoveryMode string
+
+	// NodeURL points the Controller at ONE Node's own API instead of a
+	// Registry — the IS-04 peer-to-peer path (Mode C/D). Mutually
+	// exclusive with RegistryURL and DiscoveryMode, and it wins when
+	// set, because naming a specific device is never ambiguous.
+	//
+	// This is the only way to reach a device no Registry can see: one
+	// that has not registered, or one on a segment with no route back
+	// to the Registry. A real EVS Neuron is in exactly that state for
+	// us today, and without this the Controller could not touch it.
+	NodeURL string
 
 	// Discovery knobs (used when RegistryURL is empty).
 	DiscoveryTimeout time.Duration // default 5s
@@ -74,6 +86,10 @@ func NewController(ctx context.Context, opts ControllerOptions) (*Controller, er
 		rep = spec.NopReporter{}
 	}
 
+	if opts.NodeURL != "" {
+		return newNodeController(ctx, opts, rep)
+	}
+
 	base, peerVers, err := resolveRegistry(ctx, opts)
 	if err != nil {
 		return nil, err
@@ -91,6 +107,51 @@ func NewController(ctx context.Context, opts ControllerOptions) (*Controller, er
 	return &Controller{logger: opts.Logger, reporter: rep, client: c}, nil
 }
 
+// newNodeController binds a Controller straight to one Node.
+//
+// Version selection still happens, but from the Node's OWN advertised
+// list at /x-nmos/node/ rather than a DNS-SD api_ver TXT: with no
+// Registry in the path there is no TXT record to read. Asking the
+// device is strictly better information anyway.
+func newNodeController(ctx context.Context, opts ControllerOptions, rep spec.Reporter) (*Controller, error) {
+	base := strings.TrimRight(opts.NodeURL, "/")
+
+	peerVers, err := nodeAPIVersions(ctx, base)
+	if err != nil {
+		return nil, err
+	}
+
+	codec, err := pickCodec(opts.APIVer, peerVers, rep)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := query.NewNodeClient(base, codec)
+	if err != nil {
+		return nil, err
+	}
+	return &Controller{logger: opts.Logger, reporter: rep, client: c}, nil
+}
+
+// nodeAPIVersions asks a Node which IS-04 minors it serves, by GETting
+// /x-nmos/node/ — the index every Node MUST expose.
+func nodeAPIVersions(ctx context.Context, base string) ([]string, error) {
+	var raw []string
+	if err := httpsession.NewClient().GetJSON(ctx, base+"/x-nmos/node/", &raw); err != nil {
+		return nil, fmt.Errorf("nmos: read %s/x-nmos/node/: %w", base, err)
+	}
+	out := make([]string, 0, len(raw))
+	for _, v := range raw {
+		if v = strings.Trim(v, "/"); v != "" {
+			out = append(out, v)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("nmos: %s/x-nmos/node/ advertises no API versions", base)
+	}
+	return out, nil
+}
+
 // Codec returns the wire-version codec bound to this Controller.
 // Useful for callers that need to encode requests in the same minor
 // (e.g. POSTing a subscription).
@@ -98,6 +159,12 @@ func (c *Controller) Codec() is04.Codec { return c.client.Codec }
 
 // BaseURL returns the Registry origin the Controller speaks to.
 func (c *Controller) BaseURL() string { return c.client.Base }
+
+// IsNodeFace reports whether this Controller is bound straight to one
+// Node rather than to a Registry. Callers label output truthfully with
+// it — "Node http://..." vs "Registry http://..." — because the two
+// mean very different things to an operator reading a walk.
+func (c *Controller) IsNodeFace() bool { return c.client.Face == query.FaceNode }
 
 // Walk fetches every catalogue collection under the Registry's Query
 // API and returns a single CatalogueSnapshot. Compliance events fire
@@ -260,11 +327,11 @@ func pickCodec(override string, peerVers []string, rep spec.Reporter) (is04.Code
 	if err != nil {
 		// Fire the compliance event before bubbling up.
 		rep.Report(spec.ComplianceEvent{
-			SpecID:    is04.SpecID,
-			Code:      "nmos_no_common_api_ver",
-			Severity:  spec.SeverityError,
-			Detail:    err.Error(),
-			At:        time.Now(),
+			SpecID:   is04.SpecID,
+			Code:     "nmos_no_common_api_ver",
+			Severity: spec.SeverityError,
+			Detail:   err.Error(),
+			At:       time.Now(),
 		})
 		return nil, err
 	}

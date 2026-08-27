@@ -14,6 +14,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -48,10 +49,12 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSSystem(ctx, rest)
 	case "walk":
 		return runNMOSWalk(ctx, rest)
+	case "connect":
+		return runNMOSConnect(ctx, rest)
 	case "events":
 		return runNMOSEventsConsumer(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, events)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, connect, events)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -644,36 +647,41 @@ announce of _nmos-register._tcp + _nmos-query._tcp.
 
 func runNMOSWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("walk", flag.ContinueOnError)
+	node := fs.String("node", "", "walk ONE Node directly (http://host:port) — IS-04 peer-to-peer, no Registry in the path")
 	registry := fs.String("registry", "", "Registry origin (Mode B unicast — http://host:port). When empty, --mdns or --unicast triggers DNS-SD discovery.")
-	mdns := fs.Bool("mdns", true, "discover the Registry via mDNS (Mode A); ignored if --registry is set")
+	mdns := fs.Bool("mdns", true, "discover the Registry via mDNS (Mode A); ignored if --registry or --node is set")
 	unicast := fs.Bool("unicast", false, "discover via unicast DNS-SD (Mode B); requires --resolver")
 	resolver := fs.String("resolver", "", "unicast DNS resolver IP")
 	domain := fs.String("domain", "by-systems.arpa", "unicast DNS-SD discovery domain")
-	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor (v1.1 / v1.2 / v1.3); empty = highest mutual")
+	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor (v1.0 / v1.1 / v1.2 / v1.3); empty = highest mutual")
 	timeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
+	asJSON := fs.Bool("json", false, "emit the whole catalogue as JSON instead of a summary")
+	long := fs.Bool("l", false, "list every resource, not just the counts")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *registry == "" && !*mdns && !*unicast {
-		return fmt.Errorf("nmos walk: pick exactly one of --registry / --mdns / --unicast")
+	if *node == "" && *registry == "" && !*mdns && !*unicast {
+		return fmt.Errorf("nmos walk: pick one of --node / --registry / --mdns / --unicast")
 	}
 
 	mode := ""
-	switch {
-	case *unicast:
-		if *resolver == "" {
-			return fmt.Errorf("nmos walk --unicast: --resolver is required")
+	if *node == "" && *registry == "" {
+		switch {
+		case *unicast:
+			if *resolver == "" {
+				return fmt.Errorf("nmos walk --unicast: --resolver is required")
+			}
+			mode = "unicast"
+		case *mdns:
+			mode = "mdns"
 		}
-		mode = "unicast"
-	case *mdns:
-		mode = "mdns"
 	}
 
 	rep := &spec.SliceReporter{}
-	logger := slog.Default()
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
-		Logger:           logger,
+		Logger:           slog.Default(),
 		Reporter:         rep,
+		NodeURL:          *node,
 		RegistryURL:      *registry,
 		DiscoveryMode:    mode,
 		DiscoveryTimeout: *timeout,
@@ -685,25 +693,109 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 		return fmt.Errorf("nmos walk: %w", err)
 	}
 
-	fmt.Printf("Registry %s (api_ver=%s, spec=%s)\n", c.BaseURL(), c.Codec().APIVer(), c.Codec().SpecPatch())
-
 	snap, errs := c.Walk(ctx)
-	fmt.Printf("Catalogue:\n")
-	fmt.Printf("  nodes:     %d\n", len(snap.Nodes))
-	fmt.Printf("  devices:   %d\n", len(snap.Devices))
-	fmt.Printf("  sources:   %d\n", len(snap.Sources))
-	fmt.Printf("  flows:     %d\n", len(snap.Flows))
-	fmt.Printf("  senders:   %d\n", len(snap.Senders))
-	fmt.Printf("  receivers: %d\n", len(snap.Receivers))
+
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(snap); err != nil {
+			return err
+		}
+	} else {
+		printWalkSummary(c, snap, *long)
+	}
+
 	for _, e := range errs {
 		fmt.Fprintf(os.Stderr, "warn: %v\n", e)
 	}
-	if events := rep.Snapshot(); len(events) > 0 {
-		fmt.Fprintf(os.Stderr, "%d compliance event(s) fired:\n", len(events))
-		for _, ev := range events {
-			fmt.Fprintf(os.Stderr, "  [%s] %s/%s %s: %s\n",
-				ev.Severity, ev.SpecID, ev.APIVer, ev.Code, ev.Detail)
+	printComplianceSummary(rep.Snapshot())
+	return nil
+}
+
+// printWalkSummary renders a catalogue for a human: counts first,
+// because that is the question being asked most of the time. -l adds
+// the per-resource detail an engineer needs to pick an id to route.
+func printWalkSummary(c *consumer.Controller, snap *consumer.CatalogueSnapshot, long bool) {
+	kind := "Registry"
+	if c.IsNodeFace() {
+		kind = "Node"
+	}
+	fmt.Printf("%s %s  (IS-04 %s, spec %s)\n\n", kind, c.BaseURL(),
+		c.Codec().APIVer(), c.Codec().SpecPatch())
+
+	for _, row := range []struct {
+		name string
+		n    int
+	}{
+		{"nodes", len(snap.Nodes)},
+		{"devices", len(snap.Devices)},
+		{"sources", len(snap.Sources)},
+		{"flows", len(snap.Flows)},
+		{"senders", len(snap.Senders)},
+		{"receivers", len(snap.Receivers)},
+	} {
+		fmt.Printf("  %-10s %d\n", row.name, row.n)
+	}
+
+	if !long {
+		fmt.Printf("\n  -l lists every resource; --json emits the whole catalogue\n")
+		return
+	}
+
+	for _, n := range snap.Nodes {
+		fmt.Printf("\nNODE      %s  %s\n", n.ID, n.Label)
+		fmt.Printf("          href=%s\n", n.Href)
+	}
+	for _, d := range snap.Devices {
+		fmt.Printf("\nDEVICE    %s  %s\n", d.ID, d.Label)
+		for _, ctl := range d.Controls {
+			fmt.Printf("          control  %-46s %s\n", ctl.Type, ctl.Href)
 		}
 	}
-	return nil
+	if len(snap.Senders) > 0 {
+		fmt.Printf("\nSENDERS (%d)\n", len(snap.Senders))
+		for _, s := range snap.Senders {
+			fmt.Printf("  %s  %-28s %s\n", s.ID, trunc(s.Label, 28), s.Transport)
+		}
+	}
+	if len(snap.Receivers) > 0 {
+		fmt.Printf("\nRECEIVERS (%d)\n", len(snap.Receivers))
+		for _, r := range snap.Receivers {
+			sub := "-"
+			if r.Subscription.SenderID != nil {
+				sub = *r.Subscription.SenderID
+			}
+			fmt.Printf("  %s  %-28s %-34s <- %s\n", r.ID, trunc(r.Label, 28), r.Transport, sub)
+		}
+	}
+}
+
+func trunc(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
+}
+
+// printComplianceSummary collapses identical events before printing.
+// A 208-resource Node with one systematic deviation would otherwise
+// emit 208 identical lines and bury everything else.
+func printComplianceSummary(events []spec.ComplianceEvent) {
+	if len(events) == 0 {
+		return
+	}
+	type key struct{ sev, code, detail string }
+	counts := map[key]int{}
+	var order []key
+	for _, e := range events {
+		k := key{e.Severity.String(), e.Code, e.Detail}
+		if counts[k] == 0 {
+			order = append(order, k)
+		}
+		counts[k]++
+	}
+	fmt.Fprintf(os.Stderr, "\n%d compliance event(s), %d distinct:\n", len(events), len(order))
+	for _, k := range order {
+		fmt.Fprintf(os.Stderr, "  x%-4d [%s] %s: %s\n", counts[k], k.sev, k.code, k.detail)
+	}
 }

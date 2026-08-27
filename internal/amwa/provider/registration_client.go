@@ -38,13 +38,13 @@ var ErrRegistryNotFound = errors.New("provider/node: registry returned 404 — r
 
 // RegistrationClient drives the Node-side registration loop:
 //
-//   1. POST /resource for the Node, then each Device, Source, Flow,
-//      Sender, Receiver in dependency order (referential integrity:
-//      Sources before Flows, etc.).
-//   2. Heartbeat every 5 s via POST /health/nodes/{id}.
-//   3. On 404 from heartbeat → full re-registration.
-//   4. On Stop / shutdown → DELETE every owned resource (Receivers
-//      first, then Senders, Flows, Sources, Devices, Node).
+//  1. POST /resource for the Node, then each Device, Source, Flow,
+//     Sender, Receiver in dependency order (referential integrity:
+//     Sources before Flows, etc.).
+//  2. Heartbeat every 5 s via POST /health/nodes/{id}.
+//  3. On 404 from heartbeat → full re-registration.
+//  4. On Stop / shutdown → DELETE every owned resource (Receivers
+//     first, then Senders, Flows, Sources, Devices, Node).
 type RegistrationClient struct {
 	logger *slog.Logger
 
@@ -70,9 +70,9 @@ type RegistrationClient struct {
 
 	http *stdhttp.Client
 
-	mu          sync.Mutex
-	cancelLoop  context.CancelFunc
-	registered  atomic.Bool
+	mu         sync.Mutex
+	cancelLoop context.CancelFunc
+	registered atomic.Bool
 	// onRegistered fires whenever the registered flag transitions
 	// (true→false or false→true). The callback is invoked synchronously
 	// from the loop goroutine so handlers must be quick + non-blocking
@@ -85,14 +85,36 @@ type RegistrationClient struct {
 	// On subsequent failovers we use rejoinOrRegister (heartbeat-first)
 	// per IS-04 §6.1. Touched only inside the Run loop, no mutex.
 	everRegistered bool
-	registrations uint64
-	heartbeats    uint64
-	reregister    uint64
-	deletions     uint64
-	failures      uint64
+	registrations  uint64
+	heartbeats     uint64
+	reregister     uint64
+	deletions      uint64
+	failures       uint64
 
 	// closed signals the heartbeat loop to exit + DELETE has finished.
 	closed chan struct{}
+
+	// republish carries resources whose content changed after the
+	// initial registration and must be POSTed again.
+	//
+	// IS-04 §4.2 is explicit that a Node re-POSTs a resource whenever
+	// its data changes; the Registry has no other way to learn. Without
+	// this an IS-05 activation updated the Node's own
+	// receiver.subscription and left the Registry's copy saying the
+	// receiver was idle — so a Controller reading the Query API, which
+	// is the normal way to render routing state, saw a live route as
+	// unrouted.
+	//
+	// Buffered and non-blocking on send: the caller is inside the
+	// connection store's lock during an activation, and stalling there
+	// would deadlock the very API that produced the change.
+	republish chan republishItem
+}
+
+// republishItem is one resource to re-POST to the Registration API.
+type republishItem struct {
+	typ  is04.ResourceType
+	data any
 }
 
 // NewRegistrationClient builds an unstarted client. apiVer is the
@@ -124,7 +146,25 @@ func NewRegistrationClient(logger *slog.Logger, registryURL, apiVer string, bund
 		http: &stdhttp.Client{
 			Timeout: 10 * time.Second,
 		},
-		closed: make(chan struct{}),
+		closed:    make(chan struct{}),
+		republish: make(chan republishItem, 64),
+	}
+}
+
+// Republish queues a changed resource for re-POST to the Registration
+// API, so the Registry's copy stops disagreeing with the Node's own.
+//
+// Never blocks. If the queue is full the item is dropped and logged:
+// the alternative is stalling an IS-05 activation on a slow or absent
+// Registry, and a route that works with a stale catalogue beats a route
+// that hangs. The next heartbeat cycle re-registers everything anyway,
+// so a dropped item is a delay, not a permanent divergence.
+func (c *RegistrationClient) Republish(t is04.ResourceType, data any) {
+	select {
+	case c.republish <- republishItem{typ: t, data: data}:
+	default:
+		c.logger.Warn("provider/node: republish queue full, dropping update",
+			"type", string(t), "id", resourceID(t, data))
 	}
 }
 
@@ -270,6 +310,19 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 		case <-loopCtx.Done():
 			c.deregisterAll()
 			return
+		case item := <-c.republish:
+			// Only meaningful while registered — an unregistered Node
+			// will POST everything fresh the moment it joins.
+			if !c.registered.Load() {
+				continue
+			}
+			if err := c.postResource(loopCtx, item.typ, item.data); err != nil {
+				c.logger.Warn("provider/node: republish failed",
+					"type", string(item.typ), "id", resourceID(item.typ, item.data), "err", err)
+				atomic.AddUint64(&c.failures, 1)
+				continue
+			}
+			atomic.AddUint64(&c.reregister, 1)
 		case <-ticker.C:
 			// A ticker tick and loopCtx.Done() can be ready in the same
 			// iteration; select picks at random, so we can land here with
@@ -469,8 +522,8 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 // postResource POSTs one IS-04 resource. Per IS-04 v1.3.3 §4.0:
 //   - 201 Created  → fresh registration, accept it.
 //   - 200 OK       → Registry already had this UUID (stale state). The
-//                    Node MUST DELETE the stale entry and re-POST as
-//                    fresh — AMWA test_21 enforces this.
+//     Node MUST DELETE the stale entry and re-POST as
+//     fresh — AMWA test_21 enforces this.
 //   - other        → error.
 func (c *RegistrationClient) postResource(ctx context.Context, t is04.ResourceType, data any) error {
 	status, err := c.postResourceOnce(ctx, t, data)
