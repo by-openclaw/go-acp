@@ -63,6 +63,37 @@ type NodeClock struct {
 	Locked    bool   `json:"locked,omitempty"`
 }
 
+// MarshalJSON emits the shape the clock's own schema requires, not the
+// shape omitempty happens to leave behind.
+//
+// clock_ptp.json REQUIRES all of traceable / version / gmid / locked —
+// and two of those are booleans, so a PTP clock that is unlocked or
+// untraceable loses its required fields to `omitempty` on re-encode.
+// That is not hypothetical: the Registry marshals stored resources
+// into Query-WS grains, and AMWA IS-04-02 test_31 failed with
+// "'ptp' is not one of ['internal']" — the validator's way of saying
+// the re-encoded clock matched NEITHER branch, because a registered
+// `"locked": false` had vanished. Same lesson as NodeEndpoint's
+// `authorization` above, in polymorphic form: the struct tags cannot
+// express "required for ptp, absent for internal", so encoding is
+// explicit per branch.
+func (c NodeClock) MarshalJSON() ([]byte, error) {
+	if c.RefType == "ptp" {
+		return json.Marshal(struct {
+			Name      string `json:"name"`
+			RefType   string `json:"ref_type"`
+			Traceable bool   `json:"traceable"`
+			Version   string `json:"version"`
+			GMID      string `json:"gmid"`
+			Locked    bool   `json:"locked"`
+		}{c.Name, c.RefType, c.Traceable, c.Version, c.GMID, c.Locked})
+	}
+	return json.Marshal(struct {
+		Name    string `json:"name"`
+		RefType string `json:"ref_type"`
+	}{c.Name, c.RefType})
+}
+
 // NodeIface is one entry in Node.Interfaces.
 type NodeIface struct {
 	ChassisID             *string                `json:"chassis_id"`
