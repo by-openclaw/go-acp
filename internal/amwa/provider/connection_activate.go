@@ -348,6 +348,35 @@ func (s *connectionStore) promoteLocked(e *connectionEndpoint) {
 	}
 }
 
+// promoteBootEnabled activates every endpoint the bundle seeded with
+// master_enable=true, exactly as if a controller had PATCHed it at
+// boot: active goes concrete (no "auto"), a Sender gets its SDP, and
+// IS-04 subscription.active reflects it — all through promoteLocked,
+// so there is no second activation code path to drift.
+//
+// Runs AFTER reresolveActive: promotion resolves "auto" against
+// nodeIP, and before the address pass that would mint destinations on
+// 127.0.0.1 — an address a controller can join and receive nothing
+// from.
+func (s *connectionStore) promoteBootEnabled() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, set := range []map[string]*connectionEndpoint{s.senders, s.receivers} {
+		for _, e := range set {
+			if !e.staged.MasterEnable {
+				continue
+			}
+			// Already activated — a boot pass must never re-promote
+			// over live state (restarts share this path with cold
+			// boots).
+			if e.active.Activation.ActivationTime != nil {
+				continue
+			}
+			s.promoteLocked(e)
+		}
+	}
+}
+
 // kindOf names the collection an endpoint belongs to, in the spelling
 // the URL uses.
 func kindOf(isSender bool) string {

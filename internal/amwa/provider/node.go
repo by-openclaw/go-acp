@@ -318,6 +318,10 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.connection.Store().setNodeIP(firstNodeIP(s.bundle))
 		s.connection.Store().setNodeBase(s.controlHost())
 		s.connection.Store().reresolveActive()
+		// Bundle-seeded endpoints with master_enable=true activate
+		// now — after the address pass, so their concrete params and
+		// SDP name the address the Node actually answers on.
+		s.connection.Store().promoteBootEnabled()
 	}
 
 	srv := httpsession.NewServer(s.logger)

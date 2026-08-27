@@ -188,6 +188,9 @@ func (s *connectionStore) seedFromBundle(cfg *NodeConfig) {
 		e := newEndpointForTransport(snd.Transport, true)
 		e.id = snd.ID
 		fillEventExtParams(e, cfg, snd.FlowID)
+		if cfg.Connection != nil {
+			applySeed(e, cfg.Connection.Senders[snd.ID], snd.Transport)
+		}
 		s.senders[snd.ID] = e
 	}
 	for i := range cfg.Receivers {
@@ -195,8 +198,36 @@ func (s *connectionStore) seedFromBundle(cfg *NodeConfig) {
 		e := newEndpointForTransport(rcv.Transport, false)
 		e.id = rcv.ID
 		fillEventExtParams(e, cfg, nil)
+		if cfg.Connection != nil {
+			applySeed(e, cfg.Connection.Receivers[rcv.ID], rcv.Transport)
+		}
 		s.receivers[rcv.ID] = e
 	}
+}
+
+// applySeed folds a bundle's boot connection state into a fresh
+// endpoint's STAGED block. Seeds touch staged only: ACTIVE is derived
+// later, by reresolveActive once the Node knows its address, and by
+// promoteBootEnabled for endpoints the seed enables — the same two
+// paths a controller-written configuration takes.
+func applySeed(e *connectionEndpoint, seed *EndpointSeed, transport string) {
+	if seed == nil {
+		return
+	}
+	// A two-leg seed on a one-leg endpoint grows the endpoint, and the
+	// constraints envelope grows with it: IS-05 requires one constraint
+	// set per leg, and the tool checks the counts agree.
+	for len(e.staged.TransportParams) < len(seed.TransportParams) {
+		e.staged.TransportParams = append(e.staged.TransportParams, defaultLegParams(transport, e.isSender))
+		e.active.TransportParams = append(e.active.TransportParams, defaultLegParams(transport, e.isSender))
+		e.constraints = append(e.constraints, constraintsForTransport(transport, e.isSender))
+	}
+	for li, leg := range seed.TransportParams {
+		for k, v := range leg {
+			e.staged.TransportParams[li][k] = v
+		}
+	}
+	e.staged.MasterEnable = seed.MasterEnable
 }
 
 // fillEventExtParams resolves the IS-07 extension parameters for an
