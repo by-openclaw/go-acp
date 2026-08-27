@@ -7,7 +7,24 @@ The suite drives both faces of the Registry: the Registration API that
 Nodes POST into, and the Query API + WebSocket subscriptions that
 Controllers read from.
 
-## Score — 236 Pass / 0 Fail
+## Score — 69.2% coverage, and 0 failures within it
+
+**Read the coverage number first.** The tool's `Fail` tally counts only
+tests that RAN; anything skipped contributes zero to it, so a suite
+that executes two thirds of itself still reports "0 Fail". Quoting that
+alone overstates conformance.
+
+```
+applicable          341     (372 total, less 31 Not Applicable)
+EXECUTED            236     pass=236 fail=0 warn=0
+SKIPPED             105     disabled=64 couldnottest=37 manual=4
+COVERAGE           69.2%
+```
+
+Run `python tests/integration/nmos/amwa/coverage.py <results-dir>` to
+regenerate this rather than eyeballing pass counts.
+
+Per minor, of what executed:
 
 | Minor | Pass | Fail |
 |---|---:|---:|
@@ -16,9 +33,16 @@ Controllers read from.
 | v1.2 | 62 | 0 |
 | v1.3 | 65 | 0 |
 
-Remaining states are the tool's own: 64 Test Disabled (HTTPS/auth
-rounds, off in this config), 37 Could Not Test, 31 Not Applicable,
-4 Manual.
+### The 105 that did not run
+
+| Count | Why | Real gap? |
+|---:|---|---|
+| 64 | `ENABLE_AUTH` is False | **yes** — BCP-003-02 Authorization is unimplemented, so this is untested *and* unwritten |
+| 37 | "No resources found to perform this test" | **yes, ours** — the registry was near-empty; the run needs a fuller resource set registered first |
+| 4 | Manual | needs a human |
+
+So: nothing that ran failed, and roughly a third of the suite did not
+run. Both halves are true and only the pair is honest.
 
 ## Run it — on the LAN, with real discovery
 

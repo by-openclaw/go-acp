@@ -9,7 +9,39 @@ cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/amwa-conformance
 8 suites × every applicable IS-04 minor. 31 runs, one JSON + one node
 log each.
 
-## Current score — 998 Pass / 12 Fail
+## Current score — 72.1% coverage, 98.0% of executed passed
+
+**Read the coverage number first.** The tool's `Fail` tally counts only
+tests that RAN; a skipped test contributes zero to it. Reporting
+"998 pass / 12 fail" without the coverage figure overstates conformance,
+because nearly 400 applicable tests never reached a verdict at all.
+
+```
+applicable         1412     (1550 total, less 138 Not Applicable)
+EXECUTED           1018     pass=998 fail=12 warn=8
+SKIPPED             394     disabled=271 couldnottest=78 notimpl=25 manual=20
+COVERAGE           72.1%
+```
+
+Regenerate with `python tests/integration/nmos/amwa/coverage.py <dir>`.
+
+### The 394 that did not run
+
+| Count | Why | Real gap? |
+|---:|---|---|
+| 252 | `ENABLE_AUTH` is False | **yes** — BCP-003-02 Authorization is unimplemented |
+| 36 | "Replaced by 'auto' test" | no — superseded by the auto_ variants |
+| 30 | IS-07 Events API returned no number/string/enum sources | **yes, ours** — the test bundle has no such sources |
+| 26 | "No resources found to perform this test" | **yes, ours** — fixture too thin |
+| 25 | No BCP-004-01 `constraint_sets` in Receiver caps | **yes, ours** — BCP-004-01 is implemented but not exercised |
+| 15 | `DNS_SD_MODE` is not 'unicast' | **yes** — unicast DNS-SD is NOT covered by these runs |
+| 20 | Manual | needs a human |
+
+Two worth calling out: **unicast DNS-SD is untested here**, and
+**BCP-004-01 caps are implemented but never exercised** because the
+test node's Receivers carry no constraint_sets.
+
+## Failure detail — 12 Fail
 
 Every failure is in one suite, **IS-09-02**, 3 on each of the four
 minors. Every other suite is clean at every minor:
