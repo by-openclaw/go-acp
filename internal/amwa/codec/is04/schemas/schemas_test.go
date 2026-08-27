@@ -203,6 +203,59 @@ func TestVersionsAreIsolated(t *testing.T) {
 	t.Logf("v1.0 correctly cannot load %d later-minor schemas", len(onlyLater))
 }
 
+// TestRequiredLeavesFindsChannelsOnAudioSource proves the $ref walk
+// reaches the property that caused the v1.1 registration failure.
+//
+// `channels` is not in source.json. It is in source_audio.json, which
+// source.json only reaches through a oneOf $ref — exactly the
+// indirection a shallow scan misses. If this ever stops finding it, the
+// per-minor drop-table guard silently stops guarding anything.
+func TestRequiredLeavesFindsChannelsOnAudioSource(t *testing.T) {
+	for _, ver := range []string{"v1.1", "v1.2", "v1.3"} {
+		req, err := RequiredLeaves(ver, "source")
+		if err != nil {
+			t.Fatalf("%s: %v", ver, err)
+		}
+		if !req["channels"] {
+			t.Errorf("%s: `channels` not found via source.json's $refs — the walk "+
+				"no longer reaches source_audio.json", ver)
+		}
+	}
+	// v1.0 has no audio Source variant at all, which is why the v1.0
+	// codec is right to strip `channels` and v1.1 was wrong to.
+	req, err := RequiredLeaves("v1.0", "source")
+	if err != nil {
+		t.Fatalf("v1.0: %v", err)
+	}
+	if req["channels"] {
+		t.Error("v1.0 has no source_audio.json; `channels` must not be required there")
+	}
+}
+
+// TestRequiredLeavesIsScopedToOneKind: scanning the whole directory
+// reported `caps` and `subscription` as required for a v1.0 Sender
+// because they are required on a Receiver. Scope is what makes the
+// guard usable rather than noise.
+func TestRequiredLeavesIsScopedToOneKind(t *testing.T) {
+	sender, err := RequiredLeaves("v1.0", "sender")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leaked := range []string{"caps", "subscription", "interface_bindings"} {
+		if sender[leaked] {
+			t.Errorf("v1.0 sender.json requires %q — it should not; the walk is "+
+				"picking up another resource's schema", leaked)
+		}
+	}
+	receiver, err := RequiredLeaves("v1.0", "receiver")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receiver["caps"] {
+		t.Error("v1.0 receiver.json does require caps — the walk missed it")
+	}
+}
+
 // TestNeuronV10DeviceWithControls: the regression that started all of
 // this. A real EVS Neuron serves `controls` on its v1.0 Device tree.
 // Our hand-written v1.0 codec rejected it. AMWA's own v1.0 schema does

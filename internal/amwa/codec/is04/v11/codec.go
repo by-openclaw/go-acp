@@ -53,7 +53,14 @@ const SpecPatch = "v1.1.3"
 var drop = map[string][]string{
 	"node":   {"interfaces", "services[].authorization", "api.endpoints[].authorization"},
 	"device": {"controls[].authorization"},
-	"source": {"channels"},
+	// NOT "channels": v1.1 is where the audio Source variant arrives,
+	// and source_audio.json makes `channels` REQUIRED there. Stripping
+	// it left the payload matching neither branch of source.json's
+	// oneOf, so every audio Source silently failed to register and
+	// AMWA IS-04-01 v1.1 failed test_09/10/11/26 with "not found in
+	// the registry". v1.0 has no source_audio.json at all, which is
+	// why v10 does strip it.
+	"source": nil,
 	"flow":   nil,
 	"sender": {"caps", "interface_bindings", "subscription"},
 	"receiver": {
