@@ -21,10 +21,21 @@ type Device struct {
 
 // DeviceControl is one entry in Device.Controls — points at IS-05 /
 // IS-07 / IS-08 / IS-12 sub-APIs.
+//
+// `authorization` carries NO omitempty: v1.3's control schema requires
+// the field, false is its common value, and omitempty on a bool is
+// exactly how a required false vanishes on re-encode. This is the
+// third member of that bug family (NodeEndpoint.Authorization,
+// NodeClock's ptp booleans) and it was found the same way — a real
+// EVS Neuron registered controls with `"authorization": false`, our
+// Registry re-served them without the field, and Cerebrum's IS-05
+// panel for the Neuron went silently blank. Lower minors don't list
+// the property and draft-04 permits extras, so always emitting it is
+// safe on every wire version.
 type DeviceControl struct {
 	Href          string `json:"href"`
 	Type          string `json:"type"` // URN
-	Authorization bool   `json:"authorization,omitempty"`
+	Authorization bool   `json:"authorization"`
 }
 
 // Validate enforces device.json rules.
