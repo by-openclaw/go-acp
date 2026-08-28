@@ -348,6 +348,13 @@ Setup notes that cost time, for the next person:
   registry's host:port arrive via the Bonjour SRV record.
 - Cerebrum subscribes at v1.3 only, one subscription per resource
   type, non-persistent.
+- **Query pagination (measured 2026-08-28, post vendor release)**: the
+  default page size is STILL 10, but the release fixes the pagination
+  *machinery* — no-param collection GETs now carry proper RFC 5988
+  `Link: rel="next"/"prev"` plus `X-Paging-Limit/Since/Until` headers,
+  so a conformant client walks the full set. A client that ignores
+  `Link` still silently sees only the first 10 of everything; the dhs
+  controller follows `Link` and is unaffected.
 - **No auto-reconnect.** When the external registry restarts, the
   Network Media client's connections and WebSocket subscriptions drop
   and Cerebrum does NOT retry — observed sitting disconnected for
