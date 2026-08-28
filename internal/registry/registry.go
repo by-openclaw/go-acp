@@ -59,6 +59,13 @@ type ServeOptions struct {
 	// spec-legal lever.
 	PageLimitDefault int
 
+	// InstanceName overrides the DNS-SD instance label the registry
+	// announces under (default "dhs-nmos-registry"). Peers key stored
+	// server entries on this name, so republishing under a fresh name
+	// is the operator's lever when a peer has cached a stale or
+	// poisoned resolution for the old one.
+	InstanceName string
+
 	// DiscoveryMode picks the discovery transport: "mdns" (RFC 6762
 	// multicast), "unicast" (RFC 6763 §10 SRV/TXT lookup against a
 	// configured resolver), or "static" (no discovery — peers come

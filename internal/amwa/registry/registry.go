@@ -212,9 +212,19 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 			// critical because both register service types resolve to
 			// the same host:port and would otherwise collide as
 			// "duplicate" by FullName.
-			instanceName := "dhs-nmos-registry"
+			// The instance name is configurable because DNS-SD peers
+			// key their stored server entries on it: a peer that
+			// learned this name while our announce was defective (the
+			// loopback A-record era) may keep the poisoned resolution
+			// cached under the SAME name indefinitely. Publishing under
+			// a fresh name creates a clean entry beside the stale one
+			// without touching the peer.
+			instanceName := opts.InstanceName
+			if instanceName == "" {
+				instanceName = "dhs-nmos-registry"
+			}
 			if svc == codec.ServiceRegisterLegacy {
-				instanceName = "dhs-nmos-registry-legacy"
+				instanceName += "-legacy"
 			}
 			ins := codec.Instance{
 				Name:    instanceName,

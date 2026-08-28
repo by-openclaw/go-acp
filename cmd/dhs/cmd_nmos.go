@@ -540,6 +540,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	gcInterval := fs.Duration("gc-interval", time.Second, "heartbeat watchdog tick rate")
 	heartbeatTimeout := fs.Duration("heartbeat-timeout", 12*time.Second, "evict Nodes after this long without heartbeats (IS-04 §6.1 default 12s)")
 	pageLimitDefault := fs.Int("page-limit-default", 0, "Query API page size when the client sends no paging.limit (0 = spec-parity default 100; raise for first-page-only controllers on plants larger than one page)")
+	instanceName := fs.String("instance-name", "", "DNS-SD instance label to announce under (default dhs-nmos-registry; change when a peer has cached a stale entry for the old name)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -565,6 +566,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		GCInterval:       *gcInterval,
 		HeartbeatTimeout: *heartbeatTimeout,
 		PageLimitDefault: *pageLimitDefault,
+		InstanceName:     *instanceName,
 	}
 	verLabel := *apiVer
 	if verLabel == "" {
