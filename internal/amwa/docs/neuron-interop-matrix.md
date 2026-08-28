@@ -85,6 +85,17 @@ Staged/Active + DUP SDP, `VTX-01` stayed empty even after Refresh
 IS-05. Same registry, same consumer, same dialog — the only variable
 is the node's control homing.
 
+**Amendment, same day**: after a registry rebuild + fresh Neuron
+registration + a client re-attach, the SAME dialogs rendered the
+Neuron COMPLETELY — Staged/Active populated and its genuine ST 2110
+transport file (PTP `ts-refclk`, 1080p50 `fmtp`, `group:DUP` pair)
+displayed end-to-end through Neuron → dhs registry → Cerebrum. So the
+triple-homed controls don't break the pairing permanently — they make
+Cerebrum's control pick **non-deterministic per re-read** (blank one
+attach, complete the next). Still worth raising with EVS, as a plant
+cannot operate on a coin-flip; the deterministic fix remains
+single-homing the Neuron's NMOS controls to the management interface.
+
 Two late receipts from the same session:
 
 - **Sender `caps` fidelity at scale**: after the absent-vs-empty fix,
