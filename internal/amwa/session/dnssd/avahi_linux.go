@@ -44,11 +44,11 @@ const (
 	avahiEntryIf     = "org.freedesktop.Avahi.EntryGroup"
 
 	// Avahi protocol constants — from avahi-common/defs.h.
-	avahiIfaceUnspec    = int32(-1) // AVAHI_IF_UNSPEC — every iface
-	avahiProtoUnspec    = int32(-1) // AVAHI_PROTO_UNSPEC — every proto
-	avahiProtoIPv4      = int32(0)  // AVAHI_PROTO_INET
-	avahiLookupNoFlags  = uint32(0)
-	avahiPubNoFlags     = uint32(0)
+	avahiIfaceUnspec   = int32(-1) // AVAHI_IF_UNSPEC — every iface
+	avahiProtoUnspec   = int32(-1) // AVAHI_PROTO_UNSPEC — every proto
+	avahiProtoIPv4     = int32(0)  // AVAHI_PROTO_INET
+	avahiLookupNoFlags = uint32(0)
+	avahiPubNoFlags    = uint32(0)
 )
 
 // tryDaemonBrowser — Linux: probe avahi-daemon via DBus; pick it if
