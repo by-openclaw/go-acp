@@ -212,6 +212,23 @@ resource, and a Controller renders routing state from the Registry.
 > from `api.endpoints[0].host` in the bundle. If a device's IS-05
 > endpoint resolves to an address you cannot reach, that field is why.
 
+### Two registry flags the field taught us to need
+
+- `--page-limit-default 1000` — first-page-only controllers exist
+  (Cerebrum's Network Media reads page one per collection and never
+  follows `Link`); on a plant larger than one page they silently lose
+  everything registered before the newest device. Raising the
+  no-param default is spec-legal; explicit client limits still win.
+- `--instance-name` — DNS-SD peers key stored server entries on the
+  announced label; if a peer cached a stale/poisoned resolution for
+  the old name, republish under a fresh one.
+
+And two peer-side checks before debugging anything else: resolve your
+own SRV target from ANOTHER host (a loopback A-record in your announce
+makes peers connect to themselves, silently — it happened to us), and
+on Cerebrum, verify which Query Server the **Active checkbox** selects
+(see `cerebrum-interop.md`).
+
 ---
 
 ## 5. Discovery modes
