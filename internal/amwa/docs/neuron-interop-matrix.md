@@ -79,6 +79,12 @@ own triple-homed `device.controls` (three sr-ctrl hosts advertised;
 a device-side pairing issue independent of which registry carries
 the catalogue.
 
+Sealed by the final A/B through the SAME consumer device (Cerebrum
+`Network Media`, 2026-08-28): `dhs-sender-full` rendered full
+Staged/Active + DUP SDP, `VTX-01` stayed empty even after Refresh
+IS-05. Same registry, same consumer, same dialog — the only variable
+is the node's control homing.
+
 ## 7. IS-09 dimension (dhs side — live, not just suite-scored)
 
 `dhs producer nmos serve --role system --config
