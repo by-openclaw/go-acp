@@ -477,10 +477,15 @@ rule: after attach or upgrade, wait before debugging blank panes.
 
 The Neuron pane stayed blank through the same window — consistent
 with the pre-existing per-attach coin-flip on its triple-homed
-controls (this attach picked one of the two DMZ-unreachable hosts);
-2.8.17 does not change that behaviour. Both items remain EVS ticket
-material: the multi-minute render delay, and control-href selection
-that ignores reachability.
+controls. Precision (2026-08-28, after operator correction): the two
+non-mgmt hrefs (`10.6.40.51` / `10.7.40.51`) are addresses of the
+Neuron's media interfaces whose networks DO NOT EXIST in this lab —
+nothing to route, no port to open; the device advertises its
+interface config, not reachable endpoints. 2.8.17 does not change
+that behaviour. Both items remain EVS ticket material: the
+multi-minute render delay, and control-href selection that ignores
+reachability (compounded by the Neuron advertising unconnected
+interfaces).
 
 ### Cerebrum device-panel knobs that affect interop (per
 "Modify Device" UI screenshot 2026-05-01)

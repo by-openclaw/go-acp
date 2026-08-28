@@ -75,9 +75,11 @@ nodes — `dhs-sender-full` displayed complete Staged/Active
 transport file; `dhs-sender-min` displayed exactly its factory-fresh
 contract. The Neuron's thin panes are therefore attributable to its
 own triple-homed `device.controls` (three sr-ctrl hosts advertised;
-`10.7.40.51` and `10.6.40.51` unreachable from the DMZ — measured),
-a device-side pairing issue independent of which registry carries
-the catalogue.
+`10.7.40.51` and `10.6.40.51` are media-interface addresses whose
+networks do not exist in this lab — the device advertises its
+interface config, not reachable endpoints; only `10.6.255.102`
+answers — measured), a device-side pairing issue independent of
+which registry carries the catalogue.
 
 Sealed by the final A/B through the SAME consumer device (Cerebrum
 `Network Media`, 2026-08-28): `dhs-sender-full` rendered full
