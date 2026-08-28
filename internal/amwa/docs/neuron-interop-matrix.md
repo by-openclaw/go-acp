@@ -98,6 +98,21 @@ attach, complete the next). Still worth raising with EVS, as a plant
 cannot operate on a coin-flip; the deterministic fix remains
 single-homing the Neuron's NMOS controls to the management interface.
 
+**RESOLVED 2026-08-28 — single-homing achieved.** The operator
+disabled the Neuron's in-band (media-interface) NMOS. The node doc
+re-registered mgmt-only immediately, but the device doc kept
+advertising all three hosts — the Neuron does not re-POST an
+unchanged-looking device on its own. Forcing it took one spec-legal
+registry-side eviction: `DELETE /registration/v1.3/resource/nodes/
+{id}` → next heartbeat 404 → full re-registration (IS-04 §4.1), after
+which `device.controls` carries `10.6.255.102` ONLY (4 control
+entries, one host) and the whole catalogue returned (2 nodes,
+215 sources/flows, 211 senders/receivers). Every href a controller
+can now pick answers; the coin-flip is structurally gone. Operator
+recipe for any triple-homed device: disable unused NMOS interfaces on
+the device, then evict its node from the registry to force a fresh
+device doc.
+
 Two late receipts from the same session:
 
 - **Sender `caps` fidelity at scale**: after the absent-vs-empty fix,
