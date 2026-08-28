@@ -12,13 +12,20 @@ import (
 type Sender struct {
 	ResourceCore
 
-	FlowID            *string            `json:"flow_id"` // UUID OR null
-	Transport         string             `json:"transport"`
-	DeviceID          string             `json:"device_id"`
-	ManifestHref      *string            `json:"manifest_href"` // URI OR null
-	InterfaceBindings []string           `json:"interface_bindings"`
-	Caps              map[string]any     `json:"caps,omitempty"`
-	Subscription      SenderSubscription `json:"subscription"`
+	FlowID            *string  `json:"flow_id"` // UUID OR null
+	Transport         string   `json:"transport"`
+	DeviceID          string   `json:"device_id"`
+	ManifestHref      *string  `json:"manifest_href"` // URI OR null
+	InterfaceBindings []string `json:"interface_bindings"`
+	// Caps is a pointer so ABSENT and EMPTY survive a round-trip as
+	// what they were: a real EVS Neuron registers every sender with
+	// `"caps": {}`, and a plain map with omitempty re-served all 208
+	// of them without the field. The schema doesn't require caps, so
+	// nothing failed — the Registry just quietly returned a different
+	// document than the one registered, which is exactly the class of
+	// infidelity a controller diff will eventually trip over.
+	Caps         *map[string]any    `json:"caps,omitempty"`
+	Subscription SenderSubscription `json:"subscription"`
 }
 
 // SenderSubscription mirrors sender.json `subscription`. Per IS-04

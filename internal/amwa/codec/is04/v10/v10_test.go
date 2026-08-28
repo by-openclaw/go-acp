@@ -351,7 +351,8 @@ func TestSenderEncodeStripsV12PlusFields(t *testing.T) {
 	c := Codec{}
 	s := validSenderV10("44444444-4444-4444-8444-444444444444")
 	rid := "55555555-5555-4555-8555-555555555555"
-	s.Caps = map[string]any{"x": 1}
+	caps := map[string]any{"x": 1}
+	s.Caps = &caps
 	s.InterfaceBindings = []string{"eth0"}
 	s.Subscription = is04.SenderSubscription{ReceiverID: &rid, Active: true}
 	body, err := c.EncodeSender(s)

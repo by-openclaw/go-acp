@@ -137,7 +137,8 @@ func TestSenderEncodeStripsV12Fields(t *testing.T) {
 	s := validSenderV11("11111111-1111-4111-8111-111111111111")
 	// Caller might fill v1.2+ fields; v1.1 encode must drop all of them.
 	rid := "22222222-2222-4222-8222-222222222222"
-	s.Caps = map[string]any{"k": "v"}
+	caps := map[string]any{"k": "v"}
+	s.Caps = &caps
 	s.InterfaceBindings = []string{"eth0"}
 	s.Subscription = is04.SenderSubscription{ReceiverID: &rid, Active: true}
 
