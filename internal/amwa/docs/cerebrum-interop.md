@@ -348,6 +348,15 @@ Setup notes that cost time, for the next person:
   registry's host:port arrive via the Bonjour SRV record.
 - Cerebrum subscribes at v1.3 only, one subscription per resource
   type, non-persistent.
+- **No auto-reconnect.** When the external registry restarts, the
+  Network Media client's connections and WebSocket subscriptions drop
+  and Cerebrum does NOT retry — observed sitting disconnected for
+  ~1 h with a healthy, announcing registry one subnet away. Its UI
+  keeps rendering the stale catalogue with no error, so the symptom is
+  "data missing / SDP empty", not "device offline". Recovery is a
+  manual nudge: disable→enable (or restart) the Network Media device.
+  Plan registry maintenance accordingly: every Cerebrum consumer needs
+  a nudge afterwards.
 
 ### Verification status
 
