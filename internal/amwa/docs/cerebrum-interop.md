@@ -366,6 +366,17 @@ Setup notes that cost time, for the next person:
   `dhs registry nmos serve --page-limit-default 1000` (spec-legal —
   the no-param page size is implementation-defined; explicit client
   limits still win, conformance default untouched at 100).
+- **Delete + re-add serves cache, not network.** Measured 2026-08-28:
+  across a full delete → re-add → nudge sequence of the Network Media
+  device, an attach watcher saw zero TCP connections in 20 minutes and
+  a 12-minute packet capture recorded zero HTTP requests — yet the
+  "fresh" device rendered a node with 208 senders. The new device
+  instance re-binds to the server-wide per-UUID cache (the Generic
+  Device Data store) and displays it as live, including a "Fully
+  Connected" event that refers to its own comms layer. Once the client
+  has stopped dialling, no device-level action restores network reads;
+  the remaining levers are a Cerebrum server-service restart or vendor
+  support. Plan external-registry maintenance around this.
 - **No auto-reconnect.** When the external registry restarts, the
   Network Media client's connections and WebSocket subscriptions drop
   and Cerebrum does NOT retry — observed sitting disconnected for
