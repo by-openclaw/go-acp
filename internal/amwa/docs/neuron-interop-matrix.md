@@ -136,6 +136,16 @@ through all three paths:
 
 ## Field notes from running the cells
 
+- **The night's biggest dhs-side defect: loopback in the mDNS
+  announce.** Avahi published the registry's A-record on `lo` as well
+  as `eth0`, so a Bonjour peer resolving `dhs-debian.local` could get
+  `127.0.0.1` and silently connect to itself. Hours of "Cerebrum never
+  dials" symptoms — including findings initially attributed to the
+  Cerebrum client — traced to this. Removing loopback from the
+  announce made Cerebrum connect and render the Neuron's full details
+  + SDP with zero operator action. If a discovery-based peer looks
+  dead, resolve your own SRV target from another host FIRST.
+
 - The `_nmos-node` browse for cell 1 surfaced a **stray node from an
   earlier session** still announcing from another LXC. Second time
   this class bit (a stray *registry* once got scored in place of the

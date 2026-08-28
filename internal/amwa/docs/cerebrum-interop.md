@@ -366,6 +366,22 @@ Setup notes that cost time, for the next person:
   `dhs registry nmos serve --page-limit-default 1000` (spec-legal —
   the no-param page size is implementation-defined; explicit client
   limits still win, conformance default untouched at 100).
+- **ROOT-CAUSE CORRECTION (2026-08-28, evening).** The two findings
+  below — "delete + re-add serves cache" and "no auto-reconnect" —
+  were measured while the dhs registry's OWN mDNS announce was
+  defective: Avahi also published the registry's A-record on loopback,
+  so a Bonjour client resolving the SRV target could receive
+  `127.0.0.1`, connect to itself, and look permanently dead with no
+  error. The instant loopback was removed from the announce
+  (`deny-interfaces=lo` on the registry host), Cerebrum connected and
+  rendered the full catalogue WITHOUT any operator action — validating
+  the operator's statement that "Cerebrum connects if a registry
+  exists". Cerebrum's cache-rendering and silent-failure UX made the
+  dhs defect invisible for hours, but the defect was ours. The entries
+  below remain as observed behaviour of the client under a poisoned
+  announce; treat their "never redials" claims as UNPROVEN against a
+  healthy announce. dhs TODO: exclude loopback at the announce layer
+  in code, not just host config.
 - **Delete + re-add serves cache, not network.** Measured 2026-08-28:
   across a full delete → re-add → nudge sequence of the Network Media
   device, an attach watcher saw zero TCP connections in 20 minutes and
