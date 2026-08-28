@@ -1,10 +1,10 @@
 # NMOS — Mode B unicast DNS-SD with pfSense Unbound
 
 Production recipe for IS-04 §3.1.2 + RFC 6763 §10 unicast DNS-SD against
-the lab pfSense at 10.100.0.1 / `by-systems.arpa.` zone. Live-verified
-2026-04-30 against EVS Cerebrum's hosted Registry (10.100.0.5:8080) +
-the workstation `dhs registry nmos serve` (10.6.239.113:8235); both
-instances visible from one `dhs consumer nmos discover` call.
+the lab pfSense at 10.100.0.1 / `by-systems.arpa.` zone. Live-verified 2026-04-30; records refreshed 2026-08-28 to the lab-LXC
+topology (dhs registry + IS-09 System API on 10.100.0.101, Cerebrum on
+10.100.0.5). Both registries visible from one `dhs consumer nmos
+discover` call.
 
 > **Why Mode B over Mode A across subnets.** Mode A (mDNS multicast) is
 > link-local — TTL=1, won't traverse a router. Reflectors like Avahi can
@@ -53,8 +53,8 @@ forward-zone:
 # === pfBlockerNG block lists =================================================
 server:include: /var/unbound/pfb_dnsbl.*conf
 
-# === AMWA NMOS / IS-04 v1.3 Registry catalogue ===============================
-# IS-04 §3.1 — Nodes/Controllers discover Registries via DNS-SD by browsing
+# === AMWA NMOS / IS-04 Registry + IS-09 System catalogue =====================
+# IS-04 §3.1 — Nodes/Controllers discover via DNS-SD by browsing
 # `_nmos-register._tcp` (registration face) and `_nmos-query._tcp` (query
 # face). Each instance contributes one PTR + one SRV + one TXT (+ one A for
 # the SRV target), with the four IS-04 §3.1.1.1 TXT keys (api_proto, api_ver,
@@ -62,34 +62,40 @@ server:include: /var/unbound/pfb_dnsbl.*conf
 # to the bare service name; the browser chases each one.
 server:local-zone: "by-systems.arpa." transparent
 
-# --- dhs Registry on by-desk-03 (10.6.239.113:8235) --------------------------
-# `dhs registry nmos serve --bind :8235` running on the workstation.
-# Phase 1 step #1 ships the discovery face only; Registration / Query HTTP
-# REST surface lands in Phase 1 step #4.
+# --- dhs Registry on the lab LXC (10.100.0.101:8235) -------------------------
+# `dhs registry nmos serve --bind :8235 --advertise-host 10.100.0.101:8235`.
+# Full Registration + Query faces incl. WebSocket subscriptions, all four
+# IS-04 minors in parallel. Scored 100% of executed IS-04-02 tests, 0 fails;
+# holds the EVS Neuron (208 senders) in production use since 2026-08-28.
 server:local-data: "_nmos-register._tcp.by-systems.arpa. 60 IN PTR dhs._nmos-register._tcp.by-systems.arpa."
-server:local-data: "dhs._nmos-register._tcp.by-systems.arpa. 60 IN SRV 0 0 8235 by-desk-03.by-systems.arpa."
-server:local-data: 'dhs._nmos-register._tcp.by-systems.arpa. 60 IN TXT "api_proto=http" "api_ver=v1.3" "api_auth=false" "pri=0"'
+server:local-data: "dhs._nmos-register._tcp.by-systems.arpa. 60 IN SRV 0 0 8235 dhs-lab.by-systems.arpa."
+server:local-data: 'dhs._nmos-register._tcp.by-systems.arpa. 60 IN TXT "api_proto=http" "api_ver=v1.0,v1.1,v1.2,v1.3" "api_auth=false" "pri=0"'
 server:local-data: "_nmos-query._tcp.by-systems.arpa.    60 IN PTR dhs._nmos-query._tcp.by-systems.arpa."
-server:local-data: "dhs._nmos-query._tcp.by-systems.arpa. 60 IN SRV 0 0 8235 by-desk-03.by-systems.arpa."
-server:local-data: 'dhs._nmos-query._tcp.by-systems.arpa. 60 IN TXT "api_proto=http" "api_ver=v1.3" "api_auth=false" "pri=0"'
-server:local-data: "by-desk-03.by-systems.arpa. 60 IN A 10.6.239.113"
+server:local-data: "dhs._nmos-query._tcp.by-systems.arpa. 60 IN SRV 0 0 8235 dhs-lab.by-systems.arpa."
+server:local-data: 'dhs._nmos-query._tcp.by-systems.arpa. 60 IN TXT "api_proto=http" "api_ver=v1.0,v1.1,v1.2,v1.3" "api_auth=false" "pri=0"'
+server:local-data: "dhs-lab.by-systems.arpa. 60 IN A 10.100.0.101"
 
-# --- dhs IS-09 System API on by-desk-03 (10.6.239.113:10641) -----------------
-# `dhs producer nmos serve --role system --config global.json` running on the
-# workstation. IS-09 v1.0 has its own DNS-SD service type (`_nmos-system._tcp`)
-# and predates IS-10, so the TXT record advertises only api_proto / api_ver /
-# pri — `api_auth` is intentionally absent per the v1.0 spec.
+# --- dhs IS-09 System API on the lab LXC (10.100.0.101:10641) ----------------
+# `dhs producer nmos serve --role system --config system-global.json`
+# (fixture: tests/fixtures/nmos/system-global.json — heartbeat 4 s + PTP
+# domain 127 as apply-markers). IS-09 v1.0 predates IS-10, so the TXT
+# advertises only api_proto / api_ver / pri — `api_auth` is intentionally
+# absent per the v1.0 spec.
+# No cerebrum._nmos-system._tcp entry: Cerebrum 404s every /x-nmos/system/*
+# path (re-verified 2026-08-28), so it does NOT expose IS-09 — advertising
+# one would lie to the network.
 server:local-data: "_nmos-system._tcp.by-systems.arpa.    60 IN PTR dhs._nmos-system._tcp.by-systems.arpa."
-server:local-data: "dhs._nmos-system._tcp.by-systems.arpa. 60 IN SRV 0 0 10641 by-desk-03.by-systems.arpa."
+server:local-data: "dhs._nmos-system._tcp.by-systems.arpa. 60 IN SRV 0 0 10641 dhs-lab.by-systems.arpa."
 server:local-data: 'dhs._nmos-system._tcp.by-systems.arpa. 60 IN TXT "api_proto=http" "api_ver=v1.0" "pri=0"'
 
 # --- EVS Cerebrum hosted Registry (10.100.0.5:8080) --------------------------
 # Cerebrum's "Network Media Server" device with Hosted Registry mode enabled;
-# Cerebrum runs both Registration + Query faces on the same HTTP listener.
-# IS-04 catalogue versions confirmed live 2026-04-30: v1.1, v1.2, v1.3.
-# Note: per `cerebrum-interop.md` §5, Cerebrum's Query face returns 404 on
-# `nodes/`/`devices/`/etc. — Controllers must walk Nodes directly. Only
-# `subscriptions/` (WS subscription POST endpoint) is usable.
+# Registration + Query faces on one HTTP listener. Catalogue versions live
+# 2026-08-28: v1.1, v1.2, v1.3. UPDATE vs the 2026-04-30 note: the Query
+# face DOES serve nodes/devices/senders/… on the current licensed build —
+# but with a default page size of 10 (use paging.limit or Link headers),
+# and POST /subscriptions returns 404 (no WS subscriptions; the dhs
+# registry has them). Details: cerebrum-interop.md.
 server:local-data: "_nmos-register._tcp.by-systems.arpa. 60 IN PTR cerebrum._nmos-register._tcp.by-systems.arpa."
 server:local-data: "cerebrum._nmos-register._tcp.by-systems.arpa. 60 IN SRV 0 0 8080 cerebrum-nmos.by-systems.arpa."
 server:local-data: 'cerebrum._nmos-register._tcp.by-systems.arpa. 60 IN TXT "api_proto=http" "api_ver=v1.1,v1.2,v1.3" "api_auth=false" "pri=0"'
@@ -150,12 +156,12 @@ Discovered 2 instance(s) of _nmos-register._tcp.by-systems.arpa:
     auth = false
     ipv4 = 10.100.0.5
   dhs._nmos-register._tcp.by-systems.arpa
-    host = by-desk-03.by-systems.arpa:8235
+    host = dhs-lab.by-systems.arpa:8235
     pri  = 0
     proto= http
-    ver  = v1.3
+    ver  = v1.0,v1.1,v1.2,v1.3
     auth = false
-    ipv4 = 10.6.239.113
+    ipv4 = 10.100.0.101
 ```
 
 Order is unspecified per RFC 6763 §4.3; both instances must appear.
