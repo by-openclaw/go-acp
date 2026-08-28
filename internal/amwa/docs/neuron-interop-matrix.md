@@ -113,6 +113,19 @@ recipe for any triple-homed device: disable unused NMOS interfaces on
 the device, then evict its node from the registry to force a fresh
 device doc.
 
+**Closed same evening.** A device reboot initially came back with the
+NMOS registration client silent (P2P `_nmos-node` advert, zero
+registration attempts; NMOS registration state is NOT exposed via
+acp2 — 219-property walk, no nmos/discovery keys — so only the device
+UI can restore it). After the operator's NMOS off/on cycle the Neuron
+re-registered at 20:24:58 with mgmt-only controls (single endpoint,
+single control host — the in-band disable persisted the reboot) and
+with IS-09 disabled on the device (registration works without it —
+answers the open IS-09 on/off probe for the off half). A
+Forget-cleaned Cerebrum client then rendered full details. Final
+state: Neuron → dhs registry → Cerebrum verified end-to-end with
+deterministic control selection.
+
 Two late receipts from the same session:
 
 - **Sender `caps` fidelity at scale**: after the absent-vs-empty fix,
