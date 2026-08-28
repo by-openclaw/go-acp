@@ -60,18 +60,18 @@ func (Factory) New(logger *slog.Logger) registryslot.Registry {
 type Registry struct {
 	logger *slog.Logger
 
-	mu         sync.Mutex
-	responder  session.Responder
-	cancel     context.CancelFunc
-	announced  []codec.Instance
-	announces  uint64 // atomic
+	mu        sync.Mutex
+	responder session.Responder
+	cancel    context.CancelFunc
+	announced []codec.Instance
+	announces uint64 // atomic
 
 	// HTTP face + store. One Store is shared across every served
 	// API version — resources are version-stamped on ingest, payload
 	// shape varies per requested URL prefix.
 	store     *Store
-	apiVers   []string                            // wire minors served, ascending — e.g. ["v1.1","v1.2","v1.3"]
-	subsByVer map[string]*SubscriptionManager     // one per minor (ws_href differs)
+	apiVers   []string                        // wire minors served, ascending — e.g. ["v1.1","v1.2","v1.3"]
+	subsByVer map[string]*SubscriptionManager // one per minor (ws_href differs)
 	httpSrv   *httpsession.Server
 }
 
@@ -118,6 +118,12 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		advertise = fmt.Sprintf("%s:%d", host, port)
 	}
 	r.store = NewStore()
+	// Operator page-size lever for first-page-only controllers — see
+	// ServeOptions.PageLimitDefault. Applied before any request can be
+	// served; an explicit client paging.limit always wins.
+	if opts.PageLimitDefault > 0 {
+		r.store.SetDefaultPageLimit(opts.PageLimitDefault)
+	}
 	r.subsByVer = make(map[string]*SubscriptionManager, len(apiVers))
 
 	// HTTP routes — Registration + Query API installed in parallel

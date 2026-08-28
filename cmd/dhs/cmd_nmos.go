@@ -539,6 +539,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	apiVer := fs.String("api-ver", "", "IS-04 wire version exposed at /x-nmos/{registration,query}/<v>. Empty (default) mounts every codec registered (v1.0/v1.1/v1.2/v1.3 in parallel) — pin to one minor for per-version integration testing.")
 	gcInterval := fs.Duration("gc-interval", time.Second, "heartbeat watchdog tick rate")
 	heartbeatTimeout := fs.Duration("heartbeat-timeout", 12*time.Second, "evict Nodes after this long without heartbeats (IS-04 §6.1 default 12s)")
+	pageLimitDefault := fs.Int("page-limit-default", 0, "Query API page size when the client sends no paging.limit (0 = spec-parity default 100; raise for first-page-only controllers on plants larger than one page)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -563,6 +564,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		APIVer:           *apiVer,
 		GCInterval:       *gcInterval,
 		HeartbeatTimeout: *heartbeatTimeout,
+		PageLimitDefault: *pageLimitDefault,
 	}
 	verLabel := *apiVer
 	if verLabel == "" {
