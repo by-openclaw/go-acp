@@ -2,20 +2,28 @@ Node API: bind=:18080, mode=mdns, api_ver=v1.0, priority=0
 Connection API (IS-05): v1.0, v1.1, v1.2
   GET http://127.0.0.1:18080/x-nmos/node/v1.0/{,self,devices,sources,flows,senders,receivers}
 Announcing _nmos-node._tcp via mDNS.
-time=2026-08-27T22:29:09.056Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:29:09.058Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.0 pri=0
-time=2026-08-27T22:29:09.058Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:29:09.061Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:29:09.063Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:29:09.271Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.0
-time=2026-08-27T22:29:09.271Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.0
-time=2026-08-27T22:29:09.272Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=120 pri=100
-time=2026-08-27T22:29:09.276Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
-time=2026-08-27T22:29:09.276Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
-time=2026-08-27T22:29:10.089Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-27T22:29:11.066Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
-time=2026-08-27T22:29:11.066Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
-time=2026-08-27T22:29:20.900Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
-time=2026-08-27T22:29:22.161Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
-time=2026-08-27T22:29:24.181Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
-time=2026-08-27T22:29:25.321Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:04.520Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:03:04.521Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.0 pri=0
+time=2026-08-28T00:03:04.522Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:03:04.524Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:03:04.525Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:03:04.668Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.0
+time=2026-08-28T00:03:04.668Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.0
+time=2026-08-28T00:03:04.669Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=120 pri=100
+time=2026-08-28T00:03:04.672Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
+time=2026-08-28T00:03:04.672Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
+time=2026-08-28T00:03:05.602Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-28T00:03:06.528Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
+time=2026-08-28T00:03:06.528Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
+time=2026-08-28T00:03:17.304Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:17.564Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:18.804Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:19.064Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:20.284Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:21.524Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:23.564Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:24.704Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:25.844Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:27.004Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:28.104Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1
+time=2026-08-28T00:03:29.224Z level=INFO msg="scheduled activation fired" plugin=amwa api=is-05 endpoints=1

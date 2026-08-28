@@ -2,25 +2,25 @@ Node API: bind=:18080, mode=mdns, api_ver=v1.3, priority=0
 Connection API (IS-05): v1.0, v1.1, v1.2
   GET http://127.0.0.1:18080/x-nmos/node/v1.3/{,self,devices,sources,flows,senders,receivers}
 Announcing _nmos-node._tcp via mDNS.
-time=2026-08-27T22:41:13.636Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:41:13.638Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.3 pri=0
-time=2026-08-27T22:41:13.638Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:41:13.642Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:41:13.643Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:41:13.868Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
-time=2026-08-27T22:41:13.869Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
-time=2026-08-27T22:41:13.869Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=120 pri=100
-time=2026-08-27T22:41:13.872Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
-time=2026-08-27T22:41:13.872Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
-time=2026-08-27T22:41:14.721Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-27T22:41:15.648Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
-time=2026-08-27T22:41:15.648Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
-time=2026-08-27T22:41:27.973Z level=INFO msg="nmos/is07: ws client connected" client=1 remote=172.18.0.4:40820
-time=2026-08-27T22:41:27.973Z level=INFO msg="nmos/is07: ws client connected" client=2 remote=172.18.0.4:40808
-time=2026-08-27T22:41:39.973Z level=INFO msg="nmos/is07: ws client timed out with no health command" client=2 after=12s
-time=2026-08-27T22:41:39.974Z level=WARN msg="nmos/is07: ws read error" client=2 err="read tcp 172.18.0.5:18080->172.18.0.4:40808: use of closed network connection"
-time=2026-08-27T22:41:45.178Z level=INFO msg="nmos/is07: ws client timed out with no health command" client=1 after=12s
-time=2026-08-27T22:41:45.178Z level=WARN msg="nmos/is07: ws read error" client=1 err="read tcp 172.18.0.5:18080->172.18.0.4:40820: use of closed network connection"
-time=2026-08-27T22:41:45.391Z level=INFO msg="nmos/is07: ws client connected" client=3 remote=172.18.0.4:34416
-time=2026-08-27T22:41:50.597Z level=INFO msg="nmos/is07: subscription updated" client=3 sources=6
-time=2026-08-27T22:41:50.798Z level=INFO msg="nmos/is07: subscription updated" client=3 sources=6
+time=2026-08-28T00:16:11.239Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:16:11.242Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.3 pri=0
+time=2026-08-28T00:16:11.243Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:16:11.246Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:16:11.249Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:16:11.495Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-28T00:16:11.496Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-28T00:16:11.497Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=120 pri=100
+time=2026-08-28T00:16:11.501Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
+time=2026-08-28T00:16:11.501Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
+time=2026-08-28T00:16:12.368Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-28T00:16:13.253Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
+time=2026-08-28T00:16:13.253Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
+time=2026-08-28T00:16:26.358Z level=INFO msg="nmos/is07: ws client connected" client=1 remote=172.18.0.4:34556
+time=2026-08-28T00:16:26.358Z level=INFO msg="nmos/is07: ws client connected" client=2 remote=172.18.0.4:34570
+time=2026-08-28T00:16:38.359Z level=INFO msg="nmos/is07: ws client timed out with no health command" client=1 after=12s
+time=2026-08-28T00:16:38.359Z level=WARN msg="nmos/is07: ws read error" client=1 err="read tcp 172.18.0.5:18080->172.18.0.4:34556: use of closed network connection"
+time=2026-08-28T00:16:43.563Z level=INFO msg="nmos/is07: ws client timed out with no health command" client=2 after=12s
+time=2026-08-28T00:16:43.563Z level=WARN msg="nmos/is07: ws read error" client=2 err="read tcp 172.18.0.5:18080->172.18.0.4:34570: use of closed network connection"
+time=2026-08-28T00:16:43.777Z level=INFO msg="nmos/is07: ws client connected" client=3 remote=172.18.0.4:55840
+time=2026-08-28T00:16:48.982Z level=INFO msg="nmos/is07: subscription updated" client=3 sources=6
+time=2026-08-28T00:16:49.184Z level=INFO msg="nmos/is07: subscription updated" client=3 sources=6

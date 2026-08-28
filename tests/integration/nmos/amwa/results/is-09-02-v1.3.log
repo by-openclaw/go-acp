@@ -2,20 +2,20 @@ Node API: bind=:18080, mode=mdns, api_ver=v1.3, priority=0
 Connection API (IS-05): v1.0, v1.1, v1.2
   GET http://127.0.0.1:18080/x-nmos/node/v1.3/{,self,devices,sources,flows,senders,receivers}
 Announcing _nmos-node._tcp via mDNS.
-time=2026-08-27T22:42:42.498Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:42:42.501Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.3 pri=0
-time=2026-08-27T22:42:42.501Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:42:42.505Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:42:42.506Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-27T22:42:42.726Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
-time=2026-08-27T22:42:42.726Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
-time=2026-08-27T22:42:42.728Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=120 pri=100
-time=2026-08-27T22:42:42.732Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
-time=2026-08-27T22:42:42.732Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
-time=2026-08-27T22:42:43.633Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-27T22:42:44.510Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
-time=2026-08-27T22:42:44.510Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
-time=2026-08-27T22:42:54.541Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=NMOSTestSuite5301http host=nmos-mocks.local port=5301 ttl=120 pri=0
-time=2026-08-27T22:42:55.348Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=NMOSTestSuite5301invalid host=nmos-mocks.local port=5301 ttl=120 pri=0
-time=2026-08-27T22:42:56.157Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=NMOSTestSuite5302http host=nmos-mocks.local port=5302 ttl=120 pri=0
-time=2026-08-27T22:42:56.163Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://172.18.0.4:5302/x-nmos/system/v1.0/global id=3b8be755-08ff-452b-b217-c9151eb21193 version=1441700172:318426300
+time=2026-08-28T00:17:40.842Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:17:40.845Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.3 pri=0
+time=2026-08-28T00:17:40.845Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:17:40.851Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:17:40.853Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-28T00:17:41.022Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-28T00:17:41.023Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-28T00:17:41.023Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=120 pri=100
+time=2026-08-28T00:17:41.027Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
+time=2026-08-28T00:17:41.027Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
+time=2026-08-28T00:17:41.925Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
+time=2026-08-28T00:17:42.856Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
+time=2026-08-28T00:17:42.856Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
+time=2026-08-28T00:17:52.531Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=NMOSTestSuite5301http host=nmos-mocks.local port=5301 ttl=120 pri=0
+time=2026-08-28T00:17:53.338Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=NMOSTestSuite5301invalid host=nmos-mocks.local port=5301 ttl=120 pri=0
+time=2026-08-28T00:17:54.145Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=NMOSTestSuite5302http host=nmos-mocks.local port=5302 ttl=120 pri=0
+time=2026-08-28T00:17:54.151Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://172.18.0.4:5302/x-nmos/system/v1.0/global id=3b8be755-08ff-452b-b217-c9151eb21193 version=1441700172:318426300

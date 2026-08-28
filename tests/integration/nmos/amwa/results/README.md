@@ -99,6 +99,11 @@ SRV as fallback) and `session/dnssd` (Avahi `ItemNew` emits
 
 ## What changed to get here
 
+- **This run's fixture carries the min/full archetypes** — including a
+  boot-active ST 2022-7 sender whose dual-leg `a=group:DUP` SDP is what
+  IS-05-01's SDP-vs-transport_params comparisons and SDPoker now score
+  (a single-media-section SDP for a two-leg sender failed 21 tests
+  before `sdpForSender` grew per-leg media sections).
 - **dnssd record TTL** (above) — cleared all 12 IS-09-02 fails.
 - **IS-07 events seed from the full bundle**, not the minor projection —
   IS-07-01 went from 5 passes below v1.3 to 19 at every minor.
