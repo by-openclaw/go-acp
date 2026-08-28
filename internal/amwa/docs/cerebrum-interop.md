@@ -382,6 +382,18 @@ Setup notes that cost time, for the next person:
   announce; treat their "never redials" claims as UNPROVEN against a
   healthy announce. dhs TODO: exclude loopback at the announce layer
   in code, not just host config.
+
+  Refresh model measured against the HEALTHY announce (45 min of
+  cumulative packet traces): Cerebrum read the catalogue in ONE burst
+  right after the announce became clean, rendered it, and issued zero
+  further requests — no periodic polling at all. Catalogue changes
+  after its burst (a node registered minutes later) do not appear
+  until its next event-driven read. In the earlier session the client
+  had opened six Query-WS subscriptions (live updates); this device
+  instance opened none — the difference is presumably the device's
+  "Resource Query" option (see the device-panel knob table below).
+  Without WS subscriptions, treat Cerebrum's view as a snapshot taken
+  at connect time.
 - **Delete + re-add serves cache, not network.** Measured 2026-08-28:
   across a full delete → re-add → nudge sequence of the Network Media
   device, an attach watcher saw zero TCP connections in 20 minutes and
