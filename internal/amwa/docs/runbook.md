@@ -292,6 +292,19 @@ The node and the tool share one bridge on purpose: IS-04 discovery is
 mDNS, and testing across a routed boundary silently skips the discovery
 half of IS-04-01 and reports a better score for a worse implementation.
 
+**The tool has two mutually exclusive modes, and each suite family
+needs its own.** Node suites want the BRIDGED tool (`nmos-testing`),
+which shares docker DNS with the node — the node's `manifest_href`
+carries the `dhs-node` hostname, and the LAN-mode tool cannot resolve
+it (`test_20_01` / IS-05-02 `test_13` fail with NameResolutionError).
+Registry suites want the HOST-NETWORK tool (`nmos-testing-lan`), which
+participates in real LAN multicast — the bridged tool cannot see the
+registry's mDNS announcement (IS-04-02 `test_01/02` fail). The two
+cannot run at once (both claim :5000), and a sweep launched with the
+wrong one up fails its docker-start task at ~7 tasks in — check the
+PLAY RECAP's `ok=` count before believing any scoreboard, because a
+crashed play leaves the previous run's results on disk.
+
 The **Registry** (`results-registry/`) and **Controller**
 (`results-controller/`) evidence sets have their own READMEs, each
 documenting the hermeticity rules its numbers depend on — the registry
