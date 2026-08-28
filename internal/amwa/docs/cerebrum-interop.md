@@ -355,6 +355,17 @@ Setup notes that cost time, for the next person:
   so a conformant client walks the full set. A client that ignores
   `Link` still silently sees only the first 10 of everything; the dhs
   controller follows `Link` and is unaffected.
+- **First-page-only reads.** The Network Media client fetches page one
+  of each Query collection and never follows the `Link: rel="next"`
+  cursors (packet-traced 2026-08-28: zero paging-parameter requests).
+  Against a registry whose default page is 100 newest-first, a plant
+  larger than one page silently loses everything registered before
+  the newest device — on ours, one Neuron's 208 resources crowded the
+  dhs node entirely out of Cerebrum's view, flipping with
+  registration order. Remedy on the dhs registry:
+  `dhs registry nmos serve --page-limit-default 1000` (spec-legal —
+  the no-param page size is implementation-defined; explicit client
+  limits still win, conformance default untouched at 100).
 - **No auto-reconnect.** When the external registry restarts, the
   Network Media client's connections and WebSocket subscriptions drop
   and Cerebrum does NOT retry — observed sitting disconnected for
