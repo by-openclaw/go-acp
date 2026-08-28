@@ -324,6 +324,31 @@ Compliance event `nmos_registry_update_merged_peer` is the candidate
 name once the controller-side read-back comparison is wired; until
 then this note is the tracking artifact.
 
+### Cerebrum CONSUMING the dhs Registry — verified live 2026-08-28
+
+The inverse direction works, and answers §7.1's open question in
+practice: a Cerebrum **Network Media** device (its External-Registry
+client mode) discovered `dhs-nmos-registry` via Bonjour, selected it,
+and consumed the catalogue as a full controller — seven concurrent
+HTTP connections and **six IS-04 v1.3 WebSocket subscriptions**, one
+per resource type (`/nodes /devices /sources /flows /senders
+/receivers`). A real EVS Neuron registered in the dhs Registry
+(208 senders/receivers) reached Cerebrum's UI entirely through us:
+Neuron → dhs Registration API → dhs Query-WS → Cerebrum.
+
+Setup notes that cost time, for the next person:
+
+- Device Type **Network Media** = external-registry client;
+  **Network Media Server** = Cerebrum hosting its own registry. The
+  client never fires while a hosted-registry device at `pri=0`
+  outranks the external one — disable the hosted device, or announce
+  the external registry at `pri=0`.
+- The dialog's *Primary IP Address* is the Cerebrum host's OWN
+  interface (a subnet selector), never the registry's address; the
+  registry's host:port arrive via the Bonjour SRV record.
+- Cerebrum subscribes at v1.3 only, one subscription per resource
+  type, non-persistent.
+
 ### Verification status
 
 dhs codec is byte-exact-correct against the AMWA IS-04 v1.3 schemas
