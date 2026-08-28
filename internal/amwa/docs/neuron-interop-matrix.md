@@ -28,7 +28,7 @@ unicast/manual columns are exactly what IS-04 §3.1 provides for it.
 | manual (`discoveryMode=Manual` + override) | ✅ | full parity registered: 208 senders / 208 receivers / sources / flows, 5 s heartbeats, GC-verified; survives registry restarts by re-registering |
 | mcast (`discoveryMode=mDNS`) | ⚠️ mode works, link doesn't carry — **measured, not assumed** | flipped the Neuron to `discoveryMode=mDNS` (overrides untouched), NMOS off/on, watched 80 s: `status=None` throughout — registries announce on the DMZ and multicast stops at pfSense. Reverted to Manual; re-registered into the dhs registry within one cycle |
 | sd-dns | ⏳ needs SRV records in a DNS the *Neuron* queries — pfSense Unbound per [`dns-sd-unbound.md`](dns-sd-unbound.md) | operator step on pfSense; the record set is the same one the lab zone carries |
-| IS-09 on/off | ⏳ same VLAN constraint for mDNS discovery of the System API; the Neuron API also exposes `system.uri` for direct assignment — probe pending |
+| IS-09 on/off | ⚠️ **Neuron-side toggle is UI-only** — measured: a PUT setting `system.uri` + `applyApiIs09=true` returns 200 and is silently discarded (read-back unchanged), consistent with the device's `system.*` REST block being read-only. Turning IS-09 on for the Neuron therefore takes (a) the front-panel/UI toggle and (b) a firewall pass MGMT→`10.100.0.101:10641` so it can fetch our `/global`. Our System API side is fully proven (§7) |
 
 ## 3. dhs Controller → dhs Registry → Neuron
 
