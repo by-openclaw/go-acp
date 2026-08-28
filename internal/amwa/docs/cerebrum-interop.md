@@ -394,6 +394,19 @@ Setup notes that cost time, for the next person:
   "Resource Query" option (see the device-panel knob table below).
   Without WS subscriptions, treat Cerebrum's view as a snapshot taken
   at connect time.
+
+  FINAL MODEL (Servers tab, confirmed by screenshot + wire
+  2026-08-28): the Network Media device keeps a **Query Servers list**
+  (every discovered registry, each with address/port/versions and an
+  **Active checkbox**) and a separate **Node Servers list** (nodes
+  harvested directly from `_nmos-node` adverts — a Mode-D side channel
+  that can deliver a node's details independently of any registry,
+  which explains "full details" sightings while registry traffic was
+  zero). THE attach lever is the Active checkbox: only the checked
+  Query Server is consumed. Flipping Active to the dhs entry produced
+  7 connections and all six Query-WS subscriptions within ~3 minutes —
+  full live-update mode. Operational rule: after any registry change,
+  verify which entry is Active before debugging anything else.
 - **Delete + re-add serves cache, not network.** Measured 2026-08-28:
   across a full delete → re-add → nudge sequence of the Network Media
   device, an attach watcher saw zero TCP connections in 20 minutes and
