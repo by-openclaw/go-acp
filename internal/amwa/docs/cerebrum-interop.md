@@ -468,12 +468,19 @@ dhs-side elimination, all measured while the panes were blank:
   connections and dials **no** Node API on any host (not ours on
   :18080, not the Neuron on :3000).
 
-Conclusion: the consumer receives a complete catalogue and renders
-none of it, and its IS-05 path never opens a connection. With every
-dhs-side layer independently verified, this is a 2.8.11 → 2.8.17
-client-side regression — EVS ticket material. The pagination fix the
-release notes promise is unverifiable from outside while the client
-isn't reading at all.
+Resolution, ~40 min after attach: the panes populated on their own —
+dhs node **full details + SDP**, with a live Cerebrum connection to
+our node's :18080 visible in `ss`. So 2.8.17's behaviour is *delayed*
+catalogue rendering after an attach (tens of minutes with zero Node
+API dials, then normal reads), not a permanent regression. Operator
+rule: after attach or upgrade, wait before debugging blank panes.
+
+The Neuron pane stayed blank through the same window — consistent
+with the pre-existing per-attach coin-flip on its triple-homed
+controls (this attach picked one of the two DMZ-unreachable hosts);
+2.8.17 does not change that behaviour. Both items remain EVS ticket
+material: the multi-minute render delay, and control-href selection
+that ignores reachability.
 
 ### Cerebrum device-panel knobs that affect interop (per
 "Modify Device" UI screenshot 2026-05-01)
