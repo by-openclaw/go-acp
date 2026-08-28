@@ -126,6 +126,25 @@ Forget-cleaned Cerebrum client then rendered full details. Final
 state: Neuron → dhs registry → Cerebrum verified end-to-end with
 deterministic control selection.
 
+**Two more Neuron registration-client behaviours, measured 2026-08-29
+on VLAN600 (post-consolidation, same-L2, no firewall in path):**
+
+- **Any NMOS config change wedges the registration client.** After a
+  reboot AND separately after editing Addr Override, the client
+  registers at most once and then goes silent (no heartbeats → GC
+  eviction in 12 s; watcher saw register/evict flaps at 22:58 and
+  23:02). A stale override plus mDNS fallback showed a mixed state
+  (Status=mDNS, URL Status=discovered registry, Override=old address).
+  Recovery recipe, twice-proven: correct the override, then NMOS
+  Off→On on the BRIDGE page — registration lands within seconds and
+  heartbeats stick (5.00 s cadence on the wire).
+- **IS-04 §4.2.1 violation, now cleanly measured:** while REGISTERED
+  and heartbeating, the device still emits live `_nmos-node._tcp`
+  mDNS announcements (30 s sniff: source 10.6.255.102, no reflector
+  in the path). A registered Node must stop that advert. Consequence:
+  Mode-D harvesters (Cerebrum's Node Servers list) keep a parallel
+  direct entry alongside the registry path. EVS ticket item #4.
+
 **Controller route THROUGH the dhs registry — proven 2026-08-28.**
 `dhs consumer nmos connect --registry http://10.100.0.101:8235
 --receiver <VRX-04> --sender <VTX-03>`: UUIDs and the control href
