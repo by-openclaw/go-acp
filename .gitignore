@@ -113,3 +113,6 @@ internal/acp2/testdata/fixtures/slot1_walk.json
 internal/emberplus/testdata/fixtures/[0-9]*/tree.json
 internal/emberplus/testdata/fixtures/[0-9]*/glow.json
 internal/emberplus/testdata/fixtures/[0-9]*/raw.s101.jsonl
+
+# raw infra configs (public repo - never commit running-configs)
+/network/
