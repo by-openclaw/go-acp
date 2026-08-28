@@ -418,15 +418,16 @@ Setup notes that cost time, for the next person:
   has stopped dialling, no device-level action restores network reads;
   the remaining levers are a Cerebrum server-service restart or vendor
   support. Plan external-registry maintenance around this.
-- **No auto-reconnect.** When the external registry restarts, the
-  Network Media client's connections and WebSocket subscriptions drop
-  and Cerebrum does NOT retry — observed sitting disconnected for
-  ~1 h with a healthy, announcing registry one subnet away. Its UI
-  keeps rendering the stale catalogue with no error, so the symptom is
-  "data missing / SDP empty", not "device offline". Recovery is a
-  manual nudge: disable→enable (or restart) the Network Media device.
-  Plan registry maintenance accordingly: every Cerebrum consumer needs
-  a nudge afterwards.
+- **Auto-reconnect: RETIRED finding (was: "no auto-reconnect").** The
+  original ~1 h-disconnected measurement was taken while our announce
+  was loopback-poisoned (see root-cause section) — Cerebrum was
+  retrying against 127.0.0.1. Re-measured 2026-08-28 with a clean
+  announce: after a full Cerebrum server restart the Network Media
+  client re-dialled the dhs registry **unaided** (conns 0 → 7 → 6
+  with all six Query-WS subscriptions, ~17 min after the restart
+  began) and did it again after the 2.8.17 upgrade reboot. Restart
+  maintenance needs no manual nudge; only the poisoned-announce
+  scenario ever did.
 
 ### Verification status
 
@@ -441,6 +442,38 @@ and these become tracked compliance events.
 
 Until then, status of the affected codec paths in the integration
 plan stays **yellow** (codec landed, real-peer evidence ambiguous).
+
+### Cerebrum 2.8.17 upgrade — measured 2026-08-28
+
+The plant upgraded Cerebrum 2.8.11 → 2.8.17 (release notes claim NMOS
+fixes, including the pagination bug). Same day, same registry process,
+same store (dhs-test-node + Neuron `bm-n-nnbrg-c01`, 211 senders):
+
+| Behaviour | 2.8.11 | 2.8.17 |
+|---|---|---|
+| Auto re-attach after restart | yes (measured, clean announce) | yes (6 conns + 6 WS subs, unaided) |
+| Detail panes | dhs rendered; Neuron flipped per-attach (its triple-homed controls) | **blank for BOTH nodes** |
+| Manual/forced IS-05 | dialled node Connection API | **nothing — zero connections to any Node API** |
+
+dhs-side elimination, all measured while the panes were blank:
+
+- Store correct: both nodes present, dhs controls all at
+  `http://10.100.0.101:18080/...` (reachable; `GET /self` = 200).
+- Registry flags active: `--page-limit-default 1000` (whole store fits
+  page 1) `--priority 0` `--advertise-host 10.100.0.101:8235`.
+- WS bootstrap proven end-to-end: replaying Cerebrum's exact attach
+  from another host (POST non-persistent `/senders` subscription +
+  WS connect) delivered **211/211 sender sync grains** cross-wire.
+- `ss` on the registry host: Cerebrum holds exactly the 6 Query-WS
+  connections and dials **no** Node API on any host (not ours on
+  :18080, not the Neuron on :3000).
+
+Conclusion: the consumer receives a complete catalogue and renders
+none of it, and its IS-05 path never opens a connection. With every
+dhs-side layer independently verified, this is a 2.8.11 → 2.8.17
+client-side regression — EVS ticket material. The pagination fix the
+release notes promise is unverifiable from outside while the client
+isn't reading at all.
 
 ### Cerebrum device-panel knobs that affect interop (per
 "Modify Device" UI screenshot 2026-05-01)
