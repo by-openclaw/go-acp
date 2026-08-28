@@ -126,6 +126,26 @@ Forget-cleaned Cerebrum client then rendered full details. Final
 state: Neuron → dhs registry → Cerebrum verified end-to-end with
 deterministic control selection.
 
+**Controller route THROUGH the dhs registry — proven 2026-08-28.**
+`dhs consumer nmos connect --registry http://10.100.0.101:8235
+--receiver <VRX-04> --sender <VTX-03>`: UUIDs and the control href
+resolved from OUR Query API alone, PATCH staged with VTX-03's 844-byte
+ST 2110-20 SDP + `activate_immediate`, device ACTIVE confirmed
+`sender_id=VTX-03, master_enable=true, 2 legs` seconds later. The
+full controller → registry → device loop works.
+
+**Deviation found by that route: the Neuron does not re-register
+IS-04 resource updates.** After activation its own Node API showed
+the receiver's `subscription.sender_id` updated (version
+1787949841 = the activation instant) — but the registry still held
+the pre-activation doc (version 1787949220, `sender_id: null`); no
+re-POST ever came. IS-04 §4.1 expects nodes to push resource
+updates; without it, Query-API/WS consumers (Cerebrum included)
+never learn about routes made around them. Registry-side catalogues
+show stale `subscription` state for Neuron receivers — trust the
+device's Connection API `/active`, not the catalogue copy, for
+current routing.
+
 Two late receipts from the same session:
 
 - **Sender `caps` fidelity at scale**: after the absent-vs-empty fix,
