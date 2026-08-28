@@ -80,6 +80,15 @@ from defaults) announced on `_nmos-system._tcp`:
 - **sd-dns**: the zone's `_nmos-system._tcp.nmos.lab` SRV resolves via
   `discover -no-mdns -resolver … -service _nmos-system._tcp.nmos.lab`.
 
+And the CONTROLLER side (`dhs consumer nmos system`) read the global
+through all three paths:
+
+| Mode | Command shape | Result |
+|---|---|---|
+| direct | `system --direct 10.100.0.101:10641` | ✅ global read, heartbeat 4 / PTP 127 |
+| mcast | `system --mdns` | ✅ selected `dhs-nmos-system` by pri, global read |
+| sd-dns | `system --no-mdns --unicast --resolver … -service _nmos-system._tcp.nmos.lab` | ✅ — the search domain rides inside `-service`, same convention as `discover` |
+
 ## Field notes from running the cells
 
 - The `_nmos-node` browse for cell 1 surfaced a **stray node from an
