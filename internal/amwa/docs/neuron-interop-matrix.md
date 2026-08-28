@@ -63,6 +63,22 @@ type). The Neuron reached Cerebrum's UI entirely through the dhs
 registry. Details + setup traps in
 [`cerebrum-interop.md`](cerebrum-interop.md).
 
+Provenance is structural, not inferred: the Neuron is registered ONLY
+in the dhs registry (Cerebrum's own hosted registry holds a disjoint
+node set), so every Neuron resource Cerebrum renders travelled
+Node → dhs Registration API → dhs Query-WS → Cerebrum.
+
+**Isolation result for the Neuron's blank IS-05 panes**: Cerebrum's
+IS-05 + SDP rendering is verified flawless against single-homed dhs
+nodes — `dhs-sender-full` displayed complete Staged/Active
+(239.20.1.1:5004, RTP enabled) and the full dual-leg `a=group:DUP`
+transport file; `dhs-sender-min` displayed exactly its factory-fresh
+contract. The Neuron's thin panes are therefore attributable to its
+own triple-homed `device.controls` (three sr-ctrl hosts advertised;
+`10.7.40.51` and `10.6.40.51` unreachable from the DMZ — measured),
+a device-side pairing issue independent of which registry carries
+the catalogue.
+
 ## 7. IS-09 dimension (dhs side — live, not just suite-scored)
 
 `dhs producer nmos serve --role system --config
