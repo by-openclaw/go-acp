@@ -85,6 +85,18 @@ Staged/Active + DUP SDP, `VTX-01` stayed empty even after Refresh
 IS-05. Same registry, same consumer, same dialog — the only variable
 is the node's control homing.
 
+Two late receipts from the same session:
+
+- **Sender `caps` fidelity at scale**: after the absent-vs-empty fix,
+  a fresh Neuron registration round-tripped `"caps": {}` on all
+  **208/208** senders through the dhs registry, while `dhs-sender-min`
+  (registered without caps) correctly stayed without it.
+- **The Neuron's mDNS tie-break is first-response, not name order**:
+  across restarts with two `pri=0` registries on the reflected link it
+  picked Cerebrum once and dhs once. A plant that needs determinism
+  pins `discoveryMode=Manual` (or gives its production registry a
+  strictly lower `pri`).
+
 ## 7. IS-09 dimension (dhs side — live, not just suite-scored)
 
 `dhs producer nmos serve --role system --config
