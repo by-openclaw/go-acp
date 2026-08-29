@@ -31,6 +31,7 @@ import (
 	"dhs/internal/amwa/codec/spec"
 	"dhs/internal/amwa/consumer"
 	"dhs/internal/amwa/provider"
+	amwaregistry "dhs/internal/amwa/registry"
 	session "dhs/internal/amwa/session/dnssd"
 	"dhs/internal/amwa/session/query"
 	registryslot "dhs/internal/registry"
@@ -95,8 +96,10 @@ func runNMOSRegistry(ctx context.Context, args []string) error {
 	switch verb {
 	case "serve":
 		return runNMOSRegistryServe(ctx, rest)
+	case "mirror":
+		return runNMOSRegistryMirror(ctx, rest)
 	}
-	return fmt.Errorf("registry nmos: unknown verb %q (expected: serve)", verb)
+	return fmt.Errorf("registry nmos: unknown verb %q (expected: serve, mirror)", verb)
 }
 
 // ---- discover ---------------------------------------------------------------
@@ -708,7 +711,44 @@ announce of _nmos-register._tcp + _nmos-query._tcp.
   --priority N             DNS-SD pri TXT (0-99 prod, 100+ dev)
   --gc-interval D          Heartbeat watchdog tick rate (default 1s)
   --heartbeat-timeout D    Evict Nodes that miss heartbeats this long
-                           (default 12s, IS-04 §6.1)`)
+                           (default 12s, IS-04 §6.1)
+
+  dhs registry nmos mirror --source URL --target URL [--api-ver v1.3]
+
+Bridges one Registry into another: subscribes to every collection on
+the source's Query-WS (controller role) and forwards each change to
+the target's Registration API (node role), proxying one heartbeat per
+source node. Use case: dhs Registry as the plant's source of truth
+feeding a controller vendor's own registry.`)
+}
+
+// runNMOSRegistryMirror bridges a source Registry into a target one.
+func runNMOSRegistryMirror(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("mirror", flag.ContinueOnError)
+	source := fs.String("source", "", "source Registry origin (http://host:port) — Query API side")
+	targetURL := fs.String("target", "", "target Registry origin (http://host:port) — Registration API side")
+	apiVer := fs.String("api-ver", "", "IS-04 wire version used on both faces (default v1.3)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	m, err := amwaregistry.NewMirror(amwaregistry.MirrorOptions{
+		Source: *source,
+		Target: *targetURL,
+		APIVer: *apiVer,
+		Logger: slog.Default(),
+	})
+	if err != nil {
+		return fmt.Errorf("nmos mirror: %w", err)
+	}
+	fmt.Printf("Mirroring %s -> %s. Interrupt to stop.\n", *source, *targetURL)
+	err = m.Run(ctx)
+	st := m.Stats()
+	fmt.Fprintf(os.Stderr, "forwarded=%d deleted=%d heartbeats=%d resyncs=%d failures=%d\n",
+		st.Forwarded, st.Deleted, st.Heartbeats, st.Resyncs, st.Failures)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		return fmt.Errorf("nmos mirror: %w", err)
+	}
+	return nil
 }
 
 // ---- consumer walk (IS-04 Controller) ---------------------------------------
