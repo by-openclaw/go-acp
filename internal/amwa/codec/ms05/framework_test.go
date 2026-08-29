@@ -6,10 +6,52 @@ package ms05_test
 // inherited).
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"dhs/internal/amwa/codec/ms05"
 )
+
+// TestDatatypeDescriptorWireShape pins the variant-aware marshal: the
+// nullable-but-REQUIRED keys are present as null, and variant-only
+// keys never leak onto other variants (AMWA IS-14-01 failed 39 tests
+// on `constraints` being dropped when nil).
+func TestDatatypeDescriptorWireShape(t *testing.T) {
+	strct, _ := ms05.StandardDatatype("NcBlockMemberDescriptor")
+	raw, err := json.Marshal(strct)
+	if err != nil {
+		t.Fatalf("marshal struct variant: %v", err)
+	}
+	for _, key := range []string{`"constraints":`, `"parentType":`, `"fields":`} {
+		if !strings.Contains(string(raw), key) {
+			t.Errorf("struct variant must carry %s even when null: %s", key, raw[:120])
+		}
+	}
+
+	prim, _ := ms05.StandardDatatype("NcBoolean")
+	raw, err = json.Marshal(prim)
+	if err != nil {
+		t.Fatalf("marshal primitive: %v", err)
+	}
+	for _, key := range []string{`"fields"`, `"items"`, `"parentType"`, `"isSequence"`} {
+		if strings.Contains(string(raw), key) {
+			t.Errorf("primitive must NOT carry %s: %s", key, raw)
+		}
+	}
+	if !strings.Contains(string(raw), `"constraints":null`) {
+		t.Errorf("primitive must carry constraints:null: %s", raw)
+	}
+
+	td, ok := ms05.StandardDatatype("NcClassId")
+	if !ok || td.Type != ms05.NcDatatypeTypeTypedef {
+		t.Skipf("NcClassId not a typedef in models: %v", td.Type)
+	}
+	raw, _ = json.Marshal(td)
+	if !strings.Contains(string(raw), `"isSequence":`) {
+		t.Errorf("typedef must always carry isSequence: %s", raw)
+	}
+}
 
 func TestStandardClassesLoad(t *testing.T) {
 	cs := ms05.StandardClasses()
