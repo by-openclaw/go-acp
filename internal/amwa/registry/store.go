@@ -78,6 +78,15 @@ type Store struct {
 	// Put and pruned on every Delete.
 	updateTSByType map[is04.ResourceType]map[string]string
 
+	// lastUpdateTS is the most recent timestamp handed out by
+	// markUpdated, kept strictly monotonic across the whole store.
+	// Without it, a burst of registrations inside one clock tick mints
+	// resources with IDENTICAL update_ts, and paging's exclusive
+	// `since` cursor then skips every tied item past a page boundary —
+	// a walk of a 211-sender plant returned 100 with page 2 empty
+	// (found live 2026-08-29, reproduced by paging_walk_test.go).
+	lastUpdateTS string
+
 	// apiVerByType tracks the IS-04 wire version each resource was
 	// registered at. Drives the no-downgrade-by-default Query
 	// semantics IS-04 §6.1.5 (and AMWA test_22 / test_32) — a Node
@@ -112,7 +121,16 @@ func (s *Store) markUpdated(t is04.ResourceType, id string) {
 		bucket = make(map[string]string)
 		s.updateTSByType[t] = bucket
 	}
-	bucket[id] = nowTAI()
+	// Strictly monotonic across the store: a wall-clock reading that
+	// ties or precedes the last handed-out timestamp is bumped by one
+	// nanosecond past it. Cursor pagination depends on update_ts being
+	// a total order — see the lastUpdateTS field comment.
+	ts := nowTAI()
+	if s.lastUpdateTS != "" && taiCmp(ts, s.lastUpdateTS) <= 0 {
+		ts = taiBump(s.lastUpdateTS)
+	}
+	s.lastUpdateTS = ts
+	bucket[id] = ts
 }
 
 // dropUpdated drops id from the type bucket on delete. Caller MUST
