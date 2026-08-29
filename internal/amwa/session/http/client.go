@@ -135,6 +135,52 @@ func (c *Client) GetJSONPage(ctx context.Context, url string, dst any) (string, 
 	return linkRel(resp.Header.Values("Link"), "next"), nil
 }
 
+// GetJSONPageLinks is GetJSONPage returning BOTH pagination cursors.
+//
+// IS-04 §6.1.6 orientation (pinned by the AMWA suite): collections
+// are newest-first and the Link cursors move through TIME —
+// rel="next" points at NEWER data, rel="prev" at OLDER. A client
+// walking a whole collection therefore starts at the head and follows
+// PREV; following next from the head asks for the future and legally
+// returns nothing. Both targets are surfaced so the caller can pick
+// its direction; "" when the server sent none.
+func (c *Client) GetJSONPageLinks(ctx context.Context, url string, dst any) (next, prev string, err error) {
+	// Delegate the fetch to GetJSONPage's body handling by re-doing the
+	// header extraction here would mean two requests — so this is the
+	// primary implementation and GetJSONPage keeps its shape above.
+	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodGet, url, nil)
+	if err != nil {
+		return "", "", fmt.Errorf("nmos/http: build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("nmos/http: GET %s: %w", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != stdhttp.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, c.MaxBody))
+		return "", "", fmt.Errorf("nmos/http: GET %s: HTTP %d: %s",
+			url, resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	max := c.MaxBody
+	if max <= 0 {
+		max = DefaultMaxBody
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, max+1))
+	if err != nil {
+		return "", "", fmt.Errorf("nmos/http: read body: %w", err)
+	}
+	if int64(len(body)) > max {
+		return "", "", fmt.Errorf("nmos/http: response body exceeds %d bytes", max)
+	}
+	if err := json.Unmarshal(body, dst); err != nil {
+		return "", "", fmt.Errorf("nmos/http: decode %s: %w", url, err)
+	}
+	links := resp.Header.Values("Link")
+	return linkRel(links, "next"), linkRel(links, "prev"), nil
+}
+
 // linkRel extracts the target of the first Link entry carrying
 // rel="<rel>". Handles both repeated Link headers and the
 // comma-joined single-header form.

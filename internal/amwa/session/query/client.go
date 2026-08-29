@@ -186,8 +186,20 @@ func (c *Client) fetchListRaw(ctx context.Context, plural string, filter map[str
 		}
 		u += "?" + q.Encode()
 	}
+	// Whole-collection walk direction, per the AMWA-pinned IS-04
+	// §6.1.6 orientation: collections are newest-first and the Link
+	// cursors move through TIME — rel="next" is NEWER data, rel="prev"
+	// OLDER. The unanchored first response is the HEAD page, so the
+	// rest of the collection lies behind rel="prev"; following next
+	// from the head asks for the future and legally returns nothing —
+	// which is exactly how a live walk of a 211-sender plant returned
+	// 100 (2026-08-29). Some servers instead treat next as an
+	// ascending index cursor and emit no prev; the first page picks
+	// the chain: prev when offered, next otherwise. Either chain ends
+	// at an empty page, a missing link, or a URL already visited.
 	var out []json.RawMessage
 	seen := map[string]bool{}
+	followPrev := false
 	// 10k pages caps a runaway server that links to itself forever; a
 	// real catalogue at limit=2 never gets near it.
 	for i := 0; u != "" && i < 10000; i++ {
@@ -196,7 +208,7 @@ func (c *Client) fetchListRaw(ctx context.Context, plural string, filter map[str
 		}
 		seen[u] = true
 		var page []json.RawMessage
-		next, err := c.HTTP.GetJSONPage(ctx, u, &page)
+		next, prev, err := c.HTTP.GetJSONPageLinks(ctx, u, &page)
 		if err != nil {
 			return nil, fmt.Errorf("nmos/query: list %s: %w", plural, err)
 		}
@@ -204,7 +216,14 @@ func (c *Client) fetchListRaw(ctx context.Context, plural string, filter map[str
 		if len(page) == 0 {
 			break
 		}
-		u = next
+		if i == 0 {
+			followPrev = prev != ""
+		}
+		if followPrev {
+			u = prev
+		} else {
+			u = next
+		}
 	}
 	return out, nil
 }

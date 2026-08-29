@@ -90,6 +90,24 @@ func splitTAI(s string) (int64, int64) {
 	return secs, nanos
 }
 
+// taiBump returns the TAI instant one nanosecond after s.
+//
+// Exists for cursor uniqueness: paging.since is an EXCLUSIVE bound,
+// so two resources sharing one update_ts at a page boundary would
+// both be skipped by the next page. A registry accepting a burst of
+// registrations inside one clock tick (any bridge refill; any coarse
+// clock) mints exactly that tie — found live 2026-08-29 when a walk
+// of a 211-sender plant returned 100 with page 2 empty.
+func taiBump(s string) string {
+	secs, nanos := splitTAI(s)
+	nanos++
+	if nanos > 999999999 {
+		secs++
+		nanos = 0
+	}
+	return fmt.Sprintf("%d:%d", secs, nanos)
+}
+
 // PageOptions controls a paged ListPaged call.
 type PageOptions struct {
 	Since string // exclusive lower bound; "" means "0:0"
@@ -170,13 +188,22 @@ func (s *Store) ListPaged(t is04.ResourceType, opts PageOptions) PageResult {
 	if since == "" {
 		since = taiBeforeAll
 	}
-	until := opts.Until
-	if until == "" {
-		until = nowTAI()
-	}
 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	until := opts.Until
+	if until == "" {
+		// The head bound is the newest update the store has HANDED OUT,
+		// not the wall clock: markUpdated keeps update_ts strictly
+		// monotonic, which during a registration burst can place
+		// timestamps a few nanoseconds ahead of now — and a wall-clock
+		// ceiling would exclude exactly those freshest items from every
+		// default page. Empty bucket falls back to now.
+		until = s.maxUpdateTSLocked(t)
+		if until == "" {
+			until = nowTAI()
+		}
+	}
 	idx := s.updateTSByType[t]
 	type kv struct {
 		id  string
