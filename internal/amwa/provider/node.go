@@ -120,6 +120,14 @@ type IS04NodeConfig struct {
 	// every registered minor.
 	ChannelMappingAPIVer string
 
+	// NoStreamCompatAPI suppresses IS-11. Opt-OUT like its siblings: a
+	// Node with no Inputs/Outputs serves an empty (valid) tree, which
+	// beats a missing API a controller has to special-case.
+	NoStreamCompatAPI bool
+
+	// StreamCompatAPIVer pins IS-11 to one wire minor.
+	StreamCompatAPIVer string
+
 	// NoEventsAPI suppresses IS-07. Same opt-OUT reasoning again: a
 	// Node with data Sources and no Event & Tally API publishes tally
 	// state nothing can read.
@@ -169,6 +177,10 @@ type IS04NodeServer struct {
 	// it; a Node with no audio inputs or outputs gets an empty one,
 	// which is the honest answer rather than a missing API.
 	channelMapping *IS08ChannelMappingServer
+
+	// streamCompat is the IS-11 Stream Compatibility Management API.
+	// Nil disables it.
+	streamCompat *IS11StreamCompatServer
 
 	// events is the IS-07 Event & Tally API. Nil disables it.
 	events *IS07EventsServer
@@ -283,6 +295,14 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 			APIVer: cfg.ChannelMappingAPIVer,
 		})
 	}
+	// IS-11 likewise: constraints and Input/Output visibility cost a
+	// controller nothing when empty, and their absence is what needs
+	// special-casing.
+	if !cfg.NoStreamCompatAPI {
+		s.streamCompat = NewIS11StreamCompatServer(logger, bundle, IS11StreamCompatConfig{
+			APIVer: cfg.StreamCompatAPIVer,
+		})
+	}
 	if !cfg.NoEventsAPI {
 		s.events = NewIS07EventsServer(logger, fullBundle, IS07EventsConfig{
 			APIVer: cfg.EventsAPIVer,
@@ -348,6 +368,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// to the Connection API and never look again.
 	s.attachConnectionAPI(srv)
 	s.attachChannelMappingAPI(srv)
+	s.attachStreamCompatAPI(srv)
 	s.attachEventsAPI(srv)
 	s.http = srv
 

@@ -160,7 +160,7 @@ a MISSING implementation by the rule below, never a scope decision.
 | IS-07 Event & Tally | **v1.0.1** | v1.0 | ✅ v1.0 |
 | IS-08 Channel Mapping | **v1.0.1** | v1.0 | ✅ v1.0 |
 | IS-09 System Parameters | **v1.0.0** | v1.0 | ✅ v1.0 |
-| IS-11 Stream Compatibility | **v1.0.0** | v1.0 | ❌ **MISSING — spec not started** |
+| IS-11 Stream Compatibility | **v1.0.0** | v1.0 | ✅ v1.0 |
 | IS-12 Control Protocol | **v1.0.1** | v1.0 | ✅ v1.0 |
 | IS-14 Device Configuration | **v1.0.0** | v1.0 | ❌ **MISSING — spec not started** |
 | MS-05-01 / MS-05-02 | **v1.0.0** | v1.0 | ✅ v1.0 |

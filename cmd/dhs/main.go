@@ -76,6 +76,7 @@ import (
 	_ "dhs/internal/amwa/codec/is07/v10"
 	_ "dhs/internal/amwa/codec/is08/v10"
 	_ "dhs/internal/amwa/codec/is09/v10"
+	_ "dhs/internal/amwa/codec/is11/v10"
 	_ "dhs/internal/amwa/codec/is12/v10"
 	_ "dhs/internal/amwa/codec/ms05/v10"
 
