@@ -2,23 +2,19 @@ Node API: bind=:18080, mode=mdns, api_ver=v1.3, priority=0
 Connection API (IS-05): v1.0, v1.1, v1.2
   GET http://127.0.0.1:18080/x-nmos/node/v1.3/{,self,devices,sources,flows,senders,receivers}
 Announcing _nmos-node._tcp via mDNS.
-time=2026-08-29T22:44:44.745Z level=INFO msg="nmos/auth: JWKS refreshed" keys=1
-time=2026-08-29T22:44:44.747Z level=INFO msg="dnssd: using stdlib responder (no system daemon detected)"
-time=2026-08-29T22:44:44.748Z level=INFO msg="dnssd: mDNS bound" iface=eth0
-time=2026-08-29T22:44:44.748Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.3 pri=0
-time=2026-08-29T22:44:44.748Z level=INFO msg="provider/node: registry disabled, staying peer-to-peer" plugin=amwa api=is-04 mode=direct-node
-time=2026-08-29T22:44:44.749Z level=INFO msg="dnssd: using stdlib browser (no system daemon detected)"
-time=2026-08-29T22:44:44.750Z level=INFO msg="dnssd: mDNS bound" iface=eth0
-time=2026-08-29T22:44:44.750Z level=INFO msg="dnssd: using stdlib browser (no system daemon detected)"
-time=2026-08-29T22:44:44.750Z level=INFO msg="dnssd: mDNS bound" iface=eth0
-time=2026-08-29T22:44:44.818Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=4500 pri=100
-time=2026-08-29T22:44:49.819Z level=WARN msg="provider/node: System API advertised but /global could not be read" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 err="nmos/system: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: nmos/http: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: Get \"http://10.100.0.104:8110/x-nmos/system/v1.0/global\": context deadline exceeded"
-time=2026-08-29T22:44:51.752Z level=WARN msg="provider/node: System API found but /global could not be read" plugin=amwa api=is-09 err="nmos/system: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: nmos/http: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: Get \"http://10.100.0.104:8110/x-nmos/system/v1.0/global\": context deadline exceeded"
-time=2026-08-29T22:44:56.829Z level=INFO msg="auth: rejected" reason="no token" method=GET path=/x-nmos/node/v1.3
-time=2026-08-29T22:44:56.831Z level=INFO msg="auth: rejected" reason=signature method=GET path=/x-nmos/node/v1.3 err="is10: token is not a compact JWS (want 3 segments, got 1)"
-time=2026-08-29T22:44:56.921Z level=INFO msg="auth: rejected" reason=claims method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=5ead522a-cfd7-4925-8cec-42a09c2c74a4 err="is10: token expired at 2026-08-29 21:44:56 +0000 UTC"
-time=2026-08-29T22:44:57.011Z level=INFO msg="auth: forbidden" reason=audience method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 aud=[https://*.nmos.example.com]
-time=2026-08-29T22:44:57.103Z level=INFO msg="auth: forbidden" method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=597ed280-8758-4bd0-b53e-351ed845ae96 err="is10: token grants no access to the node API"
-time=2026-08-29T22:44:58.155Z level=INFO msg="auth: unknown key, fetching issuer keys" iss=http://172.18.0.4:5011 method=GET path=/x-nmos/node/v1.3
-time=2026-08-29T22:44:58.326Z level=INFO msg="nmos/auth: issuer keys merged" issuer=http://172.18.0.4:5011 added=1
-time=2026-08-29T22:45:14.858Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=4500 pri=100
+time=2026-08-29T23:45:21.102Z level=INFO msg="nmos/auth: JWKS refreshed" keys=1
+time=2026-08-29T23:45:21.105Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-29T23:45:21.107Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.3 pri=0
+time=2026-08-29T23:45:21.107Z level=INFO msg="provider/node: registry disabled, staying peer-to-peer" plugin=amwa api=is-04 mode=direct-node
+time=2026-08-29T23:45:21.107Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-29T23:45:21.108Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
+time=2026-08-29T23:45:21.340Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=120 pri=100
+time=2026-08-29T23:45:26.341Z level=WARN msg="provider/node: System API advertised but /global could not be read" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 err="nmos/system: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: nmos/http: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: Get \"http://10.100.0.104:8110/x-nmos/system/v1.0/global\": context deadline exceeded"
+time=2026-08-29T23:45:28.110Z level=WARN msg="provider/node: System API found but /global could not be read" plugin=amwa api=is-09 err="nmos/system: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: nmos/http: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: Get \"http://10.100.0.104:8110/x-nmos/system/v1.0/global\": context deadline exceeded"
+time=2026-08-29T23:45:33.131Z level=INFO msg="auth: rejected" reason="no token" method=GET path=/x-nmos/node/v1.3
+time=2026-08-29T23:45:33.134Z level=INFO msg="auth: rejected" reason=signature method=GET path=/x-nmos/node/v1.3 err="is10: token is not a compact JWS (want 3 segments, got 1)"
+time=2026-08-29T23:45:33.298Z level=INFO msg="auth: rejected" reason=claims method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=2de6f1f3-3a12-4b4e-b914-e0ab82e5ef8c err="is10: token expired at 2026-08-29 22:45:33 +0000 UTC"
+time=2026-08-29T23:45:33.478Z level=INFO msg="auth: forbidden" reason=audience method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 aud=[https://*.nmos.example.com]
+time=2026-08-29T23:45:33.594Z level=INFO msg="auth: forbidden" method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=6c3bde73-4a57-456d-bef4-de3001136748 err="is10: token grants no access to the node API"
+time=2026-08-29T23:45:34.420Z level=INFO msg="auth: unknown key, fetching issuer keys" iss=http://172.18.0.4:5011 method=GET path=/x-nmos/node/v1.3
+time=2026-08-29T23:45:34.495Z level=INFO msg="nmos/auth: issuer keys merged" issuer=http://172.18.0.4:5011 added=1
