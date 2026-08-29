@@ -173,7 +173,7 @@ func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]str
 	if !is10.AudienceMatchesAny(claims.Aud, g.Hosts) {
 		log.Info("auth: forbidden", "reason", "audience", "method", r.Method, "path", r.URL.Path,
 			"iss", claims.Iss, "aud", []string(claims.Aud))
-		return deny(stdhttp.StatusForbidden, `Bearer error=invalid_token`,
+		return deny(stdhttp.StatusForbidden, `Bearer error=insufficient_scope`,
 			"token audience does not name this server")
 	}
 	if err := is10.Authorize(claims, r.Method, r.URL.Path); err != nil {
