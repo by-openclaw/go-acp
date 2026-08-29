@@ -25,6 +25,12 @@ type HandlerFunc func(ctx context.Context, r *stdhttp.Request) (status int, body
 type Server struct {
 	Logger *slog.Logger
 
+	// Auth, when non-nil, gates every request (routes AND raw
+	// WebSocket handlers) through BCP-003-02 token validation. Set
+	// before Serve; the CORS preflight and the two always-readable
+	// base paths bypass it per the IS-10 resource-server rules.
+	Auth *AuthGate
+
 	mu       sync.RWMutex
 	routes   map[routeKey]HandlerFunc
 	prefixes []prefixRoute // longer prefixes first
@@ -193,6 +199,18 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		w.WriteHeader(stdhttp.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 		return
+	}
+
+	// BCP-003-02 gate — after the OPTIONS preflight (credential-less
+	// by browser design) and BEFORE the raw handlers, so WebSocket
+	// upgrades are protected by the same policy as plain routes (the
+	// spec says a server SHALL NOT upgrade on an invalid token).
+	if s.Auth != nil {
+		if status, authenticate, body, ok := s.Auth.Check(r); !ok {
+			w.Header().Set("WWW-Authenticate", authenticate)
+			writeJSON(w, status, body)
+			return
+		}
 	}
 
 	// Raw handlers first, and before the CORS/JSON machinery has

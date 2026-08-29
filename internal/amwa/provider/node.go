@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	stdhttp "net/http"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is09"
+	authsession "dhs/internal/amwa/session/auth"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 )
@@ -160,6 +162,19 @@ type IS04NodeConfig struct {
 	// _nmos-node._tcp, so a Node allowed to find a Registry cannot
 	// also be a peer-to-peer Node.
 	NoRegistry bool
+
+	// AuthURL, when non-empty, turns on BCP-003-02: every API this
+	// Node serves validates Bearer tokens against the named
+	// Authorization Server (scheme://host[:port]), api_auth flips to
+	// true, and outbound Registration API requests carry a token
+	// obtained via the client_credentials grant.
+	AuthURL string
+
+	// AuthClientID + AuthClientSecret authenticate the Node's own
+	// OAuth client for the client_credentials grant. Required when
+	// AuthURL is set and the Node registers with a Registry.
+	AuthClientID     string
+	AuthClientSecret string
 }
 
 // IS04NodeServer hosts the Node API endpoints + DNS-SD announce +
@@ -212,6 +227,9 @@ type IS04NodeServer struct {
 	cancel    context.CancelFunc
 	regClient *RegistrationClient
 	watcher   *RegistryWatcher
+	// authTokens supplies client_credentials access tokens for the
+	// registration client when BCP-003-02 is on. Nil otherwise.
+	authTokens *authsession.TokenClient
 
 	// announceInstance + announceCtx are kept around so the mDNS
 	// _nmos-node._tcp announce can be torn down on registration
@@ -381,6 +399,27 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	}
 
 	srv := httpsession.NewServer(s.logger)
+	// BCP-003-02: gate every served API + arm the token client for
+	// outbound registration BEFORE any face goes live.
+	if s.cfg.AuthURL != "" {
+		metaURL := authsession.MetadataURL(s.cfg.AuthURL, "")
+		kc := authsession.NewKeyCache(metaURL, s.logger)
+		if err := kc.Fetch(ctx); err != nil {
+			s.logger.Warn("provider/node: initial JWKS fetch failed; requests will 401 until keys arrive",
+				"plugin", "amwa", "err", err)
+		}
+		go kc.Run(ctx)
+		gateHost := s.controlHost()
+		if h, _, err := net.SplitHostPort(gateHost); err == nil {
+			gateHost = h
+		}
+		srv.Auth = &httpsession.AuthGate{Keys: kc, Host: gateHost, Logger: s.logger}
+		s.authTokens = authsession.NewTokenClient(authsession.TokenClientOptions{
+			MetadataURL: metaURL,
+			ClientID:    s.cfg.AuthClientID, ClientSecret: s.cfg.AuthClientSecret,
+			Scope: "registration", Logger: s.logger,
+		})
+	}
 	s.installRoutes(srv)
 	// IS-05 is attached BEFORE the first request can be served,
 	// because attaching it rewrites device.controls[] — a controller
@@ -432,6 +471,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 			"plugin", "amwa", "api", "is-04", "mode", "direct-node")
 	} else if s.cfg.RegistryURL != "" {
 		rc := NewRegistrationClient(s.logger, s.cfg.RegistryURL, s.cfg.APIVer, s.bundle)
+		s.attachAuthToken(rc)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
 		s.wireRepublish(rc)
@@ -445,6 +485,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 			return fmt.Errorf("provider/node: start unicast registry watcher: %w", err)
 		}
 		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
+		s.attachAuthToken(rc)
 		rc.SetWatcher(uw)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
@@ -463,6 +504,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		}
 		s.watcher = w
 		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
+		s.attachAuthToken(rc)
 		rc.SetWatcher(w)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
@@ -529,7 +571,7 @@ func (s *IS04NodeServer) buildNodeTXTLocked(apiVerTXT string) map[string]string 
 	return map[string]string{
 		dnssdcodec.TXTKeyAPIProto: "http",
 		dnssdcodec.TXTKeyAPIVer:   apiVerTXT,
-		dnssdcodec.TXTKeyAPIAuth:  "false",
+		dnssdcodec.TXTKeyAPIAuth:  strconv.FormatBool(s.cfg.AuthURL != ""),
 		dnssdcodec.TXTKeyPriority: strconv.Itoa(s.cfg.Priority),
 		dnssdcodec.TXTKeyVerSlf:   strconv.Itoa(int(uint8(s.verSelf.Load()))),
 		dnssdcodec.TXTKeyVerDvc:   strconv.Itoa(int(uint8(s.verDevice.Load()))),
@@ -923,6 +965,15 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 			return stdhttp.StatusAccepted, json.RawMessage(respBody), nil
 		})
 	}
+}
+
+// attachAuthToken hands the registration client the Node's OAuth
+// token source when BCP-003-02 is on.
+func (s *IS04NodeServer) attachAuthToken(rc *RegistrationClient) {
+	if s.authTokens == nil {
+		return
+	}
+	rc.SetTokenSource(s.authTokens.Token)
 }
 
 // wireRepublish connects IS-05 activations to the Registration API, so

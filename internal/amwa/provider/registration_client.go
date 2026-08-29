@@ -72,6 +72,11 @@ type RegistrationClient struct {
 
 	http *stdhttp.Client
 
+	// tokenSource, when non-nil, supplies a BCP-003-02 Bearer token
+	// for every Registration API request (an authed registry 401s
+	// bare requests).
+	tokenSource func(context.Context) (string, error)
+
 	mu         sync.Mutex
 	cancelLoop context.CancelFunc
 	registered atomic.Bool
@@ -537,6 +542,24 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 //     Node MUST DELETE the stale entry and re-POST as
 //     fresh — AMWA test_21 enforces this.
 //   - other        → error.
+// SetTokenSource installs the access-token supplier (BCP-003-02).
+func (c *RegistrationClient) SetTokenSource(fn func(context.Context) (string, error)) {
+	c.tokenSource = fn
+}
+
+// applyToken attaches the Bearer token when a source is installed.
+func (c *RegistrationClient) applyToken(ctx context.Context, req *stdhttp.Request) error {
+	if c.tokenSource == nil {
+		return nil
+	}
+	tok, err := c.tokenSource(ctx)
+	if err != nil {
+		return fmt.Errorf("provider/node: obtain access token: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+tok)
+	return nil
+}
+
 func (c *RegistrationClient) postResource(ctx context.Context, t is04.ResourceType, data any) error {
 	status, err := c.postResourceOnce(ctx, t, data)
 	if err != nil {
@@ -572,6 +595,9 @@ func (c *RegistrationClient) postResourceOnce(ctx context.Context, t is04.Resour
 		return 0, fmt.Errorf("provider/node: build POST: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if err := c.applyToken(ctx, req); err != nil {
+		return 0, err
+	}
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("provider/node: POST %s/resource: %w", c.base, err)
@@ -617,6 +643,9 @@ func (c *RegistrationClient) sendHeartbeat(ctx context.Context) error {
 	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPost, url, nil)
 	if err != nil {
 		return fmt.Errorf("provider/node: build heartbeat: %w", err)
+	}
+	if err := c.applyToken(ctx, req); err != nil {
+		return err
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -672,6 +701,11 @@ func (c *RegistrationClient) deleteResource(ctx context.Context, t is04.Resource
 	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodDelete, url, nil)
 	if err != nil {
 		c.logger.Warn("provider/node: build DELETE", "err", err)
+		atomic.AddUint64(&c.failures, 1)
+		return
+	}
+	if err := c.applyToken(ctx, req); err != nil {
+		c.logger.Warn("provider/node: DELETE token", "err", err)
 		atomic.AddUint64(&c.failures, 1)
 		return
 	}

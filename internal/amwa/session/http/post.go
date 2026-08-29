@@ -29,6 +29,9 @@ func (c *Client) PostJSON(ctx context.Context, url string, src, dst any) (int, e
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	if err := c.applyAuth(ctx, req); err != nil {
+		return 0, err
+	}
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {

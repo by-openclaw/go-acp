@@ -91,6 +91,12 @@ type ServeOptions struct {
 	// HeartbeatTimeout is how long a Node may go without heartbeats
 	// before the GC evicts it. Zero defaults to 12 s (IS-04 §6.1).
 	HeartbeatTimeout time.Duration
+
+	// AuthURL, when non-empty, is the BCP-003-02 Authorization Server
+	// base (scheme://host[:port]). The plugin then validates Bearer
+	// tokens on every protected request (IS-10 resource-server rules)
+	// and advertises api_auth=true.
+	AuthURL string
 }
 
 // Stats is the standard counter set every Registry plugin exposes.
