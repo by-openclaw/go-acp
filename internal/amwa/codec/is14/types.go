@@ -35,6 +35,17 @@ const (
 	NoticeError   = 400
 )
 
+// NcRestoreValidationStatus values — the ONLY statuses a per-object
+// restore verdict may carry (the feature set's enum is {200, 400,
+// 404, 500}; general NcMethodStatus codes like 417 are rejected by
+// the response schema).
+const (
+	RestoreValidationOk          ms05.NcMethodStatus = 200
+	RestoreValidationFailed      ms05.NcMethodStatus = 400
+	RestoreValidationNotFound    ms05.NcMethodStatus = 404
+	RestoreValidationDeviceError ms05.NcMethodStatus = 500
+)
+
 // PropertyHolder is one property inside an object's backup entry
 // (feature set NcPropertyHolder). Descriptor is nullable — the
 // includeDescriptors=false form of a backup sets it to null.

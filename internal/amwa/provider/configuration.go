@@ -941,7 +941,7 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 		if !exists {
 			// NcRestoreValidationStatus NotFound: the path is not in
 			// the device model at all.
-			entry.Status = ms05.NcMethodStatusBadOid
+			entry.Status = is14.RestoreValidationNotFound
 			msg := "role path not found in the device model"
 			entry.StatusMessage = &msg
 			out = append(out, entry)
@@ -992,7 +992,9 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 			}
 		}
 		if hasError {
-			entry.Status = ms05.NcMethodStatusParameterError
+			// The verdict enum is NcRestoreValidationStatus — Failed is
+			// 400; a 417 here fails the response schema (round 4).
+			entry.Status = is14.RestoreValidationFailed
 			msg := "Some properties failed validation"
 			entry.StatusMessage = &msg
 		} else if len(entry.Notices) > 0 {
