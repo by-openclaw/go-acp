@@ -35,6 +35,23 @@ implementation: explicit `Content-Length: 0` heartbeats (their 411),
 dependency-ordered POSTs (their parent validation), full resync on a
 404 heartbeat.
 
+## Scale (many nodes → registry → bridge → vendor controller)
+
+Run live 2026-08-29: 20 generated full-detail nodes (template-cloned
+from the reference bundle with per-instance UUID rewrite preserving
+referential integrity) spawned against the registry alongside the
+plant's two residents.
+
+| measure | result |
+|---|---|
+| store | 22 nodes, 22 devices, 355 flows, 271 senders, 271 receivers |
+| controller walk | full catalogue (multi-page pagination carrying live weight) |
+| bridge → Cerebrum hosted registry | 22 nodes, 271/271 senders, 0 failures |
+| stability | 30 s under 22×5 s heartbeats + 22×4 s proxied: counts stable, 0 node errors, 176 MB used |
+
+Generator + spawner: `/tmp/scale/gen.py` + `/tmp/scale.sh` on the lab
+control node (teardown: `pkill -f "scale/node"`).
+
 ## IS-05 driving (controller side)
 
 - `consumer nmos connect --registry … --receiver R --sender S` —
