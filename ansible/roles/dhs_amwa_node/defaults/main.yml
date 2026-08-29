@@ -97,6 +97,13 @@ dhs_amwa_node_suites:
     name: "IS-08 Interaction with IS-04"
     endpoints: ["node", "chanmap"]
     min_node_ver: "v1.1"
+  # IS-11 inherits IS-05's "IS-04 v1.2 or greater" floor
+  # (docs/Interoperability.md). Slot order is the suite's own:
+  # streamcompatibility first, then node, then connection.
+  - id: "IS-11-01"
+    name: "IS-11 Stream Compatibility Management API"
+    endpoints: ["streamcompat", "node", "connection"]
+    min_node_ver: "v1.2"
   # Two slots even though the tool disables most of their fields: the
   # arrays are positional, and a short one is refused outright with
   # "expects 2 Hostname(s)/IP address(es), Port(s) and Version(s)".
@@ -119,6 +126,7 @@ dhs_amwa_node_endpoint_vers:
   connection: "{{ dhs_amwa_node_is05_ver }}"
   events: "v1.0"
   chanmap: "v1.0"
+  streamcompat: "v1.0"
   system: "v1.0"
   "-": "v1.0"
 
@@ -131,6 +139,7 @@ dhs_amwa_node_endpoint_hosts:
   connection: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   events: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   chanmap: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  streamcompat: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   system: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   "-": null
 
@@ -139,6 +148,7 @@ dhs_amwa_node_endpoint_ports:
   connection: "{{ dhs_amwa_node_port }}"
   events: "{{ dhs_amwa_node_port }}"
   chanmap: "{{ dhs_amwa_node_port }}"
+  streamcompat: "{{ dhs_amwa_node_port }}"
   system: "{{ dhs_amwa_node_port }}"
   "-": null
 
