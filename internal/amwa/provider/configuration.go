@@ -206,10 +206,14 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 	})
 	cm, err2 := newConfigObject(ms05.NcClassId{1, 3, 2}, 3, []string{"root", "ClassManager"}, map[string]any{
 		"userLabel": "Class manager",
-		// Both catalogues publish descriptors WITH inherited elements —
-		// the AMWA suite counts the flattened field/property sets.
+		// The catalogues publish the RAW spec models — own elements
+		// only, inheritance via parentType/classId. The AMWA suite
+		// compares these against the published model files verbatim
+		// (round 3 failed 33 auto_ms05 checks on flattened entries);
+		// flattening belongs ONLY to the /descriptor endpoints and
+		// includeInherited method variants.
 		"controlClasses": ms05.StandardClasses(),
-		"datatypes":      ms05.FlattenedDatatypes(),
+		"datatypes":      ms05.StandardDatatypes(),
 	})
 	// IS-14 phrases the bulkProperties endpoints as invocations on the
 	// Bulk properties manager object (device-configuration feature
@@ -396,6 +400,10 @@ func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProper
 		return ms05.NcMethodStatusParameterError,
 			fmt.Errorf("property %s (%s) is not nullable", propKey(p.desc.ID), p.desc.Name)
 	}
+	if msg := typeMismatch(&p.desc, v); msg != "" {
+		return ms05.NcMethodStatusParameterError,
+			fmt.Errorf("property %s (%s): %s", propKey(p.desc.ID), p.desc.Name, msg)
+	}
 	s.mu.Lock()
 	p.value = v
 	// A userLabel write must show up in the parent block's members
@@ -418,6 +426,75 @@ func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProper
 		s.onModelChanged()
 	}
 	return ms05.NcMethodStatusOk, nil
+}
+
+// typeMismatch reports (as a non-empty message) a value the
+// property's declared datatype cannot hold. Deliberately shallow —
+// it classifies by JSON kind against the resolved datatype family and
+// never rejects what it cannot classify. The AMWA suite's restore
+// round offers a wrong-kind value and expects an error or warning
+// (test_26); silently applying it was the defect.
+func typeMismatch(desc *ms05.NcPropertyDescriptor, v any) string {
+	if v == nil || desc.TypeName == nil {
+		return ""
+	}
+	if desc.IsSequence {
+		if _, ok := v.([]any); !ok {
+			return fmt.Sprintf("value for sequence %s must be an array", *desc.TypeName)
+		}
+		return ""
+	}
+	kind := jsonKindFor(*desc.TypeName)
+	switch kind {
+	case "string":
+		if _, ok := v.(string); !ok {
+			return fmt.Sprintf("value is not a %s (string expected)", *desc.TypeName)
+		}
+	case "bool":
+		if _, ok := v.(bool); !ok {
+			return fmt.Sprintf("value is not a %s (boolean expected)", *desc.TypeName)
+		}
+	case "number":
+		if _, ok := v.(float64); !ok {
+			return fmt.Sprintf("value is not a %s (number expected)", *desc.TypeName)
+		}
+	case "object":
+		if _, ok := v.(map[string]any); !ok {
+			return fmt.Sprintf("value is not a %s (object expected)", *desc.TypeName)
+		}
+	}
+	return ""
+}
+
+// jsonKindFor maps an MS-05 datatype name to the JSON kind it
+// serialises as, resolving typedefs through the framework catalogue.
+// Unknown names return "" (no check).
+func jsonKindFor(name string) string {
+	switch name {
+	case "NcString", "NcName", "NcUri", "NcUuid", "NcRegex", "NcVersionCode", "NcOrganizationId":
+		return "string"
+	case "NcBoolean":
+		return "bool"
+	case "NcInt16", "NcInt32", "NcInt64", "NcUint16", "NcUint32", "NcUint64",
+		"NcFloat32", "NcFloat64", "NcId", "NcOid", "NcTimeInterval":
+		return "number"
+	}
+	dt, ok := ms05.StandardDatatype(name)
+	if !ok {
+		return ""
+	}
+	switch dt.Type {
+	case ms05.NcDatatypeTypeEnum:
+		return "number"
+	case ms05.NcDatatypeTypeStruct:
+		return "object"
+	case ms05.NcDatatypeTypeTypedef:
+		if dt.IsSequence || dt.ParentType == nil {
+			return ""
+		}
+		return jsonKindFor(*dt.ParentType)
+	}
+	return ""
 }
 
 // flattenedDatatype resolves a typeName to its framework descriptor
@@ -861,13 +938,23 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 		s.mu.RLock()
 		target, exists := s.objects[key]
 		s.mu.RUnlock()
-		if !exists || !scope[key] {
+		if !exists {
+			// NcRestoreValidationStatus NotFound: the path is not in
+			// the device model at all.
 			entry.Status = ms05.NcMethodStatusBadOid
-			msg := "role path not found in restore scope"
+			msg := "role path not found in the device model"
 			entry.StatusMessage = &msg
 			out = append(out, entry)
 			continue
 		}
+		if !scope[key] {
+			// In the model but outside the target+recurse scope: the
+			// restore scope is the INTERSECTION, and objects outside it
+			// get NO validation entry (Backup & restore.md; the suite's
+			// recurse=false rounds count exactly the in-scope paths).
+			continue
+		}
+		hasError := false
 		for _, ph := range oph.Values {
 			p := target.findProp(propKey(ph.ID))
 			if p == nil {
@@ -884,6 +971,17 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 				})
 				continue
 			}
+			if msg := typeMismatch(&p.desc, ph.Value); msg != "" {
+				// A value the property's datatype cannot hold is an
+				// ERROR notice, and one error notice fails the object
+				// (Backup & restore.md validation rules).
+				entry.Notices = append(entry.Notices, is14.PropertyRestoreNotice{
+					ID: ph.ID, Name: p.desc.Name, NoticeType: is14.NoticeError,
+					NoticeMessage: msg,
+				})
+				hasError = true
+				continue
+			}
 			if apply {
 				raw, err := json.Marshal(ph.Value)
 				if err == nil {
@@ -893,7 +991,11 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 				}
 			}
 		}
-		if len(entry.Notices) > 0 {
+		if hasError {
+			entry.Status = ms05.NcMethodStatusParameterError
+			msg := "Some properties failed validation"
+			entry.StatusMessage = &msg
+		} else if len(entry.Notices) > 0 {
 			msg := "Some properties have notices"
 			entry.StatusMessage = &msg
 		}

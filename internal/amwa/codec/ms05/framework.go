@@ -188,22 +188,20 @@ func FlattenedDatatype(name string) (NcDatatypeDescriptor, bool) {
 	if d.Type != NcDatatypeTypeStruct || d.ParentType == nil {
 		return d, true
 	}
-	var lineage []NcDatatypeDescriptor
+	// Own fields FIRST, then each ancestor's up the chain — the same
+	// order the AMWA tool's own get_datatype builds its reference
+	// (MS05Utils: `inherited_descriptor.fields += parent.fields`).
+	out := d
+	out.Fields = append([]NcFieldDescriptor{}, d.Fields...)
 	cur := d
 	for cur.Type == NcDatatypeTypeStruct && cur.ParentType != nil {
 		p, ok := datatypesByNm[*cur.ParentType]
 		if !ok {
 			break
 		}
-		lineage = append(lineage, p)
+		out.Fields = append(out.Fields, p.Fields...)
 		cur = p
 	}
-	fields := []NcFieldDescriptor{}
-	for i := len(lineage) - 1; i >= 0; i-- {
-		fields = append(fields, lineage[i].Fields...)
-	}
-	out := d
-	out.Fields = append(fields, d.Fields...)
 	return out, true
 }
 
