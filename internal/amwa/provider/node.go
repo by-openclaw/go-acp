@@ -128,6 +128,15 @@ type IS04NodeConfig struct {
 	// StreamCompatAPIVer pins IS-11 to one wire minor.
 	StreamCompatAPIVer string
 
+	// NoConfigurationAPI suppresses IS-14. Opt-OUT like its siblings:
+	// the minimal MS-05 device model (root + the two mandatory
+	// managers) costs a controller nothing, and its absence is what
+	// needs special-casing.
+	NoConfigurationAPI bool
+
+	// ConfigurationAPIVer pins IS-14 to one wire minor.
+	ConfigurationAPIVer string
+
 	// NoEventsAPI suppresses IS-07. Same opt-OUT reasoning again: a
 	// Node with data Sources and no Event & Tally API publishes tally
 	// state nothing can read.
@@ -181,6 +190,10 @@ type IS04NodeServer struct {
 	// streamCompat is the IS-11 Stream Compatibility Management API.
 	// Nil disables it.
 	streamCompat *IS11StreamCompatServer
+
+	// configuration is the IS-14 Device Configuration API. Nil
+	// disables it.
+	configuration *IS14ConfigurationServer
 
 	// events is the IS-07 Event & Tally API. Nil disables it.
 	events *IS07EventsServer
@@ -303,6 +316,13 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 			APIVer: cfg.StreamCompatAPIVer,
 		})
 	}
+	// IS-14 likewise: the device model is derived from the bundle's
+	// own identity, so serving it is free and honest.
+	if !cfg.NoConfigurationAPI {
+		s.configuration = NewIS14ConfigurationServer(logger, bundle, IS14ConfigurationConfig{
+			APIVer: cfg.ConfigurationAPIVer,
+		})
+	}
 	if !cfg.NoEventsAPI {
 		s.events = NewIS07EventsServer(logger, fullBundle, IS07EventsConfig{
 			APIVer: cfg.EventsAPIVer,
@@ -369,6 +389,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	s.attachConnectionAPI(srv)
 	s.attachChannelMappingAPI(srv)
 	s.attachStreamCompatAPI(srv)
+	s.attachConfigurationAPI(srv)
 	s.attachEventsAPI(srv)
 	s.http = srv
 
@@ -685,6 +706,9 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 			// auto_streamcompatibility_1 applies the same rule to
 			// IS-11: served but unlisted is absent.
 			trees = append(trees, "streamcompatibility/")
+		}
+		if s.configuration != nil {
+			trees = append(trees, "configuration/")
 		}
 		if s.events != nil {
 			trees = append(trees, "events/")
