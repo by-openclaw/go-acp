@@ -40,6 +40,13 @@ type NodeConfig struct {
 	// document its event_type implies.
 	EventTypes map[string]json.RawMessage `json:"event_types,omitempty"`
 
+	// StreamCompatibility seeds the IS-11 surface: Inputs and Outputs
+	// (physical interfaces, not derivable from IS-04), their
+	// association with Senders/Receivers, the constraint URNs each
+	// Sender supports, and optional EDID blobs. Optional — a Node
+	// without it serves an empty (but valid) IS-11 tree.
+	StreamCompatibility *StreamCompatSeed `json:"stream_compatibility,omitempty"`
+
 	// Connection seeds the IS-05 boot state per endpoint id.
 	//
 	// Without it every endpoint boots master_enable=false with one leg

@@ -70,6 +70,63 @@ func (s *IS04NodeServer) attachChannelMappingAPI(srv *httpsession.Server) {
 	}
 }
 
+// controlTypeStreamCompat is the control URN a Device uses to point
+// at its Stream Compatibility Management API (IS-11
+// docs/Interoperability.md "Discovery").
+const controlTypeStreamCompat = "urn:x-nmos:control:stream-compat/"
+
+// attachStreamCompatAPI mounts IS-11 and advertises it on every
+// Device, wiring the three cross-API duties Interoperability.md
+// assigns: the sender-active gate for 423s, the Sender version bump
+// on Active Constraints changes, and the Device version bump on
+// Input/Output changes.
+func (s *IS04NodeServer) attachStreamCompatAPI(srv *httpsession.Server) {
+	if s.streamCompat == nil {
+		return
+	}
+	if s.connection != nil {
+		conn := s.connection
+		s.streamCompat.SetSenderActiveFunc(func(id string) bool {
+			e, err := conn.Store().get("senders", id)
+			return err == nil && e.active.MasterEnable
+		})
+	}
+	s.streamCompat.onSenderConstraintsChanged = s.bumpSenderVersion
+	s.streamCompat.onDeviceChanged = func(string) { s.bumpDeviceVersions() }
+	s.streamCompat.Mount(srv)
+	host := s.controlHost()
+	for i := range s.bundle.Devices {
+		d := &s.bundle.Devices[i]
+		for _, ver := range s.streamCompat.Versions() {
+			ctrl := is04.DeviceControl{
+				Type: controlTypeStreamCompat + ver,
+				Href: "http://" + host + "/x-nmos/streamcompatibility/" + ver + "/",
+			}
+			upsertControl(&d.Controls, ctrl)
+		}
+	}
+}
+
+// bumpSenderVersion stamps a fresh IS-04 version on one Sender and
+// queues it for re-registration — how an Active Constraints change
+// reaches every Query API consumer (IS-11 Interoperability.md).
+func (s *IS04NodeServer) bumpSenderVersion(id string) {
+	if s.bundle == nil {
+		return
+	}
+	for i := range s.bundle.Senders {
+		if s.bundle.Senders[i].ID != id {
+			continue
+		}
+		s.bundle.Senders[i].Version = is05.FormatTAINow(time.Now())
+		if s.connection != nil {
+			snap := s.bundle.Senders[i]
+			s.connection.notifyChanged(is04.ResourceSender, &snap)
+		}
+		return
+	}
+}
+
 // upsertControl adds ctrl, or REPLACES an existing control of the same
 // Type with the fresh href. The old skip-if-present rule is how a
 // stale href from a bundle file survived every restart: the fixture
