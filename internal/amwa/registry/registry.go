@@ -200,8 +200,10 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 						// the route table where srv.Auth lives, so the
 						// gate is applied here explicitly.
 						if authGate != nil {
-							if status, authenticate, body, ok := authGate.Check(req); !ok {
-								w.Header().Set("WWW-Authenticate", authenticate)
+							if status, hdrs, body, ok := authGate.Check(req); !ok {
+								for hk, hv := range hdrs {
+									w.Header().Set(hk, hv)
+								}
 								w.Header().Set("Content-Type", "application/json")
 								w.WriteHeader(status)
 								_ = json.NewEncoder(w).Encode(body)

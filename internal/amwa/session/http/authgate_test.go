@@ -119,14 +119,21 @@ func TestAuthGate(t *testing.T) {
 	c := gateClaims()
 	c["exp"] = float64(time.Now().Add(-5 * time.Minute).Unix())
 	st, hdr = gateDo(t, ts, "GET", "/x-nmos/node/v1.3/self", gateMint(t, c))
-	if st != 401 || hdr.Get("WWW-Authenticate") != `Bearer error="invalid_token"` {
+	if st != 401 || hdr.Get("WWW-Authenticate") != `Bearer error=invalid_token` {
 		t.Errorf("expired = %d %q", st, hdr.Get("WWW-Authenticate"))
 	}
-	// Wrong audience: 401.
+	// Wrong audience: a GENUINE token addressed to someone else is a
+	// forbidden use of this server — 403, per the AMWA suite.
 	c = gateClaims()
 	c["aud"] = []string{"other.test"}
-	if st, _ := gateDo(t, ts, "GET", "/x-nmos/node/v1.3/self", gateMint(t, c)); st != 401 {
-		t.Errorf("wrong aud = %d, want 401", st)
+	if st, _ := gateDo(t, ts, "GET", "/x-nmos/node/v1.3/self", gateMint(t, c)); st != 403 {
+		t.Errorf("wrong aud = %d, want 403", st)
+	}
+	// The no-token WWW-Authenticate begins "Bearer " (trailing space —
+	// the suite tokenises after that exact prefix).
+	st, hdr = gateDo(t, ts, "GET", "/x-nmos/node/v1.3/self", "")
+	if st != 401 || len(hdr.Get("WWW-Authenticate")) < 7 || hdr.Get("WWW-Authenticate")[:7] != "Bearer " {
+		t.Errorf("no-token WWW-Authenticate = %q, must begin 'Bearer '", hdr.Get("WWW-Authenticate"))
 	}
 	// Garbage token: 401.
 	if st, _ := gateDo(t, ts, "GET", "/x-nmos/node/v1.3/self", "not.a.jws"); st != 401 {

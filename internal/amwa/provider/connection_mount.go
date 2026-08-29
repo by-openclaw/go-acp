@@ -62,8 +62,9 @@ func (s *IS04NodeServer) attachChannelMappingAPI(srv *httpsession.Server) {
 		d := &s.bundle.Devices[i]
 		for _, ver := range s.channelMapping.Versions() {
 			ctrl := is04.DeviceControl{
-				Type: controlTypeChannelMapping + ver,
-				Href: "http://" + host + "/x-nmos/channelmapping/" + ver + "/",
+				Type:          controlTypeChannelMapping + ver,
+				Href:          "http://" + host + "/x-nmos/channelmapping/" + ver + "/",
+				Authorization: s.authOn(),
 			}
 			upsertControl(&d.Controls, ctrl)
 		}
@@ -99,8 +100,9 @@ func (s *IS04NodeServer) attachStreamCompatAPI(srv *httpsession.Server) {
 		d := &s.bundle.Devices[i]
 		for _, ver := range s.streamCompat.Versions() {
 			ctrl := is04.DeviceControl{
-				Type: controlTypeStreamCompat + ver,
-				Href: "http://" + host + "/x-nmos/streamcompatibility/" + ver + "/",
+				Type:          controlTypeStreamCompat + ver,
+				Href:          "http://" + host + "/x-nmos/streamcompatibility/" + ver + "/",
+				Authorization: s.authOn(),
 			}
 			upsertControl(&d.Controls, ctrl)
 		}
@@ -126,6 +128,11 @@ func (s *IS04NodeServer) bumpSenderVersion(id string) {
 		return
 	}
 }
+
+// authOn reports whether BCP-003-02 is active on this Node — the
+// value every endpoint + control `authorization` member must carry
+// (test_20 cross-checks them against the running mode).
+func (s *IS04NodeServer) authOn() bool { return s.cfg.AuthURL != "" }
 
 // upsertControl adds ctrl, or REPLACES an existing control of the same
 // Type with the fresh href. The old skip-if-present rule is how a
@@ -198,8 +205,9 @@ func (s *IS04NodeServer) advertiseConnectionControls() {
 		d := &s.bundle.Devices[i]
 		for _, ver := range s.connection.Versions() {
 			ctrl := is04.DeviceControl{
-				Type: controlTypeSRCtrl + ver,
-				Href: "http://" + host + "/x-nmos/connection/" + ver + "/",
+				Type:          controlTypeSRCtrl + ver,
+				Href:          "http://" + host + "/x-nmos/connection/" + ver + "/",
+				Authorization: s.authOn(),
 			}
 			upsertControl(&d.Controls, ctrl)
 		}

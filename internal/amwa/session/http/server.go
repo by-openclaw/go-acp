@@ -206,8 +206,10 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	// upgrades are protected by the same policy as plain routes (the
 	// spec says a server SHALL NOT upgrade on an invalid token).
 	if s.Auth != nil {
-		if status, authenticate, body, ok := s.Auth.Check(r); !ok {
-			w.Header().Set("WWW-Authenticate", authenticate)
+		if status, hdrs, body, ok := s.Auth.Check(r); !ok {
+			for k, v := range hdrs {
+				w.Header().Set(k, v)
+			}
 			writeJSON(w, status, body)
 			return
 		}

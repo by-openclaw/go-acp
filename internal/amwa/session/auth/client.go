@@ -230,6 +230,45 @@ func (k *KeyCache) Fetch(ctx context.Context) error {
 	return nil
 }
 
+// FetchIssuer pulls the key set of a so-far-unknown issuer (RFC 8414
+// metadata at the issuer's well-known path) and MERGES it into the
+// cache — the resource-server answer to a token whose signing key we
+// do not hold (Behaviour - Resource Servers.md: obtain the missing
+// key via the token's iss claim). Existing keys stay.
+func (k *KeyCache) FetchIssuer(ctx context.Context, issuer string) error {
+	raw, err := fetchJSON(ctx, k.hc, MetadataURL(issuer, ""))
+	if err != nil {
+		return err
+	}
+	m, err := is10.DecodeMetadata(raw)
+	if err != nil {
+		return err
+	}
+	raw, err = fetchJSON(ctx, k.hc, m.JwksURI)
+	if err != nil {
+		return err
+	}
+	set, err := is10.DecodeJWKS(raw)
+	if err != nil {
+		return err
+	}
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	have := map[string]bool{}
+	for _, existing := range k.keys {
+		have[existing.Kid+"|"+existing.N] = true
+	}
+	added := 0
+	for _, nk := range set.Keys {
+		if !have[nk.Kid+"|"+nk.N] {
+			k.keys = append(k.keys, nk)
+			added++
+		}
+	}
+	k.logger.Info("nmos/auth: issuer keys merged", "issuer", issuer, "added", added)
+	return nil
+}
+
 // Run refreshes the key set on the spec cadence: at least once every
 // hour, jittered by 0–60 s so a fleet of resource servers does not
 // synchronise its fetches. Failures keep the stale set. Blocks until

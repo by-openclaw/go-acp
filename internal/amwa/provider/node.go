@@ -365,7 +365,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// §4.2.2 mandates that this list reflects every protocol/IP/port the
 	// Node is reachable on — and AMWA NMOS Testing test_20 enforces it
 	// against whatever URL the test reaches us at.
-	expandNodeEndpoints(&s.bundle.Node, s.cfg.AdvertiseHost, s.cfg.Bind)
+	expandNodeEndpoints(&s.bundle.Node, s.cfg.AdvertiseHost, s.cfg.Bind, s.authOn())
 
 	// The Node's own href follows the same authority: it is the Node
 	// API base a controller will fetch, and a bundle-file leftover

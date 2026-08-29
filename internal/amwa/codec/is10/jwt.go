@@ -152,6 +152,21 @@ func VerifyWithKeys(raw string, keys []JWK) (Claims, error) {
 // by DNS wildcards ("https://*.local") that an IP literal can never
 // match.
 func ValidateClaims(c Claims, hosts []string, now time.Time, leeway time.Duration) error {
+	if err := ValidateClaimsExceptAud(c, now, leeway); err != nil {
+		return err
+	}
+	if !AudienceMatchesAny(c.Aud, hosts) {
+		return fmt.Errorf("is10: token aud %v does not name this server (%v)", []string(c.Aud), hosts)
+	}
+	return nil
+}
+
+// ValidateClaimsExceptAud runs every claim rule EXCEPT audience
+// matching. Resource servers separate the two because their HTTP
+// verdicts differ: a malformed/expired token is 401 invalid_token,
+// while a valid token addressed to someone else is a 403 (the AMWA
+// suite pins exactly that split).
+func ValidateClaimsExceptAud(c Claims, now time.Time, leeway time.Duration) error {
 	if c.Iss == "" {
 		return fmt.Errorf("is10: token: iss claim is required")
 	}
@@ -177,12 +192,18 @@ func ValidateClaims(c Claims, hosts []string, now time.Time, leeway time.Duratio
 	if c.ClientID == "" && c.Azp == "" {
 		return fmt.Errorf("is10: token: client_id claim is required when azp is absent")
 	}
+	return nil
+}
+
+// AudienceMatchesAny reports whether any aud entry names any of this
+// server's identities.
+func AudienceMatchesAny(aud Audience, hosts []string) bool {
 	for _, h := range hosts {
-		if AudienceMatches(c.Aud, h) {
-			return nil
+		if AudienceMatches(aud, h) {
+			return true
 		}
 	}
-	return fmt.Errorf("is10: token aud %v does not name this server (%v)", []string(c.Aud), hosts)
+	return false
 }
 
 // AudienceMatches reports whether any aud entry names host. Entries
