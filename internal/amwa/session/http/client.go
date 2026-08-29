@@ -22,6 +22,25 @@ const DefaultTimeout = 5 * time.Second
 type Client struct {
 	HTTP    *stdhttp.Client
 	MaxBody int64
+
+	// TokenSource, when non-nil, supplies a BCP-003-02 Bearer token
+	// attached to every request (Authorization header). Errors abort
+	// the request — a call that would have gone out unauthenticated
+	// against an authed peer only trades a 401 for a clearer error.
+	TokenSource func(context.Context) (string, error)
+}
+
+// applyAuth attaches the Bearer token when a TokenSource is set.
+func (c *Client) applyAuth(ctx context.Context, req *stdhttp.Request) error {
+	if c.TokenSource == nil {
+		return nil
+	}
+	tok, err := c.TokenSource(ctx)
+	if err != nil {
+		return fmt.Errorf("nmos/http: obtain access token: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+tok)
+	return nil
 }
 
 // NewClient returns a Client with sensible defaults (per-call timeout
@@ -49,6 +68,9 @@ func (c *Client) GetJSON(ctx context.Context, url string, dst any) error {
 		return fmt.Errorf("nmos/http: build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
+	if err := c.applyAuth(ctx, req); err != nil {
+		return err
+	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return fmt.Errorf("nmos/http: GET %s: %w", url, err)
@@ -106,6 +128,9 @@ func (c *Client) GetJSONPage(ctx context.Context, url string, dst any) (string, 
 		return "", fmt.Errorf("nmos/http: build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
+	if err := c.applyAuth(ctx, req); err != nil {
+		return "", err
+	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("nmos/http: GET %s: %w", url, err)
@@ -153,6 +178,9 @@ func (c *Client) GetJSONPageLinks(ctx context.Context, url string, dst any) (nex
 		return "", "", fmt.Errorf("nmos/http: build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
+	if err := c.applyAuth(ctx, req); err != nil {
+		return "", "", err
+	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return "", "", fmt.Errorf("nmos/http: GET %s: %w", url, err)

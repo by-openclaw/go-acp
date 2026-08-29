@@ -21,9 +21,14 @@ import (
 //     0.0.0.0 / IPv6-:: case where net.Listen reports only ::);
 //   - port comes from --advertise-host:port if set, else from --bind.
 //
-// The protocol is currently fixed to "http" — IS-10 / TLS lands later.
-func expandNodeEndpoints(n *is04.Node, advertiseHost, bind string) {
+// The protocol is currently fixed to "http" (BCP-003-01 TLS is its
+// own unit); authOn stamps every endpoint's `authorization` member —
+// test_20 cross-checks it against the mode the tool is running in.
+func expandNodeEndpoints(n *is04.Node, advertiseHost, bind string, authOn bool) {
 	host, port := endpointHostPort(advertiseHost, bind)
+	for i := range n.API.Endpoints {
+		n.API.Endpoints[i].Authorization = authOn
+	}
 	// The advertised endpoint goes FIRST, not last: firstNodeIP picks
 	// the first IP literal, and every derived address — control
 	// hrefs, IS-05 source_ip, the SDP origin — follows it. Appending
@@ -32,7 +37,7 @@ func expandNodeEndpoints(n *is04.Node, advertiseHost, bind string) {
 	// href on a host that no longer exists, and the controller showed
 	// empty connection panels with no error anywhere.
 	if host != "" && port != 0 && !isWildcard(host) {
-		adv := is04.NodeEndpoint{Host: host, Port: port, Protocol: "http"}
+		adv := is04.NodeEndpoint{Host: host, Port: port, Protocol: "http", Authorization: authOn}
 		out := []is04.NodeEndpoint{adv}
 		for _, ep := range n.API.Endpoints {
 			if !endpointAlreadyListed(out, ep) {
@@ -42,7 +47,7 @@ func expandNodeEndpoints(n *is04.Node, advertiseHost, bind string) {
 		n.API.Endpoints = out
 	}
 	for _, ip := range localIPv4() {
-		candidate := is04.NodeEndpoint{Host: ip, Port: port, Protocol: "http"}
+		candidate := is04.NodeEndpoint{Host: ip, Port: port, Protocol: "http", Authorization: authOn}
 		if !endpointAlreadyListed(n.API.Endpoints, candidate) {
 			n.API.Endpoints = append(n.API.Endpoints, candidate)
 		}

@@ -290,6 +290,9 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	connectionAPIVer := fs.String("connection-api-ver", "", "pin IS-05 to one wire minor (v1.0/v1.1/v1.2). Empty serves every registered minor in parallel, which is what a real product does")
 	systemURL := fs.String("system", "", "IS-09 System API as `host:port`, skipping discovery. Empty browses for one; a Node that finds none serves normally, because IS-09 makes the System API optional")
 	noRegistry := fs.Bool("no-registry", false, "stay peer-to-peer: neither register nor browse for a Registry. IS-04 §4.2.1 makes the modes exclusive — a registered Node stops advertising _nmos-node._tcp — so a Node that may find a Registry cannot also be a peer-to-peer Node")
+	authURL := fs.String("auth-url", "", "BCP-003-02 Authorization Server base (scheme://host[:port]). When set, every served API validates Bearer tokens, api_auth=true is advertised, and registration requests carry a client_credentials token")
+	authClientID := fs.String("auth-client-id", "", "OAuth client id for the client_credentials grant (with --auth-url)")
+	authClientSecret := fs.String("auth-client-secret", "", "OAuth client secret for the client_credentials grant (with --auth-url)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -327,6 +330,9 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		ConnectionAPIVer: *connectionAPIVer,
 		SystemURL:        *systemURL,
 		NoRegistry:       *noRegistry,
+		AuthURL:          *authURL,
+		AuthClientID:     *authClientID,
+		AuthClientSecret: *authClientSecret,
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
@@ -549,6 +555,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	heartbeatTimeout := fs.Duration("heartbeat-timeout", 12*time.Second, "evict Nodes after this long without heartbeats (IS-04 §6.1 default 12s)")
 	pageLimitDefault := fs.Int("page-limit-default", 0, "Query API page size when the client sends no paging.limit (0 = spec-parity default 100; raise for first-page-only controllers on plants larger than one page)")
 	instanceName := fs.String("instance-name", "", "DNS-SD instance label to announce under (default dhs-nmos-registry; change when a peer has cached a stale entry for the old name)")
+	regAuthURL := fs.String("auth-url", "", "BCP-003-02 Authorization Server base (scheme://host[:port]). When set, both faces validate Bearer tokens and api_auth=true is advertised")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -575,6 +582,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		HeartbeatTimeout: *heartbeatTimeout,
 		PageLimitDefault: *pageLimitDefault,
 		InstanceName:     *instanceName,
+		AuthURL:          *regAuthURL,
 	}
 	verLabel := *apiVer
 	if verLabel == "" {

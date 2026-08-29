@@ -256,7 +256,7 @@ func TestRegistryWatcherDisqualifyExpires(t *testing.T) {
 
 func TestExpandNodeEndpointsAddsAdvertiseHost(t *testing.T) {
 	n := &is04.Node{}
-	expandNodeEndpoints(n, "dhs-node:18080", ":18080")
+	expandNodeEndpoints(n, "dhs-node:18080", ":18080", false)
 	found := false
 	for _, e := range n.API.Endpoints {
 		if e.Host == "dhs-node" && e.Port == 18080 && e.Protocol == "http" {
@@ -273,7 +273,7 @@ func TestExpandNodeEndpointsIdempotent(t *testing.T) {
 	n.API.Endpoints = []is04.NodeEndpoint{
 		{Host: "dhs-node", Port: 18080, Protocol: "http"},
 	}
-	expandNodeEndpoints(n, "dhs-node:18080", ":18080")
+	expandNodeEndpoints(n, "dhs-node:18080", ":18080", false)
 	count := 0
 	for _, e := range n.API.Endpoints {
 		if e.Host == "dhs-node" && e.Port == 18080 {

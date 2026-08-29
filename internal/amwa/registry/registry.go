@@ -8,9 +8,11 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
 	stdhttp "net/http"
 	"strconv"
 	"strings"
@@ -20,6 +22,7 @@ import (
 
 	codec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
+	authsession "dhs/internal/amwa/session/auth"
 	session "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 	registryslot "dhs/internal/registry"
@@ -129,6 +132,25 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 	// HTTP routes — Registration + Query API installed in parallel
 	// for every served minor on one shared store.
 	srv := httpsession.NewServer(r.logger)
+	// BCP-003-02 resource-server gate: one policy for both faces AND
+	// the WebSocket upgrades (gated again in the dispatcher below,
+	// which bypasses the route table).
+	apiAuth := "false"
+	var authGate *httpsession.AuthGate
+	if opts.AuthURL != "" {
+		kc := authsession.NewKeyCache(authsession.MetadataURL(opts.AuthURL, ""), r.logger)
+		if err := kc.Fetch(ctx); err != nil && r.logger != nil {
+			r.logger.Warn("registry/nmos: initial JWKS fetch failed; requests will 401 until keys arrive", "err", err)
+		}
+		go kc.Run(ctx)
+		gateHosts := []string{host}
+		if hn, err := os.Hostname(); err == nil && hn != "" {
+			gateHosts = append(gateHosts, hn, hn+".local")
+		}
+		authGate = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: r.logger}
+		srv.Auth = authGate
+		apiAuth = "true"
+	}
 	wsPrefixes := make([]string, 0, len(apiVers))
 	upgradeHandlers := make(map[string]stdhttp.HandlerFunc, len(apiVers))
 	for _, apiVer := range apiVers {
@@ -173,6 +195,21 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 			if strings.HasSuffix(req.URL.Path, "/ws") {
 				for _, prefix := range wsPrefixes {
 					if strings.HasPrefix(req.URL.Path, prefix) {
+						// The spec says a server SHALL NOT upgrade on
+						// an invalid token — and this branch bypasses
+						// the route table where srv.Auth lives, so the
+						// gate is applied here explicitly.
+						if authGate != nil {
+							if status, hdrs, body, ok := authGate.Check(req); !ok {
+								for hk, hv := range hdrs {
+									w.Header().Set(hk, hv)
+								}
+								w.Header().Set("Content-Type", "application/json")
+								w.WriteHeader(status)
+								_ = json.NewEncoder(w).Encode(body)
+								return
+							}
+						}
 						upgradeHandlers[prefix](w, req)
 						return
 					}
@@ -236,7 +273,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 				TXT: map[string]string{
 					codec.TXTKeyAPIProto: "http",
 					codec.TXTKeyAPIVer:   strings.Join(apiVers, ","),
-					codec.TXTKeyAPIAuth:  "false",
+					codec.TXTKeyAPIAuth:  apiAuth,
 					codec.TXTKeyPriority: strconv.Itoa(priority),
 				},
 			}

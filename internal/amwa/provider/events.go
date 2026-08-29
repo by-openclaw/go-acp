@@ -468,8 +468,9 @@ func (s *IS04NodeServer) attachEventsAPI(srv *httpsession.Server) {
 		d := &s.bundle.Devices[i]
 		for _, ver := range s.events.Versions() {
 			ctrl := is04.DeviceControl{
-				Type: controlTypeEvents + ver,
-				Href: "http://" + host + "/x-nmos/events/" + ver + "/",
+				Type:          controlTypeEvents + ver,
+				Href:          "http://" + host + "/x-nmos/events/" + ver + "/",
+				Authorization: s.authOn(),
 			}
 			upsertControl(&d.Controls, ctrl)
 		}

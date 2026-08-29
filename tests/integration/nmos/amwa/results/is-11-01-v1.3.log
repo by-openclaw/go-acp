@@ -1,0 +1,41 @@
+
+time=2026-08-29T22:49:36.103Z level=INFO msg="dnssd: using stdlib browser (no system daemon detected)"
+time=2026-08-29T22:49:36.104Z level=INFO msg="dnssd: mDNS bound" iface=eth0
+time=2026-08-29T22:49:36.104Z level=INFO msg="dnssd: using stdlib browser (no system daemon detected)"
+time=2026-08-29T22:49:36.105Z level=INFO msg="dnssd: mDNS bound" iface=eth0
+time=2026-08-29T22:49:36.105Z level=INFO msg="dnssd: using stdlib browser (no system daemon detected)"
+time=2026-08-29T22:49:36.106Z level=INFO msg="dnssd: mDNS bound" iface=eth0
+time=2026-08-29T22:49:36.201Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-29T22:49:36.201Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=4500 pri=100
+time=2026-08-29T22:49:36.201Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-29T22:49:37.276Z level=INFO msg="nmos/auth: access token obtained" scope="" expires_in=60
+time=2026-08-29T22:49:41.201Z level=WARN msg="provider/node: System API advertised but /global could not be read" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 err="nmos/system: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: nmos/http: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: Get \"http://10.100.0.104:8110/x-nmos/system/v1.0/global\": context deadline exceeded"
+time=2026-08-29T22:49:43.107Z level=WARN msg="provider/node: System API found but /global could not be read" plugin=amwa api=is-09 err="nmos/system: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: nmos/http: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: Get \"http://10.100.0.104:8110/x-nmos/system/v1.0/global\": context deadline exceeded"
+time=2026-08-29T22:49:47.276Z level=WARN msg="provider/node: re-register attempt failed" step=0 err="provider/node: POST http://10.100.0.104:8110/x-nmos/registration/v1.3/resource: Post \"http://10.100.0.104:8110/x-nmos/registration/v1.3/resource\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+time=2026-08-29T22:49:48.584Z level=INFO msg="auth: rejected" reason="no token" method=GET path=/x-nmos/connection/v1.2
+time=2026-08-29T22:49:48.586Z level=INFO msg="auth: rejected" reason=signature method=GET path=/x-nmos/connection/v1.2 err="is10: token is not a compact JWS (want 3 segments, got 1)"
+time=2026-08-29T22:49:48.726Z level=INFO msg="auth: rejected" reason=claims method=GET path=/x-nmos/connection/v1.2 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=26596b14-288d-4e56-8bbc-50dd4205ace0 err="is10: token expired at 2026-08-29 21:49:48 +0000 UTC"
+time=2026-08-29T22:49:48.827Z level=INFO msg="auth: forbidden" reason=audience method=GET path=/x-nmos/connection/v1.2 iss=http://172.18.0.4:5010 aud=[https://*.nmos.example.com]
+time=2026-08-29T22:49:49.038Z level=INFO msg="auth: forbidden" method=GET path=/x-nmos/connection/v1.2 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=1bd6a5c3-33c3-4a73-9849-678041431c6a err="is10: token grants no access to the connection API"
+time=2026-08-29T22:49:49.979Z level=INFO msg="auth: unknown key, fetching issuer keys" iss=http://172.18.0.4:5011 method=GET path=/x-nmos/connection/v1.2
+time=2026-08-29T22:49:50.134Z level=INFO msg="nmos/auth: issuer keys merged" issuer=http://172.18.0.4:5011 added=1
+time=2026-08-29T22:49:55.174Z level=INFO msg="auth: rejected" reason="no token" method=GET path=/x-nmos/node/v1.3
+time=2026-08-29T22:49:55.179Z level=INFO msg="auth: rejected" reason=signature method=GET path=/x-nmos/node/v1.3 err="is10: token is not a compact JWS (want 3 segments, got 1)"
+time=2026-08-29T22:49:55.307Z level=INFO msg="auth: rejected" reason=claims method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=72f3a01c-7d8a-4576-9931-e9d424e8c73b err="is10: token expired at 2026-08-29 21:49:55 +0000 UTC"
+time=2026-08-29T22:49:55.396Z level=INFO msg="auth: forbidden" reason=audience method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 aud=[https://*.nmos.example.com]
+time=2026-08-29T22:49:55.596Z level=INFO msg="auth: forbidden" method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=12f2db41-2eb1-48cf-a126-51a9240b093c err="is10: token grants no access to the node API"
+time=2026-08-29T22:49:56.818Z level=INFO msg="auth: unknown key, fetching issuer keys" iss=http://172.18.0.4:5011 method=GET path=/x-nmos/node/v1.3
+time=2026-08-29T22:49:56.915Z level=INFO msg="nmos/auth: issuer keys merged" issuer=http://172.18.0.4:5011 added=1
+time=2026-08-29T22:49:57.278Z level=WARN msg="provider/node: re-register attempt failed" step=1 err="provider/node: POST http://10.100.0.104:8110/x-nmos/registration/v1.3/resource: Post \"http://10.100.0.104:8110/x-nmos/registration/v1.3/resource\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+time=2026-08-29T22:50:00.882Z level=INFO msg="auth: rejected" reason="no token" method=GET path=/x-nmos/streamcompatibility/v1.0
+time=2026-08-29T22:50:00.887Z level=INFO msg="auth: rejected" reason=signature method=GET path=/x-nmos/streamcompatibility/v1.0 err="is10: token is not a compact JWS (want 3 segments, got 1)"
+time=2026-08-29T22:50:01.040Z level=INFO msg="auth: rejected" reason=claims method=GET path=/x-nmos/streamcompatibility/v1.0 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=b3e34fe5-6d32-41d4-abff-828faa59cd21 err="is10: token expired at 2026-08-29 21:50:00 +0000 UTC"
+time=2026-08-29T22:50:01.133Z level=INFO msg="auth: forbidden" reason=audience method=GET path=/x-nmos/streamcompatibility/v1.0 iss=http://172.18.0.4:5010 aud=[https://*.nmos.example.com]
+time=2026-08-29T22:50:01.227Z level=INFO msg="auth: forbidden" method=GET path=/x-nmos/streamcompatibility/v1.0 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=a94b3d53-7f54-4717-9f2b-4eff61439399 err="is10: token grants no access to the streamcompatibility API"
+time=2026-08-29T22:50:02.305Z level=INFO msg="auth: unknown key, fetching issuer keys" iss=http://172.18.0.4:5011 method=GET path=/x-nmos/streamcompatibility/v1.0
+time=2026-08-29T22:50:02.384Z level=INFO msg="nmos/auth: issuer keys merged" issuer=http://172.18.0.4:5011 added=1
+time=2026-08-29T22:50:06.217Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=4500 pri=100
+time=2026-08-29T22:50:06.217Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-29T22:50:06.217Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-29T22:50:17.106Z level=WARN msg="provider/node: re-register attempt failed" step=0 err="provider/node: POST http://10.100.0.104:8110/x-nmos/registration/v1.3/resource: Post \"http://10.100.0.104:8110/x-nmos/registration/v1.3/resource\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+time=2026-08-29T22:50:27.108Z level=WARN msg="provider/node: re-register attempt failed" step=1 err="provider/node: POST http://10.100.0.104:8110/x-nmos/registration/v1.3/resource: Post \"http://10.100.0.104:8110/x-nmos/registration/v1.3/resource\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
