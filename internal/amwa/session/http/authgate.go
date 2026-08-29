@@ -186,15 +186,20 @@ func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]str
 	return 0, nil, ErrorBody{}, true
 }
 
-// startIssuerFetch dedupes concurrent fetches per issuer; a fresh
-// attempt is allowed once the previous one is 30s old.
+// startIssuerFetch dedupes CONCURRENT fetches per issuer only — the
+// window is deliberately short. The spec's rule is "do not re-fetch
+// unless none of the held keys validate the token", and this path is
+// only reached exactly then; an issuer that rotates its keys (the
+// AMWA suite restarts its secondary AS with a fresh key per test)
+// must be re-fetchable moments later or every later token from it is
+// a permanent 401.
 func (g *AuthGate) startIssuerFetch(iss string) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.fetching == nil {
 		g.fetching = map[string]time.Time{}
 	}
-	if t, ok := g.fetching[iss]; ok && time.Since(t) < 30*time.Second {
+	if t, ok := g.fetching[iss]; ok && time.Since(t) < 2*time.Second {
 		return false
 	}
 	g.fetching[iss] = time.Now()
