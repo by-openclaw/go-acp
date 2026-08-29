@@ -1,5 +1,7 @@
 package ms05
 
+import "encoding/json"
+
 // NcDescriptor is the abstract base shape of every descriptor — a
 // single optional `description` field is the only common shape per
 // MS-05-02 §11. Concrete descriptors embed this and add their own
@@ -113,6 +115,44 @@ type NcDatatypeDescriptor struct {
 	IsSequence bool `json:"isSequence,omitempty"`
 
 	Constraints *NcParameterConstraints `json:"constraints,omitempty"`
+}
+
+// MarshalJSON emits exactly the wire shape the variant's schema
+// fixes. Two rules the plain struct tags cannot express (and the
+// AMWA IS-14-01 suite checks — 39 of its tests failed on the first
+// omission):
+//
+//   - the base keys `constraints` (and `parentType` on Struct) are
+//     REQUIRED even when null, so omitempty must not drop them;
+//   - each variant carries ONLY its own extra keys — a `fields` key
+//     on a Primitive would satisfy the wrong branch of the schema's
+//     oneOf. Typedef always writes `isSequence`, including false.
+func (d NcDatatypeDescriptor) MarshalJSON() ([]byte, error) {
+	m := map[string]any{
+		"description": d.Description,
+		"name":        d.Name,
+		"type":        d.Type,
+		"constraints": d.Constraints,
+	}
+	switch d.Type {
+	case NcDatatypeTypeTypedef:
+		m["parentType"] = d.ParentType
+		m["isSequence"] = d.IsSequence
+	case NcDatatypeTypeStruct:
+		fields := d.Fields
+		if fields == nil {
+			fields = []NcFieldDescriptor{}
+		}
+		m["fields"] = fields
+		m["parentType"] = d.ParentType
+	case NcDatatypeTypeEnum:
+		items := d.Items
+		if items == nil {
+			items = []NcEnumItemDescriptor{}
+		}
+		m["items"] = items
+	}
+	return json.Marshal(m)
 }
 
 // NcBlockMemberDescriptor is the per-member entry returned by

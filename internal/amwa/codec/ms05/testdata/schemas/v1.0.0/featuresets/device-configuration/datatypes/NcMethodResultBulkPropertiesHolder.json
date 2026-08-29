@@ -1,0 +1,17 @@
+{
+  "description": "Bulk properties holder method result",
+  "name": "NcMethodResultBulkPropertiesHolder",
+  "type": 2,
+  "fields": [
+    {
+      "description": "Bulk properties holder value",
+      "name": "value",
+      "typeName": "NcBulkPropertiesHolder",
+      "isNullable": false,
+      "isSequence": false,
+      "constraints": null
+    }
+  ],
+  "parentType": "NcMethodResult",
+  "constraints": null
+}

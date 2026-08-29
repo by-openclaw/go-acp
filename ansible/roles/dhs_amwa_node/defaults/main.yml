@@ -104,6 +104,15 @@ dhs_amwa_node_suites:
     name: "IS-11 Stream Compatibility Management API"
     endpoints: ["streamcompat", "node", "connection"]
     min_node_ver: "v1.2"
+  # IS-14 requires IS-04 v1.1+ (docs/IS-04 interactions.md). Slot order
+  # is the suite's spec list: node, configuration, then two
+  # tool-disabled slots (ms-05-02 controlframework carries no host, and
+  # the testing-facade slot is disabled while MS05_INTERACTIVE_TESTING
+  # is off — invasive/interactive rounds are a separate campaign).
+  - id: "IS-14-01"
+    name: "IS-14 Device Configuration"
+    endpoints: ["node", "configuration", "-", "-"]
+    min_node_ver: "v1.1"
   # Two slots even though the tool disables most of their fields: the
   # arrays are positional, and a short one is refused outright with
   # "expects 2 Hostname(s)/IP address(es), Port(s) and Version(s)".
@@ -127,6 +136,7 @@ dhs_amwa_node_endpoint_vers:
   events: "v1.0"
   chanmap: "v1.0"
   streamcompat: "v1.0"
+  configuration: "v1.0"
   system: "v1.0"
   "-": "v1.0"
 
@@ -140,6 +150,7 @@ dhs_amwa_node_endpoint_hosts:
   events: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   chanmap: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   streamcompat: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  configuration: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   system: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
   "-": null
 
@@ -149,6 +160,7 @@ dhs_amwa_node_endpoint_ports:
   events: "{{ dhs_amwa_node_port }}"
   chanmap: "{{ dhs_amwa_node_port }}"
   streamcompat: "{{ dhs_amwa_node_port }}"
+  configuration: "{{ dhs_amwa_node_port }}"
   system: "{{ dhs_amwa_node_port }}"
   "-": null
 

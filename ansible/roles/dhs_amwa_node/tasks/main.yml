@@ -46,11 +46,15 @@
   delegate_to: localhost
   changed_when: false
 
+# One testdata tree DOES compile: ms05/framework.go go:embeds the
+# MS-05-02 framework model instances, so that directory rides along
+# after the blanket testdata drop (same exception as .dockerignore).
 - name: Archive the tracked source (assets and testdata dropped — none of it compiles)
   ansible.builtin.shell:
     cmd: >-
-      git ls-files -z
-      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/' -e '^tests/integration/nmos/amwa/results/'
+      { git ls-files -z
+      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/' -e '^tests/integration/nmos/amwa/results/' ;
+      git ls-files -z internal/amwa/codec/ms05/testdata/ ; }
       | tar --null -T - -czf /tmp/dhs-amwa-src.tgz
     chdir: "{{ playbook_dir }}/../.."
   delegate_to: localhost
@@ -104,6 +108,35 @@
     chdir: "{{ dhs_amwa_node_dir }}/src"
   register: dhs_amwa_node_build
   changed_when: "'Successfully' in dhs_amwa_node_build.stdout or dhs_amwa_node_build.rc == 0"
+  when: not (dhs_amwa_node_offline | default(false))
+
+# Offline plant (VLAN 600 has no internet by design): Dockerfile.node
+# cannot pull its golang/debian base images, so the binary is built
+# with the tooling host's own Go and packed FROM scratch — no registry
+# contact anywhere. See Dockerfile.node.offline for the mDNS trade-off.
+- name: Build the node binary with the host toolchain (offline)
+  ansible.builtin.command:
+    cmd: /usr/local/go/bin/go build -trimpath -o out/dhs ./cmd/dhs
+    chdir: "{{ dhs_amwa_node_dir }}/src"
+  environment:
+    CGO_ENABLED: "0"
+    GOOS: linux
+    GOFLAGS: -mod=mod
+  register: dhs_amwa_node_gobuild
+  changed_when: true
+  when: dhs_amwa_node_offline | default(false)
+
+- name: Build the node image from the host-built binary (offline)
+  ansible.builtin.command:
+    cmd: >-
+      docker build
+      -f tests/integration/nmos/amwa/Dockerfile.node.offline
+      -t {{ dhs_amwa_node_image }}
+      .
+    chdir: "{{ dhs_amwa_node_dir }}/src"
+  register: dhs_amwa_node_build_off
+  changed_when: dhs_amwa_node_build_off.rc == 0
+  when: dhs_amwa_node_offline | default(false)
 
 # Recreated, not just ensured. Yesterday's scores are not this run's.
 #

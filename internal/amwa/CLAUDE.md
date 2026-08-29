@@ -162,7 +162,7 @@ a MISSING implementation by the rule below, never a scope decision.
 | IS-09 System Parameters | **v1.0.0** | v1.0 | ✅ v1.0 |
 | IS-11 Stream Compatibility | **v1.0.0** | v1.0 | ✅ v1.0 |
 | IS-12 Control Protocol | **v1.0.1** | v1.0 | ✅ v1.0 |
-| IS-14 Device Configuration | **v1.0.0** | v1.0 | ❌ **MISSING — spec not started** |
+| IS-14 Device Configuration | **v1.0.0** | v1.0 | ✅ v1.0 |
 | MS-05-01 / MS-05-02 | **v1.0.0** | v1.0 | ✅ v1.0 |
 | BCP-002-01 / -02 Grouping, Asset | **v1.0.0** | — | ✅ |
 | BCP-003-01 Secure Communications | **v1.0.1** | — | ⚠️ table said v1.0.0 |
@@ -205,7 +205,7 @@ and none appeared here, so nothing flagged them as missing. Re-verify
 against specs.amwa.tv whenever the AMWA testing tool gains a suite we
 have no row for: the tool ships suites for exactly the published set,
 so a suite we cannot name IS the signal. Suites present on the tool
-today with no implementation behind them: IS-11, IS-14, BCP-005-01,
+today with no implementation behind them: BCP-005-01,
 BCP-007-03.
 
 ---

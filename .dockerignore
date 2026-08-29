@@ -1,7 +1,7 @@
 # Build context for tests/integration/nmos/amwa/Dockerfile.node.
 #
 # The repo is 574 MB, of which 7 MB is Go. The rest is vendor spec PDFs,
-# wire fixtures and captures — none of it reaches the compiler (there is
+# wire fixtures and captures â€” none of it reaches the compiler (there is
 # no go:embed anywhere in the tree), and shipping it would make every
 # image build a multi-minute upload.
 #
@@ -17,10 +17,14 @@ bin/
 internal/*/assets/
 internal/*/testdata/
 internal/*/*/testdata/
+# EXCEPTION (2026-08-29): ms05/framework.go go:embeds the MS-05-02
+# framework model instances - the build breaks without them. This is
+# the case the comment above predicted.
+!internal/amwa/codec/ms05/testdata/
 tests/integration/nmos/amwa/dhs
 tests/integration/nmos/amwa/results/
 
-# Docs, tooling and infrastructure — none of it compiles.
+# Docs, tooling and infrastructure â€” none of it compiles.
 docs/
 ansible/
 scripts/
