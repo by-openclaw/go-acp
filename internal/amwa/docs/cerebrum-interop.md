@@ -487,6 +487,37 @@ multi-minute render delay, and control-href selection that ignores
 reachability (compounded by the Neuron advertising unconnected
 interfaces).
 
+### Registry-to-registry bridge — proven live 2026-08-29
+
+Use case: `dhs Node ↔ dhs Registry ↔ [Cerebrum hosted Registry ↔
+Cerebrum controller]` — each side reads its native catalogue, dhs is
+the authoritative middle. Operational (script) version ran live:
+snapshot our Query API, proxy-register every resource into Cerebrum's
+Registration API v1.3 in dependency order (node → device → source →
+flow → sender → receiver; 856/856 accepted with 201), then proxy one
+`POST /health` per node every 4 s. Verified durable past their 12 s
+GC; their query then serves our full catalogue including
+`manifest_href` intact, and their controller renders it.
+
+**Trap that cost the first attempt — HTTP 411 on heartbeats.**
+Cerebrum's hosted registry rejects bodyless `POST /health/...`
+without a `Content-Length` header (`411 Length Required` from its
+HTTP layer). curl's empty POST omits the header; every heartbeat
+bounced, their GC silently swept all 856 resources ~12 s after the
+fill, and later re-POSTs failed `400 "device is not known"` (their
+registration validates parentage). Fix: send an explicit empty body
+(`curl -d ""`, or any client that sets `Content-Length: 0`). EVS
+ticket item #5: heartbeat rejection is invisible to the operator —
+the fill "succeeds" and the catalogue quietly evaporates.
+
+Their registration face also validates parent references (sender
+without known device → 400), so fill order is mandatory, and a full
+node re-fill is required after any eviction.
+
+Productization of this bridge (the `dhs registry nmos mirror` verb:
+Query-WS-driven forwarding, deletion propagation, per-node heartbeat
+proxying) is designed and awaits approval post-merge.
+
 ### Cerebrum device-panel knobs that affect interop (per
 "Modify Device" UI screenshot 2026-05-01)
 
